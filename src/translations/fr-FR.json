@@ -1,0 +1,60 @@
+{
+  "boilerplate": {
+    "common_appName": {
+      "full": "Boilerplate React Native",
+      "initials": "RNB"
+    },
+    "common_error": "Quelque chose s'est mal passé.",
+    "screen_example": {
+      "hello_user": "Salut, je m'appelle {{name}}",
+      "title": "Bienvenue sur Le $t(common_appName.full)",
+      "description": "Vous voulez découvrir des fonctionnalités ? Cliquez sur l'un des trois boutons en bas de l'écran. Le premier vous permet d'appeler une API REST. Le deuxième de changer la couleur du thème. Et le troisième de changer la langue"
+    },
+    "error_boundary": {
+      "title": "Oups ! Quelque chose s'est mal passé.",
+      "description": "Nous sommes désolés pour le désagrément. Veuillez réessayer plus tard.",
+      "cta": "Recharger l'écran"
+    },
+    "auth": {
+      "login": {
+        "title": "Bon retour",
+        "subtitle": "Connectez-vous pour accéder à votre garde-robe",
+        "email_label": "Email",
+        "email_placeholder": "Entrez votre email",
+        "password_label": "Mot de passe",
+        "password_placeholder": "Entrez votre mot de passe",
+        "submit": "Se connecter",
+        "no_account": "Pas encore de compte ?",
+        "register_link": "S'inscrire"
+      },
+      "register": {
+        "title": "Commencer",
+        "subtitle": "Créez votre compte pour commencer",
+        "email_label": "Email",
+        "email_placeholder": "Entrez votre email",
+        "password_label": "Mot de passe",
+        "password_placeholder": "Choisissez un mot de passe (min 8 caractères)",
+        "confirm_password_label": "Confirmer le mot de passe",
+        "confirm_password_placeholder": "Re-entrez votre mot de passe",
+        "submit": "Créer un compte",
+        "has_account": "Vous avez déjà un compte ?",
+        "login_link": "Se connecter"
+      },
+      "show": "Afficher",
+      "hide": "Masquer",
+      "password_strength": {
+        "weak": "Faible",
+        "medium": "Moyen",
+        "strong": "Fort"
+      },
+      "errors": {
+        "email_required": "L'email est requis",
+        "email_invalid": "Veuillez entrer une adresse email valide",
+        "password_required": "Le mot de passe est requis",
+        "password_too_short": "Le mot de passe doit contenir au moins 8 caractères",
+        "confirm_password_required": "Veuillez confirmer votre mot de passe",
+        "passwords_mismatch": "Les mots de passe ne correspondent pas"
+      }
+    }
+  }
+}
