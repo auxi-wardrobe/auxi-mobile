@@ -11,6 +11,11 @@ export const theme = {
     border: '#E0E0E0', // Light Gray Border
     white: '#FFFFFF',
     transparent: 'transparent',
+    // Figma Colors
+    figmaBackground: '#F7F7F8',
+    figmaTextPrimary: '#212121',
+    figmaTextSecondary: '#616161',
+    figmaButton: '#272A32',
   },
   spacing: {
     xs: 4,

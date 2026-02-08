@@ -9,6 +9,7 @@ interface AuthContextType {
     register: (data: RegisterRequest) => Promise<void>;
     logout: () => Promise<void>;
     checkAuth: () => Promise<void>;
+    completeOnboarding: (data?: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -86,8 +87,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    const completeOnboarding = async (data?: Partial<User>) => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const updateData = { ...data, is_first_login: false };
+            const updatedUser = await authService.updateUser(updateData);
+            setUser(updatedUser);
+        } catch (error) {
+            console.error('Failed to complete onboarding', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, register, logout, checkAuth }}>
+        <AuthContext.Provider value={{ user, isLoading, login, register, logout, checkAuth, completeOnboarding }}>
             {children}
         </AuthContext.Provider>
     );

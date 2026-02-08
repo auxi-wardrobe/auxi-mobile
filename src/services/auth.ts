@@ -64,6 +64,16 @@ export const authService = {
     }
   },
 
+  updateUser: async (data: Partial<User>): Promise<User> => {
+    try {
+      const response = await api.put('/me', data);
+      return response.data;
+    } catch (error) {
+       console.error('Update user error', error);
+      throw error;
+    }
+  },
+
   logout: async () => {
     try {
       // Optional: Call API to revoke refresh token
