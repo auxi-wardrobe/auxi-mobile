@@ -15,6 +15,7 @@ interface ButtonProps extends TouchableOpacityProps {
     variant?: 'primary' | 'secondary' | 'outline' | 'text';
     loading?: boolean;
     disabled?: boolean;
+    textStyle?: TextStyle;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -23,6 +24,7 @@ export const Button: React.FC<ButtonProps> = ({
     loading = false,
     disabled = false,
     style,
+    textStyle,
     ...props
 }) => {
     const getButtonStyle = (): ViewStyle => {
@@ -76,6 +78,7 @@ export const Button: React.FC<ButtonProps> = ({
                         styles.text,
                         getTextStyle(),
                         disabled && styles.disabledText,
+                        textStyle,
                     ]}
                 >
                     {title}

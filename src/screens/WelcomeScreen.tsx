@@ -10,7 +10,7 @@ export const WelcomeScreen = () => {
     const { isLoading } = useAuth();
 
     const handleGetStarted = () => {
-        navigation.navigate('StylePreference');
+        navigation.navigate('LocationPermission');
     };
 
     return (

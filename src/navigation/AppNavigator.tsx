@@ -4,7 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
+import { ItemDetailScreen } from '../screens/ItemDetailScreen';
 import { StylePreferenceScreen } from '../screens/StylePreferenceScreen';
+import { LocationPermissionScreen } from '../screens/LocationPermissionScreen';
 import { useAuth } from '../context/AuthContext';
 import { ActivityIndicator, View, StyleSheet } from 'react-native'; // Import View and StyleSheet
 import { theme } from '../theme/theme';
@@ -29,16 +31,20 @@ export const AppNavigator = () => {
                     user.is_first_login ? (
                         <>
                             <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                            <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
                             <Stack.Screen name="StylePreference" component={StylePreferenceScreen} />
                         </>
                     ) : (
-                        <Stack.Screen name="Home" component={HomeScreen} />
+                        <>
+                            <Stack.Screen name="Home" component={HomeScreen} />
+                            <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
+                        </>
                     )
                 ) : (
                     <Stack.Screen name="Auth" component={AuthNavigator} />
                 )}
             </Stack.Navigator>
-        </NavigationContainer>
+        </NavigationContainer >
     );
 };
 

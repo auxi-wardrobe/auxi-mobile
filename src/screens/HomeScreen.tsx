@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+// import { useAuth } from '../context/AuthContext';
 import { Header } from '../components/layout/Header'; // Adjusted path if needed, check where I put it. It was src/components/layout/Header.tsx
 import { Sidebar } from '../components/layout/Sidebar';
 import { theme } from '../theme/theme';
 import IconSort from '../assets/images/sort_icon.svg';
-import IconSend from '../assets/images/send_icon.svg';
+import { CategoryTabs } from '../components/features/CategoryTabs';
+import { itemService } from '../services/itemService';
+import { Item, CATEGORIES } from '../types/item';
 
-const { width } = Dimensions.get('window');
+// const { width } = Dimensions.get('window');
 
 // Figma: Width 414. Frame 2009 width 414.
 // Images are 205x273.
@@ -16,9 +19,48 @@ const { width } = Dimensions.get('window');
 // Wait, the main container Frame 2030 has gap 12.
 // Let's approximate a 2-column masonry or grid.
 
+const ALL_CATEGORY = 'All';
+const FILTER_CATEGORIES = [ALL_CATEGORY, ...CATEGORIES];
+
 export const HomeScreen = () => {
     // const { user } = useAuth(); // Unused in new design
+    const navigation = useNavigation<any>();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    // Data State
+    const [items, setItems] = useState<Item[]>([]);
+    const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
+
+    useEffect(() => {
+        loadItems();
+    }, []);
+
+    useEffect(() => {
+        filterItems();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedCategory, items]);
+
+    const loadItems = async () => {
+        try {
+            setLoading(true);
+            const data = await itemService.getAllItems();
+            setItems(data);
+        } catch (error) {
+            console.error('Failed to load items', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filterItems = () => {
+        if (selectedCategory === ALL_CATEGORY) {
+            setFilteredItems(items);
+        } else {
+            setFilteredItems(items.filter(item => item.category === selectedCategory));
+        }
+    };
 
     const handleFeedback = () => {
         console.log('Feedback pressed');
@@ -41,37 +83,50 @@ export const HomeScreen = () => {
             />
 
             <View style={styles.mainContent}>
-                <Text style={styles.sectionTitle}>An option that works</Text>
+                <Text style={styles.sectionTitle}>My Wardrobe</Text>
 
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                    {/* Grid of items */}
-                    <View style={styles.grid}>
-                        {/* Placeholder for "Common items" images since we didn't download them yet 
-                             and Figma API for fills is complex. using colored blocks or logo for now.
-                         */}
-                        <View style={styles.gridItem}>
-                            <View style={[styles.imagePlaceholder, { backgroundColor: '#E0E0E0' }]} />
-                            <View style={styles.itemLabelContainer}>
-                                <Text style={styles.itemLabel}>common items</Text>
-                            </View>
-                        </View>
-                        <View style={styles.gridItem}>
-                            <View style={[styles.imagePlaceholder, { backgroundColor: '#D0D0D0' }]} />
-                            <View style={styles.itemLabelContainer}>
-                                <Text style={styles.itemLabel}>common items</Text>
-                            </View>
-                        </View>
-                        <View style={styles.gridItem}>
-                            <View style={[styles.imagePlaceholder, { backgroundColor: '#C0C0C0' }]} />
-                            <View style={styles.itemLabelContainer}>
-                                <Text style={styles.itemLabel}>common items</Text>
-                            </View>
-                        </View>
-                        <View style={styles.gridItem}>
-                            {/* Empty or more items */}
-                        </View>
+                <CategoryTabs
+                    categories={FILTER_CATEGORIES}
+                    selectedCategory={selectedCategory}
+                    onSelectCategory={setSelectedCategory}
+                />
+
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
                     </View>
-                </ScrollView>
+                ) : (
+                    <ScrollView contentContainerStyle={styles.scrollContent}>
+                        <View style={styles.grid}>
+                            {filteredItems.map((item) => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    style={styles.gridItem}
+                                    onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
+                                >
+                                    <View style={styles.imageContainer}>
+                                        {/* Use actual image if available, else placeholder color */}
+                                        {item.imageUrl && !item.imageUrl.includes('placeholder') ? (
+                                            <Image source={{ uri: item.imageUrl }} style={styles.image} resizeMode="cover" />
+                                        ) : (
+                                            <View style={[styles.imagePlaceholder, { backgroundColor: '#E0E0E0' }]} />
+                                        )}
+                                        {/* Overlay Image if needed (e.g. valid URL) */}
+                                        <Image source={{ uri: item.imageUrl }} style={[StyleSheet.absoluteFill, styles.image]} resizeMode="cover" />
+                                    </View>
+
+                                    <View style={styles.itemLabelContainer}>
+                                        <Text style={styles.itemLabel}>{item.category}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+
+                            {filteredItems.length === 0 && (
+                                <Text style={styles.emptyText}>No items found in this category.</Text>
+                            )}
+                        </View>
+                    </ScrollView>
+                )}
             </View>
 
             {/* Bottom Sheet / Floating Panel */}
@@ -105,6 +160,12 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: theme.colors.figmaBackground,
     },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 50,
+    },
     mainContent: {
         flex: 1,
         paddingHorizontal: 0, // Grid seems full width?
@@ -119,40 +180,55 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     scrollContent: {
-        paddingBottom: 280, // Space for bottom sheet
+        paddingBottom: 200,
     },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start', // Changed to flex-start for even flow
+        paddingHorizontal: 16,
+        gap: 8, // Using gap instead of space-between calculation if possible, or manual margins
     },
     gridItem: {
-        width: '49.5%', // Approx 2 col
-        aspectRatio: 3 / 4, // 205/273
-        marginBottom: 4,
+        width: '48%', // Approx 2 col with gap
+        aspectRatio: 3 / 4,
+        marginBottom: 8,
         position: 'relative',
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    imageContainer: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: '#F0F0F0',
     },
     imagePlaceholder: {
         width: '100%',
         height: '100%',
     },
+    image: {
+        width: '100%',
+        height: '100%',
+    },
     itemLabelContainer: {
         position: 'absolute',
-        bottom: 15,
-        left: '15%', // Centered roughly
-        backgroundColor: 'rgba(39, 42, 50, 0.9)',
-        paddingHorizontal: 12,
-        paddingVertical: 3,
-        borderRadius: 0, // Figma didn't show radius?
-        width: 81,
-        height: 19,
-        justifyContent: 'center',
-        alignItems: 'center',
+        bottom: 10,
+        left: 10,
+        backgroundColor: 'rgba(39, 42, 50, 0.8)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
     },
     itemLabel: {
         color: '#FFFFFF',
-        fontSize: 9,
+        fontSize: 11,
         fontFamily: 'Manrope-Medium',
+    },
+    emptyText: {
+        textAlign: 'center',
+        marginTop: 20,
+        width: '100%',
+        color: '#999',
     },
     bottomSheet: {
         position: 'absolute',
@@ -168,11 +244,11 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 10,
         padding: 20,
-        height: 277, // Figma height
+        height: 120, // Reduced height as per requirement? Or keep strictly design. Keeping minimal for now so list is visible
         justifyContent: 'flex-start',
     },
     suggestionRow: {
-        marginBottom: 32,
+        marginBottom: 0,
     },
     chipsContainer: {
         gap: 8,
@@ -191,10 +267,10 @@ const styles = StyleSheet.create({
     chipText: {
         color: theme.colors.figmaButton,
         fontFamily: 'Manrope-Medium',
-        fontSize: 16,
+        fontSize: 14,
     },
     sortButton: {
-        width: 70,
+        width: 48,
         height: 48,
         backgroundColor: '#E3E3EC',
         borderRadius: 16,
