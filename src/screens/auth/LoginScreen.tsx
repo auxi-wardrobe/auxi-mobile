@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { Input } from '../../components/atoms/Input';
 import { Button } from '../../components/atoms/Button';
@@ -32,7 +33,13 @@ export const LoginScreen = () => {
             await login({ email, password });
             // Navigation is handled by AppNavigator listening to auth state
         } catch (error: any) {
-            Alert.alert('Login Failed', error.response?.data?.message || 'Something went wrong');
+            Toast.show({
+                type: 'error',
+                text1: 'Login Failed',
+                text2: error.response?.data?.message || 'Something went wrong',
+                position: 'bottom',
+                visibilityTime: 4000,
+            });
         } finally {
             setLoading(false);
         }
@@ -59,6 +66,7 @@ export const LoginScreen = () => {
                     error={errors.email}
                     autoCapitalize="none"
                     keyboardType="email-address"
+                    style={styles.inputContainer}
                 />
 
                 <Input
@@ -71,6 +79,7 @@ export const LoginScreen = () => {
                     }}
                     error={errors.password}
                     secureTextEntry
+                    style={styles.inputContainer}
                 />
 
                 <TouchableOpacity style={styles.forgotPassword}>
@@ -82,6 +91,7 @@ export const LoginScreen = () => {
                     onPress={handleLogin}
                     loading={loading}
                     style={styles.loginButton}
+                    textStyle={styles.loginButtonText}
                 />
 
                 <View style={styles.footer}>
@@ -97,11 +107,14 @@ export const LoginScreen = () => {
 
 const styles = StyleSheet.create({
     form: {
-        marginTop: theme.spacing.xl,
+        marginTop: theme.spacing.m,
+    },
+    inputContainer: {
+        marginBottom: theme.spacing.m,
     },
     forgotPassword: {
         alignSelf: 'flex-end',
-        marginBottom: theme.spacing.l,
+        marginBottom: theme.spacing.xl,
     },
     forgotPasswordText: {
         color: theme.colors.primary,
@@ -110,11 +123,26 @@ const styles = StyleSheet.create({
     },
     loginButton: {
         marginBottom: theme.spacing.l,
+        borderRadius: theme.borderRadius.l,
+        paddingVertical: 12,
+        shadowColor: theme.colors.primary,
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    loginButtonText: {
+        fontSize: theme.typography.sizes.button,
+        fontWeight: theme.typography.weights.bold as any,
+        letterSpacing: 1,
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: theme.spacing.m,
+        marginTop: theme.spacing.s,
     },
     footerText: {
         color: theme.colors.textSecondary,

@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Alert, Platform, Linking } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Alert, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Geolocation from 'react-native-geolocation-service';
 import { Button } from '../components/atoms/Button';
 import { theme } from '../theme/theme';
+import { requestLocationPermission } from '../utils/location';
 
 export const LocationPermissionScreen = () => {
     const navigation = useNavigation<any>();
@@ -13,24 +13,20 @@ export const LocationPermissionScreen = () => {
     const handleEnableLocation = async () => {
         setLoading(true);
         try {
-            if (Platform.OS === 'ios') {
-                const auth = await Geolocation.requestAuthorization('whenInUse');
-                if (auth === 'granted') {
-                    navigation.navigate('StylePreference');
-                } else {
-                    // Start manually manually
-                    Alert.alert(
-                        'Permission Denied',
-                        'We need location permission to suggest outfits based on local weather. Please enable it in settings.',
-                        [
-                            { text: 'Cancel', style: 'cancel', onPress: () => navigation.navigate('StylePreference') },
-                            { text: 'Open Settings', onPress: () => Linking.openSettings() }
-                        ]
-                    );
-                }
+            const hasPermission = await requestLocationPermission();
+
+            if (hasPermission) {
+                navigation.navigate('GenderPreference');
             } else {
-                // TODO: Android permission handling if needed later
-                navigation.navigate('StylePreference');
+                // Start manually manually
+                Alert.alert(
+                    'Permission Denied',
+                    'We need location permission to suggest outfits based on local weather. Please enable it in settings.',
+                    [
+                        { text: 'Cancel', style: 'cancel', onPress: () => navigation.navigate('StylePreference') },
+                        { text: 'Open Settings', onPress: () => Linking.openSettings() }
+                    ]
+                );
             }
         } catch (error) {
             console.error(error);

@@ -1,6 +1,6 @@
 export interface Item {
     id: string;
-    imageUrl: string;
+    image_url: string;
     category: string; // e.g., 'Top', 'Bottom', 'Shoes'
     color: string;
     style?: string; // e.g., 'Casual', 'Formal'

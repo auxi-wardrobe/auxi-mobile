@@ -13,6 +13,7 @@
    - [User](#user)
    - [RefreshToken](#refreshtoken)
    - [WardrobeItem](#wardrobeitem)
+   - [Favorite](#favorite)
    - [Body](#body)
    - [TryOnImage](#tryonimage)
 3. [ML/Processing Models](#mlprocessing-models)
@@ -62,14 +63,17 @@ All database models use SQLAlchemy ORM and are located in `models/` directory. T
 
 #### Fields
 
-| Field           | Type        | Constraints               | Description                   |
-| --------------- | ----------- | ------------------------- | ----------------------------- |
-| `id`            | String(36)  | Primary Key               | UUID (auto-generated)         |
-| `email`         | String(255) | Unique, Not Null, Indexed | User email (login identifier) |
-| `password_hash` | String(255) | Not Null                  | Bcrypt hashed password        |
-| `role`          | String(50)  | Default: 'user'           | User role (user/admin)        |
-| `created_at`    | DateTime    | Auto UTC timestamp        | Account creation timestamp    |
-| `updated_at`    | DateTime    | Auto UTC timestamp        | Last update timestamp         |
+| Field            | Type        | Constraints               | Description                                        |
+| ---------------- | ----------- | ------------------------- | -------------------------------------------------- |
+| `id`             | String(36)  | Primary Key               | UUID (auto-generated)                              |
+| `email`          | String(255) | Unique, Not Null, Indexed | User email (login identifier)                      |
+| `password_hash`  | String(255) | Not Null                  | Bcrypt hashed password                             |
+| `role`           | String(50)  | Default: 'user'           | User role (user/admin)                             |
+| `is_first_login` | Boolean     | Default: True             | Flag for first-time login                          |
+| `gender`         | String(20)  | Nullable                  | User gender preference (MASCULINE/FEMININE/UNISEX) |
+| `user_metadata`  | JSON        | Default: {}               | JSON storage for user preferences                  |
+| `created_at`     | DateTime    | Auto UTC timestamp        | Account creation timestamp                         |
+| `updated_at`     | DateTime    | Auto UTC timestamp        | Last update timestamp                              |
 
 #### Relationships
 
@@ -86,7 +90,10 @@ def to_dict(self) -> dict:
         {
             'id': str,
             'email': str,
-            'role': str
+            'role': str,
+            'is_first_login': bool,
+            'gender': str,
+            'user_metadata': dict
         }
     """
 ```
@@ -356,6 +363,68 @@ common = (
 # --- Soft-delete a user's own item (with guard checks) ---
 deleted = service.soft_delete_item(item_id=item.id, requester_user_id=user.id)
 # Row still exists; deleted["is_deleted"] == True
+```
+
+---
+
+---
+
+### Favorite
+
+**File**: `models/favorite.py`
+**Table**: `favorites`
+
+**Purpose**: Stores user's favorite outfits, linking to multiple `WardrobeItem`s.
+
+#### Fields
+
+| Field                  | Type         | Constraints                               | Description                            |
+| ---------------------- | ------------ | ----------------------------------------- | -------------------------------------- |
+| `id`                   | String(36)   | Primary Key                               | UUID (auto-generated)                  |
+| `user_id`              | String(36)   | Foreign Key (users.id), Not Null, Indexed | Owner of the favorite                  |
+| `outfit_context`       | JSON         | Default: `{}`                             | Context data (occasion, weather, etc.) |
+| `outfit_thumbnail_url` | String(1024) | Nullable                                  | URL to outfit thumbnail image          |
+| `created_at`           | DateTime     | Auto UTC timestamp                        | Creation timestamp                     |
+| `updated_at`           | DateTime     | Auto UTC timestamp                        | Last update timestamp                  |
+
+#### Relationships
+
+- **`items`**: Many-to-Many with `WardrobeItem` via `favorite_items` association table.
+
+#### Methods
+
+```python
+def to_dict(self) -> dict:
+    """
+    Serialize favorite to dictionary
+
+    Returns:
+        {
+            'id': str,
+            'user_id': str,
+            'outfit_items': [dict],  # List of wardrobe items
+            'outfit_context': dict,
+            'outfit_thumbnail_url': str,
+            'created_at': str (ISO format),
+            'updated_at': str (ISO format)
+        }
+    """
+```
+
+#### Usage Example
+
+```python
+from models.favorite import Favorite
+
+# Create favorite
+fav = Favorite(
+    user_id=user.id,
+    outfit_context={'occasion': 'work'},
+    outfit_thumbnail_url='https://s3...'
+)
+fav.items.extend([shirt, pants])  # Add items
+db.session.add(fav)
+db.session.commit()
 ```
 
 ---
@@ -1440,6 +1509,7 @@ cache.clear_all()
    ```
 
 2. **Use indexes for frequently queried fields**:
+
    - `user_id` columns are indexed for fast lookups
    - `email` is indexed for authentication
 
@@ -1532,6 +1602,7 @@ cache.clear_all()
    ```
 
 3. **Cache segmentation masks**:
+
    - Segment once, reuse mask for multiple try-ons
    - Store masks in database or S3
 

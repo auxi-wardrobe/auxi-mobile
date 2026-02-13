@@ -8,14 +8,15 @@ interface HeaderProps {
     showBack?: boolean;
     onBack?: () => void;
     onFeedback?: () => void;
-    // Add other props as needed
+    rightComponent?: React.ReactNode;
 }
 
 export const Header: React.FC<HeaderProps> = ({
     title = 'Auxi',
     showBack = true,
     onBack,
-    onFeedback
+    onFeedback,
+    rightComponent
 }) => {
     return (
         <View style={styles.container}>
@@ -42,9 +43,13 @@ export const Header: React.FC<HeaderProps> = ({
             </View>
 
             <View style={styles.rightContainer}>
-                <TouchableOpacity onPress={onFeedback}>
-                    <IconFeedback width={24} height={24} />
-                </TouchableOpacity>
+                {rightComponent ? (
+                    rightComponent
+                ) : (
+                    <TouchableOpacity onPress={onFeedback}>
+                        <IconFeedback width={24} height={24} />
+                    </TouchableOpacity>
+                )}
             </View>
         </View>
     );

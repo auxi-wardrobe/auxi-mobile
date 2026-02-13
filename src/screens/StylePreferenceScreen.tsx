@@ -1,24 +1,41 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/atoms/Button';
 import { theme } from '../theme/theme';
 
-type Preference = 'womenswear' | 'menswear' | 'mixed';
+type StylePreference = 'slim' | 'classic' | 'relaxed';
+type RootStackParamList = {
+    StylePreference: { gender: 'womenswear' | 'menswear' | 'mixed' };
+};
+type StylePreferenceScreenRouteProp = RouteProp<RootStackParamList, 'StylePreference'>;
 
 export const StylePreferenceScreen = () => {
     const navigation = useNavigation();
+    const route = useRoute<StylePreferenceScreenRouteProp>();
     const { completeOnboarding, isLoading } = useAuth();
-    const [selectedPreference, setSelectedPreference] = useState<Preference | null>(null);
+    const [selectedStyles, setSelectedStyles] = useState<StylePreference[]>([]);
+    const { gender } = route.params || {};
+
+    const toggleStyle = (style: StylePreference) => {
+        setSelectedStyles(prev => {
+            if (prev.includes(style)) {
+                return prev.filter(s => s !== style);
+            } else {
+                return [...prev, style];
+            }
+        });
+    };
 
     const handleNext = async () => {
-        if (selectedPreference) {
+        if (selectedStyles.length > 0) {
             try {
                 await completeOnboarding({
                     user_metadata: {
                         preferences: {
-                            style: [selectedPreference]
+                            gender: gender,
+                            style: selectedStyles
                         }
                     }
                 });
@@ -32,6 +49,32 @@ export const StylePreferenceScreen = () => {
         navigation.goBack();
     };
 
+    const getContent = () => {
+        if (gender === 'womenswear') {
+            return {
+                title: 'Which fit makes you feel most confident?',
+                subtitle: 'This will be Auxi’s starting point. You can switch up your style anytime.',
+                options: [
+                    { id: 'slim', label: 'Slim Fit', image: require('../assets/images/women_slim_fit.png') },
+                    { id: 'classic', label: 'Classic Fit', image: require('../assets/images/women_classic_fit.png') },
+                    { id: 'relaxed', label: 'Relaxed Fit', image: require('../assets/images/women_relaxed_fit.png') },
+                ]
+            };
+        }
+        // Default to Men/Mixed logic (using Men's assets/text as fallback or primary for now)
+        return {
+            title: 'Which fit feels right?',
+            subtitle: 'This sets a starting point.',
+            options: [
+                { id: 'slim', label: 'Slim Fit', image: require('../assets/images/men_slim_fit.png') },
+                { id: 'classic', label: 'Classic Fit', image: require('../assets/images/men_classic_fit.png') },
+                { id: 'relaxed', label: 'Relaxed Fit', image: require('../assets/images/men_relaxed_fit.png') },
+            ]
+        };
+    };
+
+    const content = getContent();
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -42,34 +85,34 @@ export const StylePreferenceScreen = () => {
 
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.textContainer}>
-                    <Text style={styles.title}>Start with what you usually wear</Text>
-                    <Text style={styles.subtitle}>You can change this later.</Text>
+                    <Text style={styles.title}>{content.title}</Text>
+                    <Text style={styles.subtitle}>{content.subtitle}</Text>
                 </View>
 
                 <View style={styles.optionsGrid}>
                     <View style={styles.topRow}>
                         <PreferenceOption
-                            id="womenswear"
-                            label="Womenswear"
-                            imageSource={require('../assets/images/womenswear.png')}
-                            selected={selectedPreference === 'womenswear'}
-                            onSelect={setSelectedPreference}
+                            id={content.options[0].id as StylePreference}
+                            label={content.options[0].label}
+                            imageSource={content.options[0].image}
+                            selected={selectedStyles.includes(content.options[0].id as StylePreference)}
+                            onToggle={toggleStyle}
                         />
                         <PreferenceOption
-                            id="menswear"
-                            label="Menswear"
-                            imageSource={require('../assets/images/menswear.png')}
-                            selected={selectedPreference === 'menswear'}
-                            onSelect={setSelectedPreference}
+                            id={content.options[1].id as StylePreference}
+                            label={content.options[1].label}
+                            imageSource={content.options[1].image}
+                            selected={selectedStyles.includes(content.options[1].id as StylePreference)}
+                            onToggle={toggleStyle}
                         />
                     </View>
                     <View style={styles.bottomRow}>
                         <PreferenceOption
-                            id="mixed"
-                            label="Mixed"
-                            imageSource={require('../assets/images/mixed.png')}
-                            selected={selectedPreference === 'mixed'}
-                            onSelect={setSelectedPreference}
+                            id={content.options[2].id as StylePreference}
+                            label={content.options[2].label}
+                            imageSource={content.options[2].image}
+                            selected={selectedStyles.includes(content.options[2].id as StylePreference)}
+                            onToggle={toggleStyle}
                         />
                     </View>
                 </View>
@@ -80,7 +123,7 @@ export const StylePreferenceScreen = () => {
                     title="Next"
                     onPress={handleNext}
                     loading={isLoading}
-                    disabled={!selectedPreference}
+                    disabled={selectedStyles.length === 0}
                 />
             </View>
         </SafeAreaView>
@@ -92,20 +135,20 @@ const PreferenceOption = ({
     label,
     imageSource,
     selected,
-    onSelect
+    onToggle
 }: {
-    id: Preference;
+    id: StylePreference;
     label: string;
     imageSource: any;
     selected: boolean;
-    onSelect: (id: Preference) => void;
+    onToggle: (id: StylePreference) => void;
 }) => (
     <TouchableOpacity
         style={[
             styles.optionContainer,
             selected && styles.optionSelected
         ]}
-        onPress={() => onSelect(id)}
+        onPress={() => onToggle(id)}
         activeOpacity={0.8}
     >
         <View style={styles.imageContainer}>
@@ -134,11 +177,11 @@ const styles = StyleSheet.create({
     },
     backIcon: {
         width: 45,
-        height: 45, // approximate based on Figma export
+        height: 45,
         resizeMode: 'contain',
     },
     content: {
-        paddingHorizontal: 22, // 22px left padding in Figma frame
+        paddingHorizontal: 22,
         paddingTop: 40,
         paddingBottom: 100,
     },
@@ -149,14 +192,14 @@ const styles = StyleSheet.create({
         fontFamily: 'PlayfairDisplay-SemiBold',
         fontSize: 16,
         fontWeight: '600',
-        color: theme.colors.figmaButton, // #272A32
+        color: theme.colors.figmaButton,
         textAlign: 'center',
         marginBottom: 8,
     },
     subtitle: {
         fontFamily: 'OpenSans-Regular',
         fontSize: 10,
-        color: theme.colors.figmaButton, // #272A32
+        color: theme.colors.figmaButton,
         textAlign: 'center',
     },
     optionsGrid: {
@@ -171,12 +214,10 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     optionContainer: {
-        width: 183, // Figma width
-        height: 244, // Figma height
+        width: 183,
+        height: 244,
         backgroundColor: '#DEDEDE',
         overflow: 'hidden',
-        // borderRadius? Figma shows 0 or implicit? Frame has radius but children?
-        // Let's assume standard sharp edges closely packed unless specified.
     },
     optionSelected: {
         borderWidth: 2,
@@ -193,7 +234,7 @@ const styles = StyleSheet.create({
     },
     labelBadge: {
         position: 'absolute',
-        bottom: 12, // approx
+        bottom: 12,
         alignSelf: 'center',
         backgroundColor: 'rgba(39, 42, 50, 0.9)',
         paddingHorizontal: 12,
@@ -214,6 +255,6 @@ const styles = StyleSheet.create({
         bottom: 50,
         left: 0,
         right: 0,
-        paddingHorizontal: 45, // Button is centered width 327px on 414 screen. 43.5 margins.
+        paddingHorizontal: 45,
     },
 });

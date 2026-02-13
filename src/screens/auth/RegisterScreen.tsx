@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { Input } from '../../components/atoms/Input';
 import { Button } from '../../components/atoms/Button';
@@ -34,7 +35,13 @@ export const RegisterScreen = () => {
             await register({ email, password });
             // Navigation is handled by AppNavigator listening to auth state
         } catch (error: any) {
-            Alert.alert('Registration Failed', error.response?.data?.message || 'Something went wrong');
+            Toast.show({
+                type: 'error',
+                text1: 'Registration Failed',
+                text2: error.response?.data?.message || 'Something went wrong',
+                position: 'bottom',
+                visibilityTime: 4000,
+            });
         } finally {
             setLoading(false);
         }
@@ -61,6 +68,7 @@ export const RegisterScreen = () => {
                     error={errors.email}
                     autoCapitalize="none"
                     keyboardType="email-address"
+                    style={styles.inputContainer}
                 />
 
                 <Input
@@ -73,6 +81,7 @@ export const RegisterScreen = () => {
                     }}
                     error={errors.password}
                     secureTextEntry
+                    style={styles.inputContainer}
                 />
 
                 <Input
@@ -85,6 +94,7 @@ export const RegisterScreen = () => {
                     }}
                     error={errors.confirmPassword}
                     secureTextEntry
+                    style={styles.inputContainer}
                 />
 
                 <Button
@@ -92,6 +102,7 @@ export const RegisterScreen = () => {
                     onPress={handleRegister}
                     loading={loading}
                     style={styles.registerButton}
+                    textStyle={styles.registerButtonText}
                 />
 
                 <View style={styles.footer}>
@@ -107,16 +118,34 @@ export const RegisterScreen = () => {
 
 const styles = StyleSheet.create({
     form: {
-        marginTop: theme.spacing.xl,
+        marginTop: theme.spacing.m,
+    },
+    inputContainer: {
+        marginBottom: theme.spacing.m,
     },
     registerButton: {
-        marginTop: theme.spacing.m,
+        marginTop: theme.spacing.s,
         marginBottom: theme.spacing.l,
+        borderRadius: theme.borderRadius.l,
+        paddingVertical: 12,
+        shadowColor: theme.colors.primary,
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    registerButtonText: {
+        fontSize: theme.typography.sizes.button,
+        fontWeight: theme.typography.weights.bold as any,
+        letterSpacing: 1,
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: theme.spacing.m,
+        marginTop: theme.spacing.s,
     },
     footerText: {
         color: theme.colors.textSecondary,

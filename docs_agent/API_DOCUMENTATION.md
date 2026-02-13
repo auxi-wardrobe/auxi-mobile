@@ -46,10 +46,12 @@ Register a new user.
 {
   "message": "User registered successfully",
   "user": {
-    "id": 1,
+    "id": "123e4567-e89b-12d3-a456-426614174000",
     "email": "user@example.com",
-    "created_at": "2024-12-07T10:00:00Z",
-    "is_active": true
+    "role": "user",
+    "is_first_login": true,
+    "gender": null,
+    "user_metadata": {}
   }
 }
 ```
@@ -139,13 +141,12 @@ Get profile information for the current authenticated user.
 
 ```json
 {
-  "id": "1",
+  "id": "123e4567-e89b-12d3-a456-426614174000",
   "email": "user@example.com",
   "role": "user",
   "is_first_login": true,
-  "user_metadata": {},
-  "created_at": "2024-12-07T10:00:00Z",
-  "is_active": true
+  "gender": "MASCULINE",
+  "user_metadata": {}
 }
 ```
 
@@ -162,6 +163,7 @@ Update profile information for the current authenticated user.
 ```json
 {
   "is_first_login": false,
+  "gender": "MASCULINE",
   "user_metadata": {
     "onboarding_step": 2,
     "preferences": "dark_mode"
@@ -173,16 +175,15 @@ Update profile information for the current authenticated user.
 
 ```json
 {
-  "id": "1",
+  "id": "123e4567-e89b-12d3-a456-426614174000",
   "email": "user@example.com",
   "role": "user",
   "is_first_login": false,
+  "gender": "MASCULINE",
   "user_metadata": {
     "onboarding_step": 2,
     "preferences": "dark_mode"
-  },
-  "created_at": "2024-12-07T10:00:00Z",
-  "is_active": true
+  }
 }
 ```
 
@@ -765,6 +766,123 @@ curl "http://localhost:5001/wardrobe/filter?category=top&occasion=work&weather_s
 - Weather-appropriate clothing ("Show me warm-weather tops")
 - Mood-based selection ("I want to look bold today")
 - Context-aware outfit building ("Casual weekend outfits for mild weather")
+
+---
+
+---
+
+### Favorites
+
+#### `POST /api/v1/favorites`
+
+Add a new favorite outfit.
+
+**Authentication**: Required (Bearer token)
+
+**Request** (application/json):
+
+```json
+{
+  "outfit_items": ["item_id_1", "item_id_2"],
+  "outfit_context": {
+    "occasion": "work",
+    "weather": "cold",
+    "styling_note": "Perfect for winter meetings"
+  },
+  "outfit_thumbnail_url": "https://s3.amazonaws.com/..."
+}
+```
+
+**Response** (201 Created):
+
+```json
+{
+  "id": "fav_123...",
+  "user_id": "user_456...",
+  "outfit_items": [
+    {
+      "id": "item_id_1",
+      "name": "Navy Blazer",
+      ...
+    },
+    ...
+  ],
+  "outfit_context": {
+    "occasion": "work",
+    "weather": "cold",
+    "styling_note": "Perfect for winter meetings"
+  },
+  "outfit_thumbnail_url": "https://s3.amazonaws.com/...",
+  "created_at": "2026-02-10T14:30:00Z",
+  "updated_at": "2026-02-10T14:30:00Z"
+}
+```
+
+**Errors**:
+
+- `400 Bad Request` - Missing data or empty items list
+- `404 Not Found` - One or more items not found
+- `403 Forbidden` - User does not own one of the items
+
+#### `GET /api/v1/favorites`
+
+List user's favorites with pagination.
+
+**Authentication**: Required (Bearer token)
+
+**Query Parameters**:
+
+- `limit` (int, default 20)
+- `offset` (int, default 0)
+- `sort` (string: "recent" | "oldest", default "recent")
+
+**Response** (200 OK):
+
+```json
+{
+  "count": 5,
+  "total": 12,
+  "favorites": [
+    {
+      "id": "fav_123...",
+      "outfit_items": [...],
+      "outfit_context": {...},
+      "created_at": "..."
+    },
+    ...
+  ]
+}
+```
+
+#### `GET /api/v1/favorites/<id>`
+
+Get details of a specific favorite.
+
+**Authentication**: Required (Bearer token)
+
+**Response** (200 OK):
+
+```json
+{
+  "id": "fav_123...",
+  "outfit_items": [...],
+  ...
+}
+```
+
+#### `DELETE /api/v1/favorites/<id>`
+
+Remove a favorite.
+
+**Authentication**: Required (Bearer token)
+
+**Response** (200 OK):
+
+```json
+{
+  "message": "Favorite removed successfully"
+}
+```
 
 ---
 

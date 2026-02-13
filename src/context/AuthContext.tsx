@@ -59,13 +59,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(true);
         try {
             await authService.register(data);
-            // Depending on API, register might return token or require login. 
-            // Assuming register logs user in or requires separate login.
-            // If API returns token, we can save it.
-            // Based on docs: Register returns user but NO token directly in example?
-            // Wait, docs say: "Response (201 Created): { message, user }". No token.
-            // So we need to login after register.
-
             // Auto-login after register
             await login({ email: data.email, password: data.password });
         } catch (error) {

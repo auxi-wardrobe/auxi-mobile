@@ -5,11 +5,13 @@ import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { ItemDetailScreen } from '../screens/ItemDetailScreen';
+import { GenderPreferenceScreen } from '../screens/GenderPreferenceScreen';
 import { StylePreferenceScreen } from '../screens/StylePreferenceScreen';
 import { LocationPermissionScreen } from '../screens/LocationPermissionScreen';
 import { useAuth } from '../context/AuthContext';
 import { ActivityIndicator, View, StyleSheet } from 'react-native'; // Import View and StyleSheet
 import { theme } from '../theme/theme';
+import { WardrobeScreen } from '../screens/WardrobeScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -28,15 +30,17 @@ export const AppNavigator = () => {
         <NavigationContainer>
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 {user ? (
-                    user.is_first_login ? (
+                    true ? (
                         <>
                             <Stack.Screen name="Welcome" component={WelcomeScreen} />
                             <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
+                            <Stack.Screen name="GenderPreference" component={GenderPreferenceScreen} />
                             <Stack.Screen name="StylePreference" component={StylePreferenceScreen} />
                         </>
                     ) : (
                         <>
                             <Stack.Screen name="Home" component={HomeScreen} />
+                            <Stack.Screen name="Wardrobe" component={WardrobeScreen} />
                             <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
                         </>
                     )

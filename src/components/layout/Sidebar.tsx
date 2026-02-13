@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, TouchableWithoutFeedback } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 // import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import IconWater from '../../assets/images/icon_water.svg';
@@ -21,6 +22,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const { logout } = useAuth(); // Using logout here
+    const navigation = useNavigation<any>();
 
     useEffect(() => {
         if (isOpen) {
@@ -75,7 +77,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
                 {/* Menu Items */}
                 <View style={styles.menuSection}>
-                    <MenuItem label="Wardrobe" Icon={IconWardrobe} />
+                    <MenuItem
+                        label="Wardrobe"
+                        Icon={IconWardrobe}
+                        onPress={() => {
+                            navigation.navigate('Wardrobe');
+                            onClose();
+                        }}
+                    />
                     <MenuItem label="My favourite" Icon={IconHeart} />
                     <MenuItem label="My account" Icon={IconUser} />
                     <MenuItem label="Archive" Icon={IconTrash} />

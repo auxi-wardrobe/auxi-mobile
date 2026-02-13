@@ -1,66 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+// import { useNavigation } from '@react-navigation/native';
 // import { useAuth } from '../context/AuthContext';
+import { useMutation } from '@tanstack/react-query';
 import { Header } from '../components/layout/Header'; // Adjusted path if needed, check where I put it. It was src/components/layout/Header.tsx
 import { Sidebar } from '../components/layout/Sidebar';
+import { ItemDetailBottomSheet } from '../components/features/ItemDetailBottomSheet';
 import { theme } from '../theme/theme';
-import IconSort from '../assets/images/sort_icon.svg';
-import { CategoryTabs } from '../components/features/CategoryTabs';
-import { itemService } from '../services/itemService';
-import { Item, CATEGORIES } from '../types/item';
+import { Item } from '../types/item';
+import { recommendationService } from '../services/recommendationService';
+import { getImageUrl } from '../utils/url';
 
 // const { width } = Dimensions.get('window');
 
-// Figma: Width 414. Frame 2009 width 414.
+// Figma: Width 414.
 // Images are 205x273.
 // Gap 4px.
-// 205*2 + 4 = 414. So it fits exactly full width?
-// Wait, the main container Frame 2030 has gap 12.
-// Let's approximate a 2-column masonry or grid.
 
-const ALL_CATEGORY = 'All';
-const FILTER_CATEGORIES = [ALL_CATEGORY, ...CATEGORIES];
+// const ALL_CATEGORY = 'All'; // Removed as per new design
+// const FILTER_CATEGORIES = [ALL_CATEGORY, ...CATEGORIES]; // Removed as per new design
 
 export const HomeScreen = () => {
     // const { user } = useAuth(); // Unused in new design
-    const navigation = useNavigation<any>();
+    // const navigation = useNavigation<any>();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Data State
     const [items, setItems] = useState<Item[]>([]);
-    const [filteredItems, setFilteredItems] = useState<Item[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
+    const [recommendationSessionId, setRecommendationSessionId] = useState<string | null>(null);
+    const [currentOutfitHash, setCurrentOutfitHash] = useState<string | null>(null);
+    const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+
+    // Initial Recommendation Mutation
+    const { mutate: startRecommendation, isPending: isStartPending } = useMutation({
+        mutationFn: recommendationService.startRecommendation,
+        onSuccess: (data) => {
+            if (data && data.outfit) {
+                setItems(data.outfit.items);
+                setRecommendationSessionId(data.session_id);
+                setCurrentOutfitHash(data.outfit.outfit_hash);
+            }
+        },
+        onError: (error) => {
+            console.error('Failed to load recommendation', error);
+        }
+    });
+
+    // Next Recommendation Mutation
+    const { mutate: nextRecommendation, isPending: isNextPending } = useMutation({
+        mutationFn: recommendationService.nextRecommendation,
+        onSuccess: (data) => {
+            if (data && data.outfit) {
+                setItems(data.outfit.items);
+                if (data.session_id) setRecommendationSessionId(data.session_id);
+                setCurrentOutfitHash(data.outfit.outfit_hash);
+            }
+        },
+        onError: (error) => {
+            console.error('Failed to fetch next recommendation', error);
+        }
+    });
+
+    const loading = isStartPending || isNextPending;
 
     useEffect(() => {
-        loadItems();
-    }, []);
+        // hardcode params for now or use defaults in service
+        startRecommendation({});
+    }, [startRecommendation]);
 
-    useEffect(() => {
-        filterItems();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedCategory, items]);
+    const handleTryAnother = () => {
+        if (!recommendationSessionId || !currentOutfitHash) return;
 
-    const loadItems = async () => {
-        try {
-            setLoading(true);
-            const data = await itemService.getAllItems();
-            setItems(data);
-        } catch (error) {
-            console.error('Failed to load items', error);
-        } finally {
-            setLoading(false);
-        }
+        nextRecommendation({
+            session_id: recommendationSessionId,
+            current_outfit_hash: currentOutfitHash
+        });
     };
 
-    const filterItems = () => {
-        if (selectedCategory === ALL_CATEGORY) {
-            setFilteredItems(items);
-        } else {
-            setFilteredItems(items.filter(item => item.category === selectedCategory));
-        }
-    };
 
     const handleFeedback = () => {
         console.log('Feedback pressed');
@@ -74,6 +90,14 @@ export const HomeScreen = () => {
         setIsSidebarOpen(false);
     };
 
+    const openItemDetail = (item: Item) => {
+        setSelectedItem(item);
+    };
+
+    const closeItemDetail = () => {
+        setSelectedItem(null);
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
@@ -83,13 +107,14 @@ export const HomeScreen = () => {
             />
 
             <View style={styles.mainContent}>
-                <Text style={styles.sectionTitle}>My Wardrobe</Text>
+                <Text style={styles.sectionTitle}>An option that works</Text>
 
-                <CategoryTabs
+                {/* Categories removed */}
+                {/* <CategoryTabs
                     categories={FILTER_CATEGORIES}
                     selectedCategory={selectedCategory}
                     onSelectCategory={setSelectedCategory}
-                />
+                /> */}
 
                 {loading ? (
                     <View style={styles.loadingContainer}>
@@ -98,31 +123,35 @@ export const HomeScreen = () => {
                 ) : (
                     <ScrollView contentContainerStyle={styles.scrollContent}>
                         <View style={styles.grid}>
-                            {filteredItems.map((item) => (
+                            {items.map((item) => (
                                 <TouchableOpacity
                                     key={item.id}
                                     style={styles.gridItem}
-                                    onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
+                                    onPress={() => openItemDetail(item)}
                                 >
                                     <View style={styles.imageContainer}>
                                         {/* Use actual image if available, else placeholder color */}
-                                        {item.imageUrl && !item.imageUrl.includes('placeholder') ? (
-                                            <Image source={{ uri: item.imageUrl }} style={styles.image} resizeMode="cover" />
+                                        {getImageUrl(item.image_url) ? (
+                                            <Image
+                                                source={{ uri: getImageUrl(item.image_url)! }}
+                                                style={styles.image}
+                                                resizeMode="contain"
+                                                onError={(e) => console.log('Image Load Error:', e.nativeEvent.error)}
+                                                onLoad={() => console.log('Image Loaded Successfully')}
+                                            />
                                         ) : (
                                             <View style={[styles.imagePlaceholder, { backgroundColor: '#E0E0E0' }]} />
                                         )}
-                                        {/* Overlay Image if needed (e.g. valid URL) */}
-                                        <Image source={{ uri: item.imageUrl }} style={[StyleSheet.absoluteFill, styles.image]} resizeMode="cover" />
-                                    </View>
 
-                                    <View style={styles.itemLabelContainer}>
-                                        <Text style={styles.itemLabel}>{item.category}</Text>
+                                        <View style={styles.overlayLabelContainer}>
+                                            <Text style={styles.overlayLabelText}>common items</Text>
+                                        </View>
                                     </View>
                                 </TouchableOpacity>
                             ))}
 
-                            {filteredItems.length === 0 && (
-                                <Text style={styles.emptyText}>No items found in this category.</Text>
+                            {items.length === 0 && (
+                                <Text style={styles.emptyText}>No items found.</Text>
                             )}
                         </View>
                     </ScrollView>
@@ -131,29 +160,35 @@ export const HomeScreen = () => {
 
             {/* Bottom Sheet / Floating Panel */}
             <View style={styles.bottomSheet}>
-                <View style={styles.suggestionRow}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContainer}>
-                        <Chip label="more neutral" />
-                        <Chip label="more casual" />
-                        <Chip label="colorful" />
-                        <TouchableOpacity style={styles.sortButton}>
-                            <IconSort width={24} height={24} />
+                <View style={styles.actionButtonsContainer}>
+                    <View style={styles.actionRow}>
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.outlinedButton]}
+                            onPress={handleTryAnother}
+                        >
+                            <Text style={styles.actionButtonText}>Try another</Text>
+                            <View style={styles.iconPlaceholder} />
                         </TouchableOpacity>
-                        <Chip label="find more context" wide />
-                    </ScrollView>
+                        <TouchableOpacity style={[styles.actionButton, styles.outlinedButton]}>
+                            <Text style={styles.actionButtonText}>Yes</Text>
+                            <View style={styles.iconPlaceholder} />
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity style={[styles.actionButton, styles.fullWidthButton]}>
+                        <Text style={styles.actionButtonText}>Edit context</Text>
+                        <View style={styles.iconPlaceholder} />
+                    </TouchableOpacity>
                 </View>
-
-
             </View>
+
+            <ItemDetailBottomSheet
+                visible={!!selectedItem}
+                item={selectedItem}
+                onClose={closeItemDetail}
+            />
         </SafeAreaView>
     );
 };
-
-const Chip = ({ label, wide }: { label: string, wide?: boolean }) => (
-    <TouchableOpacity style={[styles.chip, wide && styles.chipWide]}>
-        <Text style={styles.chipText}>{label}</Text>
-    </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
     container: {
@@ -210,20 +245,20 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
-    itemLabelContainer: {
-        position: 'absolute',
-        bottom: 10,
-        left: 10,
-        backgroundColor: 'rgba(39, 42, 50, 0.8)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
-    },
-    itemLabel: {
-        color: '#FFFFFF',
-        fontSize: 11,
-        fontFamily: 'Manrope-Medium',
-    },
+    // itemLabelContainer: {
+    //     position: 'absolute',
+    //     bottom: 10,
+    //     left: 10,
+    //     backgroundColor: 'rgba(39, 42, 50, 0.8)',
+    //     paddingHorizontal: 8,
+    //     paddingVertical: 4,
+    //     borderRadius: 4,
+    // },
+    // itemLabel: {
+    //     color: '#FFFFFF',
+    //     fontSize: 11,
+    //     fontFamily: 'Manrope-Medium',
+    // },
     emptyText: {
         textAlign: 'center',
         marginTop: 20,
@@ -244,44 +279,96 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         elevation: 10,
         padding: 20,
-        height: 120, // Reduced height as per requirement? Or keep strictly design. Keeping minimal for now so list is visible
-        justifyContent: 'flex-start',
+        height: 169, // Increased height for new buttons
+        justifyContent: 'center',
     },
-    suggestionRow: {
-        marginBottom: 0,
-    },
-    chipsContainer: {
+    // suggestionRow: {
+    //     marginBottom: 0,
+    // },
+    // chipsContainer: {
+    //     gap: 8,
+    //     alignItems: 'center',
+    // },
+    // chip: {
+    //     backgroundColor: '#E3E3EC',
+    //     borderRadius: 16,
+    //     paddingHorizontal: 12,
+    //     height: 48,
+    //     justifyContent: 'center',
+    // },
+    // chipWide: {
+    //     // minWidth: 120,
+    // },
+    // chipText: {
+    //     color: theme.colors.figmaButton,
+    //     fontFamily: 'Manrope-Medium',
+    //     fontSize: 14,
+    // },
+    actionButtonsContainer: {
         gap: 8,
-        alignItems: 'center',
+        width: '100%',
     },
-    chip: {
-        backgroundColor: '#E3E3EC',
-        borderRadius: 16,
+    actionRow: {
+        flexDirection: 'row',
+        gap: 8,
+        width: '100%',
+    },
+    actionButton: {
+        height: 56,
+        borderRadius: 100,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        borderWidth: 1.5,
+        borderColor: '#272A32',
+    },
+    outlinedButton: {
+        flex: 1,
+    },
+    fullWidthButton: {
+        width: '100%',
+    },
+    actionButtonText: {
+        color: '#272A32',
+        fontSize: 16,
+        fontFamily: 'Manrope-SemiBold',
+        fontWeight: '600',
+    },
+    iconPlaceholder: {
+        width: 16,
+        height: 16,
+        // backgroundColor: '#ccc', // Placeholder for icon
+    },
+    overlayLabelContainer: {
+        position: 'absolute',
+        bottom: 19,
+        left: 0,
+        backgroundColor: 'rgba(39, 42, 50, 0.9)',
         paddingHorizontal: 12,
-        height: 48,
-        justifyContent: 'center',
+        paddingVertical: 3,
+        // width: 81, // Fixed width from Figma? Or auto?
+        // Figma says 81px width, 19px height.
     },
-    chipWide: {
-        // minWidth: 120,
-    },
-    chipText: {
-        color: theme.colors.figmaButton,
+    overlayLabelText: {
+        color: '#FFFFFF',
+        fontSize: 8,
         fontFamily: 'Manrope-Medium',
-        fontSize: 14,
+        fontWeight: '500',
     },
-    sortButton: {
-        width: 48,
-        height: 48,
-        backgroundColor: '#E3E3EC',
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    sortIcon: {
-        width: 24,
-        height: 24,
-        resizeMode: 'contain',
-    },
+    // sortButton: {
+    //     width: 48,
+    //     height: 48,
+    //     backgroundColor: '#E3E3EC',
+    //     borderRadius: 16,
+    //     justifyContent: 'center',
+    //     alignItems: 'center',
+    // },
+    // sortIcon: {
+    //     width: 24,
+    //     height: 24,
+    //     resizeMode: 'contain',
+    // },
     inputActionRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
