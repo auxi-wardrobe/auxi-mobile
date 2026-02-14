@@ -9,7 +9,7 @@ import { Item, CATEGORIES, COLORS, STYLES, SEASONS } from '../types/item';
 
 // Mock icons for now
 const BackIcon = () => <Text style={{ fontSize: 24, color: theme.colors.text }}>←</Text>;
-
+const HeaderIcon = () => <Text style={{ fontSize: 24, color: theme.colors.text }}>←</Text>;
 export const ItemDetailScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();

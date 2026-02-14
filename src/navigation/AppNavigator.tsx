@@ -30,7 +30,7 @@ export const AppNavigator = () => {
         <NavigationContainer>
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 {user ? (
-                    true ? (
+                    user.is_first_login ? (
                         <>
                             <Stack.Screen name="Welcome" component={WelcomeScreen} />
                             <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />

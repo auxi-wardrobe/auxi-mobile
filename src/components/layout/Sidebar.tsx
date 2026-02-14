@@ -3,12 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, Touchab
 import { useNavigation } from '@react-navigation/native';
 // import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
-import IconWater from '../../assets/images/icon_water.svg';
-import IconWardrobe from '../../assets/images/icon_wardrobe.svg';
-import IconHeart from '../../assets/images/icon_heart.svg';
-import IconUser from '../../assets/images/icon_user.svg';
-import IconTrash from '../../assets/images/icon_trash.svg';
-import IconLogout from '../../assets/images/icon_logout.svg';
+import { Icons } from '../../assets/icons';
 
 const { width, height } = Dimensions.get('window');
 const SIDEBAR_WIDTH = 317;
@@ -71,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <View style={styles.topSection}>
                     <TouchableOpacity style={styles.getDressedButton}>
                         <Text style={styles.getDressedText}>Get dressed</Text>
-                        <IconWater width={16} height={16} />
+                        <Icons.Water width={16} height={16} />
                     </TouchableOpacity>
                 </View>
 
@@ -79,16 +74,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <View style={styles.menuSection}>
                     <MenuItem
                         label="Wardrobe"
-                        Icon={IconWardrobe}
+                        Icon={Icons.Wardrobe}
                         onPress={() => {
                             navigation.navigate('Wardrobe');
                             onClose();
                         }}
                     />
-                    <MenuItem label="My favourite" Icon={IconHeart} />
-                    <MenuItem label="My account" Icon={IconUser} />
-                    <MenuItem label="Archive" Icon={IconTrash} />
-                    <MenuItem label="Log out" Icon={IconLogout} onPress={logout} />
+                    <MenuItem label="My favourite" Icon={Icons.Heart} />
+                    <MenuItem label="My account" Icon={Icons.User} />
+                    <MenuItem label="Archive" Icon={Icons.Trash} />
+                    <MenuItem label="Log out" Icon={Icons.Logout} onPress={logout} />
                 </View>
             </Animated.View>
         </View>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../../theme/theme';
-import IconFeedback from '../../assets/images/feedback.svg';
+import { Icons } from '../../assets/icons';
 
 interface HeaderProps {
     title?: string;
@@ -47,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
                     rightComponent
                 ) : (
                     <TouchableOpacity onPress={onFeedback}>
-                        <IconFeedback width={24} height={24} />
+                        <Icons.Feedback width={24} height={24} />
                     </TouchableOpacity>
                 )}
             </View>
