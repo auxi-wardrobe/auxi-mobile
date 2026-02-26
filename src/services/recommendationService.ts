@@ -30,8 +30,6 @@ export interface NextRecommendationParams {
   current_outfit_hash: string;
 }
 
-const API_V2_BASE_URL = 'http://localhost:5001/api/v2';
-
 export const recommendationService = {
   startRecommendation: async (params: StartRecommendationParams = {}): Promise<RecommendationResponse> => {
     try {
@@ -42,10 +40,7 @@ export const recommendationService = {
         ...params,
       };
       
-      // Override baseURL to use v2 endpoint
-      const response = await apiClient.post('/recommendation/start', defaultParams, {
-        baseURL: API_V2_BASE_URL
-      });
+      const response = await apiClient.post('/recommendation/start', defaultParams);
       return response.data;
     } catch (error) {
       console.error('startRecommendation error', error);
@@ -55,10 +50,7 @@ export const recommendationService = {
 
   nextRecommendation: async (params: NextRecommendationParams): Promise<RecommendationResponse> => {
     try {
-      // Override baseURL to use v2 endpoint
-      const response = await apiClient.post('/recommendation/next', params, {
-        baseURL: API_V2_BASE_URL
-      });
+      const response = await apiClient.post('/recommendation/next', params);
       return response.data;
     } catch (error) {
       console.error('nextRecommendation error', error);

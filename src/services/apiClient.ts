@@ -6,7 +6,7 @@ import * as Keychain from 'react-native-keychain';
 // IOS: http://localhost:5001/api/v1
 // TODO: Externalize config
 export const ROOT_URL = 'http://localhost:5001';
-export const BASE_URL = `${ROOT_URL}/api/v1`;
+export const BASE_URL = `${ROOT_URL}/api`;
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

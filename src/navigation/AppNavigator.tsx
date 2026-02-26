@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { ActivityIndicator, View, StyleSheet } from 'react-native'; // Import View and StyleSheet
 import { theme } from '../theme/theme';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
+import { BodyScreen } from '../screens/BodyScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,6 +42,7 @@ export const AppNavigator = () => {
                         <>
                             <Stack.Screen name="Home" component={HomeScreen} />
                             <Stack.Screen name="Wardrobe" component={WardrobeScreen} />
+                            <Stack.Screen name="Body" component={BodyScreen} />
                             <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
                         </>
                     )

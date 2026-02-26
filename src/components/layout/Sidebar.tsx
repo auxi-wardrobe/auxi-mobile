@@ -80,6 +80,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                             onClose();
                         }}
                     />
+                    <MenuItem
+                        label="My body"
+                        Icon={Icons.User}
+                        onPress={() => {
+                            navigation.navigate('Body');
+                            onClose();
+                        }}
+                    />
                     <MenuItem label="My favourite" Icon={Icons.Heart} />
                     <MenuItem label="My account" Icon={Icons.User} />
                     <MenuItem label="Archive" Icon={Icons.Trash} />

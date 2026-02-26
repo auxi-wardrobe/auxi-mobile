@@ -6,7 +6,7 @@ import { LoginRequest, RegisterRequest, AuthResponse, User } from '../types/auth
 // ANDROID: http://10.0.2.2:5001/api/v1
 // IOS: http://localhost:5001/api/v1
 // TODO: Externalize config
-const BASE_URL = 'http://localhost:5001/api/v1';
+const BASE_URL = 'http://localhost:5001/api';
 
 const api = axios.create({
   baseURL: BASE_URL,

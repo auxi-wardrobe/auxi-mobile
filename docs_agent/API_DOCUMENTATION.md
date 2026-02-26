@@ -25,7 +25,7 @@ The Wardrobe Backend API provides endpoints for:
 
 ### Register
 
-#### `POST /api/v1/register`
+#### `POST /api/register`
 
 Register a new user.
 
@@ -64,7 +64,7 @@ Register a new user.
 
 ### Login
 
-#### `POST /api/v1/login`
+#### `POST /api/login`
 
 Authenticate user and receive access and refresh tokens.
 
@@ -98,7 +98,7 @@ Authenticate user and receive access and refresh tokens.
 
 ### Refresh Token
 
-#### `POST /api/v1/token/refresh`
+#### `POST /api/token/refresh`
 
 Obtain a new access token using a valid refresh token. Rotates the refresh token (returns a new one).
 
@@ -131,7 +131,7 @@ Obtain a new access token using a valid refresh token. Rotates the refresh token
 
 ### Get Current User
 
-#### `GET /api/v1/me`
+#### `GET /api/me`
 
 Get profile information for the current authenticated user.
 
@@ -152,7 +152,7 @@ Get profile information for the current authenticated user.
 
 ### Update User Profile
 
-#### `PUT /api/v1/me`
+#### `PUT /api/me`
 
 Update profile information for the current authenticated user.
 
@@ -195,7 +195,7 @@ Update profile information for the current authenticated user.
 
 ### Logout
 
-#### `POST /api/v1/logout`
+#### `POST /api/logout`
 
 Revoke the refresh token.
 
@@ -251,7 +251,7 @@ Check API health and configuration.
 
 ### Upload File
 
-#### `POST /upload/file`
+#### `POST /api/upload/file`
 
 Upload a file (image) with automatic S3 storage and local fallback.
 
@@ -269,7 +269,7 @@ prefix: <string> (optional) - S3 key prefix (e.g., "garments/", "bodies/")
 **cURL Example**:
 
 ```bash
-curl -X POST http://localhost:5001/upload/file \
+curl -X POST http://localhost:5001/api/upload/file \
   -H "Authorization: Bearer <token>" \
   -F "file=@image.jpg" \
   -F "prefix=garments/"
@@ -323,11 +323,59 @@ curl -X POST http://localhost:5001/upload/file \
 
 ---
 
+### Upload Base64 Image
+
+#### `POST /api/upload/base64`
+
+Upload a base64-encoded image (JSON alternative to multipart file upload).
+
+**Authentication**: Not required
+
+**Rate Limit**: 10 requests per minute
+
+**Request** (application/json):
+
+```json
+{
+  "image": "iVBORw0KGgoAAAANSUhEUgAA...",
+  "filename": "optional.png"
+}
+```
+
+**Request Fields**:
+
+- `image` (string, required): Base64-encoded image data
+- `filename` (string, optional): Original filename (used to determine extension)
+
+**Response (201 Created)**:
+
+```json
+{
+  "url": "https://s3.amazonaws.com/bucket/uploads/abc123def456.png",
+  "key": "uploads/abc123def456.png"
+}
+```
+
+**Errors**:
+
+- `400 Bad Request` - No image data provided or invalid base64
+- `429 Too Many Requests` - Rate limit exceeded
+- `503 Service Unavailable` - S3 not configured
+
+**Notes**:
+
+- Automatically determines file extension from `filename` parameter
+- Falls back to `.png` if no valid extension detected
+- Uploads directly to S3 (no local fallback for this endpoint)
+- Supports same image formats as multipart upload: JPG, PNG, WEBP
+
+---
+
 ## Garment Processing
 
 ### Segment Garment
 
-#### `POST /process/segment`
+#### `POST /api/process/segment`
 
 Segment a garment image and extract metadata (colors, type).
 
@@ -341,7 +389,7 @@ type_hint: <string> (optional) - Garment type hint ("top", "bottom", "shoes", et
 **cURL Example**:
 
 ```bash
-curl -X POST http://localhost:5001/process/segment \
+curl -X POST http://localhost:5001/api/process/segment \
   -F "image=@shirt.jpg" \
   -F "type_hint=top"
 ```
@@ -384,7 +432,7 @@ curl -X POST http://localhost:5001/process/segment \
 
 ### Create Thumbnail
 
-#### `POST /process/thumbnail`
+#### `POST /api/process/thumbnail`
 
 Generate a thumbnail collage from multiple garment images.
 
@@ -398,7 +446,7 @@ layout_hint: <string> (optional) - "grid_2x3", "grid_3x2", etc.
 **cURL Example**:
 
 ```bash
-curl -X POST http://localhost:5001/process/thumbnail \
+curl -X POST http://localhost:5001/api/process/thumbnail \
   -F "images[]=@shirt1.jpg" \
   -F "images[]=@shirt2.jpg" \
   -F "images[]=@pants.jpg" \
@@ -430,7 +478,7 @@ curl -X POST http://localhost:5001/process/thumbnail \
 
 ### Extract Garment (Gemini-based)
 
-#### `POST /process/extract`
+#### `POST /api/process/extract`
 
 Extract a single garment from an image with transparent background using Google's Gemini AI.
 
@@ -452,7 +500,7 @@ custom_prompt: <string> (optional) - Override default extraction prompt
 **cURL Example**:
 
 ```bash
-curl -X POST http://localhost:5001/process/extract \
+curl -X POST http://localhost:5001/api/process/extract \
   -F "image=@person_wearing_shirt.jpg" \
   -F "type_hint=top"
 ```
@@ -540,7 +588,7 @@ curl -X POST http://localhost:5001/process/extract \
 
 ### Body Reference (User Uploaded)
 
-#### `POST /bodies`
+#### `POST /api/bodies`
 
 Upload a body reference image (selfie) for try-on.
 
@@ -566,7 +614,7 @@ file: <file> (required) - Body image (JPG, PNG, WEBP)
 }
 ```
 
-#### `GET /bodies`
+#### `GET /api/bodies`
 
 Get all body images for the authenticated user.
 
@@ -588,7 +636,7 @@ Get all body images for the authenticated user.
 }
 ```
 
-#### `DELETE /bodies/<id>`
+#### `DELETE /api/bodies/<id>`
 
 Delete a body reference image for the authenticated user.
 
@@ -611,7 +659,7 @@ Delete a body reference image for the authenticated user.
 
 ### Get Wardrobe Items
 
-#### `GET /wardrobe/items`
+#### `GET /api/wardrobe/items`
 
 Retrieve all wardrobe items for the authenticated user.
 
@@ -641,9 +689,96 @@ Retrieve all wardrobe items for the authenticated user.
 }
 ```
 
+### Get Wardrobe Items by User ID
+
+#### `GET /api/wardrobe/user/<user_id>`
+
+Get all wardrobe items for a specific user (public endpoint, no authentication required).
+
+**Authentication**: Not required
+
+**Response** (200 OK):
+
+```json
+{
+  "user_id": "user_123",
+  "count": 5,
+  "items": [
+    {
+      "id": "item_123...",
+      "user_id": "user_123",
+      "owner_id": "user_123",
+      "category": "top",
+      "image_url": "https://s3.amazonaws.com/...",
+      "name": "Blue Denim Button-Up Shirt",
+      "created_at": "2024-12-16T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Errors**:
+
+- `500 Internal Server Error` - Database error
+
+---
+
+### Add Wardrobe Item
+
+#### `POST /api/wardrobe/`
+
+Add a new wardrobe item to a user's wardrobe.
+
+**Authentication**: Not required (for MVP - specify user_id in request body)
+
+**Request** (application/json):
+
+```json
+{
+  "user_id": "user_123",
+  "category": "top",
+  "image_url": "https://s3.amazonaws.com/garments/abc123.png",
+  "name": "Blue Shirt"
+}
+```
+
+**Required Fields**:
+
+- `user_id` (string) - User identifier
+- `category` (string) - Item category (top, bottom, dress, shoes, outerwear, accessory)
+- `image_url` (string) - URL to garment image
+
+**Optional Fields**:
+
+- `name` (string) - Item name/title
+
+**Response** (201 Created):
+
+```json
+{
+  "message": "Wardrobe item added successfully",
+  "item": {
+    "id": "item_123...",
+    "user_id": "user_123",
+    "owner_id": "user_123",
+    "category": "top",
+    "image_url": "https://s3.amazonaws.com/garments/abc123.png",
+    "name": "Blue Shirt",
+    "created_at": "2024-12-16T10:00:00Z"
+  }
+}
+```
+
+**Errors**:
+
+- `400 Bad Request` - Missing required fields (user_id, category, or image_url)
+- `500 Internal Server Error` - Database error
+
+---
+
 ### Update Wardrobe Item Attributes
 
-#### `POST /wardrobe/items/<id>/attributes`
+#### `POST /api/wardrobe/items/<id>/attributes`
 
 Manually override or refine AI-generated metadata for a wardrobe item.
 
@@ -700,7 +835,7 @@ Manually override or refine AI-generated metadata for a wardrobe item.
 
 ### Filter Wardrobe Items
 
-#### `GET /wardrobe/filter`
+#### `GET /api/wardrobe/filter`
 
 Filter wardrobe items by metadata attributes for context-based outfit selection.
 
@@ -773,7 +908,7 @@ curl "http://localhost:5001/wardrobe/filter?category=top&occasion=work&weather_s
 
 ### Favorites
 
-#### `POST /api/v1/favorites`
+#### `POST /api/favorites`
 
 Add a new favorite outfit.
 
@@ -824,7 +959,7 @@ Add a new favorite outfit.
 - `404 Not Found` - One or more items not found
 - `403 Forbidden` - User does not own one of the items
 
-#### `GET /api/v1/favorites`
+#### `GET /api/favorites`
 
 List user's favorites with pagination.
 
@@ -854,7 +989,7 @@ List user's favorites with pagination.
 }
 ```
 
-#### `GET /api/v1/favorites/<id>`
+#### `GET /api/favorites/<id>`
 
 Get details of a specific favorite.
 
@@ -870,7 +1005,7 @@ Get details of a specific favorite.
 }
 ```
 
-#### `DELETE /api/v1/favorites/<id>`
+#### `DELETE /api/favorites/<id>`
 
 Remove a favorite.
 
@@ -926,6 +1061,7 @@ Remove a favorite.
         "is_tuckable": true,
         "is_water_resistant": false
       },
+      "gender_tags": ["M", "W", "U"],
       "is_common_item": true,
       "is_deleted": false,
       "created_at": "2026-02-04T10:00:00+00:00",
@@ -973,6 +1109,7 @@ Remove a favorite.
     "image_url": "",
     "styling_metadata": { "..." },
     "physical_attributes": { "..." },
+    "gender_tags": ["M", "W", "U"],
     "is_common_item": false,
     "is_deleted": false,
     "created_at": "2026-02-04T10:05:00+00:00",
@@ -989,9 +1126,60 @@ Remove a favorite.
 
 ---
 
+### Gender Tagging System
+
+**Overview**: The wardrobe system uses a multi-dimensional gender tagging approach based on **Style Archetypes** rather than biological gender. Items can have multiple tags to accurately represent their styling characteristics.
+
+**Gender Tags**:
+
+- `M` (Menswear): Structured silhouettes, broad shoulders, angular cuts
+- `W` (Womenswear): Curved silhouettes, decorative elements, fitted designs
+- `U` (Unisex): Neutral styling, relaxed fit, minimal gender-coded elements
+
+**Tag Examples**:
+
+- `["M"]` - Men-only (e.g., structured blazer)
+- `["W"]` - Women-only (e.g., dress)
+- `["M", "W", "U"]` - Universal (e.g., t-shirt, jeans, sneakers)
+- `["M", "U"]` - Menswear + Unisex (e.g., oxford shirt, chinos)
+
+**Filtering Behavior**:
+
+- **MASCULINE users**: See items with `"M"` tag (excludes W-only items)
+- **FEMININE users**: See items with `"W"` tag (excludes M-only items)
+- **UNISEX/null preference**: See all items (no filtering)
+
+**Scoring Priority** (for sorting recommendations):
+
+1. **Exact match** (100 points): Item has user's preferred tag
+2. **Unisex fallback** (80 points): Item has `"U"` tag but not preferred tag
+3. **Cross-gender** (10 points): Item has opposite tag (low priority)
+
+**Example**:
+
+```json
+{
+  "id": "item_123",
+  "name": "White T-Shirt",
+  "gender_tags": ["M", "W", "U"], // Universal item
+  "category": "top"
+}
+```
+
+For MASCULINE user: Score 100 (has "M"), shown in results
+For FEMININE user: Score 100 (has "W"), shown in results
+For UNISEX user: Score 100 (all items equal), shown in results
+
+**See also**:
+
+- Recommendation Engine (`POST /api/recommendation/start`) - Uses gender_tags for outfit filtering
+- Common Items catalog - All items have gender_tags assigned
+
+---
+
 ### Delete a Wardrobe Item (Soft Delete)
 
-#### `DELETE /wardrobe/items/<item_id>`
+#### `DELETE /api/wardrobe/items/<item_id>`
 
 **Description:** Soft-deletes a wardrobe item by setting `is_deleted = true`. The row is preserved in the database. System / Common Items are protected and cannot be deleted; only the owning user may delete their own items.
 
@@ -1031,7 +1219,7 @@ Remove a favorite.
 
 ### Suggest Outfits
 
-#### `POST /suggest`
+#### `POST /api/suggest`
 
 Generate outfit combinations based on wardrobe item metadata.
 
@@ -1065,7 +1253,7 @@ Generate outfit combinations based on wardrobe item metadata.
 **cURL Example**:
 
 ```bash
-curl -X POST http://localhost:5001/suggest \
+curl -X POST http://localhost:5001/api/suggest \
   -H "Content-Type: application/json" \
   -d '{
     "items": [
@@ -1111,7 +1299,7 @@ curl -X POST http://localhost:5001/suggest \
 
 ### Low-Res Try-On (Preview)
 
-#### `POST /tryon/lowres`
+#### `POST /api/tryon/lowres`
 
 Create a fast low-resolution composite preview.
 
@@ -1132,7 +1320,7 @@ match_lighting: <boolean> (optional) - Match lighting (default: false)
 **cURL Example**:
 
 ```bash
-curl -X POST http://localhost:5001/tryon/lowres \
+curl -X POST http://localhost:5001/api/tryon/lowres \
   -H "Authorization: Bearer <your_access_token>" \
   -F "selfie=@selfie.jpg" \
   -F "garment=@shirt.jpg" \
@@ -1167,7 +1355,7 @@ curl -X POST http://localhost:5001/tryon/lowres \
 **cURL Example (JSON mode)**:
 
 ```bash
-curl -X POST http://localhost:5001/tryon/lowres \
+curl -X POST http://localhost:5001/api/tryon/lowres \
   -H "Authorization: Bearer <your_access_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1222,7 +1410,7 @@ curl -X POST http://localhost:5001/tryon/lowres \
 
 ### High-Res Try-On (Gemini API)
 
-#### `POST /tryon/highres`
+#### `POST /api/tryon/highres`
 
 **Mode 1: Multipart File Upload** (backward compatible)
 
@@ -1237,7 +1425,7 @@ prompt_params: <json> (optional) - Additional prompt parameters
 **cURL Example**:
 
 ```bash
-curl -X POST http://localhost:5001/tryon/highres \
+curl -X POST http://localhost:5001/api/tryon/highres \
   -H "Authorization: Bearer <your_access_token>" \
   -F "selfie=@selfie.jpg" \
   -F "garment_images[]=@shirt.jpg" \
@@ -1270,7 +1458,7 @@ curl -X POST http://localhost:5001/tryon/highres \
 **cURL Example (JSON mode)**:
 
 ```bash
-curl -X POST http://localhost:5001/tryon/highres \
+curl -X POST http://localhost:5001/api/tryon/highres \
   -H "Authorization: Bearer <your_access_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1308,7 +1496,7 @@ curl -X POST http://localhost:5001/tryon/highres \
 
 ### Get Try-On History
 
-#### `GET /tryon/images`
+#### `GET /api/tryon/images`
 
 Retrieve all high-resolution try-on results for the authenticated user.
 
@@ -1338,7 +1526,7 @@ Retrieve all high-resolution try-on results for the authenticated user.
 
 ### Submit Feedback
 
-#### `POST /feedback`
+#### `POST /api/feedback`
 
 Submit user feedback for outfit suggestions or try-ons.
 
@@ -1357,7 +1545,7 @@ Submit user feedback for outfit suggestions or try-ons.
 **cURL Example**:
 
 ```bash
-curl -X POST http://localhost:5001/feedback \
+curl -X POST http://localhost:5001/api/feedback \
   -H "Content-Type: application/json" \
   -d '{
     "type": "like",
@@ -1376,6 +1564,42 @@ curl -X POST http://localhost:5001/feedback \
 **Errors**:
 
 - `400 Bad Request` - Invalid feedback type or missing data
+
+---
+
+### Get Feedback Statistics
+
+#### `GET /api/feedback/stats`
+
+Get feedback statistics for monitoring and admin purposes.
+
+**Authentication**: Not required
+
+**Response** (200 OK):
+
+```json
+{
+  "total_files": 15,
+  "total_feedback": 42,
+  "last_feedback_date": "2024-12-16T15:30:00Z"
+}
+```
+
+**Response Fields**:
+
+- `total_files` (int): Number of feedback log files
+- `total_feedback` (int): Total feedback entries recorded
+- `last_feedback_date` (string): ISO timestamp of most recent feedback
+
+**Errors**:
+
+- `500 Internal Server Error` - Failed to read feedback logs
+
+**Notes**:
+
+- Used for monitoring user engagement and system health
+- Feedback is stored in log files (`logs/feedback/`)
+- No authentication required (statistics only, no sensitive data)
 
 ---
 
@@ -1556,7 +1780,7 @@ curl -X POST http://localhost:5001/process/thumbnail \
 
 ```bash
 # 1. Quick preview (low-res)
-curl -X POST http://localhost:5001/tryon/lowres \
+curl -X POST http://localhost:5001/api/tryon/lowres \
   -H "Authorization: Bearer <token>" \
   -F "selfie=@selfie.jpg" \
   -F "garment=@shirt.jpg" \
@@ -1565,7 +1789,7 @@ curl -X POST http://localhost:5001/tryon/lowres \
 # Response: composite_png (immediate)
 
 # 2. High-quality export (opt-in)
-curl -X POST http://localhost:5001/tryon/highres \
+curl -X POST http://localhost:5001/api/tryon/highres \
   -H "Authorization: Bearer <token>" \
   -F "selfie=@selfie.jpg" \
   -F "garment_images[]=@shirt.jpg"
@@ -1605,7 +1829,7 @@ curl http://localhost:5001/wardrobe/items \
 # Response: { items: [{ id: "item_def456", category: "top", ... }] }
 
 # 4. Try-on using IDs (low-res preview)
-curl -X POST http://localhost:5001/tryon/lowres \
+curl -X POST http://localhost:5001/api/tryon/lowres \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1616,7 +1840,7 @@ curl -X POST http://localhost:5001/tryon/lowres \
 # Response: { composite_png: "...", pose_detected: true, ... }
 
 # 5. Try-on using IDs (high-res with Gemini)
-curl -X POST http://localhost:5001/tryon/highres \
+curl -X POST http://localhost:5001/api/tryon/highres \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1687,7 +1911,7 @@ The chat agent provides a natural language interface for interacting with your w
 
 ### Send Chat Message
 
-#### `POST /api/v1/chat/message`
+#### `POST /api/chat/message`
 
 Send a message to the chat agent and receive a response. Supports both streaming (SSE) and non-streaming modes.
 
@@ -1758,7 +1982,7 @@ data: {"session_id": "session_abc123", "cost_usd": 0.006}
 **cURL Example (Streaming)**:
 
 ```bash
-curl -X POST http://localhost:5001/api/v1/chat/message \
+curl -X POST http://localhost:5001/api/chat/message \
   -H "Authorization: Bearer <your_access_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1770,7 +1994,7 @@ curl -X POST http://localhost:5001/api/v1/chat/message \
 **cURL Example (Non-streaming)**:
 
 ```bash
-curl -X POST http://localhost:5001/api/v1/chat/message \
+curl -X POST http://localhost:5001/api/chat/message \
   -H "Authorization: Bearer <your_access_token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1783,7 +2007,7 @@ curl -X POST http://localhost:5001/api/v1/chat/message \
 
 ### List Chat Sessions
 
-#### `GET /api/v1/chat/sessions`
+#### `GET /api/chat/sessions`
 
 List all conversation sessions for the authenticated user.
 
@@ -1815,7 +2039,7 @@ List all conversation sessions for the authenticated user.
 
 ### Delete Chat Session
 
-#### `DELETE /api/v1/chat/sessions/<session_id>`
+#### `DELETE /api/chat/sessions/<session_id>`
 
 Delete a conversation session (GDPR compliance).
 
@@ -1878,8 +2102,8 @@ The chat agent can perform the following actions:
 
 The chat agent uses the following internal endpoints when calling tools:
 
-- `tryon_highres`: Calls `/tryon/highres` (not `/api/v1/tryon/highres`)
-- `get_tryon_history`: Calls `/tryon/images` (not `/api/v1/tryon/images`)
+- `tryon_highres`: Calls `/api/tryon/highres`
+- `get_tryon_history`: Calls `/api/tryon/images`
 
 These endpoints are accessed with the user's authentication token automatically.
 
@@ -1926,7 +2150,7 @@ It generates one outfit at a time, allowing users to refine preferences through 
 
 ### Start Decision Session
 
-#### `POST /api/v1/decision/init`
+#### `POST /api/decision/init`
 
 Start a new outfit decision session with context.
 
@@ -1991,7 +2215,7 @@ Start a new outfit decision session with context.
 
 ### Generate Mutation
 
-#### `POST /api/v1/decision/mutate`
+#### `POST /api/decision/mutate`
 
 Generate next outfit variation. May return mutation or trigger correction mode.
 
@@ -2080,7 +2304,7 @@ When too many rejections occur without custom context:
 
 ### Accept Outfit
 
-#### `POST /api/v1/decision/accept`
+#### `POST /api/decision/accept`
 
 Accept an outfit and close the session.
 
@@ -2122,7 +2346,7 @@ Accept an outfit and close the session.
 
 ### Apply Correction
 
-#### `POST /api/v1/decision/correct`
+#### `POST /api/decision/correct`
 
 Apply a structured correction and regenerate outfit.
 
@@ -2166,7 +2390,7 @@ Apply a structured correction and regenerate outfit.
 
 ### Get Session Status
 
-#### `GET /api/v1/decision/session/<session_id>`
+#### `GET /api/decision/session/<session_id>`
 
 Get current session state and decision history.
 
@@ -2205,7 +2429,7 @@ Get current session state and decision history.
 
 ### List User Sessions
 
-#### `GET /api/v1/decision/sessions`
+#### `GET /api/decision/sessions`
 
 List user's decision sessions.
 
@@ -2256,7 +2480,7 @@ List user's decision sessions.
 
 ### Start Recommendation Session
 
-#### `POST /api/v2/recommendation/start`
+#### `POST /api/recommendation/start`
 
 Start a new recommendation session and generate an initial outfit.
 
@@ -2270,11 +2494,20 @@ Start a new recommendation session and generate an initial outfit.
     "temp_c": 22
   },
   "user": {
-    "gender": "MASCULINE",
+    "gender": "MASCULINE", // Optional if user has gender set in profile (profile takes precedence)
     "occasion": "work"
   }
 }
 ```
+
+**Gender Filtering Behavior**:
+
+- The recommendation engine uses `gender_tags` for **strict filtering** (Safety Funnel)
+- **MASCULINE**: Only shows items with `"M"` tag (excludes W-only items like dresses)
+- **FEMININE**: Only shows items with `"W"` tag (excludes M-only items like structured blazers)
+- **UNISEX/null**: Shows all items (no filtering)
+- Items with `["M", "W", "U"]` (universal) appear for all preferences
+- See "Gender Tagging System" section for detailed scoring rules
 
 **Response** (200 OK):
 
@@ -2302,7 +2535,7 @@ Start a new recommendation session and generate an initial outfit.
 
 ### Next Variation (Try Another)
 
-#### `POST /api/v2/recommendation/next`
+#### `POST /api/recommendation/next`
 
 Get the next variation in the cycle (Silhouette -> Layering -> Color -> New Anchor).
 
@@ -2340,3 +2573,1017 @@ Get the next variation in the cycle (Silhouette -> Layering -> Color -> New Anch
   "message": "No more unique variations available."
 }
 ```
+
+---
+
+### Batch Evaluate Scenarios
+
+#### `POST /api/recommendation/evaluate`
+
+Batch evaluate multiple recommendation scenarios for testing and analysis.
+
+**Authentication**: Required (Bearer token)
+
+**Rate Limit**: 50 requests per minute
+
+**Request** (application/json):
+
+```json
+{
+  "scenarios": [
+    {
+      "id": "scenario_1",
+      "temp_c": 22,
+      "occasion": "work",
+      "gender": "MASCULINE"
+    },
+    {
+      "id": "scenario_2",
+      "temp_c": 15,
+      "occasion": "casual",
+      "gender": "FEMININE"
+    }
+  ]
+}
+```
+
+**Request Fields**:
+
+- `scenarios` (array, required): List of scenarios to evaluate
+  - `id` (string): Unique identifier for scenario
+  - `temp_c` (number): Temperature in Celsius
+  - `occasion` (string): Occasion context
+  - `gender` (string): MASCULINE | FEMININE | UNISEX
+
+**Response** (200 OK):
+
+```json
+{
+  "results": [
+    {
+      "id": "scenario_1",
+      "outfit": {
+        "items": [...],
+        "styling_note": "...",
+        "outfit_hash": "..."
+      },
+      "success": true
+    },
+    {
+      "id": "scenario_2",
+      "outfit": {...},
+      "success": true
+    }
+  ]
+}
+```
+
+**Errors**:
+
+- `400 Bad Request` - Missing scenarios list
+- `401 Unauthorized` - Missing/invalid token
+- `500 Internal Server Error` - Evaluation failed
+
+**Notes**:
+
+- Used for testing recommendation engine performance
+- Generates outfits without creating sessions
+- Results include success status per scenario
+- Failed scenarios return error message instead of outfit
+
+---
+
+### Get Recommendation History
+
+#### `GET /api/recommendation/history`
+
+Retrieve user's recommendation history grouped by session. Each session contains all API calls (start + next variations) with context, outfits, and performance metrics.
+
+**Authentication**: Required (Bearer token)
+
+**Rate Limit**: 30 requests per minute
+
+**Query Parameters**:
+
+- `limit` (integer, optional): Maximum number of logs to return (default: 50, max: 100)
+
+**Request**:
+
+```http
+GET /api/recommendation/history?limit=20
+Authorization: Bearer <access_token>
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "sessions": [
+    {
+      "session_id": "uuid-string",
+      "started_at": "2026-02-15T10:30:00Z",
+      "weather_context": {
+        "temp_c": 22,
+        "lat": 37.7749,
+        "long": -122.4194
+      },
+      "user_context": {
+        "gender": "MASCULINE",
+        "occasion": "work"
+      },
+      "requests": [
+        {
+          "request_type": "start",
+          "outfit_hash": "TEE_WHT_REG|JNS_NVY_SLM|SNK_WHT_low",
+          "outfit_items": ["item_id_1", "item_id_2", "item_id_3"],
+          "styling_note": "A comfortable and professional look for work.",
+          "variation_axis": null,
+          "processing_time_ms": 150,
+          "created_at": "2026-02-15T10:30:00.123Z"
+        },
+        {
+          "request_type": "next",
+          "outfit_hash": "TEE_WHT_OVS|JNS_NVY_SLM|SNK_WHT_low",
+          "outfit_items": ["item_id_4", "item_id_2", "item_id_3"],
+          "styling_note": "Changed the silhouette for a more relaxed fit.",
+          "variation_axis": "SILHOUETTE",
+          "processing_time_ms": 120,
+          "created_at": "2026-02-15T10:31:15.456Z"
+        }
+      ]
+    },
+    {
+      "session_id": "another-uuid",
+      "started_at": "2026-02-14T15:20:00Z",
+      "weather_context": {...},
+      "user_context": {...},
+      "requests": [...]
+    }
+  ],
+  "total_sessions": 2
+}
+```
+
+**Response Fields**:
+
+- `sessions` (array): List of recommendation sessions, ordered by most recent first
+  - `session_id` (string): Unique session identifier
+  - `started_at` (string): ISO 8601 timestamp of first request
+  - `weather_context` (object): Weather data from first request
+    - `temp_c` (number): Temperature in Celsius
+    - `lat` (number, optional): Latitude coordinate
+    - `long` (number, optional): Longitude coordinate
+  - `user_context` (object): User preferences from first request
+    - `gender` (string): MASCULINE | FEMININE | UNISEX
+    - `occasion` (string): Occasion context (work, casual, etc.)
+  - `requests` (array): All API calls in this session, chronologically ordered
+    - `request_type` (string): "start" or "next"
+    - `outfit_hash` (string): Outfit identifier hash
+    - `outfit_items` (array): List of wardrobe item IDs in the outfit
+    - `styling_note` (string): AI-generated styling description
+    - `variation_axis` (string, nullable): Variation applied (SILHOUETTE, LAYERING, COLOR, NEW_ANCHOR)
+    - `processing_time_ms` (integer): API processing time in milliseconds
+    - `created_at` (string): ISO 8601 timestamp of this request
+- `total_sessions` (integer): Total number of sessions returned
+
+**Errors**:
+
+- `401 Unauthorized` - Missing/invalid token
+- `500 Internal Server Error` - Failed to retrieve history
+
+**Use Cases**:
+
+1. **User History View**: Display past outfit recommendations to user
+2. **Analytics**: Track which variations users explore most
+3. **Debugging**: Reproduce issues by reviewing session context and outputs
+4. **Performance Monitoring**: Analyze `processing_time_ms` across requests
+5. **User Preferences**: Identify patterns in occasions, weather conditions
+
+**Example Use Case - Recently Viewed Outfits**:
+
+```javascript
+// Mobile app: Show "Recent Recommendations"
+fetch('/api/recommendation/history?limit=5', {
+  headers: {
+    Authorization: `Bearer ${accessToken}`,
+  },
+})
+  .then(res => res.json())
+  .then(data => {
+    // Show last 5 sessions as thumbnails
+    data.sessions.forEach(session => {
+      const firstOutfit = session.requests[0];
+      renderOutfitThumbnail(firstOutfit.outfit_items);
+    });
+  });
+```
+
+**Notes**:
+
+- Sessions are grouped by `session_id` - all `/start` and `/next` calls in same session appear together
+- Logs are created automatically for every `/start` and `/next` API call
+- Weather context includes coordinates if provided in original `/start` request
+- `variation_axis` is null for `/start` requests, set for `/next` requests
+- Limit parameter caps at 100 to prevent excessive data transfer
+- Processing time helps identify performance bottlenecks
+
+---
+
+### Recommendation Test UI
+
+#### `GET /api/recommendation/test-ui`
+
+Serve the recommendation engine test interface (HTML page).
+
+**Authentication**: Not required
+
+**Response**: HTML page with interactive recommendation testing UI
+
+**Notes**:
+
+- Renders `recommendation_test.html` template
+- Provides UI for manual testing of recommendation engine
+- Includes controls for temperature, occasion, gender selection
+- Real-time outfit generation and variation testing
+
+---
+
+### Recommendation Dashboard
+
+#### `GET /api/recommendation/dashboard`
+
+Serve the Recommendation Matrix Dashboard for visualization.
+
+**Authentication**: Not required
+
+**Response**: HTML page with recommendation matrix visualization
+
+**Notes**:
+
+- Renders `recommendation_dashboard.html` template
+- Displays outfit recommendations across multiple scenarios
+- Matrix view: temperature × occasion × gender
+- Used for evaluating recommendation coverage and quality
+
+---
+
+## Admin Interface
+
+The Admin Interface provides management tools for Common Items (system baseline catalog). These endpoints are used by administrators to create, update, and manage the wardrobe item templates used by the recommendation engine.
+
+### List Common Items (Admin View)
+
+#### `GET /admin/common-items`
+
+List and filter Common Items with search functionality (admin interface, returns HTML).
+
+**Authentication**: Not required (admin interface should be network-restricted)
+
+**Query Parameters** (all optional):
+
+- `category` (string): Filter by category code (TEE, SHR, BLZ, etc.)
+- `layer` (string): Filter by layer code (L1, L2, L3, BT, SH)
+- `color` (string): Filter by color code (WHT, BLK, NVY, etc.)
+- `fit` (string): Filter by fit code (SLM, REG, OVS, TLR)
+- `search` (string): Search by item name (case-insensitive)
+
+**Response**: HTML page (`admin_common_items.html`) with:
+
+- Filtered list of Common Items
+- Search and filter controls
+- Create/Edit/Delete actions
+- Metadata editing forms
+
+**Notes**:
+
+- Returns rendered HTML template, not JSON
+- Provides UI dropdowns for all available codes (ITEM_CODES, LAYERS, COLORS, FITS, etc.)
+- Items are filtered by `is_common_item=True` and `is_deleted=False`
+- Used for visual management of system catalog
+
+---
+
+### Create Common Item
+
+#### `POST /admin/common-items/create`
+
+Create a new Common Item in the system catalog.
+
+**Authentication**: Not required (admin interface should be network-restricted)
+
+**Request** (multipart/form-data):
+
+```
+name: <string> (required) - Item name (e.g., "White T-Shirt")
+category_code: <string> (required) - Category code (TEE, SHR, BLZ, JNS, etc.)
+layer_code: <string> (required) - Layer code (L1, L2, L3, BT, SH)
+image: <file> (optional) - Item image file
+attr:color_code: <string> - Physical attribute: color code (WHT, BLK, etc.)
+attr:fit_code: <string> - Physical attribute: fit code (REG, SLM, OVS, TLR)
+attr:pattern_type: <string> - Physical attribute: pattern (SOLID, STRIPED, PLAID)
+attr:is_tuckable: <boolean> - Physical attribute: can be tucked
+attr:is_water_resistant: <boolean> - Physical attribute: water resistant
+meta:formality_score: <int> - Styling metadata: formality (1-10)
+meta:warmth_level: <int> - Styling metadata: warmth (1-5)
+meta:versatility_score: <int> - Styling metadata: versatility (1-10)
+meta:visual_weight: <int> - Styling metadata: visual weight (1-5)
+meta:climate_fit: <string> - Styling metadata: HOT | MILD | COOL
+```
+
+**Form Field Prefixes**:
+
+- `attr:*` - Physical attributes (stored in `physical_attributes` JSON)
+- `meta:*` - Styling metadata (stored in `styling_metadata` JSON)
+
+**Response**: Redirect to `/admin/common-items` with flash message
+
+**Success**: Flash message "Item '[name]' registered successfully"
+
+**Errors**: Flash message "Error creating item: [error details]"
+
+**Notes**:
+
+- Automatically generates `human_readable_id`: `SYS_{LAYER}_{CATEGORY}_{COLOR}_{FIT}_{INDEX}`
+- Example: `SYS_L2_TEE_WHT_REG_01`
+- Sets `owner_id="SYSTEM"` and `is_common_item=True`
+- Derives `category` from `category_code` using mapping
+- Uploads image to S3 with prefix `common_items/`
+- Auto-increments index if similar items exist
+
+---
+
+### Update Common Item
+
+#### `POST /admin/common-items/<item_id>/update`
+
+Update metadata and attributes for an existing Common Item.
+
+**Authentication**: Not required (admin interface should be network-restricted)
+
+**Request** (multipart/form-data):
+
+```
+name: <string> (optional) - Updated item name
+category_code: <string> (optional) - Updated category code
+layer_code: <string> (optional) - Updated layer code
+image: <file> (optional) - New item image (replaces existing)
+attr:*: <various> - Updated physical attributes
+meta:*: <various> - Updated styling metadata
+```
+
+**Response**: Redirect to `/admin/common-items` with flash message
+
+**Success**: Flash message "Item '[name]' updated successfully"
+
+**Errors**: Flash message "Error updating item: [error details]"
+
+**Notes**:
+
+- Only provided fields are updated (partial update supported)
+- New image replaces existing image URL
+- Metadata is merged with existing values
+- Physical attributes are merged with existing values
+- Uses `_parse_metadata_forms()` helper for safe parsing
+
+---
+
+### Delete Common Item
+
+#### `POST /admin/common-items/<item_id>/delete`
+
+Soft-delete a Common Item (sets `is_deleted=True`).
+
+**Authentication**: Not required (admin interface should be network-restricted)
+
+**Request**: No body required
+
+**Response**: Redirect to `/admin/common-items` with flash message
+
+**Success**: Flash message "Item '[name]' deleted successfully"
+
+**Errors**: Flash message "Error deleting item: [error details]"
+
+**Notes**:
+
+- Soft delete only (row preserved in database)
+- Item will be excluded from future queries (filtered by `is_deleted=False`)
+- Can be restored by setting `is_deleted=False` via database
+- Does not delete associated S3 image
+
+---
+
+### AI Classify Gender
+
+#### `POST /admin/common-items/<item_id>/ai-classify-gender`
+
+Use AI to automatically classify the target gender for a Common Item based on its image.
+
+**Authentication**: Not required (admin interface should be network-restricted)
+
+**Request**: No body required (uses item's `image_url`)
+
+**Response** (200 OK):
+
+```json
+{
+  "success": true,
+  "target_gender": "MASCULINE",
+  "gender_weight": 0.85
+}
+```
+
+**Response Fields**:
+
+- `success` (boolean): Whether classification succeeded
+- `target_gender` (string): MASCULINE | FEMININE | UNISEX
+- `gender_weight` (float): Confidence score (0.0-1.0)
+
+**Errors**:
+
+- `400 Bad Request` - Item has no image URL
+- `500 Internal Server Error` - AI classification failed
+
+**Notes**:
+
+- Requires item to have valid `image_url`
+- Uses Fashion AI Service for gender classification
+- Automatically updates item's `styling_metadata`:
+  - `target_gender`: Classification result
+  - `gender_weight`: Confidence score
+- Used to enrich Common Items with gender targeting
+- Helps recommendation engine filter by user gender preference
+
+---
+
+## Algorithm Cockpit (Admin API)
+
+The Algorithm Cockpit provides administrative controls for configuring the Recommendation Engine dynamically. It allows admins to create, test, promote, and rollback algorithm configurations without code changes.
+
+**Base URL**: `/api/admin`
+
+**Authentication**: All endpoints require admin role (`@require_admin` decorator).
+
+### Configuration Lifecycle
+
+```
+DRAFT → (promote) → ACTIVE → (new promote) → ARCHIVED
+                        ↑___(rollback)_____|
+```
+
+- **DRAFT**: New configuration being tested in simulator
+- **ACTIVE**: Currently serving production traffic (only ONE at a time)
+- **ARCHIVED**: Previous versions, available for rollback
+
+---
+
+### List Configurations
+
+#### `GET /api/admin/configs`
+
+List algorithm configurations with optional status filter.
+
+**Authentication**: Required (Admin role)
+
+**Query Parameters**:
+
+- `status` (string, optional): Filter by status - `DRAFT`, `ACTIVE`, `ARCHIVED`
+- `limit` (integer, optional): Max results (default: 50)
+
+**Response** (200 OK):
+
+```json
+{
+  "configs": [
+    {
+      "id": "uuid-string",
+      "name": "Winter Experiment A",
+      "version": 12,
+      "status": "DRAFT",
+      "created_by": "admin-user-id",
+      "created_at": "2026-02-16T10:00:00Z",
+      "updated_at": "2026-02-16T12:00:00Z",
+      "promoted_at": null,
+      "archived_at": null
+    }
+  ],
+  "count": 1
+}
+```
+
+**Notes**:
+
+- Parameters blob is excluded from list view for performance
+- Use GET `/api/admin/configs/<id>` for full details
+
+---
+
+### Get Configuration
+
+#### `GET /api/admin/configs/<config_id>`
+
+Get a specific configuration with full parameters.
+
+**Authentication**: Required (Admin role)
+
+**Response** (200 OK):
+
+```json
+{
+  "id": "uuid-string",
+  "name": "Winter Experiment A",
+  "version": 12,
+  "status": "DRAFT",
+  "parameters": {
+    "weather_rules": {
+      "cold_threshold_c": 15,
+      "cool_threshold_c": 20,
+      "hot_threshold_c": 28
+    },
+    "scoring_weights": {
+      "formality_gap_max": 3,
+      "visual_weight_gap_max": 2,
+      "max_non_solid_patterns": 1,
+      "formality_widen_range": 2
+    },
+    "llm_config": {
+      "model_name": "gemini-2.0-flash",
+      "temperature": 0.7,
+      "max_retries": 1,
+      "prompts": {
+        "system_role": "You are Auxi...",
+        "generation_template": "...",
+        "stage_1_variation": "...",
+        "stage_2_variation_cold": "...",
+        "stage_2_variation_hot": "...",
+        "stage_3_variation": "...",
+        "variation_system_role": "...",
+        "styling_note_directive": "..."
+      }
+    }
+  },
+  "created_by": "admin-user-id",
+  "created_at": "2026-02-16T10:00:00Z",
+  "updated_at": "2026-02-16T12:00:00Z",
+  "promoted_at": null,
+  "archived_at": null
+}
+```
+
+**Errors**:
+
+- `404 Not Found` - Config not found
+
+---
+
+### Create Draft Configuration
+
+#### `POST /api/admin/configs`
+
+Create a new DRAFT configuration.
+
+**Authentication**: Required (Admin role)
+
+**Request** (application/json):
+
+```json
+{
+  "name": "Winter Experiment A",
+  "parameters": { ... },
+  "clone_from_active": true
+}
+```
+
+**Request Fields**:
+
+- `name` (string, required): Display name for the configuration
+- `parameters` (object, optional): Full config parameters. If not provided and `clone_from_active=true`, clones from ACTIVE config
+- `clone_from_active` (boolean, optional): Clone from ACTIVE if no parameters provided (default: true)
+
+**Response** (201 Created):
+
+```json
+{
+  "id": "uuid-string",
+  "name": "Winter Experiment A",
+  "version": 13,
+  "status": "DRAFT",
+  "parameters": { ... },
+  "created_by": "admin-user-id",
+  "created_at": "2026-02-16T10:00:00Z",
+  "updated_at": "2026-02-16T10:00:00Z",
+  "promoted_at": null,
+  "archived_at": null
+}
+```
+
+**Errors**:
+
+- `400 Bad Request` - Missing config name
+
+**Notes**:
+
+- Version auto-increments from max existing version
+- If no ACTIVE config exists and no parameters provided, uses DEFAULT_ALGORITHM_CONFIG
+
+---
+
+### Update Draft Configuration
+
+#### `PUT /api/admin/configs/<config_id>`
+
+Update a DRAFT configuration. Only DRAFT configs can be edited.
+
+**Authentication**: Required (Admin role)
+
+**Request** (application/json):
+
+```json
+{
+  "name": "Updated Name",
+  "parameters": {
+    "weather_rules": {
+      "cold_threshold_c": 12
+    }
+  }
+}
+```
+
+**Response** (200 OK): Full config object
+
+**Errors**:
+
+- `400 Bad Request` - Cannot edit non-DRAFT config
+
+---
+
+### Delete Draft Configuration
+
+#### `DELETE /api/admin/configs/<config_id>`
+
+Delete a DRAFT configuration (hard delete).
+
+**Authentication**: Required (Admin role)
+
+**Response** (200 OK):
+
+```json
+{
+  "message": "Config deleted successfully"
+}
+```
+
+**Errors**:
+
+- `400 Bad Request` - Can only delete DRAFT configs
+
+---
+
+### Promote Configuration
+
+#### `POST /api/admin/configs/<config_id>/promote`
+
+Promote a DRAFT config to ACTIVE.
+
+**Authentication**: Required (Admin role)
+
+**Atomic Transaction**:
+
+1. Validates config parameters
+2. Sets current ACTIVE → ARCHIVED
+3. Sets target DRAFT → ACTIVE
+4. Invalidates config cache
+
+**Validation Rules**:
+
+- `cold_threshold_c < cool_threshold_c < hot_threshold_c`
+- `temperature` between 0.0 and 1.0
+- All required prompt keys present
+
+**Response** (200 OK):
+
+```json
+{
+  "message": "Config 'Winter Experiment A' v13 is now ACTIVE",
+  "promoted": true
+}
+```
+
+**Errors**:
+
+- `400 Bad Request` - Validation failed or not a DRAFT config
+
+```json
+{
+  "error": "Validation failed: cold_threshold_c (20) must be < cool_threshold_c (15)",
+  "promoted": false
+}
+```
+
+---
+
+### Rollback Configuration
+
+#### `POST /api/admin/configs/<config_id>/rollback`
+
+Rollback to an ARCHIVED config.
+
+**Authentication**: Required (Admin role)
+
+**Atomic Transaction**:
+
+1. Sets current ACTIVE → ARCHIVED
+2. Sets target ARCHIVED → ACTIVE
+3. Invalidates config cache
+
+**Response** (200 OK):
+
+```json
+{
+  "message": "Rolled back to 'Production v10' v10",
+  "rolled_back": true
+}
+```
+
+**Errors**:
+
+- `400 Bad Request` - Can only rollback ARCHIVED configs
+
+---
+
+### Simulate Recommendation
+
+#### `POST /api/admin/simulate`
+
+Run the recommendation engine with a specific config for testing. Returns detailed debug trace.
+
+**Authentication**: Required (Admin role)
+
+**Request** (application/json):
+
+```json
+{
+  "config_id": "uuid-string",
+  "mock_context": {
+    "temp_c": 12,
+    "occasion": "work",
+    "gender": "MASCULINE"
+  },
+  "config_override": {
+    "weather_rules": {
+      "cold_threshold_c": 10
+    }
+  },
+  "variation_test": {
+    "enabled": false
+  }
+}
+```
+
+**Request Fields**:
+
+- `config_id` (string, optional): Config UUID to use. If not provided, uses ACTIVE config
+- `mock_context` (object, required):
+  - `temp_c` (number, required): Temperature in Celsius
+  - `occasion` (string, optional): Occasion context (default: "casual")
+  - `gender` (string, optional): Gender preference - MASCULINE, FEMININE, UNISEX
+- `config_override` (object, optional): Temporary tweaks merged into config
+- `variation_test` (object, optional): Enable variation testing (see below)
+
+**Response** (200 OK):
+
+```json
+{
+  "success": true,
+  "debug_trace": {
+    "config_used": {
+      "id": "uuid-string",
+      "name": "Winter Experiment A",
+      "version": 12,
+      "status": "DRAFT",
+      "overrides_applied": true
+    },
+    "safety_funnel": {
+      "weather_thresholds": {
+        "cold_threshold_c": 10,
+        "cool_threshold_c": 20,
+        "hot_threshold_c": 28
+      },
+      "temperature": 12,
+      "allowed_warmth_levels": [3, 4, 5],
+      "l3_required": true,
+      "pool_counts": {
+        "BT": 15,
+        "L2": 25,
+        "L3": 10,
+        "SH": 15,
+        "AC": 5
+      },
+      "total_pool_size": 70
+    },
+    "anchor_selection": {
+      "anchor_hrid": "SYS_BT_JNS_NVY_SLM_01",
+      "occasion": "work"
+    },
+    "llm_request": {
+      "model": "gemini-2.0-flash",
+      "temperature": 0.7
+    },
+    "validation": {
+      "fallback_flags": [],
+      "is_valid": true
+    }
+  },
+  "final_outfit": {
+    "items": [...],
+    "styling_note": "A professional winter look combining...",
+    "outfit_hash": "JNS_NVY_SLM|TEE_WHT_REG|JKT_BLK_REG|SNK_WHT"
+  }
+}
+```
+
+**Dead End Response**:
+
+```json
+{
+  "success": false,
+  "dead_end": true,
+  "reason": "Not enough items pass safety funnel",
+  "debug_trace": { ... },
+  "suggestion": "Check weather_rules thresholds or add more common items"
+}
+```
+
+---
+
+### Simulate Variation
+
+Add `variation_test` to the simulate request to test "Try Another" logic.
+
+**Request**:
+
+```json
+{
+  "config_id": "uuid-string",
+  "mock_context": {
+    "temp_c": 12,
+    "occasion": "work",
+    "gender": "MASCULINE"
+  },
+  "variation_test": {
+    "enabled": true,
+    "target_stage": 1,
+    "current_outfit": {
+      "items": [
+        {
+          "id": "item-uuid-1",
+          "layer_code": "BT",
+          "category_code": "JNS",
+          "physical_attributes": { "fit_code": "SLM", "color_code": "NVY" }
+        },
+        {
+          "id": "item-uuid-2",
+          "layer_code": "L2",
+          "category_code": "TEE",
+          "physical_attributes": { "fit_code": "REG", "color_code": "WHT" }
+        }
+      ]
+    }
+  }
+}
+```
+
+**Variation Stages**:
+
+- Stage 1 (SILHOUETTE): Change L2 fit (same category & color)
+- Stage 2 (LAYERING): Change L3 (cold) or SH (hot)
+- Stage 3 (COLOR): Change L2 color (same category & fit)
+- Stage 4 (NEW_ANCHOR): Full regeneration required
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "variation_result": {
+    "axis": "SILHOUETTE",
+    "target_layer": "L2",
+    "constraint_check": {
+      "stage_1_color_unchanged": true,
+      "stage_1_category_unchanged": true,
+      "stage_1_fit_changed": true
+    },
+    "new_outfit": {
+      "items": [...],
+      "styling_note": "Changed the silhouette for a more relaxed fit.",
+      "outfit_hash": "JNS_NVY_SLM|TEE_WHT_OVS|SNK_WHT"
+    }
+  },
+  "debug_trace": { ... }
+}
+```
+
+---
+
+### Cache Management
+
+#### `GET /api/admin/configs/cache`
+
+Get current config cache status.
+
+**Authentication**: Required (Admin role)
+
+**Response**:
+
+```json
+{
+  "is_cached": true,
+  "is_expired": false,
+  "cache_age_seconds": 120.5,
+  "cache_ttl_seconds": 300,
+  "config_meta": {
+    "id": "uuid-string",
+    "name": "Production v10",
+    "version": 10
+  }
+}
+```
+
+---
+
+#### `POST /api/admin/configs/cache/invalidate`
+
+Force invalidate the config cache.
+
+**Authentication**: Required (Admin role)
+
+**Response**:
+
+```json
+{
+  "message": "Cache invalidated"
+}
+```
+
+---
+
+#### `GET /api/admin/configs/default`
+
+Get the default fallback configuration.
+
+**Authentication**: Required (Admin role)
+
+**Response**: Full DEFAULT_ALGORITHM_CONFIG object
+
+---
+
+### Configuration Parameters Schema
+
+**Full Parameters JSON Structure**:
+
+```json
+{
+  "weather_rules": {
+    "cold_threshold_c": 15,
+    "cool_threshold_c": 20,
+    "hot_threshold_c": 28
+  },
+  "scoring_weights": {
+    "formality_gap_max": 3,
+    "visual_weight_gap_max": 2,
+    "max_non_solid_patterns": 1,
+    "formality_widen_range": 2
+  },
+  "llm_config": {
+    "model_name": "gemini-1.5-flash",
+    "temperature": 0.7,
+    "max_retries": 1,
+    "prompts": {
+      "system_role": "You are Auxi, a Technical Fashion Archivist...",
+      "generation_template": "CONTEXT: Temperature: {temp_c}C...",
+      "stage_1_variation": "Replace ONLY the L2 item. Choose a new L2 with a different fit style.",
+      "stage_2_variation_cold": "Replace ONLY the L3 item. Choose a different outerwear.",
+      "stage_2_variation_hot": "Replace ONLY the SH item. Choose different shoes.",
+      "stage_3_variation": "Replace ONLY the L2 item. Choose a new L2 with a different color.",
+      "variation_system_role": "You are Auxi. Select exactly one item to replace the target layer item as requested.",
+      "styling_note_directive": "Tone: Calm, practical. No 'amazing' or 'perfect'. Keep it short."
+    }
+  }
+}
+```
+
+**Supported LLM Models**:
+
+- Gemini: `gemini-2.0-flash`, `gemini-1.5-flash`, `gemini-1.5-pro`
+- OpenAI: `gpt-4o`, `gpt-4-turbo`, `gpt-3.5-turbo`, `o1-preview`
+- Groq: `llama-3.1-70b-versatile`, `mixtral-8x7b-32768`
+
+**Required Prompt Keys**:
+
+- `system_role`
+- `generation_template`
+- `stage_1_variation`
+- `stage_2_variation_cold`
+- `stage_2_variation_hot`
+- `stage_3_variation`
+- `variation_system_role`
+- `styling_note_directive`
