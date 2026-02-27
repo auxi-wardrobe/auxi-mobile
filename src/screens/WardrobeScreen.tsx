@@ -109,24 +109,6 @@ export const WardrobeScreen = () => {
       </View>
 
       <BottomSheetSurface style={styles.sheet}>
-        <View style={styles.sheetHeader}>
-          <TopIconButton
-            onPress={() => navigation.goBack()}
-            icon={<Text style={styles.backGlyph}>‹</Text>}
-            style={styles.sheetBackButton}
-          />
-
-          <TouchableOpacity
-            onPress={() => setModalVisible(true)}
-            disabled={uploading}
-            style={styles.addRow}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.addText}>Add</Text>
-            <Text style={styles.addPlus}>+</Text>
-          </TouchableOpacity>
-        </View>
-
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={theme.colors.figmaAction} />
@@ -235,33 +217,7 @@ const styles = StyleSheet.create({
     right: 0,
     minHeight: screenHeight * 0.64,
     maxHeight: screenHeight * 0.72,
-  },
-  sheetHeader: {
-    paddingHorizontal: 22,
     paddingTop: 12,
-    paddingBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sheetBackButton: {
-    backgroundColor: '#F4F4F6',
-  },
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  addText: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.figmaAction,
-  },
-  addPlus: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.figmaAction,
-    fontSize: 26,
-    lineHeight: 26,
-    marginTop: -2,
   },
   centered: {
     minHeight: 320,

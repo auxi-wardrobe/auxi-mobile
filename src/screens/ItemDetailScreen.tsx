@@ -20,6 +20,7 @@ import {
   TopIconButton,
 } from '../components/primitives/FigmaPrimitives';
 import { Icons } from '../assets/icons';
+import { useAuth } from '../context/AuthContext';
 import { itemService } from '../services/itemService';
 import { theme } from '../theme/theme';
 import { AppStackParamList } from '../types/navigation';
@@ -51,7 +52,9 @@ const getSwatchColor = (color: string | undefined): string => {
 export const ItemDetailScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const route = useRoute<ScreenRoute>();
+  const { user } = useAuth();
   const { itemId } = route.params;
+  const currentUserId = user?.id !== undefined && user?.id !== null ? String(user.id) : null;
 
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +74,14 @@ export const ItemDetailScreen = () => {
           navigation.goBack();
           return;
         }
-        setItem(data as Item);
+        const loadedItem = data as Item;
+        const isOwner = !!currentUserId && !!loadedItem.userId && String(loadedItem.userId) === currentUserId;
+        if (!loadedItem.isSystem && !isOwner) {
+          Alert.alert('Access denied', 'You can only access your own wardrobe items.');
+          navigation.goBack();
+          return;
+        }
+        setItem(loadedItem);
       } catch (error) {
         console.error(error);
         Alert.alert('Error', 'Failed to load item');
@@ -81,7 +91,7 @@ export const ItemDetailScreen = () => {
     };
 
     loadItem();
-  }, [itemId, navigation]);
+  }, [itemId, navigation, currentUserId]);
 
   const imageUrl = useMemo(() => {
     if (!item) return undefined;
@@ -124,6 +134,11 @@ export const ItemDetailScreen = () => {
 
   const handleDelete = () => {
     if (!item) return;
+    const isOwner = !!currentUserId && !!item.userId && String(item.userId) === currentUserId;
+    if (!item.isSystem && !isOwner) {
+      Alert.alert('Access denied', 'You can only modify your own wardrobe items.');
+      return;
+    }
 
     Alert.alert(
       item.isSystem ? 'Remove from Wardrobe?' : 'Delete Item?',
