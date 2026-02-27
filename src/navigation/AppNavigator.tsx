@@ -13,8 +13,9 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native'; // Import Vi
 import { theme } from '../theme/theme';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
 import { BodyScreen } from '../screens/BodyScreen';
+import { AppStackParamList } from '../types/navigation';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export const AppNavigator = () => {
     const { user, isLoading } = useAuth();

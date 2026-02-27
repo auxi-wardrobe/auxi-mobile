@@ -4,7 +4,7 @@ import { Item } from '../types/item';
 let MOCK_ITEMS: Item[] = [
     {
         id: '1',
-        imageUrl: 'https://via.placeholder.com/300x400',
+        image_url: 'https://via.placeholder.com/300x400',
         category: 'Top',
         color: 'Blue',
         style: 'Casual',
@@ -13,7 +13,7 @@ let MOCK_ITEMS: Item[] = [
     },
     {
         id: '2',
-        imageUrl: 'https://via.placeholder.com/300x400',
+        image_url: 'https://via.placeholder.com/300x400',
         category: 'Bottom',
         color: 'Black',
         style: 'Formal',

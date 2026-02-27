@@ -11,11 +11,19 @@ export const theme = {
     border: '#E0E0E0', // Light Gray Border
     white: '#FFFFFF',
     transparent: 'transparent',
-    // Figma Colors
+    // Figma aliases for route-screen parity
     figmaBackground: '#F7F7F8',
-    figmaTextPrimary: '#212121',
+    figmaSurface: '#FFFFFF',
+    figmaSurfaceSoft: '#F3F5F9',
+    figmaText: '#272A32',
+    figmaTextPrimary: '#272A32',
     figmaTextSecondary: '#616161',
+    figmaTextMuted: '#49454F',
+    figmaDivider: '#D1D3D8',
+    figmaAction: '#272A32',
     figmaButton: '#272A32',
+    figmaRed: '#CC4C3E',
+    figmaIconSurface: '#E3E3EC',
   },
   spacing: {
     xs: 4,
@@ -39,6 +47,45 @@ export const theme = {
       regular: '400',
       medium: '500',
       bold: '700',
+    },
+    aliases: {
+      playfairDisplayTitle: {
+        fontFamily: 'PlayfairDisplay-Bold',
+        fontSize: 40,
+        lineHeight: 52,
+      },
+      playfairDisplaySection: {
+        fontFamily: 'PlayfairDisplay-Medium',
+        fontSize: 24,
+        lineHeight: 32,
+      },
+      playfairDisplayHeader: {
+        fontFamily: 'PlayfairDisplay-Medium',
+        fontSize: 40,
+        lineHeight: 56,
+      },
+      manropeBody: {
+        fontFamily: 'Manrope-Medium',
+        fontSize: 16,
+        lineHeight: 24,
+      },
+      manropeCaption: {
+        fontFamily: 'Manrope-Regular',
+        fontSize: 14,
+        lineHeight: 20,
+      },
+      archivoBody: {
+        fontFamily: 'ArchivoNarrow-Regular',
+        fontSize: 16,
+        lineHeight: 24,
+        letterSpacing: 0.15,
+      },
+      archivoButton: {
+        fontFamily: 'ArchivoNarrow-SemiBold',
+        fontSize: 16,
+        lineHeight: 24,
+        letterSpacing: 0.15,
+      },
     },
   },
   borderRadius: {
