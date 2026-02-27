@@ -1,138 +1,107 @@
-
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Alert, Linking } from 'react-native';
+import { Alert, Linking, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Button } from '../components/atoms/Button';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
 import { requestLocationPermission } from '../utils/location';
+import { AppStackParamList } from '../types/navigation';
+
+type Navigation = NativeStackNavigationProp<AppStackParamList, 'LocationPermission'>;
 
 export const LocationPermissionScreen = () => {
-    const navigation = useNavigation<any>();
-    const [loading, setLoading] = useState(false);
+  const navigation = useNavigation<Navigation>();
+  const [loading, setLoading] = useState(false);
 
-    const handleEnableLocation = async () => {
-        setLoading(true);
-        try {
-            const hasPermission = await requestLocationPermission();
+  const goToGenderPreference = () => navigation.navigate('GenderPreference');
+  const skipToStylePreference = () => navigation.navigate('StylePreference');
 
-            if (hasPermission) {
-                navigation.navigate('GenderPreference');
-            } else {
-                // Start manually manually
-                Alert.alert(
-                    'Permission Denied',
-                    'We need location permission to suggest outfits based on local weather. Please enable it in settings.',
-                    [
-                        { text: 'Cancel', style: 'cancel', onPress: () => navigation.navigate('StylePreference') },
-                        { text: 'Open Settings', onPress: () => Linking.openSettings() }
-                    ]
-                );
-            }
-        } catch (error) {
-            console.error(error);
-            navigation.navigate('StylePreference');
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleEnableLocation = async () => {
+    setLoading(true);
+    try {
+      const hasPermission = await requestLocationPermission();
+      if (hasPermission) {
+        goToGenderPreference();
+      } else {
+        Alert.alert(
+          'Permission Denied',
+          'We need location permission to suggest outfits based on local weather. Please enable it in settings.',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: skipToStylePreference },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ],
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      skipToStylePreference();
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleNotNow = () => {
-        navigation.navigate('StylePreference');
-    };
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <TopIconButton
+          onPress={() => navigation.goBack()}
+          icon={<Text style={styles.backGlyph}>‹</Text>}
+        />
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.content}>
-                <View style={styles.topBar}>
-                    {/* Placeholder for top bar if needed, or back button */}
-                </View>
+        <View style={styles.mainBlock}>
+          <Text style={styles.title}>To suggest outfits that fit the weather and local style</Text>
 
-                <View style={styles.mainContent}>
-                    <View style={styles.textContainer}>
-                        <Text style={styles.title}>
-                            To suggest outfits that fit the weather and local style
-                        </Text>
-                    </View>
-
-                    <View style={styles.buttonContainer}>
-                        <Button
-                            title="Enable location"
-                            onPress={handleEnableLocation}
-                            loading={loading}
-                            style={styles.enableButton}
-                            variant="outline"
-                            textStyle={styles.enableButtonText}
-                        />
-                        <Button
-                            title="Not now"
-                            onPress={handleNotNow}
-                            style={styles.notNowButton}
-                            variant="text"
-                            textStyle={styles.notNowButtonText}
-                        />
-                    </View>
-                </View>
-            </View>
-        </SafeAreaView>
-    );
+          <View style={styles.actions}>
+            <PillButton
+              title="Enable location"
+              variant="outline"
+              loading={loading}
+              onPress={handleEnableLocation}
+            />
+            <PillButton
+              title="Not now"
+              variant="text"
+              onPress={skipToStylePreference}
+              style={styles.notNowButton}
+            />
+          </View>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.figmaBackground,
-    },
-    content: {
-        flex: 1,
-        justifyContent: 'space-between',
-        paddingHorizontal: 22,
-        paddingBottom: 40,
-    },
-    topBar: {
-        height: 45,
-        // Add more styles from Figma if needed
-    },
-    mainContent: {
-        flex: 1,
-        justifyContent: 'flex-end', // Pushes content to the bottom as per design visual hierarchy often
-        gap: 40,
-    },
-    textContainer: {
-        marginBottom: 40,
-    },
-    title: {
-        fontFamily: 'PlayfairDisplay-Medium', // Check font name
-        fontSize: 24,
-        fontWeight: '500',
-        color: theme.colors.figmaTextPrimary,
-        textAlign: 'center',
-        lineHeight: 32,
-    },
-    buttonContainer: {
-        gap: 16,
-        width: '100%',
-    },
-    enableButton: {
-        height: 56,
-        borderRadius: 32,
-        borderWidth: 1,
-        borderColor: theme.colors.figmaTextPrimary,
-        backgroundColor: 'transparent',
-    },
-    enableButtonText: {
-        fontFamily: 'Manrope-Medium',
-        fontSize: 16,
-        fontWeight: '500',
-        color: theme.colors.figmaTextPrimary,
-    },
-    notNowButton: {
-        height: 56,
-        borderRadius: 32,
-    },
-    notNowButtonText: {
-        fontFamily: 'Manrope-Medium',
-        fontSize: 16,
-        fontWeight: '500',
-        color: theme.colors.figmaTextPrimary,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.figmaBackground,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 22,
+    paddingTop: 6,
+    paddingBottom: 36,
+  },
+  backGlyph: {
+    color: theme.colors.figmaAction,
+    fontSize: 34,
+    lineHeight: 34,
+    marginTop: -2,
+  },
+  mainBlock: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    gap: 48,
+  },
+  title: {
+    ...theme.typography.aliases.playfairDisplaySection,
+    color: theme.colors.figmaText,
+    textAlign: 'center',
+  },
+  actions: {
+    gap: 8,
+  },
+  notNowButton: {
+    alignSelf: 'center',
+  },
 });

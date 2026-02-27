@@ -5,10 +5,16 @@ export type AuthStackParamList = {
   Register: undefined;
 };
 
+export type GenderPreferenceValue = 'womenswear' | 'menswear' | 'mixed';
+
 export type AppStackParamList = {
-  Home: undefined;
-  ItemDetail: { itemId: string };
-  Welcome: undefined;
-  StylePreference: undefined;
   Auth: NavigatorScreenParams<AuthStackParamList>;
+  Home: undefined;
+  Wardrobe: undefined;
+  Body: undefined;
+  Welcome: undefined;
+  LocationPermission: undefined;
+  GenderPreference: undefined;
+  StylePreference: { gender?: GenderPreferenceValue } | undefined;
+  ItemDetail: { itemId: string };
 };

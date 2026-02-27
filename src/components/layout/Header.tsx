@@ -2,10 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
+import { TopIconButton } from '../primitives/FigmaPrimitives';
 
 interface HeaderProps {
     title?: string;
     showBack?: boolean;
+    leftIcon?: React.ReactNode;
     onBack?: () => void;
     onFeedback?: () => void;
     rightComponent?: React.ReactNode;
@@ -14,6 +16,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
     title = 'Auxi',
     showBack = true,
+    leftIcon,
     onBack,
     onFeedback,
     rightComponent
@@ -22,19 +25,18 @@ export const Header: React.FC<HeaderProps> = ({
         <View style={styles.container}>
             <View style={styles.leftContainer}>
                 {showBack && (
-                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                        {/* 
-                            Figma shows a rectangle background and a menu icon on top.
-                            Simplified: Just the menu icon/back icon.
-                            I'll use a placeholder view or icon for now if asset failed.
-                            Actually, I'll allow passing custom icon or default to menu-like.
-                         */}
-                        <View style={styles.menuIconPlaceholder}>
-                            <View style={styles.hamburgerLine} />
-                            <View style={styles.hamburgerLine} />
-                            <View style={styles.hamburgerLine} />
-                        </View>
-                    </TouchableOpacity>
+                    <TopIconButton
+                        onPress={onBack}
+                        icon={
+                            leftIcon || (
+                                <View style={styles.menuIconPlaceholder}>
+                                    <View style={styles.hamburgerLine} />
+                                    <View style={styles.hamburgerLine} />
+                                    <View style={styles.hamburgerLine} />
+                                </View>
+                            )
+                        }
+                    />
                 )}
             </View>
 
@@ -46,8 +48,8 @@ export const Header: React.FC<HeaderProps> = ({
                 {rightComponent ? (
                     rightComponent
                 ) : (
-                    <TouchableOpacity onPress={onFeedback}>
-                        <Icons.Feedback width={24} height={24} />
+                    <TouchableOpacity onPress={onFeedback} style={styles.rightButton}>
+                        <Icons.User width={24} height={24} />
                     </TouchableOpacity>
                 )}
             </View>
@@ -57,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        height: 60, // approximate 47px content + padding
+        height: 76,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -73,22 +75,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     rightContainer: {
-        width: 47,
+        width: 45,
         alignItems: 'flex-end',
     },
     title: {
-        fontFamily: 'PlayfairDisplay-Medium',
-        fontSize: 24,
+        ...theme.typography.aliases.playfairDisplaySection,
         fontWeight: '500',
-        color: theme.colors.figmaButton, // Dark color
+        color: theme.colors.figmaAction, // Dark color
     },
-    backButton: {
-        width: 45,
-        height: 45,
-        justifyContent: 'center',
+    rightButton: {
+        width: 32,
+        height: 32,
         alignItems: 'center',
-        // backgroundColor: '#E3E3EC', // Optional if rect 105 was bg
-        // borderRadius: 8,
+        justifyContent: 'center',
     },
     icon: {
         width: 24,
