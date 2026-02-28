@@ -1,6 +1,6 @@
 # Models Documentation - Wardrobe Backend
 
-> **Last Updated**: February 4, 2026
+> **Last Updated**: February 15, 2026
 > **Project**: Wardrobe Backend (Local-First MVP)
 > **Python**: 3.9+ (Tested on 3.13)
 
@@ -16,6 +16,7 @@
    - [Favorite](#favorite)
    - [Body](#body)
    - [TryOnImage](#tryonimage)
+   - [RecommendationLog](#recommendationlog)
 3. [ML/Processing Models](#mlprocessing-models)
    - [GarmentSegmenter](#garmentsegmenter)
    - [PoseDetector](#posedetector)
@@ -52,7 +53,7 @@ ML models are accessed directly through service layers or utility functions.
 
 ## Database Models (ORM)
 
-All database models use SQLAlchemy ORM and are located in `models/` directory. They inherit from `db.Model` (Flask-SQLAlchemy).
+All database models use SQLAlchemy ORM and are located in `models/` directory. They inherit from `Base` (SQLAlchemy declarative base) and are integrated with FastAPI using dependency injection for database sessions.
 
 ### User
 
@@ -98,24 +99,31 @@ def to_dict(self) -> dict:
     """
 ```
 
-#### Usage Example
+#### Usage Example (FastAPI)
 
 ```python
 from models.user import User
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-# Create user
-user = User(
-    email='john@example.com',
-    password_hash=bcrypt.hashpw('password123', bcrypt.gensalt()),
-    role='user'
-)
-db.session.add(user)
-db.session.commit()
+async def user_operations(db: Session):
+    # Create user
+    user = User(
+        email='john@example.com',
+        password_hash=bcrypt.hashpw('password123', bcrypt.gensalt()),
+        role='user'
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
 
-# Query user
-user = User.query.filter_by(email='john@example.com').first()
-print(user.to_dict())
+    # Query user (SQLAlchemy 2.0 style)
+    stmt = select(User).where(User.email == 'john@example.com')
+    user = db.execute(stmt).scalars().first()
+    print(user.to_dict())
 ```
+
+**Note**: In FastAPI endpoints, use `db: Session = Depends(get_db)` to inject the database session.
 
 ---
 
@@ -152,29 +160,34 @@ def is_active(self) -> bool:
     """
 ```
 
-#### Usage Example
+#### Usage Example (FastAPI)
 
 ```python
 from models.token import RefreshToken
+from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 
-# Create refresh token
-token = RefreshToken(
-    user_id=user.id,
-    jti=str(uuid.uuid4()),
-    expires_at=datetime.now(timezone.utc) + timedelta(days=30)
-)
-db.session.add(token)
-db.session.commit()
+async def token_operations(db: Session, user_id: str):
+    # Create refresh token
+    token = RefreshToken(
+        user_id=user_id,
+        jti=str(uuid.uuid4()),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=30)
+    )
+    db.add(token)
+    db.commit()
+    db.refresh(token)
 
-# Check if active
-if token.is_active:
-    print("Token is valid")
+    # Check if active
+    if token.is_active:
+        print("Token is valid")
 
-# Revoke token
-token.revoked_at = datetime.now(timezone.utc)
-db.session.commit()
+    # Revoke token
+    token.revoked_at = datetime.now(timezone.utc)
+    db.commit()
 ```
+
+**FastAPI Integration**: Pass `db: Session = Depends(get_db)` to endpoints using this pattern.
 
 ---
 
@@ -220,6 +233,58 @@ Added by migration `f8a1b2c3d4e5`. These columns drive the ID naming convention 
 | `physical_attributes` | JSON       | Nullable                      | Physical-trait dict — see schema below                                                  |
 | `is_common_item`      | Boolean    | Default `False`, Indexed      | `True` → system baseline; immutable via public API                                      |
 | `is_deleted`          | Boolean    | Default `False`, Indexed      | Soft-delete flag; row stays in DB                                                       |
+| `gender_tags`         | JSON       | Nullable (will be non-null)   | Multi-dimensional style tags: `["M", "W", "U"]` — see Gender Tagging section below      |
+
+##### Gender Tagging System
+
+**Added**: February 16, 2026 (Migration `70f003cf4254`)
+
+Multi-dimensional gender tagging based on **Style Archetypes** rather than biological gender. Items can have multiple tags to accurately represent their styling characteristics.
+
+**Tags**:
+
+- `"M"` (Menswear): Structured silhouettes, broad shoulders, angular cuts
+- `"W"` (Womenswear): Curved silhouettes, decorative elements, fitted designs
+- `"U"` (Unisex): Neutral styling, relaxed fit, minimal gender-coded elements
+
+**Default Values by Category** (applied by seeder):
+
+```python
+{
+    'DRS': ['W'],           # Dresses → Women only
+    'JMP': ['W'],           # Jumpsuits → Women only
+    'TEE': ['M', 'W', 'U'], # T-shirts → Universal
+    'HDD': ['M', 'W', 'U'], # Hoodies → Universal
+    'KNT': ['M', 'W', 'U'], # Knitwear → Universal
+    'SNK': ['M', 'W', 'U'], # Sneakers → Universal
+    'JNS': ['M', 'W', 'U'], # Jeans → Universal
+    'PNT': ['M', 'W', 'U'], # Pants → Universal
+    'BTS': ['M', 'W', 'U'], # Boots → Universal
+    'BAG': ['M', 'W', 'U'], # Bags → Universal
+    'SHR': ['M', 'U'],      # Shirts → Menswear + Unisex
+    'CHI': ['M', 'U'],      # Chinos → Menswear + Unisex
+    'JKT': ['M', 'U'],      # Jackets → Menswear + Unisex
+    'BLZ': ['M'],           # Blazers → Menswear only
+}
+```
+
+**Filtering Behavior** (Recommendation Engine):
+
+- **MASCULINE users**: See items with `"M"` in tags (strict filtering)
+- **FEMININE users**: See items with `"W"` in tags (strict filtering)
+- **UNISEX/null preference**: See all items (no filtering)
+
+**Scoring Priority** (for sorting):
+
+1. **Exact match** (100 points): Item has user's preferred tag
+2. **Unisex fallback** (80 points): Item has `"U"` but not preferred tag
+3. **Cross-gender** (10 points): Item has opposite tag (low priority)
+
+**Validation** (enforced by seeder):
+
+- Must be an array
+- Cannot be empty
+- Only values: `"M"`, `"W"`, `"U"`
 
 ##### `styling_metadata` JSON Schema
 
@@ -308,7 +373,7 @@ def to_dict(self) -> dict:
     Base fields (always present in output):
         id, owner_id, user_id, category, image_url, name,
         human_readable_id, category_code, layer_code,
-        styling_metadata, physical_attributes,
+        styling_metadata, physical_attributes, gender_tags,
         is_common_item, is_deleted, created_at, updated_at
 
     Gemini metadata fields (included only when not None):
@@ -320,50 +385,54 @@ def to_dict(self) -> dict:
     """
 ```
 
-#### Usage Examples
+#### Usage Examples (FastAPI)
 
 ```python
 from models.wardrobe import WardrobeItem
-from extensions import db
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-# --- Create a personal item (direct upload) ---
-item = WardrobeItem(
-    owner_id=user.id,          # REQUIRED – user UUID
-    user_id=user.id,
-    category='top',
-    image_url='https://s3.amazonaws.com/bucket/shirt.jpg',
-    name='Blue Denim Shirt'
-)
-db.session.add(item)
-db.session.commit()
+async def wardrobe_operations(db: Session, user_id: str):
+    # --- Create a personal item (direct upload) ---
+    item = WardrobeItem(
+        owner_id=user_id,          # REQUIRED – user UUID
+        user_id=user_id,
+        category='top',
+        image_url='https://s3.amazonaws.com/bucket/shirt.jpg',
+        name='Blue Denim Shirt'
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
 
-# --- Clone a Common Item into a user's wardrobe (preferred path) ---
-from services.wardrobe_service import WardrobeService
-service = WardrobeService()
-cloned = service.clone_common_item(user_id=user.id, source_item_id=sys_item.id)
-# cloned["human_readable_id"] == "USR_L2_TEE_WHT_REG_01"
-# cloned["is_common_item"]     == False
+    # --- Clone a Common Item into a user's wardrobe (preferred path) ---
+    from services.wardrobe_service import WardrobeService
+    service = WardrobeService()
+    cloned = service.clone_common_item(user_id=user_id, source_item_id=sys_item.id)
+    # cloned["human_readable_id"] == "USR_L2_TEE_WHT_REG_01"
+    # cloned["is_common_item"]     == False
 
-# --- Query a user's active tops (excludes soft-deleted rows) ---
-tops = (
-    WardrobeItem.query
-    .filter_by(owner_id=user.id, category='top', is_deleted=False)
-    .order_by(WardrobeItem.created_at.desc())
-    .all()
-)
+    # --- Query a user's active tops (excludes soft-deleted rows) ---
+    stmt = select(WardrobeItem).filter(
+        WardrobeItem.owner_id == user_id,
+        WardrobeItem.category == 'top',
+        WardrobeItem.is_deleted == False
+    ).order_by(WardrobeItem.created_at.desc())
+    tops = db.execute(stmt).scalars().all()
 
-# --- List all system Common Items (public catalog) ---
-common = (
-    WardrobeItem.query
-    .filter_by(is_common_item=True, is_deleted=False)
-    .order_by(WardrobeItem.layer_code, WardrobeItem.category_code)
-    .all()
-)
+    # --- List all system Common Items (public catalog) ---
+    stmt = select(WardrobeItem).filter(
+        WardrobeItem.is_common_item == True,
+        WardrobeItem.is_deleted == False
+    ).order_by(WardrobeItem.layer_code, WardrobeItem.category_code)
+    common = db.execute(stmt).scalars().all()
 
-# --- Soft-delete a user's own item (with guard checks) ---
-deleted = service.soft_delete_item(item_id=item.id, requester_user_id=user.id)
-# Row still exists; deleted["is_deleted"] == True
+    # --- Soft-delete a user's own item (with guard checks) ---
+    deleted = service.soft_delete_item(item_id=item.id, requester_user_id=user_id)
+    # Row still exists; deleted["is_deleted"] == True
 ```
+
+**FastAPI Integration**: Use `db: Session = Depends(get_db)` to inject the database session into endpoints.
 
 ---
 
@@ -415,16 +484,20 @@ def to_dict(self) -> dict:
 
 ```python
 from models.favorite import Favorite
+from sqlalchemy.orm import Session
 
-# Create favorite
-fav = Favorite(
-    user_id=user.id,
-    outfit_context={'occasion': 'work'},
-    outfit_thumbnail_url='https://s3...'
-)
-fav.items.extend([shirt, pants])  # Add items
-db.session.add(fav)
-db.session.commit()
+async def create_favorite(db: Session, user_id: str, shirt, pants):
+    # Create favorite
+    fav = Favorite(
+        user_id=user_id,
+        outfit_context={'occasion': 'work'},
+        outfit_thumbnail_url='https://s3...'
+    )
+    fav.items.extend([shirt, pants])  # Add items
+    db.add(fav)
+    db.commit()
+    db.refresh(fav)
+    return fav
 ```
 
 ---
@@ -462,21 +535,27 @@ def to_dict(self) -> dict:
     """
 ```
 
-#### Usage Example
+#### Usage Example (FastAPI)
 
 ```python
 from models.body import Body
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-# Store selfie
-body = Body(
-    user_id=user.id,
-    image_url='https://s3.amazonaws.com/bucket/selfie.jpg'
-)
-db.session.add(body)
-db.session.commit()
+async def body_operations(db: Session, user_id: str):
+    # Store selfie
+    body = Body(
+        user_id=user_id,
+        image_url='https://s3.amazonaws.com/bucket/selfie.jpg'
+    )
+    db.add(body)
+    db.commit()
+    db.refresh(body)
 
-# Get user's selfies
-selfies = Body.query.filter_by(user_id=user.id).order_by(Body.created_at.desc()).all()
+    # Get user's selfies
+    stmt = select(Body).filter_by(user_id=user_id).order_by(Body.created_at.desc())
+    selfies = db.execute(stmt).scalars().all()
+    return selfies
 ```
 
 ---
@@ -518,24 +597,309 @@ def to_dict(self) -> dict:
     """
 ```
 
-#### Usage Example
+#### Usage Example (FastAPI)
 
 ```python
 from models.tryon import TryOnImage
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-# Store try-on result
-tryon = TryOnImage(
-    user_id=user.id,
-    job_id='job_abc123',
-    image_url='https://s3.amazonaws.com/bucket/tryon_result.jpg',
-    processing_time_ms=2500
-)
-db.session.add(tryon)
-db.session.commit()
+async def tryon_operations(db: Session, user_id: str):
+    # Store try-on result
+    tryon = TryOnImage(
+        user_id=user_id,
+        job_id='job_abc123',
+        image_url='https://s3.amazonaws.com/bucket/tryon_result.jpg',
+        processing_time_ms=2500
+    )
+    db.add(tryon)
+    db.commit()
+    db.refresh(tryon)
 
-# Query by job ID
-result = TryOnImage.query.filter_by(job_id='job_abc123').first()
+    # Query by job ID
+    stmt = select(TryOnImage).where(TryOnImage.job_id == 'job_abc123')
+    result = db.execute(stmt).scalars().first()
+    return result
 ```
+
+---
+
+### RecommendationLog
+
+**File**: `models/recommendation_log.py`
+**Table**: `recommendation_logs`
+
+**Purpose**: Tracks every recommendation API call (`/start` and `/next`) for analytics, user history, and debugging.
+
+#### Fields
+
+| Field                  | Type        | Constraints                               | Description                                   |
+| ---------------------- | ----------- | ----------------------------------------- | --------------------------------------------- |
+| `id`                   | String(36)  | Primary Key                               | UUID (auto-generated)                         |
+| `user_id`              | String(36)  | Foreign Key (users.id), Not Null, Indexed | Log owner                                     |
+| `session_id`           | String(36)  | Not Null, Indexed                         | Groups related requests (start + variations)  |
+| `request_type`         | String(10)  | Not Null                                  | 'start' or 'next'                             |
+| `weather_context`      | JSON        | Nullable                                  | {temp_c, lat, long}                           |
+| `user_context`         | JSON        | Nullable                                  | {gender, occasion, custom_context}            |
+| `previous_outfit_hash` | String(255) | Nullable                                  | Hash of previous outfit (for 'next' requests) |
+| `variation_axis`       | String(20)  | Nullable                                  | SILHOUETTE, LAYERING, COLOR, NEW_ANCHOR       |
+| `outfit_hash`          | String(255) | Not Null                                  | Generated outfit identifier                   |
+| `outfit_items`         | JSON        | Not Null                                  | Array of wardrobe item IDs                    |
+| `styling_note`         | Text        | Nullable                                  | AI-generated styling description              |
+| `fallback_flags`       | JSON        | Nullable                                  | Array of fallback indicators                  |
+| `processing_time_ms`   | Integer     | Nullable                                  | API processing duration in milliseconds       |
+| `created_at`           | DateTime    | Not Null, Auto UTC timestamp              | Log creation timestamp                        |
+
+#### Relationships
+
+- **`user`**: Many-to-One with `User` (backref: `recommendation_logs`)
+
+#### Methods
+
+```python
+def to_dict(self) -> dict:
+    """
+    Serialize recommendation log to dictionary
+
+    Returns:
+        {
+            'id': str,
+            'user_id': str,
+            'session_id': str,
+            'request_type': str,  # 'start' or 'next'
+            'weather_context': dict,  # {temp_c, lat, long}
+            'user_context': dict,  # {gender, occasion}
+            'previous_outfit_hash': str,
+            'outfit_hash': str,
+            'outfit_items': [str],  # List of item IDs
+            'styling_note': str,
+            'variation_axis': str,  # SILHOUETTE|LAYERING|COLOR|NEW_ANCHOR
+            'fallback_flags': [str],
+            'processing_time_ms': int,
+            'created_at': str (ISO format)
+        }
+    """
+```
+
+#### Usage Examples
+
+```python
+from models.recommendation_log import RecommendationLog
+from repositories.recommendation_log_repository import RecommendationLogRepository
+
+# Create repository instance
+log_repo = RecommendationLogRepository()
+
+# Log a recommendation start
+log_data = {
+    'user_id': user.id,
+    'session_id': 'session_abc123',
+    'request_type': 'start',
+    'weather_context': {'temp_c': 22, 'lat': 37.7749, 'long': -122.4194},
+    'user_context': {'gender': 'MASCULINE', 'occasion': 'work'},
+    'outfit_hash': 'TEE_WHT_REG|JNS_NVY_SLM|SNK_WHT_low',
+    'outfit_items': ['item_id_1', 'item_id_2', 'item_id_3'],
+    'styling_note': 'A comfortable and professional look for work.',
+    'fallback_flags': [],
+    'processing_time_ms': 150
+}
+log = log_repo.create(log_data)
+
+# Log a variation request
+variation_log_data = {
+    'user_id': user.id,
+    'session_id': 'session_abc123',  # Same session
+    'request_type': 'next',
+    'weather_context': {'temp_c': 22, 'lat': 37.7749, 'long': -122.4194},
+    'user_context': {'gender': 'MASCULINE', 'occasion': 'work'},
+    'previous_outfit_hash': 'TEE_WHT_REG|JNS_NVY_SLM|SNK_WHT_low',
+    'variation_axis': 'SILHOUETTE',
+    'outfit_hash': 'TEE_WHT_OVS|JNS_NVY_SLM|SNK_WHT_low',
+    'outfit_items': ['item_id_4', 'item_id_2', 'item_id_3'],
+    'styling_note': 'Changed the silhouette for a more relaxed fit.',
+    'processing_time_ms': 120
+}
+variation_log = log_repo.create(variation_log_data)
+
+# Get all logs for a session
+session_logs = log_repo.get_by_session('session_abc123')
+for log in session_logs:
+    print(f"{log.request_type}: {log.outfit_hash} ({log.processing_time_ms}ms)")
+
+# Get user's recommendation history
+history = log_repo.get_user_history(user.id, limit=20)
+print(f"User has {len(history)} recommendation logs")
+
+# Group by session for display
+sessions = {}
+for log in history:
+    if log.session_id not in sessions:
+        sessions[log.session_id] = []
+    sessions[log.session_id].append(log)
+
+print(f"User has {len(sessions)} recommendation sessions")
+```
+
+#### Use Cases
+
+**1. User History View**
+
+```python
+# Display past recommendations to user
+def get_user_recent_recommendations(user_id: str, limit: int = 5):
+    logs = log_repo.get_user_history(user_id, limit=limit)
+
+    # Group by session
+    sessions = {}
+    for log in logs:
+        if log.session_id not in sessions:
+            sessions[log.session_id] = {
+                'started_at': log.created_at,
+                'context': log.user_context,
+                'outfits': []
+            }
+        sessions[log.session_id]['outfits'].append({
+            'items': log.outfit_items,
+            'note': log.styling_note
+        })
+
+    return list(sessions.values())
+```
+
+**2. Analytics Queries (FastAPI)**
+
+```python
+# Analytics queries using SQLAlchemy 2.0 syntax
+from sqlalchemy import select, func, distinct
+from sqlalchemy.orm import Session
+
+async def analytics_queries(db: Session, user_id: str):
+    # Count unique sessions per user
+    stmt = select(func.count(distinct(RecommendationLog.session_id))).filter(
+        RecommendationLog.user_id == user_id
+    )
+    session_count = db.execute(stmt).scalar()
+
+    # Get average processing time
+    stmt = select(func.avg(RecommendationLog.processing_time_ms)).filter(
+        RecommendationLog.user_id == user_id
+    )
+    avg_time = db.execute(stmt).scalar()
+
+    # Most common occasions
+    stmt = select(
+        func.json_extract(RecommendationLog.user_context, '$.occasion'),
+        func.count('*')
+    ).filter(
+        RecommendationLog.user_id == user_id,
+        RecommendationLog.request_type == 'start'
+    ).group_by(
+        func.json_extract(RecommendationLog.user_context, '$.occasion')
+    ).order_by(func.count('*').desc()).limit(5)
+
+    popular_occasions = db.execute(stmt).all()
+```
+
+**3. Debugging**
+
+```python
+# Reproduce a session
+def replay_session(session_id: str):
+    logs = log_repo.get_by_session(session_id)
+
+    if not logs:
+        return None
+
+    first_log = logs[0]
+    print(f"Session: {session_id}")
+    print(f"Context: {first_log.weather_context}, {first_log.user_context}")
+
+    for idx, log in enumerate(logs):
+        print(f"\nRequest {idx + 1} ({log.request_type}):")
+        print(f"  Outfit: {log.outfit_hash}")
+        print(f"  Items: {log.outfit_items}")
+        if log.variation_axis:
+            print(f"  Variation: {log.variation_axis}")
+        print(f"  Processing: {log.processing_time_ms}ms")
+```
+
+#### Repository Pattern
+
+The `RecommendationLogRepository` provides clean data access:
+
+```python
+class RecommendationLogRepository:
+    def create(self, log_data: dict) -> RecommendationLog
+    def get_by_session(self, session_id: str) -> List[RecommendationLog]
+    def get_user_history(self, user_id: str, limit: int) -> List[RecommendationLog]
+    def get_by_id(self, log_id: str) -> Optional[RecommendationLog]
+    def count_user_sessions(self, user_id: str) -> int
+    def get_latest_session(self, user_id: str) -> Optional[str]
+```
+
+#### Migration
+
+**Migration File**: `migrations/versions/d1e2f3a4b5c6_add_recommendation_logs.py`
+
+Applied on: February 15, 2026
+
+Creates:
+
+- `recommendation_logs` table with all fields
+- Index on `user_id` for fast user queries
+- Index on `session_id` for session grouping
+
+#### API Integration
+
+Logs are created automatically by:
+
+- `POST /api/v2/recommendation/start` - Logs initial outfit generation
+- `POST /api/v2/recommendation/next` - Logs each variation request
+
+Logs can be retrieved via:
+
+- `GET /api/v2/recommendation/history` - Returns grouped session history
+
+See `API_DOCUMENTATION.md` (line ~2586) for full API specification.
+
+#### Performance Notes
+
+- **Write Performance**: ~10-20ms per log (includes JSON serialization)
+- **Query Performance**: Indexed queries are fast (<50ms for 100 logs)
+- **Storage**: ~1KB per log on average
+- **Retention**: Consider archiving logs older than 6 months
+
+#### Best Practices
+
+1. **Non-Blocking Logging**: Logging failures don't break API calls
+
+   ```python
+   try:
+       log_repo.create(log_data)
+   except Exception as e:
+       logger.error(f"Failed to log: {e}")
+       # Continue processing
+   ```
+
+2. **Session Grouping**: Always use consistent `session_id` for related requests
+
+   ```python
+   # Start: generate new session_id
+   session_id = str(uuid.uuid4())
+
+   # Next: reuse same session_id
+   logs = log_repo.get_by_session(session_id)
+   ```
+
+3. **Context Preservation**: Copy context from first log for 'next' requests
+   ```python
+   first_log = log_repo.get_by_session(session_id)[0]
+   new_log_data = {
+       'weather_context': first_log.weather_context,
+       'user_context': first_log.user_context,
+       # ... other fields
+   }
+   ```
 
 ---
 
@@ -1301,13 +1665,14 @@ for t in threads:
 All database models require:
 
 ```bash
-pip install flask-sqlalchemy sqlalchemy
+pip install sqlalchemy
 ```
 
 **Required Packages**:
 
-- `flask-sqlalchemy>=3.0.0` - Flask SQLAlchemy integration
-- `sqlalchemy>=2.0.0` - ORM and database toolkit
+- `sqlalchemy>=2.0.0` - ORM and database toolkit (used with FastAPI dependency injection)
+- `fastapi` - Web framework for async request handling
+- Additional: See `requirements.txt` for complete FastAPI dependencies
 
 ### ML/Processing Models
 
@@ -1450,15 +1815,20 @@ recent_tryons = TryOnImage.query.filter(
     TryOnImage.created_at >= week_ago
 ).all()
 
-# Count items by category
-from sqlalchemy import func
-category_counts = db.session.query(
-    WardrobeItem.category,
-    func.count(WardrobeItem.id)
-).filter_by(user_id=user.id).group_by(WardrobeItem.category).all()
+# Count items by category (FastAPI/SQLAlchemy 2.0)
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
-print(category_counts)
-# [('top', 15), ('bottom', 8), ('shoes', 5), ...]
+async def count_by_category(db: Session, user_id: str):
+    stmt = select(
+        WardrobeItem.category,
+        func.count(WardrobeItem.id)
+    ).where(WardrobeItem.user_id == user_id).group_by(WardrobeItem.category)
+
+    category_counts = db.execute(stmt).all()
+    print(category_counts)
+    # [('top', 15), ('bottom', 8), ('shoes', 5), ...]
+    return category_counts
 ```
 
 ### Model Caching Example
@@ -1497,15 +1867,32 @@ cache.clear_all()
 
 ### Database Models
 
-1. **Always use transactions**:
+1. **Always use transactions (FastAPI)**:
 
    ```python
-   try:
-       db.session.add(item)
-       db.session.commit()
-   except Exception as e:
-       db.session.rollback()
-       raise
+   from sqlalchemy.orm import Session
+   from fastapi import Depends
+
+   async def create_item(item: ItemSchema, db: Session = Depends(get_db)):
+       try:
+           db.add(item)
+           db.commit()
+           db.refresh(item)
+       except Exception as e:
+           db.rollback()
+           raise
+   ```
+
+   Or use SQLAlchemy context managers:
+
+   ```python
+   from sqlalchemy import create_engine
+   from sqlalchemy.orm import Session
+
+   with Session(engine) as session:
+       db.add(item)
+       session.commit()
+       db.refresh(item)
    ```
 
 2. **Use indexes for frequently queried fields**:
@@ -1569,9 +1956,15 @@ cache.clear_all()
 
 ### Database
 
-- **Connection Pooling**: Flask-SQLAlchemy handles connection pooling automatically
-- **Lazy Loading**: Use `lazy='dynamic'` for large collections
-- **Eager Loading**: Use `joinedload()` to avoid N+1 queries
+- **Connection Pooling**: SQLAlchemy handles connection pooling automatically in FastAPI
+- **Lazy Loading**: Use `selectinload()` or `joinedload()` from `sqlalchemy.orm` for large collections
+- **Eager Loading**: Use `joinedload()` or `contains_eager()` to avoid N+1 queries
+
+**FastAPI Best Practices**:
+
+- Use `Session` dependency injection: `db: Session = Depends(get_db)`
+- Always call `db.refresh(obj)` after `db.commit()` to refresh relationship data
+- Use SQLAlchemy 2.0 `select()` statements instead of `.query()` chains
 
 ### ML Models
 
@@ -1666,31 +2059,41 @@ existing = User.query.filter_by(email=email).first()
 if existing:
     return error("Email already exists")
 
-# Or handle exception
+# Or handle exception (FastAPI)
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 try:
-    db.session.add(user)
-    db.session.commit()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
 except IntegrityError:
-    db.session.rollback()
-    return error("User already exists")
+    db.rollback()
+    raise HTTPException(status_code=409, detail="User already exists")
 ```
 
 ---
 
 ## Migration Notes
 
-### Adding New Models
+### Adding New Models (FastAPI)
 
 1. **Create model file**: `models/new_model.py`
-2. **Define SQLAlchemy model**:
+2. **Define SQLAlchemy model** (SQLAlchemy 2.0 style):
 
    ```python
-   from extensions import db
+   from sqlalchemy import Column, String, Integer, DateTime
+   from sqlalchemy.orm import declarative_base
+   from datetime import datetime
+   import uuid
 
-   class NewModel(db.Model):
+   Base = declarative_base()
+
+   class NewModel(Base):
        __tablename__ = 'new_models'
-       id = db.Column(db.String(36), primary_key=True)
-       # ... fields
+       id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+       created_at = Column(DateTime, default=datetime.utcnow)
+       # ... additional fields
    ```
 
 3. **Add to `models/__init__.py`**:
@@ -1699,11 +2102,13 @@ except IntegrityError:
    from .new_model import NewModel
    ```
 
-4. **Create migration**:
+4. **Create migration** (using Alembic):
    ```bash
-   flask db migrate -m "Add NewModel"
-   flask db upgrade
+   alembic revision --autogenerate -m "Add NewModel"
+   alembic upgrade head
    ```
+
+**FastAPI Integration**: Pass `db: Session = Depends(get_db)` to endpoints using the new model.
 
 ### Model Versioning
 
@@ -1720,7 +2125,7 @@ For ML models:
 ### External Documentation
 
 - **SQLAlchemy**: https://docs.sqlalchemy.org/
-- **Flask-SQLAlchemy**: https://flask-sqlalchemy.palletsprojects.com/
+- **FastAPI**: https://fastapi.tiangolo.com/
 - **rembg**: https://github.com/danielgatis/rembg
 - **MediaPipe Pose**: https://google.github.io/mediapipe/solutions/pose
 - **OpenCV**: https://docs.opencv.org/

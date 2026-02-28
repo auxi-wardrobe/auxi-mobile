@@ -251,19 +251,20 @@ Check API health and configuration.
 
 ### Upload File
 
-#### `POST /api/upload/file`
+#### `POST /api/upload/`
+
+#### `POST /api/upload/file` (alias)
 
 Upload a file (image) with automatic S3 storage and local fallback.
 
-**Authentication**: Required (Bearer token)
+**Authentication**: Not required
 
 **Rate Limit**: 10 requests per minute
 
 **Request** (multipart/form-data):
 
 ```
-file: <file> (required) - Image file (JPG, PNG, WEBP, max 3MB)
-prefix: <string> (optional) - S3 key prefix (e.g., "garments/", "bodies/")
+file: <file> (required) - Image file (JPG, PNG, WEBP, max size from server config)
 ```
 
 **cURL Example**:
@@ -271,8 +272,7 @@ prefix: <string> (optional) - S3 key prefix (e.g., "garments/", "bodies/")
 ```bash
 curl -X POST http://localhost:5001/api/upload/file \
   -H "Authorization: Bearer <token>" \
-  -F "file=@image.jpg" \
-  -F "prefix=garments/"
+  -F "file=@image.jpg"
 ```
 
 **Response (201 Created) - S3 Upload**:
@@ -280,8 +280,8 @@ curl -X POST http://localhost:5001/api/upload/file \
 ```json
 {
   "message": "File uploaded successfully",
-  "key": "garments/abc123def456.jpg",
-  "url": "https://s3.amazonaws.com/bucket/garments/abc123def456.jpg",
+  "key": "uploads/abc123def456.jpg",
+  "url": "https://s3.amazonaws.com/bucket/uploads/abc123def456.jpg",
   "expires_in": 3600
 }
 ```
@@ -309,7 +309,7 @@ curl -X POST http://localhost:5001/api/upload/file \
 
 - `400 Bad Request` - No file provided or invalid file format
 - `401 Unauthorized` - Missing/invalid token
-- `413 Payload Too Large` - File exceeds max size (3MB)
+- `413 Payload Too Large` - File exceeds max size
 - `429 Too Many Requests` - Rate limit exceeded
 - `500 Internal Server Error` - Upload processing failed
 - `503 Service Unavailable` - S3 upload failed (if S3 is configured but fails)
@@ -1681,7 +1681,7 @@ SECRET_KEY=<random-secret-key>  # Required in production
 
 ```bash
 # Server
-FLASK_ENV=development|production|testing
+ENV=development|production|testing
 PORT=5001
 
 # Upload Limits
@@ -1709,6 +1709,20 @@ CORS_ORIGINS=*
 
 # Logging
 LOG_LEVEL=INFO|DEBUG|WARNING|ERROR
+```
+
+### FastAPI Server Startup
+
+**Development** (with auto-reload):
+
+```bash
+uvicorn app:app --reload --port 5001
+```
+
+**Production** (with multiple workers):
+
+```bash
+uvicorn app:app --workers 4 --port 5001 --log-level info
 ```
 
 ---
@@ -2539,6 +2553,8 @@ Start a new recommendation session and generate an initial outfit.
 
 Get the next variation in the cycle (Silhouette -> Layering -> Color -> New Anchor).
 
+**✨ NEW: Custom Context Support** - Users can now provide feedback and preferences to influence the recommendation.
+
 **Authentication**: Required (Bearer token)
 
 **Request** (application/json):
@@ -2546,9 +2562,22 @@ Get the next variation in the cycle (Silhouette -> Layering -> Color -> New Anch
 ```json
 {
   "session_id": "uuid-string",
-  "current_outfit_hash": "TEE_WHT_REG|JNS_NVY_SLM|SNK_WHT_low"
+  "current_outfit_hash": "TEE_WHT_REG|JNS_NVY_SLM|SNK_WHT_low", // OPTIONAL: For logging only
+
+  // ===== NEW: Custom Context Fields (All Optional) =====
+  "rejected_items": ["item_id_1", "item_id_2"], // Items to permanently exclude
+  "preferred_colors": ["BLK", "NVY", "WHT"], // Preferred color codes
+  "style_feedback": "Too formal for weekend wear", // Free-text feedback for LLM
+  "force_variation_axis": "COLOR" // Override stage: SILHOUETTE | LAYERING | COLOR | NEW_ANCHOR
 }
 ```
+
+**Custom Context Behavior**:
+
+- **`rejected_items`**: Permanently excludes items from future variations in this session. Items will never appear again.
+- **`preferred_colors`**: Sorts candidates to prioritize these color codes (e.g., `["BLK", "NVY"]`). LLM is informed of preference.
+- **`style_feedback`**: Free-text feedback injected into LLM prompt. Last 3 feedback notes are considered. Use for guidance like "too casual", "prefer darker tones", etc.
+- **`force_variation_axis`**: Overrides automatic stage progression (default is sequential 1→2→3→4). Allows user to force specific variation types.
 
 **Response** (200 OK):
 
@@ -2573,6 +2602,78 @@ Get the next variation in the cycle (Silhouette -> Layering -> Color -> New Anch
   "message": "No more unique variations available."
 }
 ```
+
+**Errors**:
+
+- `400 Bad Request`: Invalid `force_variation_axis` value (must be one of: SILHOUETTE, LAYERING, COLOR, NEW_ANCHOR)
+- `404 Not Found`: Session expired or invalid
+
+---
+
+### Get Session State
+
+#### `GET /api/recommendation/session/{session_id}`
+
+Retrieve the current state of a recommendation session. Useful for resuming sessions or sharing session links.
+
+**Authentication**: Required (Bearer token)
+
+**Rate Limit**: 30 requests per minute
+
+**Path Parameters**:
+
+| Parameter  | Type   | Description         |
+| ---------- | ------ | ------------------- |
+| session_id | string | UUID of the session |
+
+**Response** (200 OK):
+
+```json
+{
+  "session_id": "uuid-string",
+  "outfit": {
+    "items": [
+      {
+        "id": "item_uuid",
+        "name": "White T-Shirt",
+        "layer_code": "L2",
+        "category_code": "TEE",
+        "image_url": "https://...",
+        "physical_attributes": {
+          "color_code": "WHT",
+          "fit_code": "REG"
+        }
+      }
+    ],
+    "styling_note": "A comfortable casual look.",
+    "outfit_hash": "TEE_WHT_REG|JNS_NVY_SLM|SNK_WHT_low"
+  },
+  "variation_stage": 2,
+  "context": {
+    "temp_c": 22,
+    "gender_pref": "MASCULINE",
+    "occasion": "casual"
+  },
+  "history_count": 5,
+  "user_feedback": {
+    "rejected_items": ["item_id_1"],
+    "preferred_colors": ["BLK", "NVY"],
+    "style_notes": ["Too casual", "Prefer darker colors"]
+  },
+  "seen_item_count": 12,
+  "request_id": "uuid-string"
+}
+```
+
+**Errors**:
+
+- `404 Not Found`: Session not found or expired (sessions expire after 30 minutes of inactivity)
+
+**Use Cases**:
+
+1. **Session Sharing**: Share session URL with `?sessionId={session_id}` for team collaboration
+2. **Session Resume**: Reload page without losing session state
+3. **Session Debugging**: Inspect current session state including history and feedback
 
 ---
 
@@ -2833,11 +2934,11 @@ The Admin Interface provides management tools for Common Items (system baseline 
 
 ### List Common Items (Admin View)
 
-#### `GET /admin/common-items`
+#### `GET /api/admin/common-items`
 
-List and filter Common Items with search functionality (admin interface, returns HTML).
+List and filter Common Items for the admin interface (JSON response).
 
-**Authentication**: Not required (admin interface should be network-restricted)
+**Authentication**: Admin required
 
 **Query Parameters** (all optional):
 
@@ -2845,31 +2946,51 @@ List and filter Common Items with search functionality (admin interface, returns
 - `layer` (string): Filter by layer code (L1, L2, L3, BT, SH)
 - `color` (string): Filter by color code (WHT, BLK, NVY, etc.)
 - `fit` (string): Filter by fit code (SLM, REG, OVS, TLR)
-- `search` (string): Search by item name (case-insensitive)
+- `search` (string): Search by name or human-readable ID (case-insensitive)
 
-**Response**: HTML page (`admin_common_items.html`) with:
+**Response** (200 OK):
 
-- Filtered list of Common Items
-- Search and filter controls
-- Create/Edit/Delete actions
-- Metadata editing forms
-
-**Notes**:
-
-- Returns rendered HTML template, not JSON
-- Provides UI dropdowns for all available codes (ITEM_CODES, LAYERS, COLORS, FITS, etc.)
-- Items are filtered by `is_common_item=True` and `is_deleted=False`
-- Used for visual management of system catalog
+```json
+{
+  "items": [
+    {
+      "id": "<uuid>",
+      "name": "White T-Shirt",
+      "human_readable_id": "SYS_L2_TEE_WHT_REG_01",
+      "category_code": "TEE",
+      "layer_code": "L2",
+      "physical_attributes": {},
+      "styling_metadata": {},
+      "gender_tags": ["M", "W", "U"]
+    }
+  ],
+  "enums": {
+    "CATEGORIES": {},
+    "ITEM_CODES": [],
+    "LAYERS": [],
+    "COLORS": [],
+    "FITS": [],
+    "OCCASIONS": [
+      "Client Meeting",
+      "Internal Work",
+      "Casual Day",
+      "Date",
+      "Networking",
+      "Travel"
+    ]
+  }
+}
+```
 
 ---
 
 ### Create Common Item
 
-#### `POST /admin/common-items/create`
+#### `POST /api/admin/common-items`
 
 Create a new Common Item in the system catalog.
 
-**Authentication**: Not required (admin interface should be network-restricted)
+**Authentication**: Admin required
 
 **Request** (multipart/form-data):
 
@@ -2878,6 +2999,7 @@ name: <string> (required) - Item name (e.g., "White T-Shirt")
 category_code: <string> (required) - Category code (TEE, SHR, BLZ, JNS, etc.)
 layer_code: <string> (required) - Layer code (L1, L2, L3, BT, SH)
 image: <file> (optional) - Item image file
+image_url: <string> (optional) - Pre-uploaded image URL (e.g. from `/api/upload/file`)
 attr:color_code: <string> - Physical attribute: color code (WHT, BLK, etc.)
 attr:fit_code: <string> - Physical attribute: fit code (REG, SLM, OVS, TLR)
 attr:pattern_type: <string> - Physical attribute: pattern (SOLID, STRIPED, PLAID)
@@ -2886,8 +3008,29 @@ attr:is_water_resistant: <boolean> - Physical attribute: water resistant
 meta:formality_score: <int> - Styling metadata: formality (1-10)
 meta:warmth_level: <int> - Styling metadata: warmth (1-5)
 meta:versatility_score: <int> - Styling metadata: versatility (1-10)
-meta:visual_weight: <int> - Styling metadata: visual weight (1-5)
+meta:base_weight: <int> - Styling metadata: base weight (1-5)
+meta:occasion: <json-array> - Controlled values only: Client Meeting | Internal Work | Casual Day | Date | Networking | Travel
 meta:climate_fit: <string> - Styling metadata: HOT | MILD | COOL
+```
+
+**Alternative Request** (`application/json`):
+
+```json
+{
+  "name": "White T-Shirt",
+  "category_code": "TEE",
+  "layer_code": "L2",
+  "image_url": "https://.../uploads/abc123.png",
+  "attr": {
+    "fit_code": "REG",
+    "color_code": "WHT"
+  },
+  "meta": {
+    "formality_score": 4,
+    "warmth_level": 2
+  },
+  "gender_tags": ["M", "W", "U"]
+}
 ```
 
 **Form Field Prefixes**:
@@ -2895,11 +3038,7 @@ meta:climate_fit: <string> - Styling metadata: HOT | MILD | COOL
 - `attr:*` - Physical attributes (stored in `physical_attributes` JSON)
 - `meta:*` - Styling metadata (stored in `styling_metadata` JSON)
 
-**Response**: Redirect to `/admin/common-items` with flash message
-
-**Success**: Flash message "Item '[name]' registered successfully"
-
-**Errors**: Flash message "Error creating item: [error details]"
+**Response** (201 Created): Created item object (JSON).
 
 **Notes**:
 
@@ -2908,17 +3047,24 @@ meta:climate_fit: <string> - Styling metadata: HOT | MILD | COOL
 - Sets `owner_id="SYSTEM"` and `is_common_item=True`
 - Derives `category` from `category_code` using mapping
 - Uploads image to S3 with prefix `common_items/`
-- Auto-increments index if similar items exist
+- If `image_url` is provided, it is used directly (no re-upload in this endpoint)
+- Parses and persists all provided `attr:*` and `meta:*` fields
+- Admin metadata normalization rules:
+  - `meta:visual_weight` is accepted for backward compatibility and stored as `meta:base_weight`
+  - Deprecated keys are ignored on write: `meta:layer_score`, `meta:mood`, `meta:season`
+  - `meta:occasion` is normalized to controlled values only
 
 ---
 
 ### Update Common Item
 
-#### `POST /admin/common-items/<item_id>/update`
+#### `PUT /api/admin/common-items/{item_id}`
+
+#### `PATCH /api/admin/common-items/{item_id}`
 
 Update metadata and attributes for an existing Common Item.
 
-**Authentication**: Not required (admin interface should be network-restricted)
+**Authentication**: Admin required
 
 **Request** (multipart/form-data):
 
@@ -2927,41 +3073,64 @@ name: <string> (optional) - Updated item name
 category_code: <string> (optional) - Updated category code
 layer_code: <string> (optional) - Updated layer code
 image: <file> (optional) - New item image (replaces existing)
+image_url: <string> (optional) - Pre-uploaded image URL (replaces existing)
 attr:*: <various> - Updated physical attributes
 meta:*: <various> - Updated styling metadata
 ```
 
-**Response**: Redirect to `/admin/common-items` with flash message
+**Alternative Request** (`application/json`):
 
-**Success**: Flash message "Item '[name]' updated successfully"
+```json
+{
+  "name": "Updated Name",
+  "category_code": "TEE",
+  "layer_code": "L2",
+  "image_url": "https://.../uploads/abc123.png",
+  "attr": {
+    "fit_code": "REG",
+    "color_code": "WHT",
+    "color_hex": "#ffffff"
+  },
+  "meta": {
+    "formality_score": 4,
+    "is_outerwear": false,
+    "occasion": []
+  },
+  "gender_tags": ["W", "U"]
+}
+```
 
-**Errors**: Flash message "Error updating item: [error details]"
+**Response** (200 OK): Updated item object (JSON).
 
 **Notes**:
 
 - Only provided fields are updated (partial update supported)
 - New image replaces existing image URL
+- `image` upload has priority over `image_url` if both are provided
 - Metadata is merged with existing values
 - Physical attributes are merged with existing values
 - Uses `_parse_metadata_forms()` helper for safe parsing
+- Persists provided `attr:*` fields and normalized `meta:*` fields (see rules above)
+- Rebuilds `human_readable_id` whenever `category_code`, `layer_code`, `attr:color_code`, or `attr:fit_code` changes
+- Regeneration rule:
+  - Reuse existing suffix if available for new prefix
+  - If suffix collides, assign next available suffix
 
 ---
 
 ### Delete Common Item
 
-#### `POST /admin/common-items/<item_id>/delete`
+#### `DELETE /api/admin/common-items/{item_id}`
 
 Soft-delete a Common Item (sets `is_deleted=True`).
 
-**Authentication**: Not required (admin interface should be network-restricted)
+**Authentication**: Admin required
 
-**Request**: No body required
+**Response** (200 OK):
 
-**Response**: Redirect to `/admin/common-items` with flash message
-
-**Success**: Flash message "Item '[name]' deleted successfully"
-
-**Errors**: Flash message "Error deleting item: [error details]"
+```json
+{ "message": "Item deleted successfully" }
+```
 
 **Notes**:
 
