@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { authService } from '../services/auth';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
 
@@ -8,6 +8,9 @@ interface AuthContextType {
     login: (data: LoginRequest) => Promise<void>;
     register: (data: RegisterRequest) => Promise<void>;
     logout: () => Promise<void>;
+    refreshUser: () => Promise<User | null>;
+    updateCurrentUser: (data: Partial<User>) => Promise<User>;
+    resetUserPreferences: () => Promise<User>;
     checkAuth: () => Promise<void>;
     completeOnboarding: (data?: Partial<User>) => Promise<void>;
 }
@@ -18,12 +21,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const checkAuth = async () => {
+    const refreshUser = useCallback(async (): Promise<User | null> => {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+        return userData;
+    }, []);
+
+    const updateCurrentUser = useCallback(async (data: Partial<User>): Promise<User> => {
+        const updatedUser = await authService.updateUser(data);
+        setUser(updatedUser);
+        return updatedUser;
+    }, []);
+
+    const resetUserPreferences = useCallback(async (): Promise<User> => {
+        const updatedUser = await authService.resetPreferences();
+        setUser(updatedUser);
+        return updatedUser;
+    }, []);
+
+    const checkAuth = useCallback(async () => {
         try {
             const isAuthenticated = await authService.isAuthenticated();
             if (isAuthenticated) {
-                const userData = await authService.getCurrentUser();
-                setUser(userData);
+                await refreshUser();
+            } else {
+                setUser(null);
             }
         } catch (error) {
             console.log('Auth check failed', error);
@@ -37,13 +59,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [refreshUser]);
 
     useEffect(() => {
         checkAuth();
-    }, []);
+    }, [checkAuth]);
 
-    const login = async (data: LoginRequest) => {
+    const login = useCallback(async (data: LoginRequest) => {
         setIsLoading(true);
         try {
             await authService.login(data);
@@ -53,9 +75,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [checkAuth]);
 
-    const register = async (data: RegisterRequest) => {
+    const register = useCallback(async (data: RegisterRequest) => {
         setIsLoading(true);
         try {
             await authService.register(data);
@@ -66,9 +88,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [login]);
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
         setIsLoading(true);
         try {
             await authService.logout();
@@ -78,25 +100,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
-    const completeOnboarding = async (data?: Partial<User>) => {
+    const completeOnboarding = useCallback(async (data?: Partial<User>) => {
         if (!user) return;
         setIsLoading(true);
         try {
             const updateData = { ...data, is_first_login: false };
-            const updatedUser = await authService.updateUser(updateData);
-            setUser(updatedUser);
+            await updateCurrentUser(updateData);
         } catch (error) {
             console.error('Failed to complete onboarding', error);
             throw error;
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [updateCurrentUser, user]);
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, register, logout, checkAuth, completeOnboarding }}>
+        <AuthContext.Provider
+            value={{
+                user,
+                isLoading,
+                login,
+                register,
+                logout,
+                refreshUser,
+                updateCurrentUser,
+                resetUserPreferences,
+                checkAuth,
+                completeOnboarding,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );

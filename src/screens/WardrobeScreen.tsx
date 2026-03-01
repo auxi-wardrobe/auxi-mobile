@@ -14,25 +14,99 @@ import {
   View,
 } from 'react-native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BottomSheetSurface, TopIconButton } from '../components/primitives/FigmaPrimitives';
+import { CategoryTabs } from '../components/features/CategoryTabs';
+import { Header } from '../components/layout/Header';
+import { Sidebar } from '../components/layout/Sidebar';
 import { theme } from '../theme/theme';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
-import { AppStackParamList } from '../types/navigation';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const GRID_GAP = 8;
-const TILE_SIZE = Math.floor((screenWidth - 44 - GRID_GAP * 2) / 3);
+const { width: screenWidth } = Dimensions.get('window');
 
-type Navigation = NativeStackNavigationProp<AppStackParamList, 'Wardrobe'>;
+const FILTER_TABS = ['All', 'Tops', 'Bottoms', 'Shoes', 'One-piece', 'AC'] as const;
+type FilterTab = (typeof FILTER_TABS)[number];
+
+const HORIZONTAL_PADDING = 24;
+const GRID_GAP = 4;
+const TILE_WIDTH = (screenWidth - HORIZONTAL_PADDING * 2 - GRID_GAP * 3) / 4;
+const TILE_HEIGHT = TILE_WIDTH * (4 / 3);
+
+const resolveItemTab = (category?: string): FilterTab => {
+  const normalized = category?.trim().toLowerCase() || '';
+
+  if (!normalized) {
+    return 'AC';
+  }
+
+  if (
+    normalized.includes('shoe') ||
+    normalized.includes('sneaker') ||
+    normalized.includes('heel') ||
+    normalized.includes('boot')
+  ) {
+    return 'Shoes';
+  }
+
+  if (
+    normalized.includes('bottom') ||
+    normalized.includes('pant') ||
+    normalized.includes('trouser') ||
+    normalized.includes('jean') ||
+    normalized.includes('skirt') ||
+    normalized.includes('short')
+  ) {
+    return 'Bottoms';
+  }
+
+  if (
+    normalized.includes('dress') ||
+    normalized.includes('one-piece') ||
+    normalized.includes('one piece') ||
+    normalized.includes('one_piece') ||
+    normalized.includes('jumpsuit') ||
+    normalized.includes('romper')
+  ) {
+    return 'One-piece';
+  }
+
+  if (
+    normalized === 'ac' ||
+    normalized.includes('accessor') ||
+    normalized.includes('bag') ||
+    normalized.includes('belt') ||
+    normalized.includes('hat') ||
+    normalized.includes('jewel')
+  ) {
+    return 'AC';
+  }
+
+  return 'Tops';
+};
+
+const resolveUploadCategory = (selectedTab: FilterTab): string | undefined => {
+  switch (selectedTab) {
+    case 'Tops':
+      return 'top';
+    case 'Bottoms':
+      return 'bottom';
+    case 'Shoes':
+      return 'shoes';
+    case 'One-piece':
+      return 'one_piece';
+    case 'AC':
+      return 'accessory';
+    case 'All':
+    default:
+      return undefined;
+  }
+};
 
 export const WardrobeScreen = () => {
-  const navigation = useNavigation<Navigation>();
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
 
   const fetchItems = async () => {
     try {
@@ -61,7 +135,10 @@ export const WardrobeScreen = () => {
 
       const result = type === 'camera' ? await launchCamera(options) : await launchImageLibrary(options);
 
-      if (result.didCancel) return;
+      if (result.didCancel) {
+        return;
+      }
+
       if (result.errorCode) {
         Alert.alert('Error', result.errorMessage || 'Failed to pick image');
         return;
@@ -70,7 +147,10 @@ export const WardrobeScreen = () => {
       if (result.assets?.length) {
         try {
           setUploading(true);
-          await wardrobeService.uploadWardrobeItem(result.assets[0]);
+          await wardrobeService.uploadWardrobeItem(
+            result.assets[0],
+            resolveUploadCategory(selectedTab),
+          );
           await fetchItems();
         } catch (error) {
           console.error('Upload error', error);
@@ -82,21 +162,26 @@ export const WardrobeScreen = () => {
     }, 350);
   };
 
-  const displayItems = useMemo(() => items.slice(0, 23), [items]);
+  const filteredItems = useMemo(() => {
+    if (selectedTab === 'All') {
+      return items;
+    }
+
+    return items.filter((item) => resolveItemTab(item.category) === selectedTab);
+  }, [items, selectedTab]);
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topOverlay}>
-        <View style={styles.topBar}>
-          <TopIconButton
-            onPress={() => navigation.goBack()}
-            icon={<Text style={styles.backGlyph}>‹</Text>}
-          />
-          <Text style={styles.headerTitle}>Wardrobe</Text>
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+
+      <Header
+        title="Wardrobe"
+        onBack={() => setIsSidebarOpen(true)}
+        rightComponent={(
           <TouchableOpacity
             onPress={() => setModalVisible(true)}
             disabled={uploading}
-            style={styles.topAddButton}
+            style={styles.plusButton}
             activeOpacity={0.85}
           >
             {uploading ? (
@@ -105,34 +190,52 @@ export const WardrobeScreen = () => {
               <Text style={styles.plusGlyph}>+</Text>
             )}
           </TouchableOpacity>
-        </View>
-      </View>
+        )}
+      />
 
-      <BottomSheetSurface style={styles.sheet}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <CategoryTabs
+          categories={[...FILTER_TABS]}
+          selectedCategory={selectedTab}
+          onSelectCategory={(category) => setSelectedTab(category as FilterTab)}
+        />
+
         {loading ? (
-          <View style={styles.centered}>
+          <View style={styles.loadingState}>
             <ActivityIndicator size="large" color={theme.colors.figmaAction} />
           </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.gridContent}>
-            <View style={styles.grid}>
-              <TouchableOpacity
-                style={styles.cameraTile}
-                activeOpacity={0.86}
-                onPress={() => setModalVisible(true)}
-              >
-                <Text style={styles.cameraGlyph}>◉</Text>
-              </TouchableOpacity>
+        ) : filteredItems.length ? (
+          <View style={styles.grid}>
+            {filteredItems.map((item) => (
+              <View key={item.id} style={styles.tile}>
+                <Image
+                  source={{ uri: item.image_url }}
+                  style={styles.tileImage}
+                  resizeMode="contain"
+                />
 
-              {displayItems.map((item) => (
-                <View key={item.id} style={styles.tile}>
-                  <Image source={{ uri: item.image_url }} style={styles.tileImage} resizeMode="cover" />
+                <View style={styles.tileBadgeWrap}>
+                  <View style={styles.tileBadge}>
+                    <Text numberOfLines={1} style={styles.tileBadgeText}>
+                      common items
+                    </Text>
+                  </View>
                 </View>
-              ))}
-            </View>
-          </ScrollView>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No items in this category yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Use the plus button to add a piece and start filling this section.
+            </Text>
+          </View>
         )}
-      </BottomSheetSurface>
+      </ScrollView>
 
       <Modal
         animationType="fade"
@@ -146,13 +249,19 @@ export const WardrobeScreen = () => {
               <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>Add New Item</Text>
 
-                <TouchableOpacity style={styles.modalAction} onPress={() => handleImageSelection('camera')}>
+                <TouchableOpacity
+                  style={styles.modalAction}
+                  onPress={() => handleImageSelection('camera')}
+                >
                   <Text style={styles.modalActionText}>Take a photo</Text>
                 </TouchableOpacity>
 
                 <View style={styles.modalDivider} />
 
-                <TouchableOpacity style={styles.modalAction} onPress={() => handleImageSelection('gallery')}>
+                <TouchableOpacity
+                  style={styles.modalAction}
+                  onPress={() => handleImageSelection('gallery')}
+                >
                   <Text style={styles.modalActionText}>Upload from gallery</Text>
                 </TouchableOpacity>
 
@@ -173,100 +282,96 @@ export const WardrobeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#B9B9BD',
+    backgroundColor: theme.colors.figmaBackground,
   },
-  topOverlay: {
-    flex: 1,
-  },
-  topBar: {
-    paddingHorizontal: 22,
-    paddingTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backGlyph: {
-    color: theme.colors.figmaAction,
-    fontSize: 34,
-    lineHeight: 34,
-    marginTop: -2,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
-    fontSize: 34,
-    lineHeight: 40,
-    fontFamily: 'PlayfairDisplay-Medium',
-  },
-  topAddButton: {
-    width: 32,
-    height: 32,
+  plusButton: {
+    width: 45,
+    height: 45,
     alignItems: 'center',
     justifyContent: 'center',
   },
   plusGlyph: {
-    fontSize: 38,
-    lineHeight: 38,
     color: theme.colors.figmaAction,
-    marginTop: -4,
+    fontSize: 28,
+    lineHeight: 28,
+    marginTop: -2,
   },
-  sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    minHeight: screenHeight * 0.64,
-    maxHeight: screenHeight * 0.72,
+  scrollContent: {
     paddingTop: 12,
+    paddingBottom: 32,
   },
-  centered: {
-    minHeight: 320,
+  loadingState: {
+    minHeight: 280,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  gridContent: {
-    paddingHorizontal: 22,
-    paddingBottom: 20,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: GRID_GAP,
-  },
-  cameraTile: {
-    width: TILE_SIZE,
-    height: TILE_SIZE,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#CACAD2',
-    borderStyle: 'dashed',
-    backgroundColor: '#F7F7F8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cameraGlyph: {
-    color: '#151515',
-    fontSize: 22,
-    lineHeight: 22,
+    paddingHorizontal: HORIZONTAL_PADDING,
   },
   tile: {
-    width: TILE_SIZE,
-    height: TILE_SIZE,
-    borderRadius: 4,
+    width: TILE_WIDTH,
+    height: TILE_HEIGHT,
+    borderRadius: theme.borderRadius.l,
     overflow: 'hidden',
-    backgroundColor: '#EEEFF3',
+    backgroundColor: '#ECE6F0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tileImage: {
     width: '100%',
     height: '100%',
   },
+  tileBadgeWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+  },
+  tileBadge: {
+    minWidth: 58,
+    maxWidth: TILE_WIDTH - 8,
+    height: 19,
+    paddingHorizontal: 12,
+    borderTopLeftRadius: theme.borderRadius.m,
+    borderTopRightRadius: theme.borderRadius.m,
+    backgroundColor: 'rgba(39, 42, 50, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tileBadgeText: {
+    fontFamily: 'Manrope-Medium',
+    fontSize: 8,
+    lineHeight: 12,
+    color: theme.colors.white,
+  },
+  emptyState: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 40,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    ...theme.typography.aliases.manropeBody,
+    color: theme.colors.figmaAction,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    maxWidth: 280,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(25, 27, 34, 0.45)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.figmaSurface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 22,

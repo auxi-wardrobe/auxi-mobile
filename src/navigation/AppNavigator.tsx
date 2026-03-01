@@ -13,6 +13,7 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native'; // Import Vi
 import { theme } from '../theme/theme';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
 import { BodyScreen } from '../screens/BodyScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 import { AppStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -44,6 +45,7 @@ export const AppNavigator = () => {
                     ) : (
                         <>
                             <Stack.Screen name="Home" component={HomeScreen} />
+                            <Stack.Screen name="Settings" component={SettingsScreen} />
                             <Stack.Screen name="Wardrobe" component={WardrobeScreen} />
                             <Stack.Screen name="Body" component={BodyScreen} />
                             <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />

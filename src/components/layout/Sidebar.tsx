@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions, TouchableWithoutFeedback } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../../assets/icons';
+import { AppStackParamList } from '../../types/navigation';
 
 const { width, height } = Dimensions.get('window');
 const SIDEBAR_WIDTH = 317;
@@ -17,7 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const { logout } = useAuth(); // Using logout here
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
     useEffect(() => {
         if (isOpen) {
@@ -64,7 +66,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <Animated.View style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}>
                 {/* Get Dressed Button */}
                 <View style={styles.topSection}>
-                    <TouchableOpacity style={styles.getDressedButton}>
+                    <TouchableOpacity
+                        style={styles.getDressedButton}
+                        onPress={() => {
+                            navigation.navigate('Home');
+                            onClose();
+                        }}
+                    >
                         <Text style={styles.getDressedText}>Get dressed</Text>
                         <Icons.Water width={16} height={16} />
                     </TouchableOpacity>
@@ -89,7 +97,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                         }}
                     />
                     <MenuItem label="My favourite" Icon={Icons.Heart} />
-                    <MenuItem label="My account" Icon={Icons.User} />
+                    <MenuItem
+                        label="My account"
+                        Icon={Icons.User}
+                        onPress={() => {
+                            navigation.navigate('Settings');
+                            onClose();
+                        }}
+                    />
                     <MenuItem label="Archive" Icon={Icons.Trash} />
                     <MenuItem label="Log out" Icon={Icons.Logout} onPress={logout} />
                 </View>

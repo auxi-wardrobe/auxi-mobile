@@ -3,27 +3,35 @@
  * Based on API_DOCUMENTATION.md authentication section
  */
 
+export type DailyNotificationPeriod = 'AM' | 'PM';
+export type DailyNotificationFrequency = 'weekdays' | 'everydays';
+export type UserStyleDirection = 'stay_balanced' | 'more_relaxed' | 'more_polished';
+export type UserConfidenceLevel = 'conservative' | 'balanced' | 'bold';
+export type UserDisplayState = 'light' | 'dark';
+
+export interface UserDailyNotificationSettings {
+  enabled?: boolean;
+  time?: string;
+  period?: DailyNotificationPeriod;
+  frequency?: DailyNotificationFrequency;
+}
+
 export interface UserMetadata {
-  onboarding_step?: number;
-  preferences?: {
-    style?: string[];
-    colors?: string[];
-    sizes?: {
-      top?: string;
-      bottom?: string;
-      shoe?: string;
-    };
-    [key: string]: any; // Allow extensibility
-  };
+  daily_notification?: UserDailyNotificationSettings;
+  style_direction?: UserStyleDirection;
+  confidence_level?: UserConfidenceLevel;
+  display_state?: UserDisplayState;
 }
 
 export interface User {
   id: number | string;
   email: string;
+  role?: string;
   created_at: string;
   is_active: boolean;
+  gender?: string | null;
   is_first_login?: boolean;
-  user_metadata?: UserMetadata;
+  user_metadata?: UserMetadata | null;
 }
 
 export interface AuthTokens {
@@ -73,9 +81,22 @@ export interface RegisterResponse {
   user: User;
 }
 
+export interface ResetPreferencesResponse {
+  message: string;
+  user: User;
+}
+
+export interface ApiValidationDetail {
+  type?: string;
+  loc?: Array<string | number>;
+  msg?: string;
+  input?: unknown;
+}
+
 export interface ApiError {
   error: string;
   message: string;
+  detail?: ApiValidationDetail[];
   details?: string[];
 }
 

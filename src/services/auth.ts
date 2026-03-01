@@ -1,6 +1,12 @@
 import * as Keychain from 'react-native-keychain';
 import axios from 'axios';
-import { LoginRequest, RegisterRequest, AuthResponse, User } from '../types/auth'; // We need to define these types
+import {
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+  ResetPreferencesResponse,
+  User,
+} from '../types/auth'; // We need to define these types
 
 // Base URL for API
 // ANDROID: http://10.0.2.2:5001/api/v1
@@ -70,6 +76,16 @@ export const authService = {
       return response.data;
     } catch (error) {
        console.error('Update user error', error);
+      throw error;
+    }
+  },
+
+  resetPreferences: async (): Promise<User> => {
+    try {
+      const response = await api.post<ResetPreferencesResponse>('/me/reset-preferences');
+      return response.data.user;
+    } catch (error) {
+      console.error('Reset preferences error', error);
       throw error;
     }
   },

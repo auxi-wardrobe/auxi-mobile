@@ -158,6 +158,22 @@ Update profile information for the current authenticated user.
 
 **Header**: `Authorization: Bearer <access_token>`
 
+**Deep Merge Behavior**: The `user_metadata` field is **deep-merged** with the existing value — sending a partial update will only change the specified keys, preserving all others. Example: setting `style_direction` does not wipe `daily_notification`.
+
+**`user_metadata` Schema**:
+
+| Field                          | Type   | Allowed Values                                           | Default           |
+| ------------------------------ | ------ | -------------------------------------------------------- | ----------------- |
+| `daily_notification.enabled`   | bool   | `true` / `false`                                         | `true`            |
+| `daily_notification.time`      | string | `"HH:MM"` (e.g. `"06:15"`)                               | `"06:15"`         |
+| `daily_notification.period`    | string | `"AM"` / `"PM"`                                          | `"AM"`            |
+| `daily_notification.frequency` | string | `"weekdays"` / `"everydays"`                             | `"weekdays"`      |
+| `style_direction`              | string | `"stay_balanced"` / `"more_relaxed"` / `"more_polished"` | `"stay_balanced"` |
+| `confidence_level`             | string | `"conservative"` / `"balanced"` / `"bold"`               | `"balanced"`      |
+| `display_state`                | string | `"light"` / `"dark"`                                     | `"light"`         |
+
+Unknown keys in `user_metadata` are **rejected with 422**.
+
 **Request** (application/json):
 
 ```json
@@ -165,8 +181,13 @@ Update profile information for the current authenticated user.
   "is_first_login": false,
   "gender": "MASCULINE",
   "user_metadata": {
-    "onboarding_step": 2,
-    "preferences": "dark_mode"
+    "style_direction": "more_polished",
+    "daily_notification": {
+      "enabled": true,
+      "time": "07:30",
+      "period": "AM",
+      "frequency": "weekdays"
+    }
   }
 }
 ```
@@ -181,17 +202,65 @@ Update profile information for the current authenticated user.
   "is_first_login": false,
   "gender": "MASCULINE",
   "user_metadata": {
-    "onboarding_step": 2,
-    "preferences": "dark_mode"
+    "style_direction": "more_polished",
+    "daily_notification": {
+      "enabled": true,
+      "time": "07:30",
+      "period": "AM",
+      "frequency": "weekdays"
+    },
+    "confidence_level": "balanced"
   }
 }
 ```
 
 **Errors**:
 
-- `400 Bad Request` - Invalid input data
 - `401 Unauthorized` - Missing or invalid access token
+- `422 Unprocessable Entity` - Invalid enum value or unknown key in `user_metadata`
 - `500 Internal Server Error` - Update failed
+
+---
+
+### Reset User Preferences
+
+#### `POST /api/me/reset-preferences`
+
+Reset all user preferences to factory defaults. Clears `user_metadata`, sets `gender` to `null`, and sets `is_first_login` to `true`. **Does not** delete wardrobe items, body photos, chat history, or recommendation history. Also invalidates any active recommendation sessions so the next recommendation starts fresh.
+
+**Header**: `Authorization: Bearer <access_token>`
+
+**Request**: No body required.
+
+**Response** (200 OK):
+
+```json
+{
+  "message": "Preferences reset to defaults",
+  "user": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "email": "user@example.com",
+    "role": "user",
+    "is_first_login": true,
+    "gender": null,
+    "user_metadata": {
+      "daily_notification": {
+        "enabled": true,
+        "time": "06:15",
+        "period": "AM",
+        "frequency": "weekdays"
+      },
+      "style_direction": "stay_balanced",
+      "confidence_level": "balanced"
+    }
+  }
+}
+```
+
+**Errors**:
+
+- `401 Unauthorized` - Missing or invalid access token
+- `500 Internal Server Error` - DB write failed
 
 ### Logout
 
@@ -1147,7 +1216,7 @@ Remove a favorite.
 
 - **MASCULINE users**: See items with `"M"` tag (excludes W-only items)
 - **FEMININE users**: See items with `"W"` tag (excludes M-only items)
-- **UNISEX/null preference**: See all items (no filtering)
+- **UNISEX/null preference**: Means "no preference" and applies no filtering (not limited to `"U"`-tagged items)
 
 **Scoring Priority** (for sorting recommendations):
 
@@ -2502,10 +2571,14 @@ Start a new recommendation session and generate an initial outfit.
 
 **Request** (application/json):
 
+Location-aware mobile clients should send `weather.lat` and `weather.long` when the user grants device location permission. `weather.temp_c` remains supported as a direct fallback, and clients may send both for resilience.
+
 ```json
 {
   "weather": {
-    "temp_c": 22
+    "lat": 10.7769,
+    "long": 106.7009,
+    "temp_c": 30
   },
   "user": {
     "gender": "MASCULINE", // Optional if user has gender set in profile (profile takes precedence)
@@ -2514,12 +2587,18 @@ Start a new recommendation session and generate an initial outfit.
 }
 ```
 
+**Weather Request Modes**:
+
+- **Location mode**: Provide `weather.lat` + `weather.long`; the backend fetches current temperature from OpenWeather.
+- **Fallback mode**: Provide `weather.temp_c` when the user denies location permission.
+- **Mixed mode**: Provide both coordinates and `temp_c`; coordinates are attempted first, then the request temperature is used if the weather provider is unavailable.
+
 **Gender Filtering Behavior**:
 
 - The recommendation engine uses `gender_tags` for **strict filtering** (Safety Funnel)
 - **MASCULINE**: Only shows items with `"M"` tag (excludes W-only items like dresses)
 - **FEMININE**: Only shows items with `"W"` tag (excludes M-only items like structured blazers)
-- **UNISEX/null**: Shows all items (no filtering)
+- **UNISEX/null**: Means "no preference" and shows all items (no filtering, not `"U"`-only)
 - Items with `["M", "W", "U"]` (universal) appear for all preferences
 - See "Gender Tagging System" section for detailed scoring rules
 
@@ -2543,9 +2622,30 @@ Start a new recommendation session and generate an initial outfit.
     "fallback_flags": []
   },
   "session_id": "uuid-string",
-  "fallback_flags": []
+  "fallback_flags": [],
+  "resolved_weather": {
+    "temp_c": 29.4,
+    "lat": 10.7769,
+    "long": 106.7009,
+    "provider": "openweather",
+    "source": "openweather_live"
+  }
 }
 ```
+
+**Resolved Weather Fields**:
+
+- `temp_c`: The temperature actually used by the recommendation engine.
+- `lat`, `long`: Coordinates used to resolve weather when location was provided.
+- `provider`: `"openweather"` for live/cache responses, `"request"` when the request `temp_c` fallback is used.
+- `source`: `openweather_live` | `openweather_cache` | `openweather_stale_cache` | `request_temp_fallback`
+
+**Errors**:
+
+- `400 Bad Request` - Missing weather context, or invalid coordinate payload
+- `401 Unauthorized` - Missing or invalid access token
+- `404 Not Found` - No suitable items found for the given context
+- `503 Service Unavailable` - Weather service lookup failed for coordinate-based requests and no `temp_c` fallback was provided
 
 ### Next Variation (Try Another)
 
@@ -2977,7 +3077,8 @@ List and filter Common Items for the admin interface (JSON response).
       "Date",
       "Networking",
       "Travel"
-    ]
+    ],
+    "SEASONS": ["spring", "summer", "fall", "winter", "all_season"]
   }
 }
 ```
@@ -3010,6 +3111,7 @@ meta:warmth_level: <int> - Styling metadata: warmth (1-5)
 meta:versatility_score: <int> - Styling metadata: versatility (1-10)
 meta:base_weight: <int> - Styling metadata: base weight (1-5)
 meta:occasion: <json-array> - Controlled values only: Client Meeting | Internal Work | Casual Day | Date | Networking | Travel
+meta:season: <json-array> - Controlled values only: spring | summer | fall | winter | all_season
 meta:climate_fit: <string> - Styling metadata: HOT | MILD | COOL
 ```
 
@@ -3051,8 +3153,9 @@ meta:climate_fit: <string> - Styling metadata: HOT | MILD | COOL
 - Parses and persists all provided `attr:*` and `meta:*` fields
 - Admin metadata normalization rules:
   - `meta:visual_weight` is accepted for backward compatibility and stored as `meta:base_weight`
-  - Deprecated keys are ignored on write: `meta:layer_score`, `meta:mood`, `meta:season`
+  - Deprecated keys are ignored on write: `meta:layer_score`, `meta:mood`
   - `meta:occasion` is normalized to controlled values only
+  - `meta:season` is normalized to controlled values only (`autumn` -> `fall`, `all season` -> `all_season`)
 
 ---
 
@@ -3514,7 +3617,7 @@ Run the recommendation engine with a specific config for testing. Returns detail
 - `mock_context` (object, required):
   - `temp_c` (number, required): Temperature in Celsius
   - `occasion` (string, optional): Occasion context (default: "casual")
-  - `gender` (string, optional): Gender preference - MASCULINE, FEMININE, UNISEX
+  - `gender` (string, optional): Gender preference - MASCULINE, FEMININE, UNISEX (`UNISEX` means no preference / no filtering)
 - `config_override` (object, optional): Temporary tweaks merged into config
 - `variation_test` (object, optional): Enable variation testing (see below)
 

@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
+import { UserStyleDirection } from '../types/auth';
 import { AppStackParamList, GenderPreferenceValue } from '../types/navigation';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'StylePreference'>;
@@ -16,6 +17,12 @@ const STYLE_OPTIONS: Array<{ label: string; value: StylePreferenceValue }> = [
   { label: 'Classic fit', value: 'classic' },
   { label: 'Relaxed fit', value: 'relaxed' },
 ];
+
+const STYLE_DIRECTION_BY_PREFERENCE: Record<StylePreferenceValue, UserStyleDirection> = {
+  slim: 'more_polished',
+  classic: 'stay_balanced',
+  relaxed: 'more_relaxed',
+};
 
 const CONTENT_BY_GENDER: Record<GenderPreferenceValue, { title: string; subtitle: string }> = {
   womenswear: {
@@ -46,10 +53,7 @@ export const StylePreferenceScreen = () => {
     try {
       await completeOnboarding({
         user_metadata: {
-          preferences: {
-            gender: selectedGender,
-            style: [selectedStyle],
-          },
+          style_direction: STYLE_DIRECTION_BY_PREFERENCE[selectedStyle],
         },
       });
     } catch (error) {

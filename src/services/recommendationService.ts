@@ -17,7 +17,9 @@ export interface RecommendationResponse {
 
 export interface StartRecommendationParams {
   weather?: {
-    temp_c: number;
+    lat?: number;
+    long?: number;
+    temp_c?: number;
   };
   user?: {
     gender: string;
@@ -35,9 +37,8 @@ export const recommendationService = {
     try {
       // Default params if not provided
       const defaultParams = {
-        weather: { temp_c: 22 },
-        user: { gender: 'MASCULINE', occasion: 'work' },
-        ...params,
+        weather: params.weather || { temp_c: 22 },
+        user: { gender: 'MASCULINE', occasion: 'work', ...(params.user || {}) },
       };
       
       const response = await apiClient.post('/recommendation/start', defaultParams);

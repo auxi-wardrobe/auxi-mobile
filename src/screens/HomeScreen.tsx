@@ -1,15 +1,21 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { Header } from '../components/layout/Header';
 import { Sidebar } from '../components/layout/Sidebar';
@@ -25,20 +31,38 @@ const { width: screenWidth } = Dimensions.get('window');
 const CARD_GAP = 8;
 const CARD_WIDTH = Math.floor((screenWidth - 44 - CARD_GAP * 2) / 3);
 
+type OutfitSheet = {
+  items: Item[];
+  outfitHash: string;
+};
+
+const OPTION_SHEET_HEIGHT = 617;
+const OPTION_SHEET_GAP = 4;
+const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + OPTION_SHEET_GAP;
+const INITIAL_BUFFER_SHEETS = 1;
+const STEADY_STATE_BUFFER_SHEETS = 2;
+
 export const HomeScreen = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [items, setItems] = useState<Item[]>([]);
+  const [isFavourite, setIsFavourite] = useState(false);
+  const [primaryItems, setPrimaryItems] = useState<Item[]>([]);
+  const [secondaryItems, setSecondaryItems] = useState<Item[]>([]);
   const [recommendationSessionId, setRecommendationSessionId] = useState<string | null>(null);
   const [currentOutfitHash, setCurrentOutfitHash] = useState<string | null>(null);
+  const [hasLoadedMoreOptions, setHasLoadedMoreOptions] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [visibleSheetIndex, setVisibleSheetIndex] = useState(0);
+  const requestedNextFromHashesRef = useRef(new Set<string>());
 
   const { mutate: startRecommendation, isPending: isStartPending } = useMutation({
     mutationFn: recommendationService.startRecommendation,
     onSuccess: (data) => {
       if (data?.outfit) {
-        setItems(data.outfit.items || []);
+        setPrimaryItems(data.outfit.items || []);
+        setSecondaryItems([]);
         setRecommendationSessionId(data.session_id);
         setCurrentOutfitHash(data.outfit.outfit_hash);
+        setHasLoadedMoreOptions(false);
       }
     },
     onError: (error) => {
@@ -50,9 +74,7 @@ export const HomeScreen = () => {
     mutationFn: recommendationService.nextRecommendation,
     onSuccess: (data) => {
       if (data?.outfit) {
-        setItems(data.outfit.items || []);
-        if (data.session_id) setRecommendationSessionId(data.session_id);
-        setCurrentOutfitHash(data.outfit.outfit_hash);
+        setSecondaryItems(data.outfit.items || []);
       }
     },
     onError: (error) => {
@@ -61,22 +83,78 @@ export const HomeScreen = () => {
   });
 
   useEffect(() => {
-    startRecommendation({});
+    const fetchLocationAndStart = async () => {
+      let hasPermission = false;
+
+      if (Platform.OS === 'ios') {
+        const auth = await Geolocation.requestAuthorization('whenInUse');
+        hasPermission = auth === 'granted';
+      } else if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        );
+        hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
+      }
+
+      if (hasPermission) {
+        Geolocation.getCurrentPosition(
+          (position) => {
+            startRecommendation({
+              weather: {
+                lat: position.coords.latitude,
+                long: position.coords.longitude,
+                temp_c: 22,
+              },
+            });
+          },
+          (error) => {
+            console.warn('Geolocation error:', error.code, error.message);
+            startRecommendation({ weather: { temp_c: 22 } });
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
+        );
+      } else {
+        startRecommendation({ weather: { temp_c: 22 } });
+      }
+    };
+
+    fetchLocationAndStart();
   }, [startRecommendation]);
 
-  const loading = isStartPending || isNextPending;
-
-  const displayItems = useMemo(() => items.slice(0, 3), [items]);
-
-  const handleTryAnother = () => {
-    if (!recommendationSessionId || !currentOutfitHash) return;
+  useEffect(() => {
+    if (!recommendationSessionId || !currentOutfitHash || hasLoadedMoreOptions) return;
+    setHasLoadedMoreOptions(true);
     nextRecommendation({
       session_id: recommendationSessionId,
-      current_outfit_hash: currentOutfitHash,
+      current_outfit_hash: lastOutfitHash,
     });
-  };
+  }, [currentOutfitHash, hasLoadedMoreOptions, nextRecommendation, recommendationSessionId]);
 
-  const openItemDetail = (item: Item) => setSelectedItem(item);
+  const loading = isStartPending && primaryItems.length === 0;
+
+  const primaryGrid = useMemo(() => buildGrid(primaryItems), [primaryItems]);
+  const secondaryGrid = useMemo(() => {
+    if (secondaryItems.length > 0) return buildGrid(secondaryItems);
+    return buildGrid(primaryItems);
+  }, [primaryItems, secondaryItems]);
+
+  const tertiaryGrid = useMemo(() => {
+    if (secondaryItems.length > 0) return buildGrid(secondaryItems);
+    return buildGrid(primaryItems);
+  }, [primaryItems, secondaryItems]);
+
+  const optionSets = useMemo(
+    () => [primaryGrid, secondaryGrid, tertiaryGrid],
+    [primaryGrid, secondaryGrid, tertiaryGrid],
+  );
+
+  const handleLeadingAction = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    setIsSidebarOpen(true);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -88,38 +166,24 @@ export const HomeScreen = () => {
         <Text style={styles.weatherText}>It's 24°C and partly cloudy today</Text>
         <Text style={styles.weatherText}>Here is a outfit option.</Text>
 
-        <Text style={styles.optionLabel}>✦ Option 01</Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {loading ? (
           <View style={styles.loadingBlock}>
-            <ActivityIndicator size="large" color={theme.colors.figmaAction} />
+            <ActivityIndicator size="large" color={theme.colors.white} />
           </View>
         ) : (
-          <View style={styles.cardsRow}>
-            {displayItems.map((item) => {
-              const imageUrl = getImageUrl(item.image_url);
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.card}
-                  activeOpacity={0.86}
-                  onPress={() => openItemDetail(item)}
-                >
-                  {imageUrl ? (
-                    <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="contain" />
-                  ) : (
-                    <View style={styles.cardFallback} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          optionSets.map((optionItems, index) => (
+            <OptionSheet
+              key={`option-${index}`}
+              items={optionItems}
+              onItemPress={(item) => setSelectedItem(item)}
+              onSeeThisOnMe={() => navigation.navigate('Body')}
+            />
+          ))
         )}
-
-        <Text style={styles.summary}>Comfortable and easy to match.</Text>
-
-        <Text style={styles.note}>All items from starter wardrobe.</Text>
-        <Text style={styles.note}>You can replace it with your own clothes anytime.</Text>
       </ScrollView>
 
       <View style={styles.bottomDock}>
@@ -154,6 +218,70 @@ export const HomeScreen = () => {
   );
 };
 
+const OptionSheet = ({
+  items,
+  onItemPress,
+  onSeeThisOnMe,
+}: {
+  items: Array<Item | null>;
+  onItemPress: (item: Item) => void;
+  onSeeThisOnMe: () => void;
+}) => {
+  const rows = [items.slice(0, 2), items.slice(2, 4)];
+
+  return (
+    <View style={styles.optionSheet}>
+      <View style={styles.gridWrap}>
+        {rows.map((row, rowIndex) => (
+          <View key={`row-${rowIndex}`} style={styles.cardRow}>
+            {row.map((item, itemIndex) => (
+              <View key={`card-${rowIndex}-${itemIndex}`} style={styles.cardShell}>
+                {item ? (
+                  <TouchableOpacity
+                    activeOpacity={0.86}
+                    style={styles.card}
+                    onPress={() => onItemPress(item)}
+                  >
+                    <GarmentPreview item={item} />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.card, styles.placeholderCard]} />
+                )}
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+
+      <PillButton
+        title="See this on me"
+        variant="text"
+        onPress={onSeeThisOnMe}
+        style={styles.sheetCta}
+        textStyle={styles.sheetCtaText}
+        trailing={<Text style={styles.sheetCtaSparkle}>✦</Text>}
+      />
+    </View>
+  );
+};
+
+const GarmentPreview = ({ item }: { item: Item }) => {
+  const imageUrl = getImageUrl(item.image_url);
+
+  return (
+    <>
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="contain" />
+      ) : (
+        <View style={styles.cardFallback} />
+      )}
+      <View style={styles.cardTag}>
+        <Text style={styles.cardTagText}>common items</Text>
+      </View>
+    </>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -171,15 +299,48 @@ const styles = StyleSheet.create({
   optionLabel: {
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaAction,
-    marginTop: 26,
-    marginBottom: 10,
+    fontSize: 34,
+    lineHeight: 34,
+    marginTop: -2,
+  },
+  headerCenter: {
+    width: 45,
+    height: 45,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSpacer: {
+    width: 45,
+    height: 45,
+  },
+  scrollContent: {
+    paddingTop: 4,
+    gap: 4,
   },
   loadingBlock: {
-    height: 140,
+    flex: 1,
+    minHeight: 320,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardsRow: {
+  optionSheet: {
+    backgroundColor: theme.colors.white,
+    borderRadius: 16,
+    height: 617,
+    paddingTop: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 24,
+    justifyContent: 'space-between',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 6,
+  },
+  gridWrap: {
+    gap: 4,
+  },
+  cardRow: {
     flexDirection: 'row',
     gap: CARD_GAP,
   },
@@ -191,6 +352,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaSurface,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  placeholderCard: {
+    backgroundColor: '#ECECF0',
   },
   cardImage: {
     width: '92%',
@@ -260,15 +424,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 20,
   },
-  inputPlaceholder: {
-    flex: 1,
-    ...theme.typography.aliases.manropeBody,
-    color: '#B8B8BC',
+  sheetCtaSparkle: {
+    color: '#7A2CFF',
+    fontSize: 14,
+    lineHeight: 18,
+    marginLeft: 6,
   },
-  sendButton: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+  heartActive: {
+    opacity: 0.72,
   },
 });
