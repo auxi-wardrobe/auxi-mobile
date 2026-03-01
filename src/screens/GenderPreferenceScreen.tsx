@@ -2,16 +2,36 @@ import React, { useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  OnboardingSelectionCard,
+  OnboardingSelectionFigure,
+} from '../components/primitives/OnboardingSelectionCard';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
 import { AppStackParamList, GenderPreferenceValue } from '../types/navigation';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'GenderPreference'>;
 
-const OPTIONS: Array<{ label: string; value: GenderPreferenceValue }> = [
-  { label: 'Womenswear', value: 'womenswear' },
-  { label: 'Menswear', value: 'menswear' },
-  { label: 'Mixed', value: 'mixed' },
+const OPTIONS: Array<{
+  label: string;
+  value: GenderPreferenceValue;
+  image: number;
+}> = [
+  {
+    label: 'Womenswear',
+    value: 'womenswear',
+    image: require('../assets/images/women_slim_fit.png'),
+  },
+  {
+    label: 'Menswear',
+    value: 'menswear',
+    image: require('../assets/images/men_classic_fit.png'),
+  },
+  {
+    label: 'Mixed',
+    value: 'mixed',
+    image: require('../assets/images/men_relaxed_fit.png'),
+  },
 ];
 
 export const GenderPreferenceScreen = () => {
@@ -27,28 +47,67 @@ export const GenderPreferenceScreen = () => {
         />
 
         <View style={styles.mainBlock}>
-          <View style={styles.textBlock}>
-            <Text style={styles.title}>Start with what you usually wear</Text>
-            <Text style={styles.subtitle}>You can change this later.</Text>
-          </View>
+          <View style={styles.selectionContent}>
+            <View style={styles.textBlock}>
+              <Text style={styles.title}>Start with what you usually wear</Text>
+              <Text style={styles.subtitle}>You can change this later.</Text>
+            </View>
 
-          <View style={styles.optionList}>
-            {OPTIONS.map((option) => {
-              const selected = selectedPreference === option.value;
-              return (
-                <TouchableOpacity
-                  key={option.value}
-                  activeOpacity={0.82}
-                  onPress={() => setSelectedPreference(option.value)}
-                  style={[styles.optionItem, selected && styles.optionItemSelected]}
-                >
-                  <Text style={styles.optionText}>{option.label}</Text>
-                  <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
-                    {selected ? <View style={styles.radioInner} /> : null}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+            <View style={styles.optionGrid}>
+              <View style={styles.optionRow}>
+                {OPTIONS.slice(0, 2).map((option) => {
+                  const selected = selectedPreference === option.value;
+                  const dimmed = !!selectedPreference && !selected;
+
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      activeOpacity={0.9}
+                      onPress={() => setSelectedPreference(option.value)}
+                      style={styles.topOptionPressable}
+                    >
+                      <OnboardingSelectionCard
+                        label={option.label}
+                        selected={selected}
+                        dimmed={dimmed}
+                      >
+                        <OnboardingSelectionFigure
+                          source={option.image}
+                          imageStyle={styles.optionFigureImage}
+                        />
+                      </OnboardingSelectionCard>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={styles.optionRow}>
+                {OPTIONS.slice(2).map((option) => {
+                  const selected = selectedPreference === option.value;
+                  const dimmed = !!selectedPreference && !selected;
+
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      activeOpacity={0.9}
+                      onPress={() => setSelectedPreference(option.value)}
+                      style={styles.bottomOptionPressable}
+                    >
+                      <OnboardingSelectionCard
+                        label={option.label}
+                        selected={selected}
+                        dimmed={dimmed}
+                      >
+                        <OnboardingSelectionFigure
+                          source={option.image}
+                          imageStyle={styles.optionFigureImage}
+                        />
+                      </OnboardingSelectionCard>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
           </View>
 
           <PillButton
@@ -56,6 +115,7 @@ export const GenderPreferenceScreen = () => {
             variant="filled"
             disabled={!selectedPreference}
             onPress={() => navigation.navigate('StylePreference', { gender: selectedPreference || undefined })}
+            style={styles.ctaButton}
           />
         </View>
       </View>
@@ -82,11 +142,15 @@ const styles = StyleSheet.create({
   },
   mainBlock: {
     flex: 1,
-    justifyContent: 'flex-end',
-    gap: 28,
+    paddingTop: 36,
+    paddingBottom: 12,
+    justifyContent: 'space-between',
+  },
+  selectionContent: {
+    gap: 32,
   },
   textBlock: {
-    gap: 8,
+    gap: 4,
   },
   title: {
     ...theme.typography.aliases.playfairDisplaySection,
@@ -98,43 +162,24 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaText,
     textAlign: 'center',
   },
-  optionList: {
+  optionGrid: {
     gap: 8,
   },
-  optionItem: {
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1.2,
-    borderColor: theme.colors.figmaDivider,
-    backgroundColor: theme.colors.figmaSurface,
-    paddingHorizontal: 20,
+  optionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 4,
   },
-  optionItemSelected: {
-    borderColor: theme.colors.figmaAction,
+  topOptionPressable: {
+    flex: 1,
   },
-  optionText: {
-    ...theme.typography.aliases.manropeBody,
-    color: theme.colors.figmaAction,
+  bottomOptionPressable: {
+    width: '49.45%',
   },
-  radioOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: theme.colors.figmaDivider,
-    justifyContent: 'center',
-    alignItems: 'center',
+  optionFigureImage: {
+    transform: [{ scale: 1.36 }, { translateY: 26 }],
   },
-  radioOuterSelected: {
-    borderColor: theme.colors.figmaAction,
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.colors.figmaAction,
+  ctaButton: {
+    width: 327,
+    alignSelf: 'center',
   },
 });

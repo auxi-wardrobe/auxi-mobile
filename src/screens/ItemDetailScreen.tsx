@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Toast from 'react-native-toast-message';
 import {
   BottomSheetSurface,
   DividerRow,
@@ -20,147 +21,547 @@ import {
   TopIconButton,
 } from '../components/primitives/FigmaPrimitives';
 import { Icons } from '../assets/icons';
-import { useAuth } from '../context/AuthContext';
-import { itemService } from '../services/itemService';
+import {
+  getItemFavoriteState,
+  getItemFitLabel,
+  getItemStyleTags,
+  getItemUsageFrequency,
+  UsageFrequency,
+  WardrobeAttributeUpdate,
+  WardrobeItem,
+  wardrobeService,
+} from '../services/wardrobeService';
 import { theme } from '../theme/theme';
 import { AppStackParamList } from '../types/navigation';
-import { CATEGORIES, COLORS, Item, STYLES } from '../types/item';
 import { getImageUrl } from '../utils/url';
 
 type ScreenNavigation = NativeStackNavigationProp<AppStackParamList, 'ItemDetail'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'ItemDetail'>;
+type EditableField = 'category' | 'color' | 'fit' | 'style';
 
-const COLOR_SWATCHES: Record<string, string> = {
-  black: '#272A32',
-  blue: '#8EA1BE',
-  green: '#7DAA8C',
-  grey: '#8F939B',
-  gray: '#8F939B',
-  red: '#CC4C3E',
-  white: '#F5F7FA',
-  yellow: '#D9C26A',
-  pink: '#DAA2B1',
-  purple: '#A493BE',
-  orange: '#C68A5A',
+const CATEGORY_OPTIONS = ['Top', 'Bottom', 'Shoes', 'One-piece', 'Outerwear', 'Accessory'];
+const FIT_OPTIONS = ['Slim', 'Regular', 'Oversize'];
+const STYLE_OPTIONS = ['Casual', 'Business Casual', 'Formal'];
+const COLOR_OPTIONS = [
+  { label: 'Black', hex: '#272A32' },
+  { label: 'Blue', hex: '#8EA1BE' },
+  { label: 'Green', hex: '#7DAA8C' },
+  { label: 'Grey', hex: '#8F939B' },
+  { label: 'Red', hex: '#CC4C3E' },
+  { label: 'White', hex: '#F5F7FA' },
+  { label: 'Yellow', hex: '#D9C26A' },
+  { label: 'Pink', hex: '#DAA2B1' },
+  { label: 'Purple', hex: '#A493BE' },
+  { label: 'Orange', hex: '#C68A5A' },
+];
+const STYLE_TAG_FAVORITE = 'favorite';
+const STYLE_TAG_LESS_USED = 'less-used';
+const FIT_TAG_PREFIX = 'fit:';
+
+const toTitleCase = (value: string): string =>
+  value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+
+const normalizeCategoryLabel = (category?: string): string => {
+  const normalized = category?.trim().toLowerCase() || '';
+
+  switch (normalized) {
+    case 'top':
+      return 'Top';
+    case 'bottom':
+      return 'Bottom';
+    case 'shoes':
+      return 'Shoes';
+    case 'one_piece':
+    case 'one-piece':
+    case 'dress':
+      return 'One-piece';
+    case 'outerwear':
+      return 'Outerwear';
+    case 'accessory':
+    case 'ac':
+      return 'Accessory';
+    default:
+      return normalized ? toTitleCase(normalized) : 'Top';
+  }
 };
 
-const getSwatchColor = (color: string | undefined): string => {
-  if (!color) return '#8EA1BE';
-  return COLOR_SWATCHES[color.toLowerCase()] || color;
+const toApiCategory = (label: string): string => {
+  const normalized = label.trim().toLowerCase();
+
+  switch (normalized) {
+    case 'top':
+      return 'top';
+    case 'bottom':
+      return 'bottom';
+    case 'shoes':
+      return 'shoes';
+    case 'one-piece':
+      return 'one_piece';
+    case 'outerwear':
+      return 'outerwear';
+    case 'accessory':
+      return 'accessory';
+    default:
+      return normalized.replace(/\s+/g, '_');
+  }
+};
+
+const normalizeFormalityLabel = (formalityLevel?: string): string => {
+  if (!formalityLevel) {
+    return 'Casual';
+  }
+
+  if (formalityLevel.toLowerCase() === 'business_casual') {
+    return 'Business Casual';
+  }
+
+  return toTitleCase(formalityLevel.toLowerCase());
+};
+
+const toApiFormality = (label: string): string => label.trim().toLowerCase().replace(/\s+/g, '_');
+
+const findColorHex = (label: string): string =>
+  COLOR_OPTIONS.find((option) => option.label === label)?.hex || '#8EA1BE';
+
+const normalizeColorLabel = (item: WardrobeItem): string => {
+  if (item.dominant_color && typeof item.dominant_color === 'string') {
+    return toTitleCase(item.dominant_color.toLowerCase());
+  }
+
+  if (Array.isArray(item.colors) && item.colors.length > 0) {
+    return toTitleCase(String(item.colors[0]).toLowerCase());
+  }
+
+  if (typeof item.color_hex === 'string' && item.color_hex) {
+    const matchedColor = COLOR_OPTIONS.find(
+      (option) => option.hex.toLowerCase() === item.color_hex?.toLowerCase(),
+    );
+    return matchedColor?.label || 'Custom';
+  }
+
+  return 'Blue';
+};
+
+const normalizeColorHex = (item: WardrobeItem, colorLabel: string): string => {
+  if (colorLabel === 'Custom' && typeof item.color_hex === 'string' && item.color_hex) {
+    return item.color_hex;
+  }
+
+  return findColorHex(colorLabel);
+};
+
+const replaceTag = (tags: string[], tagToReplace: string, enabled: boolean): string[] => {
+  const nextTags = tags.filter((tag) => tag !== tagToReplace);
+
+  if (enabled) {
+    nextTags.push(tagToReplace);
+  }
+
+  return nextTags;
+};
+
+const replaceFitTag = (tags: string[], fitLabel: string): string[] => {
+  const nextTags = tags.filter((tag) => !tag.startsWith(FIT_TAG_PREFIX));
+  nextTags.push(`${FIT_TAG_PREFIX}${fitLabel.trim().toLowerCase()}`);
+  return nextTags;
+};
+
+const areTagsEqual = (left: string[], right: string[]): boolean => {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((tag, index) => tag === right[index]);
+};
+
+const getFriendlyError = (error: any, fallback: string): string => {
+  switch (error?.response?.status) {
+    case 403:
+      return "You don't have permission to modify this item.";
+    case 404:
+      return 'Item not found. It may have been removed already.';
+    case 429:
+      return 'Too many requests. Please wait a moment and try again.';
+    default:
+      return fallback;
+  }
 };
 
 export const ItemDetailScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const route = useRoute<ScreenRoute>();
-  const { user } = useAuth();
   const { itemId } = route.params;
-  const currentUserId = user?.id !== undefined && user?.id !== null ? String(user.id) : null;
 
-  const [item, setItem] = useState<Item | null>(null);
+  const [item, setItem] = useState<WardrobeItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [pickerField, setPickerField] = useState<EditableField | null>(null);
+  const [draftCategory, setDraftCategory] = useState('Top');
+  const [draftColor, setDraftColor] = useState('Blue');
+  const [draftFit, setDraftFit] = useState('Regular');
+  const [draftStyle, setDraftStyle] = useState('Casual');
 
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editingField, setEditingField] = useState<keyof Item | null>(null);
-  const [editOptions, setEditOptions] = useState<string[]>([]);
+  const syncDraftsFromItem = (nextItem: WardrobeItem) => {
+    setDraftCategory(normalizeCategoryLabel(nextItem.category));
+    setDraftColor(normalizeColorLabel(nextItem));
+    setDraftFit(getItemFitLabel(nextItem));
+    setDraftStyle(normalizeFormalityLabel(nextItem.formality_level as string | undefined));
+  };
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadItem = async () => {
       try {
         setLoading(true);
-        const data = await itemService.getItem(itemId);
+        const data = await wardrobeService.getWardrobeItem(itemId);
+
         if (!data) {
-          Alert.alert('Error', 'Item not found');
+          Toast.show({
+            type: 'error',
+            text1: 'Item not found',
+            position: 'bottom',
+          });
           navigation.goBack();
           return;
         }
-        const loadedItem = data as Item;
-        const isOwner = !!currentUserId && !!loadedItem.userId && String(loadedItem.userId) === currentUserId;
-        if (!loadedItem.isSystem && !isOwner) {
-          Alert.alert('Access denied', 'You can only access your own wardrobe items.');
-          navigation.goBack();
-          return;
+
+        if (!cancelled) {
+          setItem(data);
+          syncDraftsFromItem(data);
         }
-        setItem(loadedItem);
       } catch (error) {
-        console.error(error);
-        Alert.alert('Error', 'Failed to load item');
+        console.error('Failed to load wardrobe item', error);
+
+        if (!cancelled) {
+          Toast.show({
+            type: 'error',
+            text1: 'Unable to load item',
+            text2: 'Please try again in a moment.',
+            position: 'bottom',
+          });
+          navigation.goBack();
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadItem();
-  }, [itemId, navigation, currentUserId]);
 
-  const imageUrl = useMemo(() => {
-    if (!item) return undefined;
-    const legacyImageUrl = (item as Item & { imageUrl?: string }).imageUrl;
-    return getImageUrl(item.image_url) || getImageUrl(legacyImageUrl) || legacyImageUrl;
-  }, [item]);
+    return () => {
+      cancelled = true;
+    };
+  }, [itemId, navigation]);
 
-  const openEditModal = (field: keyof Item, options: string[]) => {
-    if (item?.isSystem) return;
-    setEditingField(field);
-    setEditOptions(options);
-    setEditModalVisible(true);
+  const imageUrl = useMemo(() => getImageUrl(item?.image_url), [item]);
+
+  const isFavorited = getItemFavoriteState(item);
+  const usageFrequency = getItemUsageFrequency(item);
+  const isCommonSystemItem = item?.is_common_item === true;
+
+  const getPickerOptions = (field: EditableField): string[] => {
+    switch (field) {
+      case 'category':
+        return CATEGORY_OPTIONS;
+      case 'color':
+        return COLOR_OPTIONS.map((option) => option.label);
+      case 'fit':
+        return FIT_OPTIONS;
+      case 'style':
+        return STYLE_OPTIONS;
+      default:
+        return [];
+    }
   };
 
-  const openEditMenu = () => {
-    if (item?.isSystem) return;
-    Alert.alert('Edit item', 'Choose what to update', [
-      { text: 'Type', onPress: () => openEditModal('category', CATEGORIES) },
-      { text: 'Color', onPress: () => openEditModal('color', COLORS) },
-      { text: 'Style', onPress: () => openEditModal('style', STYLES) },
-      { text: 'Cancel', style: 'cancel' },
+  const handleSelectOption = (option: string) => {
+    if (!pickerField) {
+      return;
+    }
+
+    switch (pickerField) {
+      case 'category':
+        setDraftCategory(option);
+        break;
+      case 'color':
+        setDraftColor(option);
+        break;
+      case 'fit':
+        setDraftFit(option);
+        break;
+      case 'style':
+        setDraftStyle(option);
+        break;
+      default:
+        break;
+    }
+
+    setPickerField(null);
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!item || saving) {
+      return;
+    }
+
+    const nextFavorited = !isFavorited;
+    const previousItem = item;
+    const nextTags = replaceTag(getItemStyleTags(item), STYLE_TAG_FAVORITE, nextFavorited);
+
+    setItem({
+      ...item,
+      is_favorited: nextFavorited,
+      style_tags: nextTags,
+    });
+
+    try {
+      const updatedItem = await wardrobeService.toggleFavorite(item.id, nextFavorited);
+      setItem((currentItem) =>
+        currentItem
+          ? {
+              ...currentItem,
+              ...updatedItem,
+              is_favorited: nextFavorited,
+              style_tags: Array.isArray(updatedItem.style_tags) ? updatedItem.style_tags : nextTags,
+            }
+          : currentItem,
+      );
+    } catch (error) {
+      console.error('Failed to toggle favorite', error);
+      setItem(previousItem);
+      Toast.show({
+        type: 'error',
+        text1: 'Favorite update failed',
+        text2: getFriendlyError(error, 'We could not update this item right now.'),
+        position: 'bottom',
+      });
+    }
+  };
+
+  const handleToggleUsageFrequency = async () => {
+    if (!item || saving) {
+      return;
+    }
+
+    const nextUsageFrequency: UsageFrequency =
+      usageFrequency === 'LESS_USED' ? 'NORMAL' : 'LESS_USED';
+    const previousItem = item;
+    const nextTags = replaceTag(
+      getItemStyleTags(item),
+      STYLE_TAG_LESS_USED,
+      nextUsageFrequency === 'LESS_USED',
+    );
+
+    setItem({
+      ...item,
+      usage_frequency: nextUsageFrequency,
+      style_tags: nextTags,
+    });
+
+    try {
+      const updatedItem = await wardrobeService.updateUsageFrequency(item.id, nextUsageFrequency);
+      setItem((currentItem) =>
+        currentItem
+          ? {
+              ...currentItem,
+              ...updatedItem,
+              usage_frequency: nextUsageFrequency,
+              style_tags: Array.isArray(updatedItem.style_tags) ? updatedItem.style_tags : nextTags,
+            }
+          : currentItem,
+      );
+    } catch (error) {
+      console.error('Failed to update usage frequency', error);
+      setItem(previousItem);
+      Toast.show({
+        type: 'error',
+        text1: 'Usage update failed',
+        text2: getFriendlyError(error, 'We could not update this item right now.'),
+        position: 'bottom',
+      });
+    }
+  };
+
+  const handleDelete = () => {
+    if (!item) {
+      return;
+    }
+
+    if (isCommonSystemItem) {
+      Toast.show({
+        type: 'error',
+        text1: 'System items cannot be deleted',
+        position: 'bottom',
+      });
+      return;
+    }
+
+    Alert.alert('Delete item?', 'This action cannot be undone.', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setSaving(true);
+            await wardrobeService.deleteWardrobeItem(item.id);
+            Toast.show({
+              type: 'success',
+              text1: 'Item deleted',
+              position: 'bottom',
+            });
+            navigation.goBack();
+          } catch (error) {
+            console.error('Failed to delete item', error);
+            Toast.show({
+              type: 'error',
+              text1: 'Delete failed',
+              text2: getFriendlyError(error, 'We could not delete this item.'),
+              position: 'bottom',
+            });
+            setSaving(false);
+          }
+        },
+      },
     ]);
   };
 
-  const handleSelectOption = async (option: string) => {
-    if (!item || !editingField) return;
+  const handleCancelEditing = () => {
+    if (!item) {
+      setIsEditing(false);
+      return;
+    }
+
+    syncDraftsFromItem(item);
+    setPickerField(null);
+    setIsEditing(false);
+  };
+
+  const handleSaveEdits = async () => {
+    if (!item || saving) {
+      return;
+    }
+
+    const currentColor = normalizeColorLabel(item);
+    const currentStyle = normalizeFormalityLabel(item.formality_level as string | undefined);
+    const currentCategory = normalizeCategoryLabel(item.category);
+    const currentFitTags = getItemStyleTags(item);
+    const nextFitTags = replaceFitTag(currentFitTags, draftFit);
+
+    const payload: WardrobeAttributeUpdate = {};
+
+    if (draftCategory !== currentCategory) {
+      payload.category = toApiCategory(draftCategory);
+    }
+
+    if (draftColor !== currentColor) {
+      payload.dominant_color = draftColor.toLowerCase();
+      payload.colors = [draftColor.toLowerCase()];
+      payload.color_hex = findColorHex(draftColor);
+    }
+
+    if (draftStyle !== currentStyle) {
+      payload.formality_level = toApiFormality(draftStyle);
+    }
+
+    if (!areTagsEqual(nextFitTags, currentFitTags)) {
+      payload.style_tags = nextFitTags;
+    }
+
+    if (!Object.keys(payload).length) {
+      setIsEditing(false);
+      return;
+    }
 
     try {
       setSaving(true);
-      const updatedItem = await itemService.updateItem(item.id, { [editingField]: option });
-      setItem(updatedItem as Item);
-      setEditModalVisible(false);
+      const updatedItem = await wardrobeService.updateWardrobeItemAttributes(item.id, payload);
+
+      const mergedItem: WardrobeItem = {
+        ...item,
+        ...updatedItem,
+      };
+
+      if (payload.category) {
+        mergedItem.category = payload.category;
+      }
+      if (payload.dominant_color) {
+        mergedItem.dominant_color = payload.dominant_color;
+      }
+      if (payload.colors) {
+        mergedItem.colors = payload.colors;
+      }
+      if (payload.color_hex) {
+        mergedItem.color_hex = payload.color_hex;
+      }
+      if (payload.formality_level) {
+        mergedItem.formality_level = payload.formality_level;
+      }
+      if (payload.style_tags) {
+        mergedItem.style_tags = payload.style_tags;
+      }
+
+      setItem(mergedItem);
+      syncDraftsFromItem(mergedItem);
+      setIsEditing(false);
+
+      Toast.show({
+        type: 'success',
+        text1: 'Item updated',
+        position: 'bottom',
+      });
     } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Failed to update item');
+      console.error('Failed to save item updates', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Save failed',
+        text2: getFriendlyError(error, 'We could not save your changes.'),
+        position: 'bottom',
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = () => {
-    if (!item) return;
-    const isOwner = !!currentUserId && !!item.userId && String(item.userId) === currentUserId;
-    if (!item.isSystem && !isOwner) {
-      Alert.alert('Access denied', 'You can only modify your own wardrobe items.');
-      return;
-    }
+  const renderDetailRow = (
+    label: string,
+    value: string,
+    field: EditableField,
+    hideDivider?: boolean,
+  ) => {
+    const canEdit = isEditing && !isCommonSystemItem;
+    const showColor = field === 'color';
+    const colorHex = showColor && item ? normalizeColorHex(item, draftColor) : null;
 
-    Alert.alert(
-      item.isSystem ? 'Remove from Wardrobe?' : 'Delete Item?',
-      item.isSystem ? 'This removes the item from your wardrobe.' : 'This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: item.isSystem ? 'Remove' : 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await itemService.deleteItem(item.id);
-              navigation.goBack();
-            } catch (error) {
-              console.error(error);
-              Alert.alert('Error', 'Failed to delete item');
-              setLoading(false);
-            }
-          },
-        },
-      ],
+    return (
+      <TouchableOpacity
+        activeOpacity={0.85}
+        disabled={!canEdit}
+        onPress={() => setPickerField(field)}
+      >
+        <DividerRow
+          label={label}
+          hideDivider={hideDivider}
+          rightNode={(
+            <View style={styles.rowRight}>
+              {showColor && colorHex ? (
+                <View style={[styles.colorDot, { backgroundColor: colorHex }]} />
+              ) : null}
+              <Text style={styles.rowValue}>{value}</Text>
+              {canEdit ? <Text style={styles.rowChevron}>{">"}</Text> : null}
+            </View>
+          )}
+        />
+      </TouchableOpacity>
     );
   };
 
@@ -172,12 +573,9 @@ export const ItemDetailScreen = () => {
     );
   }
 
-  if (!item) return null;
-
-  const typeValue = item.category === 'Outerwear' ? 'Outer' : item.category;
-  const fitValue = 'Regular';
-  const styleValue = item.style || 'Casual';
-  const colorValue = item.color || 'Blue';
+  if (!item) {
+    return null;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -185,10 +583,17 @@ export const ItemDetailScreen = () => {
         <View style={styles.topBar}>
           <TopIconButton
             onPress={() => navigation.goBack()}
-            icon={<Text style={styles.backGlyph}>‹</Text>}
+            icon={<Text style={styles.backGlyph}>{"<"}</Text>}
           />
 
-          <TopIconButton icon={<Icons.Heart width={22} height={22} />} />
+          <TopIconButton
+            onPress={() => {
+              handleToggleFavorite();
+            }}
+            disabled={saving}
+            style={isFavorited ? styles.heartButtonActive : undefined}
+            icon={<Icons.Heart width={22} height={22} />}
+          />
         </View>
 
         <View style={styles.imageWrap}>
@@ -199,73 +604,160 @@ export const ItemDetailScreen = () => {
               <Text style={styles.imageFallbackText}>Image unavailable</Text>
             </View>
           )}
+
+          {isCommonSystemItem ? (
+            <View style={styles.imageBadge}>
+              <Text style={styles.imageBadgeText}>common items</Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
       <BottomSheetSurface style={styles.sheet}>
         <View style={styles.details}>
-          <DividerRow label="Type" value={typeValue} />
-          <DividerRow
-            label="Color"
-            rightNode={<View style={[styles.colorDot, { backgroundColor: getSwatchColor(colorValue) }]} />}
-          />
-          <DividerRow label="Fit" value={fitValue} />
-          <DividerRow label="Style" value={styleValue} hideDivider />
+          {renderDetailRow('Type', draftCategory, 'category')}
+          {renderDetailRow('Color', draftColor, 'color')}
+          {renderDetailRow('Fit', draftFit, 'fit')}
+          {renderDetailRow('Style', draftStyle, 'style', true)}
         </View>
 
         <View style={styles.actionBlock}>
           <PillButton
             title="Mix with this"
             variant="outline"
+            onPress={() => {
+              Alert.alert(
+                'Coming soon',
+                'Anchor item recommendations will be enabled after the next backend update.',
+              );
+            }}
             trailing={<Icons.Sort width={18} height={18} />}
           />
 
           <View style={styles.bottomRow}>
             <View style={styles.leftRow}>
-              <TouchableOpacity onPress={handleDelete} style={styles.iconOnlyButton}>
+              <TouchableOpacity
+                onPress={handleDelete}
+                style={styles.iconOnlyButton}
+                disabled={saving || isCommonSystemItem}
+              >
                 <Icons.Trash width={20} height={20} />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.secondaryAction} onPress={() => Alert.alert('Noted', 'We will use this item less often in future outfit mixes.')}>
-                <Text style={styles.lessUsedText}>Less used</Text>
-                <Text style={styles.lessUsedIcon}>-</Text>
+              <TouchableOpacity
+                style={[
+                  styles.secondaryAction,
+                  usageFrequency === 'LESS_USED' && styles.secondaryActionActive,
+                ]}
+                onPress={() => {
+                  handleToggleUsageFrequency();
+                }}
+                disabled={saving}
+              >
+                <Text
+                  style={[
+                    styles.lessUsedText,
+                    usageFrequency === 'LESS_USED' && styles.lessUsedTextActive,
+                  ]}
+                >
+                  Less used
+                </Text>
+                <Text
+                  style={[
+                    styles.lessUsedIcon,
+                    usageFrequency === 'LESS_USED' && styles.lessUsedTextActive,
+                  ]}
+                >
+                  -
+                </Text>
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.secondaryAction} onPress={openEditMenu} disabled={item.isSystem || saving}>
-              <Text style={[styles.editText, item.isSystem && styles.disabledText]}>Edit</Text>
-              <Text style={[styles.editIcon, item.isSystem && styles.disabledText]}>*</Text>
-            </TouchableOpacity>
+            <View style={styles.rightRow}>
+              {isEditing ? (
+                <TouchableOpacity
+                  style={styles.secondaryAction}
+                  onPress={handleCancelEditing}
+                  disabled={saving}
+                >
+                  <Text style={styles.editText}>Cancel</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.secondaryAction}
+                onPress={isEditing ? handleSaveEdits : () => setIsEditing(true)}
+                disabled={saving || isCommonSystemItem}
+              >
+                <Text
+                  style={[
+                    styles.editText,
+                    isCommonSystemItem && styles.disabledText,
+                  ]}
+                >
+                  {isEditing ? 'Save' : 'Edit'}
+                </Text>
+                <Text
+                  style={[
+                    styles.editIcon,
+                    isCommonSystemItem && styles.disabledText,
+                  ]}
+                >
+                  {isEditing ? '+' : '*'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </BottomSheetSurface>
 
       <Modal
-        visible={editModalVisible}
+        visible={!!pickerField}
         transparent
         animationType="slide"
-        onRequestClose={() => setEditModalVisible(false)}
+        onRequestClose={() => setPickerField(null)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select {editingField}</Text>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+              <Text style={styles.modalTitle}>
+                {pickerField ? `Select ${pickerField}` : 'Select'}
+              </Text>
+              <TouchableOpacity onPress={() => setPickerField(null)}>
                 <Text style={styles.modalClose}>Close</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView>
-              {editOptions.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={styles.optionItem}
-                  onPress={() => handleSelectOption(option)}
-                >
-                  <Text style={styles.optionText}>{option}</Text>
-                  {item[editingField as keyof Item] === option ? <Text style={styles.checkedIcon}>x</Text> : null}
-                </TouchableOpacity>
-              ))}
+              {(pickerField ? getPickerOptions(pickerField) : []).map((option) => {
+                const isSelected = (
+                  (pickerField === 'category' && draftCategory === option) ||
+                  (pickerField === 'color' && draftColor === option) ||
+                  (pickerField === 'fit' && draftFit === option) ||
+                  (pickerField === 'style' && draftStyle === option)
+                );
+
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.optionItem}
+                    onPress={() => handleSelectOption(option)}
+                  >
+                    <View style={styles.optionLeft}>
+                      {pickerField === 'color' ? (
+                        <View
+                          style={[
+                            styles.optionColorDot,
+                            { backgroundColor: findColorHex(option) },
+                          ]}
+                        />
+                      ) : null}
+                      <Text style={styles.optionText}>{option}</Text>
+                    </View>
+                    {isSelected ? <Text style={styles.checkedIcon}>x</Text> : null}
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         </View>
@@ -296,10 +788,12 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   backGlyph: {
-    fontSize: 34,
-    lineHeight: 34,
+    fontSize: 22,
+    lineHeight: 22,
     color: theme.colors.figmaAction,
-    marginTop: -2,
+  },
+  heartButtonActive: {
+    backgroundColor: '#EEDCDD',
   },
   imageWrap: {
     flex: 1,
@@ -326,6 +820,23 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaTextMuted,
   },
+  imageBadge: {
+    position: 'absolute',
+    bottom: 10,
+    alignSelf: 'center',
+    minHeight: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(39, 42, 50, 0.9)',
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageBadgeText: {
+    fontFamily: 'Manrope-Medium',
+    fontSize: 11,
+    lineHeight: 14,
+    color: theme.colors.white,
+  },
   sheet: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -333,6 +844,19 @@ const styles = StyleSheet.create({
   },
   details: {
     gap: 8,
+  },
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rowValue: {
+    ...theme.typography.aliases.archivoBody,
+    color: theme.colors.figmaTextMuted,
+  },
+  rowChevron: {
+    ...theme.typography.aliases.archivoBody,
+    color: theme.colors.figmaAction,
   },
   colorDot: {
     width: 28,
@@ -356,6 +880,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  rightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   iconOnlyButton: {
     width: 56,
     height: 56,
@@ -364,19 +893,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryAction: {
-    height: 56,
+    minHeight: 56,
     borderRadius: 28,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
+  },
+  secondaryActionActive: {
+    backgroundColor: '#F6EDEE',
   },
   lessUsedText: {
     ...theme.typography.aliases.archivoBody,
+    color: theme.colors.figmaAction,
+  },
+  lessUsedTextActive: {
     color: theme.colors.figmaRed,
   },
   lessUsedIcon: {
-    color: theme.colors.figmaRed,
+    color: theme.colors.figmaAction,
     fontSize: 24,
     lineHeight: 24,
   },
@@ -429,6 +964,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  optionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  optionColorDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: '#D0D5DD',
   },
   optionText: {
     ...theme.typography.aliases.archivoBody,

@@ -2,6 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  OnboardingSelectionCard,
+  OnboardingSelectionFigure,
+} from '../components/primitives/OnboardingSelectionCard';
 import { useAuth } from '../context/AuthContext';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
@@ -24,6 +28,24 @@ const STYLE_DIRECTION_BY_PREFERENCE: Record<StylePreferenceValue, UserStyleDirec
   relaxed: 'more_relaxed',
 };
 
+const STYLE_ART_BY_GENDER: Record<GenderPreferenceValue, Record<StylePreferenceValue, number>> = {
+  womenswear: {
+    slim: require('../assets/images/women_slim_fit.png'),
+    classic: require('../assets/images/women_classic_fit.png'),
+    relaxed: require('../assets/images/women_relaxed_fit.png'),
+  },
+  menswear: {
+    slim: require('../assets/images/men_slim_fit.png'),
+    classic: require('../assets/images/men_classic_fit.png'),
+    relaxed: require('../assets/images/men_relaxed_fit.png'),
+  },
+  mixed: {
+    slim: require('../assets/images/women_slim_fit.png'),
+    classic: require('../assets/images/women_classic_fit.png'),
+    relaxed: require('../assets/images/women_relaxed_fit.png'),
+  },
+};
+
 const CONTENT_BY_GENDER: Record<GenderPreferenceValue, { title: string; subtitle: string }> = {
   womenswear: {
     title: 'Which fit makes you feel most confident?',
@@ -31,11 +53,11 @@ const CONTENT_BY_GENDER: Record<GenderPreferenceValue, { title: string; subtitle
   },
   menswear: {
     title: 'Which fit feels right?',
-    subtitle: 'This sets a starting point. You can update it later.',
+    subtitle: 'This sets a starting point.',
   },
   mixed: {
-    title: 'Which fit feels right?',
-    subtitle: 'This sets a starting point. You can update it later.',
+    title: 'Which fit makes you feel most confident?',
+    subtitle: "This will be Auxi's starting point. You can switch up your style anytime.",
   },
 };
 
@@ -47,6 +69,7 @@ export const StylePreferenceScreen = () => {
 
   const selectedGender: GenderPreferenceValue = route.params?.gender || 'mixed';
   const content = useMemo(() => CONTENT_BY_GENDER[selectedGender], [selectedGender]);
+  const styleArt = useMemo(() => STYLE_ART_BY_GENDER[selectedGender], [selectedGender]);
 
   const handleNext = async () => {
     if (!selectedStyle) return;
@@ -70,28 +93,67 @@ export const StylePreferenceScreen = () => {
         />
 
         <View style={styles.mainBlock}>
-          <View style={styles.textBlock}>
-            <Text style={styles.title}>{content.title}</Text>
-            <Text style={styles.subtitle}>{content.subtitle}</Text>
-          </View>
+          <View style={styles.selectionContent}>
+            <View style={styles.textBlock}>
+              <Text style={styles.title}>{content.title}</Text>
+              <Text style={styles.subtitle}>{content.subtitle}</Text>
+            </View>
 
-          <View style={styles.optionList}>
-            {STYLE_OPTIONS.map((option) => {
-              const selected = selectedStyle === option.value;
-              return (
-                <TouchableOpacity
-                  key={option.value}
-                  activeOpacity={0.82}
-                  onPress={() => setSelectedStyle(option.value)}
-                  style={[styles.optionItem, selected && styles.optionItemSelected]}
-                >
-                  <Text style={styles.optionText}>{option.label}</Text>
-                  <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
-                    {selected ? <View style={styles.radioInner} /> : null}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+            <View style={styles.optionGrid}>
+              <View style={styles.optionRow}>
+                {STYLE_OPTIONS.slice(0, 2).map((option) => {
+                  const selected = selectedStyle === option.value;
+                  const dimmed = !!selectedStyle && !selected;
+
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      activeOpacity={0.9}
+                      onPress={() => setSelectedStyle(option.value)}
+                      style={styles.topOptionPressable}
+                    >
+                      <OnboardingSelectionCard
+                        label={option.label}
+                        selected={selected}
+                        dimmed={dimmed}
+                      >
+                        <OnboardingSelectionFigure
+                          source={styleArt[option.value]}
+                          imageStyle={styles.optionFigureImage}
+                        />
+                      </OnboardingSelectionCard>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={styles.optionRow}>
+                {STYLE_OPTIONS.slice(2).map((option) => {
+                  const selected = selectedStyle === option.value;
+                  const dimmed = !!selectedStyle && !selected;
+
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      activeOpacity={0.9}
+                      onPress={() => setSelectedStyle(option.value)}
+                      style={styles.bottomOptionPressable}
+                    >
+                      <OnboardingSelectionCard
+                        label={option.label}
+                        selected={selected}
+                        dimmed={dimmed}
+                      >
+                        <OnboardingSelectionFigure
+                          source={styleArt[option.value]}
+                          imageStyle={styles.optionFigureImage}
+                        />
+                      </OnboardingSelectionCard>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
           </View>
 
           <PillButton
@@ -100,6 +162,7 @@ export const StylePreferenceScreen = () => {
             loading={isLoading}
             disabled={!selectedStyle}
             onPress={handleNext}
+            style={styles.ctaButton}
           />
         </View>
       </View>
@@ -126,11 +189,15 @@ const styles = StyleSheet.create({
   },
   mainBlock: {
     flex: 1,
-    justifyContent: 'flex-end',
-    gap: 28,
+    paddingTop: 36,
+    paddingBottom: 12,
+    justifyContent: 'space-between',
+  },
+  selectionContent: {
+    gap: 32,
   },
   textBlock: {
-    gap: 8,
+    gap: 4,
   },
   title: {
     ...theme.typography.aliases.playfairDisplaySection,
@@ -142,43 +209,24 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaText,
     textAlign: 'center',
   },
-  optionList: {
+  optionGrid: {
     gap: 8,
   },
-  optionItem: {
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1.2,
-    borderColor: theme.colors.figmaDivider,
-    backgroundColor: theme.colors.figmaSurface,
-    paddingHorizontal: 20,
+  optionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 4,
   },
-  optionItemSelected: {
-    borderColor: theme.colors.figmaAction,
+  topOptionPressable: {
+    flex: 1,
   },
-  optionText: {
-    ...theme.typography.aliases.manropeBody,
-    color: theme.colors.figmaAction,
+  bottomOptionPressable: {
+    width: '49.45%',
   },
-  radioOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: theme.colors.figmaDivider,
-    justifyContent: 'center',
-    alignItems: 'center',
+  optionFigureImage: {
+    transform: [{ scale: 1.3 }, { translateY: 18 }],
   },
-  radioOuterSelected: {
-    borderColor: theme.colors.figmaAction,
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.colors.figmaAction,
+  ctaButton: {
+    width: 327,
+    alignSelf: 'center',
   },
 });

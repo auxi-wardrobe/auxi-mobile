@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextStyle } from 'react-native';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
 import { TopIconButton } from '../primitives/FigmaPrimitives';
@@ -8,6 +8,7 @@ interface HeaderProps {
     title?: string;
     showBack?: boolean;
     leftIcon?: React.ReactNode;
+    titleTextStyle?: TextStyle;
     onBack?: () => void;
     onFeedback?: () => void;
     rightComponent?: React.ReactNode;
@@ -17,6 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
     title = 'Auxi',
     showBack = true,
     leftIcon,
+    titleTextStyle,
     onBack,
     onFeedback,
     rightComponent
@@ -41,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
             </View>
 
             <View style={styles.centerContainer}>
-                <Text style={styles.title}>{title}</Text>
+                <Text style={[styles.title, titleTextStyle]}>{title}</Text>
             </View>
 
             <View style={styles.rightContainer}>

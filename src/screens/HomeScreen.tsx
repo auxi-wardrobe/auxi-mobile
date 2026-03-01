@@ -1,69 +1,125 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  PermissionsAndroid,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Platform,
-  PermissionsAndroid,
 } from 'react-native';
+import Geolocation from 'react-native-geolocation-service';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
-import { Header } from '../components/layout/Header';
 import { Sidebar } from '../components/layout/Sidebar';
 import { ItemDetailBottomSheet } from '../components/features/ItemDetailBottomSheet';
-import { PillButton } from '../components/primitives/FigmaPrimitives';
+import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
+import { Icons } from '../assets/icons';
 import { theme } from '../theme/theme';
 import { Item } from '../types/item';
-import { recommendationService } from '../services/recommendationService';
+import { AppStackParamList, TryOnOutfitContext } from '../types/navigation';
+import { favouriteService } from '../services/favouriteService';
+import { Outfit, recommendationService } from '../services/recommendationService';
 import { getImageUrl } from '../utils/url';
-import { Icons } from '../assets/icons';
 
 const { width: screenWidth } = Dimensions.get('window');
-const CARD_GAP = 8;
-const CARD_WIDTH = Math.floor((screenWidth - 44 - CARD_GAP * 2) / 3);
+
+const GRID_GAP = 4;
+const SHEET_GAP = 4;
+const SHEET_PADDING = 12;
+const CARD_WIDTH = Math.floor((screenWidth - SHEET_PADDING * 2 - GRID_GAP) / 2);
+const OPTION_SHEET_HEIGHT = Math.round(CARD_WIDTH * (8 / 3) + 140);
+const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
+const SNACKBAR_DURATION_MS = 2200;
+const MAX_DUPLICATE_PREFETCH_RETRIES = 3;
+
+type Navigation = NativeStackNavigationProp<AppStackParamList, 'Home'>;
 
 type OutfitSheet = {
   items: Item[];
   outfitHash: string;
+  stylingNote: string;
 };
 
-const OPTION_SHEET_HEIGHT = 617;
-const OPTION_SHEET_GAP = 4;
-const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + OPTION_SHEET_GAP;
-const INITIAL_BUFFER_SHEETS = 1;
-const STEADY_STATE_BUFFER_SHEETS = 2;
+type OutfitSheetWithGrid = OutfitSheet & {
+  gridItems: Array<Item | null>;
+};
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+const buildGrid = (items: Item[]): Array<Item | null> =>
+  Array.from({ length: 4 }, (_, index) => items[index] || null);
+
+const buildOutfitSheet = (outfit: Outfit): OutfitSheet => ({
+  items: outfit.items || [],
+  outfitHash: outfit.outfit_hash,
+  stylingNote: outfit.styling_note || '',
+});
+
+const buildGridOutfitSheet = (outfit: OutfitSheet): OutfitSheetWithGrid => ({
+  ...outfit,
+  gridItems: buildGrid(outfit.items),
+});
+
+const buildTryOnContext = (outfit: OutfitSheet): TryOnOutfitContext => ({
+  outfitHash: outfit.outfitHash,
+  itemIds: outfit.items.map((item) => item.id),
+  itemImageUrls: outfit.items.map((item) => item.image_url),
+  stylingNote: outfit.stylingNote,
+});
+
+const getSaveStateForOutfit = (
+  outfit: OutfitSheet | null,
+  saveStates: Record<string, SaveState>,
+): SaveState => (outfit ? saveStates[outfit.outfitHash] || 'idle' : 'idle');
+
+const getSheetIndexFromOffset = (offsetY: number) =>
+  Math.round(offsetY / OPTION_SHEET_SNAP_INTERVAL);
+
+const clearTimeoutRef = (
+  timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
+) => {
+  if (!timeoutRef.current) {
+    return;
+  }
+
+  clearTimeout(timeoutRef.current);
+  timeoutRef.current = null;
+};
 
 export const HomeScreen = () => {
+  const navigation = useNavigation<Navigation>();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isFavourite, setIsFavourite] = useState(false);
-  const [primaryItems, setPrimaryItems] = useState<Item[]>([]);
-  const [secondaryItems, setSecondaryItems] = useState<Item[]>([]);
+  const [outfitSheets, setOutfitSheets] = useState<OutfitSheet[]>([]);
   const [recommendationSessionId, setRecommendationSessionId] = useState<string | null>(null);
-  const [currentOutfitHash, setCurrentOutfitHash] = useState<string | null>(null);
-  const [hasLoadedMoreOptions, setHasLoadedMoreOptions] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [visibleSheetIndex, setVisibleSheetIndex] = useState(0);
+  const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({});
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
+  const [prefetchRetryTick, setPrefetchRetryTick] = useState(0);
   const requestedNextFromHashesRef = useRef(new Set<string>());
+  const duplicatePrefetchCountsRef = useRef<Record<string, number>>({});
+  const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { mutate: startRecommendation, isPending: isStartPending } = useMutation({
     mutationFn: recommendationService.startRecommendation,
     onSuccess: (data) => {
-      if (data?.outfit) {
-        setPrimaryItems(data.outfit.items || []);
-        setSecondaryItems([]);
-        setRecommendationSessionId(data.session_id);
-        setCurrentOutfitHash(data.outfit.outfit_hash);
-        setHasLoadedMoreOptions(false);
+      if (!data?.outfit) {
+        return;
       }
+
+      setOutfitSheets([buildOutfitSheet(data.outfit)]);
+      setRecommendationSessionId(data.session_id);
+      setVisibleSheetIndex(0);
+      requestedNextFromHashesRef.current.clear();
+      duplicatePrefetchCountsRef.current = {};
     },
     onError: (error) => {
       console.error('Failed to load recommendation', error);
@@ -72,13 +128,68 @@ export const HomeScreen = () => {
 
   const { mutate: nextRecommendation, isPending: isNextPending } = useMutation({
     mutationFn: recommendationService.nextRecommendation,
-    onSuccess: (data) => {
-      if (data?.outfit) {
-        setSecondaryItems(data.outfit.items || []);
+    onSuccess: (data, variables) => {
+      if (!data?.outfit) {
+        return;
       }
+
+      const requestedFromHash = variables.current_outfit_hash;
+      let appended = false;
+
+      setOutfitSheets((currentSheets) => {
+        if (currentSheets.some((sheet) => sheet.outfitHash === data.outfit.outfit_hash)) {
+          return currentSheets;
+        }
+
+        appended = true;
+        return [...currentSheets, buildOutfitSheet(data.outfit)];
+      });
+      setRecommendationSessionId(data.session_id);
+
+      if (appended) {
+        delete duplicatePrefetchCountsRef.current[requestedFromHash];
+        return;
+      }
+
+      const duplicateCount = duplicatePrefetchCountsRef.current[requestedFromHash] || 0;
+
+      if (duplicateCount >= MAX_DUPLICATE_PREFETCH_RETRIES) {
+        return;
+      }
+
+      duplicatePrefetchCountsRef.current[requestedFromHash] = duplicateCount + 1;
+      requestedNextFromHashesRef.current.delete(requestedFromHash);
+      setPrefetchRetryTick((currentTick) => currentTick + 1);
     },
-    onError: (error) => {
-      console.error('Failed to fetch next recommendation', error);
+    onError: (error, variables) => {
+      if (variables?.current_outfit_hash) {
+        requestedNextFromHashesRef.current.delete(variables.current_outfit_hash);
+      }
+      console.error('Failed to fetch more options', error);
+    },
+  });
+
+  const { mutate: saveFavourite } = useMutation({
+    mutationFn: favouriteService.saveFavourite,
+    onSuccess: (_, variables) => {
+      setSaveStates((currentState) => ({
+        ...currentState,
+        [variables.outfit_hash]: 'saved',
+      }));
+
+      clearTimeoutRef(snackbarTimeoutRef);
+      setSnackbarMessage('This look is now saved to your favourite');
+      snackbarTimeoutRef.current = setTimeout(() => {
+        setSnackbarMessage(null);
+        clearTimeoutRef(snackbarTimeoutRef);
+      }, SNACKBAR_DURATION_MS);
+    },
+    onError: (error, variables) => {
+      setSaveStates((currentState) => ({
+        ...currentState,
+        [variables.outfit_hash]: 'error',
+      }));
+      console.error('Failed to save favourite', error);
     },
   });
 
@@ -121,93 +232,154 @@ export const HomeScreen = () => {
     fetchLocationAndStart();
   }, [startRecommendation]);
 
-  useEffect(() => {
-    if (!recommendationSessionId || !currentOutfitHash || hasLoadedMoreOptions) return;
-    setHasLoadedMoreOptions(true);
+  const requestNextIfNeeded = useCallback((sheetIndex: number) => {
+    const currentLastIndex = outfitSheets.length - 1;
+    const hasReachedCurrentEnd = currentLastIndex >= 0 && sheetIndex >= currentLastIndex;
+
+    if (!recommendationSessionId || !hasReachedCurrentEnd || isNextPending) {
+      return;
+    }
+
+    const lastOutfitHash = outfitSheets[outfitSheets.length - 1]?.outfitHash;
+
+    if (!lastOutfitHash || requestedNextFromHashesRef.current.has(lastOutfitHash)) {
+      return;
+    }
+
+    requestedNextFromHashesRef.current.add(lastOutfitHash);
     nextRecommendation({
       session_id: recommendationSessionId,
       current_outfit_hash: lastOutfitHash,
     });
-  }, [currentOutfitHash, hasLoadedMoreOptions, nextRecommendation, recommendationSessionId]);
+  }, [
+    isNextPending,
+    nextRecommendation,
+    outfitSheets,
+    recommendationSessionId,
+  ]);
 
-  const loading = isStartPending && primaryItems.length === 0;
+  useEffect(() => {
+    requestNextIfNeeded(visibleSheetIndex);
+  }, [prefetchRetryTick, requestNextIfNeeded, visibleSheetIndex]);
 
-  const primaryGrid = useMemo(() => buildGrid(primaryItems), [primaryItems]);
-  const secondaryGrid = useMemo(() => {
-    if (secondaryItems.length > 0) return buildGrid(secondaryItems);
-    return buildGrid(primaryItems);
-  }, [primaryItems, secondaryItems]);
+  useEffect(() => {
+    return () => {
+      clearTimeoutRef(snackbarTimeoutRef);
+    };
+  }, []);
 
-  const tertiaryGrid = useMemo(() => {
-    if (secondaryItems.length > 0) return buildGrid(secondaryItems);
-    return buildGrid(primaryItems);
-  }, [primaryItems, secondaryItems]);
+  const loading = isStartPending && outfitSheets.length === 0;
+  const activeOutfit = outfitSheets[visibleSheetIndex] ?? outfitSheets[0] ?? null;
+  const activeSaveState = getSaveStateForOutfit(activeOutfit, saveStates);
 
   const optionSets = useMemo(
-    () => [primaryGrid, secondaryGrid, tertiaryGrid],
-    [primaryGrid, secondaryGrid, tertiaryGrid],
+    () => outfitSheets.map(buildGridOutfitSheet),
+    [outfitSheets],
   );
 
-  const handleLeadingAction = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
+  const handleSaveOutfit = (outfit: OutfitSheet | null) => {
+    if (!outfit) {
       return;
     }
+
+    const currentState = saveStates[outfit.outfitHash] || 'idle';
+
+    if (currentState === 'saving' || currentState === 'saved') {
+      return;
+    }
+
+    setSaveStates((currentStateMap) => ({
+      ...currentStateMap,
+      [outfit.outfitHash]: 'saving',
+    }));
+
+    saveFavourite({
+      outfit_hash: outfit.outfitHash,
+      item_ids: outfit.items.map((item) => item.id),
+      source: 'home',
+    });
+  };
+
+  const handleOpenTryOn = (outfit: OutfitSheet) => {
+    navigation.navigate('Body', {
+      mode: 'tryOn',
+      outfit: buildTryOnContext(outfit),
+    });
+  };
+
+  const handleLeadingAction = () => {
     setIsSidebarOpen(true);
+  };
+
+  const handleOptionSwipeEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const currentSheetIndex = getSheetIndexFromOffset(event.nativeEvent.contentOffset.y);
+    setVisibleSheetIndex(currentSheetIndex);
+    requestNextIfNeeded(currentSheetIndex);
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      <Header onBack={() => setIsSidebarOpen(true)} onFeedback={() => undefined} />
+      <View style={styles.header}>
+        <TopIconButton
+          onPress={handleLeadingAction}
+          icon={<MenuGlyph />}
+        />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.weatherText}>It's 24°C and partly cloudy today</Text>
-        <Text style={styles.weatherText}>Here is a outfit option.</Text>
+        <Text style={styles.headerTitle}>Auxi</Text>
 
-        <View style={styles.headerSpacer} />
+        <TouchableOpacity
+          activeOpacity={0.82}
+          style={[
+            styles.heartButton,
+            activeSaveState === 'saved' && styles.heartButtonSaved,
+            activeSaveState === 'error' && styles.heartButtonError,
+          ]}
+          disabled={!activeOutfit || activeSaveState === 'saving' || activeSaveState === 'saved'}
+          onPress={() => handleSaveOutfit(activeOutfit)}
+        >
+          {activeSaveState === 'saving' ? (
+            <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+          ) : (
+            <Icons.Heart width={24} height={24} />
+          )}
+        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      {snackbarMessage ? (
+        <View style={styles.snackbar}>
+          <Text style={styles.snackbarText}>{snackbarMessage}</Text>
+        </View>
+      ) : null}
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        snapToAlignment="start"
+        snapToInterval={OPTION_SHEET_SNAP_INTERVAL}
+        decelerationRate="fast"
+        onScrollEndDrag={handleOptionSwipeEnd}
+        onMomentumScrollEnd={handleOptionSwipeEnd}
+      >
         {loading ? (
-          <View style={styles.loadingBlock}>
-            <ActivityIndicator size="large" color={theme.colors.white} />
-          </View>
+          <HomeLoadingState />
         ) : (
-          optionSets.map((optionItems, index) => (
-            <OptionSheet
-              key={`option-${index}`}
-              items={optionItems}
-              onItemPress={(item) => setSelectedItem(item)}
-              onSeeThisOnMe={() => navigation.navigate('Body')}
-            />
-          ))
+          <>
+            {optionSets.map((outfit) => (
+              <OptionSheet
+                key={outfit.outfitHash}
+                outfit={outfit}
+                saveState={saveStates[outfit.outfitHash] || 'idle'}
+                onItemPress={(item) => setSelectedItem(item)}
+                onSave={handleSaveOutfit}
+                onSeeThisOnMe={handleOpenTryOn}
+              />
+            ))}
+            {isNextPending ? <LoadingMoreIndicator /> : null}
+          </>
         )}
       </ScrollView>
-
-      <View style={styles.bottomDock}>
-        <View style={styles.chipRow}>
-          <PillButton title="Work" variant="outline" style={styles.chipButton} textStyle={styles.chipText} />
-          <PillButton title="Casual" variant="outline" style={styles.chipButton} textStyle={styles.chipText} />
-          <PillButton
-            title="Try another"
-            variant="outline"
-            style={styles.chipTryButton}
-            textStyle={styles.chipText}
-            onPress={handleTryAnother}
-          />
-        </View>
-
-        <View style={styles.inputBar}>
-          <Text style={styles.inputLeading}>◌</Text>
-          <Text style={styles.inputLeading}>◻</Text>
-          <Text style={styles.inputPlaceholder}>Provide me more</Text>
-          <TouchableOpacity style={styles.sendButton} activeOpacity={0.8}>
-            <Icons.Send width={18} height={18} />
-          </TouchableOpacity>
-        </View>
-      </View>
 
       <ItemDetailBottomSheet
         visible={!!selectedItem}
@@ -219,23 +391,27 @@ export const HomeScreen = () => {
 };
 
 const OptionSheet = ({
-  items,
+  outfit,
+  saveState,
   onItemPress,
+  onSave,
   onSeeThisOnMe,
 }: {
-  items: Array<Item | null>;
+  outfit: OutfitSheetWithGrid;
+  saveState: SaveState;
   onItemPress: (item: Item) => void;
-  onSeeThisOnMe: () => void;
+  onSave: (outfit: OutfitSheet) => void;
+  onSeeThisOnMe: (outfit: OutfitSheet) => void;
 }) => {
-  const rows = [items.slice(0, 2), items.slice(2, 4)];
+  const rows = [outfit.gridItems.slice(0, 2), outfit.gridItems.slice(2, 4)];
 
   return (
     <View style={styles.optionSheet}>
       <View style={styles.gridWrap}>
         {rows.map((row, rowIndex) => (
-          <View key={`row-${rowIndex}`} style={styles.cardRow}>
+          <View key={`row-${outfit.outfitHash}-${rowIndex}`} style={styles.cardRow}>
             {row.map((item, itemIndex) => (
-              <View key={`card-${rowIndex}-${itemIndex}`} style={styles.cardShell}>
+              <View key={`card-${outfit.outfitHash}-${rowIndex}-${itemIndex}`} style={styles.cardShell}>
                 {item ? (
                   <TouchableOpacity
                     activeOpacity={0.86}
@@ -253,20 +429,72 @@ const OptionSheet = ({
         ))}
       </View>
 
-      <PillButton
-        title="See this on me"
-        variant="text"
-        onPress={onSeeThisOnMe}
-        style={styles.sheetCta}
-        textStyle={styles.sheetCtaText}
-        trailing={<Text style={styles.sheetCtaSparkle}>✦</Text>}
-      />
+      <View style={styles.actionCluster}>
+        <PillButton
+          title={saveState === 'saved' ? 'Saved to favourite' : 'Wear this'}
+          variant="filled"
+          onPress={() => onSave(outfit)}
+          disabled={saveState === 'saved'}
+          loading={saveState === 'saving'}
+          style={styles.primaryAction}
+        />
+
+        {saveState === 'error' ? (
+          <Text style={styles.saveErrorText}>
+            {"Couldn't save this look. Tap \"Wear this\" to retry."}
+          </Text>
+        ) : null}
+
+        <PillButton
+          title="See this on me"
+          variant="text"
+          onPress={() => onSeeThisOnMe(outfit)}
+          style={styles.secondaryAction}
+          textStyle={styles.secondaryActionText}
+        />
+      </View>
     </View>
   );
 };
 
+const HomeLoadingState = () => (
+  <View style={styles.optionSheet}>
+    <View style={styles.loadingCards}>
+      {[0, 1].map((row) => (
+        <View key={`loading-row-${row}`} style={styles.cardRow}>
+          {[0, 1].map((column) => (
+            <View key={`loading-card-${row}-${column}`} style={styles.cardShell}>
+              <View style={[styles.card, styles.loadingCard]} />
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+
+    <View style={styles.loadingFooter}>
+      <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+      <Text style={styles.loadingFooterText}>Building your next looks</Text>
+    </View>
+  </View>
+);
+
+const LoadingMoreIndicator = () => (
+  <View style={styles.loadingMoreIndicator}>
+    <ActivityIndicator size="small" color={theme.colors.white} />
+    <Text style={styles.loadingMoreText}>Loading more options...</Text>
+  </View>
+);
+
+const MenuGlyph = () => (
+  <View style={styles.menuGlyph}>
+    <View style={styles.menuGlyphLine} />
+    <View style={styles.menuGlyphLine} />
+    <View style={styles.menuGlyphLine} />
+  </View>
+);
+
 const GarmentPreview = ({ item }: { item: Item }) => {
-  const imageUrl = getImageUrl(item.image_url);
+  const imageUrl = getImageUrl(item.image_url) || item.image_url;
 
   return (
     <>
@@ -285,48 +513,61 @@ const GarmentPreview = ({ item }: { item: Item }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.figmaBackground,
+    backgroundColor: '#191B22',
   },
-  scrollContent: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 22,
-    paddingTop: 10,
-    paddingBottom: 210,
+    paddingTop: 8,
+    paddingBottom: 10,
   },
-  weatherText: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaText,
+  headerTitle: {
+    ...theme.typography.aliases.playfairDisplaySection,
+    color: theme.colors.white,
   },
-  optionLabel: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
-    fontSize: 34,
-    lineHeight: 34,
-    marginTop: -2,
-  },
-  headerCenter: {
+  heartButton: {
     width: 45,
     height: 45,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: theme.colors.white,
   },
-  headerSpacer: {
-    width: 45,
-    height: 45,
+  heartButtonSaved: {
+    borderWidth: 1.5,
+    borderColor: '#3BA3D0',
+  },
+  heartButtonError: {
+    borderWidth: 1.5,
+    borderColor: theme.colors.figmaRed,
+  },
+  snackbar: {
+    position: 'absolute',
+    top: 64,
+    left: 22,
+    right: 22,
+    zIndex: 20,
+    height: 48,
+    borderRadius: 4,
+    backgroundColor: '#3BA3D0',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  snackbarText: {
+    ...theme.typography.aliases.archivoBody,
+    color: theme.colors.white,
   },
   scrollContent: {
     paddingTop: 4,
-    gap: 4,
-  },
-  loadingBlock: {
-    flex: 1,
-    minHeight: 320,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingBottom: 24,
+    gap: SHEET_GAP,
   },
   optionSheet: {
-    backgroundColor: theme.colors.white,
+    height: OPTION_SHEET_HEIGHT,
     borderRadius: 16,
-    height: 617,
+    backgroundColor: theme.colors.white,
     paddingTop: 12,
     paddingHorizontal: 12,
     paddingBottom: 24,
@@ -338,99 +579,115 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   gridWrap: {
-    gap: 4,
+    gap: GRID_GAP,
+  },
+  loadingCards: {
+    gap: GRID_GAP,
   },
   cardRow: {
     flexDirection: 'row',
-    gap: CARD_GAP,
+    gap: GRID_GAP,
+  },
+  cardShell: {
+    flex: 1,
   },
   card: {
-    width: CARD_WIDTH,
-    height: CARD_WIDTH,
+    aspectRatio: 3 / 4,
     borderRadius: 16,
+    backgroundColor: '#ECEEF2',
     overflow: 'hidden',
-    backgroundColor: theme.colors.figmaSurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  loadingCard: {
+    backgroundColor: '#E4E7ED',
+  },
   placeholderCard: {
-    backgroundColor: '#ECECF0',
+    backgroundColor: '#E6E9EE',
   },
   cardImage: {
-    width: '92%',
-    height: '92%',
+    width: '88%',
+    height: '88%',
   },
   cardFallback: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#E7E8EC',
+    backgroundColor: '#DDE2EA',
   },
-  summary: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaText,
-    marginTop: 28,
-    marginBottom: 22,
-  },
-  note: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaText,
-  },
-  bottomDock: {
+  cardTag: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: '50%',
     bottom: 0,
-    paddingHorizontal: 22,
-    paddingTop: 10,
-    paddingBottom: 28,
-    backgroundColor: theme.colors.figmaBackground,
+    marginLeft: -28.5,
+    width: 57,
+    height: 19,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    backgroundColor: 'rgba(39,42,50,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTagText: {
+    fontFamily: 'Manrope-Medium',
+    fontSize: 8,
+    lineHeight: 12,
+    color: theme.colors.white,
+  },
+  actionCluster: {
+    gap: 8,
+    alignItems: 'center',
+  },
+  primaryAction: {
+    alignSelf: 'stretch',
+  },
+  saveErrorText: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaRed,
+    textAlign: 'center',
+  },
+  secondaryAction: {
+    height: 40,
+  },
+  secondaryActionText: {
+    ...theme.typography.aliases.archivoButton,
+    color: theme.colors.figmaAction,
+  },
+  loadingFooter: {
+    minHeight: 56,
+    borderRadius: 16,
+    backgroundColor: '#F5F7FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
     gap: 10,
   },
-  chipRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  chipButton: {
-    flex: 1,
-    height: 52,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaAction,
-    paddingHorizontal: 12,
-  },
-  chipTryButton: {
-    flex: 1.45,
-    height: 52,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaAction,
-    paddingHorizontal: 12,
-  },
-  chipText: {
+  loadingFooterText: {
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaAction,
   },
-  inputBar: {
-    height: 56,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#D0D0D6',
-    backgroundColor: '#F4F4F5',
-    flexDirection: 'row',
+  loadingMoreIndicator: {
+    marginHorizontal: 24,
+    minHeight: 44,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    gap: 14,
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
   },
-  inputLeading: {
-    color: theme.colors.figmaAction,
-    fontSize: 18,
-    lineHeight: 20,
+  loadingMoreText: {
+    ...theme.typography.aliases.archivoBody,
+    color: theme.colors.white,
   },
-  sheetCtaSparkle: {
-    color: '#7A2CFF',
-    fontSize: 14,
-    lineHeight: 18,
-    marginLeft: 6,
+  menuGlyph: {
+    width: 20,
+    height: 16,
+    justifyContent: 'space-between',
   },
-  heartActive: {
-    opacity: 0.72,
+  menuGlyphLine: {
+    width: '100%',
+    height: 2,
+    borderRadius: 999,
+    backgroundColor: theme.colors.figmaAction,
   },
 });

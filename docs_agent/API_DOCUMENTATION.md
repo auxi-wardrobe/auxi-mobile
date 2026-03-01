@@ -657,7 +657,7 @@ curl -X POST http://localhost:5001/api/process/extract \
 
 ### Body Reference (User Uploaded)
 
-#### `POST /api/bodies`
+#### `POST /api/body`
 
 Upload a body reference image (selfie) for try-on.
 
@@ -667,6 +667,14 @@ Upload a body reference image (selfie) for try-on.
 
 ```
 file: <file> (required) - Body image (JPG, PNG, WEBP)
+```
+
+**Request** (application/json):
+
+```json
+{
+  "image_url": "https://pub-....r2.dev/uploads/..."
+}
 ```
 
 **Response** (201 Created):
@@ -683,11 +691,15 @@ file: <file> (required) - Body image (JPG, PNG, WEBP)
 }
 ```
 
-#### `GET /api/bodies`
+#### `GET /api/body`
 
 Get all body images for the authenticated user.
 
 **Authentication**: Required (Bearer token)
+
+**Path Notes**:
+
+- `GET /api/body/` is also supported and returns the same response.
 
 **Response** (200 OK):
 
@@ -705,7 +717,7 @@ Get all body images for the authenticated user.
 }
 ```
 
-#### `DELETE /api/bodies/<id>`
+#### `DELETE /api/body/<id>`
 
 Delete a body reference image for the authenticated user.
 
@@ -1216,7 +1228,7 @@ Remove a favorite.
 
 - **MASCULINE users**: See items with `"M"` tag (excludes W-only items)
 - **FEMININE users**: See items with `"W"` tag (excludes M-only items)
-- **UNISEX/null preference**: Means "no preference" and applies no filtering (not limited to `"U"`-tagged items)
+- **UNISEX/null preference**: See all items (no filtering)
 
 **Scoring Priority** (for sorting recommendations):
 
@@ -2571,14 +2583,10 @@ Start a new recommendation session and generate an initial outfit.
 
 **Request** (application/json):
 
-Location-aware mobile clients should send `weather.lat` and `weather.long` when the user grants device location permission. `weather.temp_c` remains supported as a direct fallback, and clients may send both for resilience.
-
 ```json
 {
   "weather": {
-    "lat": 10.7769,
-    "long": 106.7009,
-    "temp_c": 30
+    "temp_c": 22
   },
   "user": {
     "gender": "MASCULINE", // Optional if user has gender set in profile (profile takes precedence)
@@ -2587,18 +2595,12 @@ Location-aware mobile clients should send `weather.lat` and `weather.long` when 
 }
 ```
 
-**Weather Request Modes**:
-
-- **Location mode**: Provide `weather.lat` + `weather.long`; the backend fetches current temperature from OpenWeather.
-- **Fallback mode**: Provide `weather.temp_c` when the user denies location permission.
-- **Mixed mode**: Provide both coordinates and `temp_c`; coordinates are attempted first, then the request temperature is used if the weather provider is unavailable.
-
 **Gender Filtering Behavior**:
 
 - The recommendation engine uses `gender_tags` for **strict filtering** (Safety Funnel)
 - **MASCULINE**: Only shows items with `"M"` tag (excludes W-only items like dresses)
 - **FEMININE**: Only shows items with `"W"` tag (excludes M-only items like structured blazers)
-- **UNISEX/null**: Means "no preference" and shows all items (no filtering, not `"U"`-only)
+- **UNISEX/null**: Shows all items (no filtering)
 - Items with `["M", "W", "U"]` (universal) appear for all preferences
 - See "Gender Tagging System" section for detailed scoring rules
 
@@ -2622,30 +2624,9 @@ Location-aware mobile clients should send `weather.lat` and `weather.long` when 
     "fallback_flags": []
   },
   "session_id": "uuid-string",
-  "fallback_flags": [],
-  "resolved_weather": {
-    "temp_c": 29.4,
-    "lat": 10.7769,
-    "long": 106.7009,
-    "provider": "openweather",
-    "source": "openweather_live"
-  }
+  "fallback_flags": []
 }
 ```
-
-**Resolved Weather Fields**:
-
-- `temp_c`: The temperature actually used by the recommendation engine.
-- `lat`, `long`: Coordinates used to resolve weather when location was provided.
-- `provider`: `"openweather"` for live/cache responses, `"request"` when the request `temp_c` fallback is used.
-- `source`: `openweather_live` | `openweather_cache` | `openweather_stale_cache` | `request_temp_fallback`
-
-**Errors**:
-
-- `400 Bad Request` - Missing weather context, or invalid coordinate payload
-- `401 Unauthorized` - Missing or invalid access token
-- `404 Not Found` - No suitable items found for the given context
-- `503 Service Unavailable` - Weather service lookup failed for coordinate-based requests and no `temp_c` fallback was provided
 
 ### Next Variation (Try Another)
 
@@ -3070,15 +3051,9 @@ List and filter Common Items for the admin interface (JSON response).
     "LAYERS": [],
     "COLORS": [],
     "FITS": [],
-    "OCCASIONS": [
-      "Client Meeting",
-      "Internal Work",
-      "Casual Day",
-      "Date",
-      "Networking",
-      "Travel"
-    ],
-    "SEASONS": ["spring", "summer", "fall", "winter", "all_season"]
+    "OCCASIONS": [],
+    "MOODS": [],
+    "SEASONS": []
   }
 }
 ```
@@ -3109,9 +3084,7 @@ attr:is_water_resistant: <boolean> - Physical attribute: water resistant
 meta:formality_score: <int> - Styling metadata: formality (1-10)
 meta:warmth_level: <int> - Styling metadata: warmth (1-5)
 meta:versatility_score: <int> - Styling metadata: versatility (1-10)
-meta:base_weight: <int> - Styling metadata: base weight (1-5)
-meta:occasion: <json-array> - Controlled values only: Client Meeting | Internal Work | Casual Day | Date | Networking | Travel
-meta:season: <json-array> - Controlled values only: spring | summer | fall | winter | all_season
+meta:visual_weight: <int> - Styling metadata: visual weight (1-5)
 meta:climate_fit: <string> - Styling metadata: HOT | MILD | COOL
 ```
 
@@ -3151,11 +3124,6 @@ meta:climate_fit: <string> - Styling metadata: HOT | MILD | COOL
 - Uploads image to S3 with prefix `common_items/`
 - If `image_url` is provided, it is used directly (no re-upload in this endpoint)
 - Parses and persists all provided `attr:*` and `meta:*` fields
-- Admin metadata normalization rules:
-  - `meta:visual_weight` is accepted for backward compatibility and stored as `meta:base_weight`
-  - Deprecated keys are ignored on write: `meta:layer_score`, `meta:mood`
-  - `meta:occasion` is normalized to controlled values only
-  - `meta:season` is normalized to controlled values only (`autumn` -> `fall`, `all season` -> `all_season`)
 
 ---
 
@@ -3213,7 +3181,7 @@ meta:*: <various> - Updated styling metadata
 - Metadata is merged with existing values
 - Physical attributes are merged with existing values
 - Uses `_parse_metadata_forms()` helper for safe parsing
-- Persists provided `attr:*` fields and normalized `meta:*` fields (see rules above)
+- Persists all provided `attr:*` and `meta:*` fields
 - Rebuilds `human_readable_id` whenever `category_code`, `layer_code`, `attr:color_code`, or `attr:fit_code` changes
 - Regeneration rule:
   - Reuse existing suffix if available for new prefix
@@ -3617,7 +3585,7 @@ Run the recommendation engine with a specific config for testing. Returns detail
 - `mock_context` (object, required):
   - `temp_c` (number, required): Temperature in Celsius
   - `occasion` (string, optional): Occasion context (default: "casual")
-  - `gender` (string, optional): Gender preference - MASCULINE, FEMININE, UNISEX (`UNISEX` means no preference / no filtering)
+  - `gender` (string, optional): Gender preference - MASCULINE, FEMININE, UNISEX
 - `config_override` (object, optional): Temporary tweaks merged into config
 - `variation_test` (object, optional): Enable variation testing (see below)
 
