@@ -11,7 +11,7 @@ This map locks one Figma node per in-scope route screen for implementation parit
 | Location Permission | `392:2139` | https://www.figma.com/design/0nXXMAR4Arf1ZfjtQvtBh0/Auxi?node-id=392-2139 | Captured via Figma MCP screenshot | `src/screens/LocationPermissionScreen.tsx` |
 | Gender Preference | `392:1959` | https://www.figma.com/design/0nXXMAR4Arf1ZfjtQvtBh0/Auxi?node-id=392-1959 | Captured via Figma MCP screenshot | `src/screens/GenderPreferenceScreen.tsx` |
 | Style Preference | `392:2118` | https://www.figma.com/design/0nXXMAR4Arf1ZfjtQvtBh0/Auxi?node-id=392-2118 | Captured via Figma MCP screenshot | `src/screens/StylePreferenceScreen.tsx` |
-| Home | `909:10867` | https://www.figma.com/design/0nXXMAR4Arf1ZfjtQvtBh0/Auxi?node-id=909-10867 | Captured via Figma MCP screenshot | `src/screens/HomeScreen.tsx` |
+| Home | `392:2164` | https://www.figma.com/design/0nXXMAR4Arf1ZfjtQvtBh0/Auxi?node-id=392-2164 | Captured via Figma MCP screenshot | `src/screens/HomeScreen.tsx` |
 | Wardrobe | `909:6725` | https://www.figma.com/design/0nXXMAR4Arf1ZfjtQvtBh0/Auxi?node-id=909-6725 | Captured via Figma MCP screenshot | `src/screens/WardrobeScreen.tsx` |
 | Body | `392:2370` | https://www.figma.com/design/0nXXMAR4Arf1ZfjtQvtBh0/Auxi?node-id=392-2370 | Captured via Figma MCP screenshot | `src/screens/BodyScreen.tsx` |
 | Item Detail | `909:13724` | https://www.figma.com/design/0nXXMAR4Arf1ZfjtQvtBh0/Auxi?node-id=909-13724 | Captured via Figma MCP screenshot | `src/screens/ItemDetailScreen.tsx` |

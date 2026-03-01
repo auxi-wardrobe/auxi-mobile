@@ -16,7 +16,7 @@ Scope: Route screens only (auth excluded)
 | Location Permission | `392:2139` | Pass | Pass | Pass | Pass | Implemented | Final device visual QA pending |
 | Gender Preference | `392:1959` | Pass | Pass | Pass | Pass | Implemented | Final device visual QA pending |
 | Style Preference | `392:2118` | Pass | Pass | Pass | Pass | Implemented | Final device visual QA pending |
-| Home | `909:10867` | Pass | Pass | Pass | Pass | Implemented | Final device visual QA pending |
+| Home | `392:2164` | Pass | Pass | Pass | Pass | Implemented | Final device visual QA pending |
 | Wardrobe | `909:6725` | Pass | Pass | Pass | Pass | Implemented | Final device visual QA pending |
 | Body | `392:2370` | Pass | Pass | Pass | Pass | Implemented | Final device visual QA pending |
 | Item Detail | `909:13724` | Pass | Pass | Pass | Pass | Implemented | Final device visual QA pending |
