@@ -30,6 +30,7 @@ const buildGrid = (items: Item[]): Array<Item | null> =>
 export const HomeScreen = () => {
   const navigation = useNavigation<Navigation>();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isFavourite, setIsFavourite] = useState(false);
   const [primaryItems, setPrimaryItems] = useState<Item[]>([]);
   const [secondaryItems, setSecondaryItems] = useState<Item[]>([]);
   const [recommendationSessionId, setRecommendationSessionId] = useState<string | null>(null);
@@ -86,7 +87,15 @@ export const HomeScreen = () => {
     return buildGrid(primaryItems);
   }, [primaryItems, secondaryItems]);
 
-  const optionSets = useMemo(() => [primaryGrid, secondaryGrid], [primaryGrid, secondaryGrid]);
+  const tertiaryGrid = useMemo(() => {
+    if (secondaryItems.length > 0) return buildGrid(secondaryItems);
+    return buildGrid(primaryItems);
+  }, [primaryItems, secondaryItems]);
+
+  const optionSets = useMemo(
+    () => [primaryGrid, secondaryGrid, tertiaryGrid],
+    [primaryGrid, secondaryGrid, tertiaryGrid],
+  );
 
   const handleLeadingAction = () => {
     if (navigation.canGoBack()) {
@@ -107,14 +116,20 @@ export const HomeScreen = () => {
           style={styles.backButton}
         />
 
-        <View style={styles.headerCenter}>
-          <Icons.Heart width={24} height={24} />
-        </View>
+        <TouchableOpacity
+          style={styles.headerCenter}
+          activeOpacity={0.82}
+          onPress={() => setIsFavourite((value) => !value)}
+        >
+          <View style={isFavourite ? styles.heartActive : undefined}>
+            <Icons.Heart width={24} height={24} />
+          </View>
+        </TouchableOpacity>
 
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {loading ? (
           <View style={styles.loadingBlock}>
             <ActivityIndicator size="large" color={theme.colors.white} />
@@ -237,7 +252,7 @@ const styles = StyleSheet.create({
     height: 45,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingTop: 4,
     gap: 4,
   },
   loadingBlock: {
@@ -249,9 +264,11 @@ const styles = StyleSheet.create({
   optionSheet: {
     backgroundColor: theme.colors.white,
     borderRadius: 16,
+    height: 617,
     paddingTop: 12,
     paddingHorizontal: 12,
-    paddingBottom: 16,
+    paddingBottom: 24,
+    justifyContent: 'space-between',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.12,
@@ -292,8 +309,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     bottom: 0,
-    marginLeft: -29,
-    width: 58,
+    marginLeft: -28.5,
+    width: 57,
     height: 19,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
@@ -303,14 +320,12 @@ const styles = StyleSheet.create({
   },
   cardTagText: {
     fontFamily: 'Manrope-Medium',
-    fontSize: 6,
-    lineHeight: 12,
+    fontSize: 8,
+    lineHeight: 24,
     color: theme.colors.white,
   },
   sheetCta: {
     alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 2,
     height: 36,
   },
   sheetCtaText: {
@@ -324,5 +339,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
     marginLeft: 6,
+  },
+  heartActive: {
+    opacity: 0.72,
   },
 });
