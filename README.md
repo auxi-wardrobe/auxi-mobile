@@ -1,97 +1,150 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# auxi
 
-# Getting Started
+`auxi` is a React Native app for contextual outfit recommendations, personal wardrobe management, and virtual try-on generation from body photos. This repository contains the mobile client for the authentication, onboarding, recommendation, wardrobe, and try-on flows.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Key Features
 
-## Step 1: Start Metro
+- Sign up, sign in, and store access tokens securely with `react-native-keychain`.
+- New-user onboarding flow: welcome screen, location permission, style preference selection, and initial setup completion.
+- Outfit recommendations on the Home screen, including location access for weather-based logic and the ability to save favorite looks.
+- Wardrobe management: browse items, filter by category, add photos from camera or gallery, and edit item metadata in the detail screen.
+- Body photo management and virtual try-on generation for a selected outfit.
+- User settings: daily reminder, style direction, and preference reset.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Tech Stack
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+- React Native `0.83.1`
+- React `19`
+- TypeScript
+- React Navigation
+- TanStack Query
+- Axios
+- `react-native-image-picker`
+- `react-native-geolocation-service`
+- `react-native-keychain`
+- `react-native-svg`
+- `react-native-toast-message`
 
-```sh
-# Using npm
-npm start
+## Environment Requirements
 
-# OR using Yarn
-yarn start
+- Node.js `>= 20`
+- npm or yarn
+- Xcode + CocoaPods for iOS
+- Android Studio + Android SDK for Android
+- A local backend API running on port `5001`
+
+## Installation
+
+Install JavaScript dependencies:
+
+```bash
+npm install
 ```
 
-## Step 2: Build and run your app
+Or:
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+```bash
+yarn install
 ```
 
-### iOS
+### iOS Setup
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
+```bash
 bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
+cd ios
 bundle exec pod install
+cd ..
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+### Start Metro
 
-```sh
-# Using npm
+```bash
+npm start
+```
+
+### Run the App
+
+Android:
+
+```bash
+npm run android
+```
+
+iOS:
+
+```bash
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## Available Scripts
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+| Script | Description |
+| --- | --- |
+| `npm start` | Start the Metro bundler |
+| `npm run android` | Build and run the app on Android |
+| `npm run ios` | Build and run the app on iOS |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run Jest |
+| `yarn ios:sim` | Open the iOS Simulator and run the iOS build (this script internally uses `yarn`) |
 
-## Step 3: Modify your app
+## Backend Configuration
 
-Now that you have successfully run the app, let's make changes!
+The app currently calls the API through hardcoded constants in:
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+- `src/services/apiClient.ts`
+- `src/services/auth.ts`
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+By default, the code points to:
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+- `http://localhost:5001`
 
-## Congratulations! :tada:
+Notes:
 
-You've successfully run and modified your React Native App. :partying_face:
+- iOS Simulator usually works with `http://localhost:5001`.
+- Android Emulator should use `http://10.0.2.2:5001` when the backend runs on your local machine.
+- For a physical device, use the LAN IP address of the machine running the backend.
+- The `.env` file currently contains `API_URL=http://localhost:5001`, but the current service layer does not read that value yet.
 
-### Now what?
+## Main Folder Structure
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+```text
+.
+├── android/              # Native Android project
+├── ios/                  # Native iOS project
+├── src/
+│   ├── assets/           # Images, icons, SVG files
+│   ├── components/       # UI components
+│   ├── context/          # Auth context
+│   ├── navigation/       # Navigation stacks
+│   ├── screens/          # Main screens
+│   ├── services/         # API and service layer
+│   ├── theme/            # Theme and typography
+│   ├── translations/     # i18n resources
+│   ├── types/            # Type definitions
+│   └── utils/            # Utility functions
+├── docs/                 # Additional documentation
+└── docs_agent/           # Backend docs, flows, and model references
+```
 
-# Troubleshooting
+## Related Documentation
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+- `docs_agent/API_DOCUMENTATION.md`: full backend API documentation.
+- `docs_agent/MODELS_DOCUMENTATION.md`: backend models and field definitions.
+- `docs_agent/QUICK_REFERENCE.md`: quick endpoint and flow reference.
+- `docs/ICONS.md`: notes about icons and assets.
 
-# Learn More
+If you are changing the service layer or integrating a new backend contract, read `docs_agent/` first to avoid mismatched API assumptions.
 
-To learn more about React Native, take a look at the following resources:
+## Quick Smoke Test
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+- Launch the app and sign up or sign in.
+- If this is a new user, complete onboarding to enter the main app flow.
+- Open Home to verify the recommendation flow.
+- Open Wardrobe to verify item loading and image upload.
+- Open Body to test body image upload and try-on generation.
+
+## Common Issues
+
+- The app cannot reach the API: verify whether you should use `localhost`, `10.0.2.2`, or your LAN IP.
+- iOS build fails after adding a native package: run `bundle exec pod install` again inside the `ios/` directory.
+- `ios:sim` does not work: that script depends on `yarn`, so install yarn or open Simulator manually and use `npm run ios`.
