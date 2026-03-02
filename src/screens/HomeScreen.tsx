@@ -234,9 +234,10 @@ export const HomeScreen = () => {
 
   const requestNextIfNeeded = useCallback((sheetIndex: number) => {
     const currentLastIndex = outfitSheets.length - 1;
-    const hasReachedCurrentEnd = currentLastIndex >= 0 && sheetIndex >= currentLastIndex;
+    // Prefetch next outfit when user is 1 outfit away from the end (like "try another")
+    const hasReachedPrefetchThreshold = currentLastIndex >= 0 && sheetIndex >= currentLastIndex - 1;
 
-    if (!recommendationSessionId || !hasReachedCurrentEnd || isNextPending) {
+    if (!recommendationSessionId || !hasReachedPrefetchThreshold || isNextPending) {
       return;
     }
 
