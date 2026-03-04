@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Keyboard,
   NativeScrollEvent,
   NativeSyntheticEvent,
   PermissionsAndroid,
@@ -19,6 +20,11 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { Sidebar } from '../components/layout/Sidebar';
+import {
+  ContextChipId,
+  ContextChipOption,
+  ContextChipsModal,
+} from '../components/features/ContextChipsModal';
 import { ItemDetailBottomSheet } from '../components/features/ItemDetailBottomSheet';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { Icons } from '../assets/icons';
@@ -26,7 +32,11 @@ import { theme } from '../theme/theme';
 import { Item } from '../types/item';
 import { AppStackParamList, TryOnOutfitContext } from '../types/navigation';
 import { favouriteService } from '../services/favouriteService';
-import { Outfit, recommendationService } from '../services/recommendationService';
+import {
+  NextRecommendationParams,
+  Outfit,
+  recommendationService,
+} from '../services/recommendationService';
 import { getImageUrl } from '../utils/url';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -34,8 +44,9 @@ const { width: screenWidth } = Dimensions.get('window');
 const GRID_GAP = 4;
 const SHEET_GAP = 4;
 const SHEET_PADDING = 12;
+const OPTION_ACTIONS_HEIGHT = 188;
 const CARD_WIDTH = Math.floor((screenWidth - SHEET_PADDING * 2 - GRID_GAP) / 2);
-const OPTION_SHEET_HEIGHT = Math.round(CARD_WIDTH * (8 / 3) + 140);
+const OPTION_SHEET_HEIGHT = Math.round(CARD_WIDTH * (8 / 3) + OPTION_ACTIONS_HEIGHT);
 const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
 const SNACKBAR_DURATION_MS = 2200;
 const MAX_DUPLICATE_PREFETCH_RETRIES = 3;
@@ -94,6 +105,46 @@ const clearTimeoutRef = (
   timeoutRef.current = null;
 };
 
+const CONTEXT_CHIP_SETS: ContextChipOption[][] = [
+  [
+    { id: 'more_relaxed', label: 'More relaxed' },
+    { id: 'different_vibe', label: 'Different vibe' },
+  ],
+  [
+    { id: 'more_polished', label: 'More polished' },
+    { id: 'more_casual', label: 'More casual' },
+  ],
+  [
+    { id: 'bolder_choice', label: 'Bolder choice' },
+    { id: 'simpler_look', label: 'Simpler look' },
+  ],
+];
+
+const CONTEXT_CHIP_PAYLOADS: Record<
+  ContextChipId,
+  Pick<NextRecommendationParams, 'style_feedback' | 'force_variation_axis'>
+> = {
+  more_relaxed: {
+    style_feedback: 'Make it feel more relaxed and easy to wear.',
+  },
+  different_vibe: {
+    style_feedback: 'Show me a distinctly different style direction that still feels wearable.',
+    force_variation_axis: 'NEW_ANCHOR',
+  },
+  more_polished: {
+    style_feedback: 'Make it look more polished and put together.',
+  },
+  more_casual: {
+    style_feedback: 'Make it more casual and effortless.',
+  },
+  bolder_choice: {
+    style_feedback: 'Make it bolder and more expressive.',
+  },
+  simpler_look: {
+    style_feedback: 'Make it simpler, cleaner, and less busy.',
+  },
+};
+
 export const HomeScreen = () => {
   const navigation = useNavigation<Navigation>();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -104,9 +155,36 @@ export const HomeScreen = () => {
   const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({});
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const [prefetchRetryTick, setPrefetchRetryTick] = useState(0);
+  const [isContextModalOpen, setIsContextModalOpen] = useState(false);
+  const [contextSuggestionSetIndex, setContextSuggestionSetIndex] = useState(0);
+  const [selectedContextChipId, setSelectedContextChipId] = useState<ContextChipId | null>(null);
+  const [isEditingContext, setIsEditingContext] = useState(false);
+  const [customContextText, setCustomContextText] = useState('');
   const requestedNextFromHashesRef = useRef(new Set<string>());
   const duplicatePrefetchCountsRef = useRef<Record<string, number>>({});
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showSnackbar = useCallback((message: string) => {
+    clearTimeoutRef(snackbarTimeoutRef);
+    setSnackbarMessage(message);
+    snackbarTimeoutRef.current = setTimeout(() => {
+      setSnackbarMessage(null);
+      clearTimeoutRef(snackbarTimeoutRef);
+    }, SNACKBAR_DURATION_MS);
+  }, []);
+
+  const resetContextDraft = useCallback(() => {
+    setContextSuggestionSetIndex(0);
+    setSelectedContextChipId(null);
+    setIsEditingContext(false);
+    setCustomContextText('');
+  }, []);
+
+  const closeContextModal = useCallback(() => {
+    Keyboard.dismiss();
+    setIsContextModalOpen(false);
+    resetContextDraft();
+  }, [resetContextDraft]);
 
   const { mutate: startRecommendation, isPending: isStartPending } = useMutation({
     mutationFn: recommendationService.startRecommendation,
@@ -116,7 +194,7 @@ export const HomeScreen = () => {
       }
 
       setOutfitSheets([buildOutfitSheet(data.outfit)]);
-      setRecommendationSessionId(data.session_id);
+      setRecommendationSessionId(data.session_id || null);
       setVisibleSheetIndex(0);
       requestedNextFromHashesRef.current.clear();
       duplicatePrefetchCountsRef.current = {};
@@ -134,19 +212,17 @@ export const HomeScreen = () => {
       }
 
       const requestedFromHash = variables.current_outfit_hash;
-      let appended = false;
+      const nextOutfitSheet = buildOutfitSheet(data.outfit);
+      const isDuplicateOutfit = outfitSheets.some(
+        (sheet) => sheet.outfitHash === nextOutfitSheet.outfitHash,
+      );
 
-      setOutfitSheets((currentSheets) => {
-        if (currentSheets.some((sheet) => sheet.outfitHash === data.outfit.outfit_hash)) {
-          return currentSheets;
-        }
+      if (data.session_id) {
+        setRecommendationSessionId(data.session_id);
+      }
 
-        appended = true;
-        return [...currentSheets, buildOutfitSheet(data.outfit)];
-      });
-      setRecommendationSessionId(data.session_id);
-
-      if (appended) {
+      if (!isDuplicateOutfit) {
+        setOutfitSheets((currentSheets) => [...currentSheets, nextOutfitSheet]);
         delete duplicatePrefetchCountsRef.current[requestedFromHash];
         return;
       }
@@ -169,6 +245,38 @@ export const HomeScreen = () => {
     },
   });
 
+  const { mutate: submitContextRecommendation, isPending: isContextSubmitting } = useMutation({
+    mutationFn: recommendationService.nextRecommendation,
+    onSuccess: (data, variables) => {
+      if (!data?.outfit) {
+        showSnackbar(data?.message || 'No more unique variations available.');
+        closeContextModal();
+        return;
+      }
+
+      if (data.outfit.outfit_hash === variables.current_outfit_hash) {
+        showSnackbar('No new variation found. Try another suggestion.');
+        closeContextModal();
+        return;
+      }
+
+      setOutfitSheets([buildOutfitSheet(data.outfit)]);
+      setVisibleSheetIndex(0);
+      requestedNextFromHashesRef.current.clear();
+      duplicatePrefetchCountsRef.current = {};
+
+      if (data.session_id) {
+        setRecommendationSessionId(data.session_id);
+      }
+
+      closeContextModal();
+    },
+    onError: (error) => {
+      showSnackbar('Unable to update this look right now. Please try again.');
+      console.error('Failed to apply context', error);
+    },
+  });
+
   const { mutate: saveFavourite } = useMutation({
     mutationFn: favouriteService.saveFavourite,
     onSuccess: (_, variables) => {
@@ -176,13 +284,7 @@ export const HomeScreen = () => {
         ...currentState,
         [variables.outfit_hash]: 'saved',
       }));
-
-      clearTimeoutRef(snackbarTimeoutRef);
-      setSnackbarMessage('This look is now saved to your favourite');
-      snackbarTimeoutRef.current = setTimeout(() => {
-        setSnackbarMessage(null);
-        clearTimeoutRef(snackbarTimeoutRef);
-      }, SNACKBAR_DURATION_MS);
+      showSnackbar('This look is now saved to your favourite');
     },
     onError: (error, variables) => {
       setSaveStates((currentState) => ({
@@ -237,7 +339,13 @@ export const HomeScreen = () => {
     // Prefetch next outfit when user is 1 outfit away from the end (like "try another")
     const hasReachedPrefetchThreshold = currentLastIndex >= 0 && sheetIndex >= currentLastIndex - 1;
 
-    if (!recommendationSessionId || !hasReachedPrefetchThreshold || isNextPending) {
+    if (
+      !recommendationSessionId
+      || !hasReachedPrefetchThreshold
+      || isNextPending
+      || isContextModalOpen
+      || isContextSubmitting
+    ) {
       return;
     }
 
@@ -253,6 +361,8 @@ export const HomeScreen = () => {
       current_outfit_hash: lastOutfitHash,
     });
   }, [
+    isContextModalOpen,
+    isContextSubmitting,
     isNextPending,
     nextRecommendation,
     outfitSheets,
@@ -272,6 +382,11 @@ export const HomeScreen = () => {
   const loading = isStartPending && outfitSheets.length === 0;
   const activeOutfit = outfitSheets[visibleSheetIndex] ?? outfitSheets[0] ?? null;
   const activeSaveState = getSaveStateForOutfit(activeOutfit, saveStates);
+  const activeContextChipOptions =
+    CONTEXT_CHIP_SETS[contextSuggestionSetIndex] ?? CONTEXT_CHIP_SETS[0];
+  const trimmedCustomContextText = customContextText.trim();
+  const isContextConfirmDisabled =
+    !selectedContextChipId && trimmedCustomContextText.length === 0;
 
   const optionSets = useMemo(
     () => outfitSheets.map(buildGridOutfitSheet),
@@ -306,6 +421,74 @@ export const HomeScreen = () => {
       mode: 'tryOn',
       outfit: buildTryOnContext(outfit),
     });
+  };
+
+  const handleOpenContextModal = (outfit: OutfitSheet) => {
+    if (!recommendationSessionId || isContextSubmitting) {
+      return;
+    }
+
+    const targetIndex = outfitSheets.findIndex(
+      (sheet) => sheet.outfitHash === outfit.outfitHash,
+    );
+
+    if (targetIndex >= 0) {
+      setVisibleSheetIndex(targetIndex);
+    }
+
+    resetContextDraft();
+    setIsContextModalOpen(true);
+  };
+
+  const handleShuffleSuggestions = () => {
+    Keyboard.dismiss();
+    setContextSuggestionSetIndex(
+      (currentIndex) => (currentIndex + 1) % CONTEXT_CHIP_SETS.length,
+    );
+    setSelectedContextChipId(null);
+    setIsEditingContext(false);
+    setCustomContextText('');
+  };
+
+  const handleSelectContextChip = (chipId: ContextChipId) => {
+    Keyboard.dismiss();
+    setSelectedContextChipId((currentChipId) => (
+      currentChipId === chipId ? null : chipId
+    ));
+    setIsEditingContext(false);
+    setCustomContextText('');
+  };
+
+  const handleOpenContextEdit = () => {
+    setSelectedContextChipId(null);
+    setIsEditingContext(true);
+  };
+
+  const handleChangeContextText = (text: string) => {
+    setSelectedContextChipId(null);
+    setIsEditingContext(true);
+    setCustomContextText(text);
+  };
+
+  const handleSubmitContext = () => {
+    if (!activeOutfit || !recommendationSessionId || isContextConfirmDisabled) {
+      return;
+    }
+
+    const selectedPayload = selectedContextChipId
+      ? CONTEXT_CHIP_PAYLOADS[selectedContextChipId]
+      : null;
+
+    const payload: NextRecommendationParams = {
+      session_id: recommendationSessionId,
+      current_outfit_hash: activeOutfit.outfitHash,
+      ...(selectedPayload || {}),
+      ...(trimmedCustomContextText
+        ? { style_feedback: trimmedCustomContextText }
+        : {}),
+    };
+
+    submitContextRecommendation(payload);
   };
 
   const handleLeadingAction = () => {
@@ -371,7 +554,9 @@ export const HomeScreen = () => {
               <OptionSheet
                 key={outfit.outfitHash}
                 outfit={outfit}
+                contextDisabled={!recommendationSessionId || isContextSubmitting}
                 saveState={saveStates[outfit.outfitHash] || 'idle'}
+                onAddContext={handleOpenContextModal}
                 onItemPress={(item) => setSelectedItem(item)}
                 onSave={handleSaveOutfit}
                 onSeeThisOnMe={handleOpenTryOn}
@@ -387,19 +572,39 @@ export const HomeScreen = () => {
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
       />
+
+      <ContextChipsModal
+        visible={isContextModalOpen}
+        chipOptions={activeContextChipOptions}
+        selectedChipId={selectedContextChipId}
+        isEditing={isEditingContext}
+        customContextText={customContextText}
+        isSubmitting={isContextSubmitting}
+        confirmDisabled={isContextConfirmDisabled}
+        onSelectChip={handleSelectContextChip}
+        onShuffle={handleShuffleSuggestions}
+        onEdit={handleOpenContextEdit}
+        onChangeText={handleChangeContextText}
+        onCancel={closeContextModal}
+        onConfirm={handleSubmitContext}
+      />
     </SafeAreaView>
   );
 };
 
 const OptionSheet = ({
+  contextDisabled,
   outfit,
   saveState,
+  onAddContext,
   onItemPress,
   onSave,
   onSeeThisOnMe,
 }: {
+  contextDisabled: boolean;
   outfit: OutfitSheetWithGrid;
   saveState: SaveState;
+  onAddContext: (outfit: OutfitSheet) => void;
   onItemPress: (item: Item) => void;
   onSave: (outfit: OutfitSheet) => void;
   onSeeThisOnMe: (outfit: OutfitSheet) => void;
@@ -453,6 +658,15 @@ const OptionSheet = ({
           style={styles.secondaryAction}
           textStyle={styles.secondaryActionText}
         />
+
+        <PillButton
+          title="Add context"
+          variant="text"
+          onPress={() => onAddContext(outfit)}
+          disabled={contextDisabled}
+          style={styles.contextAction}
+          textStyle={styles.secondaryActionText}
+        />
       </View>
     </View>
   );
@@ -481,7 +695,7 @@ const HomeLoadingState = () => (
 
 const LoadingMoreIndicator = () => (
   <View style={styles.loadingMoreIndicator}>
-    <ActivityIndicator size="small" color={theme.colors.white} />
+    <ActivityIndicator size="small" color={theme.colors.figmaAction} />
     <Text style={styles.loadingMoreText}>Loading more options...</Text>
   </View>
 );
@@ -514,7 +728,7 @@ const GarmentPreview = ({ item }: { item: Item }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#191B22',
+    backgroundColor: theme.colors.figmaBackground,
   },
   header: {
     flexDirection: 'row',
@@ -526,7 +740,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...theme.typography.aliases.playfairDisplaySection,
-    color: theme.colors.white,
+    color: theme.colors.figmaText,
   },
   heartButton: {
     width: 45,
@@ -607,8 +821,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#E6E9EE',
   },
   cardImage: {
-    width: '88%',
-    height: '88%',
+    width: '100%',
+    height: '100%',
   },
   cardFallback: {
     width: '100%',
@@ -649,6 +863,9 @@ const styles = StyleSheet.create({
   secondaryAction: {
     height: 40,
   },
+  contextAction: {
+    height: 32,
+  },
   secondaryActionText: {
     ...theme.typography.aliases.archivoButton,
     color: theme.colors.figmaAction,
@@ -670,7 +887,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     minHeight: 44,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: theme.colors.figmaSurfaceSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.figmaDivider,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -678,7 +897,7 @@ const styles = StyleSheet.create({
   },
   loadingMoreText: {
     ...theme.typography.aliases.archivoBody,
-    color: theme.colors.white,
+    color: theme.colors.figmaAction,
   },
   menuGlyph: {
     width: 20,

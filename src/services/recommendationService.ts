@@ -8,11 +8,19 @@ export interface Outfit {
   fallback_flags: string[];
 }
 
+export type RecommendationVariationAxis =
+  | 'SILHOUETTE'
+  | 'LAYERING'
+  | 'COLOR'
+  | 'NEW_ANCHOR';
+
 export interface RecommendationResponse {
-  outfit: Outfit;
-  session_id: string;
-  fallback_flags: string[];
-  variation_axis?: string;
+  outfit?: Outfit;
+  session_id?: string;
+  fallback_flags?: string[];
+  variation_axis?: RecommendationVariationAxis;
+  fallback?: boolean;
+  message?: string;
 }
 
 export interface StartRecommendationParams {
@@ -30,6 +38,10 @@ export interface StartRecommendationParams {
 export interface NextRecommendationParams {
   session_id: string;
   current_outfit_hash: string;
+  rejected_items?: string[];
+  preferred_colors?: string[];
+  style_feedback?: string;
+  force_variation_axis?: RecommendationVariationAxis;
 }
 
 export const recommendationService = {
