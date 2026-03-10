@@ -434,8 +434,8 @@ export const WardrobeScreen = () => {
         onRequestClose={() => setAddSheetVisible(false)}
       >
         <TouchableWithoutFeedback onPress={() => setAddSheetVisible(false)}>
-          <View style={styles.sheetOverlay}>
-            <TouchableWithoutFeedback>
+          <View style={styles.sheetOverlay} onStartShouldSetResponder={() => true}>
+            <TouchableOpacity activeOpacity={1}>
               <BottomSheetSurface style={styles.addSheet}>
                 <View style={styles.addSheetHeader}>
                   <TopIconButton
@@ -520,7 +520,7 @@ export const WardrobeScreen = () => {
                   ) : null}
                 </ScrollView>
               </BottomSheetSurface>
-            </TouchableWithoutFeedback>
+            </TouchableOpacity>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
@@ -648,8 +648,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(39, 42, 50, 0.25)',
   },
   addSheet: {
-    minHeight: '48%',
-    maxHeight: '68%',
+    height: 400,
     paddingTop: 16,
     paddingBottom: 18,
   },
