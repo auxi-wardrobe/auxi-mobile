@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as Keychain from 'react-native-keychain';
 import { ROOT_URL } from './apiClient';
-import { authService } from './auth';
+import { User } from '../types/auth';
 
 const WARDROBE_URL = `${ROOT_URL}/api`;
 const STYLE_TAG_FAVORITE = 'favorite';
@@ -263,9 +263,11 @@ export const wardrobeService = {
     }
   },
 
-  getCommonItems: async (): Promise<WardrobeItem[]> => {
+  getCommonItems: async (category?: string): Promise<WardrobeItem[]> => {
     try {
-      const response = await wardrobeApi.get('/wardrobe/common-items');
+      const response = await wardrobeApi.get('/wardrobe/common-items', {
+        params: { category },
+      });
       return getItemList(response.data);
     } catch (error) {
       const status = getErrorStatus(error);
@@ -326,19 +328,35 @@ export const wardrobeService = {
     }
   },
 
+  aiEnhanceWardrobeItem: async (item: Partial<WardrobeItem>): Promise<WardrobeItem> => {
+    try {
+      const response = await wardrobeApi.post('/wardrobe/items/ai-enhanced', item);
+      return getSingleItem(response.data);
+    } catch (error) {
+      console.error('Error enhancing wardrobe item', error);
+      throw error;
+    }
+  },
+
   uploadWardrobeItem: async (
     file: UploadSource,
+    user: User,
     typeHint?: string,
   ): Promise<WardrobeItem> => {
     try {
       const imageUrl = await wardrobeService.uploadFile(file);
-      const user = await authService.getCurrentUser();
 
       if (!user || !user.id) {
         throw new Error('User not authenticated or user ID missing');
       }
 
-      return await wardrobeService.createWardrobeItem({
+      // return await wardrobeService.createWardrobeItem({
+      //   user_id: String(user.id),
+      //   category: typeHint || 'top',
+      //   image_url: imageUrl,
+      //   name: 'New Item',
+      // });
+      return await wardrobeService.aiEnhanceWardrobeItem({
         user_id: String(user.id),
         category: typeHint || 'top',
         image_url: imageUrl,
@@ -417,6 +435,17 @@ export const wardrobeService = {
       return await updateStyleTagsWithFallback(id, (tags) => replaceFitTag(tags, fitLabel));
     } catch (error) {
       console.error('Error updating wardrobe item fit', error);
+      throw error;
+    }
+  },
+
+  cloneCommonItems: async (ids: string[]): Promise<void> => {
+    try {
+      await wardrobeApi.post(`/wardrobe/common-items/clone`, {
+        item_ids: ids,
+      });
+    } catch (error) {
+      console.error('Error cloning common items', error);
       throw error;
     }
   },

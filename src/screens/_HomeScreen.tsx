@@ -4,8 +4,8 @@ import {
   Dimensions,
   Image,
   Keyboard,
-  // NativeScrollEvent,
-  // NativeSyntheticEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   // PermissionsAndroid,
   // Platform,
   SafeAreaView,
@@ -16,8 +16,8 @@ import {
   View,
 } from 'react-native';
 // import Geolocation from 'react-native-geolocation-service';
-// import { useNavigation } from '@react-navigation/native';
-// import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { Sidebar } from '../components/layout/Sidebar';
 import {
@@ -27,12 +27,14 @@ import {
 } from '../components/features/ContextChipsModal';
 import { ItemDetailBottomSheet } from '../components/features/ItemDetailBottomSheet';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
-// import { Icons } from '../assets/icons';
+import { Icons } from '../assets/icons';
 import { theme } from '../theme/theme';
 import { Item } from '../types/item';
-// import { AppStackParamList } from '../types/navigation';
+import { AppStackParamList, TryOnOutfitContext } from '../types/navigation';
+import { favouriteService } from '../services/favouriteService';
 import {
-  // NextRecommendationParams,
+  NextRecommendationParams,
+  Outfit,
   recommendationService,
 } from '../services/recommendationService';
 import { getImageUrl } from '../utils/url';
@@ -46,8 +48,10 @@ const OPTION_ACTIONS_HEIGHT = 188;
 const CARD_WIDTH = Math.floor((screenWidth - SHEET_PADDING * 2 - GRID_GAP) / 2);
 const OPTION_SHEET_HEIGHT = Math.round(CARD_WIDTH * (8 / 3) + OPTION_ACTIONS_HEIGHT);
 const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
+const SNACKBAR_DURATION_MS = 2200;
+// const MAX_DUPLICATE_PREFETCH_RETRIES = 3;
 
-// type Navigation = NativeStackNavigationProp<AppStackParamList, 'Home'>;
+type Navigation = NativeStackNavigationProp<AppStackParamList, 'Home'>;
 
 type OutfitSheet = {
   items: Item[];
@@ -62,7 +66,7 @@ type OutfitSheetWithGrid = OutfitSheet & {
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 const buildGrid = (items: Item[]): Array<Item | null> =>
-  Array.from({ length: Math.max(4, items.length) }, (_, index) => items[index] || null);
+  Array.from({ length: 4 }, (_, index) => items[index] || null);
 
 // const buildOutfitSheet = (outfit: Outfit): OutfitSheet => ({
 //   items: outfit.items || [],
@@ -75,15 +79,20 @@ const buildGridOutfitSheet = (outfit: OutfitSheet): OutfitSheetWithGrid => ({
   gridItems: buildGrid(outfit.items),
 });
 
-// const buildTryOnContext = (outfit: OutfitSheet): TryOnOutfitContext => ({
-//   outfitHash: outfit.outfitHash,
-//   itemIds: outfit.items.map((item) => item.id),
-//   itemImageUrls: outfit.items.map((item) => item.image_url),
-//   stylingNote: outfit.stylingNote,
-// });
+const buildTryOnContext = (outfit: OutfitSheet): TryOnOutfitContext => ({
+  outfitHash: outfit.outfitHash,
+  itemIds: outfit.items.map((item) => item.id),
+  itemImageUrls: outfit.items.map((item) => item.image_url),
+  stylingNote: outfit.stylingNote,
+});
 
-// const getSheetIndexFromOffset = (offsetY: number) =>
-//   Math.round(offsetY / OPTION_SHEET_SNAP_INTERVAL);
+const getSaveStateForOutfit = (
+  outfit: OutfitSheet | null,
+  saveStates: Record<string, SaveState>,
+): SaveState => (outfit ? saveStates[outfit.outfitHash] || 'idle' : 'idle');
+
+const getSheetIndexFromOffset = (offsetY: number) =>
+  Math.round(offsetY / OPTION_SHEET_SNAP_INTERVAL);
 
 const clearTimeoutRef = (
   timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
@@ -111,49 +120,60 @@ const CONTEXT_CHIP_SETS: ContextChipOption[][] = [
   ],
 ];
 
-// const CONTEXT_CHIP_PAYLOADS: Record<
-//   ContextChipId,
-//   Pick<NextRecommendationParams, 'style_feedback' | 'force_variation_axis'>
-// > = {
-//   more_relaxed: {
-//     style_feedback: 'Make it feel more relaxed and easy to wear.',
-//   },
-//   different_vibe: {
-//     style_feedback: 'Show me a distinctly different style direction that still feels wearable.',
-//     force_variation_axis: 'NEW_ANCHOR',
-//   },
-//   more_polished: {
-//     style_feedback: 'Make it look more polished and put together.',
-//   },
-//   more_casual: {
-//     style_feedback: 'Make it more casual and effortless.',
-//   },
-//   bolder_choice: {
-//     style_feedback: 'Make it bolder and more expressive.',
-//   },
-//   simpler_look: {
-//     style_feedback: 'Make it simpler, cleaner, and less busy.',
-//   },
-// };
+const CONTEXT_CHIP_PAYLOADS: Record<
+  ContextChipId,
+  Pick<NextRecommendationParams, 'style_feedback' | 'force_variation_axis'>
+> = {
+  more_relaxed: {
+    style_feedback: 'Make it feel more relaxed and easy to wear.',
+  },
+  different_vibe: {
+    style_feedback: 'Show me a distinctly different style direction that still feels wearable.',
+    force_variation_axis: 'NEW_ANCHOR',
+  },
+  more_polished: {
+    style_feedback: 'Make it look more polished and put together.',
+  },
+  more_casual: {
+    style_feedback: 'Make it more casual and effortless.',
+  },
+  bolder_choice: {
+    style_feedback: 'Make it bolder and more expressive.',
+  },
+  simpler_look: {
+    style_feedback: 'Make it simpler, cleaner, and less busy.',
+  },
+};
 
 export const HomeScreen = () => {
-  // const navigation = useNavigation<Navigation>();
+  const navigation = useNavigation<Navigation>();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   // const [outfitSheets, setOutfitSheets] = useState<OutfitSheet[]>([]);
   // const [recommendationSessionId, setRecommendationSessionId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  // const [visibleSheetIndex, setVisibleSheetIndex] = useState(0);
+  const [visibleSheetIndex, setVisibleSheetIndex] = useState(0);
+  const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({});
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   // const [prefetchRetryTick, setPrefetchRetryTick] = useState(0);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [contextSuggestionSetIndex, setContextSuggestionSetIndex] = useState(0);
   const [selectedContextChipId, setSelectedContextChipId] = useState<ContextChipId | null>(null);
   const [isEditingContext, setIsEditingContext] = useState(false);
   const [customContextText, setCustomContextText] = useState('');
+  const requestedNextFromHashesRef = useRef(new Set<string>());
   // const duplicatePrefetchCountsRef = useRef<Record<string, number>>({});
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [listOutfits, setListOutfits] = useState<any[]>([]);
-  const [currentOutfitIndex, setCurrentOutfitIndex] = useState(0);
+
+  const showSnackbar = useCallback((message: string) => {
+    clearTimeoutRef(snackbarTimeoutRef);
+    setSnackbarMessage(message);
+    snackbarTimeoutRef.current = setTimeout(() => {
+      setSnackbarMessage(null);
+      clearTimeoutRef(snackbarTimeoutRef);
+    }, SNACKBAR_DURATION_MS);
+  }, []);
 
   const resetContextDraft = useCallback(() => {
     setContextSuggestionSetIndex(0);
@@ -168,14 +188,32 @@ export const HomeScreen = () => {
     resetContextDraft();
   }, [resetContextDraft]);
 
+  // const { mutate: startRecommendation, isPending: isStartPending } = useMutation({
+  //   mutationFn: recommendationService.startRecommendation,
+  //   onSuccess: (data) => {
+  //     if (!data?.outfit) {
+  //       return;
+  //     }
+
+  //     setOutfitSheets([buildOutfitSheet(data.outfit)]);
+  //     setRecommendationSessionId(data.session_id || null);
+  //     setVisibleSheetIndex(0);
+  //     requestedNextFromHashesRef.current.clear();
+  //     duplicatePrefetchCountsRef.current = {};
+  //   },
+  //   onError: (error) => {
+  //     console.error('Failed to load recommendation', error);
+  //   },
+  // });
+
+
   const { mutate: valenGetRecommendation, isPending: isStartPending } = useMutation({
     mutationFn: recommendationService.valenGetRecommendation,
-    onSuccess: (data: any) => {
-      setListOutfits(data);
-      // Only reset index if we're not already on the first outfit
-      if (currentOutfitIndex !== 0) {
-        setCurrentOutfitIndex(0);
-      }
+    onSuccess: (data) => {
+      // if (!data?.outfit) {
+      //   return;
+      // }
+      setListOutfits(data)
 
       // setOutfitSheets([buildOutfitSheet(data.outfit)]);
       // setRecommendationSessionId(data.session_id || null);
@@ -188,9 +226,178 @@ export const HomeScreen = () => {
     },
   });
 
+  // const { mutate: nextRecommendation, isPending: isNextPending } = useMutation({
+  //   mutationFn: recommendationService.nextRecommendation,
+  //   onSuccess: (data, variables) => {
+  //     if (!data?.outfit) {
+  //       return;
+  //     }
+
+  //     const requestedFromHash = variables.current_outfit_hash;
+  //     const nextOutfitSheet = buildOutfitSheet(data.outfit);
+  //     const isDuplicateOutfit = outfitSheets.some(
+  //       (sheet) => sheet.outfitHash === nextOutfitSheet.outfitHash,
+  //     );
+
+  //     if (data.session_id) {
+  //       setRecommendationSessionId(data.session_id);
+  //     }
+
+  //     if (!isDuplicateOutfit) {
+  //       setOutfitSheets((currentSheets) => [...currentSheets, nextOutfitSheet]);
+  //       delete duplicatePrefetchCountsRef.current[requestedFromHash];
+  //       return;
+  //     }
+
+  //     const duplicateCount = duplicatePrefetchCountsRef.current[requestedFromHash] || 0;
+
+  //     if (duplicateCount >= MAX_DUPLICATE_PREFETCH_RETRIES) {
+  //       return;
+  //     }
+
+  //     duplicatePrefetchCountsRef.current[requestedFromHash] = duplicateCount + 1;
+  //     requestedNextFromHashesRef.current.delete(requestedFromHash);
+  //     setPrefetchRetryTick((currentTick) => currentTick + 1);
+  //   },
+  //   onError: (error, variables) => {
+  //     if (variables?.current_outfit_hash) {
+  //       requestedNextFromHashesRef.current.delete(variables.current_outfit_hash);
+  //     }
+  //     console.error('Failed to fetch more options', error);
+  //   },
+  // });
+
+  // const { mutate: submitContextRecommendation, isPending: isContextSubmitting } = useMutation({
+  //   mutationFn: recommendationService.nextRecommendation,
+  //   onSuccess: (data, variables) => {
+  //     if (!data?.outfit) {
+  //       showSnackbar(data?.message || 'No more unique variations available.');
+  //       closeContextModal();
+  //       return;
+  //     }
+
+  //     if (data.outfit.outfit_hash === variables.current_outfit_hash) {
+  //       showSnackbar('No new variation found. Try another suggestion.');
+  //       closeContextModal();
+  //       return;
+  //     }
+
+  //     setOutfitSheets([buildOutfitSheet(data.outfit)]);
+  //     setVisibleSheetIndex(0);
+  //     requestedNextFromHashesRef.current.clear();
+  //     duplicatePrefetchCountsRef.current = {};
+
+  //     if (data.session_id) {
+  //       setRecommendationSessionId(data.session_id);
+  //     }
+
+  //     closeContextModal();
+  //   },
+  //   onError: (error) => {
+  //     showSnackbar('Unable to update this look right now. Please try again.');
+  //     console.error('Failed to apply context', error);
+  //   },
+  // });
+
+  const { mutate: saveFavourite } = useMutation({
+    mutationFn: favouriteService.saveFavourite,
+    onSuccess: (_, variables) => {
+      setSaveStates((currentState) => ({
+        ...currentState,
+        [variables.outfit_hash]: 'saved',
+      }));
+      showSnackbar('This look is now saved to your favourite');
+    },
+    onError: (error, variables) => {
+      setSaveStates((currentState) => ({
+        ...currentState,
+        [variables.outfit_hash]: 'error',
+      }));
+      console.error('Failed to save favourite', error);
+    },
+  });
+
+  // useEffect(() => {
+  //   const fetchLocationAndStart = async () => {
+  //     let hasPermission = false;
+
+  //     if (Platform.OS === 'ios') {
+  //       const auth = await Geolocation.requestAuthorization('whenInUse');
+  //       hasPermission = auth === 'granted';
+  //     } else if (Platform.OS === 'android') {
+  //       const granted = await PermissionsAndroid.request(
+  //         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+  //       );
+  //       hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
+  //     }
+
+  //     if (hasPermission) {
+  //       Geolocation.getCurrentPosition(
+  //         (position) => {
+  //           startRecommendation({
+  //             weather: {
+  //               lat: position.coords.latitude,
+  //               long: position.coords.longitude,
+  //               temp_c: 22,
+  //             },
+  //           });
+  //         },
+  //         (error) => {
+  //           console.warn('Geolocation error:', error.code, error.message);
+  //           startRecommendation({ weather: { temp_c: 22 } });
+  //         },
+  //         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
+  //       );
+  //     } else {
+  //       startRecommendation({ weather: { temp_c: 22 } });
+  //     }
+  //   };
+
+  //   fetchLocationAndStart();
+  // }, [startRecommendation]);
+
   useEffect(() => {
     valenGetRecommendation({});
   }, [valenGetRecommendation]);
+
+  // const requestNextIfNeeded = useCallback((sheetIndex: number) => {
+  //   const currentLastIndex = outfitSheets.length - 1;
+  //   // Prefetch next outfit when user is 1 outfit away from the end (like "try another")
+  //   const hasReachedPrefetchThreshold = currentLastIndex >= 0 && sheetIndex >= currentLastIndex - 1;
+
+  //   if (
+  //     !recommendationSessionId
+  //     || !hasReachedPrefetchThreshold
+  //     || isNextPending
+  //     || isContextModalOpen
+  //     || isContextSubmitting
+  //   ) {
+  //     return;
+  //   }
+
+  //   const lastOutfitHash = outfitSheets[outfitSheets.length - 1]?.outfitHash;
+
+  //   if (!lastOutfitHash || requestedNextFromHashesRef.current.has(lastOutfitHash)) {
+  //     return;
+  //   }
+
+  //   requestedNextFromHashesRef.current.add(lastOutfitHash);
+  //   nextRecommendation({
+  //     session_id: recommendationSessionId,
+  //     current_outfit_hash: lastOutfitHash,
+  //   });
+  // }, [
+  //   isContextModalOpen,
+  //   isContextSubmitting,
+  //   isNextPending,
+  //   nextRecommendation,
+  //   outfitSheets,
+  //   recommendationSessionId,
+  // ]);
+
+  // useEffect(() => {
+  //   requestNextIfNeeded(visibleSheetIndex);
+  // }, [prefetchRetryTick, requestNextIfNeeded, visibleSheetIndex]);
 
   useEffect(() => {
     return () => {
@@ -198,29 +405,68 @@ export const HomeScreen = () => {
     };
   }, []);
 
-  const loading = isStartPending && (!listOutfits || listOutfits.length === 0);
-  const currentOutfit = listOutfits && listOutfits[currentOutfitIndex];
+  // const loading = isStartPending && outfitSheets.length === 0;
+  // const activeOutfit = outfitSheets[visibleSheetIndex] ?? outfitSheets[0] ?? null;
+  const loading = isStartPending && listOutfits.length === 0;
+  const activeOutfit = listOutfits[visibleSheetIndex] ?? listOutfits[0] ?? null;
+  const activeSaveState = getSaveStateForOutfit(activeOutfit, saveStates);
   const activeContextChipOptions =
     CONTEXT_CHIP_SETS[contextSuggestionSetIndex] ?? CONTEXT_CHIP_SETS[0];
   const trimmedCustomContextText = customContextText.trim();
   const isContextConfirmDisabled =
     !selectedContextChipId && trimmedCustomContextText.length === 0;
 
-  const optionSets = useMemo(
-    () => currentOutfit ? [buildGridOutfitSheet({
-      items: currentOutfit,
-      outfitHash: `outfit-${currentOutfitIndex}`,
-      stylingNote: '',
-    })] : [],
-    [currentOutfit, currentOutfitIndex],
-  );
+  // const optionSets = useMemo(
+  //   () => outfitSheets.map(buildGridOutfitSheet),
+  //   [outfitSheets],
+  // );
 
-  // const handleOpenTryOn = (outfit: OutfitSheet) => {
-  //   navigation.navigate('Body', {
-  //     mode: 'tryOn',
-  //     outfit: buildTryOnContext(outfit),
-  //   });
-  // };
+  const handleSaveOutfit = (outfit: OutfitSheet | null) => {
+    if (!outfit) {
+      return;
+    }
+
+    const currentState = saveStates[outfit.outfitHash] || 'idle';
+
+    if (currentState === 'saving' || currentState === 'saved') {
+      return;
+    }
+
+    setSaveStates((currentStateMap) => ({
+      ...currentStateMap,
+      [outfit.outfitHash]: 'saving',
+    }));
+
+    saveFavourite({
+      outfit_hash: outfit.outfitHash,
+      item_ids: outfit.items.map((item) => item.id),
+      source: 'home',
+    });
+  };
+
+  const handleOpenTryOn = (outfit: OutfitSheet) => {
+    navigation.navigate('Body', {
+      mode: 'tryOn',
+      outfit: buildTryOnContext(outfit),
+    });
+  };
+
+  const handleOpenContextModal = (outfit: OutfitSheet) => {
+    if (!recommendationSessionId || isContextSubmitting) {
+      return;
+    }
+
+    const targetIndex = outfitSheets.findIndex(
+      (sheet) => sheet.outfitHash === outfit.outfitHash,
+    );
+
+    if (targetIndex >= 0) {
+      setVisibleSheetIndex(targetIndex);
+    }
+
+    resetContextDraft();
+    setIsContextModalOpen(true);
+  };
 
   const handleShuffleSuggestions = () => {
     Keyboard.dismiss();
@@ -253,50 +499,35 @@ export const HomeScreen = () => {
   };
 
   const handleSubmitContext = () => {
-    // if (!activeOutfit || !recommendationSessionId || isContextConfirmDisabled) {
-    //   return;
-    // }
-
-    // const selectedPayload = selectedContextChipId
-    //   ? CONTEXT_CHIP_PAYLOADS[selectedContextChipId]
-    //   : null;
-
-    // const payload: NextRecommendationParams = {
-    //   session_id: recommendationSessionId,
-    //   current_outfit_hash: activeOutfit.outfitHash,
-    //   ...(selectedPayload || {}),
-    //   ...(trimmedCustomContextText
-    //     ? { style_feedback: trimmedCustomContextText }
-    //     : {}),
-    // };
-
-    // submitContextRecommendation(payload);
-  };
-
-  const handleNextOutfit = () => {
-    if (!listOutfits || listOutfits.length === 0) {
+    if (!activeOutfit || !recommendationSessionId || isContextConfirmDisabled) {
       return;
     }
-    
-    if (currentOutfitIndex < listOutfits.length - 1) {
-      setCurrentOutfitIndex(currentOutfitIndex + 1);
-    } else {
-      // Reached the end, call API again
-      // Don't reset index yet, let loading state show first
-      // Index will be reset in onSuccess callback
-      valenGetRecommendation({});
-    }
+
+    const selectedPayload = selectedContextChipId
+      ? CONTEXT_CHIP_PAYLOADS[selectedContextChipId]
+      : null;
+
+    const payload: NextRecommendationParams = {
+      session_id: recommendationSessionId,
+      current_outfit_hash: activeOutfit.outfitHash,
+      ...(selectedPayload || {}),
+      ...(trimmedCustomContextText
+        ? { style_feedback: trimmedCustomContextText }
+        : {}),
+    };
+
+    submitContextRecommendation(payload);
   };
 
   const handleLeadingAction = () => {
     setIsSidebarOpen(true);
   };
 
-  // const handleOptionSwipeEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-  //   const currentSheetIndex = getSheetIndexFromOffset(event.nativeEvent.contentOffset.y);
-  //   setVisibleSheetIndex(currentSheetIndex);
-  //   // requestNextIfNeeded(currentSheetIndex);
-  // };
+  const handleOptionSwipeEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const currentSheetIndex = getSheetIndexFromOffset(event.nativeEvent.contentOffset.y);
+    setVisibleSheetIndex(currentSheetIndex);
+    requestNextIfNeeded(currentSheetIndex);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -310,16 +541,7 @@ export const HomeScreen = () => {
 
         <Text style={styles.headerTitle}>Auxi</Text>
 
-        {currentOutfit && (
-          <TouchableOpacity
-            style={styles.nextButton}
-            onPress={handleNextOutfit}
-          >
-            <Text style={styles.nextButtonText}>Next</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* <TouchableOpacity
+        <TouchableOpacity
           activeOpacity={0.82}
           style={[
             styles.heartButton,
@@ -334,14 +556,14 @@ export const HomeScreen = () => {
           ) : (
             <Icons.Heart width={24} height={24} />
           )}
-        </TouchableOpacity> */}
+        </TouchableOpacity>
       </View>
 
-      {/* {snackbarMessage ? (
+      {snackbarMessage ? (
         <View style={styles.snackbar}>
           <Text style={styles.snackbarText}>{snackbarMessage}</Text>
         </View>
-      ) : null} */}
+      ) : null}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -349,8 +571,8 @@ export const HomeScreen = () => {
         snapToAlignment="start"
         snapToInterval={OPTION_SHEET_SNAP_INTERVAL}
         decelerationRate="fast"
-        // onScrollEndDrag={handleOptionSwipeEnd}
-        // onMomentumScrollEnd={handleOptionSwipeEnd}
+        onScrollEndDrag={handleOptionSwipeEnd}
+        onMomentumScrollEnd={handleOptionSwipeEnd}
       >
         {loading ? (
           <HomeLoadingState />
@@ -360,15 +582,15 @@ export const HomeScreen = () => {
               <OptionSheet
                 key={outfit.outfitHash}
                 outfit={outfit}
-                contextDisabled={false}
-                saveState="idle"
-                onAddContext={() => {}}
+                contextDisabled={!recommendationSessionId || isContextSubmitting}
+                saveState={saveStates[outfit.outfitHash] || 'idle'}
+                onAddContext={handleOpenContextModal}
                 onItemPress={(item) => setSelectedItem(item)}
-                onSave={() => {}}
-                onSeeThisOnMe={() => {}}
+                onSave={handleSaveOutfit}
+                onSeeThisOnMe={handleOpenTryOn}
               />
             ))}
-            {false ? <LoadingMoreIndicator /> : null}
+            {isNextPending ? <LoadingMoreIndicator /> : null}
           </>
         )}
       </ScrollView>
@@ -385,7 +607,7 @@ export const HomeScreen = () => {
         selectedChipId={selectedContextChipId}
         isEditing={isEditingContext}
         customContextText={customContextText}
-        isSubmitting={false}
+        isSubmitting={isContextSubmitting}
         confirmDisabled={isContextConfirmDisabled}
         onSelectChip={handleSelectContextChip}
         onShuffle={handleShuffleSuggestions}
@@ -415,49 +637,31 @@ const OptionSheet = ({
   onSave: (outfit: OutfitSheet) => void;
   onSeeThisOnMe: (outfit: OutfitSheet) => void;
 }) => {
-  const totalItems = outfit.gridItems.length;
-  const rows = [];
-  
-  // Create rows of 2 items each, but handle last item differently if odd number
-  for (let i = 0; i < totalItems; i += 2) {
-    const isLastRowWithSingleItem = (i + 1 >= totalItems) && (totalItems % 2 === 1);
-    if (isLastRowWithSingleItem) {
-      // Last single item gets its own row
-      rows.push([outfit.gridItems[i], null]);
-    } else {
-      rows.push(outfit.gridItems.slice(i, i + 2));
-    }
-  }
+  const rows = [outfit.gridItems.slice(0, 2), outfit.gridItems.slice(2, 4)];
 
   return (
     <View style={styles.optionSheet}>
-      <ScrollView 
-        style={styles.gridScroll}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.gridScrollContent}
-      >
-        <View style={styles.gridWrap}>
-          {rows.map((row, rowIndex) => (
-            <View key={`row-${outfit.outfitHash}-${rowIndex}`} style={styles.cardRow}>
-              {row.map((item, itemIndex) => (
-                <View key={`card-${outfit.outfitHash}-${rowIndex}-${itemIndex}`} style={styles.cardShell}>
-                  {item ? (
-                    <TouchableOpacity
-                      activeOpacity={0.86}
-                      style={styles.card}
-                      onPress={() => onItemPress(item)}
-                    >
-                      <GarmentPreview item={item} />
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={[styles.card, styles.placeholderCard]} />
-                  )}
-                </View>
-              ))}
-            </View>
-          ))}
-        </View>
-      </ScrollView>
+      <View style={styles.gridWrap}>
+        {rows.map((row, rowIndex) => (
+          <View key={`row-${outfit.outfitHash}-${rowIndex}`} style={styles.cardRow}>
+            {row.map((item, itemIndex) => (
+              <View key={`card-${outfit.outfitHash}-${rowIndex}-${itemIndex}`} style={styles.cardShell}>
+                {item ? (
+                  <TouchableOpacity
+                    activeOpacity={0.86}
+                    style={styles.card}
+                    onPress={() => onItemPress(item)}
+                  >
+                    <GarmentPreview item={item} />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.card, styles.placeholderCard]} />
+                )}
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
 
       <View style={styles.actionCluster}>
         <PillButton
@@ -620,12 +824,6 @@ const styles = StyleSheet.create({
   gridWrap: {
     gap: GRID_GAP,
   },
-  gridScroll: {
-    flex: 1,
-  },
-  gridScrollContent: {
-    paddingBottom: 16,
-  },
   loadingCards: {
     gap: GRID_GAP,
   },
@@ -739,15 +937,5 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 999,
     backgroundColor: theme.colors.figmaAction,
-  },
-  nextButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: theme.colors.figmaAction,
-  },
-  nextButtonText: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.white,
   },
 });
