@@ -23,6 +23,10 @@ export interface RecommendationResponse {
   message?: string;
 }
 
+export interface ValenGetRecommendationResponse {
+  outfits: Outfit[];
+}
+
 export interface StartRecommendationParams {
   weather?: {
     lat?: number;
@@ -67,6 +71,22 @@ export const recommendationService = {
       return response.data;
     } catch (error) {
       console.error('nextRecommendation error', error);
+      throw error;
+    }
+  },
+
+  valenGetRecommendation: async (params: StartRecommendationParams = {}): Promise<ValenGetRecommendationResponse> => {
+    try {
+      // Default params if not provided
+      const defaultParams = {
+        temperature: params.weather || 22,
+        user: { gender: 'MASCULINE', occasion: 'work', ...(params.user || {}) },
+      };
+      
+      const response = await apiClient.post('/recommendation/valen-get-recommendations-offical', defaultParams);
+      return response.data;
+    } catch (error) {
+      console.error('valenGetRecommendation error', error);
       throw error;
     }
   }

@@ -30,4 +30,5 @@ export type AppStackParamList = {
   GenderPreference: undefined;
   StylePreference: { gender?: GenderPreferenceValue } | undefined;
   ItemDetail: { itemId: string };
+  Database: undefined;
 };

@@ -55,7 +55,7 @@ const uploadFile = async (file: any): Promise<string> => {
 export const bodyService = {
   getBodies: async (): Promise<BodyItem[]> => {
     try {
-      const response = await bodyApi.get('/body/');
+      const response = await bodyApi.get('/bodies');
       if (Array.isArray(response.data)) return response.data;
       if (Array.isArray(response.data.items)) return response.data.items;
       if (Array.isArray(response.data.bodies)) return response.data.bodies;
@@ -74,7 +74,7 @@ export const bodyService = {
         throw new Error('User not authenticated or user ID missing');
       }
 
-      const response = await bodyApi.post('/body/', {
+      const response = await bodyApi.post('/bodies/create', {
         user_id: String(user.id),
         image_url: imageUrl,
       });

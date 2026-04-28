@@ -5,6 +5,7 @@ import {
   Dimensions,
   Image,
   Modal,
+  // Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -27,6 +28,7 @@ import {
 } from '../components/primitives/FigmaPrimitives';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
+import { useAuth } from '../context/AuthContext';
 import { AppStackParamList } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
 
@@ -121,6 +123,7 @@ const isCommonItem = (item: WardrobeItem): boolean =>
 export const WardrobeScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const isFocused = useIsFocused();
+  const { user } = useAuth();
 
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,6 +135,9 @@ export const WardrobeScreen = () => {
   const [commonItems, setCommonItems] = useState<WardrobeItem[]>([]);
   const [selectedCommonItemId, setSelectedCommonItemId] = useState<string | null>(null);
   const [addingCatalogItem, setAddingCatalogItem] = useState(false);
+
+  const [modalAddItemVisible, setModalAddItemVisible] = useState(false);
+  // const [modalSearchDatabaseVisible, setModalSearchDatabaseVisible] = useState(false);
 
   const fetchItems = useCallback(async () => {
     try {
@@ -242,10 +248,13 @@ export const WardrobeScreen = () => {
 
       try {
         setUploading(true);
-        const addedItem = await wardrobeService.uploadWardrobeItem(
+        await wardrobeService.uploadWardrobeItem(
           result.assets[0],
+          user!,
           resolveFilterQuery(selectedTab),
         );
+
+        setModalAddItemVisible(false)
 
         Toast.show({
           type: 'success',
@@ -253,8 +262,8 @@ export const WardrobeScreen = () => {
           position: 'bottom',
         });
 
-        await fetchItems();
-        navigation.navigate('ItemDetail', { itemId: addedItem.id });
+        // await fetchItems();
+        navigation.navigate('Wardrobe');
       } catch (error) {
         console.error('Upload error', error);
         Toast.show({
@@ -364,6 +373,17 @@ export const WardrobeScreen = () => {
     </View>
   );
 
+  const handleShowSearchItemModal = async () => {
+    setModalAddItemVisible(false);
+    // setModalSearchDatabaseVisible(true);
+    // if (commonItems.length > 0) return
+
+    // const data = await wardrobeService.getCommonItems();
+    // setCommonItems(data);
+    // redirect to DatabaseScreen
+    navigation.navigate('Database');
+  };
+
   const hasItems = items.length > 0;
 
   return (
@@ -376,7 +396,8 @@ export const WardrobeScreen = () => {
         onBack={() => setIsSidebarOpen(true)}
         rightComponent={(
           <TouchableOpacity
-            onPress={() => setAddSheetVisible(true)}
+            // onPress={() => setAddSheetVisible(true)}
+            onPress={() => setModalAddItemVisible(true)}
             disabled={uploading}
             style={styles.plusButton}
             activeOpacity={0.85}
@@ -473,7 +494,7 @@ export const WardrobeScreen = () => {
                         <ActivityIndicator size="small" color={theme.colors.figmaAction} />
                       </View>
                     ) : (
-                      visibleCatalogItems.map((item) => {
+                      commonItems.map((item) => {
                         const imageUrl = getImageUrl(item.image_url);
                         const isSelected = selectedCommonItemId === item.id;
 
@@ -524,11 +545,267 @@ export const WardrobeScreen = () => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      <Modal
+        accessibilityLabel="add-item-modal"
+        key="add-item-modal"
+        visible={modalAddItemVisible}
+        onRequestClose={() => setModalAddItemVisible(false)}
+        animationType="slide"
+        transparent
+      >
+        <TouchableWithoutFeedback onPress={() => setModalAddItemVisible(false)}>
+          <View style={styles.modalAddItemOverlay}>
+            <TouchableWithoutFeedback onPress={() => setModalAddItemVisible(false)}>
+              <View style={styles.modalAddItemBackdrop} />
+            </TouchableWithoutFeedback>
+            <View style={styles.modalAddItemContent}>
+              {/* title */}
+              <TouchableOpacity activeOpacity={1}>
+                <Text style={styles.modalAddItemTitle}>Add Item</Text>
+                {/* short description */}
+                <Text style={styles.modalAddItemDescription}>Add a new item to your wardrobe</Text>
+                {/* implement three sections: search from db, take a photo, import from web */}
+                <View style={styles.modalAddItemActions}>
+                  <TouchableOpacity style={styles.actionButton} onPress={() => handleShowSearchItemModal()}>
+                    <View style={styles.actionButtonContent}>
+                      <View style={styles.actionButtonIcon}>
+                        <Text>🔍</Text>
+                      </View>
+                      <View>
+                        <Text style={styles.actionButtonText}>Search from Database</Text>
+                        <Text style={styles.actionButtonSubtext}>Browse our catalog</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.actionButton} onPress={handlePhotoTilePress}>
+                    <View style={styles.actionButtonContent}>
+                      <View style={styles.actionButtonIcon}>
+                        <Text>📸</Text>
+                      </View>
+                      <View>
+                        <Text style={styles.actionButtonText}>Take a Photo</Text>
+                        <Text style={styles.actionButtonSubtext}>Upload an image</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+                    <View style={styles.actionButtonContent}>
+                      <View style={styles.actionButtonIcon}>
+                        <Text>🌐</Text>
+                      </View>
+                      <View>
+                        <Text style={styles.actionButtonText}>Import from Web</Text>
+                        <Text style={styles.actionButtonSubtext}>Paste a URL</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* <Modal
+        accessibilityLabel="search-database-modal"
+        key="search-database-modal"
+        visible={modalSearchDatabaseVisible}
+        onRequestClose={() => setModalSearchDatabaseVisible(false)}
+        animationType="slide"
+        transparent
+      >
+        <View style={styles.modalAddItemOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setModalSearchDatabaseVisible(false)}
+          />
+          <View style={styles.modalAddItemList}>
+              <View style={styles.abc}>
+                <ScrollView
+                  style={styles.modalSearchDatabaseScroll}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.modalSearchDatabaseScrollContent}
+                >
+                  <View style={styles.catalogGrid2}>
+                    {catalogLoading ? (
+                      <View style={styles.catalogLoading}>
+                        <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+                      </View>
+                    ) : (
+                      visibleCatalogItems.map((item) => {
+                        const imageUrl = getImageUrl(item.image_url);
+                        const isSelected = selectedCommonItemId === item.id;
+        
+                        return (
+                          <TouchableOpacity
+                            key={item.id}
+                            style={[
+                              styles.catalogTile,
+                              isSelected && styles.catalogTileSelected,
+                            ]}
+                            activeOpacity={0.88}
+                            onPress={() => setSelectedCommonItemId(item.id)}
+                          >
+                            {imageUrl ? (
+                              <Image
+                                source={{ uri: imageUrl }}
+                                style={styles.catalogTileImage}
+                                resizeMode="cover"
+                              />
+                            ) : (
+                              <View style={styles.catalogTileFallback}>
+                                <Text style={styles.catalogTileFallbackText}>No image</Text>
+                              </View>
+                            )}
+                            
+                            {isSelected && (
+                              <View style={styles.selectionDot}>
+                                <View style={styles.selectionDotSelected} />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </View>
+        
+                  {!catalogLoading && !visibleCatalogItems.length ? (
+                    <Text style={styles.catalogEmptyText}>
+                      No catalog items are available yet.
+                    </Text>
+                  ) : null}
+                </ScrollView>
+              </View>
+              <PillButton
+                title="Add to wardrobe"
+                onPress={() => {
+                  handleCloneItem();
+                }}
+                disabled={!selectedCommonItemId}
+              />
+          </View>
+        </View>
+      </Modal> */}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  abc: {
+    height: 600,
+    marginBottom: 16,
+  },
+  modalAddItemOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalAddItemBackdrop: {
+    flex: 1,
+  },
+  modalAddItemContent: {
+    backgroundColor: theme.colors.figmaBackground,
+    padding: 16,
+    width: '90%',
+    height: 'auto',
+    position: 'absolute',
+    borderRadius: 16,
+  },
+  modalAddItemTitle: {
+    ...theme.typography.aliases.archivoBody,
+    fontWeight: '600',
+    fontSize: 20,
+    marginBottom: 8,
+  },
+  modalAddItemDescription: {
+    ...theme.typography.aliases.archivoBody,
+    fontWeight: '400',
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  modalAddItemActions: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+  actionButton: {
+    padding: 12,
+    borderRadius: 8,
+  },
+  actionButtonText: {
+    ...theme.typography.aliases.archivoBody,
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  actionButtonSubtext: {
+    ...theme.typography.aliases.archivoBody,
+    fontWeight: '400',
+    fontSize: 12,
+  },
+  actionButtonIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.figmaAction,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  actionButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  modalSearchDatabaseContent: {
+    backgroundColor: theme.colors.figmaBackground,
+    width: '95%',
+    height: '80%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  modalSearchDatabaseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.figmaSurface,
+  },
+  modalSearchDatabaseTitle: {
+    ...theme.typography.aliases.archivoBody,
+    fontWeight: '600',
+    fontSize: 18,
+  },
+  closeButton: {
+    fontSize: 20,
+    color: theme.colors.figmaTextSecondary,
+    padding: 4,
+  },
+  modalSearchDatabaseScroll: {
+    flex: 1,
+  },
+  modalSearchDatabaseScrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  modalSearchDatabaseFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.figmaSurface,
+  },
+  modalAddItemList: {
+    backgroundColor: theme.colors.figmaBackground,
+    width: '90%',
+    height: 'auto',
+    position: 'absolute',
+    borderRadius: 16,
+  },
+
+
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
@@ -682,6 +959,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  catalogGrid2: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingVertical: 12,
   },
   photoTile: {
     width: CATALOG_TILE_WIDTH,

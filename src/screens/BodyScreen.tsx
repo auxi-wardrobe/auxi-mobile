@@ -45,6 +45,8 @@ export const BodyScreen = () => {
   const [generatedTryOnUrl, setGeneratedTryOnUrl] = useState<string | null>(null);
   const [tryOnError, setTryOnError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [largeImageModalVisible, setLargeImageModalVisible] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
   const fetchItems = useCallback(async (preferredId?: string) => {
     try {
@@ -204,9 +206,14 @@ export const BodyScreen = () => {
               key={item.id}
               activeOpacity={0.88}
               onPress={() => {
-                setSelectedBodyId(item.id);
-                setGeneratedTryOnUrl(null);
-                setTryOnError(null);
+                if (isTryOnMode) {
+                  setSelectedBodyId(item.id);
+                  setGeneratedTryOnUrl(null);
+                  setTryOnError(null);
+                } else {
+                  setSelectedImageUrl(imageUri);
+                  setLargeImageModalVisible(true);
+                }
               }}
               onLongPress={() => handleDelete(item.id)}
               style={[
@@ -381,6 +388,29 @@ export const BodyScreen = () => {
                 >
                   <Text style={styles.modalCancelText}>Cancel</Text>
                 </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <Modal
+        animationType="fade"
+        transparent
+        visible={largeImageModalVisible}
+        onRequestClose={() => setLargeImageModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setLargeImageModalVisible(false)}>
+          <View style={styles.largeImageModalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.largeImageContainer}>
+                {selectedImageUrl && (
+                  <Image
+                    source={{ uri: selectedImageUrl }}
+                    style={styles.largeImage}
+                    resizeMode="contain"
+                  />
+                )}
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -580,5 +610,21 @@ const styles = StyleSheet.create({
   modalCancelText: {
     ...theme.typography.aliases.manropeBody,
     color: theme.colors.figmaRed,
+  },
+  largeImageModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  largeImageContainer: {
+    width: '90%',
+    height: '80%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  largeImage: {
+    width: '100%',
+    height: '100%',
   },
 });
