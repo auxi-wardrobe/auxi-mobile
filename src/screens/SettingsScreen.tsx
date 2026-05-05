@@ -300,11 +300,25 @@ export const SettingsScreen = () => {
         <View style={styles.header}>
           <TopIconButton icon={<Icons.Menu width={24} height={24} />} onPress={() => setIsSidebarOpen(true)} />
           <View pointerEvents="none" style={styles.titleWrap}>
-            <Text style={styles.title}>Setting</Text>
+            <Text style={styles.title}>Settings</Text>
           </View>
-          <View style={styles.feedbackWrap}>
+          <TouchableOpacity
+            activeOpacity={0.82}
+            accessibilityRole="button"
+            accessibilityLabel="Send feedback"
+            style={styles.feedbackWrap}
+            onPress={() => {
+              Toast.show({
+                type: 'info',
+                text1: 'Feedback',
+                text2: 'Feedback channel is coming soon.',
+                position: 'bottom',
+                visibilityTime: 2500,
+              });
+            }}
+          >
             <Icons.Feedback width={24} height={24} />
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.content}>
@@ -320,12 +334,18 @@ export const SettingsScreen = () => {
               />
             </View>
 
-            <View style={styles.timeRow}>
-              <Text style={styles.timeValue}>
-                <Text style={styles.timeValueMain}>{settings.dailyNotification.time}</Text>
-                <Text style={styles.timeValueSuffix}>{` ${settings.dailyNotification.period}`}</Text>
+            <View style={styles.timeBlock}>
+              <View style={styles.timeRow}>
+                <Text style={styles.timeValueMain} allowFontScaling={false}>
+                  {settings.dailyNotification.time}
+                </Text>
+                <Text style={styles.timeValuePeriod} allowFontScaling={false}>
+                  {settings.dailyNotification.period}
+                </Text>
+              </View>
+              <Text style={styles.timeCaption}>
+                {`Repeats · ${currentFrequencyLabel}`}
               </Text>
-              <Text style={styles.rowValue}>{currentFrequencyLabel}</Text>
             </View>
           </View>
 
@@ -514,7 +534,7 @@ const DeleteGlyph = () => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#191B22',
+    backgroundColor: theme.colors.figmaSurface,
   },
   sheet: {
     flex: 1,
@@ -569,27 +589,31 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaTextSecondary,
   },
-  timeRow: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingBottom: 8,
+  timeBlock: {
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  timeValue: {
-    color: '#333333',
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
   },
   timeValueMain: {
     fontFamily: 'ArchivoNarrow-Regular',
     fontSize: 44,
-    lineHeight: 44,
-    color: '#333333',
+    lineHeight: 48,
+    color: theme.colors.figmaText,
   },
-  timeValueSuffix: {
+  timeValuePeriod: {
     fontFamily: 'ArchivoNarrow-Regular',
-    fontSize: 20,
-    lineHeight: 24,
-    color: '#333333',
+    fontSize: 44,
+    lineHeight: 48,
+    color: theme.colors.figmaText,
+    marginLeft: 8,
+  },
+  timeCaption: {
+    ...theme.typography.aliases.archivoBody,
+    color: theme.colors.figmaTextSecondary,
+    marginTop: 4,
   },
   singleRow: {
     minHeight: 44,
