@@ -852,7 +852,7 @@ const OptionSheet = ({
                             1711:17062 places this at the top-right of every
                             tile. Tapping toggles pin for this item. */}
                         <TouchableOpacity
-                          testID={isPinned ? `home-tile-pin-${flatTileIndex}-set` : undefined}
+                          testID={isPinned ? `home-tile-pin-${flatTileIndex}-set` : `home-tile-pin-${flatTileIndex}`}
                           activeOpacity={0.7}
                           onPress={() => onTogglePin(item)}
                           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}

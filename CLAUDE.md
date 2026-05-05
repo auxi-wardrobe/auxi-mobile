@@ -30,9 +30,19 @@ Backend "Valen" generates outfits given the user's wardrobe + weather/occasion/t
   `testID`. Naming: `<feature>-<element>-<state-or-purpose>` (e.g.,
   `home-mode-pill-safe`, `auth-login-submit`). Maestro flows under
   `maestro/flows/` drive QA off these selectors — no testID = no
-  deterministic test = no QA sign-off. Icon-only buttons also need
-  `accessibilityLabel` (same value). Static labels and pure layout
+  deterministic test = no QA sign-off. Static labels and pure layout
   containers are exempt.
+- **`accessibilityLabel` is for humans, `testID` is for tests** —
+  they serve different purposes. `testID` is the machine-readable
+  selector for Maestro / Detox. `accessibilityLabel` is what
+  VoiceOver reads to a blind user. Icon-only buttons (heart, pin
+  badge, kebab menu) MUST set both, but the values should NOT match:
+  the testID stays `home-tile-pin-0`, the a11yLabel says `Pin item`
+  / `Unpin item`. Use the same value only when no human-friendly
+  label exists. Keep stateful testIDs always-defined — flip the
+  suffix (e.g., `home-heart-toggle` ↔ `home-heart-toggle-saved`)
+  rather than letting `testID` go `undefined`, so Maestro can
+  identify the element in either state.
 
 ## Don'ts
 - Don't add Redux, Zustand, or MobX — TanStack Query covers server state and
