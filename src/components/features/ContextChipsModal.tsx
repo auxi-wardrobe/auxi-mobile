@@ -116,6 +116,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
         />
 
         <Animated.View
+          testID="context-chips-modal-root"
           style={[
             styles.card,
             {
@@ -175,6 +176,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
 
           <View style={styles.actionsRow}>
             <TouchableOpacity
+              testID="context-chips-modal-close"
               activeOpacity={0.82}
               style={styles.cancelButton}
               disabled={isSubmitting}

@@ -41,6 +41,7 @@ interface PillButtonProps {
   trailing?: React.ReactNode;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  testID?: string;
 }
 
 interface BottomSheetSurfaceProps {
@@ -90,11 +91,13 @@ export const PillButton: React.FC<PillButtonProps> = ({
   trailing,
   style,
   textStyle,
+  testID,
 }) => {
   const isText = variant === 'text';
 
   return (
     <TouchableOpacity
+      testID={testID}
       activeOpacity={0.85}
       onPress={onPress}
       disabled={disabled || loading}
