@@ -22,8 +22,10 @@ import {
 } from '../components/features/ContextChipsModal';
 import { ItemDetailBottomSheet } from '../components/features/ItemDetailBottomSheet';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
-import { Icons } from '../assets/icons';
 import IconHomePin from '../assets/images/icon_home_pin.svg';
+import IconHomeHeartOutline from '../assets/images/icon_home_heart_outline.svg';
+import IconHomeHeartFilled from '../assets/images/icon_home_heart_filled.svg';
+import IconHomeMenu from '../assets/images/icon_home_menu.svg';
 import { theme } from '../theme/theme';
 import { Item } from '../types/item';
 import {
@@ -624,7 +626,7 @@ export const HomeScreen = () => {
       <View style={styles.header}>
         <TopIconButton
           onPress={handleLeadingAction}
-          icon={<MenuGlyph />}
+          icon={<IconHomeMenu width={18} height={12} />}
         />
 
         <Text style={styles.headerTitle}>Auxi</Text>
@@ -647,8 +649,10 @@ export const HomeScreen = () => {
         >
           {activeSaveState === 'saving' ? (
             <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+          ) : activeSaveState === 'saved' ? (
+            <IconHomeHeartFilled width={24} height={24} />
           ) : (
-            <Icons.Heart width={24} height={24} />
+            <IconHomeHeartOutline width={24} height={24} />
           )}
         </TouchableOpacity>
       </View>
@@ -729,6 +733,7 @@ export const HomeScreen = () => {
                   key={outfit.outfitHash}
                   sheetIndex={sheetIndex}
                   outfit={outfit}
+                  stylingNote={outfit.stylingNote}
                   saveState={sheetSaveState}
                   pinnedItemId={pinnedItemId}
                   onShowAnother={handleShowAnother}
@@ -774,6 +779,7 @@ export const HomeScreen = () => {
 const OptionSheet = ({
   sheetIndex,
   outfit,
+  stylingNote,
   saveState,
   pinnedItemId,
   onShowAnother,
@@ -784,6 +790,7 @@ const OptionSheet = ({
 }: {
   sheetIndex: number;
   outfit: OutfitSheetWithGrid;
+  stylingNote: string;
   saveState: SaveState;
   pinnedItemId: string | null;
   onShowAnother: () => void;
@@ -806,8 +813,13 @@ const OptionSheet = ({
 
   return (
     <View testID={`home-outfit-sheet-${sheetIndex}`} style={styles.optionSheet}>
-      {/* Top action band (Frame 2033 in Figma) — "Show another" */}
+      {/* Top action band (Frame 2033 in Figma) — short copy line + "Show another" */}
       <View style={styles.topActionBand}>
+        {stylingNote ? (
+          <Text style={styles.stylingNoteText} numberOfLines={2}>
+            {stylingNote}
+          </Text>
+        ) : null}
         <PillButton
           testID="home-show-another"
           title="Show another"
@@ -877,8 +889,13 @@ const OptionSheet = ({
         </View>
       </ScrollView>
 
-      {/* Bottom action cluster (Frame 2017 in Figma) — "This works" + "Edit context" */}
+      {/* Bottom action cluster (Frame 2017 in Figma) — short copy line + "This works" + "Edit context" */}
       <View style={styles.actionCluster}>
+        {stylingNote ? (
+          <Text style={styles.stylingNoteText} numberOfLines={2}>
+            {stylingNote}
+          </Text>
+        ) : null}
         <PillButton
           testID="home-this-works"
           title={saveState === 'saved' ? 'Saved to favourite' : 'This works'}
@@ -933,14 +950,6 @@ const LoadingMoreIndicator = () => (
   <View style={styles.loadingMoreIndicator}>
     <ActivityIndicator size="small" color={theme.colors.figmaAction} />
     <Text style={styles.loadingMoreText}>Loading more options...</Text>
-  </View>
-);
-
-const MenuGlyph = () => (
-  <View style={styles.menuGlyph}>
-    <View style={styles.menuGlyphLine} />
-    <View style={styles.menuGlyphLine} />
-    <View style={styles.menuGlyphLine} />
   </View>
 );
 
@@ -1094,9 +1103,20 @@ const styles = StyleSheet.create({
   },
   topActionBand: {
     paddingBottom: 8,
+    gap: 8,
   },
   topAction: {
     alignSelf: 'stretch',
+  },
+  // Per HOME_SWIPE_PLAN.md §1: Frame 2033 (top action band) and Frame 2017
+  // (bottom action cluster) each include a short copy line above their
+  // buttons. Re-uses the same `styling_note` string from the API in both
+  // positions; if the design later splits, this style can stay.
+  stylingNoteText: {
+    ...theme.typography.aliases.manropeBody,
+    color: theme.colors.figmaAction,
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
   gridWrap: {
     gap: GRID_GAP,
@@ -1239,16 +1259,5 @@ const styles = StyleSheet.create({
   loadingMoreText: {
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaAction,
-  },
-  menuGlyph: {
-    width: 20,
-    height: 16,
-    justifyContent: 'space-between',
-  },
-  menuGlyphLine: {
-    width: '100%',
-    height: 2,
-    borderRadius: 999,
-    backgroundColor: theme.colors.figmaAction,
   },
 });
