@@ -31,6 +31,7 @@ import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
 import { AppStackParamList } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
+import { Icons } from '../assets/icons';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -405,7 +406,7 @@ export const WardrobeScreen = () => {
             {uploading ? (
               <ActivityIndicator size="small" color={theme.colors.figmaAction} />
             ) : (
-              <Text style={styles.plusGlyph}>+</Text>
+              <Icons.Plus width={24} height={24} />
             )}
           </TouchableOpacity>
         )}
@@ -461,8 +462,12 @@ export const WardrobeScreen = () => {
                 <View style={styles.addSheetHeader}>
                   <TopIconButton
                     onPress={() => setAddSheetVisible(false)}
-                    icon={<Text style={styles.backGlyph}>{"<"}</Text>}
+                    icon={<Icons.ChevronLeft width={20} height={20} />}
                   />
+
+                  {selectedCommonItemId ? (
+                    <Text style={styles.selectionCountLabel}>1 selected</Text>
+                  ) : null}
 
                   <PillButton
                     title="Add"
@@ -472,7 +477,7 @@ export const WardrobeScreen = () => {
                     disabled={!selectedCommonItemId || addingCatalogItem}
                     loading={addingCatalogItem}
                     style={styles.addActionButton}
-                    trailing={<Text style={styles.addActionGlyph}>+</Text>}
+                    trailing={<Icons.Plus width={18} height={18} />}
                   />
                 </View>
 
@@ -492,6 +497,7 @@ export const WardrobeScreen = () => {
                     {catalogLoading ? (
                       <View style={styles.catalogLoading}>
                         <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+                        <Text style={styles.catalogLoadingLabel}>Loading catalog…</Text>
                       </View>
                     ) : (
                       commonItems.map((item) => {
@@ -520,14 +526,11 @@ export const WardrobeScreen = () => {
                               </View>
                             )}
 
-                            <View style={styles.selectionDotWrap}>
-                              <View
-                                style={[
-                                  styles.selectionDot,
-                                  isSelected && styles.selectionDotSelected,
-                                ]}
-                              />
-                            </View>
+                            {isSelected ? (
+                              <View style={styles.selectionDotWrap}>
+                                <View style={styles.selectionDotSelected} />
+                              </View>
+                            ) : null}
                           </TouchableOpacity>
                         );
                       })
@@ -820,12 +823,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  plusGlyph: {
-    color: theme.colors.figmaAction,
-    fontSize: 28,
-    lineHeight: 28,
-    marginTop: -2,
-  },
   scrollContent: {
     paddingTop: 12,
     paddingBottom: 32,
@@ -936,20 +933,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 16,
   },
-  backGlyph: {
-    fontSize: 22,
-    lineHeight: 22,
-    color: theme.colors.figmaAction,
-    marginTop: -1,
-  },
   addActionButton: {
     minWidth: 118,
-  },
-  addActionGlyph: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
-    fontSize: 20,
-    lineHeight: 20,
   },
   addSheetScrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,
@@ -988,6 +973,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+  },
+  catalogLoadingLabel: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
   },
   catalogTile: {
     width: CATALOG_TILE_WIDTH,
@@ -1018,25 +1009,26 @@ const styles = StyleSheet.create({
   },
   selectionDotWrap: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 8,
+    right: 8,
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
     borderColor: '#FFFFFF',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: theme.colors.figmaAction,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selectionDot: {
+  selectionDotSelected: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'transparent',
-  },
-  selectionDotSelected: {
     backgroundColor: '#FFFFFF',
+  },
+  selectionCountLabel: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaTextSecondary,
   },
   catalogEmptyText: {
     ...theme.typography.aliases.manropeCaption,

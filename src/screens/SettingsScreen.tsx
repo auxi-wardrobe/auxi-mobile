@@ -298,13 +298,27 @@ export const SettingsScreen = () => {
 
       <BottomSheetSurface style={styles.sheet}>
         <View style={styles.header}>
-          <TopIconButton icon={<MenuGlyph />} onPress={() => setIsSidebarOpen(true)} />
+          <TopIconButton icon={<Icons.Menu width={24} height={24} />} onPress={() => setIsSidebarOpen(true)} />
           <View pointerEvents="none" style={styles.titleWrap}>
-            <Text style={styles.title}>Setting</Text>
+            <Text style={styles.title}>Settings</Text>
           </View>
-          <View style={styles.feedbackWrap}>
+          <TouchableOpacity
+            activeOpacity={0.82}
+            accessibilityRole="button"
+            accessibilityLabel="Send feedback"
+            style={styles.feedbackWrap}
+            onPress={() => {
+              Toast.show({
+                type: 'info',
+                text1: 'Feedback',
+                text2: 'Feedback channel is coming soon.',
+                position: 'bottom',
+                visibilityTime: 2500,
+              });
+            }}
+          >
             <Icons.Feedback width={24} height={24} />
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.content}>
@@ -320,12 +334,18 @@ export const SettingsScreen = () => {
               />
             </View>
 
-            <View style={styles.timeRow}>
-              <Text style={styles.timeValue}>
-                <Text style={styles.timeValueMain}>{settings.dailyNotification.time}</Text>
-                <Text style={styles.timeValueSuffix}>{` ${settings.dailyNotification.period}`}</Text>
+            <View style={styles.timeBlock}>
+              <View style={styles.timeRow}>
+                <Text style={styles.timeValueMain} allowFontScaling={false}>
+                  {settings.dailyNotification.time}
+                </Text>
+                <Text style={styles.timeValuePeriod} allowFontScaling={false}>
+                  {settings.dailyNotification.period}
+                </Text>
+              </View>
+              <Text style={styles.timeCaption}>
+                {`Repeats · ${currentFrequencyLabel}`}
               </Text>
-              <Text style={styles.rowValue}>{currentFrequencyLabel}</Text>
             </View>
           </View>
 
@@ -348,7 +368,7 @@ export const SettingsScreen = () => {
             onPress={() => navigation.navigate('Body')}
           >
             <Text style={styles.rowLabel}>Manage body photo</Text>
-            <Text style={styles.chevron}>&gt;</Text>
+            <Icons.ChevronRight width={20} height={20} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -500,14 +520,6 @@ export const SettingsScreen = () => {
 
 const Divider = () => <View style={styles.divider} />;
 
-const MenuGlyph = () => (
-  <View style={styles.menuGlyph}>
-    <View style={styles.menuLine} />
-    <View style={styles.menuLine} />
-    <View style={styles.menuLineShort} />
-  </View>
-);
-
 const DeleteGlyph = () => (
   <View style={styles.deleteGlyph}>
     <View style={styles.deleteLid} />
@@ -522,7 +534,7 @@ const DeleteGlyph = () => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#191B22',
+    backgroundColor: theme.colors.figmaSurface,
   },
   sheet: {
     flex: 1,
@@ -558,23 +570,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuGlyph: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    gap: 3,
-  },
-  menuLine: {
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: theme.colors.figmaAction,
-  },
-  menuLineShort: {
-    width: 14,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: theme.colors.figmaAction,
-  },
   content: {
     flex: 1,
     paddingTop: 112,
@@ -594,27 +589,31 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaTextSecondary,
   },
-  timeRow: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingBottom: 8,
+  timeBlock: {
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  timeValue: {
-    color: '#333333',
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
   },
   timeValueMain: {
     fontFamily: 'ArchivoNarrow-Regular',
     fontSize: 44,
-    lineHeight: 44,
-    color: '#333333',
+    lineHeight: 48,
+    color: theme.colors.figmaText,
   },
-  timeValueSuffix: {
+  timeValuePeriod: {
     fontFamily: 'ArchivoNarrow-Regular',
-    fontSize: 20,
-    lineHeight: 24,
-    color: '#333333',
+    fontSize: 44,
+    lineHeight: 48,
+    color: theme.colors.figmaText,
+    marginLeft: 8,
+  },
+  timeCaption: {
+    ...theme.typography.aliases.archivoBody,
+    color: theme.colors.figmaTextSecondary,
+    marginTop: 4,
   },
   singleRow: {
     minHeight: 44,
@@ -642,12 +641,6 @@ const styles = StyleSheet.create({
   sectionLabel: {
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaTextSecondary,
-  },
-  chevron: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaText,
-    fontSize: 18,
-    lineHeight: 24,
   },
   deleteLabel: {
     ...theme.typography.aliases.archivoBody,

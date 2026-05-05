@@ -90,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                     />
                     <MenuItem
                         label="My body"
-                        Icon={Icons.User}
+                        Icon={Icons.Body}
                         onPress={() => {
                             navigation.navigate('Body');
                             onClose();
@@ -105,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                             onClose();
                         }}
                     />
-                    <MenuItem label="Archive" Icon={Icons.Trash} />
+                    <MenuItem label="Archive" Icon={Icons.Archive} />
                     <MenuItem label="Log out" Icon={Icons.Logout} onPress={logout} />
                 </View>
             </Animated.View>
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     },
     topSection: {
         paddingHorizontal: 20,
-        marginBottom: 40, // Spacer
+        marginBottom: 24, // Spacer between header and menu
     },
     getDressedButton: {
         flexDirection: 'row',
@@ -174,13 +174,6 @@ const styles = StyleSheet.create({
         resizeMode: 'contain',
     },
     menuSection: {
-        marginTop: 'auto', // Push to bottom? Figma shows specific top 576. 
-        // Actually Figma shows: Frame (320 height) at top 576. 
-        // So it is at the bottom.
-        position: 'absolute',
-        bottom: 50, // Approx padding bottom
-        left: 0,
-        right: 0,
         paddingHorizontal: 20,
         gap: 4,
     },

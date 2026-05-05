@@ -3,6 +3,8 @@ import IconWardrobe from '../images/icon_wardrobe.svg';
 import IconWardrobeNew from '../images/icon_wardrobe_new.svg';
 import IconHeart from '../images/icon_heart.svg';
 import IconUser from '../images/icon_user.svg';
+import IconBody from '../images/icon_body.svg';
+import IconArchive from '../images/icon_archive.svg';
 import IconTrash from '../images/icon_trash.svg';
 import IconLogout from '../images/icon_logout.svg';
 import IconClose from '../images/icon_close.svg';
@@ -10,9 +12,10 @@ import IconGetDressed from '../images/icon_get_dressed.svg';
 import IconFeedback from '../images/feedback.svg';
 import IconSend from '../images/send_icon.svg';
 import IconSort from '../images/sort_icon.svg';
-import IconTempAccount from '../images/temp_account.svg';
-import IconTempArchive from '../images/temp_archive.svg';
-import IconTempLogout from '../images/temp_logout.svg';
+import IconPlus from '../images/icon_plus.svg';
+import IconChevronLeft from '../images/icon_chevron_left.svg';
+import IconChevronRight from '../images/icon_chevron_right.svg';
+import IconMenu from '../images/icon_menu.svg';
 
 export const Icons = {
     Water: IconWater,
@@ -20,6 +23,8 @@ export const Icons = {
     WardrobeNew: IconWardrobeNew,
     Heart: IconHeart,
     User: IconUser,
+    Body: IconBody,
+    Archive: IconArchive,
     Trash: IconTrash,
     Logout: IconLogout,
     Close: IconClose,
@@ -27,9 +32,10 @@ export const Icons = {
     Feedback: IconFeedback,
     Send: IconSend,
     Sort: IconSort,
-    TempAccount: IconTempAccount,
-    TempArchive: IconTempArchive,
-    TempLogout: IconTempLogout,
+    Plus: IconPlus,
+    ChevronLeft: IconChevronLeft,
+    ChevronRight: IconChevronRight,
+    Menu: IconMenu,
 };
 
 export {
@@ -38,6 +44,8 @@ export {
     IconWardrobeNew,
     IconHeart,
     IconUser,
+    IconBody,
+    IconArchive,
     IconTrash,
     IconLogout,
     IconClose,
@@ -45,7 +53,8 @@ export {
     IconFeedback,
     IconSend,
     IconSort,
-    IconTempAccount,
-    IconTempArchive,
-    IconTempLogout,
+    IconPlus,
+    IconChevronLeft,
+    IconChevronRight,
+    IconMenu,
 };

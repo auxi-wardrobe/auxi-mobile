@@ -21,6 +21,7 @@ import { tryOnService } from '../services/tryOnService';
 import { theme } from '../theme/theme';
 import { AppStackParamList } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
+import { Icons } from '../assets/icons';
 
 const { width: screenWidth } = Dimensions.get('window');
 const IMAGE_GAP = 8;
@@ -234,7 +235,7 @@ export const BodyScreen = () => {
       <View style={styles.topBar}>
         <TopIconButton
           onPress={() => navigation.goBack()}
-          icon={<Text style={styles.backGlyph}>‹</Text>}
+          icon={<Icons.ChevronLeft width={20} height={20} />}
         />
         <Text style={styles.title}>{isTryOnMode ? 'Try on' : 'My body'}</Text>
         <View style={styles.topBarSpacer} />
@@ -432,12 +433,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  backGlyph: {
-    color: theme.colors.figmaAction,
-    fontSize: 34,
-    lineHeight: 34,
-    marginTop: -2,
   },
   title: {
     ...theme.typography.aliases.playfairDisplaySection,
