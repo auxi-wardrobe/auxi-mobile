@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     },
     topSection: {
         paddingHorizontal: 20,
-        marginBottom: 40, // Spacer
+        marginBottom: 24, // Spacer between header and menu
     },
     getDressedButton: {
         flexDirection: 'row',
@@ -174,13 +174,6 @@ const styles = StyleSheet.create({
         resizeMode: 'contain',
     },
     menuSection: {
-        marginTop: 'auto', // Push to bottom? Figma shows specific top 576. 
-        // Actually Figma shows: Frame (320 height) at top 576. 
-        // So it is at the bottom.
-        position: 'absolute',
-        bottom: 50, // Approx padding bottom
-        left: 0,
-        right: 0,
         paddingHorizontal: 20,
         gap: 4,
     },
