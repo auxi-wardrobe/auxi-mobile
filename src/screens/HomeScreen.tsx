@@ -618,7 +618,7 @@ export const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView testID="home-screen-root" style={styles.container}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       <View style={styles.header}>
@@ -630,6 +630,8 @@ export const HomeScreen = () => {
         <Text style={styles.headerTitle}>Auxi</Text>
 
         <TouchableOpacity
+          testID={activeSaveState === 'saved' ? 'home-heart-toggle-saved' : 'home-heart-toggle'}
+          accessibilityLabel={activeSaveState === 'saved' ? 'home-heart-toggle-saved' : 'home-heart-toggle'}
           activeOpacity={0.82}
           style={[
             styles.heartButton,
@@ -661,6 +663,7 @@ export const HomeScreen = () => {
           return (
             <TouchableOpacity
               key={option.id}
+              testID={`home-mode-pill-${option.id}`}
               activeOpacity={0.82}
               onPress={() => handleSelectMode(option.id)}
               accessibilityRole="button"
@@ -718,12 +721,13 @@ export const HomeScreen = () => {
           <HomeLoadingState />
         ) : (
           <>
-            {optionSets.map((outfit) => {
+            {optionSets.map((outfit, sheetIndex) => {
               const sheetSaveState: SaveState =
                 saveStateByHash[outfit.outfitHash] ?? 'idle';
               return (
                 <OptionSheet
                   key={outfit.outfitHash}
+                  sheetIndex={sheetIndex}
                   outfit={outfit}
                   saveState={sheetSaveState}
                   pinnedItemId={pinnedItemId}
@@ -768,6 +772,7 @@ export const HomeScreen = () => {
 };
 
 const OptionSheet = ({
+  sheetIndex,
   outfit,
   saveState,
   pinnedItemId,
@@ -777,6 +782,7 @@ const OptionSheet = ({
   onConfirm,
   onEditContext,
 }: {
+  sheetIndex: number;
   outfit: OutfitSheetWithGrid;
   saveState: SaveState;
   pinnedItemId: string | null;
@@ -799,10 +805,11 @@ const OptionSheet = ({
   }
 
   return (
-    <View style={styles.optionSheet}>
+    <View testID={`home-outfit-sheet-${sheetIndex}`} style={styles.optionSheet}>
       {/* Top action band (Frame 2033 in Figma) — "Show another" */}
       <View style={styles.topActionBand}>
         <PillButton
+          testID="home-show-another"
           title="Show another"
           variant="outline"
           onPress={onShowAnother}
@@ -820,6 +827,7 @@ const OptionSheet = ({
             <View key={`row-${outfit.outfitHash}-${rowIndex}`} style={styles.cardRow}>
               {row.map((item, itemIndex) => {
                 const isPinned = !!item && item.id === pinnedItemId;
+                const flatTileIndex = rowIndex * 2 + itemIndex;
                 return (
                   <View
                     key={`card-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
@@ -827,6 +835,8 @@ const OptionSheet = ({
                   >
                     {item ? (
                       <TouchableOpacity
+                        testID={`home-tile-${flatTileIndex}`}
+                        accessibilityLabel={`home-tile-${flatTileIndex}`}
                         activeOpacity={0.86}
                         style={[styles.card, isPinned && styles.cardPinned]}
                         onPress={() => onItemPress(item)}
@@ -842,6 +852,7 @@ const OptionSheet = ({
                             1711:17062 places this at the top-right of every
                             tile. Tapping toggles pin for this item. */}
                         <TouchableOpacity
+                          testID={isPinned ? `home-tile-pin-${flatTileIndex}-set` : undefined}
                           activeOpacity={0.7}
                           onPress={() => onTogglePin(item)}
                           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
@@ -851,7 +862,9 @@ const OptionSheet = ({
                           ]}
                           accessibilityRole="button"
                           accessibilityLabel={
-                            isPinned ? 'Unpin item' : 'Pin item'
+                            isPinned
+                              ? `home-tile-pin-${flatTileIndex}-set`
+                              : 'Pin item'
                           }
                         >
                           <IconHomePin width={14} height={14} />
@@ -871,6 +884,7 @@ const OptionSheet = ({
       {/* Bottom action cluster (Frame 2017 in Figma) — "This works" + "Edit context" */}
       <View style={styles.actionCluster}>
         <PillButton
+          testID="home-this-works"
           title={saveState === 'saved' ? 'Saved to favourite' : 'This works'}
           variant="filled"
           onPress={onConfirm}
@@ -886,6 +900,7 @@ const OptionSheet = ({
         ) : null}
 
         <PillButton
+          testID="home-edit-context"
           title="Edit context"
           variant="text"
           onPress={onEditContext}

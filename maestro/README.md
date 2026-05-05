@@ -1,0 +1,114 @@
+# Auxi Maestro flows
+
+Local-only deterministic mobile QA. No cloud. No screenshots. No LLM
+reasoning over images. Maestro reads `testID` / `accessibilityLabel` /
+text and either matches or it doesn't — pass/fail is binary.
+
+## One-time setup
+
+```bash
+# 1. Install Maestro CLI
+brew tap mobile-dev-inc/tap
+brew install mobile-dev-inc/tap/maestro --formula
+maestro --version
+
+# 2. Java is required by Maestro. Brew installed openjdk as a dep but
+#    didn't link it. Either symlink (sudo) OR export JAVA_HOME.
+#
+# Option A — one-line zshrc export (recommended):
+echo 'export JAVA_HOME="/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home"' >> ~/.zshrc
+echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# Option B — system-wide symlink (sudo):
+sudo ln -sfn /opt/homebrew/opt/openjdk/libexec/openjdk.jdk \
+  /Library/Java/JavaVirtualMachines/openjdk.jdk
+```
+
+`./scripts/qa-boot.sh` from the umbrella root also exports `JAVA_HOME`
+for the current shell, so flows run cleanly in any session that started
+with the boot script.
+
+## Running flows
+
+Prereq: `./scripts/qa-boot.sh` (boots backend + sim + installs the app).
+
+```bash
+cd auxi
+
+# Single flow
+maestro test maestro/flows/home/swipe.yaml
+
+# All flows in a feature directory
+maestro test maestro/flows/home/
+
+# Pass credentials via env (don't bake secrets into YAML)
+maestro test maestro/flows/auth/login.yaml \
+  -e QA_EMAIL=qa-test@auxi.app \
+  -e QA_PASSWORD='QaTest!2026'
+
+# JUnit-style report (machine-parsable, useful for hand-off)
+maestro test maestro/flows/home/ \
+  --format junit \
+  --output ../logs/maestro/home.xml
+
+# Save per-step hierarchy on failure (use this when filing bugs)
+maestro test maestro/flows/home/swipe.yaml \
+  --debug-output ../logs/maestro/home-swipe-debug
+```
+
+Exit code: 0 = pass, non-zero = fail.
+
+## Flow inventory
+
+> Authored by `qa-ui`. Executed by `qa-mobile`. If a flow you need
+> doesn't exist, file a request with `qa-ui`.
+
+| Flow | Tags | Purpose |
+|---|---|---|
+| `_shared/login.yaml` | _shared | Login as the QA test account; sub-flow used by every post-login flow |
+| `auth/login.yaml` | auth, regression | Login persists across relaunch |
+| `home/swipe.yaml` | home, regression | Vertical sheet swipe + index advance + Show another / This works / Edit context buttons |
+
+Add new flows here when you ship them. Tags drive grouped runs.
+
+## Conventions (must read before authoring)
+
+- **Selector hierarchy**: `id:` (testID or a11y label) preferred. `text:`
+  is last resort and only for designer-confirmed static copy.
+- **No screenshot reasoning, no OCR, no visual diff.** If an assertion
+  needs visual judgement, the flow is wrong — push back.
+- **No assertions on randomized data**: temperatures, item counts,
+  recommendation copy, timestamps drift constantly.
+- **Sub-flows for shared setup**: anything used by 3+ flows belongs in
+  `_shared/`. Login is the canonical example.
+- **Sensitive values via env**: `${QA_EMAIL}`, `${QA_PASSWORD}` come from
+  env, never hardcoded.
+- **One flow = one journey**: ~5-30 steps. If you exceed 50, split.
+
+For full authoring details, see the `auxi-qa-ui` skill at
+`.claude/skills/auxi-qa-ui.md` (umbrella root).
+
+## testID gaps
+
+Maestro flows depend on `testID` props on every interactive element. If
+the screen you're testing doesn't have them yet, that's a `mobile-dev`
+backlog item — not a flow problem. File a backfill request rather than
+falling back to fragile selectors.
+
+Naming convention (mirrored in `mobile-dev` agent rules):
+`<feature>-<element>-<state-or-purpose>`. Examples:
+
+- `auth-email-input`, `auth-password-input`, `auth-login-submit`
+- `home-screen-root`, `home-mode-pill-safe`, `home-heart-toggle`
+- `wardrobe-tab-tops`, `wardrobe-item-tile-{id}`
+
+## Bug-report format (qa-mobile fills this in on failure)
+
+`auxi/docs/qa-findings/<YYYY-MM-DD>-<slug>.md` with:
+
+- Failing flow path + step
+- Maestro log excerpt
+- Hierarchy snapshot path (from `--debug-output`)
+- Suspected `auxi/src/<file>.tsx:<line>`
+- Routing: `mobile-dev` (UI/state) | `backend-dev` (API) | `qa-ui` (flow bug)

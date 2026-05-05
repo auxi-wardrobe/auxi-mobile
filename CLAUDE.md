@@ -25,6 +25,14 @@ Backend "Valen" generates outfits given the user's wardrobe + weather/occasion/t
   legacy ones exist — don't add more).
 - SVG icons: `import IconFoo from '../assets/icons/icon_foo.svg'` then render
   `<IconFoo width={20} height={20} />`. Don't use `<Image>` for SVG.
+- **`testID` on every interactive element**: every `Pressable`, `TouchableOpacity`,
+  `TextInput`, swipeable, switch, segmented control, etc. MUST carry a
+  `testID`. Naming: `<feature>-<element>-<state-or-purpose>` (e.g.,
+  `home-mode-pill-safe`, `auth-login-submit`). Maestro flows under
+  `maestro/flows/` drive QA off these selectors — no testID = no
+  deterministic test = no QA sign-off. Icon-only buttons also need
+  `accessibilityLabel` (same value). Static labels and pure layout
+  containers are exempt.
 
 ## Don'ts
 - Don't add Redux, Zustand, or MobX — TanStack Query covers server state and
@@ -40,8 +48,12 @@ Backend "Valen" generates outfits given the user's wardrobe + weather/occasion/t
 - `npx tsc --noEmit` — must pass. Legacy `_HomeScreen.tsx` errors are expected.
 - `yarn lint` — current baseline has 4 errors (all in `_HomeScreen.tsx`) and
   3 warnings; don't add more.
-- iOS smoke test: `yarn ios:sim`. For deterministic UI verification via
-  mobile-mcp + WebDriverAgent see `docs/MOBILE_MCP_MAC_IOS_SIM.md`.
+- iOS smoke test: `yarn ios:sim`. Bring up the full stack with
+  `./scripts/qa-boot.sh` from the umbrella root.
+- Deterministic UI verification: Maestro flows under `maestro/flows/`,
+  authored by `qa-ui` and executed by `qa-mobile`. Run a single flow
+  with `maestro test maestro/flows/<feature>/<name>.yaml` (requires
+  `JAVA_HOME` exported — see `maestro/README.md`).
 
 ## Active work / known unfinished
 - **Onboarding redesign (PreferenceSeed → FitPreference → OutfitApproval →

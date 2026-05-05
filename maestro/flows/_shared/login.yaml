@@ -1,0 +1,24 @@
+# auxi/maestro/flows/_shared/login.yaml
+# Reusable login sub-flow. Called via `runFlow: ../_shared/login.yaml`.
+# Clears app state (keychain + storage) so the test always starts cold.
+
+appId: org.reactjs.native.example.auxi
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    id: auth-email-input
+    timeout: 10000
+- tapOn:
+    id: auth-email-input
+- inputText: ${QA_EMAIL}
+- hideKeyboard
+- tapOn:
+    id: auth-password-input
+- inputText: ${QA_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: auth-login-submit
+- assertVisible:
+    id: home-screen-root
+    timeout: ${HOME_TIMEOUT_MS}

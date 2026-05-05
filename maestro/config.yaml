@@ -1,0 +1,17 @@
+# auxi/maestro/config.yaml
+# Default values shared across flows. Individual flow YAMLs can override
+# any field via the frontmatter at the top of the file.
+#
+# IMPORTANT: secrets do NOT live here. Pass QA_EMAIL / QA_PASSWORD via
+# Maestro's `-e KEY=VALUE` flag at run time.
+
+appId: org.reactjs.native.example.auxi   # confirm against ./scripts/qa-boot.sh output
+
+# Default env passed into every flow. Real credentials override at run
+# time via `-e QA_EMAIL=... -e QA_PASSWORD=...`. The defaults below
+# match the QA test account for local development; do NOT use them
+# against staging or prod.
+env:
+  QA_EMAIL: qa-test@auxi.app
+  QA_PASSWORD: QaTest!2026
+  HOME_TIMEOUT_MS: 15000

@@ -56,6 +56,7 @@ export const LoginScreen = () => {
         >
             <View style={styles.form}>
                 <Input
+                    testID="auth-email-input"
                     label="Email"
                     placeholder="Enter your email"
                     value={email}
@@ -70,6 +71,7 @@ export const LoginScreen = () => {
                 />
 
                 <Input
+                    testID="auth-password-input"
                     label="Password"
                     placeholder="Enter your password"
                     value={password}
@@ -87,6 +89,7 @@ export const LoginScreen = () => {
                 </TouchableOpacity>
 
                 <Button
+                    testID="auth-login-submit"
                     title="Sign In"
                     onPress={handleLogin}
                     loading={loading}

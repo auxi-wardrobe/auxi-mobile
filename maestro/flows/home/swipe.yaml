@@ -1,0 +1,92 @@
+# auxi/maestro/flows/home/swipe.yaml
+# Home swipe main flow — covers Phase A/B/C from
+# auxi/docs/HOME_SWIPE_PLAN.md section 6:
+#   1. Vertical swipe between sheets, snap-per-sheet
+#   2. Heart toggle on the active sheet, saved-state visible
+#   3. Pin a tile, then clear the pin
+#   4. Mode pills cycle Safe / Power / Creative, refetches recommendation
+#   5. Bottom CTAs: Show another, This works, Edit context
+
+appId: org.reactjs.native.example.auxi
+name: home-swipe
+tags:
+  - home
+  - regression
+---
+- runFlow: ../_shared/login.yaml
+
+# --- 1. Vertical swipe between sheets ---
+- assertVisible:
+    id: home-outfit-sheet-0
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- assertVisible:
+    id: home-outfit-sheet-1
+
+# --- 2. Heart toggle on active sheet ---
+- assertVisible:
+    id: home-heart-toggle
+- tapOn:
+    id: home-heart-toggle
+- assertVisible:
+    id: home-heart-toggle-saved
+- tapOn:
+    id: home-heart-toggle-saved
+- assertVisible:
+    id: home-heart-toggle
+- assertNotVisible:
+    id: home-heart-toggle-saved
+
+# --- 3. Pin a tile, then clear ---
+- longPressOn:
+    id: home-tile-0
+- assertVisible:
+    id: home-tile-pin-0-set
+- longPressOn:
+    id: home-tile-pin-0-set
+- assertNotVisible:
+    id: home-tile-pin-0-set
+
+# --- 4. Mode pills cycle ---
+- assertVisible:
+    id: home-mode-pill-safe
+- tapOn:
+    id: home-mode-pill-power
+- assertVisible:
+    id: home-outfit-sheet-0
+    timeout: 10000      # mode change refetches recommendation
+- tapOn:
+    id: home-mode-pill-creative
+- assertVisible:
+    id: home-outfit-sheet-0
+    timeout: 10000
+- tapOn:
+    id: home-mode-pill-safe
+- assertVisible:
+    id: home-outfit-sheet-0
+    timeout: 10000
+
+# --- 5. Bottom CTAs ---
+# 5a. "Show another" — programmatic scroll to next sheet
+- tapOn:
+    id: home-show-another
+- waitForAnimationToEnd
+- assertVisible:
+    id: home-outfit-sheet-1
+
+# 5b. "This works" — equivalent to heart toggle on active sheet
+- tapOn:
+    id: home-this-works
+- assertVisible:
+    id: home-heart-toggle-saved
+
+# 5c. "Edit context" — opens the ContextChipsModal
+- tapOn:
+    id: home-edit-context
+- assertVisible:
+    id: context-chips-modal-root
+- tapOn:
+    id: context-chips-modal-close
+- assertNotVisible:
+    id: context-chips-modal-root
