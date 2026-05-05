@@ -60,8 +60,13 @@ type OutfitSheetWithGrid = OutfitSheet & {
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
+// H2 fix (2026-05-05 QA sweep): previously hardcoded `Math.max(4, items.length)`
+// which forced a 4-tile grid even when the backend returned 3 items, leaving
+// an empty gray bottom-right tile that read as a layout bug. Now the grid
+// matches the actual item count; if a trailing odd-row placeholder is needed
+// for column symmetry, it renders transparently (see `placeholderCard`).
 const buildGrid = (items: Item[]): Array<Item | null> =>
-  Array.from({ length: Math.max(4, items.length) }, (_, index) => items[index] || null);
+  Array.from({ length: items.length }, (_, index) => items[index] || null);
 
 const buildGridOutfitSheet = (outfit: OutfitSheet): OutfitSheetWithGrid => ({
   ...outfit,
@@ -993,7 +998,12 @@ const styles = StyleSheet.create({
   modePill: {
     flex: 1,
     height: 36,
-    paddingHorizontal: 14,
+    // H1 fix (2026-05-05 QA sweep): reduced from 14 to 6. With three pills
+    // sharing the row width on iPhone 16 (~111pt each), 14px padding left
+    // only ~80pt for "Creative Choice" and the label truncated to
+    // "Creative...". 6px each side combined with the 12px text size below
+    // gives "Creative Choice" enough room to render in full.
+    paddingHorizontal: 6,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1007,8 +1017,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaSurface,
     borderColor: theme.colors.figmaAction,
   },
+  // H1 fix (2026-05-05 QA sweep): explicit 12px font size overrides the
+  // archivoButton alias's 16px. At 16px SemiBold, "Creative Choice"
+  // (~95pt) overflowed the available text width and got clipped by
+  // numberOfLines={1}. 12px combined with the reduced 6px horizontal
+  // padding above keeps all three labels readable and unclipped on the
+  // iPhone 16 width (~111pt per pill, ~99pt of text room).
   modePillText: {
     ...theme.typography.aliases.archivoButton,
+    fontSize: 12,
+    lineHeight: 16,
     textAlign: 'center',
   },
   modePillTextSelected: {
@@ -1128,8 +1146,12 @@ const styles = StyleSheet.create({
   loadingCard: {
     backgroundColor: '#E4E7ED',
   },
+  // H2 fix (2026-05-05 QA sweep): trailing odd-row placeholder is now
+  // transparent so the grid reads as "3 items, balanced layout" rather than
+  // "4-tile grid with one missing tile". Only used when the row builder
+  // pads an odd item count for column symmetry.
   placeholderCard: {
-    backgroundColor: '#E6E9EE',
+    backgroundColor: 'transparent',
   },
   cardImage: {
     width: '100%',
