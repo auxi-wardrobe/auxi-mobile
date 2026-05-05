@@ -861,11 +861,7 @@ const OptionSheet = ({
                             isPinned && styles.pinBadgeActive,
                           ]}
                           accessibilityRole="button"
-                          accessibilityLabel={
-                            isPinned
-                              ? `home-tile-pin-${flatTileIndex}-set`
-                              : 'Pin item'
-                          }
+                          accessibilityLabel={isPinned ? 'Unpin item' : 'Pin item'}
                         >
                           <IconHomePin width={14} height={14} />
                         </TouchableOpacity>
