@@ -31,6 +31,7 @@ import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
 import { AppStackParamList } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
+import { Icons } from '../assets/icons';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -405,7 +406,7 @@ export const WardrobeScreen = () => {
             {uploading ? (
               <ActivityIndicator size="small" color={theme.colors.figmaAction} />
             ) : (
-              <Text style={styles.plusGlyph}>+</Text>
+              <Icons.Plus width={24} height={24} />
             )}
           </TouchableOpacity>
         )}
@@ -461,7 +462,7 @@ export const WardrobeScreen = () => {
                 <View style={styles.addSheetHeader}>
                   <TopIconButton
                     onPress={() => setAddSheetVisible(false)}
-                    icon={<Text style={styles.backGlyph}>{"<"}</Text>}
+                    icon={<Icons.ChevronLeft width={20} height={20} />}
                   />
 
                   <PillButton
@@ -472,7 +473,7 @@ export const WardrobeScreen = () => {
                     disabled={!selectedCommonItemId || addingCatalogItem}
                     loading={addingCatalogItem}
                     style={styles.addActionButton}
-                    trailing={<Text style={styles.addActionGlyph}>+</Text>}
+                    trailing={<Icons.Plus width={18} height={18} />}
                   />
                 </View>
 
@@ -820,12 +821,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  plusGlyph: {
-    color: theme.colors.figmaAction,
-    fontSize: 28,
-    lineHeight: 28,
-    marginTop: -2,
-  },
   scrollContent: {
     paddingTop: 12,
     paddingBottom: 32,
@@ -936,20 +931,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 16,
   },
-  backGlyph: {
-    fontSize: 22,
-    lineHeight: 22,
-    color: theme.colors.figmaAction,
-    marginTop: -1,
-  },
   addActionButton: {
     minWidth: 118,
-  },
-  addActionGlyph: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
-    fontSize: 20,
-    lineHeight: 20,
   },
   addSheetScrollContent: {
     paddingHorizontal: HORIZONTAL_PADDING,

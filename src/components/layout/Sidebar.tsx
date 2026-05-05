@@ -90,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                     />
                     <MenuItem
                         label="My body"
-                        Icon={Icons.User}
+                        Icon={Icons.Body}
                         onPress={() => {
                             navigation.navigate('Body');
                             onClose();
@@ -105,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                             onClose();
                         }}
                     />
-                    <MenuItem label="Archive" Icon={Icons.Trash} />
+                    <MenuItem label="Archive" Icon={Icons.Archive} />
                     <MenuItem label="Log out" Icon={Icons.Logout} onPress={logout} />
                 </View>
             </Animated.View>

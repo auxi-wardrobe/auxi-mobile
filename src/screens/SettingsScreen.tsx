@@ -298,7 +298,7 @@ export const SettingsScreen = () => {
 
       <BottomSheetSurface style={styles.sheet}>
         <View style={styles.header}>
-          <TopIconButton icon={<MenuGlyph />} onPress={() => setIsSidebarOpen(true)} />
+          <TopIconButton icon={<Icons.Menu width={24} height={24} />} onPress={() => setIsSidebarOpen(true)} />
           <View pointerEvents="none" style={styles.titleWrap}>
             <Text style={styles.title}>Setting</Text>
           </View>
@@ -348,7 +348,7 @@ export const SettingsScreen = () => {
             onPress={() => navigation.navigate('Body')}
           >
             <Text style={styles.rowLabel}>Manage body photo</Text>
-            <Text style={styles.chevron}>&gt;</Text>
+            <Icons.ChevronRight width={20} height={20} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -500,14 +500,6 @@ export const SettingsScreen = () => {
 
 const Divider = () => <View style={styles.divider} />;
 
-const MenuGlyph = () => (
-  <View style={styles.menuGlyph}>
-    <View style={styles.menuLine} />
-    <View style={styles.menuLine} />
-    <View style={styles.menuLineShort} />
-  </View>
-);
-
 const DeleteGlyph = () => (
   <View style={styles.deleteGlyph}>
     <View style={styles.deleteLid} />
@@ -557,23 +549,6 @@ const styles = StyleSheet.create({
     height: 47,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  menuGlyph: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    gap: 3,
-  },
-  menuLine: {
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: theme.colors.figmaAction,
-  },
-  menuLineShort: {
-    width: 14,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: theme.colors.figmaAction,
   },
   content: {
     flex: 1,
@@ -642,12 +617,6 @@ const styles = StyleSheet.create({
   sectionLabel: {
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaTextSecondary,
-  },
-  chevron: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaText,
-    fontSize: 18,
-    lineHeight: 24,
   },
   deleteLabel: {
     ...theme.typography.aliases.archivoBody,
