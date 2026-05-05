@@ -4,10 +4,8 @@ import {
   Dimensions,
   Image,
   Keyboard,
-  // NativeScrollEvent,
-  // NativeSyntheticEvent,
-  // PermissionsAndroid,
-  // Platform,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -15,9 +13,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-// import Geolocation from 'react-native-geolocation-service';
-// import { useNavigation } from '@react-navigation/native';
-// import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { Sidebar } from '../components/layout/Sidebar';
 import {
@@ -27,14 +22,17 @@ import {
 } from '../components/features/ContextChipsModal';
 import { ItemDetailBottomSheet } from '../components/features/ItemDetailBottomSheet';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
-// import { Icons } from '../assets/icons';
+import { Icons } from '../assets/icons';
+import IconHomePin from '../assets/images/icon_home_pin.svg';
 import { theme } from '../theme/theme';
 import { Item } from '../types/item';
-// import { AppStackParamList } from '../types/navigation';
 import {
-  // NextRecommendationParams,
+  DEFAULT_RECOMMENDATION_MODE,
+  Outfit,
+  RecommendationMode,
   recommendationService,
 } from '../services/recommendationService';
+import { favouriteService } from '../services/favouriteService';
 import { getImageUrl } from '../utils/url';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -47,7 +45,8 @@ const CARD_WIDTH = Math.floor((screenWidth - SHEET_PADDING * 2 - GRID_GAP) / 2);
 const OPTION_SHEET_HEIGHT = Math.round(CARD_WIDTH * (8 / 3) + OPTION_ACTIONS_HEIGHT);
 const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
 
-// type Navigation = NativeStackNavigationProp<AppStackParamList, 'Home'>;
+const UNFAVORITED_SWIPE_THRESHOLD = 3;
+const PREFETCH_LOOKAHEAD = 2;
 
 type OutfitSheet = {
   items: Item[];
@@ -64,26 +63,102 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 const buildGrid = (items: Item[]): Array<Item | null> =>
   Array.from({ length: Math.max(4, items.length) }, (_, index) => items[index] || null);
 
-// const buildOutfitSheet = (outfit: Outfit): OutfitSheet => ({
-//   items: outfit.items || [],
-//   outfitHash: outfit.outfit_hash,
-//   stylingNote: outfit.styling_note || '',
-// });
-
 const buildGridOutfitSheet = (outfit: OutfitSheet): OutfitSheetWithGrid => ({
   ...outfit,
   gridItems: buildGrid(outfit.items),
 });
 
-// const buildTryOnContext = (outfit: OutfitSheet): TryOnOutfitContext => ({
-//   outfitHash: outfit.outfitHash,
-//   itemIds: outfit.items.map((item) => item.id),
-//   itemImageUrls: outfit.items.map((item) => item.image_url),
-//   stylingNote: outfit.stylingNote,
-// });
+// PHASE B (AU-222): MOBILE FALLBACK — until the backend honours
+// `pinned_item_id` and reshuffles around it, we splice the pinned item into
+// position 0 of the local grid for any sheet that doesn't already contain it.
+// Tracked as a backend follow-up: "valen-get-recommendations-offical: mix
+// around `pinned_item_id`".
+const buildGridOutfitSheetWithPin = (
+  outfit: OutfitSheet,
+  pinnedItem: Item | null,
+): OutfitSheetWithGrid => {
+  if (!pinnedItem) {
+    return buildGridOutfitSheet(outfit);
+  }
 
-// const getSheetIndexFromOffset = (offsetY: number) =>
-//   Math.round(offsetY / OPTION_SHEET_SNAP_INTERVAL);
+  const alreadyContainsPinned = outfit.items.some(
+    (item) => item?.id === pinnedItem.id,
+  );
+
+  if (alreadyContainsPinned) {
+    return buildGridOutfitSheet(outfit);
+  }
+
+  // Splice the pinned item into position 0; drop the last item to keep the
+  // 4-tile grid shape. Server-side mixing will replace this once available.
+  const mixed: Item[] = [pinnedItem, ...outfit.items.slice(0, 3)];
+  return {
+    ...outfit,
+    items: mixed,
+    gridItems: buildGrid(mixed),
+  };
+};
+
+const getSheetIndexFromOffset = (offsetY: number) =>
+  Math.max(0, Math.round(offsetY / OPTION_SHEET_SNAP_INTERVAL));
+
+// Normalize the API payload into a uniform `OutfitSheet[]` regardless of
+// whether the backend returns `{ outfits: Outfit[] }` (per the typed
+// contract in recommendationService.ts) or an `Item[][]` shape (what the
+// pre-Phase-A code was implicitly assuming via `currentOutfit` indexing).
+//
+// `indexOffset` ensures fallback hashes are unique across batches — the
+// caller passes the existing list length so a second batch starting at
+// internal index 0 never collides with a first-batch hash. `Date.now()`
+// alone was insufficient on fast machines / StrictMode double-invokes.
+const normalizeOutfits = (data: unknown, indexOffset: number = 0): OutfitSheet[] => {
+  if (!data) {
+    return [];
+  }
+
+  const raw = Array.isArray(data)
+    ? (data as unknown[])
+    : Array.isArray((data as { outfits?: unknown[] }).outfits)
+    ? ((data as { outfits: unknown[] }).outfits)
+    : [];
+
+  return raw
+    .map((entry, index): OutfitSheet | null => {
+      if (!entry) {
+        return null;
+      }
+
+      const fallbackHash = `outfit-${indexOffset + index}-${Date.now()}`;
+
+      // Outfit shape: { items, outfit_hash, styling_note, ... }
+      if (
+        typeof entry === 'object' &&
+        entry !== null &&
+        'items' in entry &&
+        Array.isArray((entry as Outfit).items)
+      ) {
+        const outfit = entry as Outfit;
+        return {
+          items: outfit.items || [],
+          outfitHash: outfit.outfit_hash || fallbackHash,
+          stylingNote: outfit.styling_note || '',
+        };
+      }
+
+      // Legacy shape: a bare Item[] (the pre-Phase-A code path expected this).
+      if (Array.isArray(entry)) {
+        const items = entry as Item[];
+        return {
+          items,
+          outfitHash: fallbackHash,
+          stylingNote: '',
+        };
+      }
+
+      return null;
+    })
+    .filter((sheet): sheet is OutfitSheet => sheet !== null);
+};
 
 const clearTimeoutRef = (
   timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
@@ -95,6 +170,19 @@ const clearTimeoutRef = (
   clearTimeout(timeoutRef.current);
   timeoutRef.current = null;
 };
+
+// PHASE C (AU-221): copy comes from the Figma sticky `1752:28109` (verbatim
+// "Safe Choice / Power Choice / Creative Choice"). No dedicated visual frame
+// exists in Figma yet — copy/order/intent only. Refine when the designer
+// supplies icons + final positioning.
+const RECOMMENDATION_MODE_OPTIONS: ReadonlyArray<{
+  id: RecommendationMode;
+  label: string;
+}> = [
+  { id: 'safe', label: 'Safe Choice' },
+  { id: 'power', label: 'Power Choice' },
+  { id: 'creative', label: 'Creative Choice' },
+];
 
 const CONTEXT_CHIP_SETS: ContextChipOption[][] = [
   [
@@ -111,49 +199,78 @@ const CONTEXT_CHIP_SETS: ContextChipOption[][] = [
   ],
 ];
 
-// const CONTEXT_CHIP_PAYLOADS: Record<
-//   ContextChipId,
-//   Pick<NextRecommendationParams, 'style_feedback' | 'force_variation_axis'>
-// > = {
-//   more_relaxed: {
-//     style_feedback: 'Make it feel more relaxed and easy to wear.',
-//   },
-//   different_vibe: {
-//     style_feedback: 'Show me a distinctly different style direction that still feels wearable.',
-//     force_variation_axis: 'NEW_ANCHOR',
-//   },
-//   more_polished: {
-//     style_feedback: 'Make it look more polished and put together.',
-//   },
-//   more_casual: {
-//     style_feedback: 'Make it more casual and effortless.',
-//   },
-//   bolder_choice: {
-//     style_feedback: 'Make it bolder and more expressive.',
-//   },
-//   simpler_look: {
-//     style_feedback: 'Make it simpler, cleaner, and less busy.',
-//   },
-// };
-
 export const HomeScreen = () => {
-  // const navigation = useNavigation<Navigation>();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  // const [outfitSheets, setOutfitSheets] = useState<OutfitSheet[]>([]);
-  // const [recommendationSessionId, setRecommendationSessionId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  // const [visibleSheetIndex, setVisibleSheetIndex] = useState(0);
-  // const [prefetchRetryTick, setPrefetchRetryTick] = useState(0);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [contextSuggestionSetIndex, setContextSuggestionSetIndex] = useState(0);
   const [selectedContextChipId, setSelectedContextChipId] = useState<ContextChipId | null>(null);
   const [isEditingContext, setIsEditingContext] = useState(false);
   const [customContextText, setCustomContextText] = useState('');
-  // const duplicatePrefetchCountsRef = useRef<Record<string, number>>({});
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [listOutfits, setListOutfits] = useState<any[]>([]);
-  const [currentOutfitIndex, setCurrentOutfitIndex] = useState(0);
+  const [listOutfits, setListOutfits] = useState<OutfitSheet[]>([]);
+  const [activeSheetIndex, setActiveSheetIndex] = useState(0);
+  const [saveStateByHash, setSaveStateByHash] = useState<Record<string, SaveState>>({});
+  // PHASE B (AU-222): pin state lives at HomeScreen level, default null,
+  // session-only (cleared on unmount, see effect below). One pin at a time.
+  const [pinnedItemId, setPinnedItemId] = useState<string | null>(null);
+  // PHASE C (AU-221): selected recommendation mode. Per-session (does NOT
+  // persist across cold starts — the spec explicitly defers persistence
+  // until the designer says otherwise). Defaults to `'safe'`.
+  const [selectedMode, setSelectedMode] = useState<RecommendationMode>(
+    DEFAULT_RECOMMENDATION_MODE,
+  );
+  // Unfavorited-swipe counter is per-session, never rendered, so we keep it
+  // in a ref instead of state to avoid useless re-renders on every swipe.
+  const unfavoritedSwipeCountRef = useRef(0);
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  // Mirror state into refs so async handlers (mutation onSuccess, momentum
+  // scroll end) read the current values without forcing handler recreation.
+  const listOutfitsRef = useRef<OutfitSheet[]>([]);
+  const saveStateByHashRef = useRef<Record<string, SaveState>>({});
+  const isPrefetchingRef = useRef(false);
+  const isFirstLoadRef = useRef(true);
+  // PHASE B (AU-222): mirror pinnedItemId so the prefetch trigger reads the
+  // latest value without recreating callbacks on every pin/unpin tap.
+  const pinnedItemIdRef = useRef<string | null>(null);
+  // PHASE C (AU-221): mirror selectedMode for the same reason — prefetch
+  // and "Show another" callbacks should read the latest mode without
+  // re-binding on every tap.
+  const selectedModeRef = useRef<RecommendationMode>(DEFAULT_RECOMMENDATION_MODE);
+  // Bug 3 fix: read the previous active index from a ref instead of inside
+  // a setState updater (updaters must be pure; StrictMode invokes them
+  // twice which double-incremented the unfavorited-swipe counter).
+  const activeSheetIndexRef = useRef(0);
+
+  useEffect(() => {
+    listOutfitsRef.current = listOutfits;
+  }, [listOutfits]);
+
+  useEffect(() => {
+    activeSheetIndexRef.current = activeSheetIndex;
+  }, [activeSheetIndex]);
+
+  useEffect(() => {
+    saveStateByHashRef.current = saveStateByHash;
+  }, [saveStateByHash]);
+
+  useEffect(() => {
+    pinnedItemIdRef.current = pinnedItemId;
+  }, [pinnedItemId]);
+
+  useEffect(() => {
+    selectedModeRef.current = selectedMode;
+  }, [selectedMode]);
+
+  // PHASE B (AU-222): pin is session-only — cleared when Home unmounts,
+  // matching Phase A's `unfavoritedSwipeCountRef` reset behaviour.
+  useEffect(() => {
+    return () => {
+      setPinnedItemId(null);
+    };
+  }, []);
 
   const resetContextDraft = useCallback(() => {
     setContextSuggestionSetIndex(0);
@@ -170,26 +287,44 @@ export const HomeScreen = () => {
 
   const { mutate: valenGetRecommendation, isPending: isStartPending } = useMutation({
     mutationFn: recommendationService.valenGetRecommendation,
-    onSuccess: (data: any) => {
-      setListOutfits(data);
-      // Only reset index if we're not already on the first outfit
-      if (currentOutfitIndex !== 0) {
-        setCurrentOutfitIndex(0);
+    onSuccess: (data: unknown) => {
+      // First load (cold start) → replace. Subsequent loads (prefetch) →
+      // append so the user's scroll position isn't yanked back to 0.
+      if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
+        isFirstLoadRef.current = false;
+        const incoming = normalizeOutfits(data, 0);
+        setListOutfits(incoming);
+        setActiveSheetIndex(0);
+      } else {
+        // Offset fallback-hash indices by the existing list length so the
+        // second batch never collides with first-batch hashes (Bug 1).
+        const offset = listOutfitsRef.current.length;
+        const incoming = normalizeOutfits(data, offset);
+        // De-dup against existing hashes — drop any genuine duplicates the
+        // backend returns AND any fallback collisions we couldn't avoid.
+        setListOutfits((current) => {
+          const existingHashes = new Set(current.map((o) => o.outfitHash));
+          const deduped = incoming.filter(
+            (sheet) => !existingHashes.has(sheet.outfitHash),
+          );
+          return [...current, ...deduped];
+        });
       }
 
-      // setOutfitSheets([buildOutfitSheet(data.outfit)]);
-      // setRecommendationSessionId(data.session_id || null);
-      // setVisibleSheetIndex(0);
-      // requestedNextFromHashesRef.current.clear();
-      // duplicatePrefetchCountsRef.current = {};
+      isPrefetchingRef.current = false;
     },
     onError: (error) => {
       console.error('Failed to load recommendation', error);
+      isPrefetchingRef.current = false;
     },
   });
 
   useEffect(() => {
-    valenGetRecommendation({});
+    // First fetch — pin is null at cold start so no need to thread it here.
+    // Pass `mode` consistently with the prefetch call site (Bug 2). The
+    // service strips it when it equals DEFAULT_RECOMMENDATION_MODE so the
+    // wire body shape stays identical between cold start and prefetch.
+    valenGetRecommendation({ mode: selectedModeRef.current });
   }, [valenGetRecommendation]);
 
   useEffect(() => {
@@ -198,29 +333,235 @@ export const HomeScreen = () => {
     };
   }, []);
 
-  const loading = isStartPending && (!listOutfits || listOutfits.length === 0);
-  const currentOutfit = listOutfits && listOutfits[currentOutfitIndex];
+  const loading = isStartPending && listOutfits.length === 0;
   const activeContextChipOptions =
     CONTEXT_CHIP_SETS[contextSuggestionSetIndex] ?? CONTEXT_CHIP_SETS[0];
   const trimmedCustomContextText = customContextText.trim();
   const isContextConfirmDisabled =
     !selectedContextChipId && trimmedCustomContextText.length === 0;
 
-  const optionSets = useMemo(
-    () => currentOutfit ? [buildGridOutfitSheet({
-      items: currentOutfit,
-      outfitHash: `outfit-${currentOutfitIndex}`,
-      stylingNote: '',
-    })] : [],
-    [currentOutfit, currentOutfitIndex],
+  // PHASE B (AU-222): resolve the pinned item from whatever sheet still has it
+  // in its raw payload. We search the unfiltered listOutfits so the lookup
+  // survives even if the user has scrolled past the originating sheet.
+  const pinnedItem = useMemo<Item | null>(() => {
+    if (!pinnedItemId) {
+      return null;
+    }
+    for (const outfit of listOutfits) {
+      const found = outfit.items.find((item) => item?.id === pinnedItemId);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }, [listOutfits, pinnedItemId]);
+
+  const optionSets = useMemo<OutfitSheetWithGrid[]>(
+    () => listOutfits.map((outfit) => buildGridOutfitSheetWithPin(outfit, pinnedItem)),
+    [listOutfits, pinnedItem],
   );
 
-  // const handleOpenTryOn = (outfit: OutfitSheet) => {
-  //   navigation.navigate('Body', {
-  //     mode: 'tryOn',
-  //     outfit: buildTryOnContext(outfit),
-  //   });
-  // };
+  const activeOutfit = optionSets[activeSheetIndex];
+  const activeOutfitHash = activeOutfit?.outfitHash;
+  const activeSaveState: SaveState = activeOutfitHash
+    ? saveStateByHash[activeOutfitHash] ?? 'idle'
+    : 'idle';
+
+  const triggerPrefetchIfNeeded = useCallback(
+    (nextIndex: number) => {
+      const total = listOutfitsRef.current.length;
+      if (total === 0) {
+        return;
+      }
+      if (isPrefetchingRef.current || isStartPending) {
+        return;
+      }
+      if (nextIndex >= total - PREFETCH_LOOKAHEAD) {
+        isPrefetchingRef.current = true;
+        // PHASE B (AU-222): thread `pinned_item_id` through the prefetch.
+        // Note: pin changes intentionally do NOT auto-refetch — the next
+        // regular prefetch (or a "Show another" tap that reaches the
+        // lookahead window) picks up the latest value via the ref.
+        // PHASE C (AU-221): same pattern for `mode` — changing the mode
+        // does NOT trigger an immediate refetch (would feel jarring inside
+        // the swipe loop); the next prefetch picks it up via the ref.
+        valenGetRecommendation({
+          pinned_item_id: pinnedItemIdRef.current ?? undefined,
+          mode: selectedModeRef.current,
+        });
+      }
+    },
+    [isStartPending, valenGetRecommendation],
+  );
+
+  const handleHeartTapForOutfit = useCallback(
+    (outfit: OutfitSheetWithGrid | OutfitSheet | undefined) => {
+      if (!outfit) {
+        return;
+      }
+
+      const hash = outfit.outfitHash;
+      const items = outfit.items || [];
+      const previousState = saveStateByHashRef.current[hash] ?? 'idle';
+
+      // Reset the unfavorited-swipe counter on any heart tap.
+      unfavoritedSwipeCountRef.current = 0;
+
+      if (previousState === 'saving' || previousState === 'saved') {
+        // Already saving / already saved — no-op (matches the legacy heart
+        // button which disabled itself in those states).
+        return;
+      }
+
+      console.info('home.swipe.favorite', { outfitHash: hash });
+      // TODO(analytics): replace console.info with the real telemetry hook.
+
+      setSaveStateByHash((current) => ({ ...current, [hash]: 'saving' }));
+
+      // favouriteService currently only exposes `saveFavourite` — no toggle/
+      // delete. PHASE B/D follow-up: extend the service with a real `toggle`
+      // (or `removeFavourite`) once the Love Collection screen lands.
+      favouriteService
+        .saveFavourite({
+          outfit_hash: hash,
+          item_ids: items.map((item) => item.id).filter(Boolean),
+          source: 'home',
+        })
+        .then(() => {
+          setSaveStateByHash((current) => ({ ...current, [hash]: 'saved' }));
+        })
+        .catch((error) => {
+          console.warn('saveFavourite failed', error);
+          setSaveStateByHash((current) => ({ ...current, [hash]: 'error' }));
+        });
+    },
+    [],
+  );
+
+  const handleHeartTapActive = useCallback(() => {
+    handleHeartTapForOutfit(activeOutfit);
+  }, [activeOutfit, handleHeartTapForOutfit]);
+
+  // PHASE B (AU-222): tap-or-long-press a tile's pin badge to toggle pin.
+  // Only one pin at a time — pinning a new item swaps out the prior one.
+  // Tapping the currently-pinned item unpins it.
+  const handleToggleItemPin = useCallback((item: Item) => {
+    if (!item?.id) {
+      return;
+    }
+    setPinnedItemId((current) => {
+      if (current === item.id) {
+        console.info('home.pin.clear', { itemId: item.id });
+        // TODO(analytics): replace console.info with the real telemetry hook.
+        return null;
+      }
+      console.info('home.pin.set', { itemId: item.id });
+      // TODO(analytics): replace console.info with the real telemetry hook.
+      return item.id;
+    });
+  }, []);
+
+  // PHASE C (AU-221): mode selection. Per-session, default `'safe'`. Does
+  // NOT auto-refetch — picked up by the next prefetch (or "Show another"
+  // tap that reaches the lookahead window) via `selectedModeRef`. This
+  // mirrors the Phase B pin-change behaviour and avoids a jarring reset
+  // mid-swipe.
+  const handleSelectMode = useCallback((next: RecommendationMode) => {
+    setSelectedMode((current) => {
+      if (current === next) {
+        return current;
+      }
+      console.info('home.mode.change', { from: current, to: next });
+      // TODO(analytics): replace console.info with the real telemetry hook.
+      return next;
+    });
+  }, []);
+
+  const handleClearPin = useCallback(() => {
+    setPinnedItemId((current) => {
+      if (!current) {
+        return current;
+      }
+      console.info('home.pin.clear', { itemId: current });
+      // TODO(analytics): replace console.info with the real telemetry hook.
+      return null;
+    });
+  }, []);
+
+  // Bug 3 + Bug 4 fix: shared advance helper. Pure ref reads + a single
+  // plain setState (not an updater) so StrictMode double-invocations can't
+  // double-increment the unfavorited-swipe counter. Called from both the
+  // momentum-end callback (real swipe) and "Show another" (programmatic
+  // scroll, which does NOT fire onMomentumScrollEnd on iOS).
+  const advanceToSheet = useCallback(
+    (nextIndex: number, source: 'swipe' | 'showAnother') => {
+      const previousIndex = activeSheetIndexRef.current;
+
+      // Counter increments only on transitions to a HIGHER index where the
+      // sheet we are leaving was NOT favorited. Scroll-back is ignored.
+      if (nextIndex > previousIndex) {
+        const fromOutfit = listOutfitsRef.current[previousIndex];
+        const fromHash = fromOutfit?.outfitHash;
+        const fromState = fromHash
+          ? saveStateByHashRef.current[fromHash] ?? 'idle'
+          : 'idle';
+        const wasFavorited = fromState === 'saved' || fromState === 'saving';
+
+        console.info('home.swipe.miss', {
+          fromIndex: previousIndex,
+          toIndex: nextIndex,
+          source,
+        });
+        // TODO(analytics): replace console.info with the real telemetry hook.
+
+        if (!wasFavorited) {
+          const nextCount = unfavoritedSwipeCountRef.current + 1;
+          if (nextCount >= UNFAVORITED_SWIPE_THRESHOLD) {
+            unfavoritedSwipeCountRef.current = 0;
+            setIsContextModalOpen(true);
+          } else {
+            unfavoritedSwipeCountRef.current = nextCount;
+          }
+        }
+      }
+
+      if (nextIndex !== previousIndex) {
+        activeSheetIndexRef.current = nextIndex;
+        setActiveSheetIndex(nextIndex);
+      }
+      // Always run prefetch — at the tail end the user can rebound on the
+      // same sheet and we still want to top up the buffer.
+      triggerPrefetchIfNeeded(nextIndex);
+    },
+    [triggerPrefetchIfNeeded],
+  );
+
+  const handleShowAnother = useCallback(() => {
+    const total = listOutfitsRef.current.length;
+    if (total === 0) {
+      return;
+    }
+    const currentIndex = activeSheetIndexRef.current;
+    const nextIndex = Math.min(currentIndex + 1, total - 1);
+    if (nextIndex === currentIndex) {
+      // Already on last sheet — proactively prefetch so swiping forward
+      // works without a stall.
+      triggerPrefetchIfNeeded(nextIndex);
+      return;
+    }
+    scrollViewRef.current?.scrollTo({
+      y: nextIndex * OPTION_SHEET_SNAP_INTERVAL,
+      animated: true,
+    });
+    // Bug 4 fix: iOS RN does NOT fire onMomentumScrollEnd for programmatic
+    // scrollTo, so manually advance the index + run counter logic here.
+    advanceToSheet(nextIndex, 'showAnother');
+  }, [advanceToSheet, triggerPrefetchIfNeeded]);
+
+  const handleOpenContextEditModal = useCallback(() => {
+    Keyboard.dismiss();
+    setIsContextModalOpen(true);
+  }, []);
 
   const handleShuffleSuggestions = () => {
     Keyboard.dismiss();
@@ -241,7 +582,7 @@ export const HomeScreen = () => {
     setCustomContextText('');
   };
 
-  const handleOpenContextEdit = () => {
+  const handleOpenContextChipEdit = () => {
     setSelectedContextChipId(null);
     setIsEditingContext(true);
   };
@@ -253,50 +594,23 @@ export const HomeScreen = () => {
   };
 
   const handleSubmitContext = () => {
-    // if (!activeOutfit || !recommendationSessionId || isContextConfirmDisabled) {
-    //   return;
-    // }
-
-    // const selectedPayload = selectedContextChipId
-    //   ? CONTEXT_CHIP_PAYLOADS[selectedContextChipId]
-    //   : null;
-
-    // const payload: NextRecommendationParams = {
-    //   session_id: recommendationSessionId,
-    //   current_outfit_hash: activeOutfit.outfitHash,
-    //   ...(selectedPayload || {}),
-    //   ...(trimmedCustomContextText
-    //     ? { style_feedback: trimmedCustomContextText }
-    //     : {}),
-    // };
-
-    // submitContextRecommendation(payload);
-  };
-
-  const handleNextOutfit = () => {
-    if (!listOutfits || listOutfits.length === 0) {
-      return;
-    }
-    
-    if (currentOutfitIndex < listOutfits.length - 1) {
-      setCurrentOutfitIndex(currentOutfitIndex + 1);
-    } else {
-      // Reached the end, call API again
-      // Don't reset index yet, let loading state show first
-      // Index will be reset in onSuccess callback
-      valenGetRecommendation({});
-    }
+    // PHASE B/C follow-up: thread `style_feedback` (and `mode`,
+    // `pinned_item_id`) into the next valenGetRecommendation call.
+    closeContextModal();
   };
 
   const handleLeadingAction = () => {
     setIsSidebarOpen(true);
   };
 
-  // const handleOptionSwipeEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-  //   const currentSheetIndex = getSheetIndexFromOffset(event.nativeEvent.contentOffset.y);
-  //   setVisibleSheetIndex(currentSheetIndex);
-  //   // requestNextIfNeeded(currentSheetIndex);
-  // };
+  const handleMomentumScrollEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const nextIndex = getSheetIndexFromOffset(event.nativeEvent.contentOffset.y);
+    // Bug 3 fix: counter mutation lives in advanceToSheet (outer function
+    // body), NOT inside a setState updater.
+    advanceToSheet(nextIndex, 'swipe');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -310,65 +624,115 @@ export const HomeScreen = () => {
 
         <Text style={styles.headerTitle}>Auxi</Text>
 
-        {currentOutfit && (
-          <TouchableOpacity
-            style={styles.nextButton}
-            onPress={handleNextOutfit}
-          >
-            <Text style={styles.nextButtonText}>Next</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* <TouchableOpacity
+        <TouchableOpacity
           activeOpacity={0.82}
           style={[
             styles.heartButton,
             activeSaveState === 'saved' && styles.heartButtonSaved,
             activeSaveState === 'error' && styles.heartButtonError,
           ]}
-          disabled={!activeOutfit || activeSaveState === 'saving' || activeSaveState === 'saved'}
-          onPress={() => handleSaveOutfit(activeOutfit)}
+          disabled={
+            !activeOutfit ||
+            activeSaveState === 'saving' ||
+            activeSaveState === 'saved'
+          }
+          onPress={handleHeartTapActive}
         >
           {activeSaveState === 'saving' ? (
             <ActivityIndicator size="small" color={theme.colors.figmaAction} />
           ) : (
             <Icons.Heart width={24} height={24} />
           )}
-        </TouchableOpacity> */}
+        </TouchableOpacity>
       </View>
 
-      {/* {snackbarMessage ? (
-        <View style={styles.snackbar}>
-          <Text style={styles.snackbarText}>{snackbarMessage}</Text>
-        </View>
-      ) : null} */}
+      {/* PHASE C (AU-221): mode selector (Safe / Power / Creative). Lives
+          below the header band per the plan in HOME_SWIPE_PLAN.md §4 phase C.
+          Visual spec is text-only — no dedicated Figma frame yet — refine when
+          designer provides icons / colors / position. */}
+      <View style={styles.modeSelectorRow}>
+        {RECOMMENDATION_MODE_OPTIONS.map((option) => {
+          const isSelected = option.id === selectedMode;
+          return (
+            <TouchableOpacity
+              key={option.id}
+              activeOpacity={0.82}
+              onPress={() => handleSelectMode(option.id)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              accessibilityLabel={option.label}
+              style={[
+                styles.modePill,
+                isSelected ? styles.modePillSelected : styles.modePillUnselected,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.modePillText,
+                  isSelected
+                    ? styles.modePillTextSelected
+                    : styles.modePillTextUnselected,
+                ]}
+                numberOfLines={1}
+              >
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* PHASE B (AU-222): subtle pin label below the header — tap to clear.
+          Figma 1711:17062's header band itself is unchanged; we render this
+          micro-affordance just under it so the user always knows what they
+          have pinned and can undo it without hunting for the tile. */}
+      {pinnedItem ? (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleClearPin}
+          style={styles.pinHeaderLabel}
+        >
+          <IconHomePin width={12} height={12} />
+          <Text style={styles.pinHeaderLabelText} numberOfLines={1}>
+            {`Pinned: ${pinnedItem.category || pinnedItem.color || 'item'}`}
+          </Text>
+          <Text style={styles.pinHeaderLabelClear}>Clear</Text>
+        </TouchableOpacity>
+      ) : null}
 
       <ScrollView
+        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         snapToAlignment="start"
         snapToInterval={OPTION_SHEET_SNAP_INTERVAL}
         decelerationRate="fast"
-        // onScrollEndDrag={handleOptionSwipeEnd}
-        // onMomentumScrollEnd={handleOptionSwipeEnd}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
       >
         {loading ? (
           <HomeLoadingState />
         ) : (
           <>
-            {optionSets.map((outfit) => (
-              <OptionSheet
-                key={outfit.outfitHash}
-                outfit={outfit}
-                contextDisabled={false}
-                saveState="idle"
-                onAddContext={() => {}}
-                onItemPress={(item) => setSelectedItem(item)}
-                onSave={() => {}}
-                onSeeThisOnMe={() => {}}
-              />
-            ))}
-            {false ? <LoadingMoreIndicator /> : null}
+            {optionSets.map((outfit) => {
+              const sheetSaveState: SaveState =
+                saveStateByHash[outfit.outfitHash] ?? 'idle';
+              return (
+                <OptionSheet
+                  key={outfit.outfitHash}
+                  outfit={outfit}
+                  saveState={sheetSaveState}
+                  pinnedItemId={pinnedItemId}
+                  onShowAnother={handleShowAnother}
+                  onItemPress={(item) => setSelectedItem(item)}
+                  onTogglePin={handleToggleItemPin}
+                  onConfirm={() => handleHeartTapForOutfit(outfit)}
+                  onEditContext={handleOpenContextEditModal}
+                />
+              );
+            })}
+            {isStartPending && listOutfits.length > 0 ? (
+              <LoadingMoreIndicator />
+            ) : null}
           </>
         )}
       </ScrollView>
@@ -389,7 +753,7 @@ export const HomeScreen = () => {
         confirmDisabled={isContextConfirmDisabled}
         onSelectChip={handleSelectContextChip}
         onShuffle={handleShuffleSuggestions}
-        onEdit={handleOpenContextEdit}
+        onEdit={handleOpenContextChipEdit}
         onChangeText={handleChangeContextText}
         onCancel={closeContextModal}
         onConfirm={handleSubmitContext}
@@ -399,30 +763,30 @@ export const HomeScreen = () => {
 };
 
 const OptionSheet = ({
-  contextDisabled,
   outfit,
   saveState,
-  onAddContext,
+  pinnedItemId,
+  onShowAnother,
   onItemPress,
-  onSave,
-  onSeeThisOnMe,
+  onTogglePin,
+  onConfirm,
+  onEditContext,
 }: {
-  contextDisabled: boolean;
   outfit: OutfitSheetWithGrid;
   saveState: SaveState;
-  onAddContext: (outfit: OutfitSheet) => void;
+  pinnedItemId: string | null;
+  onShowAnother: () => void;
   onItemPress: (item: Item) => void;
-  onSave: (outfit: OutfitSheet) => void;
-  onSeeThisOnMe: (outfit: OutfitSheet) => void;
+  onTogglePin: (item: Item) => void;
+  onConfirm: () => void;
+  onEditContext: () => void;
 }) => {
   const totalItems = outfit.gridItems.length;
   const rows = [];
-  
-  // Create rows of 2 items each, but handle last item differently if odd number
+
   for (let i = 0; i < totalItems; i += 2) {
     const isLastRowWithSingleItem = (i + 1 >= totalItems) && (totalItems % 2 === 1);
     if (isLastRowWithSingleItem) {
-      // Last single item gets its own row
       rows.push([outfit.gridItems[i], null]);
     } else {
       rows.push(outfit.gridItems.slice(i, i + 2));
@@ -431,7 +795,17 @@ const OptionSheet = ({
 
   return (
     <View style={styles.optionSheet}>
-      <ScrollView 
+      {/* Top action band (Frame 2033 in Figma) — "Show another" */}
+      <View style={styles.topActionBand}>
+        <PillButton
+          title="Show another"
+          variant="outline"
+          onPress={onShowAnother}
+          style={styles.topAction}
+        />
+      </View>
+
+      <ScrollView
         style={styles.gridScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.gridScrollContent}
@@ -439,31 +813,62 @@ const OptionSheet = ({
         <View style={styles.gridWrap}>
           {rows.map((row, rowIndex) => (
             <View key={`row-${outfit.outfitHash}-${rowIndex}`} style={styles.cardRow}>
-              {row.map((item, itemIndex) => (
-                <View key={`card-${outfit.outfitHash}-${rowIndex}-${itemIndex}`} style={styles.cardShell}>
-                  {item ? (
-                    <TouchableOpacity
-                      activeOpacity={0.86}
-                      style={styles.card}
-                      onPress={() => onItemPress(item)}
-                    >
-                      <GarmentPreview item={item} />
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={[styles.card, styles.placeholderCard]} />
-                  )}
-                </View>
-              ))}
+              {row.map((item, itemIndex) => {
+                const isPinned = !!item && item.id === pinnedItemId;
+                return (
+                  <View
+                    key={`card-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
+                    style={styles.cardShell}
+                  >
+                    {item ? (
+                      <TouchableOpacity
+                        activeOpacity={0.86}
+                        style={[styles.card, isPinned && styles.cardPinned]}
+                        onPress={() => onItemPress(item)}
+                        // PHASE B (AU-222): long-press as a secondary
+                        // affordance for pin toggle. Primary tap target is
+                        // the pin badge overlay below — long-press is the
+                        // "tap anywhere on the tile" fallback per the spec.
+                        onLongPress={() => onTogglePin(item)}
+                        delayLongPress={500}
+                      >
+                        <GarmentPreview item={item} />
+                        {/* PHASE B (AU-222): pin badge tap target — Figma
+                            1711:17062 places this at the top-right of every
+                            tile. Tapping toggles pin for this item. */}
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => onTogglePin(item)}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          style={[
+                            styles.pinBadge,
+                            isPinned && styles.pinBadgeActive,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            isPinned ? 'Unpin item' : 'Pin item'
+                          }
+                        >
+                          <IconHomePin width={14} height={14} />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={[styles.card, styles.placeholderCard]} />
+                    )}
+                  </View>
+                );
+              })}
             </View>
           ))}
         </View>
       </ScrollView>
 
+      {/* Bottom action cluster (Frame 2017 in Figma) — "This works" + "Edit context" */}
       <View style={styles.actionCluster}>
         <PillButton
-          title={saveState === 'saved' ? 'Saved to favourite' : 'Wear this'}
+          title={saveState === 'saved' ? 'Saved to favourite' : 'This works'}
           variant="filled"
-          onPress={() => onSave(outfit)}
+          onPress={onConfirm}
           disabled={saveState === 'saved'}
           loading={saveState === 'saving'}
           style={styles.primaryAction}
@@ -471,24 +876,15 @@ const OptionSheet = ({
 
         {saveState === 'error' ? (
           <Text style={styles.saveErrorText}>
-            {"Couldn't save this look. Tap \"Wear this\" to retry."}
+            {"Couldn't save this look. Tap \"This works\" to retry."}
           </Text>
         ) : null}
 
         <PillButton
-          title="See this on me"
+          title="Edit context"
           variant="text"
-          onPress={() => onSeeThisOnMe(outfit)}
+          onPress={onEditContext}
           style={styles.secondaryAction}
-          textStyle={styles.secondaryActionText}
-        />
-
-        <PillButton
-          title="Add context"
-          variant="text"
-          onPress={() => onAddContext(outfit)}
-          disabled={contextDisabled}
-          style={styles.contextAction}
           textStyle={styles.secondaryActionText}
         />
       </View>
@@ -576,27 +972,77 @@ const styles = StyleSheet.create({
   },
   heartButtonSaved: {
     borderWidth: 1.5,
-    borderColor: '#3BA3D0',
+    borderColor: theme.colors.figmaAction,
   },
   heartButtonError: {
     borderWidth: 1.5,
     borderColor: theme.colors.figmaRed,
   },
-  snackbar: {
-    position: 'absolute',
-    top: 64,
-    left: 22,
-    right: 22,
-    zIndex: 20,
-    height: 48,
-    borderRadius: 4,
-    backgroundColor: '#3BA3D0',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
+  // PHASE C (AU-221): visual spec is text-only; refine when designer
+  // provides icons/colors/position. Matches the header's 22px horizontal
+  // gutter, 36px pill height, 8px gap, 14px horizontal pill padding.
+  modeSelectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 22,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
-  snackbarText: {
-    ...theme.typography.aliases.archivoBody,
+  modePill: {
+    flex: 1,
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  modePillSelected: {
+    backgroundColor: theme.colors.figmaAction,
+    borderColor: theme.colors.figmaAction,
+  },
+  modePillUnselected: {
+    backgroundColor: theme.colors.figmaSurface,
+    borderColor: theme.colors.figmaAction,
+  },
+  modePillText: {
+    ...theme.typography.aliases.archivoButton,
+    textAlign: 'center',
+  },
+  modePillTextSelected: {
     color: theme.colors.white,
+  },
+  modePillTextUnselected: {
+    color: theme.colors.figmaAction,
+  },
+  // PHASE B (AU-222): subtle "Pinned: <category>" hint just below the header
+  // band. Tap to clear the pin. Kept tasteful — Figma 1711:17062's header
+  // band itself is unchanged; this lives in the gap above the first sheet.
+  pinHeaderLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: theme.colors.figmaSurfaceSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.figmaDivider,
+    marginHorizontal: 24,
+    marginBottom: 4,
+  },
+  pinHeaderLabelText: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaTextPrimary,
+    maxWidth: 200,
+  },
+  pinHeaderLabelClear: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaAction,
+    fontFamily: 'Manrope-Medium',
   },
   scrollContent: {
     paddingTop: 4,
@@ -616,6 +1062,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 20,
     elevation: 6,
+  },
+  topActionBand: {
+    paddingBottom: 8,
+  },
+  topAction: {
+    alignSelf: 'stretch',
   },
   gridWrap: {
     gap: GRID_GAP,
@@ -643,6 +1095,35 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // PHASE B (AU-222): pinned tile gets a 2px action-coloured ring.
+  // Figma 1711:17062 communicates pin via the badge rather than a border;
+  // the ring is a small extra cue the spec asked for explicitly.
+  cardPinned: {
+    borderWidth: 2,
+    borderColor: theme.colors.figmaAction,
+  },
+  // PHASE B (AU-222): pin badge — small rounded pill in the top-right of
+  // each tile. Inactive state mirrors the SVG's beige fill on a translucent
+  // surface; active state flips to the action colour for clear feedback.
+  pinBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.figmaSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  pinBadgeActive: {
+    backgroundColor: theme.colors.figmaAction,
   },
   loadingCard: {
     backgroundColor: '#E4E7ED',
@@ -693,9 +1174,6 @@ const styles = StyleSheet.create({
   secondaryAction: {
     height: 40,
   },
-  contextAction: {
-    height: 32,
-  },
   secondaryActionText: {
     ...theme.typography.aliases.archivoButton,
     color: theme.colors.figmaAction,
@@ -739,15 +1217,5 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 999,
     backgroundColor: theme.colors.figmaAction,
-  },
-  nextButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: theme.colors.figmaAction,
-  },
-  nextButtonText: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.white,
   },
 });
