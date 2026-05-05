@@ -465,6 +465,10 @@ export const WardrobeScreen = () => {
                     icon={<Icons.ChevronLeft width={20} height={20} />}
                   />
 
+                  {selectedCommonItemId ? (
+                    <Text style={styles.selectionCountLabel}>1 selected</Text>
+                  ) : null}
+
                   <PillButton
                     title="Add"
                     onPress={() => {
@@ -493,6 +497,7 @@ export const WardrobeScreen = () => {
                     {catalogLoading ? (
                       <View style={styles.catalogLoading}>
                         <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+                        <Text style={styles.catalogLoadingLabel}>Loading catalog…</Text>
                       </View>
                     ) : (
                       commonItems.map((item) => {
@@ -521,14 +526,11 @@ export const WardrobeScreen = () => {
                               </View>
                             )}
 
-                            <View style={styles.selectionDotWrap}>
-                              <View
-                                style={[
-                                  styles.selectionDot,
-                                  isSelected && styles.selectionDotSelected,
-                                ]}
-                              />
-                            </View>
+                            {isSelected ? (
+                              <View style={styles.selectionDotWrap}>
+                                <View style={styles.selectionDotSelected} />
+                              </View>
+                            ) : null}
                           </TouchableOpacity>
                         );
                       })
@@ -971,6 +973,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+  },
+  catalogLoadingLabel: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
   },
   catalogTile: {
     width: CATALOG_TILE_WIDTH,
@@ -1001,25 +1009,26 @@ const styles = StyleSheet.create({
   },
   selectionDotWrap: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 8,
+    right: 8,
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
     borderColor: '#FFFFFF',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: theme.colors.figmaAction,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selectionDot: {
+  selectionDotSelected: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'transparent',
-  },
-  selectionDotSelected: {
     backgroundColor: '#FFFFFF',
+  },
+  selectionCountLabel: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaTextSecondary,
   },
   catalogEmptyText: {
     ...theme.typography.aliases.manropeCaption,
