@@ -37,14 +37,27 @@ import {
 import { favouriteService } from '../services/favouriteService';
 import { getImageUrl } from '../utils/url';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GRID_GAP = 4;
 const SHEET_GAP = 4;
 const SHEET_PADDING = 12;
 const OPTION_ACTIONS_HEIGHT = 188;
 const CARD_WIDTH = Math.floor((screenWidth - SHEET_PADDING * 2 - GRID_GAP) / 2);
-const OPTION_SHEET_HEIGHT = Math.round(CARD_WIDTH * (8 / 3) + OPTION_ACTIONS_HEIGHT);
+
+// C-5 (2026-05-05): On iPhone 16 the math-product formula
+// (CARD_WIDTH * 8/3 + OPTION_ACTIONS_HEIGHT) exceeded the available viewport
+// by ~31pt, clipping the bottom action cluster. Cap the sheet height to the
+// viewport minus the safe-area + header + mode-selector chrome.
+// TODO: replace approximated chrome constants with useSafeAreaInsets() +
+// measured header heights once the runtime context is hoisted out of module
+// scope (would require restructuring the snap-paging math into the component).
+const APPROX_TOP_CHROME = 115;       // header (63) + mode selector (48) + scrollContent paddingTop (4)
+const APPROX_BOTTOM_SAFE = 34;       // home indicator
+const APPROX_TOP_SAFE = 59;          // status bar / notch (iPhone 16)
+const AVAILABLE_VIEWPORT = screenHeight - APPROX_TOP_SAFE - APPROX_BOTTOM_SAFE - APPROX_TOP_CHROME;
+const COMPUTED_SHEET_HEIGHT = Math.round(CARD_WIDTH * (8 / 3) + OPTION_ACTIONS_HEIGHT);
+const OPTION_SHEET_HEIGHT = Math.min(COMPUTED_SHEET_HEIGHT, AVAILABLE_VIEWPORT);
 const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
 
 const UNFAVORITED_SWIPE_THRESHOLD = 3;
@@ -633,7 +646,8 @@ export const HomeScreen = () => {
 
         <TouchableOpacity
           testID={activeSaveState === 'saved' ? 'home-heart-toggle-saved' : 'home-heart-toggle'}
-          accessibilityLabel={activeSaveState === 'saved' ? 'home-heart-toggle-saved' : 'home-heart-toggle'}
+          accessibilityRole="button"
+          accessibilityLabel={activeSaveState === 'saved' ? 'Saved to favourites' : 'Favourite this look'}
           activeOpacity={0.82}
           style={[
             styles.heartButton,
@@ -866,7 +880,16 @@ const OptionSheet = ({
                         <TouchableOpacity
                           testID={isPinned ? `home-tile-pin-${flatTileIndex}-set` : `home-tile-pin-${flatTileIndex}`}
                           activeOpacity={0.7}
-                          onPress={() => onTogglePin(item)}
+                          // C-4 (2026-05-05): stopPropagation prevents the
+                          // outer tile TouchableOpacity from also firing
+                          // onPress (which would open ItemDetailBottomSheet
+                          // instead of toggling pin). If this turns out to be
+                          // unreliable on iOS in QA, swap to <Pressable>
+                          // which has cleaner gesture isolation.
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            onTogglePin(item);
+                          }}
                           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                           style={[
                             styles.pinBadge,
@@ -1224,8 +1247,11 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaRed,
     textAlign: 'center',
   },
+  // C-3 (2026-05-05): Figma "bottom secondary ~327×56" spec for the Edit
+  // context button. Override the textButton variant default (40) which is
+  // shared with other screens (LocationPermission) where 40 is intentional.
   secondaryAction: {
-    height: 40,
+    height: 56,
   },
   secondaryActionText: {
     ...theme.typography.aliases.archivoButton,
