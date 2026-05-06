@@ -2,13 +2,18 @@
 # Reusable login sub-flow. Called via `runFlow: ../_shared/login.yaml`.
 # Clears app state (keychain + storage) so the test always starts cold.
 
-appId: org.reactjs.native.example.auxi
+appId: com.auxi2026.app
 ---
 - launchApp:
     clearState: true
-- assertVisible:
-    id: auth-email-input
-    timeout: 10000
+    # On iOS, clearState alone does NOT wipe Keychain — the app stays
+    # logged in across runs. Force a fresh-login state by clearing
+    # the keychain too. (Maestro CLI flag, iOS-only.)
+    clearKeychain: true
+- extendedWaitUntil:
+    visible:
+      id: auth-email-input
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
 - tapOn:
     id: auth-email-input
 - inputText: ${QA_EMAIL}
@@ -19,6 +24,7 @@ appId: org.reactjs.native.example.auxi
 - hideKeyboard
 - tapOn:
     id: auth-login-submit
-- assertVisible:
-    id: home-screen-root
+- extendedWaitUntil:
+    visible:
+      id: home-screen-root
     timeout: ${HOME_TIMEOUT_MS}

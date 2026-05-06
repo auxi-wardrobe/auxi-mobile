@@ -5,7 +5,7 @@
 # IMPORTANT: secrets do NOT live here. Pass QA_EMAIL / QA_PASSWORD via
 # Maestro's `-e KEY=VALUE` flag at run time.
 
-appId: org.reactjs.native.example.auxi   # confirm against ./scripts/qa-boot.sh output
+appId: com.auxi2026.app   # confirm against ./scripts/qa-boot.sh output
 
 # Default env passed into every flow. Credentials are intentionally
 # empty here — pass them at run time via Maestro's `-e` flag so they
@@ -16,8 +16,23 @@ appId: org.reactjs.native.example.auxi   # confirm against ./scripts/qa-boot.sh 
 #
 # The QA test account for local dev (qa-test@auxi.app / QaTest!2026)
 # is documented in maestro/README.md and the user's memory.
-env:
-  QA_EMAIL: ""
-  QA_PASSWORD: ""
-  HOME_TIMEOUT_MS: 15000   # cold-login → home (backend cold-start headroom)
-  MODE_TIMEOUT_MS: 10000   # in-session refetch on mode change (Safe / Power / Creative)
+# IMPORTANT: Maestro does NOT auto-load this file's `env:` block at run
+# time — env defaults must live in each top-level flow's frontmatter
+# (see auth/login.yaml and home/swipe.yaml). This file is reference
+# documentation for what the env vars mean and the canonical defaults.
+# CLI `-e KEY=VALUE` always wins.
+#
+# Reference defaults (mirror these in flow frontmatter):
+#
+#   QA_EMAIL                    pass via -e at run time, never bake in
+#   QA_PASSWORD                 pass via -e at run time, never bake in
+#   HOME_TIMEOUT_MS=30000       post-login → home-screen-root render (incl. bootstrap)
+#   RECOMMENDATION_TIMEOUT_MS=180000  post-login → first home-outfit-sheet-0 (LLM call)
+#   MODE_TIMEOUT_MS=90000       mode-pill change → outfit refetch (also LLM)
+#   LOGIN_SCREEN_TIMEOUT_MS=10000     cold launch → auth-email-input visible (no network)
+#   FAVOURITE_TIMEOUT_MS=30000        save-favourite POST round-trip (database insert; no LLM)
+#
+# Time budgets are sized for the slowest realistic path:
+# gpt-5-nano cold-call ~30s on the happy path, up to 180s if OpenAI
+# returns 502 (Cloudflare 60s Retry-After × 2 retries). See E-7 / E-9
+# in docs/qa-findings/2026-05-06-maestro-e2e-edge-cases.md.

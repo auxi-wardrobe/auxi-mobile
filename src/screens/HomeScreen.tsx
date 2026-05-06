@@ -66,7 +66,6 @@ const PREFETCH_LOOKAHEAD = 2;
 type OutfitSheet = {
   items: Item[];
   outfitHash: string;
-  stylingNote: string;
 };
 
 type OutfitSheetWithGrid = OutfitSheet & {
@@ -148,9 +147,13 @@ const normalizeOutfits = (data: unknown, indexOffset: number = 0): OutfitSheet[]
         return null;
       }
 
-      const fallbackHash = `outfit-${indexOffset + index}-${Date.now()}`;
+      // Deterministic fallback — `indexOffset + index` is already unique
+      // within a session (callers pass the existing list length as offset).
+      // Adding Date.now() here would make the same-data refetch produce a
+      // new hash and defeat the saveStateByHash dedup keyed on outfitHash.
+      const fallbackHash = `outfit-${indexOffset + index}`;
 
-      // Outfit shape: { items, outfit_hash, styling_note, ... }
+      // Outfit shape: { items, outfit_hash, ... }
       if (
         typeof entry === 'object' &&
         entry !== null &&
@@ -161,7 +164,6 @@ const normalizeOutfits = (data: unknown, indexOffset: number = 0): OutfitSheet[]
         return {
           items: outfit.items || [],
           outfitHash: outfit.outfit_hash || fallbackHash,
-          stylingNote: outfit.styling_note || '',
         };
       }
 
@@ -171,7 +173,6 @@ const normalizeOutfits = (data: unknown, indexOffset: number = 0): OutfitSheet[]
         return {
           items,
           outfitHash: fallbackHash,
-          stylingNote: '',
         };
       }
 
@@ -747,7 +748,6 @@ export const HomeScreen = () => {
                   key={outfit.outfitHash}
                   sheetIndex={sheetIndex}
                   outfit={outfit}
-                  stylingNote={outfit.stylingNote}
                   saveState={sheetSaveState}
                   pinnedItemId={pinnedItemId}
                   onShowAnother={handleShowAnother}
@@ -793,7 +793,6 @@ export const HomeScreen = () => {
 const OptionSheet = ({
   sheetIndex,
   outfit,
-  stylingNote,
   saveState,
   pinnedItemId,
   onShowAnother,
@@ -804,7 +803,6 @@ const OptionSheet = ({
 }: {
   sheetIndex: number;
   outfit: OutfitSheetWithGrid;
-  stylingNote: string;
   saveState: SaveState;
   pinnedItemId: string | null;
   onShowAnother: () => void;
@@ -827,15 +825,10 @@ const OptionSheet = ({
 
   return (
     <View testID={`home-outfit-sheet-${sheetIndex}`} style={styles.optionSheet}>
-      {/* Top action band (Frame 2033 in Figma) — short copy line + "Show another" */}
+      {/* Top action band (Frame 2033 in Figma) — "Show another" */}
       <View style={styles.topActionBand}>
-        {stylingNote ? (
-          <Text style={styles.stylingNoteText} numberOfLines={2}>
-            {stylingNote}
-          </Text>
-        ) : null}
         <PillButton
-          testID="home-show-another"
+          testID={`home-show-another-${sheetIndex}`}
           title="Show another"
           variant="outline"
           onPress={onShowAnother}
@@ -861,8 +854,8 @@ const OptionSheet = ({
                   >
                     {item ? (
                       <TouchableOpacity
-                        testID={`home-tile-${flatTileIndex}`}
-                        accessibilityLabel={`home-tile-${flatTileIndex}`}
+                        testID={`home-tile-${sheetIndex}-${flatTileIndex}`}
+                        accessibilityLabel={`home-tile-${sheetIndex}-${flatTileIndex}`}
                         activeOpacity={0.86}
                         style={[styles.card, isPinned && styles.cardPinned]}
                         onPress={() => onItemPress(item)}
@@ -878,7 +871,7 @@ const OptionSheet = ({
                             1711:17062 places this at the top-right of every
                             tile. Tapping toggles pin for this item. */}
                         <TouchableOpacity
-                          testID={isPinned ? `home-tile-pin-${flatTileIndex}-set` : `home-tile-pin-${flatTileIndex}`}
+                          testID={isPinned ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set` : `home-tile-pin-${sheetIndex}-${flatTileIndex}`}
                           activeOpacity={0.7}
                           // C-4 (2026-05-05): stopPropagation prevents the
                           // outer tile TouchableOpacity from also firing
@@ -912,15 +905,10 @@ const OptionSheet = ({
         </View>
       </ScrollView>
 
-      {/* Bottom action cluster (Frame 2017 in Figma) — short copy line + "This works" + "Edit context" */}
+      {/* Bottom action cluster (Frame 2017 in Figma) — "This works" + "Edit context" */}
       <View style={styles.actionCluster}>
-        {stylingNote ? (
-          <Text style={styles.stylingNoteText} numberOfLines={2}>
-            {stylingNote}
-          </Text>
-        ) : null}
         <PillButton
-          testID="home-this-works"
+          testID={`home-this-works-${sheetIndex}`}
           title={saveState === 'saved' ? 'Saved to favourite' : 'This works'}
           variant="filled"
           onPress={onConfirm}
@@ -936,7 +924,7 @@ const OptionSheet = ({
         ) : null}
 
         <PillButton
-          testID="home-edit-context"
+          testID={`home-edit-context-${sheetIndex}`}
           title="Edit context"
           variant="text"
           onPress={onEditContext}
@@ -1130,16 +1118,6 @@ const styles = StyleSheet.create({
   },
   topAction: {
     alignSelf: 'stretch',
-  },
-  // Per HOME_SWIPE_PLAN.md §1: Frame 2033 (top action band) and Frame 2017
-  // (bottom action cluster) each include a short copy line above their
-  // buttons. Re-uses the same `styling_note` string from the API in both
-  // positions; if the design later splits, this style can stay.
-  stylingNoteText: {
-    ...theme.typography.aliases.manropeBody,
-    color: theme.colors.figmaAction,
-    textAlign: 'center',
-    paddingHorizontal: 24,
   },
   gridWrap: {
     gap: GRID_GAP,

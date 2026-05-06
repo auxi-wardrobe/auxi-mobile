@@ -66,11 +66,28 @@ Exit code: 0 = pass, non-zero = fail.
 
 | Flow | Tags | Purpose |
 |---|---|---|
-| `_shared/login.yaml` | _shared | Login as the QA test account; sub-flow used by every post-login flow |
+| `_shared/login.yaml` | _shared | Cold login (clearKeychain + type credentials). Used by `auth/login.yaml`. |
+| `_shared/ensure-home.yaml` | _shared | Conditional login — reuses Keychain if present, falls into `login.yaml` only when the Login screen is visible. Used by every post-login flow. |
 | `auth/login.yaml` | auth, regression | Login persists across relaunch |
 | `home/swipe.yaml` | home, regression | Vertical sheet swipe + index advance + Show another / This works / Edit context buttons |
 
 Add new flows here when you ship them. Tags drive grouped runs.
+
+## Login: cold vs reused (the `_shared/` split)
+
+| Sub-flow | What it does | Use it when |
+|---|---|---|
+| `_shared/login.yaml` | `clearState + clearKeychain` then types credentials. **Always cold-login.** | Only `auth/login.yaml` (which tests login itself + Keychain persistence). |
+| `_shared/ensure-home.yaml` | Launches app; if Login screen visible, falls into `login.yaml`. Otherwise skips straight to Home. | Every flow that doesn't care about login mechanics — `home/*`, `wardrobe/*`, `body/*`, `settings/*`, etc. |
+
+**Why it matters:** the cold login path costs ~30-90s per run (LLM
+cold-start + OpenAI retries). Most flows shouldn't pay that tax —
+`ensure-home.yaml` reuses the iOS Keychain across runs so only the
+*first* run in a fresh sim seeds the credentials.
+
+If you start hitting "still logged in as someone else" issues, run
+`auth/login.yaml` once (or `xcrun simctl uninstall booted com.auxi2026.app`)
+to reset the keychain.
 
 ## Conventions (must read before authoring)
 
