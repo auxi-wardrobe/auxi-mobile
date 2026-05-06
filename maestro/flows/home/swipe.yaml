@@ -7,35 +7,39 @@
 #   4. Mode pills cycle Safe / Power / Creative, refetches recommendation
 #   5. Bottom CTAs: Show another, This works, Edit context
 
-appId: org.reactjs.native.example.auxi
+appId: com.auxi2026.app
 name: home-swipe
 tags:
   - home
   - regression
 ---
-- runFlow: ../_shared/login.yaml
+- runFlow: ../_shared/ensure-home.yaml
 
 # --- 1. Vertical swipe between sheets ---
-- assertVisible:
-    id: home-outfit-sheet-0
+# /recommendation/start can take 30s+ (LLM cold-call to gpt-5-nano).
+# extendedWaitUntil with a generous timeout absorbs the latency without
+# polling — the moment the first sheet renders, the flow continues.
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-0
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
 - swipe:
     direction: UP
 - waitForAnimationToEnd
 - assertVisible:
     id: home-outfit-sheet-1
 
-# --- 2. Heart toggle on active sheet ---
+# --- 2. Heart save on active sheet ---
+# NOTE: heart is currently a one-way toggle (idle → saved). Un-save is
+# documented as deferred in HomeScreen.tsx:416 ("PHASE B/D follow-up:
+# extend the service with a real toggle"). Once that lands, add the
+# un-save assertions back: tap saved → heart-toggle visible / saved
+# not visible.
 - assertVisible:
     id: home-heart-toggle
 - tapOn:
     id: home-heart-toggle
 - assertVisible:
-    id: home-heart-toggle-saved
-- tapOn:
-    id: home-heart-toggle-saved
-- assertVisible:
-    id: home-heart-toggle
-- assertNotVisible:
     id: home-heart-toggle-saved
 
 # --- 3. Pin a tile, then clear ---
@@ -53,40 +57,57 @@ tags:
     id: home-mode-pill-safe
 - tapOn:
     id: home-mode-pill-power
-- assertVisible:
-    id: home-outfit-sheet-0
-    timeout: ${MODE_TIMEOUT_MS}    # mode change refetches recommendation
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-0    # mode change refetches recommendation
+    timeout: ${MODE_TIMEOUT_MS}     # mode change refetches outfit via LLM
 - tapOn:
     id: home-mode-pill-creative
-- assertVisible:
-    id: home-outfit-sheet-0
-    timeout: ${MODE_TIMEOUT_MS}
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-0
+    timeout: ${MODE_TIMEOUT_MS}     # mode change refetches outfit via LLM
 - tapOn:
     id: home-mode-pill-safe
-- assertVisible:
-    id: home-outfit-sheet-0
-    timeout: ${MODE_TIMEOUT_MS}
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-0
+    timeout: ${MODE_TIMEOUT_MS}     # mode change refetches outfit via LLM
 
-# --- 5. Bottom CTAs ---
-# 5a. "Show another" — programmatic scroll to next sheet
+# --- 5. Bottom CTAs (per-sheet testIDs to avoid collisions) ---
+# After the mode-pill cycle the active sheet is index 0 of the active
+# mode's batch. Each OptionSheet renders its own copy of these buttons,
+# so the testID is suffixed with the sheet index.
+
+# 5a. "Show another" on sheet 0 — programmatic scroll to next sheet
 - tapOn:
-    id: home-show-another
+    id: home-show-another-0
 - waitForAnimationToEnd
 - assertVisible:
     id: home-outfit-sheet-1
 
-# 5b. "This works" — equivalent to heart toggle on active sheet
+# 5b. "This works" on sheet 1 — saves the active outfit (heart-toggle-saved
+# appears in the header). Goes through saving→saved transition; favourite
+# API call can take a few seconds, so wait it out.
 - tapOn:
-    id: home-this-works
-- assertVisible:
-    id: home-heart-toggle-saved
+    id: home-this-works-1
+- extendedWaitUntil:
+    visible:
+      id: home-heart-toggle-saved
+    timeout: 30000
 
-# 5c. "Edit context" — opens the ContextChipsModal
+# 5c. "Edit context" — DEFERRED.
+# Opening ContextChipsModal worked in manual testing but Maestro can't
+# observe the modal contents (testID OR text-based) reliably. The modal
+# uses RN's <Modal> which renders in a separate iOS UIWindow that
+# Maestro's hierarchy traversal doesn't follow. Tracked as E-10 in
+# auxi/docs/qa-findings/2026-05-06-maestro-e2e-edge-cases.md.
+# Resolution options (separate scope):
+#   - Replace <Modal> with a regular absolutely-positioned <View>
+#     overlay (visible to Maestro), OR
+#   - Wait for Maestro support for iOS Modal hierarchies, OR
+#   - Add an explicit appium driver step.
 - tapOn:
-    id: home-edit-context
-- assertVisible:
-    id: context-chips-modal-root
-- tapOn:
-    id: context-chips-modal-close
-- assertNotVisible:
-    id: context-chips-modal-root
+    id: home-edit-context-1
+# We confirm the tap registers (Maestro logs COMPLETED). We don't
+# assert modal contents until E-10 is resolved.

@@ -1,0 +1,46 @@
+# auxi/maestro/flows/_shared/ensure-home.yaml
+# Reusable "I just want to be on Home" sub-flow.
+#
+# Difference vs login.yaml:
+#   - login.yaml      : ALWAYS clears keychain + types credentials. Used by
+#                       auth/login.yaml because that flow explicitly tests
+#                       the login screen and Keychain persistence.
+#   - ensure-home.yaml: leaves keychain alone. Launches the app; if the
+#                       Login screen appears (cold keychain), runs the
+#                       login sub-flow once. Otherwise skips straight to
+#                       Home. After the first run of ANY flow that uses
+#                       this, subsequent runs reuse the seeded keychain
+#                       and skip the 30-90s LLM cold-start of the login
+#                       path entirely.
+#
+# Usage:
+#   - runFlow: ../_shared/ensure-home.yaml
+#
+# After this returns, `home-screen-root` is guaranteed visible. Tests
+# that need outfit data (home-outfit-sheet-N) still need their own
+# wait — see RECOMMENDATION_TIMEOUT_MS in home/swipe.yaml.
+
+appId: com.auxi2026.app
+---
+- launchApp:
+    clearState: false
+    # NB: clearKeychain intentionally NOT set. Keychain reuse is the
+    # whole point.
+
+# Conditional login: only run the cold login sub-flow if the app boots
+# into the Login screen (i.e. keychain is empty or token is invalid).
+# When already authed, this step no-ops and we fall through to the
+# extendedWaitUntil below.
+- runFlow:
+    when:
+      visible:
+        id: auth-email-input
+    file: ./login.yaml
+
+# By here we should be on Home. extendedWaitUntil absorbs the brief
+# AuthContext bootstrap on cold relaunch (~5s) without paying the
+# full HOME_TIMEOUT_MS budget when we were already authed.
+- extendedWaitUntil:
+    visible:
+      id: home-screen-root
+    timeout: ${HOME_TIMEOUT_MS}

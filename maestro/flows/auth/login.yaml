@@ -1,7 +1,7 @@
 # auxi/maestro/flows/auth/login.yaml
 # Login persists across cold relaunch (Keychain).
 
-appId: org.reactjs.native.example.auxi
+appId: com.auxi2026.app
 name: auth-login
 tags:
   - auth
@@ -14,8 +14,9 @@ tags:
 - stopApp
 - launchApp:
     clearState: false
-- assertVisible:
-    id: home-screen-root
+- extendedWaitUntil:
+    visible:
+      id: home-screen-root
     timeout: ${HOME_TIMEOUT_MS}
 - assertNotVisible:
     id: auth-email-input

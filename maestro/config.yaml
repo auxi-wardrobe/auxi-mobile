@@ -5,7 +5,7 @@
 # IMPORTANT: secrets do NOT live here. Pass QA_EMAIL / QA_PASSWORD via
 # Maestro's `-e KEY=VALUE` flag at run time.
 
-appId: org.reactjs.native.example.auxi   # confirm against ./scripts/qa-boot.sh output
+appId: com.auxi2026.app   # confirm against ./scripts/qa-boot.sh output
 
 # Default env passed into every flow. Credentials are intentionally
 # empty here — pass them at run time via Maestro's `-e` flag so they
