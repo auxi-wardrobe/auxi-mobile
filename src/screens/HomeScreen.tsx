@@ -147,7 +147,11 @@ const normalizeOutfits = (data: unknown, indexOffset: number = 0): OutfitSheet[]
         return null;
       }
 
-      const fallbackHash = `outfit-${indexOffset + index}-${Date.now()}`;
+      // Deterministic fallback — `indexOffset + index` is already unique
+      // within a session (callers pass the existing list length as offset).
+      // Adding Date.now() here would make the same-data refetch produce a
+      // new hash and defeat the saveStateByHash dedup keyed on outfitHash.
+      const fallbackHash = `outfit-${indexOffset + index}`;
 
       // Outfit shape: { items, outfit_hash, ... }
       if (
@@ -850,8 +854,8 @@ const OptionSheet = ({
                   >
                     {item ? (
                       <TouchableOpacity
-                        testID={`home-tile-${flatTileIndex}`}
-                        accessibilityLabel={`home-tile-${flatTileIndex}`}
+                        testID={`home-tile-${sheetIndex}-${flatTileIndex}`}
+                        accessibilityLabel={`home-tile-${sheetIndex}-${flatTileIndex}`}
                         activeOpacity={0.86}
                         style={[styles.card, isPinned && styles.cardPinned]}
                         onPress={() => onItemPress(item)}
@@ -867,7 +871,7 @@ const OptionSheet = ({
                             1711:17062 places this at the top-right of every
                             tile. Tapping toggles pin for this item. */}
                         <TouchableOpacity
-                          testID={isPinned ? `home-tile-pin-${flatTileIndex}-set` : `home-tile-pin-${flatTileIndex}`}
+                          testID={isPinned ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set` : `home-tile-pin-${sheetIndex}-${flatTileIndex}`}
                           activeOpacity={0.7}
                           // C-4 (2026-05-05): stopPropagation prevents the
                           // outer tile TouchableOpacity from also firing

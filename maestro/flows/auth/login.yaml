@@ -6,6 +6,9 @@ name: auth-login
 tags:
   - auth
   - regression
+env:
+  HOME_TIMEOUT_MS: 30000
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
 ---
 # 1. Cold login from a clean state
 - runFlow: ../_shared/login.yaml

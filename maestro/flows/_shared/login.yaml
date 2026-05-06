@@ -13,7 +13,7 @@ appId: com.auxi2026.app
 - extendedWaitUntil:
     visible:
       id: auth-email-input
-    timeout: 10000
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
 - tapOn:
     id: auth-email-input
 - inputText: ${QA_EMAIL}

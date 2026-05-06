@@ -1,21 +1,35 @@
 # auxi/maestro/flows/home/swipe.yaml
-# Home swipe main flow — covers Phase A/B/C from
+# Home flow — covers Phase A/B/C from
 # auxi/docs/HOME_SWIPE_PLAN.md section 6:
-#   1. Vertical swipe between sheets, snap-per-sheet
-#   2. Heart toggle on the active sheet, saved-state visible
-#   3. Pin a tile, then clear the pin
-#   4. Mode pills cycle Safe / Power / Creative, refetches recommendation
-#   5. Bottom CTAs: Show another, This works, Edit context
+#   1. Pin a tile on sheet 0, then clear (Phase B)
+#   2. Vertical swipe between sheets (Phase A)
+#   3. Heart save on active sheet (Phase A)
+#   4. Mode pills cycle Safe / Power / Creative (Phase C)
+#   5. Bottom CTAs: Show another, This works, Edit context (Phase A)
+#
+# Section ordering note: pin runs BEFORE swipe so it operates on sheet 0
+# (always fully rendered after /recommendation/start). Sheet 1 comes from
+# a /recommendation/next prefetch and can be partially rendered for an
+# extended window when the prefetch is in flight.
 
 appId: com.auxi2026.app
 name: home-swipe
 tags:
   - home
   - regression
+# env defaults — Maestro substitutes these unless overridden by `-e` on
+# the CLI. See timing rationale in
+# auxi/docs/qa-findings/2026-05-06-maestro-e2e-edge-cases.md (E-7, E-9).
+env:
+  HOME_TIMEOUT_MS: 30000
+  RECOMMENDATION_TIMEOUT_MS: 180000
+  MODE_TIMEOUT_MS: 90000
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  FAVOURITE_TIMEOUT_MS: 30000
 ---
 - runFlow: ../_shared/ensure-home.yaml
 
-# --- 1. Vertical swipe between sheets ---
+# --- 0. Wait for the first outfit to land ---
 # /recommendation/start can take 30s+ (LLM cold-call to gpt-5-nano).
 # extendedWaitUntil with a generous timeout absorbs the latency without
 # polling — the moment the first sheet renders, the flow continues.
@@ -23,13 +37,37 @@ tags:
     visible:
       id: home-outfit-sheet-0
     timeout: ${RECOMMENDATION_TIMEOUT_MS}
+
+# --- 1. Pin a tile, then clear (sheet 0) ---
+# Tile testIDs are `home-tile-${sheetIndex}-${flatTileIndex}` (per
+# E-8 follow-up). Operating on sheet 0's tile 0 because sheet 0 is
+# always fully rendered by the time we reach this point.
+- extendedWaitUntil:
+    visible:
+      id: home-tile-0-0
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
+- longPressOn:
+    id: home-tile-0-0
+- assertVisible:
+    id: home-tile-pin-0-0-set
+- longPressOn:
+    id: home-tile-pin-0-0-set
+- assertNotVisible:
+    id: home-tile-pin-0-0-set
+
+# --- 2. Vertical swipe between sheets ---
 - swipe:
     direction: UP
 - waitForAnimationToEnd
-- assertVisible:
-    id: home-outfit-sheet-1
+# Sheet 1 may still be in flight from the prefetch (`/recommendation/next`,
+# also an LLM call). Wait for the container at minimum; tiles may take
+# longer (see commentary above).
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-1
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
 
-# --- 2. Heart save on active sheet ---
+# --- 3. Heart save on active sheet ---
 # NOTE: heart is currently a one-way toggle (idle → saved). Un-save is
 # documented as deferred in HomeScreen.tsx:416 ("PHASE B/D follow-up:
 # extend the service with a real toggle"). Once that lands, add the
@@ -41,16 +79,6 @@ tags:
     id: home-heart-toggle
 - assertVisible:
     id: home-heart-toggle-saved
-
-# --- 3. Pin a tile, then clear ---
-- longPressOn:
-    id: home-tile-0
-- assertVisible:
-    id: home-tile-pin-0-set
-- longPressOn:
-    id: home-tile-pin-0-set
-- assertNotVisible:
-    id: home-tile-pin-0-set
 
 # --- 4. Mode pills cycle ---
 - assertVisible:
@@ -79,12 +107,14 @@ tags:
 # mode's batch. Each OptionSheet renders its own copy of these buttons,
 # so the testID is suffixed with the sheet index.
 
-# 5a. "Show another" on sheet 0 — programmatic scroll to next sheet
+# 5a. "Show another" on sheet 0 — programmatic scroll to next sheet.
 - tapOn:
     id: home-show-another-0
 - waitForAnimationToEnd
-- assertVisible:
-    id: home-outfit-sheet-1
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-1
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
 
 # 5b. "This works" on sheet 1 — saves the active outfit (heart-toggle-saved
 # appears in the header). Goes through saving→saved transition; favourite
@@ -94,7 +124,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: home-heart-toggle-saved
-    timeout: 30000
+    timeout: ${FAVOURITE_TIMEOUT_MS}
 
 # 5c. "Edit context" — DEFERRED.
 # Opening ContextChipsModal worked in manual testing but Maestro can't
