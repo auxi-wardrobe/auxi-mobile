@@ -31,6 +31,11 @@ appId: com.auxi2026.app
 # into the Login screen (i.e. keychain is empty or token is invalid).
 # When already authed, this step no-ops and we fall through to the
 # extendedWaitUntil below.
+#
+# NB: the expired-JWT case is also caught here. AuthContext clears the
+# stored token and pushes to Login when the bootstrap requests return
+# 401, so Maestro sees `auth-email-input` and falls into login.yaml
+# the same way it would on an empty keychain.
 - runFlow:
     when:
       visible:

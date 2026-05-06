@@ -66,7 +66,8 @@ Exit code: 0 = pass, non-zero = fail.
 
 | Flow | Tags | Purpose |
 |---|---|---|
-| `_shared/login.yaml` | _shared | Login as the QA test account; sub-flow used by every post-login flow |
+| `_shared/login.yaml` | _shared | Cold login (clearKeychain + type credentials). Used by `auth/login.yaml`. |
+| `_shared/ensure-home.yaml` | _shared | Conditional login — reuses Keychain if present, falls into `login.yaml` only when the Login screen is visible. Used by every post-login flow. |
 | `auth/login.yaml` | auth, regression | Login persists across relaunch |
 | `home/swipe.yaml` | home, regression | Vertical sheet swipe + index advance + Show another / This works / Edit context buttons |
 

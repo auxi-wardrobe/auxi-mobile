@@ -19,5 +19,10 @@ appId: com.auxi2026.app   # confirm against ./scripts/qa-boot.sh output
 env:
   QA_EMAIL: ""
   QA_PASSWORD: ""
-  HOME_TIMEOUT_MS: 15000   # cold-login → home (backend cold-start headroom)
-  MODE_TIMEOUT_MS: 10000   # in-session refetch on mode change (Safe / Power / Creative)
+  # Time budgets are sized for the slowest realistic path:
+  # gpt-5-nano cold-call ~30s on the happy path, up to 180s if OpenAI
+  # returns 502 (Cloudflare 60s Retry-After × 2 retries). See E-7 / E-9
+  # in docs/qa-findings/2026-05-06-maestro-e2e-edge-cases.md.
+  HOME_TIMEOUT_MS: 30000             # post-login → home-screen-root render (incl. bootstrap)
+  RECOMMENDATION_TIMEOUT_MS: 180000  # post-login → first home-outfit-sheet-0 (LLM call)
+  MODE_TIMEOUT_MS: 90000             # mode-pill change → outfit refetch (also LLM)
