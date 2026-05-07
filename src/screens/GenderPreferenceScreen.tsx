@@ -1,3 +1,17 @@
+/**
+ * Wardrobe-direction picker (V05 onboarding step 1 — AU-249).
+ *
+ * Emits the V05 contract value (`Menswear` / `Womenswear` / `Mixed` —
+ * `services/v05Api.ts#WardrobeDirection`) AND the legacy lowercase
+ * `GenderPreferenceValue` so the existing fit-art mapping in
+ * `StylePreferenceScreen` continues to work.
+ *
+ * Figma reference: card-grid layout established in the new onboarding
+ * section (`470:1122` overview); per-screen 909:* node IDs in
+ * `auxi/docs_agent/FIGMA_SCREEN_MAP.md` are stale post-2026-03-01 and
+ * could not be re-verified during this implementation. Kept the proven
+ * card layout from the prior implementation (parity-checklist Pass).
+ */
 import React, { useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -8,35 +22,52 @@ import {
 } from '../components/primitives/OnboardingSelectionCard';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
+import type { WardrobeDirection } from '../services/v05Api';
 import { AppStackParamList, GenderPreferenceValue } from '../types/navigation';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'GenderPreference'>;
 
-const OPTIONS: Array<{
+interface DirectionOption {
   label: string;
-  value: GenderPreferenceValue;
+  // V05 contract value (capitalised, with "Mixed" as-is).
+  value: WardrobeDirection;
+  // Legacy lowercase mirror used by the fit screen for art keying.
+  legacyValue: GenderPreferenceValue;
   image: number;
-}> = [
+}
+
+const OPTIONS: DirectionOption[] = [
   {
     label: 'Womenswear',
-    value: 'womenswear',
+    value: 'Womenswear',
+    legacyValue: 'womenswear',
     image: require('../assets/images/women_slim_fit.png'),
   },
   {
     label: 'Menswear',
-    value: 'menswear',
+    value: 'Menswear',
+    legacyValue: 'menswear',
     image: require('../assets/images/men_classic_fit.png'),
   },
   {
     label: 'Mixed',
-    value: 'mixed',
+    value: 'Mixed',
+    legacyValue: 'mixed',
     image: require('../assets/images/men_relaxed_fit.png'),
   },
 ];
 
 export const GenderPreferenceScreen = () => {
   const navigation = useNavigation<Navigation>();
-  const [selectedPreference, setSelectedPreference] = useState<GenderPreferenceValue | null>(null);
+  const [selected, setSelected] = useState<DirectionOption | null>(null);
+
+  const handleNext = () => {
+    if (!selected) return;
+    navigation.navigate('StylePreference', {
+      gender: selected.legacyValue,
+      wardrobe_direction: selected.value,
+    });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -56,19 +87,23 @@ export const GenderPreferenceScreen = () => {
             <View style={styles.optionGrid}>
               <View style={styles.optionRow}>
                 {OPTIONS.slice(0, 2).map((option) => {
-                  const selected = selectedPreference === option.value;
-                  const dimmed = !!selectedPreference && !selected;
+                  const isSelected = selected?.value === option.value;
+                  const dimmed = !!selected && !isSelected;
 
                   return (
                     <TouchableOpacity
                       key={option.value}
+                      testID={`onboarding-direction-${option.legacyValue}`}
+                      accessibilityLabel={option.label}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
                       activeOpacity={0.9}
-                      onPress={() => setSelectedPreference(option.value)}
+                      onPress={() => setSelected(option)}
                       style={styles.topOptionPressable}
                     >
                       <OnboardingSelectionCard
                         label={option.label}
-                        selected={selected}
+                        selected={isSelected}
                         dimmed={dimmed}
                       >
                         <OnboardingSelectionFigure
@@ -83,19 +118,23 @@ export const GenderPreferenceScreen = () => {
 
               <View style={styles.optionRow}>
                 {OPTIONS.slice(2).map((option) => {
-                  const selected = selectedPreference === option.value;
-                  const dimmed = !!selectedPreference && !selected;
+                  const isSelected = selected?.value === option.value;
+                  const dimmed = !!selected && !isSelected;
 
                   return (
                     <TouchableOpacity
                       key={option.value}
+                      testID={`onboarding-direction-${option.legacyValue}`}
+                      accessibilityLabel={option.label}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
                       activeOpacity={0.9}
-                      onPress={() => setSelectedPreference(option.value)}
+                      onPress={() => setSelected(option)}
                       style={styles.bottomOptionPressable}
                     >
                       <OnboardingSelectionCard
                         label={option.label}
-                        selected={selected}
+                        selected={isSelected}
                         dimmed={dimmed}
                       >
                         <OnboardingSelectionFigure
@@ -113,9 +152,10 @@ export const GenderPreferenceScreen = () => {
           <PillButton
             title="Next"
             variant="filled"
-            disabled={!selectedPreference}
-            onPress={() => navigation.navigate('StylePreference', { gender: selectedPreference || undefined })}
+            disabled={!selected}
+            onPress={handleNext}
             style={styles.ctaButton}
+            testID="onboarding-direction-next"
           />
         </View>
       </View>
