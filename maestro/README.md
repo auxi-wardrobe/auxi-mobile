@@ -70,6 +70,7 @@ Exit code: 0 = pass, non-zero = fail.
 | `_shared/ensure-home.yaml` | _shared | Conditional login — reuses Keychain if present, falls into `login.yaml` only when the Login screen is visible. Used by every post-login flow. |
 | `auth/login.yaml` | auth, regression | Login persists across relaunch |
 | `home/swipe.yaml` | home, regression | Vertical sheet swipe + index advance + Show another / This works / Edit context buttons |
+| `onboarding/v05.yaml` | onboarding, v05, regression | V05 onboarding journey: WardrobeDirection -> FitPreference -> StylePicker -> POST /api/v05/onboarding/generate -> Home stack swap. Requires `is_first_login=true` test account; ~60s runtime to absorb slow generate endpoint. |
 
 Add new flows here when you ship them. Tags drive grouped runs.
 
@@ -88,6 +89,10 @@ cold-start + OpenAI retries). Most flows shouldn't pay that tax —
 If you start hitting "still logged in as someone else" issues, run
 `auth/login.yaml` once (or `xcrun simctl uninstall booted com.auxi2026.app`)
 to reset the keychain.
+
+`onboarding/v05.yaml` deliberately inlines its own cold-login (rather
+than reusing `_shared/login.yaml`) because the post-credentials assertion
+differs: a first-login user lands on Welcome, not Home.
 
 ## Conventions (must read before authoring)
 
@@ -119,6 +124,21 @@ Naming convention (mirrored in `mobile-dev` agent rules):
 - `auth-email-input`, `auth-password-input`, `auth-login-submit`
 - `home-screen-root`, `home-mode-pill-safe`, `home-heart-toggle`
 - `wardrobe-tab-tops`, `wardrobe-item-tile-{id}`
+
+Open testID gaps (filed with mobile-dev):
+
+- `WelcomeScreen.tsx` — "Get started" PillButton has no testID. Proposed:
+  `onboarding-welcome-cta`. `onboarding/v05.yaml` falls back to
+  `text: "Get started"` (designer-confirmed static copy).
+- `LocationPermissionScreen.tsx` — "Enable location" / "Not now" buttons
+  have no testIDs. Proposed: `onboarding-location-enable`,
+  `onboarding-location-skip`. `onboarding/v05.yaml` falls back to
+  `text: "Not now"` for the skip path.
+- `screens/auth/RegisterScreen.tsx` — entire register screen has no
+  testIDs (`Input` placeholders + Sign Up button). Blocks any future
+  "register fresh user" subflow. Proposed: `auth-register-email`,
+  `auth-register-password`, `auth-register-confirm-password`,
+  `auth-register-submit`.
 
 ## Bug-report format (qa-mobile fills this in on failure)
 
