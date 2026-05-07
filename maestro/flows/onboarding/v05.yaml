@@ -30,7 +30,7 @@
 #   on the local backend (perf follow-up tracked). The V05_GENERATE_TIMEOUT_MS
 #   default is sized at 60s to absorb that with a small safety margin.
 
-appId: com.auxi2026.app
+appId: org.reactjs.native.example.auxi
 name: onboarding-v05
 tags:
   - onboarding
