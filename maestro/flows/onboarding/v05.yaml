@@ -26,9 +26,18 @@
 #             WHERE email='qa-test@auxi.app';
 #
 # Backend timing note:
-#   POST /api/v05/onboarding/generate currently takes 30-50 seconds end-to-end
-#   on the local backend (perf follow-up tracked). The V05_GENERATE_TIMEOUT_MS
-#   default is sized at 60s to absorb that with a small safety margin.
+#   POST /api/v05/onboarding/generate now returns in 3-4s on the local backend
+#   (perf fix on feat/v05-onboarding). The V05_GENERATE_TIMEOUT_MS default is
+#   sized at 60s to absorb a worst-case cold-DB run with comfortable margin.
+#
+# Why we do NOT assert the loading view (AU-249 follow-up):
+#   Pre-perf-fix, the StylePickerScreen loading container was visible for
+#   30-50s — easy to assert. Post-fix, it lives <500ms before
+#   completeOnboarding() flips is_first_login=false and AppNavigator
+#   remounts the navigator into the Home stack. Maestro's polling
+#   cadence cannot reliably catch a transient view that short-lived,
+#   producing false-negative timeouts. The deterministic post-state is
+#   `home-screen-root` mounting; that is what we wait on.
 
 appId: org.reactjs.native.example.auxi
 name: onboarding-v05
@@ -40,9 +49,8 @@ tags:
 env:
   HOME_TIMEOUT_MS: 30000
   LOGIN_SCREEN_TIMEOUT_MS: 10000
-  # POST /api/v05/onboarding/generate is slow on the remote DB right now
-  # (30-50s typical). 60s gives a small safety margin without papering over
-  # a real regression.
+  # POST /api/v05/onboarding/generate is 3-4s post-perf-fix. 60s gives
+  # comfortable margin for a cold DB without papering over a real regression.
   V05_GENERATE_TIMEOUT_MS: 60000
   # Welcome -> WardrobeDirection traversal involves two static screens
   # (Welcome, LocationPermission). 10s per nav step is plenty.
@@ -127,25 +135,20 @@ env:
 - tapOn:
     id: onboarding-style-continue
 
-# --- 9. Loading state appears ---
-# StylePickerScreen renders the full-screen loading container while
-# the mutation is pending. It should mount within ~2s of the tap.
-- extendedWaitUntil:
-    visible:
-      id: onboarding-style-loading
-    timeout: 5000
-
-# --- 10. Wait for backend + Home stack swap ---
+# --- 9. Wait for backend + Home stack swap ---
 # When generation succeeds, completeOnboarding() flips is_first_login to
 # false and AppNavigator swaps the stack to Home. The single
 # extendedWaitUntil below is the ONLY wait spanning the network call —
-# we don't poll the backend, we just wait for the post-state UI marker.
+# we don't poll the backend, we just wait for the post-state UI marker
+# (`home-screen-root` is the SafeAreaView wrapping HomeScreen, mounted
+# at first paint of the Home stack). The transient loading view is
+# intentionally NOT asserted — see header comment.
 - extendedWaitUntil:
     visible:
       id: home-screen-root
     timeout: ${V05_GENERATE_TIMEOUT_MS}
 
-# --- 11. Verify no error block surfaced ---
+# --- 10. Verify no error block surfaced ---
 # pool_insufficient or other 4xx would have left the error block mounted
 # AND the loading view torn down WITHOUT the Home stack swap. Asserting
 # the error block is gone here is belt-and-braces: if we got to
@@ -153,5 +156,3 @@ env:
 # this assertion makes the success contract explicit.
 - assertNotVisible:
     id: onboarding-style-error
-- assertNotVisible:
-    id: onboarding-style-loading
