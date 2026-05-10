@@ -30,5 +30,34 @@ target 'auxi' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Xcode 26 / Apple clang has stricter consteval enforcement that breaks
+    # fmt 11.0.x's FMT_STRING macros. Force fmt to skip consteval paths.
+    installer.pods_project.targets.each do |target|
+      if target.name == 'fmt'
+        target.build_configurations.each do |config|
+          existing = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || ['$(inherited)']
+          existing = [existing] unless existing.is_a?(Array)
+          existing << 'FMT_USE_CONSTEVAL=0' unless existing.include?('FMT_USE_CONSTEVAL=0')
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = existing
+        end
+      end
+    end
+
+    # fmt's base.h hardcodes #define FMT_USE_CONSTEVAL — patch in an #ifndef
+    # guard so the GCC_PREPROCESSOR_DEFINITIONS=FMT_USE_CONSTEVAL=0 wins.
+    base_h = File.join(installer.sandbox.root, 'fmt/include/fmt/base.h')
+    if File.exist?(base_h) && File.read(base_h) !~ /^#ifndef FMT_USE_CONSTEVAL$/
+      content = File.read(base_h)
+      patched = content.sub(
+        /(\/\/ Detect consteval, C\+\+20 constexpr extensions and std::is_constant_evaluated\.\n)(#if !defined\(__cpp_lib_is_constant_evaluated\))/,
+        "\\1#ifndef FMT_USE_CONSTEVAL\n\\2"
+      ).sub(
+        /(#  define FMT_USE_CONSTEVAL 0\n#endif\n)(#if FMT_USE_CONSTEVAL\n)/,
+        "\\1#endif  // FMT_USE_CONSTEVAL\n\\2"
+      )
+      File.write(base_h, patched)
+      Pod::UI.puts 'Patched fmt/base.h to honor FMT_USE_CONSTEVAL override'.yellow
+    end
   end
 end
