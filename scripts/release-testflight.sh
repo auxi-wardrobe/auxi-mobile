@@ -3,13 +3,13 @@
 # Usage: scripts/release-testflight.sh [build_number]
 #
 # Skip the bump arg to keep CFBundleVersion as-is (re-upload same build is rejected).
-# Set ASC_API_KEY / ASC_API_ISSUER in your shell rc (see docs/release-checklist.md).
+# Set ASC_API_KEY_ID / ASC_API_ISSUER in your shell rc (see docs/release-checklist.md).
 
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-API_KEY="${ASC_API_KEY:?Set ASC_API_KEY in shell rc — see docs/release-checklist.md}"
+API_KEY_ID="${ASC_API_KEY_ID:?Set ASC_API_KEY_ID in shell rc — see docs/release-checklist.md}"
 API_ISSUER="${ASC_API_ISSUER:?Set ASC_API_ISSUER in shell rc — see docs/release-checklist.md}"
 SCHEME=auxi
 WORKSPACE=ios/auxi.xcworkspace
@@ -17,8 +17,12 @@ EXPORT_OPTIONS=ios/ExportOptions.plist
 PBXPROJ=ios/auxi.xcodeproj/project.pbxproj
 ARCHIVE_DIR="${TMPDIR:-/tmp}/auxi-archive"
 
-# 1. Bump build number if provided
+# 1. Bump build number if provided — validate it's a positive integer first
 if [[ "${1:-}" ]]; then
+  if ! [[ "$1" =~ ^[0-9]+$ ]]; then
+    echo "Error: build number must be a positive integer (got: '$1')" >&2
+    exit 1
+  fi
   /usr/bin/sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*;/CURRENT_PROJECT_VERSION = $1;/g" "$PBXPROJ"
   echo ">>> Bumped CURRENT_PROJECT_VERSION to $1"
 fi
@@ -59,14 +63,14 @@ ls -lh "$ARCHIVE_DIR/export/auxi.ipa"
 # 6. Validate before upload (saves an upload if icons/CFBundleIconName/signing wrong)
 echo ">>> Validating against App Store Connect"
 xcrun altool --validate-app -f "$ARCHIVE_DIR/export/auxi.ipa" -t ios \
-  --apiKey "$API_KEY" --apiIssuer "$API_ISSUER"
+  --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER"
 
 # 7. Upload (require explicit yes)
 read -p ">>> Validation OK. Upload to TestFlight? [y/N] " yn
-[[ "$yn" == "y" || "$yn" == "Y" ]] || { echo "Skipped upload."; exit 0; }
+[[ "$yn" =~ ^[Yy]([Ee][Ss])?$ ]] || { echo "Skipped upload."; exit 0; }
 
 xcrun altool --upload-app -f "$ARCHIVE_DIR/export/auxi.ipa" -t ios \
-  --apiKey "$API_KEY" --apiIssuer "$API_ISSUER"
+  --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER"
 
 # 8. Tag the release
 TAG="v${VERSION}-build${BUILD}"

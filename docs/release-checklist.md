@@ -23,8 +23,8 @@ Reproducible pipeline for shipping new builds to TestFlight without re-debugging
 - App Store Connect API key (.p8) lives at `~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8`
 - Add to `~/.zshrc` (or `~/.bashrc`):
   ```bash
-  export ASC_API_KEY=U2JN4H9WCR
-  export ASC_API_ISSUER=f7c47bd9-de91-4a8e-a244-8b83d7fe6b14
+  export ASC_API_KEY_ID=<your-key-id>          # e.g. U2JN4H9WCR (App Store Connect → Users and Access → Keys)
+  export ASC_API_ISSUER=<your-issuer-uuid>     # e.g. f7c47bd9-... (top of the Keys page)
   ```
 - `source ~/.zshrc` once to load them
 
