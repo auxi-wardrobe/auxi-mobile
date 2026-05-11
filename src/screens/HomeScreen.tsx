@@ -35,6 +35,7 @@ import {
   recommendationService,
 } from '../services/recommendationService';
 import { favouriteService } from '../services/favouriteService';
+import { track } from '../services/analytics';
 import { getImageUrl } from '../utils/url';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -553,6 +554,7 @@ export const HomeScreen = () => {
           if (nextCount >= UNFAVORITED_SWIPE_THRESHOLD) {
             unfavoritedSwipeCountRef.current = 0;
             setIsContextModalOpen(true);
+            track('refine_modal_opened', { source: 'unfavorited_swipe' });
           } else {
             unfavoritedSwipeCountRef.current = nextCount;
           }
@@ -595,6 +597,7 @@ export const HomeScreen = () => {
   const handleOpenContextEditModal = useCallback(() => {
     Keyboard.dismiss();
     setIsContextModalOpen(true);
+    track('refine_modal_opened', { source: 'card_button' });
   }, []);
 
   const handleShuffleSuggestions = () => {
@@ -628,9 +631,47 @@ export const HomeScreen = () => {
   };
 
   const handleSubmitContext = () => {
-    // PHASE B/C follow-up: thread `style_feedback` (and `mode`,
-    // `pinned_item_id`) into the next valenGetRecommendation call.
+    // PHASE D (AU-252): resolve payload from chip selection or custom text.
+    // Chip label is the natural-English string the engine prompt consumes
+    // directly (see wardrobe-backend/blueprints/recommendation/engine_v2.py
+    // lines 1305-1312 — last 3 style_notes injected into Gemini prompt).
+    const chipLabel = selectedContextChipId
+      ? activeContextChipOptions.find((c) => c.id === selectedContextChipId)?.label
+      : null;
+    const payload = chipLabel ?? (trimmedCustomContextText || null);
+
+    if (!payload) {
+      // Cancel-equivalent: no chip + no text. Should be unreachable because
+      // OK button is disabled via `isContextConfirmDisabled`, but guard
+      // anyway so a programmatic submit can't sneak through.
+      closeContextModal();
+      return;
+    }
+
+    // Update both state (for UI consumers) and ref (read by fetch sites).
+    setStyleFeedback(payload);
+    styleFeedbackRef.current = payload;
+
+    // Reset the soft-nudge counter so the user gets a fresh window after
+    // they've actively given feedback. Without this, the modal would
+    // re-open after another N swipes regardless of submit.
+    unfavoritedSwipeCountRef.current = 0;
+
+    track('refine_submitted', {
+      mode: chipLabel ? 'chip' : 'custom',
+      // Truncate custom text so PII / long input doesn't bloat events.
+      value: payload.slice(0, 100),
+    });
+
     closeContextModal();
+
+    // Trigger an immediate fetch carrying the new feedback. Subsequent
+    // prefetches inherit via `styleFeedbackRef` automatically (Task 4).
+    valenGetRecommendation({
+      style_feedback: payload,
+      pinned_item_id: pinnedItemIdRef.current ?? undefined,
+      mode: selectedModeRef.current,
+    });
   };
 
   const handleLeadingAction = () => {
@@ -796,7 +837,12 @@ export const HomeScreen = () => {
         onShuffle={handleShuffleSuggestions}
         onEdit={handleOpenContextChipEdit}
         onChangeText={handleChangeContextText}
-        onCancel={closeContextModal}
+        onCancel={() => {
+          track('refine_cancelled', {
+            had_selection: !!selectedContextChipId || trimmedCustomContextText.length > 0,
+          });
+          closeContextModal();
+        }}
         onConfirm={handleSubmitContext}
       />
     </SafeAreaView>
