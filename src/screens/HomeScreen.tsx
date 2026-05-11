@@ -359,7 +359,13 @@ export const HomeScreen = () => {
     // Pass `mode` consistently with the prefetch call site (Bug 2). The
     // service strips it when it equals DEFAULT_RECOMMENDATION_MODE so the
     // wire body shape stays identical between cold start and prefetch.
-    valenGetRecommendation({ mode: selectedModeRef.current });
+    // PHASE D (AU-252): style_feedback is null at cold start (refs init
+    // null, only set after `handleSubmitContext`). Thread anyway so the
+    // call shape stays consistent across all 3 fetch sites.
+    valenGetRecommendation({
+      mode: selectedModeRef.current,
+      style_feedback: styleFeedbackRef.current ?? undefined,
+    });
   }, [valenGetRecommendation]);
 
   useEffect(() => {
@@ -423,6 +429,10 @@ export const HomeScreen = () => {
         valenGetRecommendation({
           pinned_item_id: pinnedItemIdRef.current ?? undefined,
           mode: selectedModeRef.current,
+          // PHASE D (AU-252): inherit active style feedback. BE
+          // session_manager sliding-windows last 3 notes, so re-sending
+          // on every prefetch is redundant but cheap and contract-clean.
+          style_feedback: styleFeedbackRef.current ?? undefined,
         });
       }
     },
