@@ -7,12 +7,7 @@ import {
   ResetPreferencesResponse,
   User,
 } from '../types/auth'; // We need to define these types
-
-// Base URL for API
-// ANDROID: http://10.0.2.2:5001/api/v1
-// IOS: http://localhost:5001/api/v1
-// TODO: Externalize config
-const BASE_URL = 'http://localhost:5001/api';
+import { BASE_URL } from '../config/env';
 
 const api = axios.create({
   baseURL: BASE_URL,
