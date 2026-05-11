@@ -242,6 +242,10 @@ export const HomeScreen = () => {
   const [selectedMode, setSelectedMode] = useState<RecommendationMode>(
     DEFAULT_RECOMMENDATION_MODE,
   );
+  // PHASE D (AU-252): user's active style feedback. `null` = no refinement.
+  // Set by `handleSubmitContext`. Read by `valenGetRecommendation` call
+  // sites via `styleFeedbackRef`. Per-session, never persisted.
+  const [styleFeedback, setStyleFeedback] = useState<string | null>(null);
   // Unfavorited-swipe counter is per-session, never rendered, so we keep it
   // in a ref instead of state to avoid useless re-renders on every swipe.
   const unfavoritedSwipeCountRef = useRef(0);
@@ -264,6 +268,11 @@ export const HomeScreen = () => {
   // a setState updater (updaters must be pure; StrictMode invokes them
   // twice which double-incremented the unfavorited-swipe counter).
   const activeSheetIndexRef = useRef(0);
+  // PHASE D (AU-252): mirror styleFeedback so prefetch + show-another reads
+  // the latest value without recreating callbacks on every submit. Sticky
+  // for the session — cleared only when the user re-submits the modal
+  // with a different chip / text. Same lifecycle as pinnedItemIdRef.
+  const styleFeedbackRef = useRef<string | null>(null);
 
   useEffect(() => {
     listOutfitsRef.current = listOutfits;
@@ -284,6 +293,10 @@ export const HomeScreen = () => {
   useEffect(() => {
     selectedModeRef.current = selectedMode;
   }, [selectedMode]);
+
+  useEffect(() => {
+    styleFeedbackRef.current = styleFeedback;
+  }, [styleFeedback]);
 
   // PHASE B (AU-222): pin is session-only — cleared when Home unmounts,
   // matching Phase A's `unfavoritedSwipeCountRef` reset behaviour.
