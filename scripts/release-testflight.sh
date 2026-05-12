@@ -70,7 +70,12 @@ read -p ">>> Validation OK. Upload to TestFlight? [y/N] " yn
 [[ "$yn" =~ ^[Yy]([Ee][Ss])?$ ]] || { echo "Skipped upload."; exit 0; }
 
 xcrun altool --upload-app -f "$ARCHIVE_DIR/export/auxi.ipa" -t ios \
-  --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER"
+  --apiKey "$API_KEY_ID" --apiIssuer "$API_ISSUER" \
+  2>&1 | tee "$ARCHIVE_DIR/upload.log"
+
+# Parse delivery UUID from altool log (fallback to empty if upload mode/format changes)
+DELIVERY_UUID=$(grep -oE 'Delivery UUID: [a-f0-9-]+' "$ARCHIVE_DIR/upload.log" | awk '{print $3}' || true)
+[ -z "$DELIVERY_UUID" ] && echo ">>> WARN: could not parse Delivery UUID from altool log"
 
 # 8. Tag the release
 TAG="v${VERSION}-build${BUILD}"
@@ -81,8 +86,28 @@ else
   echo ">>> Tagged $TAG (push manually: git push origin $TAG)"
 fi
 
+# 9. Emit release-metadata.env for auxi-launch-notify auto-chain.
+# Source via: set -a; source $ARCHIVE_DIR/release-metadata.env; set +a
+COMMIT_SHA=$(git rev-parse HEAD)
+BRANCH_NAME=$(git branch --show-current 2>/dev/null || echo "detached")
+META_FILE="$ARCHIVE_DIR/release-metadata.env"
+cat > "$META_FILE" <<META_EOF
+BUILD_NUMBER=$BUILD
+MARKETING_VERSION=$VERSION
+TAG=$TAG
+DELIVERY_UUID=$DELIVERY_UUID
+COMMIT_SHA=$COMMIT_SHA
+BRANCH=$BRANCH_NAME
+META_EOF
+
 echo ""
 echo "=============================================="
 echo "Done. Build $BUILD uploaded."
+echo "Tag: $TAG | Delivery UUID: ${DELIVERY_UUID:-<unparsed>}"
+echo "Metadata: $META_FILE"
+echo ""
+echo "Next step — auto-chain to launch notification:"
+echo "  Invoke the auxi-launch-notify skill (Claude reads $META_FILE)"
+echo "  OR manually:  set -a; source $META_FILE; set +a"
 echo "Check email + App Store Connect → TestFlight in 5–30 min."
 echo "=============================================="
