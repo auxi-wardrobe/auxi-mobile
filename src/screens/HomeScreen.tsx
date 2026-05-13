@@ -37,13 +37,18 @@ import {
 import { favouriteService } from '../services/favouriteService';
 import { track } from '../services/analytics';
 import { getImageUrl } from '../utils/url';
+import { weatherService } from '../services/weatherService';
+import { WeatherWidget } from '../components/features/WeatherWidget';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GRID_GAP = 4;
 const SHEET_GAP = 4;
-const SHEET_PADDING = 12;
-const OPTION_ACTIONS_HEIGHT = 188;
+const SHEET_PADDING = 16;  // Figma Frame 2009 x=16 → 16px inset
+// #3 fix (2026-05-13): "Show another" moved from topActionBand to bottom
+// actionCluster per Figma spec (y=785 of 896px screen, below action cluster).
+// Added 56px button + 8px gap = 64px to former bottom-zone height of 188.
+const OPTION_ACTIONS_HEIGHT = 252;
 const CARD_WIDTH = Math.floor((screenWidth - SHEET_PADDING * 2 - GRID_GAP) / 2);
 
 // C-5 (2026-05-05): On iPhone 16 the math-product formula
@@ -274,6 +279,19 @@ export const HomeScreen = () => {
   // for the session — cleared only when the user re-submits the modal
   // with a different chip / text. Same lifecycle as pinnedItemIdRef.
   const styleFeedbackRef = useRef<string | null>(null);
+
+  // #1 fix (2026-05-13): weather widget replaces "Auxi" header text per Figma spec.
+  const [weather, setWeather] = useState<{ tempC: number; iconCode: string }>({
+    tempC: 22,
+    iconCode: '01d',
+  });
+
+  useEffect(() => {
+    // Default coords: Hanoi. Replace with real geolocation when available.
+    weatherService.getWeather(21.0285, 105.8542)
+      .then((w) => setWeather({ tempC: w.temp_c, iconCode: w.icon_code }))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     listOutfitsRef.current = listOutfits;
@@ -707,7 +725,7 @@ export const HomeScreen = () => {
           icon={<IconHomeMenu width={18} height={12} />}
         />
 
-        <Text style={styles.headerTitle}>Auxi</Text>
+        <WeatherWidget tempC={weather.tempC} iconCode={weather.iconCode} />
 
         <TouchableOpacity
           testID={activeSaveState === 'saved' ? 'home-heart-toggle-saved' : 'home-heart-toggle'}
@@ -894,17 +912,6 @@ const OptionSheet = ({
 
   return (
     <View testID={`home-outfit-sheet-${sheetIndex}`} style={styles.optionSheet}>
-      {/* Top action band (Frame 2033 in Figma) — "Show another" */}
-      <View style={styles.topActionBand}>
-        <PillButton
-          testID={`home-show-another-${sheetIndex}`}
-          title="Show another"
-          variant="outline"
-          onPress={onShowAnother}
-          style={styles.topAction}
-        />
-      </View>
-
       <ScrollView
         style={styles.gridScroll}
         showsVerticalScrollIndicator={false}
@@ -976,14 +983,17 @@ const OptionSheet = ({
 
       {/* Bottom action cluster (Frame 2017 in Figma) — "This works" + "Edit context" */}
       <View style={styles.actionCluster}>
+        {/* #2 fix (2026-05-13): Figma spec = Secondary/outline, borderRadius 16,
+            trailing heart icon, height 56. Was filled/pill (borderRadius 100). */}
         <PillButton
           testID={`home-this-works-${sheetIndex}`}
           title={saveState === 'saved' ? 'Saved to favourite' : 'This works'}
-          variant="filled"
+          variant="outline"
           onPress={onConfirm}
           disabled={saveState === 'saved'}
           loading={saveState === 'saving'}
-          style={styles.primaryAction}
+          trailing={<IconHomeHeartOutline width={20} height={20} />}
+          style={styles.primaryActionFull}
         />
 
         {saveState === 'error' ? (
@@ -994,11 +1004,21 @@ const OptionSheet = ({
 
         <PillButton
           testID={`home-edit-context-${sheetIndex}`}
-          title="Edit context"
+          title="Edit context +"
           variant="text"
           onPress={onEditContext}
           style={styles.secondaryAction}
           textStyle={styles.secondaryActionText}
+        />
+
+        {/* #3 fix (2026-05-13): "Show another" moved here per Figma spec —
+            Figma y=785/896px places it at the bottom peek, below action cluster. */}
+        <PillButton
+          testID={`home-show-another-${sheetIndex}`}
+          title="Show another"
+          variant="outline"
+          onPress={onShowAnother}
+          style={styles.showAnotherAction}
         />
       </View>
     </View>
@@ -1062,10 +1082,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 8,
     paddingBottom: 10,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.playfairDisplaySection,
-    color: theme.colors.figmaText,
   },
   heartButton: {
     width: 45,
@@ -1172,7 +1188,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: theme.colors.white,
     paddingTop: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: SHEET_PADDING,
     paddingBottom: 24,
     justifyContent: 'space-between',
     shadowColor: '#000000',
@@ -1180,13 +1196,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 20,
     elevation: 6,
-  },
-  topActionBand: {
-    paddingBottom: 8,
-    gap: 8,
-  },
-  topAction: {
-    alignSelf: 'stretch',
   },
   gridWrap: {
     gap: GRID_GAP,
@@ -1209,8 +1218,8 @@ const styles = StyleSheet.create({
   },
   card: {
     aspectRatio: 3 / 4,
-    borderRadius: 16,
-    backgroundColor: '#ECEEF2',
+    borderRadius: 12,  // Figma border-radius/xl = 12
+    backgroundColor: theme.colors.figmaCardSurface,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1245,7 +1254,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaAction,
   },
   loadingCard: {
-    backgroundColor: '#E4E7ED',
+    backgroundColor: theme.colors.figmaCardSurface,
   },
   // H2 fix (2026-05-05 QA sweep): trailing odd-row placeholder is now
   // transparent so the grid reads as "3 items, balanced layout" rather than
@@ -1261,7 +1270,7 @@ const styles = StyleSheet.create({
   cardFallback: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#DDE2EA',
+    backgroundColor: theme.colors.figmaBackground,
   },
   cardTag: {
     position: 'absolute',
@@ -1272,7 +1281,7 @@ const styles = StyleSheet.create({
     height: 19,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
-    backgroundColor: 'rgba(39,42,50,0.9)',
+    backgroundColor: theme.colors.figmaCardTag,  // color/neutral/black/Alpha300
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1283,10 +1292,19 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
   },
   actionCluster: {
-    gap: 8,
+    gap: 12,  // Figma dimension/12
     alignItems: 'center',
   },
   primaryAction: {
+    alignSelf: 'stretch',
+  },
+  // #2 fix (2026-05-13): Figma spec borderRadius=16 (not pill/100), outline variant.
+  primaryActionFull: {
+    alignSelf: 'stretch',
+    borderRadius: 16,
+  },
+  // #3 fix (2026-05-13): "Show another" bottom peek style.
+  showAnotherAction: {
     alignSelf: 'stretch',
   },
   saveErrorText: {
@@ -1307,7 +1325,7 @@ const styles = StyleSheet.create({
   loadingFooter: {
     minHeight: 56,
     borderRadius: 16,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.figmaSurfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',

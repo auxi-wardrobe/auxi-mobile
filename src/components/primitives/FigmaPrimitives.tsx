@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pillText: {
-    ...theme.typography.aliases.archivoBody,
+    ...theme.typography.aliases.poppinsButton,
     color: theme.colors.figmaAction,
   },
   filledText: {
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaRed,
   },
   textOnly: {
-    ...theme.typography.aliases.manropeBody,
+    ...theme.typography.aliases.poppinsButton,
     color: theme.colors.figmaAction,
   },
   bottomSheetSurface: {

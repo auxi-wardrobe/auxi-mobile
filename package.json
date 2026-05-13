@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
-    "ios:sim": "open -a Simulator && yarn ios"
+    "ios:sim": "open -a Simulator && yarn ios",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@react-native/new-app-screen": "0.83.1",
