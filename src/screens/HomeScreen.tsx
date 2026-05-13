@@ -1218,7 +1218,7 @@ const styles = StyleSheet.create({
   },
   card: {
     aspectRatio: 3 / 4,
-    borderRadius: 16,
+    borderRadius: 12,  // Figma border-radius/xl = 12
     backgroundColor: '#ECEEF2',
     overflow: 'hidden',
     alignItems: 'center',
