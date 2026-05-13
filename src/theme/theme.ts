@@ -86,6 +86,18 @@ export const theme = {
         lineHeight: 24,
         letterSpacing: 0.15,
       },
+      poppinsBody: {
+        fontFamily: 'Poppins-Regular',
+        fontSize: 16,
+        lineHeight: 24,
+        letterSpacing: 0,
+      },
+      poppinsButton: {
+        fontFamily: 'Poppins-Medium',
+        fontSize: 16,
+        lineHeight: 24,
+        letterSpacing: 0,
+      },
     },
   },
   borderRadius: {

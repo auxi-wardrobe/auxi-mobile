@@ -37,13 +37,18 @@ import {
 import { favouriteService } from '../services/favouriteService';
 import { track } from '../services/analytics';
 import { getImageUrl } from '../utils/url';
+import { weatherService } from '../services/weatherService';
+import { WeatherWidget } from '../components/features/WeatherWidget';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GRID_GAP = 4;
 const SHEET_GAP = 4;
 const SHEET_PADDING = 12;
-const OPTION_ACTIONS_HEIGHT = 188;
+// #3 fix (2026-05-13): "Show another" moved from topActionBand to bottom
+// actionCluster per Figma spec (y=785 of 896px screen, below action cluster).
+// Added 56px button + 8px gap = 64px to former bottom-zone height of 188.
+const OPTION_ACTIONS_HEIGHT = 252;
 const CARD_WIDTH = Math.floor((screenWidth - SHEET_PADDING * 2 - GRID_GAP) / 2);
 
 // C-5 (2026-05-05): On iPhone 16 the math-product formula
@@ -274,6 +279,19 @@ export const HomeScreen = () => {
   // for the session — cleared only when the user re-submits the modal
   // with a different chip / text. Same lifecycle as pinnedItemIdRef.
   const styleFeedbackRef = useRef<string | null>(null);
+
+  // #1 fix (2026-05-13): weather widget replaces "Auxi" header text per Figma spec.
+  const [weather, setWeather] = useState<{ tempC: number; iconCode: string }>({
+    tempC: 22,
+    iconCode: '01d',
+  });
+
+  useEffect(() => {
+    // Default coords: Hanoi. Replace with real geolocation when available.
+    weatherService.getWeather(21.0285, 105.8542)
+      .then((w) => setWeather({ tempC: w.temp_c, iconCode: w.icon }))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     listOutfitsRef.current = listOutfits;
@@ -707,7 +725,7 @@ export const HomeScreen = () => {
           icon={<IconHomeMenu width={18} height={12} />}
         />
 
-        <Text style={styles.headerTitle}>Auxi</Text>
+        <WeatherWidget tempC={weather.tempC} iconCode={weather.iconCode} />
 
         <TouchableOpacity
           testID={activeSaveState === 'saved' ? 'home-heart-toggle-saved' : 'home-heart-toggle'}
@@ -894,17 +912,6 @@ const OptionSheet = ({
 
   return (
     <View testID={`home-outfit-sheet-${sheetIndex}`} style={styles.optionSheet}>
-      {/* Top action band (Frame 2033 in Figma) — "Show another" */}
-      <View style={styles.topActionBand}>
-        <PillButton
-          testID={`home-show-another-${sheetIndex}`}
-          title="Show another"
-          variant="outline"
-          onPress={onShowAnother}
-          style={styles.topAction}
-        />
-      </View>
-
       <ScrollView
         style={styles.gridScroll}
         showsVerticalScrollIndicator={false}
@@ -976,14 +983,17 @@ const OptionSheet = ({
 
       {/* Bottom action cluster (Frame 2017 in Figma) — "This works" + "Edit context" */}
       <View style={styles.actionCluster}>
+        {/* #2 fix (2026-05-13): Figma spec = Secondary/outline, borderRadius 16,
+            trailing heart icon, height 56. Was filled/pill (borderRadius 100). */}
         <PillButton
           testID={`home-this-works-${sheetIndex}`}
           title={saveState === 'saved' ? 'Saved to favourite' : 'This works'}
-          variant="filled"
+          variant="outline"
           onPress={onConfirm}
           disabled={saveState === 'saved'}
           loading={saveState === 'saving'}
-          style={styles.primaryAction}
+          trailing={<IconHomeHeartOutline width={20} height={20} />}
+          style={styles.primaryActionFull}
         />
 
         {saveState === 'error' ? (
@@ -999,6 +1009,16 @@ const OptionSheet = ({
           onPress={onEditContext}
           style={styles.secondaryAction}
           textStyle={styles.secondaryActionText}
+        />
+
+        {/* #3 fix (2026-05-13): "Show another" moved here per Figma spec —
+            Figma y=785/896px places it at the bottom peek, below action cluster. */}
+        <PillButton
+          testID={`home-show-another-${sheetIndex}`}
+          title="Show another"
+          variant="outline"
+          onPress={onShowAnother}
+          style={styles.showAnotherAction}
         />
       </View>
     </View>
@@ -1062,10 +1082,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 8,
     paddingBottom: 10,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.playfairDisplaySection,
-    color: theme.colors.figmaText,
   },
   heartButton: {
     width: 45,
@@ -1181,13 +1197,6 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 6,
   },
-  topActionBand: {
-    paddingBottom: 8,
-    gap: 8,
-  },
-  topAction: {
-    alignSelf: 'stretch',
-  },
   gridWrap: {
     gap: GRID_GAP,
   },
@@ -1287,6 +1296,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryAction: {
+    alignSelf: 'stretch',
+  },
+  // #2 fix (2026-05-13): Figma spec borderRadius=16 (not pill/100), outline variant.
+  primaryActionFull: {
+    alignSelf: 'stretch',
+    borderRadius: 16,
+  },
+  // #3 fix (2026-05-13): "Show another" bottom peek style.
+  showAnotherAction: {
     alignSelf: 'stretch',
   },
   saveErrorText: {
