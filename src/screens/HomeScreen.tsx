@@ -289,7 +289,7 @@ export const HomeScreen = () => {
   useEffect(() => {
     // Default coords: Hanoi. Replace with real geolocation when available.
     weatherService.getWeather(21.0285, 105.8542)
-      .then((w) => setWeather({ tempC: w.temp_c, iconCode: w.icon }))
+      .then((w) => setWeather({ tempC: w.temp_c, iconCode: w.icon_code }))
       .catch(() => {});
   }, []);
 
