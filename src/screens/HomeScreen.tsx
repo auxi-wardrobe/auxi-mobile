@@ -44,7 +44,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GRID_GAP = 4;
 const SHEET_GAP = 4;
-const SHEET_PADDING = 12;
+const SHEET_PADDING = 16;  // Figma Frame 2009 x=16 → 16px inset
 // #3 fix (2026-05-13): "Show another" moved from topActionBand to bottom
 // actionCluster per Figma spec (y=785 of 896px screen, below action cluster).
 // Added 56px button + 8px gap = 64px to former bottom-zone height of 188.
@@ -1004,7 +1004,7 @@ const OptionSheet = ({
 
         <PillButton
           testID={`home-edit-context-${sheetIndex}`}
-          title="Edit context"
+          title="Edit context +"
           variant="text"
           onPress={onEditContext}
           style={styles.secondaryAction}
@@ -1188,7 +1188,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: theme.colors.white,
     paddingTop: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: SHEET_PADDING,
     paddingBottom: 24,
     justifyContent: 'space-between',
     shadowColor: '#000000',
@@ -1219,7 +1219,7 @@ const styles = StyleSheet.create({
   card: {
     aspectRatio: 3 / 4,
     borderRadius: 12,  // Figma border-radius/xl = 12
-    backgroundColor: '#ECEEF2',
+    backgroundColor: theme.colors.figmaCardSurface,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1254,7 +1254,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaAction,
   },
   loadingCard: {
-    backgroundColor: '#E4E7ED',
+    backgroundColor: theme.colors.figmaCardSurface,
   },
   // H2 fix (2026-05-05 QA sweep): trailing odd-row placeholder is now
   // transparent so the grid reads as "3 items, balanced layout" rather than
@@ -1270,7 +1270,7 @@ const styles = StyleSheet.create({
   cardFallback: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#DDE2EA',
+    backgroundColor: theme.colors.figmaBackground,
   },
   cardTag: {
     position: 'absolute',
@@ -1281,7 +1281,7 @@ const styles = StyleSheet.create({
     height: 19,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
-    backgroundColor: 'rgba(39,42,50,0.9)',
+    backgroundColor: theme.colors.figmaCardTag,  // color/neutral/black/Alpha300
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1292,7 +1292,7 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
   },
   actionCluster: {
-    gap: 8,
+    gap: 12,  // Figma dimension/12
     alignItems: 'center',
   },
   primaryAction: {
@@ -1325,7 +1325,7 @@ const styles = StyleSheet.create({
   loadingFooter: {
     minHeight: 56,
     borderRadius: 16,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.figmaSurfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',

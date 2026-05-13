@@ -12,7 +12,9 @@ export const theme = {
     white: '#FFFFFF',
     transparent: 'transparent',
     // Figma aliases for route-screen parity
-    figmaBackground: '#F7F7F8',
+    figmaBackground: '#f2efec',    // background/primary/subtle_50
+    figmaCardSurface: '#f2efec',   // background/primary/subtle_50 — clothing tile bg
+    figmaCardTag: 'rgba(18,18,18,0.75)',  // color/neutral/black/Alpha300 (#121212bf)
     figmaSurface: '#FFFFFF',
     figmaSurfaceSoft: '#F3F5F9',
     figmaText: '#272A32',
