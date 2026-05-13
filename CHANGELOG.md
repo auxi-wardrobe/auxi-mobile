@@ -6,6 +6,25 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ## [Unreleased]
 
+## [v1.0-build4] - 2026-05-13
+
+### Added
+- Weather widget in home header — day/temp/icon via backend `/api/weather` proxy (OpenWeather, 4h cache)
+- Poppins-Regular + Poppins-Medium fonts linked to iOS and Android (matches Figma `font-family/body`)
+
+### Changed
+- HomeScreen: "This works" button changed to outlined secondary style with trailing heart icon (Figma spec)
+- HomeScreen: "Show another" moved to bottom of action cluster (Figma y=785 peek layout)
+- HomeScreen: sheet horizontal padding 12→16, card borderRadius 16→12, action cluster gap 8→12
+- HomeScreen: app background, card tile bg, card tag overlay converted to Figma warm tokens
+- HomeScreen: "Edit context +" trailing plus added per Figma
+- All button text: ArchivoNarrow → Poppins-Medium (Figma `font-family/body`)
+- theme.ts: add `figmaBackground #f2efec`, `figmaCardSurface`, `figmaCardTag`, `poppinsBody/Button` tokens
+
+### Fixed
+- Removed all literal hex values from HomeScreen.tsx; converted to theme tokens
+- WeatherWidget: whitelist `iconCode` before URL interpolation (security)
+
 ## [v1.0-build3] - 2026-05-12
 
 ### Added
