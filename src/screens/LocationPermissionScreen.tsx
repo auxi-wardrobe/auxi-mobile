@@ -13,8 +13,11 @@ export const LocationPermissionScreen = () => {
   const navigation = useNavigation<Navigation>();
   const [loading, setLoading] = useState(false);
 
+  // Both location-permission outcomes funnel into GenderPreference. Skipping
+  // straight to StylePreference (the V05 fit picker) silently defaults
+  // wardrobe_direction to "Mixed", which violates the V05 spec contract that
+  // requires the user to explicitly pick direction. AU-249.
   const goToGenderPreference = () => navigation.navigate('GenderPreference');
-  const skipToStylePreference = () => navigation.navigate('StylePreference');
 
   const handleEnableLocation = async () => {
     setLoading(true);
@@ -27,14 +30,14 @@ export const LocationPermissionScreen = () => {
           'Permission Denied',
           'We need location permission to suggest outfits based on local weather. Please enable it in settings.',
           [
-            { text: 'Cancel', style: 'cancel', onPress: skipToStylePreference },
+            { text: 'Continue without location', style: 'cancel', onPress: goToGenderPreference },
             { text: 'Open Settings', onPress: () => Linking.openSettings() },
           ],
         );
       }
     } catch (error) {
       console.error(error);
-      skipToStylePreference();
+      goToGenderPreference();
     } finally {
       setLoading(false);
     }
@@ -61,8 +64,9 @@ export const LocationPermissionScreen = () => {
             <PillButton
               title="Not now"
               variant="text"
-              onPress={skipToStylePreference}
+              onPress={goToGenderPreference}
               style={styles.notNowButton}
+              testID="onboarding-location-skip"
             />
           </View>
         </View>

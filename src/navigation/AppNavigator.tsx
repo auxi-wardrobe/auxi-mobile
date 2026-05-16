@@ -7,6 +7,7 @@ import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { ItemDetailScreen } from '../screens/ItemDetailScreen';
 import { GenderPreferenceScreen } from '../screens/GenderPreferenceScreen';
 import { StylePreferenceScreen } from '../screens/StylePreferenceScreen';
+import { StylePickerScreen } from '../screens/StylePickerScreen';
 import { LocationPermissionScreen } from '../screens/LocationPermissionScreen';
 import { useAuth } from '../context/AuthContext';
 import { ActivityIndicator, View, StyleSheet } from 'react-native'; // Import View and StyleSheet
@@ -43,6 +44,7 @@ export const AppNavigator = () => {
                             <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
                             <Stack.Screen name="GenderPreference" component={GenderPreferenceScreen} />
                             <Stack.Screen name="StylePreference" component={StylePreferenceScreen} />
+                            <Stack.Screen name="StylePicker" component={StylePickerScreen} />
                         </>
                     ) : (
                         <>

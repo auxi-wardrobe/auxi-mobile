@@ -1,0 +1,123 @@
+# auxi/maestro/flows/home/refine-modal-happy-path.yaml
+# AU-252 — Try Another / Refine Modal: happy-path Maestro flow.
+#
+# Linear: AU-252
+# Spec: docs/pm/au-252-try-another-design.md (sec 6 AC #1-3)
+# Plan: plans/260511-1539-refine-modal-wireup/plan.md
+#
+# Scope: user taps "Edit context" on outfit card -> ContextChipsModal opens
+#        -> selects vibe chip -> taps OK -> modal dismisses -> new outfit
+#        loads into the same sheet position with no error state.
+#
+# Out of scope (deferred to separate flows):
+#   - Soft-nudge trigger (3 unfavorited swipes)        -> non-deterministic
+#   - Shuffle button                                    -> separate flow
+#   - Edit / custom-text path                           -> separate flow
+#   - Cancel path                                       -> separate flow
+#   - Outfit-hash diff before/after                     -> not expressible in Maestro
+#   - Backend log assertion                             -> outside Maestro scope
+#
+# KNOWN RISK — E-10 (docs/qa-findings/2026-05-06-maestro-e2e-edge-cases.md):
+#   ContextChipsModal still uses RN <Modal>, which on iOS renders into a
+#   separate UIWindow that Maestro's hierarchy traversal cannot reach. As
+#   of the last run on home/swipe.yaml, `context-chips-modal-root` and
+#   per-chip testIDs were UNREACHABLE even though the modal was visually
+#   rendered. This flow is authored per the AU-252 spec ANYWAY because the
+#   testIDs themselves are correct; once E-10 is resolved (either by
+#   replacing <Modal> with an in-window <View> overlay or by Maestro adding
+#   iOS UIWindow support), the flow should pass without edits. If qa-mobile
+#   sees E-10-shaped failures, treat the flow as blocked on E-10, NOT as a
+#   product bug.
+
+appId: com.auxi2026.app
+name: home-refine-modal-happy-path
+tags:
+  - home
+  - refine-modal
+  - au-252
+  - regression
+# Env defaults. Maestro substitutes these unless overridden by `-e` on the
+# CLI. Timing rationale: see config.yaml + E-7/E-9 in qa-findings.
+env:
+  HOME_TIMEOUT_MS: 30000
+  RECOMMENDATION_TIMEOUT_MS: 180000
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  MODAL_TIMEOUT_MS: 5000          # local UI state change after tap
+  MODAL_DISMISS_TIMEOUT_MS: 5000  # post-OK close animation (~220ms)
+  REFINE_FETCH_TIMEOUT_MS: 90000  # /recommendation/next round-trip incl. LLM
+---
+# --- 0. Boot to Home (reuses keychain on subsequent runs) ---
+- runFlow: ../_shared/ensure-home.yaml
+
+# --- 1. Wait for the first outfit sheet to land ---
+# /recommendation/start can take 30s+ on a cold LLM call. We need
+# `home-outfit-sheet-0` rendered before any per-card CTA is reachable.
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-0
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
+
+# Sanity: the Edit context CTA on sheet 0 is present and reachable.
+- assertVisible:
+    id: home-edit-context-0
+
+# --- 2. Open the refine modal ---
+# Tap routes through handleOpenContextEditModal -> setIsContextModalVisible(true).
+- tapOn:
+    id: home-edit-context-0
+
+# Modal open is local React state; the slide animation is 280ms.
+- extendedWaitUntil:
+    visible:
+      id: context-chips-modal-root
+    timeout: ${MODAL_TIMEOUT_MS}
+
+# --- 3. Select a vibe chip ---
+# "more_polished" matches AC #1 example. Selection is local state
+# (selectedChipId) and enables the OK button (confirmDisabled = false).
+- assertVisible:
+    id: context-chip-more_polished
+- tapOn:
+    id: context-chip-more_polished
+
+# --- 4. Confirm — submits chip as styleFeedback, fetches a new outfit ---
+# tapOn home-context-chips-confirm -> handleSubmitContext ->
+# closeContextModal() + writes styleFeedbackRef + triggers fetchNext().
+- assertVisible:
+    id: context-chips-confirm
+- tapOn:
+    id: context-chips-confirm
+
+# --- 5. Modal dismisses ---
+# closeContextModal() sets visible=false; ContextChipsModal animates out
+# over ~220ms then unmounts via shouldRender=false.
+- extendedWaitUntil:
+    notVisible:
+      id: context-chips-modal-root
+    timeout: ${MODAL_DISMISS_TIMEOUT_MS}
+
+# --- 6. New outfit arrives in the same sheet slot, no crash ---
+# After /recommendation/next resolves, listOutfits is updated and sheet 0
+# still renders (the new outfit may be appended or replace depending on the
+# wire-up). We assert the sheet container stays present and the Edit
+# context CTA on sheet 0 is reachable again (proves we're not stuck in a
+# loading or error fallback).
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-0
+    timeout: ${REFINE_FETCH_TIMEOUT_MS}
+- assertVisible:
+    id: home-edit-context-0
+
+# --- 7. No error state surfaced ---
+# HomeScreen renders error UI inline when valenGetRecommendation rejects.
+# We don't have a dedicated error testID yet (gap to file with mobile-dev
+# if it ever fires), so we assert positively that core post-success
+# affordances remain present — the mode pills bar and the per-card CTAs.
+# If the screen had fallen into an error state, these would not render.
+- assertVisible:
+    id: home-mode-pill-safe
+- assertVisible:
+    id: home-show-another-0
+- assertVisible:
+    id: home-this-works-0

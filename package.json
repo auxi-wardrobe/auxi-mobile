@@ -8,12 +8,14 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
-    "ios:sim": "open -a Simulator && yarn ios"
+    "ios:sim": "open -a Simulator && yarn ios",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@react-native/new-app-screen": "0.83.1",
     "@react-navigation/native": "^7.1.28",
     "@react-navigation/native-stack": "^7.12.0",
+    "@sentry/react-native": "^8.11.1",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.5",
     "react": "19.2.0",

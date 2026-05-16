@@ -12,7 +12,9 @@ export const theme = {
     white: '#FFFFFF',
     transparent: 'transparent',
     // Figma aliases for route-screen parity
-    figmaBackground: '#F7F7F8',
+    figmaBackground: '#f2efec',    // background/primary/subtle_50
+    figmaCardSurface: '#f2efec',   // background/primary/subtle_50 — clothing tile bg
+    figmaCardTag: 'rgba(18,18,18,0.75)',  // color/neutral/black/Alpha300 (#121212bf)
     figmaSurface: '#FFFFFF',
     figmaSurfaceSoft: '#F3F5F9',
     figmaText: '#272A32',
@@ -85,6 +87,18 @@ export const theme = {
         fontSize: 16,
         lineHeight: 24,
         letterSpacing: 0.15,
+      },
+      poppinsBody: {
+        fontFamily: 'Poppins-Regular',
+        fontSize: 16,
+        lineHeight: 24,
+        letterSpacing: 0,
+      },
+      poppinsButton: {
+        fontFamily: 'Poppins-Medium',
+        fontSize: 16,
+        lineHeight: 24,
+        letterSpacing: 0,
       },
     },
   },

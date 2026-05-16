@@ -1,0 +1,158 @@
+# auxi/maestro/flows/onboarding/v05.yaml
+# V05 onboarding journey (AU-249).
+#
+# Covers: WardrobeDirection -> FitPreference -> StylePicker (5-vocab tile picker)
+# -> POST /api/v05/onboarding/generate -> Home stack swap.
+#
+# Why this flow doesn't reuse _shared/login.yaml:
+#   _shared/login.yaml asserts `home-screen-root` after credentials submit.
+#   That assertion is correct for every other flow (which expect Home), but
+#   wrong here: when the test account has `is_first_login=true`, AppNavigator
+#   routes post-login to the Welcome -> LocationPermission -> GenderPreference
+#   onboarding stack, not Home. We do the cold-login inline so we can land
+#   on either branch and route accordingly.
+#
+# Account-state precondition (qa-mobile, please read):
+#   The test account `qa-test@auxi.app` MUST be in `is_first_login=true`
+#   state for this flow to test anything meaningful. If a prior run already
+#   completed onboarding, the account is `is_first_login=false` and step 2
+#   below will short-circuit with a clear assertion failure (we look for a
+#   Welcome-screen marker; if Home appears instead, the flow stops with
+#   "WardrobeDirection screen never appeared"). Reset by either:
+#     1. Registering a fresh user via the app UI before running, OR
+#     2. Toggling `is_first_login=true` directly on the user row in the
+#        local DB:
+#           UPDATE users SET is_first_login=true
+#             WHERE email='qa-test@auxi.app';
+#
+# Backend timing note:
+#   POST /api/v05/onboarding/generate now returns in 3-4s on the local backend
+#   (perf fix on feat/v05-onboarding). The V05_GENERATE_TIMEOUT_MS default is
+#   sized at 60s to absorb a worst-case cold-DB run with comfortable margin.
+#
+# Why we do NOT assert the loading view (AU-249 follow-up):
+#   Pre-perf-fix, the StylePickerScreen loading container was visible for
+#   30-50s — easy to assert. Post-fix, it lives <500ms before
+#   completeOnboarding() flips is_first_login=false and AppNavigator
+#   remounts the navigator into the Home stack. Maestro's polling
+#   cadence cannot reliably catch a transient view that short-lived,
+#   producing false-negative timeouts. The deterministic post-state is
+#   `home-screen-root` mounting; that is what we wait on.
+
+appId: org.reactjs.native.example.auxi
+name: onboarding-v05
+tags:
+  - onboarding
+  - v05
+  - regression
+# env defaults — override on the CLI via `-e KEY=VALUE`.
+env:
+  HOME_TIMEOUT_MS: 30000
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  # POST /api/v05/onboarding/generate is 3-4s post-perf-fix. 60s gives
+  # comfortable margin for a cold DB without papering over a real regression.
+  V05_GENERATE_TIMEOUT_MS: 60000
+  # Welcome -> WardrobeDirection traversal involves two static screens
+  # (Welcome, LocationPermission). 10s per nav step is plenty.
+  ONBOARDING_NAV_TIMEOUT_MS: 10000
+---
+# --- 1. Cold launch + login (inline; see header comment for why) ---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- extendedWaitUntil:
+    visible:
+      id: auth-email-input
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
+- tapOn:
+    id: auth-email-input
+- inputText: ${QA_EMAIL}
+- hideKeyboard
+- tapOn:
+    id: auth-password-input
+- inputText: ${QA_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: auth-login-submit
+
+# --- 2. Land on Welcome screen (is_first_login=true branch) ---
+# WelcomeScreen has no testIDs on its CTA. "Welcome to" + "auxi" is the
+# headline (designer-confirmed static copy on the first onboarding screen);
+# "Get started" is the only PillButton on screen. Both are stable.
+- extendedWaitUntil:
+    visible:
+      text: "Get started"
+    timeout: ${HOME_TIMEOUT_MS}
+
+# --- 3. Welcome -> LocationPermission ---
+- tapOn:
+    text: "Get started"
+- extendedWaitUntil:
+    visible:
+      text: "Not now"
+    timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
+
+# --- 4. LocationPermission -> GenderPreference (skip permission) ---
+# "Not now" routes straight to GenderPreference (legacy name) which IS the
+# WardrobeDirection screen — it carries the onboarding-direction-* testIDs.
+- tapOn:
+    text: "Not now"
+- extendedWaitUntil:
+    visible:
+      id: onboarding-direction-menswear
+    timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
+
+# --- 5. WardrobeDirection: pick Womenswear, advance ---
+- tapOn:
+    id: onboarding-direction-womenswear
+- tapOn:
+    id: onboarding-direction-next
+- extendedWaitUntil:
+    visible:
+      id: onboarding-fit-classic
+    timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
+
+# --- 6. FitPreference: pick Classic, advance ---
+- tapOn:
+    id: onboarding-fit-classic
+- tapOn:
+    id: onboarding-fit-next
+- extendedWaitUntil:
+    visible:
+      id: onboarding-style-grid
+    timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
+
+# --- 7. StylePicker: pick TWO tiles (Minimal then Soft) ---
+# Two tiles satisfies MIN_SELECTION (2). Order matters server-side
+# (rank 1 = weight 1.0, rank 2 = 0.7) but the flow only needs the
+# Continue button to enable, so any pair from the 5-vocab set works.
+- tapOn:
+    id: onboarding-style-tile-minimal
+- tapOn:
+    id: onboarding-style-tile-soft
+
+# --- 8. Trigger generation ---
+- tapOn:
+    id: onboarding-style-continue
+
+# --- 9. Wait for backend + Home stack swap ---
+# When generation succeeds, completeOnboarding() flips is_first_login to
+# false and AppNavigator swaps the stack to Home. The single
+# extendedWaitUntil below is the ONLY wait spanning the network call —
+# we don't poll the backend, we just wait for the post-state UI marker
+# (`home-screen-root` is the SafeAreaView wrapping HomeScreen, mounted
+# at first paint of the Home stack). The transient loading view is
+# intentionally NOT asserted — see header comment.
+- extendedWaitUntil:
+    visible:
+      id: home-screen-root
+    timeout: ${V05_GENERATE_TIMEOUT_MS}
+
+# --- 10. Verify no error block surfaced ---
+# pool_insufficient or other 4xx would have left the error block mounted
+# AND the loading view torn down WITHOUT the Home stack swap. Asserting
+# the error block is gone here is belt-and-braces: if we got to
+# home-screen-root, the error block is structurally unreachable, but
+# this assertion makes the success contract explicit.
+- assertNotVisible:
+    id: onboarding-style-error

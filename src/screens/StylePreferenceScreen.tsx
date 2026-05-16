@@ -1,3 +1,23 @@
+/**
+ * Fit-preference picker (V05 onboarding step 2 — AU-249).
+ *
+ * Despite the legacy `StylePreference` route name, this screen has
+ * always shown three FIT options (Slim / Classic / Relaxed) — kept the
+ * route name to avoid type churn across the app, but the screen now
+ * forwards the V05 `fit_preference` contract value (`Slim Fit` /
+ * `Classic Fit` / `Relaxed Fit`) to the new `StylePicker` route.
+ *
+ * The screen also still writes a derived `style_direction` to user
+ * metadata via `completeOnboarding` is NOT called here anymore — it
+ * fires after V05 generation succeeds on `StylePickerScreen`. This
+ * preserves the user's `is_first_login=true` state until the wardrobe
+ * is materialised, so a mid-flow drop-out doesn't strand them on Home
+ * with an empty wardrobe.
+ *
+ * Figma reference: card-grid layout established in the new onboarding
+ * section. 909:* node IDs are stale post-2026-03-01 (see doc
+ * `auxi/docs_agent/FIGMA_SCREEN_MAP.md`).
+ */
 import React, { useMemo, useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -6,26 +26,32 @@ import {
   OnboardingSelectionCard,
   OnboardingSelectionFigure,
 } from '../components/primitives/OnboardingSelectionCard';
-import { useAuth } from '../context/AuthContext';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
-import { UserStyleDirection } from '../types/auth';
+import type { FitPreference, WardrobeDirection } from '../services/v05Api';
 import { AppStackParamList, GenderPreferenceValue } from '../types/navigation';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'StylePreference'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'StylePreference'>;
 type StylePreferenceValue = 'slim' | 'classic' | 'relaxed';
 
-const STYLE_OPTIONS: Array<{ label: string; value: StylePreferenceValue }> = [
-  { label: 'Slim fit', value: 'slim' },
-  { label: 'Classic fit', value: 'classic' },
-  { label: 'Relaxed fit', value: 'relaxed' },
+interface FitOption {
+  label: string;
+  value: StylePreferenceValue;
+  // V05 contract value — exact match for backend literal allowlist.
+  v05Value: FitPreference;
+}
+
+const STYLE_OPTIONS: FitOption[] = [
+  { label: 'Slim fit', value: 'slim', v05Value: 'Slim Fit' },
+  { label: 'Classic fit', value: 'classic', v05Value: 'Classic Fit' },
+  { label: 'Relaxed fit', value: 'relaxed', v05Value: 'Relaxed Fit' },
 ];
 
-const STYLE_DIRECTION_BY_PREFERENCE: Record<StylePreferenceValue, UserStyleDirection> = {
-  slim: 'more_polished',
-  classic: 'stay_balanced',
-  relaxed: 'more_relaxed',
+const DIRECTION_TO_LEGACY_GENDER: Record<WardrobeDirection, GenderPreferenceValue> = {
+  Womenswear: 'womenswear',
+  Menswear: 'menswear',
+  Mixed: 'mixed',
 };
 
 const STYLE_ART_BY_GENDER: Record<GenderPreferenceValue, Record<StylePreferenceValue, number>> = {
@@ -64,24 +90,24 @@ const CONTENT_BY_GENDER: Record<GenderPreferenceValue, { title: string; subtitle
 export const StylePreferenceScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<ScreenRoute>();
-  const { completeOnboarding, isLoading } = useAuth();
-  const [selectedStyle, setSelectedStyle] = useState<StylePreferenceValue | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<FitOption | null>(null);
 
-  const selectedGender: GenderPreferenceValue = route.params?.gender || 'mixed';
+  // V05 contract value flows through the entire onboarding chain.
+  const wardrobeDirection: WardrobeDirection =
+    route.params?.wardrobe_direction ?? 'Mixed';
+  // Legacy lowercase value drives the per-gender art mapping.
+  const selectedGender: GenderPreferenceValue =
+    route.params?.gender ?? DIRECTION_TO_LEGACY_GENDER[wardrobeDirection];
+
   const content = useMemo(() => CONTENT_BY_GENDER[selectedGender], [selectedGender]);
   const styleArt = useMemo(() => STYLE_ART_BY_GENDER[selectedGender], [selectedGender]);
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (!selectedStyle) return;
-    try {
-      await completeOnboarding({
-        user_metadata: {
-          style_direction: STYLE_DIRECTION_BY_PREFERENCE[selectedStyle],
-        },
-      });
-    } catch (error) {
-      console.error('Failed to save preference', error);
-    }
+    navigation.navigate('StylePicker', {
+      wardrobe_direction: wardrobeDirection,
+      fit_preference: selectedStyle.v05Value,
+    });
   };
 
   return (
@@ -102,19 +128,23 @@ export const StylePreferenceScreen = () => {
             <View style={styles.optionGrid}>
               <View style={styles.optionRow}>
                 {STYLE_OPTIONS.slice(0, 2).map((option) => {
-                  const selected = selectedStyle === option.value;
-                  const dimmed = !!selectedStyle && !selected;
+                  const isSelected = selectedStyle?.value === option.value;
+                  const dimmed = !!selectedStyle && !isSelected;
 
                   return (
                     <TouchableOpacity
                       key={option.value}
+                      testID={`onboarding-fit-${option.value}`}
+                      accessibilityLabel={option.label}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
                       activeOpacity={0.9}
-                      onPress={() => setSelectedStyle(option.value)}
+                      onPress={() => setSelectedStyle(option)}
                       style={styles.topOptionPressable}
                     >
                       <OnboardingSelectionCard
                         label={option.label}
-                        selected={selected}
+                        selected={isSelected}
                         dimmed={dimmed}
                       >
                         <OnboardingSelectionFigure
@@ -129,19 +159,23 @@ export const StylePreferenceScreen = () => {
 
               <View style={styles.optionRow}>
                 {STYLE_OPTIONS.slice(2).map((option) => {
-                  const selected = selectedStyle === option.value;
-                  const dimmed = !!selectedStyle && !selected;
+                  const isSelected = selectedStyle?.value === option.value;
+                  const dimmed = !!selectedStyle && !isSelected;
 
                   return (
                     <TouchableOpacity
                       key={option.value}
+                      testID={`onboarding-fit-${option.value}`}
+                      accessibilityLabel={option.label}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
                       activeOpacity={0.9}
-                      onPress={() => setSelectedStyle(option.value)}
+                      onPress={() => setSelectedStyle(option)}
                       style={styles.bottomOptionPressable}
                     >
                       <OnboardingSelectionCard
                         label={option.label}
-                        selected={selected}
+                        selected={isSelected}
                         dimmed={dimmed}
                       >
                         <OnboardingSelectionFigure
@@ -159,10 +193,10 @@ export const StylePreferenceScreen = () => {
           <PillButton
             title="Next"
             variant="filled"
-            loading={isLoading}
             disabled={!selectedStyle}
             onPress={handleNext}
             style={styles.ctaButton}
+            testID="onboarding-fit-next"
           />
         </View>
       </View>

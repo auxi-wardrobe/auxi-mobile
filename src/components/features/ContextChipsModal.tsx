@@ -131,6 +131,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
               return (
                 <TouchableOpacity
                   key={chip.id}
+                  testID={`context-chip-${chip.id}`}
                   activeOpacity={0.82}
                   style={[styles.chip, selected && styles.selectedChip]}
                   disabled={isSubmitting}
@@ -144,6 +145,9 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
             })}
 
             <TouchableOpacity
+              testID="context-chips-shuffle"
+              accessibilityLabel="Shuffle suggestions"
+              accessibilityRole="button"
               activeOpacity={0.82}
               style={[styles.chip, styles.shuffleChip]}
               disabled={isSubmitting}
@@ -153,6 +157,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity
+              testID="context-chips-edit"
               activeOpacity={0.82}
               style={[styles.chip, styles.editChip]}
               disabled={isSubmitting}
@@ -164,6 +169,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
 
           {isEditing ? (
             <Input
+              testID="context-chips-custom-input"
               value={customContextText}
               onChangeText={onChangeText}
               placeholder="Tell us what you'd like to change"
@@ -186,6 +192,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity
+              testID="context-chips-confirm"
               activeOpacity={0.85}
               style={[
                 styles.confirmButton,
