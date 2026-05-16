@@ -31,4 +31,8 @@ export type AppStackParamList = {
   StylePreference: { gender?: GenderPreferenceValue } | undefined;
   ItemDetail: { itemId: string };
   Database: undefined;
+  OutfitCanvas: {
+    outfitId?: string;
+    items?: Array<{ id: string; imageUrl: string }>;
+  } | undefined;
 };

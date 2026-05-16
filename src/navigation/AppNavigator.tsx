@@ -16,6 +16,7 @@ import { BodyScreen } from '../screens/BodyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
+import { OutfitCanvasScreen } from '../screens/OutfitCanvasScreen';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
@@ -51,6 +52,7 @@ export const AppNavigator = () => {
                             <Stack.Screen name="Body" component={BodyScreen} />
                             <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
                             <Stack.Screen name="Database" component={DatabaseScreen} />
+                            <Stack.Screen name="OutfitCanvas" component={OutfitCanvasScreen} options={{ gestureEnabled: false }} />
                         </>
                     )
                 ) : (

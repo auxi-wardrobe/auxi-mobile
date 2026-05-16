@@ -16,6 +16,13 @@ import IconPlus from '../images/icon_plus.svg';
 import IconChevronLeft from '../images/icon_chevron_left.svg';
 import IconChevronRight from '../images/icon_chevron_right.svg';
 import IconMenu from '../images/icon_menu.svg';
+import IconCanvasUndo from '../images/canvas-icons/icon_canvas_undo.svg';
+import IconCanvasRedo from '../images/canvas-icons/icon_canvas_redo.svg';
+import IconCanvasLayerUp from '../images/canvas-icons/icon_canvas_layer_up.svg';
+import IconCanvasLayerDown from '../images/canvas-icons/icon_canvas_layer_down.svg';
+import IconCanvasDuplicate from '../images/canvas-icons/icon_canvas_duplicate.svg';
+import IconCanvasReplace from '../images/canvas-icons/icon_canvas_replace.svg';
+import IconCanvasDelete from '../images/canvas-icons/icon_canvas_delete.svg';
 
 export const Icons = {
     Water: IconWater,
@@ -36,6 +43,13 @@ export const Icons = {
     ChevronLeft: IconChevronLeft,
     ChevronRight: IconChevronRight,
     Menu: IconMenu,
+    CanvasUndo: IconCanvasUndo,
+    CanvasRedo: IconCanvasRedo,
+    CanvasLayerUp: IconCanvasLayerUp,
+    CanvasLayerDown: IconCanvasLayerDown,
+    CanvasDuplicate: IconCanvasDuplicate,
+    CanvasReplace: IconCanvasReplace,
+    CanvasDelete: IconCanvasDelete,
 };
 
 export {
@@ -57,4 +71,11 @@ export {
     IconChevronLeft,
     IconChevronRight,
     IconMenu,
+    IconCanvasUndo,
+    IconCanvasRedo,
+    IconCanvasLayerUp,
+    IconCanvasLayerDown,
+    IconCanvasDuplicate,
+    IconCanvasReplace,
+    IconCanvasDelete,
 };
