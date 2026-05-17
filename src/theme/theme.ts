@@ -12,9 +12,9 @@ export const theme = {
     white: '#FFFFFF',
     transparent: 'transparent',
     // Figma aliases for route-screen parity
-    figmaBackground: '#f2efec',    // background/primary/subtle_50
-    figmaCardSurface: '#f2efec',   // background/primary/subtle_50 — clothing tile bg
-    figmaCardTag: 'rgba(18,18,18,0.75)',  // color/neutral/black/Alpha300 (#121212bf)
+    figmaBackground: '#f2efec', // background/primary/subtle_50
+    figmaCardSurface: '#f2efec', // background/primary/subtle_50 — clothing tile bg
+    figmaCardTag: 'rgba(18,18,18,0.75)', // color/neutral/black/Alpha300 (#121212bf)
     figmaSurface: '#FFFFFF',
     figmaSurfaceSoft: '#F3F5F9',
     figmaText: '#272A32',
@@ -26,6 +26,9 @@ export const theme = {
     figmaButton: '#272A32',
     figmaRed: '#CC4C3E',
     figmaIconSurface: '#E3E3EC',
+    figmaDestructive: '#bb251a', // red for Cancel/delete actions
+    figmaOnboardingBackground: '#f7f7f8', // onboarding screens bg (differs from app figmaBackground #f2efec)
+    figmaTextDark: '#070707', // near-black for expand/collapse text buttons
   },
   spacing: {
     xs: 4,

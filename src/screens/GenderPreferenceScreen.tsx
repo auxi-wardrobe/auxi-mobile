@@ -11,7 +11,7 @@
  * Tapping a row selects it AND immediately navigates forward — no
  * separate "Next" button.
  */
-import React, { useState } from 'react';
+import React from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -45,10 +45,8 @@ const OPTIONS: DirectionOption[] = [
 
 export const GenderPreferenceScreen = () => {
   const navigation = useNavigation<Navigation>();
-  const [selected, setSelected] = useState<DirectionOption | null>(null);
 
   const handleSelect = (option: DirectionOption) => {
-    setSelected(option);
     navigation.navigate('StylePreference', {
       gender: option.legacyValue,
       wardrobe_direction: option.value,
@@ -75,52 +73,33 @@ export const GenderPreferenceScreen = () => {
 
         {/* ── Radio rows ──────────────────────────────────── */}
         <View style={styles.radioList}>
-          {OPTIONS.map(option => {
-            const isSelected = selected?.value === option.value;
-            return (
-              <TouchableOpacity
-                key={option.value}
-                testID={`gender-option-${option.legacyValue}`}
-                accessibilityLabel={option.label}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: isSelected }}
-                activeOpacity={0.88}
-                onPress={() => handleSelect(option)}
-                style={[styles.radioRow, isSelected && styles.radioRowSelected]}
-              >
-                <Text
-                  style={[
-                    styles.radioLabel,
-                    isSelected && styles.radioLabelSelected,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-                {/* Trailing radio indicator */}
-                <View
-                  style={[
-                    styles.radioCircleOuter,
-                    isSelected && styles.radioCircleOuterSelected,
-                  ]}
-                >
-                  {isSelected && <View style={styles.radioCircleInner} />}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {OPTIONS.map(option => (
+            <TouchableOpacity
+              key={option.value}
+              testID={`gender-option-${option.legacyValue}`}
+              accessibilityLabel={option.label}
+              accessibilityRole="radio"
+              activeOpacity={0.88}
+              onPress={() => handleSelect(option)}
+              style={styles.radioRow}
+            >
+              <Text style={styles.radioLabel}>{option.label}</Text>
+              {/* Trailing radio indicator (unselected state only — selection navigates immediately) */}
+              <View style={styles.radioCircleOuter} />
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
     </SafeAreaView>
   );
 };
 
-const SELECTED_BG = theme.colors.figmaAction;
 const UNSELECTED_BG = theme.colors.figmaIconSurface;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f7f8', // Figma: --light-surface, onboarding bg differs from app figmaBackground (#f2efec)
+    backgroundColor: theme.colors.figmaOnboardingBackground,
   },
   content: {
     flex: 1,
@@ -163,35 +142,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     justifyContent: 'space-between',
   },
-  radioRowSelected: {
-    backgroundColor: SELECTED_BG,
-  },
   radioLabel: {
     ...theme.typography.aliases.poppinsBody,
     color: theme.colors.figmaText,
   },
-  radioLabelSelected: {
-    color: '#ffffff',
-  },
 
-  /* Trailing radio indicator */
+  /* Trailing radio indicator (unselected state only) */
   radioCircleOuter: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
     borderColor: theme.colors.figmaText,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioCircleOuterSelected: {
-    borderColor: '#ffffff',
-    backgroundColor: 'transparent',
-  },
-  radioCircleInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#ffffff',
   },
 });

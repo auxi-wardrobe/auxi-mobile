@@ -729,7 +729,7 @@ export const ItemDetailScreen = () => {
         <View style={styles.actionBlock}>
           <TouchableOpacity
             testID="item-detail-add-btn"
-            accessibilityLabel="item-detail-add-btn"
+            accessibilityLabel="Add item to outfit"
             style={styles.addPill}
             onPress={() => {
               Alert.alert(
@@ -741,7 +741,9 @@ export const ItemDetailScreen = () => {
             <Text style={styles.addPillText}>Add</Text>
           </TouchableOpacity>
 
-          {!showMore ? (
+          {/* Hidden while isEditing: the edit-Cancel in expandRow handles discard;
+              showing both simultaneously would let users lose unsaved changes silently. */}
+          {!showMore && !isEditing ? (
             <TouchableOpacity
               testID="item-detail-cancel-btn"
               style={styles.cancelButton}
@@ -1085,11 +1087,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 12,
     lineHeight: 16,
-    color: '#070707',
+    color: theme.colors.figmaTextDark,
   },
   addPill: {
     height: 56,
     borderRadius: 28,
+    // TODO AU-272: pending designer confirm — keep '#1d1f23' until token approved
     backgroundColor: '#1d1f23',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1109,6 +1112,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Regular',
     fontSize: 16,
     lineHeight: 24,
-    color: '#bb251a',
+    color: theme.colors.figmaDestructive,
   },
 });

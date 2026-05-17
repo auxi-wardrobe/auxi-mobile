@@ -93,20 +93,18 @@ env:
     timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
 
 # --- 4. LocationPermission -> GenderPreference (skip permission) ---
-# "Not now" routes straight to GenderPreference (legacy name) which IS the
-# WardrobeDirection screen — it carries the onboarding-direction-* testIDs.
+# "Not now" routes straight to GenderPreference (WardrobeDirection screen).
+# Tapping a row navigates directly — no separate Next button.
 - tapOn:
     text: "Not now"
 - extendedWaitUntil:
     visible:
-      id: onboarding-direction-menswear
+      id: gender-option-menswear
     timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
 
-# --- 5. WardrobeDirection: pick Womenswear, advance ---
+# --- 5. WardrobeDirection: pick Womenswear (tap navigates directly) ---
 - tapOn:
-    id: onboarding-direction-womenswear
-- tapOn:
-    id: onboarding-direction-next
+    id: gender-option-womenswear
 - extendedWaitUntil:
     visible:
       id: onboarding-fit-classic

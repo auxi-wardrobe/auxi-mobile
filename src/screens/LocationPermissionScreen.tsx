@@ -68,13 +68,6 @@ export const LocationPermissionScreen = () => {
           icon={<Text style={styles.backGlyph}>‹</Text>}
         />
 
-        {/* Chat bubble — top-right area, Figma spec: bg #e3e3ec, text "35-45" */}
-        <View style={styles.chatBubbleRow}>
-          <View style={styles.chatBubble}>
-            <Text style={styles.chatBubbleText}>35-45</Text>
-          </View>
-        </View>
-
         <View style={styles.mainBlock}>
           <Text style={styles.title}>
             To suggest an outfit that works today, I need your local weather.
@@ -119,23 +112,6 @@ const styles = StyleSheet.create({
     fontSize: 34,
     lineHeight: 34,
     marginTop: -2,
-  },
-  chatBubbleRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 16,
-  },
-  chatBubble: {
-    backgroundColor: theme.colors.figmaIconSurface,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  chatBubbleText: {
-    ...theme.typography.aliases.poppinsBody,
-    fontSize: 14,
-    lineHeight: 20,
-    color: theme.colors.figmaText,
   },
   mainBlock: {
     marginTop: 133,

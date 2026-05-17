@@ -46,7 +46,7 @@ export const WelcomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fcfcfd',
+    backgroundColor: '#fcfcfd', // Figma: #fcfcfd (near-white welcome bg — no matching theme token)
   },
   content: {
     flex: 1,
