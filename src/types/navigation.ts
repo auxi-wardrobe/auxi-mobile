@@ -58,4 +58,8 @@ export type AppStackParamList = {
   };
   ItemDetail: { itemId: string };
   Database: undefined;
+  OutfitCanvas: {
+    outfitId?: string;
+    items?: Array<{ id: string; imageUrl: string }>;
+  } | undefined;
 };
