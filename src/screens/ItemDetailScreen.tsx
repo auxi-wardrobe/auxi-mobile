@@ -742,8 +742,9 @@ export const ItemDetailScreen = () => {
           </TouchableOpacity>
 
           {/* Hidden while isEditing: the edit-Cancel in expandRow handles discard;
-              showing both simultaneously would let users lose unsaved changes silently. */}
-          {!showMore && !isEditing ? (
+              showing both simultaneously would let users lose unsaved changes silently.
+              showMore does not hide this — user can still cancel in expanded read mode. */}
+          {!isEditing ? (
             <TouchableOpacity
               testID="item-detail-cancel-btn"
               style={styles.cancelButton}
