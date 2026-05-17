@@ -1,13 +1,26 @@
 import React, { useState } from 'react';
-import { Alert, Linking, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Linking,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
+import {
+  PillButton,
+  TopIconButton,
+} from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
 import { requestLocationPermission } from '../utils/location';
 import { AppStackParamList } from '../types/navigation';
 
-type Navigation = NativeStackNavigationProp<AppStackParamList, 'LocationPermission'>;
+type Navigation = NativeStackNavigationProp<
+  AppStackParamList,
+  'LocationPermission'
+>;
 
 export const LocationPermissionScreen = () => {
   const navigation = useNavigation<Navigation>();
@@ -30,7 +43,11 @@ export const LocationPermissionScreen = () => {
           'Permission Denied',
           'We need location permission to suggest outfits based on local weather. Please enable it in settings.',
           [
-            { text: 'Continue without location', style: 'cancel', onPress: goToGenderPreference },
+            {
+              text: 'Continue without location',
+              style: 'cancel',
+              onPress: goToGenderPreference,
+            },
             { text: 'Open Settings', onPress: () => Linking.openSettings() },
           ],
         );
@@ -51,16 +68,27 @@ export const LocationPermissionScreen = () => {
           icon={<Text style={styles.backGlyph}>‹</Text>}
         />
 
+        {/* Chat bubble — top-right area, Figma spec: bg #e3e3ec, text "35-45" */}
+        <View style={styles.chatBubbleRow}>
+          <View style={styles.chatBubble}>
+            <Text style={styles.chatBubbleText}>35-45</Text>
+          </View>
+        </View>
+
         <View style={styles.mainBlock}>
-          <Text style={styles.title}>To suggest outfits that fit the weather and local style</Text>
+          <Text style={styles.title}>
+            To suggest an outfit that works today, I need your local weather.
+          </Text>
 
           <View style={styles.actions}>
             <PillButton
-              title="Enable location"
+              title="Allow weather access"
               variant="outline"
               loading={loading}
               onPress={handleEnableLocation}
+              testID="onboarding-location-allow"
             />
+            {/* TODO: not in Figma — needs product decision */}
             <PillButton
               title="Not now"
               variant="text"
@@ -92,15 +120,31 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     marginTop: -2,
   },
-  mainBlock: {
-    flex: 1,
+  chatBubbleRow: {
+    flexDirection: 'row',
     justifyContent: 'flex-end',
+    marginTop: 16,
+  },
+  chatBubble: {
+    backgroundColor: theme.colors.figmaIconSurface,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  chatBubbleText: {
+    ...theme.typography.aliases.poppinsBody,
+    fontSize: 14,
+    lineHeight: 20,
+    color: theme.colors.figmaText,
+  },
+  mainBlock: {
+    marginTop: 133,
     gap: 48,
   },
   title: {
-    ...theme.typography.aliases.playfairDisplaySection,
+    ...theme.typography.aliases.poppinsBody,
     color: theme.colors.figmaText,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   actions: {
     gap: 8,

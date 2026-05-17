@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -21,7 +27,10 @@ import {
   ContextChipsModal,
 } from '../components/features/ContextChipsModal';
 import { ItemDetailBottomSheet } from '../components/features/ItemDetailBottomSheet';
-import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
+import {
+  PillButton,
+  TopIconButton,
+} from '../components/primitives/FigmaPrimitives';
 import IconHomePin from '../assets/images/icon_home_pin.svg';
 import IconHomeHeartOutline from '../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../assets/images/icon_home_heart_filled.svg';
@@ -44,7 +53,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GRID_GAP = 4;
 const SHEET_GAP = 4;
-const SHEET_PADDING = 16;  // Figma Frame 2009 x=16 → 16px inset
+const SHEET_PADDING = 16; // Figma Frame 2009 x=16 → 16px inset
 // #3 fix (2026-05-13): "Show another" moved from topActionBand to bottom
 // actionCluster per Figma spec (y=785 of 896px screen, below action cluster).
 // Added 56px button + 8px gap = 64px to former bottom-zone height of 188.
@@ -58,11 +67,14 @@ const CARD_WIDTH = Math.floor((screenWidth - SHEET_PADDING * 2 - GRID_GAP) / 2);
 // TODO: replace approximated chrome constants with useSafeAreaInsets() +
 // measured header heights once the runtime context is hoisted out of module
 // scope (would require restructuring the snap-paging math into the component).
-const APPROX_TOP_CHROME = 115;       // header (63) + mode selector (48) + scrollContent paddingTop (4)
-const APPROX_BOTTOM_SAFE = 34;       // home indicator
-const APPROX_TOP_SAFE = 59;          // status bar / notch (iPhone 16)
-const AVAILABLE_VIEWPORT = screenHeight - APPROX_TOP_SAFE - APPROX_BOTTOM_SAFE - APPROX_TOP_CHROME;
-const COMPUTED_SHEET_HEIGHT = Math.round(CARD_WIDTH * (8 / 3) + OPTION_ACTIONS_HEIGHT);
+const APPROX_TOP_CHROME = 115; // header (63) + mode selector (48) + scrollContent paddingTop (4)
+const APPROX_BOTTOM_SAFE = 34; // home indicator
+const APPROX_TOP_SAFE = 59; // status bar / notch (iPhone 16)
+const AVAILABLE_VIEWPORT =
+  screenHeight - APPROX_TOP_SAFE - APPROX_BOTTOM_SAFE - APPROX_TOP_CHROME;
+const COMPUTED_SHEET_HEIGHT = Math.round(
+  CARD_WIDTH * (8 / 3) + OPTION_ACTIONS_HEIGHT,
+);
 const OPTION_SHEET_HEIGHT = Math.min(COMPUTED_SHEET_HEIGHT, AVAILABLE_VIEWPORT);
 const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
 
@@ -107,7 +119,7 @@ const buildGridOutfitSheetWithPin = (
   }
 
   const alreadyContainsPinned = outfit.items.some(
-    (item) => item?.id === pinnedItem.id,
+    item => item?.id === pinnedItem.id,
   );
 
   if (alreadyContainsPinned) {
@@ -136,7 +148,10 @@ const getSheetIndexFromOffset = (offsetY: number) =>
 // caller passes the existing list length so a second batch starting at
 // internal index 0 never collides with a first-batch hash. `Date.now()`
 // alone was insufficient on fast machines / StrictMode double-invokes.
-const normalizeOutfits = (data: unknown, indexOffset: number = 0): OutfitSheet[] => {
+const normalizeOutfits = (
+  data: unknown,
+  indexOffset: number = 0,
+): OutfitSheet[] => {
   if (!data) {
     return [];
   }
@@ -144,7 +159,7 @@ const normalizeOutfits = (data: unknown, indexOffset: number = 0): OutfitSheet[]
   const raw = Array.isArray(data)
     ? (data as unknown[])
     : Array.isArray((data as { outfits?: unknown[] }).outfits)
-    ? ((data as { outfits: unknown[] }).outfits)
+    ? (data as { outfits: unknown[] }).outfits
     : [];
 
   return raw
@@ -231,14 +246,17 @@ export const HomeScreen = () => {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [contextSuggestionSetIndex, setContextSuggestionSetIndex] = useState(0);
-  const [selectedContextChipId, setSelectedContextChipId] = useState<ContextChipId | null>(null);
+  const [selectedContextChipId, setSelectedContextChipId] =
+    useState<ContextChipId | null>(null);
   const [isEditingContext, setIsEditingContext] = useState(false);
   const [customContextText, setCustomContextText] = useState('');
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [listOutfits, setListOutfits] = useState<OutfitSheet[]>([]);
   const [activeSheetIndex, setActiveSheetIndex] = useState(0);
-  const [saveStateByHash, setSaveStateByHash] = useState<Record<string, SaveState>>({});
+  const [saveStateByHash, setSaveStateByHash] = useState<
+    Record<string, SaveState>
+  >({});
   // PHASE B (AU-222): pin state lives at HomeScreen level, default null,
   // session-only (cleared on unmount, see effect below). One pin at a time.
   const [pinnedItemId, setPinnedItemId] = useState<string | null>(null);
@@ -269,7 +287,9 @@ export const HomeScreen = () => {
   // PHASE C (AU-221): mirror selectedMode for the same reason — prefetch
   // and "Show another" callbacks should read the latest mode without
   // re-binding on every tap.
-  const selectedModeRef = useRef<RecommendationMode>(DEFAULT_RECOMMENDATION_MODE);
+  const selectedModeRef = useRef<RecommendationMode>(
+    DEFAULT_RECOMMENDATION_MODE,
+  );
   // Bug 3 fix: read the previous active index from a ref instead of inside
   // a setState updater (updaters must be pure; StrictMode invokes them
   // twice which double-incremented the unfavorited-swipe counter).
@@ -288,8 +308,9 @@ export const HomeScreen = () => {
 
   useEffect(() => {
     // Default coords: Hanoi. Replace with real geolocation when available.
-    weatherService.getWeather(21.0285, 105.8542)
-      .then((w) => setWeather({ tempC: w.temp_c, iconCode: w.icon_code }))
+    weatherService
+      .getWeather(21.0285, 105.8542)
+      .then(w => setWeather({ tempC: w.temp_c, iconCode: w.icon_code }))
       .catch(() => {});
   }, []);
 
@@ -338,39 +359,40 @@ export const HomeScreen = () => {
     resetContextDraft();
   }, [resetContextDraft]);
 
-  const { mutate: valenGetRecommendation, isPending: isStartPending } = useMutation({
-    mutationFn: recommendationService.valenGetRecommendation,
-    onSuccess: (data: unknown) => {
-      // First load (cold start) → replace. Subsequent loads (prefetch) →
-      // append so the user's scroll position isn't yanked back to 0.
-      if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
-        isFirstLoadRef.current = false;
-        const incoming = normalizeOutfits(data, 0);
-        setListOutfits(incoming);
-        setActiveSheetIndex(0);
-      } else {
-        // Offset fallback-hash indices by the existing list length so the
-        // second batch never collides with first-batch hashes (Bug 1).
-        const offset = listOutfitsRef.current.length;
-        const incoming = normalizeOutfits(data, offset);
-        // De-dup against existing hashes — drop any genuine duplicates the
-        // backend returns AND any fallback collisions we couldn't avoid.
-        setListOutfits((current) => {
-          const existingHashes = new Set(current.map((o) => o.outfitHash));
-          const deduped = incoming.filter(
-            (sheet) => !existingHashes.has(sheet.outfitHash),
-          );
-          return [...current, ...deduped];
-        });
-      }
+  const { mutate: valenGetRecommendation, isPending: isStartPending } =
+    useMutation({
+      mutationFn: recommendationService.valenGetRecommendation,
+      onSuccess: (data: unknown) => {
+        // First load (cold start) → replace. Subsequent loads (prefetch) →
+        // append so the user's scroll position isn't yanked back to 0.
+        if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
+          isFirstLoadRef.current = false;
+          const incoming = normalizeOutfits(data, 0);
+          setListOutfits(incoming);
+          setActiveSheetIndex(0);
+        } else {
+          // Offset fallback-hash indices by the existing list length so the
+          // second batch never collides with first-batch hashes (Bug 1).
+          const offset = listOutfitsRef.current.length;
+          const incoming = normalizeOutfits(data, offset);
+          // De-dup against existing hashes — drop any genuine duplicates the
+          // backend returns AND any fallback collisions we couldn't avoid.
+          setListOutfits(current => {
+            const existingHashes = new Set(current.map(o => o.outfitHash));
+            const deduped = incoming.filter(
+              sheet => !existingHashes.has(sheet.outfitHash),
+            );
+            return [...current, ...deduped];
+          });
+        }
 
-      isPrefetchingRef.current = false;
-    },
-    onError: (error) => {
-      console.error('Failed to load recommendation', error);
-      isPrefetchingRef.current = false;
-    },
-  });
+        isPrefetchingRef.current = false;
+      },
+      onError: error => {
+        console.error('Failed to load recommendation', error);
+        isPrefetchingRef.current = false;
+      },
+    });
 
   useEffect(() => {
     // First fetch — pin is null at cold start so no need to thread it here.
@@ -407,7 +429,7 @@ export const HomeScreen = () => {
       return null;
     }
     for (const outfit of listOutfits) {
-      const found = outfit.items.find((item) => item?.id === pinnedItemId);
+      const found = outfit.items.find(item => item?.id === pinnedItemId);
       if (found) {
         return found;
       }
@@ -416,7 +438,10 @@ export const HomeScreen = () => {
   }, [listOutfits, pinnedItemId]);
 
   const optionSets = useMemo<OutfitSheetWithGrid[]>(
-    () => listOutfits.map((outfit) => buildGridOutfitSheetWithPin(outfit, pinnedItem)),
+    () =>
+      listOutfits.map(outfit =>
+        buildGridOutfitSheetWithPin(outfit, pinnedItem),
+      ),
     [listOutfits, pinnedItem],
   );
 
@@ -479,7 +504,7 @@ export const HomeScreen = () => {
       console.info('home.swipe.favorite', { outfitHash: hash });
       // TODO(analytics): replace console.info with the real telemetry hook.
 
-      setSaveStateByHash((current) => ({ ...current, [hash]: 'saving' }));
+      setSaveStateByHash(current => ({ ...current, [hash]: 'saving' }));
 
       // favouriteService currently only exposes `saveFavourite` — no toggle/
       // delete. PHASE B/D follow-up: extend the service with a real `toggle`
@@ -487,15 +512,15 @@ export const HomeScreen = () => {
       favouriteService
         .saveFavourite({
           outfit_hash: hash,
-          item_ids: items.map((item) => item.id).filter(Boolean),
+          item_ids: items.map(item => item.id).filter(Boolean),
           source: 'home',
         })
         .then(() => {
-          setSaveStateByHash((current) => ({ ...current, [hash]: 'saved' }));
+          setSaveStateByHash(current => ({ ...current, [hash]: 'saved' }));
         })
-        .catch((error) => {
+        .catch(error => {
           console.warn('saveFavourite failed', error);
-          setSaveStateByHash((current) => ({ ...current, [hash]: 'error' }));
+          setSaveStateByHash(current => ({ ...current, [hash]: 'error' }));
         });
     },
     [],
@@ -512,7 +537,7 @@ export const HomeScreen = () => {
     if (!item?.id) {
       return;
     }
-    setPinnedItemId((current) => {
+    setPinnedItemId(current => {
       if (current === item.id) {
         console.info('home.pin.clear', { itemId: item.id });
         // TODO(analytics): replace console.info with the real telemetry hook.
@@ -530,7 +555,7 @@ export const HomeScreen = () => {
   // mirrors the Phase B pin-change behaviour and avoids a jarring reset
   // mid-swipe.
   const handleSelectMode = useCallback((next: RecommendationMode) => {
-    setSelectedMode((current) => {
+    setSelectedMode(current => {
       if (current === next) {
         return current;
       }
@@ -541,7 +566,7 @@ export const HomeScreen = () => {
   }, []);
 
   const handleClearPin = useCallback(() => {
-    setPinnedItemId((current) => {
+    setPinnedItemId(current => {
       if (!current) {
         return current;
       }
@@ -631,7 +656,7 @@ export const HomeScreen = () => {
   const handleShuffleSuggestions = () => {
     Keyboard.dismiss();
     setContextSuggestionSetIndex(
-      (currentIndex) => (currentIndex + 1) % CONTEXT_CHIP_SETS.length,
+      currentIndex => (currentIndex + 1) % CONTEXT_CHIP_SETS.length,
     );
     setSelectedContextChipId(null);
     setIsEditingContext(false);
@@ -640,9 +665,9 @@ export const HomeScreen = () => {
 
   const handleSelectContextChip = (chipId: ContextChipId) => {
     Keyboard.dismiss();
-    setSelectedContextChipId((currentChipId) => (
-      currentChipId === chipId ? null : chipId
-    ));
+    setSelectedContextChipId(currentChipId =>
+      currentChipId === chipId ? null : chipId,
+    );
     setIsEditingContext(false);
     setCustomContextText('');
   };
@@ -664,7 +689,8 @@ export const HomeScreen = () => {
     // directly (see wardrobe-backend/blueprints/recommendation/engine_v2.py
     // lines 1305-1312 — last 3 style_notes injected into Gemini prompt).
     const chipLabel = selectedContextChipId
-      ? activeContextChipOptions.find((c) => c.id === selectedContextChipId)?.label
+      ? activeContextChipOptions.find(c => c.id === selectedContextChipId)
+          ?.label
       : null;
     const payload = chipLabel ?? (trimmedCustomContextText || null);
 
@@ -709,7 +735,9 @@ export const HomeScreen = () => {
   const handleMomentumScrollEnd = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
-    const nextIndex = getSheetIndexFromOffset(event.nativeEvent.contentOffset.y);
+    const nextIndex = getSheetIndexFromOffset(
+      event.nativeEvent.contentOffset.y,
+    );
     // Bug 3 fix: counter mutation lives in advanceToSheet (outer function
     // body), NOT inside a setState updater.
     advanceToSheet(nextIndex, 'swipe');
@@ -728,9 +756,17 @@ export const HomeScreen = () => {
         <WeatherWidget tempC={weather.tempC} iconCode={weather.iconCode} />
 
         <TouchableOpacity
-          testID={activeSaveState === 'saved' ? 'home-heart-toggle-saved' : 'home-heart-toggle'}
+          testID={
+            activeSaveState === 'saved'
+              ? 'home-heart-toggle-saved'
+              : 'home-heart-toggle'
+          }
           accessibilityRole="button"
-          accessibilityLabel={activeSaveState === 'saved' ? 'Saved to favourites' : 'Favourite this look'}
+          accessibilityLabel={
+            activeSaveState === 'saved'
+              ? 'Saved to favourites'
+              : 'Favourite this look'
+          }
           activeOpacity={0.82}
           style={[
             styles.heartButton,
@@ -759,7 +795,7 @@ export const HomeScreen = () => {
           Visual spec is text-only — no dedicated Figma frame yet — refine when
           designer provides icons / colors / position. */}
       <View style={styles.modeSelectorRow}>
-        {RECOMMENDATION_MODE_OPTIONS.map((option) => {
+        {RECOMMENDATION_MODE_OPTIONS.map(option => {
           const isSelected = option.id === selectedMode;
           return (
             <TouchableOpacity
@@ -772,7 +808,9 @@ export const HomeScreen = () => {
               accessibilityLabel={option.label}
               style={[
                 styles.modePill,
-                isSelected ? styles.modePillSelected : styles.modePillUnselected,
+                isSelected
+                  ? styles.modePillSelected
+                  : styles.modePillUnselected,
               ]}
             >
               <Text
@@ -833,7 +871,7 @@ export const HomeScreen = () => {
                   saveState={sheetSaveState}
                   pinnedItemId={pinnedItemId}
                   onShowAnother={handleShowAnother}
-                  onItemPress={(item) => setSelectedItem(item)}
+                  onItemPress={item => setSelectedItem(item)}
                   onTogglePin={handleToggleItemPin}
                   onConfirm={() => handleHeartTapForOutfit(outfit)}
                   onEditContext={handleOpenContextEditModal}
@@ -867,7 +905,8 @@ export const HomeScreen = () => {
         onChangeText={handleChangeContextText}
         onCancel={() => {
           track('refine_cancelled', {
-            had_selection: !!selectedContextChipId || trimmedCustomContextText.length > 0,
+            had_selection:
+              !!selectedContextChipId || trimmedCustomContextText.length > 0,
           });
           closeContextModal();
         }}
@@ -902,7 +941,7 @@ const OptionSheet = ({
   const rows = [];
 
   for (let i = 0; i < totalItems; i += 2) {
-    const isLastRowWithSingleItem = (i + 1 >= totalItems) && (totalItems % 2 === 1);
+    const isLastRowWithSingleItem = i + 1 >= totalItems && totalItems % 2 === 1;
     if (isLastRowWithSingleItem) {
       rows.push([outfit.gridItems[i], null]);
     } else {
@@ -919,7 +958,10 @@ const OptionSheet = ({
       >
         <View style={styles.gridWrap}>
           {rows.map((row, rowIndex) => (
-            <View key={`row-${outfit.outfitHash}-${rowIndex}`} style={styles.cardRow}>
+            <View
+              key={`row-${outfit.outfitHash}-${rowIndex}`}
+              style={styles.cardRow}
+            >
               {row.map((item, itemIndex) => {
                 const isPinned = !!item && item.id === pinnedItemId;
                 const flatTileIndex = rowIndex * 2 + itemIndex;
@@ -947,7 +989,11 @@ const OptionSheet = ({
                             1711:17062 places this at the top-right of every
                             tile. Tapping toggles pin for this item. */}
                         <TouchableOpacity
-                          testID={isPinned ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set` : `home-tile-pin-${sheetIndex}-${flatTileIndex}`}
+                          testID={
+                            isPinned
+                              ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set`
+                              : `home-tile-pin-${sheetIndex}-${flatTileIndex}`
+                          }
                           activeOpacity={0.7}
                           // C-4 (2026-05-05): stopPropagation prevents the
                           // outer tile TouchableOpacity from also firing
@@ -955,7 +1001,7 @@ const OptionSheet = ({
                           // instead of toggling pin). If this turns out to be
                           // unreliable on iOS in QA, swap to <Pressable>
                           // which has cleaner gesture isolation.
-                          onPress={(e) => {
+                          onPress={e => {
                             e.stopPropagation();
                             onTogglePin(item);
                           }}
@@ -965,7 +1011,9 @@ const OptionSheet = ({
                             isPinned && styles.pinBadgeActive,
                           ]}
                           accessibilityRole="button"
-                          accessibilityLabel={isPinned ? 'Unpin item' : 'Pin item'}
+                          accessibilityLabel={
+                            isPinned ? 'Unpin item' : 'Pin item'
+                          }
                         >
                           <IconHomePin width={14} height={14} />
                         </TouchableOpacity>
@@ -987,7 +1035,7 @@ const OptionSheet = ({
             trailing heart icon, height 56. Was filled/pill (borderRadius 100). */}
         <PillButton
           testID={`home-this-works-${sheetIndex}`}
-          title={saveState === 'saved' ? 'Saved to favourite' : 'This works'}
+          title={saveState === 'saved' ? 'Saved to favourite' : 'Wear this'}
           variant="outline"
           onPress={onConfirm}
           disabled={saveState === 'saved'}
@@ -998,7 +1046,7 @@ const OptionSheet = ({
 
         {saveState === 'error' ? (
           <Text style={styles.saveErrorText}>
-            {"Couldn't save this look. Tap \"This works\" to retry."}
+            {'Couldn\'t save this look. Tap "Wear this" to retry.'}
           </Text>
         ) : null}
 
@@ -1028,10 +1076,13 @@ const OptionSheet = ({
 const HomeLoadingState = () => (
   <View style={styles.optionSheet}>
     <View style={styles.loadingCards}>
-      {[0, 1].map((row) => (
+      {[0, 1].map(row => (
         <View key={`loading-row-${row}`} style={styles.cardRow}>
-          {[0, 1].map((column) => (
-            <View key={`loading-card-${row}-${column}`} style={styles.cardShell}>
+          {[0, 1].map(column => (
+            <View
+              key={`loading-card-${row}-${column}`}
+              style={styles.cardShell}
+            >
               <View style={[styles.card, styles.loadingCard]} />
             </View>
           ))}
@@ -1059,7 +1110,11 @@ const GarmentPreview = ({ item }: { item: Item }) => {
   return (
     <>
       {imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="contain" />
+        <Image
+          source={{ uri: imageUrl }}
+          style={styles.cardImage}
+          resizeMode="contain"
+        />
       ) : (
         <View style={styles.cardFallback} />
       )}
@@ -1218,7 +1273,7 @@ const styles = StyleSheet.create({
   },
   card: {
     aspectRatio: 3 / 4,
-    borderRadius: 12,  // Figma border-radius/xl = 12
+    borderRadius: 12, // Figma border-radius/xl = 12
     backgroundColor: theme.colors.figmaCardSurface,
     overflow: 'hidden',
     alignItems: 'center',
@@ -1281,18 +1336,18 @@ const styles = StyleSheet.create({
     height: 19,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
-    backgroundColor: theme.colors.figmaCardTag,  // color/neutral/black/Alpha300
+    backgroundColor: theme.colors.figmaCardTag, // color/neutral/black/Alpha300
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardTagText: {
-    fontFamily: 'Manrope-Medium',
-    fontSize: 8,
+    fontFamily: 'Inter-Regular',
+    fontSize: 10,
     lineHeight: 12,
     color: theme.colors.white,
   },
   actionCluster: {
-    gap: 12,  // Figma dimension/12
+    gap: 12, // Figma dimension/12
     alignItems: 'center',
   },
   primaryAction: {

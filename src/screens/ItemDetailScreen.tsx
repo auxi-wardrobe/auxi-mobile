@@ -17,7 +17,6 @@ import Toast from 'react-native-toast-message';
 import {
   BottomSheetSurface,
   DividerRow,
-  PillButton,
   TopIconButton,
 } from '../components/primitives/FigmaPrimitives';
 import { Icons } from '../assets/icons';
@@ -35,11 +34,21 @@ import { theme } from '../theme/theme';
 import { AppStackParamList } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
 
-type ScreenNavigation = NativeStackNavigationProp<AppStackParamList, 'ItemDetail'>;
+type ScreenNavigation = NativeStackNavigationProp<
+  AppStackParamList,
+  'ItemDetail'
+>;
 type ScreenRoute = RouteProp<AppStackParamList, 'ItemDetail'>;
 type EditableField = 'category' | 'color' | 'fit' | 'style';
 
-const CATEGORY_OPTIONS = ['Top', 'Bottom', 'Shoes', 'One-piece', 'Outerwear', 'Accessory'];
+const CATEGORY_OPTIONS = [
+  'Top',
+  'Bottom',
+  'Shoes',
+  'One-piece',
+  'Outerwear',
+  'Accessory',
+];
 const FIT_OPTIONS = ['Slim', 'Regular', 'Oversize'];
 const STYLE_OPTIONS = ['Casual', 'Business Casual', 'Formal'];
 const COLOR_OPTIONS = [
@@ -59,9 +68,7 @@ const STYLE_TAG_LESS_USED = 'less-used';
 const FIT_TAG_PREFIX = 'fit:';
 
 const toTitleCase = (value: string): string =>
-  value
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (match) => match.toUpperCase());
+  value.replace(/_/g, ' ').replace(/\b\w/g, match => match.toUpperCase());
 
 const normalizeCategoryLabel = (category?: string): string => {
   const normalized = category?.trim().toLowerCase() || '';
@@ -120,10 +127,11 @@ const normalizeFormalityLabel = (formalityLevel?: string): string => {
   return toTitleCase(formalityLevel.toLowerCase());
 };
 
-const toApiFormality = (label: string): string => label.trim().toLowerCase().replace(/\s+/g, '_');
+const toApiFormality = (label: string): string =>
+  label.trim().toLowerCase().replace(/\s+/g, '_');
 
 const findColorHex = (label: string): string =>
-  COLOR_OPTIONS.find((option) => option.label === label)?.hex || '#8EA1BE';
+  COLOR_OPTIONS.find(option => option.label === label)?.hex || '#8EA1BE';
 
 const normalizeColorLabel = (item: WardrobeItem): string => {
   if (item.dominant_color && typeof item.dominant_color === 'string') {
@@ -136,7 +144,7 @@ const normalizeColorLabel = (item: WardrobeItem): string => {
 
   if (typeof item.color_hex === 'string' && item.color_hex) {
     const matchedColor = COLOR_OPTIONS.find(
-      (option) => option.hex.toLowerCase() === item.color_hex?.toLowerCase(),
+      option => option.hex.toLowerCase() === item.color_hex?.toLowerCase(),
     );
     return matchedColor?.label || 'Custom';
   }
@@ -145,15 +153,23 @@ const normalizeColorLabel = (item: WardrobeItem): string => {
 };
 
 const normalizeColorHex = (item: WardrobeItem, colorLabel: string): string => {
-  if (colorLabel === 'Custom' && typeof item.color_hex === 'string' && item.color_hex) {
+  if (
+    colorLabel === 'Custom' &&
+    typeof item.color_hex === 'string' &&
+    item.color_hex
+  ) {
     return item.color_hex;
   }
 
   return findColorHex(colorLabel);
 };
 
-const replaceTag = (tags: string[], tagToReplace: string, enabled: boolean): string[] => {
-  const nextTags = tags.filter((tag) => tag !== tagToReplace);
+const replaceTag = (
+  tags: string[],
+  tagToReplace: string,
+  enabled: boolean,
+): string[] => {
+  const nextTags = tags.filter(tag => tag !== tagToReplace);
 
   if (enabled) {
     nextTags.push(tagToReplace);
@@ -163,7 +179,7 @@ const replaceTag = (tags: string[], tagToReplace: string, enabled: boolean): str
 };
 
 const replaceFitTag = (tags: string[], fitLabel: string): string[] => {
-  const nextTags = tags.filter((tag) => !tag.startsWith(FIT_TAG_PREFIX));
+  const nextTags = tags.filter(tag => !tag.startsWith(FIT_TAG_PREFIX));
   nextTags.push(`${FIT_TAG_PREFIX}${fitLabel.trim().toLowerCase()}`);
   return nextTags;
 };
@@ -203,12 +219,15 @@ export const ItemDetailScreen = () => {
   const [draftColor, setDraftColor] = useState('Blue');
   const [draftFit, setDraftFit] = useState('Regular');
   const [draftStyle, setDraftStyle] = useState('Casual');
+  const [showMore, setShowMore] = useState(false);
 
   const syncDraftsFromItem = (nextItem: WardrobeItem) => {
     setDraftCategory(normalizeCategoryLabel(nextItem.category));
     setDraftColor(normalizeColorLabel(nextItem));
     setDraftFit(getItemFitLabel(nextItem));
-    setDraftStyle(normalizeFormalityLabel(nextItem.formality_level as string | undefined));
+    setDraftStyle(
+      normalizeFormalityLabel(nextItem.formality_level as string | undefined),
+    );
   };
 
   useEffect(() => {
@@ -270,7 +289,7 @@ export const ItemDetailScreen = () => {
       case 'category':
         return CATEGORY_OPTIONS;
       case 'color':
-        return COLOR_OPTIONS.map((option) => option.label);
+        return COLOR_OPTIONS.map(option => option.label);
       case 'fit':
         return FIT_OPTIONS;
       case 'style':
@@ -312,7 +331,11 @@ export const ItemDetailScreen = () => {
 
     const nextFavorited = !isFavorited;
     const previousItem = item;
-    const nextTags = replaceTag(getItemStyleTags(item), STYLE_TAG_FAVORITE, nextFavorited);
+    const nextTags = replaceTag(
+      getItemStyleTags(item),
+      STYLE_TAG_FAVORITE,
+      nextFavorited,
+    );
 
     setItem({
       ...item,
@@ -321,14 +344,19 @@ export const ItemDetailScreen = () => {
     });
 
     try {
-      const updatedItem = await wardrobeService.toggleFavorite(item.id, nextFavorited);
-      setItem((currentItem) =>
+      const updatedItem = await wardrobeService.toggleFavorite(
+        item.id,
+        nextFavorited,
+      );
+      setItem(currentItem =>
         currentItem
           ? {
               ...currentItem,
               ...updatedItem,
               is_favorited: nextFavorited,
-              style_tags: Array.isArray(updatedItem.style_tags) ? updatedItem.style_tags : nextTags,
+              style_tags: Array.isArray(updatedItem.style_tags)
+                ? updatedItem.style_tags
+                : nextTags,
             }
           : currentItem,
       );
@@ -338,7 +366,10 @@ export const ItemDetailScreen = () => {
       Toast.show({
         type: 'error',
         text1: 'Favorite update failed',
-        text2: getFriendlyError(error, 'We could not update this item right now.'),
+        text2: getFriendlyError(
+          error,
+          'We could not update this item right now.',
+        ),
         position: 'bottom',
       });
     }
@@ -365,14 +396,19 @@ export const ItemDetailScreen = () => {
     });
 
     try {
-      const updatedItem = await wardrobeService.updateUsageFrequency(item.id, nextUsageFrequency);
-      setItem((currentItem) =>
+      const updatedItem = await wardrobeService.updateUsageFrequency(
+        item.id,
+        nextUsageFrequency,
+      );
+      setItem(currentItem =>
         currentItem
           ? {
               ...currentItem,
               ...updatedItem,
               usage_frequency: nextUsageFrequency,
-              style_tags: Array.isArray(updatedItem.style_tags) ? updatedItem.style_tags : nextTags,
+              style_tags: Array.isArray(updatedItem.style_tags)
+                ? updatedItem.style_tags
+                : nextTags,
             }
           : currentItem,
       );
@@ -382,7 +418,10 @@ export const ItemDetailScreen = () => {
       Toast.show({
         type: 'error',
         text1: 'Usage update failed',
-        text2: getFriendlyError(error, 'We could not update this item right now.'),
+        text2: getFriendlyError(
+          error,
+          'We could not update this item right now.',
+        ),
         position: 'bottom',
       });
     }
@@ -452,7 +491,9 @@ export const ItemDetailScreen = () => {
     }
 
     const currentColor = normalizeColorLabel(item);
-    const currentStyle = normalizeFormalityLabel(item.formality_level as string | undefined);
+    const currentStyle = normalizeFormalityLabel(
+      item.formality_level as string | undefined,
+    );
     const currentCategory = normalizeCategoryLabel(item.category);
     const currentFitTags = getItemStyleTags(item);
     const nextFitTags = replaceFitTag(currentFitTags, draftFit);
@@ -484,7 +525,10 @@ export const ItemDetailScreen = () => {
 
     try {
       setSaving(true);
-      const updatedItem = await wardrobeService.updateWardrobeItemAttributes(item.id, payload);
+      const updatedItem = await wardrobeService.updateWardrobeItemAttributes(
+        item.id,
+        payload,
+      );
 
       const mergedItem: WardrobeItem = {
         ...item,
@@ -540,7 +584,8 @@ export const ItemDetailScreen = () => {
   ) => {
     const canEdit = isEditing && !isCommonSystemItem;
     const showColor = field === 'color';
-    const colorHex = showColor && item ? normalizeColorHex(item, draftColor) : null;
+    const colorHex =
+      showColor && item ? normalizeColorHex(item, draftColor) : null;
 
     return (
       <TouchableOpacity
@@ -551,15 +596,17 @@ export const ItemDetailScreen = () => {
         <DividerRow
           label={label}
           hideDivider={hideDivider}
-          rightNode={(
+          rightNode={
             <View style={styles.rowRight}>
               {showColor && colorHex ? (
-                <View style={[styles.colorDot, { backgroundColor: colorHex }]} />
+                <View
+                  style={[styles.colorDot, { backgroundColor: colorHex }]}
+                />
               ) : null}
               <Text style={styles.rowValue}>{value}</Text>
-              {canEdit ? <Text style={styles.rowChevron}>{">"}</Text> : null}
+              {canEdit ? <Text style={styles.rowChevron}>{'>'}</Text> : null}
             </View>
-          )}
+          }
         />
       </TouchableOpacity>
     );
@@ -583,7 +630,7 @@ export const ItemDetailScreen = () => {
         <View style={styles.topBar}>
           <TopIconButton
             onPress={() => navigation.goBack()}
-            icon={<Text style={styles.backGlyph}>{"<"}</Text>}
+            icon={<Text style={styles.backGlyph}>{'<'}</Text>}
           />
 
           <TopIconButton
@@ -598,7 +645,11 @@ export const ItemDetailScreen = () => {
 
         <View style={styles.imageWrap}>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.image}
+              resizeMode="contain"
+            />
           ) : (
             <View style={styles.imageFallback}>
               <Text style={styles.imageFallbackText}>Image unavailable</Text>
@@ -615,63 +666,28 @@ export const ItemDetailScreen = () => {
 
       <BottomSheetSurface style={styles.sheet}>
         <View style={styles.details}>
+          {/* TODO: add Name when API supports field */}
           {renderDetailRow('Type', draftCategory, 'category')}
-          {renderDetailRow('Color', draftColor, 'color')}
-          {renderDetailRow('Fit', draftFit, 'fit')}
-          {renderDetailRow('Style', draftStyle, 'style', true)}
-        </View>
+          {/* TODO: add Energy when API supports field */}
+          {renderDetailRow('Style', draftStyle, 'style', !showMore)}
+          {showMore ? renderDetailRow('Color', draftColor, 'color') : null}
+          {showMore ? renderDetailRow('Fit', draftFit, 'fit', true) : null}
+          {/* TODO: add Material when API supports field */}
+          {/* TODO: add Occasion when API supports field */}
+          {/* TODO: add Purchase Date when API supports field */}
 
-        <View style={styles.actionBlock}>
-          <PillButton
-            title="Mix with this"
-            variant="outline"
-            onPress={() => {
-              Alert.alert(
-                'Coming soon',
-                'Anchor item recommendations will be enabled after the next backend update.',
-              );
-            }}
-            trailing={<Icons.Sort width={18} height={18} />}
-          />
-
-          <View style={styles.bottomRow}>
-            <View style={styles.leftRow}>
-              <TouchableOpacity
-                onPress={handleDelete}
-                style={styles.iconOnlyButton}
-                disabled={saving || isCommonSystemItem}
-              >
-                <Icons.Trash width={20} height={20} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.secondaryAction,
-                  usageFrequency === 'LESS_USED' && styles.secondaryActionActive,
-                ]}
-                onPress={() => {
-                  handleToggleUsageFrequency();
-                }}
-                disabled={saving}
-              >
-                <Text
-                  style={[
-                    styles.lessUsedText,
-                    usageFrequency === 'LESS_USED' && styles.lessUsedTextActive,
-                  ]}
-                >
-                  Less used
-                </Text>
-                <Text
-                  style={[
-                    styles.lessUsedIcon,
-                    usageFrequency === 'LESS_USED' && styles.lessUsedTextActive,
-                  ]}
-                >
-                  -
-                </Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.expandRow}>
+            <TouchableOpacity
+              testID={
+                showMore ? 'item-detail-less-btn' : 'item-detail-more-btn'
+              }
+              onPress={() => setShowMore(prev => !prev)}
+              style={styles.expandButton}
+            >
+              <Text style={styles.expandText}>
+                {showMore ? 'Less' : 'More'}
+              </Text>
+            </TouchableOpacity>
 
             <View style={styles.rightRow}>
               {isEditing ? (
@@ -709,6 +725,73 @@ export const ItemDetailScreen = () => {
             </View>
           </View>
         </View>
+
+        <View style={styles.actionBlock}>
+          <TouchableOpacity
+            testID="item-detail-add-btn"
+            accessibilityLabel="item-detail-add-btn"
+            style={styles.addPill}
+            onPress={() => {
+              Alert.alert(
+                'Coming soon',
+                'Anchor item recommendations will be enabled after the next backend update.',
+              );
+            }}
+          >
+            <Text style={styles.addPillText}>Add</Text>
+          </TouchableOpacity>
+
+          {!showMore ? (
+            <TouchableOpacity
+              testID="item-detail-cancel-btn"
+              style={styles.cancelButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <View style={styles.bottomRow}>
+            <View style={styles.leftRow}>
+              <TouchableOpacity
+                onPress={handleDelete}
+                style={styles.iconOnlyButton}
+                disabled={saving || isCommonSystemItem}
+              >
+                <Icons.Trash width={20} height={20} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.secondaryAction,
+                  usageFrequency === 'LESS_USED' &&
+                    styles.secondaryActionActive,
+                ]}
+                onPress={() => {
+                  handleToggleUsageFrequency();
+                }}
+                disabled={saving}
+              >
+                <Text
+                  style={[
+                    styles.lessUsedText,
+                    usageFrequency === 'LESS_USED' && styles.lessUsedTextActive,
+                  ]}
+                >
+                  Less used
+                </Text>
+                <Text
+                  style={[
+                    styles.lessUsedIcon,
+                    usageFrequency === 'LESS_USED' && styles.lessUsedTextActive,
+                  ]}
+                >
+                  -
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </BottomSheetSurface>
 
       <Modal
@@ -729,35 +812,38 @@ export const ItemDetailScreen = () => {
             </View>
 
             <ScrollView>
-              {(pickerField ? getPickerOptions(pickerField) : []).map((option) => {
-                const isSelected = (
-                  (pickerField === 'category' && draftCategory === option) ||
-                  (pickerField === 'color' && draftColor === option) ||
-                  (pickerField === 'fit' && draftFit === option) ||
-                  (pickerField === 'style' && draftStyle === option)
-                );
+              {(pickerField ? getPickerOptions(pickerField) : []).map(
+                option => {
+                  const isSelected =
+                    (pickerField === 'category' && draftCategory === option) ||
+                    (pickerField === 'color' && draftColor === option) ||
+                    (pickerField === 'fit' && draftFit === option) ||
+                    (pickerField === 'style' && draftStyle === option);
 
-                return (
-                  <TouchableOpacity
-                    key={option}
-                    style={styles.optionItem}
-                    onPress={() => handleSelectOption(option)}
-                  >
-                    <View style={styles.optionLeft}>
-                      {pickerField === 'color' ? (
-                        <View
-                          style={[
-                            styles.optionColorDot,
-                            { backgroundColor: findColorHex(option) },
-                          ]}
-                        />
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      style={styles.optionItem}
+                      onPress={() => handleSelectOption(option)}
+                    >
+                      <View style={styles.optionLeft}>
+                        {pickerField === 'color' ? (
+                          <View
+                            style={[
+                              styles.optionColorDot,
+                              { backgroundColor: findColorHex(option) },
+                            ]}
+                          />
+                        ) : null}
+                        <Text style={styles.optionText}>{option}</Text>
+                      </View>
+                      {isSelected ? (
+                        <Text style={styles.checkedIcon}>x</Text>
                       ) : null}
-                      <Text style={styles.optionText}>{option}</Text>
-                    </View>
-                    {isSelected ? <Text style={styles.checkedIcon}>x</Text> : null}
-                  </TouchableOpacity>
-                );
-              })}
+                    </TouchableOpacity>
+                  );
+                },
+              )}
             </ScrollView>
           </View>
         </View>
@@ -984,5 +1070,45 @@ const styles = StyleSheet.create({
   checkedIcon: {
     ...theme.typography.aliases.archivoButton,
     color: theme.colors.figmaAction,
+  },
+  expandRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  expandButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  expandText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#070707',
+  },
+  addPill: {
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#1d1f23',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addPillText: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#ffffff',
+  },
+  cancelButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  cancelText: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#bb251a',
   },
 });
