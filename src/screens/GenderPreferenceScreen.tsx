@@ -43,8 +43,6 @@ const OPTIONS: DirectionOption[] = [
   { label: 'Mixed / Gender-neutral', value: 'Mixed', legacyValue: 'mixed' },
 ];
 
-const USER_NAME = 'Alex';
-
 export const GenderPreferenceScreen = () => {
   const navigation = useNavigation<Navigation>();
   const [selected, setSelected] = useState<DirectionOption | null>(null);
@@ -66,17 +64,12 @@ export const GenderPreferenceScreen = () => {
             onPress={() => navigation.goBack()}
             icon={<Text style={styles.backGlyph}>‹</Text>}
           />
-          <View style={styles.namePill}>
-            <Text style={styles.namePillText}>{USER_NAME}</Text>
-          </View>
         </View>
 
         {/* ── AI message bubble ────────────────────────────── */}
         <View style={styles.bubbleWrapper}>
           <Text style={styles.bubbleText}>
-            {'Nice to meet you, '}
-            <Text style={styles.bubbleTextBold}>{USER_NAME}</Text>
-            {'! ✨ Which type of clothing do you usually wear?'}
+            {'Hi there! ✨ Which type of clothing do you usually wear?'}
           </Text>
         </View>
 
@@ -127,7 +120,7 @@ const UNSELECTED_BG = theme.colors.figmaIconSurface;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.figmaBackground,
+    backgroundColor: '#f7f7f8', // Figma: --light-surface, onboarding bg differs from app figmaBackground (#f2efec)
   },
   content: {
     flex: 1,
@@ -148,19 +141,6 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     marginTop: -2,
   },
-  namePill: {
-    backgroundColor: UNSELECTED_BG,
-    borderRadius: theme.borderRadius.round,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  namePillText: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 14,
-    lineHeight: 20,
-    color: theme.colors.figmaText,
-  },
-
   /* ── AI bubble ── */
   bubbleWrapper: {
     marginTop: 24,
@@ -170,12 +150,6 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.poppinsBody,
     color: theme.colors.figmaText,
   },
-  bubbleTextBold: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 16,
-    lineHeight: 24,
-  },
-
   /* ── Radio list ── */
   radioList: {
     gap: 10,
