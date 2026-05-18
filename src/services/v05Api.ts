@@ -198,6 +198,10 @@ export interface BuildRecommendationInput {
  * (the engine returns only the fields it joins on), distinct from the
  * onboarding `OnboardingWardrobeItem` and from the legacy `Item` in
  * `src/types/item.ts`.
+ *
+ * Phase 1 LLM-1 additions: `formality_level` exposed for the diversifier
+ * to anchor elevated-tier picks. `source` distinguishes user-owned items
+ * from SYSTEM common-essential fallback injections (Spec v2 §4.4).
  */
 export interface V05OutfitItem {
   id: string;
@@ -207,7 +211,17 @@ export interface V05OutfitItem {
   category_family: CategoryFamily | null;
   color_code?: string | null;
   style_tags: string[];
+  formality_level?: string | null;
+  source?: 'user' | 'common_essential';
 }
+
+/**
+ * Tier role assigned by LLM-1 Build Diversifier (Phase 1). `null` when
+ * the diversifier was not engaged (e.g. wardrobe too small or LLM-1
+ * disabled). UI may surface `tier_role` to label cards as Safe /
+ * Elevated / Exploratory.
+ */
+export type V05TierRole = 'safe' | 'elevated' | 'exploratory';
 
 export interface V05Outfit {
   items: V05OutfitItem[];
@@ -215,12 +229,35 @@ export interface V05Outfit {
   reasoning_human: string;
   reasoning_debug: string;
   score: number;
+  /** Phase 2 — stable 12-char SHA-256 prefix over sorted item IDs. */
+  outfit_hash: string;
+  /** Phase 1 LLM-1 tier assignment. */
+  tier_role?: V05TierRole | null;
+  /** Raw composite score from the engine pipeline (pre tier-assignment). */
+  engine_score?: number | null;
+}
+
+/**
+ * LLM-1 call trace — surfaces whether the diversifier actually fired or
+ * fell back. `source = "llm"` means the LLM picked; `"fallback_top_score"`
+ * means insufficient pools or a transient failure.
+ */
+export interface V05Llm1Call {
+  source: 'llm' | 'fallback_top_score';
+  latency_ms: number;
+  fallback: boolean;
+  fallback_reason: string | null;
+  cache_hit: boolean;
 }
 
 /**
  * Build trace — engine instrumentation. `fallback_flags` surfaces
  * `style_diversity_unmet` and/or `mood_filtered_outfits` when the pool
  * forced compromises.
+ *
+ * Phase 1 + 2 additions: tier pool snapshot, LLM-1 call trace, anchor
+ * diversity metric, and Phase 2 signal-reweight flags. All optional —
+ * legacy responses without these fields continue to parse.
  */
 export interface BuildTrace {
   engine_version: string;
@@ -228,12 +265,77 @@ export interface BuildTrace {
   pool_sizes_after_L1: Record<string, number>;
   skipped_log_count: number;
   fallback_flags: string[];
+  /** Phase 2 — true when engine L4 applied user style-signal reweighting. */
+  signal_reweight_applied?: boolean | null;
+  /** Phase 2 — count of active signals consumed for this Build. */
+  signal_count?: number | null;
+  /** Phase 1 — per-tier pool sizes after pre-tag filtering. */
+  tier_pools_after_pretag?: Record<string, number> | null;
+  /** Phase 1 — LLM-1 call instrumentation. */
+  llm1_call?: V05Llm1Call | null;
+  /** Phase 0 — distinct anchors across primary + alternates. */
+  anchor_diversity_score?: number | null;
+  anchor_diversity_pool_size?: number | null;
 }
+
+/**
+ * Locked vocabulary for `wardrobe_gap_reason`. v1 raises only the first
+ * two codes; rain/formal reserved for v2 (Spec v2 §4.5).
+ */
+export type V05WardrobeGapReason =
+  | 'cold_weather_no_outerwear'
+  | 'hot_weather_no_lightwear'
+  | 'rain_no_waterproof'
+  | 'formal_no_structured';
 
 export interface BuildRecommendationResponse {
   outfits: V05Outfit[];
   suggested_default: number;
   trace: BuildTrace;
+  /**
+   * Server-issued session ID (UUIDv4). Pass back to `/try_another` to
+   * preserve seen-set + axis cycling. Null if the session-cache write
+   * failed (stateless degraded mode — try_another still works but
+   * cross-call diversity weakens).
+   */
+  session_id?: string | null;
+  /**
+   * True when even the SYSTEM common-items catalog can't fill the
+   * climate-starved slot. When true, `outfits` is empty and the client
+   * should render a wardrobe-gap CTA per `wardrobe_gap_reason`.
+   */
+  wardrobe_gap?: boolean;
+  wardrobe_gap_reason?: V05WardrobeGapReason | null;
+  /**
+   * True when fewer than 3 tier pools (safe/elevated/exploratory) could
+   * be filled — wardrobe too small to cover all tiers. UI may relabel
+   * "Try Another" CTA accordingly.
+   */
+  tier_pools_partial?: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Feedback — POST /api/v05/feedback (Phase 2 LLM-2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Body for `POST /api/v05/feedback`. At least one of `text` or
+ * `photo_b64` MUST be provided — the server returns 400 if both empty.
+ *
+ * `photo_b64`: base64-encoded JPEG/PNG, max ~5MB binary (~7MB encoded).
+ * Processed in memory only — never stored to disk.
+ *
+ * Server runs LLM-2 (OpenAI gpt-4o-mini vision) to parse the photo +
+ * text into axis-level style signals (likes/dislikes), persists with a
+ * 30-day decay window, then reweights the user's future Build candidates
+ * via the engine L4 signal vector.
+ */
+export interface SubmitFeedbackInput {
+  outfit_id: string;
+  session_id?: string;
+  text?: string;
+  photo_b64?: string;
+  event_metadata?: Record<string, string>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -284,4 +386,29 @@ export const buildRecommendation = async (
     input,
   );
   return response.data;
+};
+
+/**
+ * `POST /api/v05/feedback` — submit post-wear feedback for one outfit.
+ * Server runs LLM-2 multimodal parse, persists axis signals with 30-day
+ * decay, and the user's next `/build` will see L4 score adjustments
+ * (multiplier ∈ [0.5, 1.5]) for the liked/disliked axes.
+ *
+ * No response body — 204 on success. Failures persist nothing (silent
+ * miss); callers should treat 204 as best-effort, not a confirmation
+ * that LLM-2 successfully extracted signals.
+ *
+ * Auth: Bearer JWT (apiClient interceptor handles it).
+ * Rate limit: 20 req/min per user.
+ * Errors:
+ *   - 400: missing both `text` and `photo_b64`, or invalid base64 size
+ *   - 401: missing/invalid token
+ *   - 422: schema validation (outfit_id too long, photo_b64 > ~7MB)
+ *   - 429: rate limit hit
+ *   - 500: internal
+ */
+export const submitFeedback = async (
+  input: SubmitFeedbackInput,
+): Promise<void> => {
+  await apiClient.post('/v05/feedback', input);
 };

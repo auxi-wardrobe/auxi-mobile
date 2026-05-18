@@ -19,19 +19,31 @@
  * `auxi/docs_agent/FIGMA_SCREEN_MAP.md`).
  */
 import React, { useMemo, useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   OnboardingSelectionCard,
   OnboardingSelectionFigure,
 } from '../components/primitives/OnboardingSelectionCard';
-import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
+import {
+  PillButton,
+  TopIconButton,
+} from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
 import type { FitPreference, WardrobeDirection } from '../services/v05Api';
 import { AppStackParamList, GenderPreferenceValue } from '../types/navigation';
 
-type Navigation = NativeStackNavigationProp<AppStackParamList, 'StylePreference'>;
+type Navigation = NativeStackNavigationProp<
+  AppStackParamList,
+  'StylePreference'
+>;
 type ScreenRoute = RouteProp<AppStackParamList, 'StylePreference'>;
 type StylePreferenceValue = 'slim' | 'classic' | 'relaxed';
 
@@ -48,13 +60,19 @@ const STYLE_OPTIONS: FitOption[] = [
   { label: 'Relaxed fit', value: 'relaxed', v05Value: 'Relaxed Fit' },
 ];
 
-const DIRECTION_TO_LEGACY_GENDER: Record<WardrobeDirection, GenderPreferenceValue> = {
+const DIRECTION_TO_LEGACY_GENDER: Record<
+  WardrobeDirection,
+  GenderPreferenceValue
+> = {
   Womenswear: 'womenswear',
   Menswear: 'menswear',
   Mixed: 'mixed',
 };
 
-const STYLE_ART_BY_GENDER: Record<GenderPreferenceValue, Record<StylePreferenceValue, number>> = {
+const STYLE_ART_BY_GENDER: Record<
+  GenderPreferenceValue,
+  Record<StylePreferenceValue, number>
+> = {
   womenswear: {
     slim: require('../assets/images/women_slim_fit.png'),
     classic: require('../assets/images/women_classic_fit.png'),
@@ -72,10 +90,14 @@ const STYLE_ART_BY_GENDER: Record<GenderPreferenceValue, Record<StylePreferenceV
   },
 };
 
-const CONTENT_BY_GENDER: Record<GenderPreferenceValue, { title: string; subtitle: string }> = {
+const CONTENT_BY_GENDER: Record<
+  GenderPreferenceValue,
+  { title: string; subtitle: string }
+> = {
   womenswear: {
     title: 'Which fit makes you feel most confident?',
-    subtitle: "This will be Auxi's starting point. You can switch up your style anytime.",
+    subtitle:
+      "This will be Auxi's starting point. You can switch up your style anytime.",
   },
   menswear: {
     title: 'Which fit feels right?',
@@ -83,7 +105,8 @@ const CONTENT_BY_GENDER: Record<GenderPreferenceValue, { title: string; subtitle
   },
   mixed: {
     title: 'Which fit makes you feel most confident?',
-    subtitle: "This will be Auxi's starting point. You can switch up your style anytime.",
+    subtitle:
+      "This will be Auxi's starting point. You can switch up your style anytime.",
   },
 };
 
@@ -99,8 +122,14 @@ export const StylePreferenceScreen = () => {
   const selectedGender: GenderPreferenceValue =
     route.params?.gender ?? DIRECTION_TO_LEGACY_GENDER[wardrobeDirection];
 
-  const content = useMemo(() => CONTENT_BY_GENDER[selectedGender], [selectedGender]);
-  const styleArt = useMemo(() => STYLE_ART_BY_GENDER[selectedGender], [selectedGender]);
+  const content = useMemo(
+    () => CONTENT_BY_GENDER[selectedGender],
+    [selectedGender],
+  );
+  const styleArt = useMemo(
+    () => STYLE_ART_BY_GENDER[selectedGender],
+    [selectedGender],
+  );
 
   const handleNext = () => {
     if (!selectedStyle) return;
@@ -127,7 +156,7 @@ export const StylePreferenceScreen = () => {
 
             <View style={styles.optionGrid}>
               <View style={styles.optionRow}>
-                {STYLE_OPTIONS.slice(0, 2).map((option) => {
+                {STYLE_OPTIONS.slice(0, 2).map(option => {
                   const isSelected = selectedStyle?.value === option.value;
                   const dimmed = !!selectedStyle && !isSelected;
 
@@ -157,8 +186,8 @@ export const StylePreferenceScreen = () => {
                 })}
               </View>
 
-              <View style={styles.optionRow}>
-                {STYLE_OPTIONS.slice(2).map((option) => {
+              <View style={styles.bottomOptionRow}>
+                {STYLE_OPTIONS.slice(2).map(option => {
                   const isSelected = selectedStyle?.value === option.value;
                   const dimmed = !!selectedStyle && !isSelected;
 
@@ -211,7 +240,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 22,
+    paddingHorizontal: 24,
     paddingTop: 6,
     paddingBottom: 28,
   },
@@ -249,6 +278,11 @@ const styles = StyleSheet.create({
   optionRow: {
     flexDirection: 'row',
     gap: 4,
+  },
+  bottomOptionRow: {
+    flexDirection: 'row',
+    gap: 4,
+    justifyContent: 'center',
   },
   topOptionPressable: {
     flex: 1,

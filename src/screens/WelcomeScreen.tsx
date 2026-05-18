@@ -25,12 +25,14 @@ export const WelcomeScreen = () => {
 
           <View style={styles.textContainer}>
             <Text style={styles.title}>Welcome to{`\n`}auxi</Text>
-            <Text style={styles.subtitle}>Get outfit suggestions{`\n`}that work for your day.</Text>
+            <Text style={styles.subtitle}>
+              Get outfit suggestions{`\n`}that work for your day.
+            </Text>
           </View>
         </View>
 
         <PillButton
-          title="Get started"
+          title="Get started — takes 1 min"
           variant="filled"
           loading={isLoading}
           onPress={() => navigation.navigate('LocationPermission')}
@@ -44,7 +46,7 @@ export const WelcomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.figmaBackground,
+    backgroundColor: '#fcfcfd', // Figma: #fcfcfd (near-white welcome bg — no matching theme token)
   },
   content: {
     flex: 1,
@@ -67,17 +69,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    ...theme.typography.aliases.playfairDisplayTitle,
+    fontFamily: 'Poppins-Bold',
+    fontSize: 40,
+    lineHeight: 52,
+    letterSpacing: -0.72,
     color: theme.colors.figmaText,
     textAlign: 'center',
     marginBottom: 16,
   },
   subtitle: {
-    ...theme.typography.aliases.manropeBody,
-    color: theme.colors.figmaTextSecondary,
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.figmaText,
     textAlign: 'center',
   },
   cta: {
     marginBottom: 6,
+    width: 327,
+    alignSelf: 'center',
+    borderRadius: 16,
   },
 });

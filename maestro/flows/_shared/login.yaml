@@ -17,11 +17,13 @@ appId: com.auxi2026.app
 - tapOn:
     id: auth-email-input
 - inputText: ${QA_EMAIL}
-- hideKeyboard
+- tapOn:
+    text: "Welcome Back"
 - tapOn:
     id: auth-password-input
 - inputText: ${QA_PASSWORD}
-- hideKeyboard
+- tapOn:
+    text: "Welcome Back"
 - tapOn:
     id: auth-login-submit
 - extendedWaitUntil:

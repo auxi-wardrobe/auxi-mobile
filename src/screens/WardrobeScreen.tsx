@@ -35,18 +35,32 @@ import { Icons } from '../assets/icons';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const FILTER_TABS = ['All', 'Tops', 'Bottoms', 'Shoes', 'One-piece', 'AC'] as const;
+const FILTER_TABS = [
+  'All',
+  'Tops',
+  'Bottoms',
+  'Shoes',
+  'One-piece',
+  'AC',
+] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
 
 const HORIZONTAL_PADDING = 24;
 const GRID_GAP = 4;
 const WARDROBE_COLUMNS = 4;
 const CATALOG_COLUMNS = 3;
-const TILE_WIDTH = (screenWidth - HORIZONTAL_PADDING * 2 - GRID_GAP * (WARDROBE_COLUMNS - 1)) / WARDROBE_COLUMNS;
+const TILE_WIDTH =
+  (screenWidth - HORIZONTAL_PADDING * 2 - GRID_GAP * (WARDROBE_COLUMNS - 1)) /
+  WARDROBE_COLUMNS;
 const TILE_HEIGHT = TILE_WIDTH * (4 / 3);
-const CATALOG_TILE_WIDTH = (screenWidth - HORIZONTAL_PADDING * 2 - 8 * (CATALOG_COLUMNS - 1)) / CATALOG_COLUMNS;
+const CATALOG_TILE_WIDTH =
+  (screenWidth - HORIZONTAL_PADDING * 2 - 8 * (CATALOG_COLUMNS - 1)) /
+  CATALOG_COLUMNS;
 
-type ScreenNavigation = NativeStackNavigationProp<AppStackParamList, 'Wardrobe'>;
+type ScreenNavigation = NativeStackNavigationProp<
+  AppStackParamList,
+  'Wardrobe'
+>;
 
 const resolveItemTab = (category?: string): FilterTab => {
   const normalized = category?.trim().toLowerCase() || '';
@@ -119,7 +133,9 @@ const resolveFilterQuery = (selectedTab: FilterTab): string | undefined => {
 };
 
 const isCommonItem = (item: WardrobeItem): boolean =>
-  item.is_common_item === true || item.user_id === null || item.user_id === undefined;
+  item.is_common_item === true ||
+  item.user_id === null ||
+  item.user_id === undefined;
 
 export const WardrobeScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
@@ -134,7 +150,9 @@ export const WardrobeScreen = () => {
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [commonItems, setCommonItems] = useState<WardrobeItem[]>([]);
-  const [selectedCommonItemId, setSelectedCommonItemId] = useState<string | null>(null);
+  const [selectedCommonItemId, setSelectedCommonItemId] = useState<
+    string | null
+  >(null);
   const [addingCatalogItem, setAddingCatalogItem] = useState(false);
 
   const [modalAddItemVisible, setModalAddItemVisible] = useState(false);
@@ -214,7 +232,9 @@ export const WardrobeScreen = () => {
       return commonItems;
     }
 
-    return commonItems.filter((item) => resolveItemTab(item.category) === selectedTab);
+    return commonItems.filter(
+      item => resolveItemTab(item.category) === selectedTab,
+    );
   }, [commonItems, selectedTab]);
 
   const handleItemPress = (itemId: string) => {
@@ -230,9 +250,10 @@ export const WardrobeScreen = () => {
         selectionLimit: 1,
       };
 
-      const result = type === 'camera'
-        ? await launchCamera(options)
-        : await launchImageLibrary(options);
+      const result =
+        type === 'camera'
+          ? await launchCamera(options)
+          : await launchImageLibrary(options);
 
       if (result.didCancel) {
         return;
@@ -255,7 +276,7 @@ export const WardrobeScreen = () => {
           resolveFilterQuery(selectedTab),
         );
 
-        setModalAddItemVisible(false)
+        setModalAddItemVisible(false);
 
         Toast.show({
           type: 'success',
@@ -307,7 +328,9 @@ export const WardrobeScreen = () => {
 
     try {
       setAddingCatalogItem(true);
-      const clonedItem = await wardrobeService.cloneCommonItem(selectedCommonItemId);
+      const clonedItem = await wardrobeService.cloneCommonItem(
+        selectedCommonItemId,
+      );
       setAddSheetVisible(false);
 
       Toast.show({
@@ -340,6 +363,7 @@ export const WardrobeScreen = () => {
         style={styles.tile}
         activeOpacity={0.88}
         onPress={() => handleItemPress(item.id)}
+        testID={`wardrobe-catalog-tile-${item.id}`}
       >
         {imageUrl ? (
           <Image
@@ -395,21 +419,26 @@ export const WardrobeScreen = () => {
         title="Wardrobe"
         titleTextStyle={styles.headerTitle}
         onBack={() => setIsSidebarOpen(true)}
-        rightComponent={(
+        rightComponent={
           <TouchableOpacity
             // onPress={() => setAddSheetVisible(true)}
             onPress={() => setModalAddItemVisible(true)}
             disabled={uploading}
             style={styles.plusButton}
             activeOpacity={0.85}
+            testID="wardrobe-add-btn"
+            accessibilityLabel="wardrobe-add-btn"
           >
             {uploading ? (
-              <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+              <ActivityIndicator
+                size="small"
+                color={theme.colors.figmaAction}
+              />
             ) : (
               <Icons.Plus width={24} height={24} />
             )}
           </TouchableOpacity>
-        )}
+        }
       />
 
       <ScrollView
@@ -419,19 +448,19 @@ export const WardrobeScreen = () => {
         <CategoryTabs
           categories={[...FILTER_TABS]}
           selectedCategory={selectedTab}
-          onSelectCategory={(category) => setSelectedTab(category as FilterTab)}
+          onSelectCategory={category => setSelectedTab(category as FilterTab)}
         />
 
         {loading ? (
           renderLoadingGrid()
         ) : hasItems ? (
-          <View style={styles.grid}>
-            {items.map(renderGridTile)}
-          </View>
+          <View style={styles.grid}>{items.map(renderGridTile)}</View>
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>
-              {selectedTab === 'All' ? 'Add your first item' : 'No items in this category yet'}
+              {selectedTab === 'All'
+                ? 'Add your first item'
+                : 'No items in this category yet'}
             </Text>
             <Text style={styles.emptySubtitle}>
               {selectedTab === 'All'
@@ -456,7 +485,10 @@ export const WardrobeScreen = () => {
         onRequestClose={() => setAddSheetVisible(false)}
       >
         <TouchableWithoutFeedback onPress={() => setAddSheetVisible(false)}>
-          <View style={styles.sheetOverlay} onStartShouldSetResponder={() => true}>
+          <View
+            style={styles.sheetOverlay}
+            onStartShouldSetResponder={() => true}
+          >
             <TouchableOpacity activeOpacity={1}>
               <BottomSheetSurface style={styles.addSheet}>
                 <View style={styles.addSheetHeader}>
@@ -487,20 +519,30 @@ export const WardrobeScreen = () => {
                 >
                   <View style={styles.catalogGrid}>
                     <TouchableOpacity
+                      testID="wardrobe-photo-tile"
                       style={styles.photoTile}
                       activeOpacity={0.85}
                       onPress={handlePhotoTilePress}
                     >
-                      <Text style={styles.photoTileLabel}>Photo</Text>
+                      <Icons.Camera
+                        width={24}
+                        height={24}
+                        color={theme.colors.figmaAction}
+                      />
                     </TouchableOpacity>
 
                     {catalogLoading ? (
                       <View style={styles.catalogLoading}>
-                        <ActivityIndicator size="small" color={theme.colors.figmaAction} />
-                        <Text style={styles.catalogLoadingLabel}>Loading catalog…</Text>
+                        <ActivityIndicator
+                          size="small"
+                          color={theme.colors.figmaAction}
+                        />
+                        <Text style={styles.catalogLoadingLabel}>
+                          Loading catalog…
+                        </Text>
                       </View>
                     ) : (
-                      commonItems.map((item) => {
+                      commonItems.map(item => {
                         const imageUrl = getImageUrl(item.image_url);
                         const isSelected = selectedCommonItemId === item.id;
 
@@ -522,7 +564,9 @@ export const WardrobeScreen = () => {
                               />
                             ) : (
                               <View style={styles.catalogTileFallback}>
-                                <Text style={styles.catalogTileFallbackText}>No image</Text>
+                                <Text style={styles.catalogTileFallbackText}>
+                                  No image
+                                </Text>
                               </View>
                             )}
 
@@ -530,7 +574,9 @@ export const WardrobeScreen = () => {
                               <View style={styles.selectionDotWrap}>
                                 <View style={styles.selectionDotSelected} />
                               </View>
-                            ) : null}
+                            ) : (
+                              <View style={styles.selectionDotWrapEmpty} />
+                            )}
                           </TouchableOpacity>
                         );
                       })
@@ -559,7 +605,9 @@ export const WardrobeScreen = () => {
       >
         <TouchableWithoutFeedback onPress={() => setModalAddItemVisible(false)}>
           <View style={styles.modalAddItemOverlay}>
-            <TouchableWithoutFeedback onPress={() => setModalAddItemVisible(false)}>
+            <TouchableWithoutFeedback
+              onPress={() => setModalAddItemVisible(false)}
+            >
               <View style={styles.modalAddItemBackdrop} />
             </TouchableWithoutFeedback>
             <View style={styles.modalAddItemContent}>
@@ -567,41 +615,67 @@ export const WardrobeScreen = () => {
               <TouchableOpacity activeOpacity={1}>
                 <Text style={styles.modalAddItemTitle}>Add Item</Text>
                 {/* short description */}
-                <Text style={styles.modalAddItemDescription}>Add a new item to your wardrobe</Text>
+                <Text style={styles.modalAddItemDescription}>
+                  Add a new item to your wardrobe
+                </Text>
                 {/* implement three sections: search from db, take a photo, import from web */}
                 <View style={styles.modalAddItemActions}>
-                  <TouchableOpacity style={styles.actionButton} onPress={() => handleShowSearchItemModal()}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleShowSearchItemModal()}
+                    testID="wardrobe-add-search"
+                  >
                     <View style={styles.actionButtonContent}>
                       <View style={styles.actionButtonIcon}>
                         <Text>🔍</Text>
                       </View>
                       <View>
-                        <Text style={styles.actionButtonText}>Search from Database</Text>
-                        <Text style={styles.actionButtonSubtext}>Browse our catalog</Text>
+                        <Text style={styles.actionButtonText}>
+                          Search from Database
+                        </Text>
+                        <Text style={styles.actionButtonSubtext}>
+                          Browse our catalog
+                        </Text>
                       </View>
                     </View>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity style={styles.actionButton} onPress={handlePhotoTilePress}>
+
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={handlePhotoTilePress}
+                    testID="wardrobe-add-photo"
+                  >
                     <View style={styles.actionButtonContent}>
                       <View style={styles.actionButtonIcon}>
                         <Text>📸</Text>
                       </View>
                       <View>
-                        <Text style={styles.actionButtonText}>Take a Photo</Text>
-                        <Text style={styles.actionButtonSubtext}>Upload an image</Text>
+                        <Text style={styles.actionButtonText}>
+                          Take a Photo
+                        </Text>
+                        <Text style={styles.actionButtonSubtext}>
+                          Upload an image
+                        </Text>
                       </View>
                     </View>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => {}}
+                    testID="wardrobe-add-import"
+                  >
                     <View style={styles.actionButtonContent}>
                       <View style={styles.actionButtonIcon}>
                         <Text>🌐</Text>
                       </View>
                       <View>
-                        <Text style={styles.actionButtonText}>Import from Web</Text>
-                        <Text style={styles.actionButtonSubtext}>Paste a URL</Text>
+                        <Text style={styles.actionButtonText}>
+                          Import from Web
+                        </Text>
+                        <Text style={styles.actionButtonSubtext}>
+                          Paste a URL
+                        </Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -808,7 +882,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
 
-
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
@@ -962,10 +1035,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  photoTileLabel: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
-  },
   catalogLoading: {
     width: CATALOG_TILE_WIDTH,
     height: 102,
@@ -1011,14 +1080,25 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
     borderColor: '#FFFFFF',
     backgroundColor: theme.colors.figmaAction,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  selectionDotWrapEmpty: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#272A32',
+    backgroundColor: 'transparent',
   },
   selectionDotSelected: {
     width: 8,
