@@ -43,6 +43,11 @@ import {
   RecommendationMode,
   recommendationService,
 } from '../services/recommendationService';
+import {
+  buildRecommendation as v05BuildRecommendation,
+  V05Outfit,
+  V05OutfitItem,
+} from '../services/v05Api';
 import { favouriteService } from '../services/favouriteService';
 import { track } from '../services/analytics';
 import { getImageUrl } from '../utils/url';
@@ -359,9 +364,69 @@ export const HomeScreen = () => {
     resetContextDraft();
   }, [resetContextDraft]);
 
+  // V05 migration (260518): swap the legacy Valen endpoint for v05 build.
+  // The Valen request shape `{mode, style_feedback}` is mapped to V05's
+  // structured input (weather + user + intent + count). V05 response items
+  // need shape-mapping to the legacy `Item` type before normalizeOutfits.
+  const buildViaV05 = useCallback(
+    async (input: {
+      mode: RecommendationMode;
+      style_feedback?: string;
+      // Legacy Valen-only field — V05 has no pinned-item concept yet;
+      // accepted here so existing callsites compile but ignored downstream.
+      pinned_item_id?: string | null;
+    }): Promise<{ outfits: Outfit[] }> => {
+      const moodMap: Record<RecommendationMode, string | null> = {
+        casual: 'calm',
+        work: 'confident',
+        play: 'playful',
+        date: 'confident',
+        weekend: 'low_energy',
+      } as unknown as Record<RecommendationMode, string | null>;
+      const mood = moodMap[input.mode] ?? null;
+      const occasion = input.mode || DEFAULT_RECOMMENDATION_MODE;
+
+      const v05 = await v05BuildRecommendation({
+        weather: { temp_c: weather.tempC, is_rainy: false },
+        user: { gender: 'U', occasion },
+        intent: { mood: mood as never },
+        count: 3,
+      });
+
+      // Map V05Outfit -> legacy Outfit shape. normalizeOutfits picks up
+      // `outfit_hash` directly; `items` get shape-coerced for tile rendering.
+      const FAMILY_TO_CATEGORY: Record<string, string> = {
+        TOP: 'Top',
+        BOTTOM: 'Bottom',
+        OUTER: 'Outerwear',
+        FOOTWEAR: 'Shoes',
+        FULL_BODY: 'Dress',
+        ACCESSORY: 'Accessory',
+      };
+      const mapItem = (it: V05OutfitItem): Item => ({
+        id: it.id,
+        image_url: it.image_url ?? '',
+        category: it.category_family
+          ? FAMILY_TO_CATEGORY[it.category_family] ?? it.category_family
+          : 'Top',
+        color: it.color_code ?? '',
+        style: it.style_tags?.[0],
+        isSystem: it.source === 'common_essential',
+      });
+
+      return {
+        outfits: v05.outfits.map(o => ({
+          items: o.items.map(mapItem),
+          outfit_hash: o.outfit_hash,
+        })) as unknown as Outfit[],
+      };
+    },
+    [weather.tempC],
+  );
+
   const { mutate: valenGetRecommendation, isPending: isStartPending } =
     useMutation({
-      mutationFn: recommendationService.valenGetRecommendation,
+      mutationFn: buildViaV05,
       onSuccess: (data: unknown) => {
         // First load (cold start) → replace. Subsequent loads (prefetch) →
         // append so the user's scroll position isn't yanked back to 0.
