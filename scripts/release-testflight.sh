@@ -35,6 +35,34 @@ echo ">>> Shipping ${VERSION} build ${BUILD}"
 xcodebuild -version | head -1
 xcrun --sdk iphoneos --show-sdk-version
 
+# 2b. Sentry preflight — Bundle RN + Upload Debug Symbols build phases
+# wrap sentry-cli, which needs auth (sentry.properties OR SENTRY_AUTH_TOKEN).
+# Without it the archive dies ~10 minutes in with cryptic
+# "Node: cannot execute binary file" or sourcemap collection errors.
+# Fail loud now.
+if grep -q "SENTRY_DISABLE_AUTO_UPLOAD=true" "$PBXPROJ"; then
+  echo ">>> Sentry uploads disabled in build phase — skipping creds check"
+elif [ -f ios/sentry.properties ] || [ -n "${SENTRY_AUTH_TOKEN:-}" ]; then
+  echo ">>> Sentry creds detected (sentry.properties or SENTRY_AUTH_TOKEN)"
+else
+  cat >&2 <<'SENTRY_ERR'
+ERROR: Sentry sourcemap upload requires auth but none found.
+
+The "Bundle React Native code and images" + "Upload Debug Symbols to Sentry"
+build phases call sentry-cli, which needs auth or it will fail the archive.
+
+Pick one fix:
+  (a) Persistent: create ios/sentry.properties (gitignored) with
+        defaults.org=auxi
+        defaults.project=react-native
+        auth.token=<from sentry.io/settings/account/api/auth-tokens/>
+  (b) One-shot: export SENTRY_AUTH_TOKEN=<token> before re-running
+  (c) Ship without sourcemap: add `export SENTRY_DISABLE_AUTO_UPLOAD=true`
+      to the affected build phase shellScript in ios/auxi.xcodeproj/project.pbxproj
+SENTRY_ERR
+  exit 1
+fi
+
 # 3. Pod install (idempotent; reapplies fmt patches via Podfile post_install)
 ( cd ios && pod install --silent )
 
