@@ -39,7 +39,7 @@
 #   producing false-negative timeouts. The deterministic post-state is
 #   `home-screen-root` mounting; that is what we wait on.
 
-appId: org.reactjs.native.example.auxi
+appId: com.auxi2026.app
 name: onboarding-v05
 tags:
   - onboarding
@@ -67,11 +67,13 @@ env:
 - tapOn:
     id: auth-email-input
 - inputText: ${QA_EMAIL}
-- hideKeyboard
+- tapOn:
+    text: "Welcome Back"
 - tapOn:
     id: auth-password-input
 - inputText: ${QA_PASSWORD}
-- hideKeyboard
+- tapOn:
+    text: "Welcome Back"
 - tapOn:
     id: auth-login-submit
 
@@ -81,12 +83,12 @@ env:
 # "Get started" is the only PillButton on screen. Both are stable.
 - extendedWaitUntil:
     visible:
-      text: "Get started"
+      text: "Get started — takes 1 min"
     timeout: ${HOME_TIMEOUT_MS}
 
 # --- 3. Welcome -> LocationPermission ---
 - tapOn:
-    text: "Get started"
+    text: "Get started — takes 1 min"
 - extendedWaitUntil:
     visible:
       text: "Not now"
