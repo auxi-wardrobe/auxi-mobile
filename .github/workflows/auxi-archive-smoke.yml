@@ -1,0 +1,84 @@
+# Archive smoke test — catches build-phase regressions before they hit TestFlight.
+#
+# Runs on PRs that touch native build config or release-relevant code.
+# Skips simulator runs (already covered by yarn ios) and skips signing
+# (CI has no provisioning profiles) — purely a "does archive complete" gate.
+#
+# Why this exists: commit 937996d8 (May 13) shipped a backtick typo in the
+# Bundle React Native build phase. It didn't surface in simulator runs
+# because Metro serves JS in Debug. Only the archive (Release) path runs
+# the Bundle phase. Without this job, that bug lurked 5 days until the
+# next TestFlight attempt — a manual archive that wasted ~2 hours debugging.
+
+name: auxi iOS archive smoke
+
+on:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "package.json"
+      - "yarn.lock"
+      - "src/**"
+      - ".github/workflows/auxi-archive-smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: archive-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  archive:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "23"
+          cache: yarn
+
+      - name: Select Xcode 26
+        run: sudo xcode-select -s /Applications/Xcode_26.app
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/.cocoapods
+          key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: pods-${{ runner.os }}-
+
+      - name: Install JS deps
+        run: yarn install --frozen-lockfile
+
+      - name: Install Pods
+        run: cd ios && pod install --silent
+
+      - name: Archive (no signing)
+        env:
+          # Sentry creds not available in CI — skip upload phases so the
+          # archive doesn't fail with "An organization ID or slug is required".
+          # Real release path still requires `sentry.properties` or auth token.
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
+        run: |
+          xcodebuild archive \
+            -workspace ios/auxi.xcworkspace \
+            -scheme auxi \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath /tmp/smoke.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            | tee /tmp/archive.log
+
+      - name: Upload archive log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archive-log
+          path: /tmp/archive.log
