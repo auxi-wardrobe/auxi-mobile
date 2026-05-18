@@ -26,7 +26,11 @@ export type WardrobeDirection = (typeof WARDROBE_DIRECTIONS)[number];
  * `fit_preference` accepted by `/onboarding/generate`. Note the spaces +
  * "Fit" suffix — backend matches the literal string.
  */
-export const FIT_PREFERENCES = ['Slim Fit', 'Classic Fit', 'Relaxed Fit'] as const;
+export const FIT_PREFERENCES = [
+  'Slim Fit',
+  'Classic Fit',
+  'Relaxed Fit',
+] as const;
 export type FitPreference = (typeof FIT_PREFERENCES)[number];
 
 /**
@@ -34,14 +38,26 @@ export type FitPreference = (typeof FIT_PREFERENCES)[number];
  * onboarding (2-3 unique, ranked) and as `style_affinities` keys + V05
  * vibe `aesthetic_tags` values on the recommendation side.
  */
-export const STYLE_TAGS = ['Minimal', 'Casual', 'Soft', 'Bold', 'Formal'] as const;
+export const STYLE_TAGS = [
+  'Minimal',
+  'Casual',
+  'Soft',
+  'Bold',
+  'Formal',
+] as const;
 export type StyleTag = (typeof STYLE_TAGS)[number];
 
 /**
  * `intent.mood` values accepted by `/recommendation/build`. Backend treats
  * `null` (or omitting the field) as a no-op (Layer 4 multiplier = 1.0).
  */
-export const MOODS = ['calm', 'confident', 'playful', 'low_energy', 'grounded'] as const;
+export const MOODS = [
+  'calm',
+  'confident',
+  'playful',
+  'low_energy',
+  'grounded',
+] as const;
 export type Mood = (typeof MOODS)[number];
 
 /**
