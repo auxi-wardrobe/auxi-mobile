@@ -1,0 +1,65 @@
+{
+  "boilerplate": {
+    "common_appName": {
+      "full": "[VI] React Native Boilerplate",
+      "initials": "RNB"
+    },
+    "common_error": "[VI] Oops! Something went wrong.",
+    "screen_example": {
+      "hello_user": "[VI] Hi, my name is {{name}}",
+      "title": "[VI] Welcome on The $t(common_appName.full)",
+      "description": "[VI] Do you want to discover some features? Just click on one of the three buttons at the bottom of the screen. The first allows you to call a REST API. The second lets you change the theme color. And the third allows you to change the language."
+    },
+    "error_boundary": {
+      "title": "[VI] Oops! Something went wrong.",
+      "description": "[VI] We are sorry for the inconvenience. Please try again later.",
+      "cta": "[VI] Reload the screen"
+    },
+    "auth": {
+      "login": {
+        "title": "[VI] Welcome Back",
+        "subtitle": "[VI] Sign in to access your wardrobe",
+        "email_label": "[VI] Email",
+        "email_placeholder": "[VI] Enter your email",
+        "password_label": "[VI] Password",
+        "password_placeholder": "[VI] Enter your password",
+        "submit": "[VI] Sign In",
+        "no_account": "[VI] Don't have an account?",
+        "register_link": "[VI] Sign Up"
+      },
+      "register": {
+        "title": "[VI] Get Started",
+        "subtitle": "[VI] Create your account to begin",
+        "email_label": "[VI] Email",
+        "email_placeholder": "[VI] Enter your email",
+        "password_label": "[VI] Password",
+        "password_placeholder": "[VI] Choose a password (min 8 characters)",
+        "confirm_password_label": "[VI] Confirm Password",
+        "confirm_password_placeholder": "[VI] Re-enter your password",
+        "submit": "[VI] Create Account",
+        "has_account": "[VI] Already have an account?",
+        "login_link": "[VI] Sign In"
+      },
+      "show": "[VI] Show",
+      "hide": "[VI] Hide",
+      "password_strength": {
+        "weak": "[VI] Weak",
+        "medium": "[VI] Medium",
+        "strong": "[VI] Strong"
+      },
+      "errors": {
+        "email_required": "[VI] Email is required",
+        "email_invalid": "[VI] Please enter a valid email address",
+        "password_required": "[VI] Password is required",
+        "password_too_short": "[VI] Password must be at least 8 characters",
+        "confirm_password_required": "[VI] Please confirm your password",
+        "passwords_mismatch": "[VI] Passwords do not match"
+      }
+    },
+    "screen_welcome": {
+      "title": "[VI] Welcome to Auxi",
+      "subtitle": "[VI] Get simple outfit suggestions that work for your day",
+      "get_started": "[VI] Get started"
+    }
+  }
+}
