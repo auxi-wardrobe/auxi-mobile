@@ -44,6 +44,9 @@ export interface WardrobeItem {
   style_tags?: string[];
   color_hex?: string;
   is_common_item?: boolean;
+  // SYS_* = SYSTEM catalog · USR_* = per-user clone of catalog · other = user upload.
+  // Used by ItemDetailScreen to gate delete / edit on AU-287.
+  human_readable_id?: string;
   is_deleted?: boolean;
   is_favorited?: boolean;
   usage_frequency?: UsageFrequency;
