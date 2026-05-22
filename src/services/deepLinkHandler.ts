@@ -205,7 +205,9 @@ export const registerDeepLinkListeners = (
 
   // Warm-start: subscribe to subsequent links.
   const sub = Linking.addEventListener('url', (event) => {
-    void handle(event.url);
+    handle(event.url).catch((err) =>
+      console.warn('[deepLinkHandler] warm-start dispatch failed', err),
+    );
   });
 
   return () => {

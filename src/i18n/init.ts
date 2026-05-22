@@ -122,7 +122,10 @@ export const initI18n = (): Promise<typeof i18n> => {
     });
 
     i18n.on('languageChanged', (lng) => {
-      void persistLanguage(lng);
+      persistLanguage(lng).catch(() => {
+        // already logged inside persistLanguage; swallow here so the
+        // event handler doesn't reject the unhandled-promise channel.
+      });
     });
 
     return i18n;

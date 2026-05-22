@@ -60,6 +60,122 @@
       "title": "[VI] Welcome to Auxi",
       "subtitle": "[VI] Get simple outfit suggestions that work for your day",
       "get_started": "[VI] Get started"
+    },
+    "uac": {
+      "common": {
+        "back": "[VI] Back",
+        "continue": "[VI] Continue",
+        "submit": "[VI] Submit",
+        "logout": "[VI] Logout",
+        "loading": "[VI] Loading"
+      },
+      "welcome": {
+        "language_button": "Tiếng Việt",
+        "headline": "[VI] Welcome to\nAuxi",
+        "google_cta": "[VI] Continue with Google",
+        "apple_cta": "[VI] Continue with Apple",
+        "email_cta": "[VI] Continue with Email",
+        "legal_text": "[VI] By continuing, you agree to our Terms of Service and Privacy Policy",
+        "legal_terms_link": "[VI] Terms of Service",
+        "legal_privacy_link": "[VI] Privacy Policy"
+      },
+      "language_settings": {
+        "title": "[VI] Language",
+        "english": "English",
+        "vietnamese": "Tiếng Việt",
+        "french": "Français"
+      },
+      "email_input": {
+        "label": "[VI] What is your email",
+        "placeholder": "youremail@mail.com",
+        "submit_a11y": "[VI] Continue",
+        "error_invalid": "[VI] Please enter a valid email adress",
+        "error_required": "[VI] Email is required",
+        "error_rate_limited": "[VI] Too many attempts. Please try again later."
+      },
+      "password_creation": {
+        "email_label": "[VI] What is your email",
+        "password_label": "[VI] create a password",
+        "criteria_min_chars": "[VI] At least 8 characters",
+        "criteria_lowercase": "[VI] Contains a lowercase letter",
+        "criteria_number": "[VI] Contains a number",
+        "submit_a11y": "[VI] Create password",
+        "show_password": "[VI] Show",
+        "hide_password": "[VI] Hide",
+        "error_weak_password": "[VI] Your password is too weak. Meet all 3 criteria.",
+        "error_email_exists": "[VI] This email already has an account.",
+        "error_generic": "[VI] We couldn't create your account. Please try again."
+      },
+      "verify_email": {
+        "title": "[VI] Verify your email",
+        "body_line_a": "[VI] We sent a verification email to",
+        "body_line_c": "[VI] Click the link in the email to verify account.",
+        "open_mail_app_cta": "[VI] Open email app",
+        "resend_cta": "[VI] Resend verification email",
+        "resend_cta_cooldown": "[VI] Resend verification email ({{seconds}}s)",
+        "resend_success": "[VI] Verification email sent.",
+        "resend_failure": "[VI] Couldn't resend right now. Try again in a moment.",
+        "status_waiting": "[VI] Waiting for email to be verified",
+        "logout_cta": "[VI] Logout"
+      },
+      "email_google_notice": {
+        "headline": "[VI] Google",
+        "body": "[VI] This email is linked to a Google account. Please sign in with Google instead",
+        "google_cta": "[VI] Continue with Google"
+      },
+      "signin": {
+        "section_heading": "[VI] Enter password to signin",
+        "email_label": "[VI] Your email",
+        "password_label": "[VI] Password",
+        "password_placeholder": "[VI] Enter your password",
+        "show_password": "[VI] Show",
+        "hide_password": "[VI] Hide",
+        "forgot_link": "[VI] Forgot your password?",
+        "submit_a11y": "[VI] Sign in",
+        "error_invalid_credentials": "[VI] Incorrect email or password.",
+        "error_email_not_verified": "[VI] Please verify your email before signing in.",
+        "error_oauth_account": "[VI] This email uses {{provider}}. Sign in with {{provider}} instead.",
+        "error_rate_limited": "[VI] Too many attempts. Please try again later.",
+        "error_generic": "[VI] Something went wrong. Please try again."
+      },
+      "forgot_request": {
+        "section_heading": "[VI] Reset your password",
+        "body": "[VI] We'll send a password reseting to your email",
+        "email_label": "[VI] Your email",
+        "submit_cta": "[VI] Send reset password",
+        "error_rate_limited": "[VI] Too many requests. Please try again later.",
+        "error_generic": "[VI] Couldn't send reset email. Please try again."
+      },
+      "forgot_check_mail": {
+        "section_heading": "[VI] Reset your password",
+        "body_line_a": "[VI] We've sent  a password reset link to:",
+        "body_line_c": "[VI] If you don't see the email, check your spam folder.",
+        "back_to_login_cta": "[VI] Back to Login"
+      },
+      "reset_new_password": {
+        "section_heading": "[VI] Reset your password",
+        "password_label": "[VI] New password",
+        "criteria_min_chars": "[VI] At least 8 characters",
+        "criteria_lowercase": "[VI] Contains a lowercase letter",
+        "criteria_number": "[VI] Contains a number",
+        "submit_a11y": "[VI] Save new password",
+        "show_password": "[VI] Show",
+        "hide_password": "[VI] Hide",
+        "error_token_invalid": "[VI] This reset link is invalid.",
+        "error_token_expired": "[VI] This reset link has expired. Request a new one.",
+        "error_token_consumed": "[VI] This reset link has already been used.",
+        "error_weak_password": "[VI] Your password is too weak. Meet all 3 criteria.",
+        "error_generic": "[VI] Couldn't reset your password. Please try again."
+      },
+      "verified": {
+        "headline": "[VI] Verified!",
+        "body": "[VI] You have successfully verified account.",
+        "continue_cta": "[VI] Continue",
+        "error_token_invalid": "[VI] This verification link is invalid.",
+        "error_token_expired": "[VI] This verification link has expired. Resend a new one.",
+        "error_token_consumed": "[VI] Your email is already verified.",
+        "error_generic": "[VI] We couldn't verify right now. Try again in a moment."
+      }
     }
   }
 }
