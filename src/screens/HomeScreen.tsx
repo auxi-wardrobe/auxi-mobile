@@ -83,6 +83,16 @@ const COMPUTED_SHEET_HEIGHT = Math.round(
 const OPTION_SHEET_HEIGHT = Math.min(COMPUTED_SHEET_HEIGHT, AVAILABLE_VIEWPORT);
 const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
 
+// 2026-05-18 fix: when sheet height is capped to AVAILABLE_VIEWPORT on smaller
+// screens (e.g. iPhone 16), keeping aspectRatio 3/4 on tiles overflows the
+// gridScroll area and forces nested scroll inside the snap-paged outer scroll.
+// Derive tile height from actual grid space so 2 rows always fit. On large
+// screens this yields CARD_WIDTH × 4/3 (Figma 3:4); on capped screens it
+// shrinks proportionally.
+const CARD_HEIGHT = Math.floor(
+  (OPTION_SHEET_HEIGHT - OPTION_ACTIONS_HEIGHT - GRID_GAP) / 2,
+);
+
 const UNFAVORITED_SWIPE_THRESHOLD = 3;
 const PREFETCH_LOOKAHEAD = 2;
 
@@ -643,11 +653,10 @@ export const HomeScreen = () => {
 
   // Bug 3 + Bug 4 fix: shared advance helper. Pure ref reads + a single
   // plain setState (not an updater) so StrictMode double-invocations can't
-  // double-increment the unfavorited-swipe counter. Called from both the
-  // momentum-end callback (real swipe) and "Show another" (programmatic
-  // scroll, which does NOT fire onMomentumScrollEnd on iOS).
+  // double-increment the unfavorited-swipe counter. Called from the
+  // momentum-end callback on real swipe.
   const advanceToSheet = useCallback(
-    (nextIndex: number, source: 'swipe' | 'showAnother') => {
+    (nextIndex: number, source: 'swipe') => {
       const previousIndex = activeSheetIndexRef.current;
 
       // Counter increments only on transitions to a HIGHER index where the
@@ -689,28 +698,6 @@ export const HomeScreen = () => {
     },
     [triggerPrefetchIfNeeded],
   );
-
-  const handleShowAnother = useCallback(() => {
-    const total = listOutfitsRef.current.length;
-    if (total === 0) {
-      return;
-    }
-    const currentIndex = activeSheetIndexRef.current;
-    const nextIndex = Math.min(currentIndex + 1, total - 1);
-    if (nextIndex === currentIndex) {
-      // Already on last sheet — proactively prefetch so swiping forward
-      // works without a stall.
-      triggerPrefetchIfNeeded(nextIndex);
-      return;
-    }
-    scrollViewRef.current?.scrollTo({
-      y: nextIndex * OPTION_SHEET_SNAP_INTERVAL,
-      animated: true,
-    });
-    // Bug 4 fix: iOS RN does NOT fire onMomentumScrollEnd for programmatic
-    // scrollTo, so manually advance the index + run counter logic here.
-    advanceToSheet(nextIndex, 'showAnother');
-  }, [advanceToSheet, triggerPrefetchIfNeeded]);
 
   const handleOpenContextEditModal = useCallback(() => {
     Keyboard.dismiss();
@@ -935,7 +922,8 @@ export const HomeScreen = () => {
                   outfit={outfit}
                   saveState={sheetSaveState}
                   pinnedItemId={pinnedItemId}
-                  onShowAnother={handleShowAnother}
+                  totalSheets={optionSets.length}
+                  activeSheetIndex={activeSheetIndex}
                   onItemPress={item => setSelectedItem(item)}
                   onTogglePin={handleToggleItemPin}
                   onConfirm={() => handleHeartTapForOutfit(outfit)}
@@ -981,12 +969,67 @@ export const HomeScreen = () => {
   );
 };
 
+// 2026-05-22 (AU-242 Figma spec): variable-item-count grid layouts per
+// Figma node 2849:11340 children. Designer confirmed: "We have layouts to
+// present 3-4-5-6 and >6 items in an outfit". All cards are aspect 3:4 with
+// 12px border radius, 4px gap. The three layout shapes cover every count:
+//   - 'twoRowOneLarge' (3 items): row1 = 2 equal flex cards · row2 = 1
+//     half-width card (left-aligned), all aspect 3:4
+//   - 'twoByTwo' (4 items): 2×2 grid, all flex-1 cards aspect 3:4
+//   - 'heroStackPlusRows' (5/6/7+): row1 = hero (≈2/3 width) + 2 stacked
+//     cards (≈1/3 width); subsequent rows = up to 3 flex cards each, all
+//     aspect 3:4. No truncation, no overflow badge — Figma frame
+//     2850:9542 shows all 9 items for the >6 case.
+type GridLayout =
+  | { kind: 'twoRowOneLarge'; row1: [Item, Item]; row2Large: Item }
+  | { kind: 'twoByTwo'; rows: [[Item, Item], [Item, Item]] }
+  | {
+      kind: 'heroStackPlusRows';
+      hero: Item;
+      stack: [Item, Item];
+      rest: Item[];
+    };
+
+const pickLayout = (items: Item[]): GridLayout | null => {
+  // Defensive: any sparse slot drops us back to the safe equal-grid
+  // rendering (caller renders nothing meaningful for null layout).
+  const filled = items.filter((it): it is Item => !!it);
+  const count = filled.length;
+
+  if (count === 3) {
+    return {
+      kind: 'twoRowOneLarge',
+      row1: [filled[0], filled[1]],
+      row2Large: filled[2],
+    };
+  }
+  if (count === 4) {
+    return {
+      kind: 'twoByTwo',
+      rows: [
+        [filled[0], filled[1]],
+        [filled[2], filled[3]],
+      ],
+    };
+  }
+  if (count >= 5) {
+    return {
+      kind: 'heroStackPlusRows',
+      hero: filled[0],
+      stack: [filled[1], filled[2]],
+      rest: filled.slice(3),
+    };
+  }
+  return null;
+};
+
 const OptionSheet = ({
   sheetIndex,
   outfit,
   saveState,
   pinnedItemId,
-  onShowAnother,
+  totalSheets,
+  activeSheetIndex,
   onItemPress,
   onTogglePin,
   onConfirm,
@@ -996,23 +1039,165 @@ const OptionSheet = ({
   outfit: OutfitSheetWithGrid;
   saveState: SaveState;
   pinnedItemId: string | null;
-  onShowAnother: () => void;
+  totalSheets: number;
+  activeSheetIndex: number;
   onItemPress: (item: Item) => void;
   onTogglePin: (item: Item) => void;
   onConfirm: () => void;
   onEditContext: () => void;
 }) => {
-  const totalItems = outfit.gridItems.length;
-  const rows = [];
+  const items = outfit.items;
+  const layout = pickLayout(items);
+  const itemCount = items.length;
 
-  for (let i = 0; i < totalItems; i += 2) {
-    const isLastRowWithSingleItem = i + 1 >= totalItems && totalItems % 2 === 1;
-    if (isLastRowWithSingleItem) {
-      rows.push([outfit.gridItems[i], null]);
-    } else {
-      rows.push(outfit.gridItems.slice(i, i + 2));
+  const renderTile = (item: Item, flatTileIndex: number, style?: object) => {
+    const isPinned = !!item && item.id === pinnedItemId;
+    return (
+      <TouchableOpacity
+        key={`card-${outfit.outfitHash}-${flatTileIndex}`}
+        testID={`home-tile-${sheetIndex}-${flatTileIndex}`}
+        accessibilityLabel={`home-tile-${sheetIndex}-${flatTileIndex}`}
+        activeOpacity={0.86}
+        style={[styles.card, style, isPinned && styles.cardPinned]}
+        onPress={() => onItemPress(item)}
+        // PHASE B (AU-222): long-press as a secondary affordance for pin
+        // toggle. Primary tap target is the pin badge overlay below.
+        onLongPress={() => onTogglePin(item)}
+        delayLongPress={500}
+      >
+        <GarmentPreview item={item} />
+        <TouchableOpacity
+          testID={
+            isPinned
+              ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set`
+              : `home-tile-pin-${sheetIndex}-${flatTileIndex}`
+          }
+          activeOpacity={0.7}
+          onPress={e => {
+            e.stopPropagation();
+            onTogglePin(item);
+          }}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
+          accessibilityRole="button"
+          accessibilityLabel={isPinned ? 'Unpin item' : 'Pin item'}
+        >
+          <IconHomePin width={14} height={14} />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderLayout = () => {
+    if (!layout) {
+      return null;
     }
-  }
+
+    if (layout.kind === 'twoRowOneLarge') {
+      // 3 items: row1 of 2 equal cards (flex-1 each), row2 with single card
+      // taking ~50% width (matches Figma 189×252 / 414px-content frame).
+      return (
+        <View style={styles.gridWrap}>
+          <View style={styles.cardRow}>
+            <View style={styles.cardShell}>
+              {renderTile(layout.row1[0], 0, styles.cardAspect)}
+            </View>
+            <View style={styles.cardShell}>
+              {renderTile(layout.row1[1], 1, styles.cardAspect)}
+            </View>
+          </View>
+          <View style={styles.cardRow}>
+            <View style={styles.cardShell}>
+              {renderTile(layout.row2Large, 2, styles.cardAspect)}
+            </View>
+            {/* Transparent spacer to keep row2 card left-aligned at ~50% */}
+            <View style={styles.cardShell} />
+          </View>
+        </View>
+      );
+    }
+
+    if (layout.kind === 'twoByTwo') {
+      return (
+        <View style={styles.gridWrap}>
+          {layout.rows.map((row, rowIndex) => (
+            <View
+              key={`row-${outfit.outfitHash}-${rowIndex}`}
+              style={styles.cardRow}
+            >
+              {row.map((item, itemIndex) => (
+                <View
+                  key={`shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
+                  style={styles.cardShell}
+                >
+                  {renderTile(
+                    item,
+                    rowIndex * 2 + itemIndex,
+                    styles.cardAspect,
+                  )}
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    // heroStackPlusRows (5/6/7+ items)
+    // Row 1: hero (flex 2) + right column of 2 stacked cards (flex 1).
+    // Subsequent rows: up to 3 flex cards each.
+    const restRows: Item[][] = [];
+    for (let i = 0; i < layout.rest.length; i += 3) {
+      restRows.push(layout.rest.slice(i, i + 3));
+    }
+    return (
+      <View style={styles.gridWrap}>
+        <View style={styles.heroRow}>
+          <View style={styles.heroCol}>
+            {renderTile(layout.hero, 0, styles.cardAspect)}
+          </View>
+          <View style={styles.heroStackCol}>
+            <View style={styles.heroStackCell}>
+              {renderTile(layout.stack[0], 1, styles.cardAspect)}
+            </View>
+            <View style={styles.heroStackCell}>
+              {renderTile(layout.stack[1], 2, styles.cardAspect)}
+            </View>
+          </View>
+        </View>
+        {restRows.map((row, rowIndex) => (
+          <View
+            key={`rest-row-${outfit.outfitHash}-${rowIndex}`}
+            style={styles.cardRow}
+          >
+            {row.map((item, itemIndex) => (
+              <View
+                key={`rest-shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
+                style={styles.cardShell}
+              >
+                {renderTile(
+                  item,
+                  3 + rowIndex * 3 + itemIndex,
+                  styles.cardAspect,
+                )}
+              </View>
+            ))}
+            {/* Pad trailing partial rows with transparent spacers so cards
+                don't stretch to fill the row width — keeps every card the
+                same width across rows. */}
+            {row.length < 3
+              ? Array.from({ length: 3 - row.length }).map((_, padIdx) => (
+                  <View
+                    key={`rest-pad-${outfit.outfitHash}-${rowIndex}-${padIdx}`}
+                    style={styles.cardShell}
+                  />
+                ))
+              : null}
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   return (
     <View testID={`home-outfit-sheet-${sheetIndex}`} style={styles.optionSheet}>
@@ -1021,77 +1206,7 @@ const OptionSheet = ({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.gridScrollContent}
       >
-        <View style={styles.gridWrap}>
-          {rows.map((row, rowIndex) => (
-            <View
-              key={`row-${outfit.outfitHash}-${rowIndex}`}
-              style={styles.cardRow}
-            >
-              {row.map((item, itemIndex) => {
-                const isPinned = !!item && item.id === pinnedItemId;
-                const flatTileIndex = rowIndex * 2 + itemIndex;
-                return (
-                  <View
-                    key={`card-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
-                    style={styles.cardShell}
-                  >
-                    {item ? (
-                      <TouchableOpacity
-                        testID={`home-tile-${sheetIndex}-${flatTileIndex}`}
-                        accessibilityLabel={`home-tile-${sheetIndex}-${flatTileIndex}`}
-                        activeOpacity={0.86}
-                        style={[styles.card, isPinned && styles.cardPinned]}
-                        onPress={() => onItemPress(item)}
-                        // PHASE B (AU-222): long-press as a secondary
-                        // affordance for pin toggle. Primary tap target is
-                        // the pin badge overlay below — long-press is the
-                        // "tap anywhere on the tile" fallback per the spec.
-                        onLongPress={() => onTogglePin(item)}
-                        delayLongPress={500}
-                      >
-                        <GarmentPreview item={item} />
-                        {/* PHASE B (AU-222): pin badge tap target — Figma
-                            1711:17062 places this at the top-right of every
-                            tile. Tapping toggles pin for this item. */}
-                        <TouchableOpacity
-                          testID={
-                            isPinned
-                              ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set`
-                              : `home-tile-pin-${sheetIndex}-${flatTileIndex}`
-                          }
-                          activeOpacity={0.7}
-                          // C-4 (2026-05-05): stopPropagation prevents the
-                          // outer tile TouchableOpacity from also firing
-                          // onPress (which would open ItemDetailBottomSheet
-                          // instead of toggling pin). If this turns out to be
-                          // unreliable on iOS in QA, swap to <Pressable>
-                          // which has cleaner gesture isolation.
-                          onPress={e => {
-                            e.stopPropagation();
-                            onTogglePin(item);
-                          }}
-                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                          style={[
-                            styles.pinBadge,
-                            isPinned && styles.pinBadgeActive,
-                          ]}
-                          accessibilityRole="button"
-                          accessibilityLabel={
-                            isPinned ? 'Unpin item' : 'Pin item'
-                          }
-                        >
-                          <IconHomePin width={14} height={14} />
-                        </TouchableOpacity>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={[styles.card, styles.placeholderCard]} />
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          ))}
-        </View>
+        <View testID={`home-outfit-grid-${itemCount}`}>{renderLayout()}</View>
       </ScrollView>
 
       {/* Bottom action cluster (Frame 2017 in Figma) — "This works" + "Edit context" */}
@@ -1124,15 +1239,16 @@ const OptionSheet = ({
           textStyle={styles.secondaryActionText}
         />
 
-        {/* #3 fix (2026-05-13): "Show another" moved here per Figma spec —
-            Figma y=785/896px places it at the bottom peek, below action cluster. */}
-        <PillButton
-          testID={`home-show-another-${sheetIndex}`}
-          title="Show another"
-          variant="outline"
-          onPress={onShowAnother}
-          style={styles.showAnotherAction}
-        />
+        {/* Pagination counter ("1/3", "2/3", …). Designer note: "User need
+            to swipe left/right to see other options - rotate within 3 options".
+            Hidden for single-outfit responses so "1/1" doesn't render. */}
+        {totalSheets > 1 ? (
+          <View style={styles.sheetCounterSlot}>
+            <Text testID="home-sheet-counter" style={styles.sheetCounterText}>
+              {`${activeSheetIndex + 1}/${totalSheets}`}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -1337,12 +1453,56 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    aspectRatio: 3 / 4,
+    height: CARD_HEIGHT,
     borderRadius: 12, // Figma border-radius/xl = 12
     backgroundColor: theme.colors.figmaCardSurface,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // 2026-05-22 (AU-242): for variable-item-count layouts every card uses
+  // Figma's 3:4 aspect (width/height = 0.75) instead of the legacy fixed
+  // CARD_HEIGHT (which assumed exactly 2 rows of 2 columns). Applied via
+  // the `style` override on renderTile.
+  cardAspect: {
+    height: undefined,
+    aspectRatio: 3 / 4,
+  },
+  // 5/6/7+ item layout — row1 = hero (≈2/3 width) + right column (≈1/3
+  // width) stacked into 2 cards. Figma `2850:9580` shows hero at 253×339
+  // inside the 414-content frame ⇒ ~69% width; the right column stack
+  // mirrors the hero height with a 4px internal gap. RN flex (2 : 1)
+  // approximates the ratio cleanly without hardcoding pixel widths.
+  heroRow: {
+    flexDirection: 'row',
+    gap: GRID_GAP,
+  },
+  heroCol: {
+    flex: 2,
+  },
+  heroStackCol: {
+    flex: 1,
+    gap: GRID_GAP,
+  },
+  heroStackCell: {
+    flex: 1,
+  },
+  // 2026-05-22 (AU-242): pagination indicator slot ("1/3"). Figma `2036`
+  // sits between Remix (left) and Show another (right) at 94×32. Remix
+  // is dropped (per project memory), so this slot floats just above the
+  // "Show another" pill in the action cluster.
+  sheetCounterSlot: {
+    width: 94,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetCounterText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    lineHeight: 16,
+    color: theme.colors.figmaText,
+    textAlign: 'center',
   },
   // PHASE B (AU-222): pinned tile gets a 2px action-coloured ring.
   // Figma 1711:17062 communicates pin via the badge rather than a border;
@@ -1422,10 +1582,6 @@ const styles = StyleSheet.create({
   primaryActionFull: {
     alignSelf: 'stretch',
     borderRadius: 16,
-  },
-  // #3 fix (2026-05-13): "Show another" bottom peek style.
-  showAnotherAction: {
-    alignSelf: 'stretch',
   },
   saveErrorText: {
     ...theme.typography.aliases.manropeCaption,
