@@ -1,6 +1,6 @@
 import axios from 'axios';
-import * as Keychain from 'react-native-keychain';
 import { ROOT_URL } from './apiClient';
+import { getAccessToken } from './tokenStorage';
 import { User } from '../types/auth';
 
 const WARDROBE_URL = `${ROOT_URL}/api`;
@@ -60,9 +60,8 @@ const wardrobeApi = axios.create({
 
 wardrobeApi.interceptors.request.use(async (config: any) => {
   try {
-    const credentials = await Keychain.getGenericPassword();
-    if (credentials) {
-      const { password: accessToken } = credentials;
+    const accessToken = await getAccessToken();
+    if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
   } catch (error) {

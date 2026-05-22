@@ -1,0 +1,266 @@
+/**
+ * AU-242 Phase 04 — Batch D · Screen 10 (forgot password — request email).
+ *
+ * Spec: plans/260521-2335-au-242-figma-spec/10-forgot-request.md
+ *
+ * Flow: user lands here from the SignIn screen's "Forgot your password?"
+ * link with their email pre-filled. They confirm / edit the email and tap
+ * "Send reset password". The mutation always resolves OK (enumeration
+ * safe) — we navigate to the check-mail screen regardless of whether the
+ * email exists in the DB.
+ *
+ * Error handling: only RATE_LIMITED (429) surfaces an inline error; any
+ * other transport failure shows the generic copy.
+ *
+ * Self-contained: this batch ships screen UI only — header / button /
+ * input primitives are inlined to keep the file independent of work in
+ * batches B/C. They can be extracted into `components/auth/*` during the
+ * cleanup phase once all batches land.
+ */
+import React, { useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
+
+import { useForgotPasswordMutation } from '../../hooks/auth/useAuthMutations';
+import type { AuthStackParamList } from '../../types/navigation';
+import { theme } from '../../theme/theme';
+
+type Navigation = NativeStackNavigationProp<
+  AuthStackParamList,
+  'ForgotPasswordRequest'
+>;
+type Route = RouteProp<AuthStackParamList, 'ForgotPasswordRequest'>;
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export const ForgotPasswordRequestScreen: React.FC = () => {
+  const navigation = useNavigation<Navigation>();
+  const route = useRoute<Route>();
+  const { t } = useTranslation();
+
+  const [email, setEmail] = useState<string>(route.params?.email ?? '');
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+
+  const mutation = useForgotPasswordMutation();
+  const isSubmitting = mutation.isPending;
+
+  const isEmailValid = EMAIL_REGEX.test(email.trim());
+  const canSubmit = isEmailValid && !isSubmitting;
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    setSubmissionError(null);
+    const trimmed = email.trim();
+    mutation.mutate(
+      { email: trimmed },
+      {
+        onSuccess: () => {
+          // Account-enumeration safe: backend always returns ok regardless of
+          // whether the email exists — we always advance to the check-mail
+          // screen so attackers can't distinguish registered emails.
+          navigation.navigate('ForgotPasswordCheckMail', { email: trimmed });
+        },
+        onError: (err) => {
+          if (err.code === 'RATE_LIMITED') {
+            setSubmissionError(
+              t('uac.forgot_request.error_rate_limited') as string,
+            );
+          } else {
+            setSubmissionError(
+              t('uac.forgot_request.error_generic') as string,
+            );
+          }
+        },
+      },
+    );
+  };
+
+  return (
+    <View style={styles.screen}>
+      {/* Header */}
+      <View style={styles.header} testID="forgot-request-header">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('uac.common.back') as string}
+          testID="forgot-request-back"
+          onPress={() => navigation.goBack()}
+          style={styles.headerBackHit}
+          hitSlop={8}
+        >
+          <Text style={styles.headerBackChevron}>‹</Text>
+        </Pressable>
+      </View>
+
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Heading + supporting text */}
+          <View style={styles.headingBlock}>
+            <Text style={styles.heading} testID="forgot-request-heading">
+              {t('uac.forgot_request.section_heading')}
+            </Text>
+            <Text style={styles.supporting}>
+              {t('uac.forgot_request.body')}
+            </Text>
+          </View>
+
+          {/* Email field — filled M3 variant */}
+          <View style={styles.fieldWrapper}>
+            <TextInput
+              testID="forgot-request-email-input"
+              accessibilityLabel={t('uac.forgot_request.email_label') as string}
+              style={styles.input}
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (submissionError) setSubmissionError(null);
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              returnKeyType="done"
+              editable={!isSubmitting}
+              onSubmitEditing={handleSubmit}
+            />
+          </View>
+
+          {submissionError ? (
+            <Text style={styles.errorText} testID="forgot-request-error">
+              {submissionError}
+            </Text>
+          ) : null}
+        </ScrollView>
+
+        {/* Primary CTA — bottom-anchored */}
+        <View style={styles.footer}>
+          <Pressable
+            testID="forgot-request-submit"
+            accessibilityRole="button"
+            accessibilityLabel={t('uac.forgot_request.submit_cta') as string}
+            accessibilityState={{ disabled: !canSubmit, busy: isSubmitting }}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+            style={({ pressed }) => [
+              styles.cta,
+              !canSubmit && styles.ctaDisabled,
+              pressed && canSubmit && styles.ctaPressed,
+            ]}
+          >
+            <Text style={styles.ctaLabel}>
+              {isSubmitting
+                ? (t('uac.common.loading') as string)
+                : (t('uac.forgot_request.submit_cta') as string)}
+            </Text>
+            <Text style={styles.ctaIcon}>›</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
+  },
+  flex: { flex: 1 },
+  header: {
+    height: theme.spacing.uacHeaderHeight,
+    paddingHorizontal: theme.spacing.uacBodyPadding,
+    justifyContent: 'flex-end',
+    paddingBottom: theme.spacing.uacDimension16,
+  },
+  headerBackHit: {
+    width: 45,
+    height: 45,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBackChevron: {
+    fontSize: 32,
+    lineHeight: 32,
+    color: theme.colors.uacTextBase,
+  },
+  body: {
+    paddingHorizontal: theme.spacing.uacBodyPadding,
+    paddingTop: theme.spacing.uacDimension8,
+    paddingBottom: theme.spacing.uacDimension24,
+  },
+  headingBlock: {
+    gap: theme.spacing.uacDimension4,
+    marginBottom: theme.spacing.uacDimension16,
+  },
+  heading: {
+    ...theme.typography.aliases.uacBodyMdSemibold,
+    color: theme.colors.uacTextBase,
+  },
+  supporting: {
+    ...theme.typography.aliases.uacBodyMdRegular,
+    color: theme.colors.uacTextBase,
+  },
+  fieldWrapper: {
+    height: theme.spacing.uacButtonHeight,
+    borderRadius: theme.borderRadius.uacTextField,
+    backgroundColor: theme.colors.uacColorNeutral100,
+    paddingHorizontal: theme.spacing.uacDimension16,
+    justifyContent: 'center',
+  },
+  input: {
+    ...theme.typography.aliases.uacM3BodyLarge,
+    color: theme.colors.uacTextSubtle100,
+    padding: 0,
+  },
+  errorText: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextDangerBase,
+    marginTop: theme.spacing.uacDimension8,
+  },
+  footer: {
+    paddingHorizontal: theme.spacing.uacBodyPadding,
+    paddingBottom: theme.spacing.uacSafeAreaBottom + theme.spacing.uacDimension16,
+    paddingTop: theme.spacing.uacDimension8,
+  },
+  cta: {
+    height: theme.spacing.uacButtonHeight,
+    borderRadius: theme.borderRadius.uacButtonCta,
+    backgroundColor: theme.colors.uacBackgroundBase,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.uacDimension8,
+  },
+  ctaDisabled: {
+    opacity: 0.5,
+  },
+  ctaPressed: {
+    opacity: 0.85,
+  },
+  ctaLabel: {
+    ...theme.typography.aliases.uacBodyMdMedium,
+    color: theme.colors.uacTextPrimaryBase,
+  },
+  ctaIcon: {
+    fontSize: 22,
+    lineHeight: 24,
+    color: theme.colors.uacTextPrimaryBase,
+  },
+});
+
+export default ForgotPasswordRequestScreen;

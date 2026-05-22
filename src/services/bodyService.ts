@@ -1,6 +1,6 @@
 import axios from 'axios';
-import * as Keychain from 'react-native-keychain';
 import { ROOT_URL } from './apiClient';
+import { getAccessToken } from './tokenStorage';
 import { authService } from './auth';
 
 const BODY_URL = `${ROOT_URL}/api`;
@@ -14,9 +14,8 @@ const bodyApi = axios.create({
 
 bodyApi.interceptors.request.use(async (config: any) => {
   try {
-    const credentials = await Keychain.getGenericPassword();
-    if (credentials) {
-      const { password: accessToken } = credentials;
+    const accessToken = await getAccessToken();
+    if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
   } catch (error) {

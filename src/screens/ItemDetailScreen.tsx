@@ -283,6 +283,13 @@ export const ItemDetailScreen = () => {
   const isFavorited = getItemFavoriteState(item);
   const usageFrequency = getItemUsageFrequency(item);
   const isCommonSystemItem = item?.is_common_item === true;
+  // AU-287: SYSTEM common items AND per-user clones (USR_* hrid) belong to
+  // the suggestion catalog. Both are immutable — users demote via LESS_USE
+  // instead of permanent delete.
+  const isCatalogItem =
+    isCommonSystemItem ||
+    (typeof item?.human_readable_id === 'string' &&
+      item.human_readable_id.startsWith('USR_'));
 
   const getPickerOptions = (field: EditableField): string[] => {
     switch (field) {
@@ -432,10 +439,13 @@ export const ItemDetailScreen = () => {
       return;
     }
 
-    if (isCommonSystemItem) {
+    // AU-287 defense-in-depth: Trash button is hidden for catalog items,
+    // but keep this guard in case handleDelete is wired up by another caller
+    // in the future (long-press, swipe, etc.).
+    if (isCatalogItem) {
       Toast.show({
         type: 'error',
-        text1: 'System items cannot be deleted',
+        text1: 'Common items can only be marked as Less Use',
         position: 'bottom',
       });
       return;
@@ -582,7 +592,7 @@ export const ItemDetailScreen = () => {
     field: EditableField,
     hideDivider?: boolean,
   ) => {
-    const canEdit = isEditing && !isCommonSystemItem;
+    const canEdit = isEditing && !isCatalogItem;
     const showColor = field === 'color';
     const colorHex =
       showColor && item ? normalizeColorHex(item, draftColor) : null;
@@ -656,7 +666,7 @@ export const ItemDetailScreen = () => {
             </View>
           )}
 
-          {isCommonSystemItem ? (
+          {isCatalogItem ? (
             <View style={styles.imageBadge}>
               <Text style={styles.imageBadgeText}>common items</Text>
             </View>
@@ -703,12 +713,12 @@ export const ItemDetailScreen = () => {
               <TouchableOpacity
                 style={styles.secondaryAction}
                 onPress={isEditing ? handleSaveEdits : () => setIsEditing(true)}
-                disabled={saving || isCommonSystemItem}
+                disabled={saving || isCatalogItem}
               >
                 <Text
                   style={[
                     styles.editText,
-                    isCommonSystemItem && styles.disabledText,
+                    isCatalogItem && styles.disabledText,
                   ]}
                 >
                   {isEditing ? 'Save' : 'Edit'}
@@ -716,7 +726,7 @@ export const ItemDetailScreen = () => {
                 <Text
                   style={[
                     styles.editIcon,
-                    isCommonSystemItem && styles.disabledText,
+                    isCatalogItem && styles.disabledText,
                   ]}
                 >
                   {isEditing ? '+' : '*'}
@@ -756,15 +766,26 @@ export const ItemDetailScreen = () => {
 
           <View style={styles.bottomRow}>
             <View style={styles.leftRow}>
-              <TouchableOpacity
-                onPress={handleDelete}
-                style={styles.iconOnlyButton}
-                disabled={saving || isCommonSystemItem}
-              >
-                <Icons.Trash width={20} height={20} />
-              </TouchableOpacity>
+              {/* AU-287: Trash hidden for catalog items (SYSTEM + USR_* clones).
+                  User demotes them via the Less used toggle instead. */}
+              {!isCatalogItem ? (
+                <TouchableOpacity
+                  testID="item-detail-delete-btn"
+                  accessibilityLabel="Delete item"
+                  onPress={handleDelete}
+                  style={styles.iconOnlyButton}
+                  disabled={saving}
+                >
+                  <Icons.Trash width={20} height={20} />
+                </TouchableOpacity>
+              ) : null}
 
               <TouchableOpacity
+                testID={
+                  usageFrequency === 'LESS_USED'
+                    ? 'item-detail-less-used-btn-active'
+                    : 'item-detail-less-used-btn'
+                }
                 style={[
                   styles.secondaryAction,
                   usageFrequency === 'LESS_USED' &&
@@ -794,6 +815,14 @@ export const ItemDetailScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
+          {isCatalogItem ? (
+            <Text
+              testID="item-detail-catalog-explainer"
+              style={styles.catalogExplainer}
+            >
+              Common items can only be marked as Less Use.
+            </Text>
+          ) : null}
         </View>
       </BottomSheetSurface>
 
@@ -1015,6 +1044,14 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     opacity: 0.45,
+  },
+  catalogExplainer: {
+    ...theme.typography.aliases.archivoBody,
+    color: theme.colors.figmaTextMuted,
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 12,
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
