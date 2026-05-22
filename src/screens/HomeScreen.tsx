@@ -386,13 +386,18 @@ export const HomeScreen = () => {
       // accepted here so existing callsites compile but ignored downstream.
       pinned_item_id?: string | null;
     }): Promise<{ outfits: Outfit[] }> => {
+      // H6 fix (2026-05-22): the previous map was keyed on occasion-like
+      // strings (casual/work/play/date/weekend) but `input.mode` is the
+      // RecommendationMode enum ('safe'|'power'|'creative'). The lookup
+      // was always undefined so the mode pill silently sent `mood: null`
+      // on every request — V05 received no intent variation between
+      // Safe/Power/Creative taps. The `as unknown as` cast was hiding the
+      // type mismatch; remove it now that keys are exhaustive.
       const moodMap: Record<RecommendationMode, string | null> = {
-        casual: 'calm',
-        work: 'confident',
-        play: 'playful',
-        date: 'confident',
-        weekend: 'low_energy',
-      } as unknown as Record<RecommendationMode, string | null>;
+        safe: 'calm',
+        power: 'confident',
+        creative: 'playful',
+      };
       const mood = moodMap[input.mode] ?? null;
       const occasion = input.mode || DEFAULT_RECOMMENDATION_MODE;
 
@@ -907,6 +912,10 @@ export const HomeScreen = () => {
         snapToInterval={OPTION_SHEET_SNAP_INTERVAL}
         decelerationRate="fast"
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        // C5 fix (2026-05-22): drop off-screen sheets from the native
+        // view hierarchy so swipe deceleration doesn't drag N tile
+        // images through layout/paint per frame on small phones.
+        removeClippedSubviews={true}
       >
         {loading ? (
           <HomeLoadingState />
@@ -923,7 +932,7 @@ export const HomeScreen = () => {
                   saveState={sheetSaveState}
                   pinnedItemId={pinnedItemId}
                   totalSheets={optionSets.length}
-                  activeSheetIndex={activeSheetIndex}
+                  isActiveSheet={sheetIndex === activeSheetIndex}
                   onItemPress={item => setSelectedItem(item)}
                   onTogglePin={handleToggleItemPin}
                   onConfirm={() => handleHeartTapForOutfit(outfit)}
@@ -1050,13 +1059,13 @@ const computeHeroRowHeight = (restCount: number): number => {
   return Math.floor((available - (rows - 1) * GRID_GAP) / rows);
 };
 
-const OptionSheet = ({
+const OptionSheet = React.memo(({
   sheetIndex,
   outfit,
   saveState,
   pinnedItemId,
   totalSheets,
-  activeSheetIndex,
+  isActiveSheet,
   onItemPress,
   onTogglePin,
   onConfirm,
@@ -1067,7 +1076,11 @@ const OptionSheet = ({
   saveState: SaveState;
   pinnedItemId: string | null;
   totalSheets: number;
-  activeSheetIndex: number;
+  // C5 fix (2026-05-22): pass a per-sheet boolean instead of the global
+  // `activeSheetIndex`. With React.memo this keeps inactive sheets out
+  // of re-render on every swipe; only the leaving + arriving sheets
+  // re-render (toggle false→true and true→false respectively).
+  isActiveSheet: boolean;
   onItemPress: (item: Item) => void;
   onTogglePin: (item: Item) => void;
   onConfirm: () => void;
@@ -1284,18 +1297,21 @@ const OptionSheet = ({
 
         {/* Pagination counter ("1/3", "2/3", …). Designer note: "User need
             to swipe left/right to see other options - rotate within 3 options".
-            Hidden for single-outfit responses so "1/1" doesn't render. */}
-        {totalSheets > 1 ? (
+            C5 fix (2026-05-22): only the active sheet renders the counter,
+            and it shows its own sheetIndex+1 / totalSheets. Inactive sheets
+            skip the render entirely so React.memo can short-circuit them. */}
+        {isActiveSheet && totalSheets > 1 ? (
           <View style={styles.sheetCounterSlot}>
             <Text testID="home-sheet-counter" style={styles.sheetCounterText}>
-              {`${activeSheetIndex + 1}/${totalSheets}`}
+              {`${sheetIndex + 1}/${totalSheets}`}
             </Text>
           </View>
         ) : null}
       </View>
     </View>
   );
-};
+});
+OptionSheet.displayName = 'OptionSheet';
 
 const HomeLoadingState = () => (
   <View style={styles.optionSheet}>
