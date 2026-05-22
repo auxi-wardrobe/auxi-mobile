@@ -29,7 +29,7 @@ Build a signed Release IPA without uploading (smoke test / verify signing)
 [bundle exec] fastlane ios beta
 ```
 
-Bump build number, archive Release, and upload to TestFlight via ASC API key
+Bump build number, archive Release, upload to TestFlight, tag, and write metadata for auxi-launch-notify
 
 ----
 
