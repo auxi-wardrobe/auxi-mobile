@@ -61,6 +61,7 @@ import {
   type AuthErrorEnvelope,
 } from '../../services/authTypes';
 import type { AuthStackParamList } from '../../types/navigation';
+import { useAuth } from '../../context/AuthContext';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignIn'>;
 
@@ -73,26 +74,27 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   const [inlineError, setInlineError] = useState<string | null>(null);
 
   const loginMutation = useLoginMutation();
+  const { refreshUser } = useAuth();
   const submitting = loginMutation.isPending;
   const canSubmit = password.length > 0 && !submitting;
 
   const tr = useMemo(
     () =>
       ({
-        sectionHeading: t('auth.uac.signin.section_heading'),
-        forgotLink: t('auth.uac.signin.forgot_link'),
-        submitA11y: t('auth.uac.signin.submit_a11y'),
-        showPassword: t('auth.uac.signin.show_password'),
-        hidePassword: t('auth.uac.signin.hide_password'),
-        errorInvalid: t('auth.uac.signin.error_invalid_credentials'),
-        errorEmailNotVerified: t('auth.uac.signin.error_email_not_verified'),
-        errorOauthAccount: t('auth.uac.signin.error_oauth_account', {
+        sectionHeading: t('uac.signin.section_heading'),
+        forgotLink: t('uac.signin.forgot_link'),
+        submitA11y: t('uac.signin.submit_a11y'),
+        showPassword: t('uac.signin.show_password'),
+        hidePassword: t('uac.signin.hide_password'),
+        errorInvalid: t('uac.signin.error_invalid_credentials'),
+        errorEmailNotVerified: t('uac.signin.error_email_not_verified'),
+        errorOauthAccount: t('uac.signin.error_oauth_account', {
           provider: 'Google',
         }),
-        errorRateLimited: t('auth.uac.signin.error_rate_limited'),
-        errorGeneric: t('auth.uac.signin.error_generic'),
-        passwordPlaceholder: t('auth.uac.signin.password_placeholder'),
-      }) as const,
+        errorRateLimited: t('uac.signin.error_rate_limited'),
+        errorGeneric: t('uac.signin.error_generic'),
+        passwordPlaceholder: t('uac.signin.password_placeholder'),
+      } as const),
     [t],
   );
 
@@ -125,9 +127,12 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
     loginMutation.mutate(
       { email, password },
       {
-        onError: (err) => handleError(err),
-        // onSuccess: AuthNavigator switches stacks via AuthContext picking
-        // up the invalidated currentUser query — nothing to do here.
+        onError: err => handleError(err),
+        onSuccess: () => {
+          // Tokens persisted by loginWithPassword; trigger AuthContext to
+          // re-fetch the user so AppNavigator switches to the AppStack.
+          void refreshUser();
+        },
       },
     );
   };
@@ -151,7 +156,7 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={onBackPress}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel={t('auth.uac.common.back')}
+          accessibilityLabel={t('uac.common.back')}
           testID="signin-back"
           style={styles.backHit}
         >
@@ -187,11 +192,14 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* Password row — outlined field + circular submit arrow. */}
           <View style={styles.passwordRow}>
             <View
-              style={[styles.passwordField, { borderColor: passwordBorderColor }]}
+              style={[
+                styles.passwordField,
+                { borderColor: passwordBorderColor },
+              ]}
             >
               <TextInput
                 value={password}
-                onChangeText={(next) => {
+                onChangeText={next => {
                   setPassword(next);
                   if (inlineError) setInlineError(null);
                 }}
@@ -207,7 +215,7 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
                 editable={!submitting}
               />
               <Pressable
-                onPress={() => setPasswordVisible((prev) => !prev)}
+                onPress={() => setPasswordVisible(prev => !prev)}
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel={

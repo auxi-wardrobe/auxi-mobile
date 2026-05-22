@@ -64,7 +64,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({ navigation }) => {
     // without crashing on a missing SDK.
     Toast.show({
       type: 'info',
-      text1: t('auth.uac.email_google_notice.google_cta'),
+      text1: t('uac.email_google_notice.google_cta'),
       text2:
         'Google sign-in SDK not yet wired — see batch C report follow-up.',
       position: 'bottom',
@@ -95,7 +95,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({ navigation }) => {
           onPress={onBackPress}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel={t('auth.uac.common.back')}
+          accessibilityLabel={t('uac.common.back')}
           testID="email-google-notice-back"
           style={styles.backHit}
         >
@@ -110,10 +110,10 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.headline}
             testID="email-google-notice-headline"
           >
-            {t('auth.uac.email_google_notice.headline')}
+            {t('uac.email_google_notice.headline')}
           </Text>
           <Text style={styles.bodyText} testID="email-google-notice-body">
-            {t('auth.uac.email_google_notice.body')}
+            {t('uac.email_google_notice.body')}
           </Text>
         </View>
 
@@ -121,7 +121,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({ navigation }) => {
           onPress={onContinuePress}
           disabled={submitting}
           accessibilityRole="button"
-          accessibilityLabel={t('auth.uac.email_google_notice.google_cta')}
+          accessibilityLabel={t('uac.email_google_notice.google_cta')}
           accessibilityState={{ disabled: submitting, busy: submitting }}
           testID="email-google-notice-continue"
           style={({ pressed }) => [
@@ -131,7 +131,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({ navigation }) => {
           ]}
         >
           <Text style={styles.ctaLabel}>
-            {t('auth.uac.email_google_notice.google_cta')}
+            {t('uac.email_google_notice.google_cta')}
           </Text>
           {/* Google G mark — placeholder square pending brand asset. */}
           <View style={styles.ctaIconSlot} accessible={false}>
