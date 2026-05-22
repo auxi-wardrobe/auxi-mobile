@@ -35,8 +35,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
@@ -45,7 +44,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useResendVerificationMutation } from '../../hooks/auth/useAuthMutations';
 import type { AuthStackParamList } from '../../types/navigation';
 
-type Navigation = NativeStackNavigationProp<AuthStackParamList, 'VerifyEmail'>;
 type Route = RouteProp<AuthStackParamList, 'VerifyEmail'>;
 
 // Per spec note (open Q 9): final cooldown duration TBD. 60s is the
@@ -65,7 +63,6 @@ const SpinnerGlyph = () => (
 );
 
 export const VerifyEmailScreen = () => {
-  const navigation = useNavigation<Navigation>();
   const route = useRoute<Route>();
   const { t } = useTranslation();
   const { pendingVerifyEmail, logout } = useAuth();
