@@ -5,7 +5,36 @@ import type {
   WardrobeDirection,
 } from '../services/v05Api';
 
+/**
+ * AU-242 — UAC v2 auth stack routes.
+ *
+ * The 11 new routes registered here cover the UAC flow specced in
+ * `plans/260521-2335-au-242-figma-spec/`. Param shapes follow the
+ * branching documented in `phase-04-screens.md` §5 (Architecture).
+ *
+ * `Login` / `Register` are retained as feature-flagged fallbacks so
+ * we can revert to the legacy auth experience by flipping
+ * `UAC_V2_ENABLED` off. They will be deleted in the cleanup phase
+ * once batch D lands and the flag is permanently on.
+ */
+export type UacEmailInputMode = 'signup' | 'signin';
+export type UacVerifiedSource = 'signup' | 'reset';
+
 export type AuthStackParamList = {
+  // New (UAC v2)
+  Welcome: undefined;
+  LanguageSettings: undefined;
+  EmailInput: { mode: UacEmailInputMode };
+  PasswordCreation: { email: string };
+  VerifyEmail: { email: string };
+  EmailGoogleNotice: { email: string };
+  SignIn: { email: string };
+  ForgotPasswordRequest: { email: string };
+  ForgotPasswordCheckMail: { email: string };
+  ResetNewPassword: { token: string; email?: string };
+  Verified: { source: UacVerifiedSource };
+
+  // Legacy (kept while UAC_V2_ENABLED=false; deleted in cleanup phase)
   Login: undefined;
   Register: undefined;
 };
