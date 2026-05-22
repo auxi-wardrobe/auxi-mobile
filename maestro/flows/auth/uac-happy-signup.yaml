@@ -1,0 +1,75 @@
+# auxi/maestro/flows/auth/uac-happy-signup.yaml
+# AU-242 happy path: Welcome → Email → Password → Verify Email screen.
+# Stops at Verify Email (no email delivery in dev; verify-email needs separate
+# token-extract flow that scrapes uvicorn log for the magic link).
+#
+# Prerequisites:
+#   - Backend phase-02 running on :5001 with EMAIL_SERVICE_DRIVER=noop
+#   - Sim locale forced to en-EN so text/testIDs are stable
+#   - Run with: maestro test maestro/flows/auth/uac-happy-signup.yaml \
+#               -e RUN_ID=$(date +%s)
+
+appId: com.auxi2026.app
+name: uac-happy-signup
+tags:
+  - au-242
+  - auth
+  - uac
+  - regression
+env:
+  RUN_ID: dev
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  VERIFY_TIMEOUT_MS: 15000
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- extendedWaitUntil:
+    visible:
+      id: welcome-cta-email
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
+- assertVisible:
+    id: welcome-cta-google
+- assertVisible:
+    id: welcome-cta-apple
+- assertVisible:
+    id: welcome-lang-link
+- tapOn:
+    id: welcome-cta-email
+
+- extendedWaitUntil:
+    visible:
+      id: email-input-field
+    timeout: 5000
+- tapOn:
+    id: email-input-field
+- inputText: signup-${RUN_ID}@auxi.app
+- tapOn:
+    id: email-submit-button
+
+- extendedWaitUntil:
+    visible:
+      id: password-input-field
+    timeout: 5000
+- assertVisible:
+    id: password-email-value
+- tapOn:
+    id: password-input-field
+- inputText: Pass1234
+
+- assertVisible:
+    id: password-criteria-length
+- assertVisible:
+    id: password-criteria-lowercase
+- assertVisible:
+    id: password-criteria-digit
+- tapOn:
+    id: password-submit-button
+
+- extendedWaitUntil:
+    visible:
+      id: verify-email-screen
+    timeout: ${VERIFY_TIMEOUT_MS}
+- assertVisible:
+    text: signup-${RUN_ID}@auxi.app

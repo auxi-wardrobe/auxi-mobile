@@ -1,0 +1,53 @@
+# auxi/maestro/flows/auth/uac-language-switch.yaml
+# AU-242 language switch flow: Welcome → tap lang link → Language
+# Settings → select Tiếng Việt → back → Welcome shows vi locale.
+#
+# vi-VN values currently `[VI] <english>` placeholders until AU-293
+# lands. This flow asserts structural switch (radio change + back-nav
+# with new lang link text), not resolved Vietnamese strings.
+
+appId: com.auxi2026.app
+name: uac-language-switch
+tags:
+  - au-242
+  - auth
+  - uac
+  - i18n
+env:
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- extendedWaitUntil:
+    visible:
+      id: welcome-lang-link
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
+- tapOn:
+    id: welcome-lang-link
+
+- extendedWaitUntil:
+    visible:
+      id: language-settings-title
+    timeout: 5000
+- assertVisible:
+    id: language-option-en-EN
+- assertVisible:
+    id: language-option-vi-VN
+
+- tapOn:
+    id: language-option-vi-VN
+- tapOn:
+    id: language-option-en-EN
+- tapOn:
+    id: language-option-vi-VN
+
+- tapOn:
+    id: language-settings-back
+- extendedWaitUntil:
+    visible:
+      id: welcome-lang-link
+    timeout: 5000
+- assertVisible:
+    text: Tiếng Việt
