@@ -6,6 +6,9 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ## [Unreleased]
 
+## [v1.0-build7] - 2026-05-22
+
+
 ## [v1.0-build6] - 2026-05-19
 
 ### Fixed
