@@ -60,6 +60,122 @@
       "title": "Welcome to Auxi",
       "subtitle": "Get simple outfit suggestions that work for your day",
       "get_started": "Get started"
+    },
+    "uac": {
+      "common": {
+        "back": "Back",
+        "continue": "Continue",
+        "submit": "Submit",
+        "logout": "Logout",
+        "loading": "Loading"
+      },
+      "welcome": {
+        "language_button": "English",
+        "headline": "Welcome to\nAuxi",
+        "google_cta": "Continue with Google",
+        "apple_cta": "Continue with Apple",
+        "email_cta": "Continue with Email",
+        "legal_text": "By continuing, you agree to our Terms of Service and Privacy Policy",
+        "legal_terms_link": "Terms of Service",
+        "legal_privacy_link": "Privacy Policy"
+      },
+      "language_settings": {
+        "title": "Language",
+        "english": "English",
+        "vietnamese": "Tiếng Việt",
+        "french": "Français"
+      },
+      "email_input": {
+        "label": "What is your email",
+        "placeholder": "youremail@mail.com",
+        "submit_a11y": "Continue",
+        "error_invalid": "Please enter a valid email adress",
+        "error_required": "Email is required",
+        "error_rate_limited": "Too many attempts. Please try again later."
+      },
+      "password_creation": {
+        "email_label": "What is your email",
+        "password_label": "create a password",
+        "criteria_min_chars": "At least 8 characters",
+        "criteria_lowercase": "Contains a lowercase letter",
+        "criteria_number": "Contains a number",
+        "submit_a11y": "Create password",
+        "show_password": "Show",
+        "hide_password": "Hide",
+        "error_weak_password": "Your password is too weak. Meet all 3 criteria.",
+        "error_email_exists": "This email already has an account.",
+        "error_generic": "We couldn't create your account. Please try again."
+      },
+      "verify_email": {
+        "title": "Verify your email",
+        "body_line_a": "We sent a verification email to",
+        "body_line_c": "Click the link in the email to verify account.",
+        "open_mail_app_cta": "Open email app",
+        "resend_cta": "Resend verification email",
+        "resend_cta_cooldown": "Resend verification email ({{seconds}}s)",
+        "resend_success": "Verification email sent.",
+        "resend_failure": "Couldn't resend right now. Try again in a moment.",
+        "status_waiting": "Waiting for email to be verified",
+        "logout_cta": "Logout"
+      },
+      "email_google_notice": {
+        "headline": "Google",
+        "body": "This email is linked to a Google account. Please sign in with Google instead",
+        "google_cta": "Continue with Google"
+      },
+      "signin": {
+        "section_heading": "Enter password to signin",
+        "email_label": "Your email",
+        "password_label": "Password",
+        "password_placeholder": "Enter your password",
+        "show_password": "Show",
+        "hide_password": "Hide",
+        "forgot_link": "Forgot your password?",
+        "submit_a11y": "Sign in",
+        "error_invalid_credentials": "Incorrect email or password.",
+        "error_email_not_verified": "Please verify your email before signing in.",
+        "error_oauth_account": "This email uses {{provider}}. Sign in with {{provider}} instead.",
+        "error_rate_limited": "Too many attempts. Please try again later.",
+        "error_generic": "Something went wrong. Please try again."
+      },
+      "forgot_request": {
+        "section_heading": "Reset your password",
+        "body": "We'll send a password reseting to your email",
+        "email_label": "Your email",
+        "submit_cta": "Send reset password",
+        "error_rate_limited": "Too many requests. Please try again later.",
+        "error_generic": "Couldn't send reset email. Please try again."
+      },
+      "forgot_check_mail": {
+        "section_heading": "Reset your password",
+        "body_line_a": "We've sent  a password reset link to:",
+        "body_line_c": "If you don't see the email, check your spam folder.",
+        "back_to_login_cta": "Back to Login"
+      },
+      "reset_new_password": {
+        "section_heading": "Reset your password",
+        "password_label": "New password",
+        "criteria_min_chars": "At least 8 characters",
+        "criteria_lowercase": "Contains a lowercase letter",
+        "criteria_number": "Contains a number",
+        "submit_a11y": "Save new password",
+        "show_password": "Show",
+        "hide_password": "Hide",
+        "error_token_invalid": "This reset link is invalid.",
+        "error_token_expired": "This reset link has expired. Request a new one.",
+        "error_token_consumed": "This reset link has already been used.",
+        "error_weak_password": "Your password is too weak. Meet all 3 criteria.",
+        "error_generic": "Couldn't reset your password. Please try again."
+      },
+      "verified": {
+        "headline": "Verified!",
+        "body": "You have successfully verified account.",
+        "continue_cta": "Continue",
+        "error_token_invalid": "This verification link is invalid.",
+        "error_token_expired": "This verification link has expired. Resend a new one.",
+        "error_token_consumed": "Your email is already verified.",
+        "error_generic": "We couldn't verify right now. Try again in a moment."
+      }
     }
   }
 }

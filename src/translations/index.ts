@@ -1,32 +1,33 @@
-import 'intl-pluralrules';
-
-import type { Language } from '@/hooks/language/schema';
-
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-
+/**
+ * Translation resource registry.
+ *
+ * Phase 01 (AU-242 UAC Foundation): expose JSON resources by locale code as
+ * static imports. Runtime i18n bootstrap (i18next.init + locale persistence)
+ * is deferred to Phase 04 when the Language Settings screen and its deps
+ * (i18next, react-i18next, react-native-localize, async-storage) land.
+ *
+ * Why: the previous boilerplate `i18n.init()` block imported four packages
+ * that aren't in package.json (i18next, react-i18next, intl-pluralrules, plus
+ * an internal `@/hooks/language/schema` module that never existed). It was
+ * never imported from App.tsx — fully dead code that nonetheless tripped
+ * `tsc --noEmit`. KISS / YAGNI: clear the compile error now, ship the runtime
+ * wiring with the screen that consumes it.
+ */
 import en from './en-EN.json';
 import fr from './fr-FR.json';
+import vi from './vi-VN.json';
+
+import type { Language } from './types';
 
 export const defaultNS = 'boilerplate';
 
 export const resources = {
   'en-EN': en,
   'fr-FR': fr,
+  'vi-VN': vi,
 } as const satisfies Record<Language, unknown>;
 
-void i18n.use(initReactI18next).init({
-  defaultNS,
-  fallbackLng: 'fr-FR',
-  lng: 'en-EN',
-  resources,
-});
+export type TranslationResources = typeof resources;
 
-// add capitalization formatter
-i18n.services.formatter?.add(
-  'capitalize',
-  (value: string) =>
-    value.charAt(0).toUpperCase() + value.slice(1).toLowerCase(),
-);
-
-export { default } from 'i18next';
+export { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from './types';
+export type { Language } from './types';
