@@ -6,6 +6,30 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ## [Unreleased]
 
+## [v1.0-build6] - 2026-05-19
+
+### Fixed
+- declare ITSAppUsesNonExemptEncryption=false
+
+### Changed
+- fill v1.0-build5 sections
+- record v1.0-build5 launch
+
+
+## [v1.0-build5] - 2026-05-19
+
+### Added
+- Fastlane lane (`bundle exec fastlane beta`) replaces bespoke release script; Apple TestFlight history is now source of truth for build numbers
+- Home screen wired to V05 `buildRecommendation` endpoint
+
+### Fixed
+- Info.plist now declares `NSLocationAlwaysAndWhenInUseUsageDescription` (resolves ITMS-90683 from build 4 delivery)
+- Bundle RN build phase backtick → escaped quotes (unbreaks archive); Sentry sourcemap upload disabled when creds missing
+
+### Changed
+- Release pipeline: archive smoke + Sentry preflight added to CI
+
+
 ## [v1.0-build4] - 2026-05-13
 
 ### Added

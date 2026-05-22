@@ -1,0 +1,103 @@
+default_platform(:ios)
+
+WORKSPACE   = "auxi.xcworkspace"
+PROJECT     = "auxi.xcodeproj"
+SCHEME      = "auxi"
+BUNDLE_ID   = "com.auxi2026.app"
+TEAM_ID     = "9Z32ZJK4A5"
+OUTPUT_DIR  = "./build/fastlane"
+ARCHIVE_DIR = "#{ENV['TMPDIR'] || '/tmp'}/auxi-archive"
+
+platform :ios do
+  desc "Build a signed Release IPA without uploading (smoke test / verify signing)"
+  lane :build_only do
+    cocoapods(podfile: "./Podfile", try_repo_update_on_error: true)
+
+    build_app(
+      workspace: WORKSPACE,
+      scheme: SCHEME,
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: "./ExportOptions.plist",
+      clean: true,
+      output_directory: OUTPUT_DIR,
+      output_name: "auxi.ipa",
+      include_symbols: true,
+      include_bitcode: false
+    )
+  end
+
+  desc "Bump build number, archive Release, upload to TestFlight, tag, and write metadata for auxi-launch-notify"
+  lane :beta do
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_API_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_API_ISSUER"),
+      key_filepath: ENV["ASC_API_KEY_PATH"] || File.expand_path("~/.appstoreconnect/private_keys/AuthKey_#{ENV.fetch('ASC_API_KEY_ID')}.p8"),
+      in_house: false
+    )
+
+    cocoapods(podfile: "./Podfile", try_repo_update_on_error: true)
+
+    marketing_version = get_version_number(xcodeproj: PROJECT, target: SCHEME)
+
+    # Apple TestFlight is the source of truth — never trust local pbxproj.
+    latest = latest_testflight_build_number(
+      api_key: api_key,
+      app_identifier: BUNDLE_ID,
+      version: marketing_version,
+      initial_build_number: 0
+    )
+    new_build = latest.to_i + 1
+    UI.important("Apple latest = #{latest} → bumping to #{new_build}")
+
+    increment_build_number(xcodeproj: PROJECT, build_number: new_build)
+
+    build_app(
+      workspace: WORKSPACE,
+      scheme: SCHEME,
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: "./ExportOptions.plist",
+      clean: true,
+      output_directory: OUTPUT_DIR,
+      output_name: "auxi.ipa",
+      include_symbols: true,
+      include_bitcode: false
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+      changelog: "Internal build #{new_build}"
+    )
+
+    tag = "v#{marketing_version}-build#{new_build}"
+    add_git_tag(tag: tag, message: "TestFlight #{tag}")
+
+    write_release_metadata(new_build, marketing_version, tag)
+
+    UI.success("Uploaded #{tag} → TestFlight. Push with: git push --follow-tags")
+  end
+
+  error do |lane, exception|
+    UI.error("Lane #{lane} failed: #{exception.message}")
+  end
+end
+
+def write_release_metadata(build_number, marketing_version, tag)
+  require "fileutils"
+  FileUtils.mkdir_p(ARCHIVE_DIR)
+  commit_sha = `git rev-parse HEAD`.strip
+  branch     = `git rev-parse --abbrev-ref HEAD`.strip
+  File.open("#{ARCHIVE_DIR}/release-metadata.env", "w") do |f|
+    f.puts "BUILD_NUMBER=#{build_number}"
+    f.puts "MARKETING_VERSION=#{marketing_version}"
+    f.puts "TAG=#{tag}"
+    f.puts "COMMIT_SHA=#{commit_sha}"
+    f.puts "BRANCH=#{branch}"
+    # DELIVERY_UUID intentionally omitted — Fastlane upload_to_testflight does
+    # not expose it; auxi-launch-notify can read it from App Store Connect API.
+  end
+  UI.message("Wrote release-metadata.env to #{ARCHIVE_DIR}/")
+end

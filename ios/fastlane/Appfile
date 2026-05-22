@@ -1,0 +1,7 @@
+app_identifier("com.auxi2026.app")
+team_id("9Z32ZJK4A5")
+
+# apple_id is intentionally omitted — beta lane authenticates via
+# App Store Connect API key (ASC_API_KEY_ID + ASC_API_ISSUER + .p8 file).
+# If you ever need to fall back to Apple ID + 2FA, uncomment:
+# apple_id("YOUR_APPLE_ID_EMAIL")
