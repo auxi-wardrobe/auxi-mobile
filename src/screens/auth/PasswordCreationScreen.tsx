@@ -39,12 +39,14 @@ import Toast from 'react-native-toast-message';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useRegisterMutation } from '../../hooks/auth/useAuthMutations';
 import type { AuthStackParamList } from '../../types/navigation';
+import { PasswordCriteriaChecklist } from '../../components/auth/PasswordCriteriaChecklist';
+import { validatePassword } from '../../utils/password-rules';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'PasswordCreation'>;
 type Route = RouteProp<AuthStackParamList, 'PasswordCreation'>;
@@ -80,7 +82,11 @@ const EyeOpenGlyph = () => (
       stroke={theme.colors.uacTextSubtle200}
       strokeWidth={1.5}
     />
-    <Circle cx={12} cy={12} r={3} stroke={theme.colors.uacTextSubtle200} strokeWidth={1.5} />
+    <Path
+      d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
+      stroke={theme.colors.uacTextSubtle200}
+      strokeWidth={1.5}
+    />
   </Svg>
 );
 
@@ -95,52 +101,6 @@ const EyeClosedGlyph = () => (
   </Svg>
 );
 
-const HollowBullet = () => (
-  <Svg width={12} height={12} viewBox="0 0 12 12" fill="none">
-    <Circle cx={6} cy={6} r={4} stroke={theme.colors.uacTextSubtle200} strokeWidth={1.25} />
-  </Svg>
-);
-
-const CheckBullet = () => (
-  <Svg width={12} height={12} viewBox="0 0 12 12" fill="none">
-    <Circle cx={6} cy={6} r={5} fill={theme.colors.uacTextSubtle100} />
-    <Path
-      d="M3.5 6.25 5.25 8 8.5 4.5"
-      stroke={theme.colors.uacBackgroundNeutralSubtlest}
-      strokeWidth={1.25}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-interface Criterion {
-  key: string;
-  label: string;
-  passed: boolean;
-}
-
-const buildCriteria = (
-  password: string,
-  t: (k: string) => string,
-): Criterion[] => [
-  {
-    key: 'len',
-    label: t('uac.password_creation.criteria_min_chars'),
-    passed: password.length >= 8,
-  },
-  {
-    key: 'lower',
-    label: t('uac.password_creation.criteria_lowercase'),
-    passed: /[a-z]/.test(password),
-  },
-  {
-    key: 'num',
-    label: t('uac.password_creation.criteria_number'),
-    passed: /[0-9]/.test(password),
-  },
-];
-
 export const PasswordCreationScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<Route>();
@@ -153,8 +113,18 @@ export const PasswordCreationScreen = () => {
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const criteria = useMemo(() => buildCriteria(password, t), [password, t]);
-  const allMet = criteria.every((c) => c.passed);
+  const criteriaLabels = useMemo(
+    () => ({
+      length: t('uac.password_creation.criteria_min_chars'),
+      lowercase: t('uac.password_creation.criteria_lowercase'),
+      digit: t('uac.password_creation.criteria_number'),
+    }),
+    [t],
+  );
+  const { isValid: allMet } = useMemo(
+    () => validatePassword(password),
+    [password],
+  );
 
   const handleChange = useCallback((text: string) => {
     setPassword(text);
@@ -283,22 +253,13 @@ export const PasswordCreationScreen = () => {
             </Pressable>
           </View>
 
-          {/* Criteria checklist (specs §4) */}
+          {/* Criteria checklist (specs §4) — shared with ResetNewPassword */}
           <View style={styles.criteriaList}>
-            {criteria.map((c) => (
-              <View key={c.key} style={styles.criteriaRow}>
-                {c.passed ? <CheckBullet /> : <HollowBullet />}
-                <Text
-                  testID={`password-criteria-${c.key}${c.passed ? '-passed' : ''}`}
-                  style={[
-                    styles.criteriaText,
-                    c.passed ? styles.criteriaTextPassed : styles.criteriaTextPending,
-                  ]}
-                >
-                  {c.label}
-                </Text>
-              </View>
-            ))}
+            <PasswordCriteriaChecklist
+              password={password}
+              labels={criteriaLabels}
+              testIDPrefix="password-criteria"
+            />
           </View>
 
           {error && (
@@ -399,21 +360,6 @@ const styles = StyleSheet.create({
   },
   criteriaList: {
     marginTop: theme.spacing.uacDimension16 + 4, // 20px
-    gap: theme.spacing.uacDimension8,
-  },
-  criteriaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  criteriaText: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-  },
-  criteriaTextPending: {
-    color: theme.colors.uacTextSubtle200,
-  },
-  criteriaTextPassed: {
-    color: theme.colors.uacTextSubtle100,
   },
   errorText: {
     ...theme.typography.aliases.uacM3BodySmall,

@@ -43,89 +43,14 @@ import { useTranslation } from 'react-i18next';
 import { useResetPasswordMutation } from '../../hooks/auth/useAuthMutations';
 import type { AuthStackParamList } from '../../types/navigation';
 import { theme } from '../../theme/theme';
+import { PasswordCriteriaChecklist } from '../../components/auth/PasswordCriteriaChecklist';
+import { validatePassword } from '../../utils/password-rules';
 
 type Navigation = NativeStackNavigationProp<
   AuthStackParamList,
   'ResetNewPassword'
 >;
 type Route = RouteProp<AuthStackParamList, 'ResetNewPassword'>;
-
-interface PasswordRules {
-  minChars: boolean;
-  lowercase: boolean;
-  number: boolean;
-  allValid: boolean;
-}
-
-const evaluatePassword = (value: string): PasswordRules => {
-  const minChars = value.length >= 8;
-  const lowercase = /[a-z]/.test(value);
-  const number = /[0-9]/.test(value);
-  return {
-    minChars,
-    lowercase,
-    number,
-    allValid: minChars && lowercase && number,
-  };
-};
-
-/**
- * Single checklist row. Pending icon is the subtle outline bullet;
- * satisfied flips to the base-color filled bullet. Per spec we change
- * color, not the icon shape (OQ#7 default).
- */
-const CriteriaRow: React.FC<{
-  satisfied: boolean;
-  label: string;
-  testID: string;
-}> = ({ satisfied, label, testID }) => (
-  <View style={criteriaStyles.row}>
-    <View
-      style={[
-        criteriaStyles.bullet,
-        satisfied ? criteriaStyles.bulletSatisfied : criteriaStyles.bulletPending,
-      ]}
-      testID={`${testID}-bullet${satisfied ? '-satisfied' : ''}`}
-    />
-    <Text
-      style={[
-        criteriaStyles.label,
-        satisfied && criteriaStyles.labelSatisfied,
-      ]}
-      testID={testID}
-    >
-      {label}
-    </Text>
-  </View>
-);
-
-const criteriaStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  bullet: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  bulletPending: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: theme.colors.uacTextSubtle200,
-  },
-  bulletSatisfied: {
-    backgroundColor: theme.colors.uacTextBase,
-  },
-  label: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.uacTextSubtle100,
-  },
-  labelSatisfied: {
-    color: theme.colors.uacTextBase,
-  },
-});
 
 export const ResetNewPasswordScreen: React.FC = () => {
   const navigation = useNavigation<Navigation>();
@@ -140,11 +65,22 @@ export const ResetNewPasswordScreen: React.FC = () => {
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [tokenInvalid, setTokenInvalid] = useState<boolean>(false);
 
-  const rules = useMemo(() => evaluatePassword(password), [password]);
+  const { isValid: allRulesPass } = useMemo(
+    () => validatePassword(password),
+    [password],
+  );
+  const criteriaLabels = useMemo(
+    () => ({
+      length: t('uac.reset_new_password.criteria_min_chars') as string,
+      lowercase: t('uac.reset_new_password.criteria_lowercase') as string,
+      digit: t('uac.reset_new_password.criteria_number') as string,
+    }),
+    [t],
+  );
 
   const mutation = useResetPasswordMutation();
   const isSubmitting = mutation.isPending;
-  const canSubmit = rules.allValid && !isSubmitting && !!token;
+  const canSubmit = allRulesPass && !isSubmitting && !!token;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -336,22 +272,12 @@ export const ResetNewPasswordScreen: React.FC = () => {
             </Pressable>
           </View>
 
-          {/* Password criteria checklist — 3 rules */}
+          {/* Password criteria checklist — shared with PasswordCreation */}
           <View style={styles.checklist}>
-            <CriteriaRow
-              satisfied={rules.minChars}
-              label={t('uac.reset_new_password.criteria_min_chars') as string}
-              testID="reset-password-criteria-min-chars"
-            />
-            <CriteriaRow
-              satisfied={rules.lowercase}
-              label={t('uac.reset_new_password.criteria_lowercase') as string}
-              testID="reset-password-criteria-lowercase"
-            />
-            <CriteriaRow
-              satisfied={rules.number}
-              label={t('uac.reset_new_password.criteria_number') as string}
-              testID="reset-password-criteria-number"
+            <PasswordCriteriaChecklist
+              password={password}
+              labels={criteriaLabels}
+              testIDPrefix="reset-password-criteria"
             />
           </View>
 
