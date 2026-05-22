@@ -1,6 +1,6 @@
 import axios from 'axios';
-import * as Keychain from 'react-native-keychain';
 import { ROOT_URL, BASE_URL } from '../config/env';
+import { getAccessToken } from './tokenStorage';
 
 export { ROOT_URL, BASE_URL };
 
@@ -14,9 +14,8 @@ export const apiClient = axios.create({
 // Interceptor to add token to requests
 apiClient.interceptors.request.use(async (config: any) => {
   try {
-    const credentials = await Keychain.getGenericPassword();
-    if (credentials) {
-      const { password: accessToken } = credentials; // storing token in password field
+    const accessToken = await getAccessToken();
+    if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
   } catch (error) {

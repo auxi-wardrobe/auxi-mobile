@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { authService } from '../services/auth';
+import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
 
 interface AuthContextType {
@@ -41,6 +42,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const checkAuth = useCallback(async () => {
         try {
+            // One-time upgrade for users coming from legacy single-entry Keychain.
+            // Idempotent — safe to call on every cold start. Must run BEFORE
+            // isAuthenticated() so the new layout is populated.
+            await migrateLegacyKeychain();
             const isAuthenticated = await authService.isAuthenticated();
             if (isAuthenticated) {
                 await refreshUser();

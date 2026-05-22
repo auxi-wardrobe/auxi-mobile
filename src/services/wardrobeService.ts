@@ -1,6 +1,6 @@
 import axios from 'axios';
-import * as Keychain from 'react-native-keychain';
 import { ROOT_URL } from './apiClient';
+import { getAccessToken } from './tokenStorage';
 import { User } from '../types/auth';
 
 const WARDROBE_URL = `${ROOT_URL}/api`;
@@ -44,9 +44,6 @@ export interface WardrobeItem {
   style_tags?: string[];
   color_hex?: string;
   is_common_item?: boolean;
-  // SYS_* = SYSTEM catalog · USR_* = per-user clone of catalog · other = user upload.
-  // Used by ItemDetailScreen to gate delete / edit on AU-287.
-  human_readable_id?: string;
   is_deleted?: boolean;
   is_favorited?: boolean;
   usage_frequency?: UsageFrequency;
@@ -63,9 +60,8 @@ const wardrobeApi = axios.create({
 
 wardrobeApi.interceptors.request.use(async (config: any) => {
   try {
-    const credentials = await Keychain.getGenericPassword();
-    if (credentials) {
-      const { password: accessToken } = credentials;
+    const accessToken = await getAccessToken();
+    if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
   } catch (error) {
