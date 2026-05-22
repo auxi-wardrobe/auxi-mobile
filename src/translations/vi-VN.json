@@ -77,7 +77,11 @@
         "email_cta": "[VI] Continue with Email",
         "legal_text": "[VI] By continuing, you agree to our Terms of Service and Privacy Policy",
         "legal_terms_link": "[VI] Terms of Service",
-        "legal_privacy_link": "[VI] Privacy Policy"
+        "legal_privacy_link": "[VI] Privacy Policy",
+        "oauth_not_configured": "[VI] Sign-in is not set up on this build yet.",
+        "oauth_generic_error": "[VI] Couldn't sign in. Please try again.",
+        "oauth_conflict_other_provider": "[VI] This email is linked to {{provider}}. Sign in with {{provider}} instead.",
+        "oauth_conflict_password": "[VI] This email already has a password. Sign in with your password."
       },
       "language_settings": {
         "title": "[VI] Language",

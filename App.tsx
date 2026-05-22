@@ -14,8 +14,14 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import Toast from 'react-native-toast-message';
 import { initI18n } from './src/i18n/init';
 import { theme } from './src/theme/theme';
+import { configureGoogleSignIn } from './src/services/oauth/googleSignIn';
 
 const queryClient = new QueryClient();
+
+// Configure the Google Sign-In SDK once at module-load. Idempotent; the
+// wrapper guards against double-configure. Apple's SDK is stateless and
+// needs no startup hook.
+configureGoogleSignIn();
 
 function App() {
   // i18next must finish initialising before any screen renders, otherwise
@@ -25,7 +31,7 @@ function App() {
   useEffect(() => {
     let mounted = true;
     initI18n()
-      .catch((err) => {
+      .catch(err => {
         console.warn('[App] i18n init failed', err);
       })
       .finally(() => {
