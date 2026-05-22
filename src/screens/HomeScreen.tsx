@@ -439,7 +439,17 @@ export const HomeScreen = () => {
     [weather.tempC],
   );
 
-  const { mutate: valenGetRecommendation, isPending: isStartPending } =
+  const {
+    mutate: valenGetRecommendation,
+    isPending: isStartPending,
+    // Error UI fix (2026-05-22): surface mutation error so the screen can
+    // render an actionable fallback instead of leaving the user on a blank
+    // canvas after a failed cold-start fetch. `reset` clears the error
+    // before retry so the fallback toggles back to loading on the next
+    // attempt.
+    error: startError,
+    reset: resetStartMutation,
+  } =
     useMutation({
       mutationFn: buildViaV05,
       onSuccess: (data: unknown) => {
@@ -919,6 +929,20 @@ export const HomeScreen = () => {
       >
         {loading ? (
           <HomeLoadingState />
+        ) : optionSets.length === 0 && startError ? (
+          // Error UI fix (2026-05-22): give the user a way out of a
+          // failed cold-start fetch. Without this, an API timeout or
+          // 5xx left the screen blank and the only recovery was to
+          // force-quit the app.
+          <HomeErrorState
+            onRetry={() => {
+              resetStartMutation();
+              valenGetRecommendation({
+                mode: selectedModeRef.current,
+                style_feedback: styleFeedbackRef.current ?? undefined,
+              });
+            }}
+          />
         ) : (
           <>
             {optionSets.map((outfit, sheetIndex) => {
@@ -1313,6 +1337,29 @@ const OptionSheet = React.memo(({
 });
 OptionSheet.displayName = 'OptionSheet';
 
+// Error UI fix (2026-05-22): rendered when the cold-start V05 fetch
+// fails and the user is left without any outfit to display. A simple
+// Retry restarts the same mutation; deeper diagnosis lives in console
+// logs (onError) and Sentry.
+const HomeErrorState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <View style={styles.errorState} testID="home-error-state">
+    <Text style={styles.errorStateTitle}>Couldn't load your outfits</Text>
+    <Text style={styles.errorStateBody}>
+      Check your connection and try again.
+    </Text>
+    <TouchableOpacity
+      testID="home-error-retry"
+      onPress={onRetry}
+      style={styles.errorStateRetry}
+      activeOpacity={0.82}
+      accessibilityRole="button"
+      accessibilityLabel="Retry loading outfits"
+    >
+      <Text style={styles.errorStateRetryLabel}>Try again</Text>
+    </TouchableOpacity>
+  </View>
+);
+
 const HomeLoadingState = () => (
   <View style={styles.optionSheet}>
     <View style={styles.loadingCards}>
@@ -1668,6 +1715,40 @@ const styles = StyleSheet.create({
   loadingFooterText: {
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaAction,
+  },
+  // Error UI fix (2026-05-22): cold-start fetch failure fallback.
+  errorState: {
+    flex: 1,
+    minHeight: 320,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  errorStateTitle: {
+    ...theme.typography.aliases.poppinsButton,
+    fontSize: 18,
+    color: theme.colors.figmaText,
+    textAlign: 'center',
+  },
+  errorStateBody: {
+    ...theme.typography.aliases.poppinsBody,
+    fontSize: 14,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
+  },
+  errorStateRetry: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: theme.colors.figmaText,
+  },
+  errorStateRetryLabel: {
+    ...theme.typography.aliases.poppinsButton,
+    fontSize: 16,
+    color: theme.colors.figmaText,
   },
   loadingMoreIndicator: {
     marginHorizontal: 24,
