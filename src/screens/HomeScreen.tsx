@@ -83,6 +83,16 @@ const COMPUTED_SHEET_HEIGHT = Math.round(
 const OPTION_SHEET_HEIGHT = Math.min(COMPUTED_SHEET_HEIGHT, AVAILABLE_VIEWPORT);
 const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
 
+// 2026-05-18 fix: when sheet height is capped to AVAILABLE_VIEWPORT on smaller
+// screens (e.g. iPhone 16), keeping aspectRatio 3/4 on tiles overflows the
+// gridScroll area and forces nested scroll inside the snap-paged outer scroll.
+// Derive tile height from actual grid space so 2 rows always fit. On large
+// screens this yields CARD_WIDTH × 4/3 (Figma 3:4); on capped screens it
+// shrinks proportionally.
+const CARD_HEIGHT = Math.floor(
+  (OPTION_SHEET_HEIGHT - OPTION_ACTIONS_HEIGHT - GRID_GAP) / 2,
+);
+
 const UNFAVORITED_SWIPE_THRESHOLD = 3;
 const PREFETCH_LOOKAHEAD = 2;
 
@@ -376,13 +386,18 @@ export const HomeScreen = () => {
       // accepted here so existing callsites compile but ignored downstream.
       pinned_item_id?: string | null;
     }): Promise<{ outfits: Outfit[] }> => {
+      // H6 fix (2026-05-22): the previous map was keyed on occasion-like
+      // strings (casual/work/play/date/weekend) but `input.mode` is the
+      // RecommendationMode enum ('safe'|'power'|'creative'). The lookup
+      // was always undefined so the mode pill silently sent `mood: null`
+      // on every request — V05 received no intent variation between
+      // Safe/Power/Creative taps. The `as unknown as` cast was hiding the
+      // type mismatch; remove it now that keys are exhaustive.
       const moodMap: Record<RecommendationMode, string | null> = {
-        casual: 'calm',
-        work: 'confident',
-        play: 'playful',
-        date: 'confident',
-        weekend: 'low_energy',
-      } as unknown as Record<RecommendationMode, string | null>;
+        safe: 'calm',
+        power: 'confident',
+        creative: 'playful',
+      };
       const mood = moodMap[input.mode] ?? null;
       const occasion = input.mode || DEFAULT_RECOMMENDATION_MODE;
 
@@ -424,7 +439,17 @@ export const HomeScreen = () => {
     [weather.tempC],
   );
 
-  const { mutate: valenGetRecommendation, isPending: isStartPending } =
+  const {
+    mutate: valenGetRecommendation,
+    isPending: isStartPending,
+    // Error UI fix (2026-05-22): surface mutation error so the screen can
+    // render an actionable fallback instead of leaving the user on a blank
+    // canvas after a failed cold-start fetch. `reset` clears the error
+    // before retry so the fallback toggles back to loading on the next
+    // attempt.
+    error: startError,
+    reset: resetStartMutation,
+  } =
     useMutation({
       mutationFn: buildViaV05,
       onSuccess: (data: unknown) => {
@@ -643,11 +668,10 @@ export const HomeScreen = () => {
 
   // Bug 3 + Bug 4 fix: shared advance helper. Pure ref reads + a single
   // plain setState (not an updater) so StrictMode double-invocations can't
-  // double-increment the unfavorited-swipe counter. Called from both the
-  // momentum-end callback (real swipe) and "Show another" (programmatic
-  // scroll, which does NOT fire onMomentumScrollEnd on iOS).
+  // double-increment the unfavorited-swipe counter. Called from the
+  // momentum-end callback on real swipe.
   const advanceToSheet = useCallback(
-    (nextIndex: number, source: 'swipe' | 'showAnother') => {
+    (nextIndex: number, source: 'swipe') => {
       const previousIndex = activeSheetIndexRef.current;
 
       // Counter increments only on transitions to a HIGHER index where the
@@ -689,28 +713,6 @@ export const HomeScreen = () => {
     },
     [triggerPrefetchIfNeeded],
   );
-
-  const handleShowAnother = useCallback(() => {
-    const total = listOutfitsRef.current.length;
-    if (total === 0) {
-      return;
-    }
-    const currentIndex = activeSheetIndexRef.current;
-    const nextIndex = Math.min(currentIndex + 1, total - 1);
-    if (nextIndex === currentIndex) {
-      // Already on last sheet — proactively prefetch so swiping forward
-      // works without a stall.
-      triggerPrefetchIfNeeded(nextIndex);
-      return;
-    }
-    scrollViewRef.current?.scrollTo({
-      y: nextIndex * OPTION_SHEET_SNAP_INTERVAL,
-      animated: true,
-    });
-    // Bug 4 fix: iOS RN does NOT fire onMomentumScrollEnd for programmatic
-    // scrollTo, so manually advance the index + run counter logic here.
-    advanceToSheet(nextIndex, 'showAnother');
-  }, [advanceToSheet, triggerPrefetchIfNeeded]);
 
   const handleOpenContextEditModal = useCallback(() => {
     Keyboard.dismiss();
@@ -920,9 +922,27 @@ export const HomeScreen = () => {
         snapToInterval={OPTION_SHEET_SNAP_INTERVAL}
         decelerationRate="fast"
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        // C5 fix (2026-05-22): drop off-screen sheets from the native
+        // view hierarchy so swipe deceleration doesn't drag N tile
+        // images through layout/paint per frame on small phones.
+        removeClippedSubviews={true}
       >
         {loading ? (
           <HomeLoadingState />
+        ) : optionSets.length === 0 && startError ? (
+          // Error UI fix (2026-05-22): give the user a way out of a
+          // failed cold-start fetch. Without this, an API timeout or
+          // 5xx left the screen blank and the only recovery was to
+          // force-quit the app.
+          <HomeErrorState
+            onRetry={() => {
+              resetStartMutation();
+              valenGetRecommendation({
+                mode: selectedModeRef.current,
+                style_feedback: styleFeedbackRef.current ?? undefined,
+              });
+            }}
+          />
         ) : (
           <>
             {optionSets.map((outfit, sheetIndex) => {
@@ -935,7 +955,8 @@ export const HomeScreen = () => {
                   outfit={outfit}
                   saveState={sheetSaveState}
                   pinnedItemId={pinnedItemId}
-                  onShowAnother={handleShowAnother}
+                  totalSheets={optionSets.length}
+                  isActiveSheet={sheetIndex === activeSheetIndex}
                   onItemPress={item => setSelectedItem(item)}
                   onTogglePin={handleToggleItemPin}
                   onConfirm={() => handleHeartTapForOutfit(outfit)}
@@ -981,12 +1002,94 @@ export const HomeScreen = () => {
   );
 };
 
-const OptionSheet = ({
+// 2026-05-22 (AU-242 Figma spec): variable-item-count grid layouts per
+// Figma node 2849:11340 children. Designer confirmed: "We have layouts to
+// present 3-4-5-6 and >6 items in an outfit". All cards are aspect 3:4 with
+// 12px border radius, 4px gap. The three layout shapes cover every count:
+//   - 'twoRowOneLarge' (3 items): row1 = 2 equal flex cards · row2 = 1
+//     half-width card (left-aligned), all aspect 3:4
+//   - 'twoByTwo' (4 items): 2×2 grid, all flex-1 cards aspect 3:4
+//   - 'heroStackPlusRows' (5/6/7+): row1 = hero (≈2/3 width) + 2 stacked
+//     cards (≈1/3 width); subsequent rows = up to 3 flex cards each, all
+//     aspect 3:4. No truncation, no overflow badge — Figma frame
+//     2850:9542 shows all 9 items for the >6 case.
+type GridLayout =
+  | {
+      kind: 'twoRowOneLarge';
+      row1: [Item | null, Item | null];
+      row2Large: Item | null;
+    }
+  | {
+      kind: 'twoByTwo';
+      rows: [[Item | null, Item | null], [Item | null, Item | null]];
+    }
+  | {
+      kind: 'heroStackPlusRows';
+      hero: Item;
+      stack: [Item, Item];
+      rest: Item[];
+    };
+
+const pickLayout = (items: Item[]): GridLayout | null => {
+  // Drop sparse slots so the count reflects renderable items; sparse
+  // outfits still get a layout (with placeholders) instead of a blank
+  // sheet — count 0 alone returns null because there's nothing to draw.
+  const filled = items.filter((it): it is Item => !!it);
+  const count = filled.length;
+
+  if (count === 0) return null;
+
+  if (count <= 2) {
+    return {
+      kind: 'twoRowOneLarge',
+      row1: [filled[0] ?? null, filled[1] ?? null],
+      row2Large: null,
+    };
+  }
+  if (count === 3) {
+    return {
+      kind: 'twoRowOneLarge',
+      row1: [filled[0], filled[1]],
+      row2Large: filled[2],
+    };
+  }
+  if (count === 4) {
+    return {
+      kind: 'twoByTwo',
+      rows: [
+        [filled[0], filled[1]],
+        [filled[2], filled[3]],
+      ],
+    };
+  }
+  return {
+    kind: 'heroStackPlusRows',
+    hero: filled[0],
+    stack: [filled[1], filled[2]],
+    rest: filled.slice(3),
+  };
+};
+
+// C4 fix (2026-05-22): variant grids must stay inside OPTION_SHEET_HEIGHT
+// or the inner gridScroll activates and re-introduces the nested-scroll
+// bug the 2026-05-18 fix was tracking. For 2-row layouts the existing
+// CARD_HEIGHT constant is already sized for exactly 2 rows. For
+// heroStackPlusRows (1 hero row + N rest rows of 3) the row height must
+// shrink proportionally. Aspect ratio 3:4 is the Figma intent but
+// available height wins on smaller phones.
+const computeHeroRowHeight = (restCount: number): number => {
+  const rows = 1 + Math.ceil(restCount / 3);
+  const available = OPTION_SHEET_HEIGHT - OPTION_ACTIONS_HEIGHT - GRID_GAP;
+  return Math.floor((available - (rows - 1) * GRID_GAP) / rows);
+};
+
+const OptionSheet = React.memo(({
   sheetIndex,
   outfit,
   saveState,
   pinnedItemId,
-  onShowAnother,
+  totalSheets,
+  isActiveSheet,
   onItemPress,
   onTogglePin,
   onConfirm,
@@ -996,23 +1099,185 @@ const OptionSheet = ({
   outfit: OutfitSheetWithGrid;
   saveState: SaveState;
   pinnedItemId: string | null;
-  onShowAnother: () => void;
+  totalSheets: number;
+  // C5 fix (2026-05-22): pass a per-sheet boolean instead of the global
+  // `activeSheetIndex`. With React.memo this keeps inactive sheets out
+  // of re-render on every swipe; only the leaving + arriving sheets
+  // re-render (toggle false→true and true→false respectively).
+  isActiveSheet: boolean;
   onItemPress: (item: Item) => void;
   onTogglePin: (item: Item) => void;
   onConfirm: () => void;
   onEditContext: () => void;
 }) => {
-  const totalItems = outfit.gridItems.length;
-  const rows = [];
+  const items = outfit.items;
+  const layout = pickLayout(items);
+  const itemCount = items.length;
 
-  for (let i = 0; i < totalItems; i += 2) {
-    const isLastRowWithSingleItem = i + 1 >= totalItems && totalItems % 2 === 1;
-    if (isLastRowWithSingleItem) {
-      rows.push([outfit.gridItems[i], null]);
-    } else {
-      rows.push(outfit.gridItems.slice(i, i + 2));
+  const renderTile = (
+    item: Item | null,
+    flatTileIndex: number,
+    style?: object,
+  ) => {
+    // C1 fix (2026-05-22): nullable slot for sparse outfits (count 1/2)
+    // and the row2 spacer in twoRowOneLarge. Renders a transparent card
+    // shell that preserves grid geometry without crashing on item.id.
+    if (!item) {
+      return (
+        <View
+          key={`card-placeholder-${outfit.outfitHash}-${flatTileIndex}`}
+          style={[styles.card, style, styles.cardPlaceholder]}
+        />
+      );
     }
-  }
+    const isPinned = item.id === pinnedItemId;
+    return (
+      <TouchableOpacity
+        key={`card-${outfit.outfitHash}-${flatTileIndex}`}
+        testID={`home-tile-${sheetIndex}-${flatTileIndex}`}
+        accessibilityLabel={`home-tile-${sheetIndex}-${flatTileIndex}`}
+        activeOpacity={0.86}
+        style={[styles.card, style, isPinned && styles.cardPinned]}
+        onPress={() => onItemPress(item)}
+        // PHASE B (AU-222): long-press as a secondary affordance for pin
+        // toggle. Primary tap target is the pin badge overlay below.
+        onLongPress={() => onTogglePin(item)}
+        delayLongPress={500}
+      >
+        <GarmentPreview item={item} />
+        <TouchableOpacity
+          testID={
+            isPinned
+              ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set`
+              : `home-tile-pin-${sheetIndex}-${flatTileIndex}`
+          }
+          activeOpacity={0.7}
+          onPress={e => {
+            e.stopPropagation();
+            onTogglePin(item);
+          }}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
+          accessibilityRole="button"
+          accessibilityLabel={isPinned ? 'Unpin item' : 'Pin item'}
+        >
+          <IconHomePin width={14} height={14} />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderLayout = () => {
+    if (!layout) {
+      return null;
+    }
+
+    if (layout.kind === 'twoRowOneLarge') {
+      // 3 items: row1 of 2 equal cards (flex-1 each), row2 with single card
+      // taking ~50% width (matches Figma 189×252 / 414px-content frame).
+      // C1: count 1/2 reuses this layout with placeholder cells.
+      // C4: card height defaults to CARD_HEIGHT (sized for exactly 2 rows
+      // in the available grid area) — no aspect-ratio override.
+      return (
+        <View style={styles.gridWrap}>
+          <View style={styles.cardRow}>
+            <View style={styles.cardShell}>
+              {renderTile(layout.row1[0], 0)}
+            </View>
+            <View style={styles.cardShell}>
+              {renderTile(layout.row1[1], 1)}
+            </View>
+          </View>
+          <View style={styles.cardRow}>
+            <View style={styles.cardShell}>
+              {renderTile(layout.row2Large, 2)}
+            </View>
+            {/* Transparent spacer to keep row2 card left-aligned at ~50% */}
+            <View style={styles.cardShell} />
+          </View>
+        </View>
+      );
+    }
+
+    if (layout.kind === 'twoByTwo') {
+      return (
+        <View style={styles.gridWrap}>
+          {layout.rows.map((row, rowIndex) => (
+            <View
+              key={`row-${outfit.outfitHash}-${rowIndex}`}
+              style={styles.cardRow}
+            >
+              {row.map((item, itemIndex) => (
+                <View
+                  key={`shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
+                  style={styles.cardShell}
+                >
+                  {renderTile(item, rowIndex * 2 + itemIndex)}
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    // heroStackPlusRows (5/6/7+ items)
+    // Row 1: hero (flex 2) + right column of 2 stacked cards (flex 1).
+    // Subsequent rows: up to 3 flex cards each.
+    // C4: row height computed dynamically so total grid fits available
+    // sheet space — prevents inner gridScroll from activating.
+    const heroRowHeight = computeHeroRowHeight(layout.rest.length);
+    const heroRowStyle = { height: heroRowHeight };
+    const heroStackCellHeight = Math.floor((heroRowHeight - GRID_GAP) / 2);
+    const heroStackCellStyle = { height: heroStackCellHeight };
+    const restRows: Item[][] = [];
+    for (let i = 0; i < layout.rest.length; i += 3) {
+      restRows.push(layout.rest.slice(i, i + 3));
+    }
+    return (
+      <View style={styles.gridWrap}>
+        <View style={[styles.heroRow, { height: heroRowHeight }]}>
+          <View style={styles.heroCol}>
+            {renderTile(layout.hero, 0, heroRowStyle)}
+          </View>
+          <View style={styles.heroStackCol}>
+            <View style={styles.heroStackCell}>
+              {renderTile(layout.stack[0], 1, heroStackCellStyle)}
+            </View>
+            <View style={styles.heroStackCell}>
+              {renderTile(layout.stack[1], 2, heroStackCellStyle)}
+            </View>
+          </View>
+        </View>
+        {restRows.map((row, rowIndex) => (
+          <View
+            key={`rest-row-${outfit.outfitHash}-${rowIndex}`}
+            style={styles.cardRow}
+          >
+            {row.map((item, itemIndex) => (
+              <View
+                key={`rest-shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
+                style={styles.cardShell}
+              >
+                {renderTile(item, 3 + rowIndex * 3 + itemIndex, heroRowStyle)}
+              </View>
+            ))}
+            {/* Pad trailing partial rows with transparent spacers so cards
+                don't stretch to fill the row width — keeps every card the
+                same width across rows. */}
+            {row.length < 3
+              ? Array.from({ length: 3 - row.length }).map((_, padIdx) => (
+                  <View
+                    key={`rest-pad-${outfit.outfitHash}-${rowIndex}-${padIdx}`}
+                    style={styles.cardShell}
+                  />
+                ))
+              : null}
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   return (
     <View testID={`home-outfit-sheet-${sheetIndex}`} style={styles.optionSheet}>
@@ -1021,77 +1286,7 @@ const OptionSheet = ({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.gridScrollContent}
       >
-        <View style={styles.gridWrap}>
-          {rows.map((row, rowIndex) => (
-            <View
-              key={`row-${outfit.outfitHash}-${rowIndex}`}
-              style={styles.cardRow}
-            >
-              {row.map((item, itemIndex) => {
-                const isPinned = !!item && item.id === pinnedItemId;
-                const flatTileIndex = rowIndex * 2 + itemIndex;
-                return (
-                  <View
-                    key={`card-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
-                    style={styles.cardShell}
-                  >
-                    {item ? (
-                      <TouchableOpacity
-                        testID={`home-tile-${sheetIndex}-${flatTileIndex}`}
-                        accessibilityLabel={`home-tile-${sheetIndex}-${flatTileIndex}`}
-                        activeOpacity={0.86}
-                        style={[styles.card, isPinned && styles.cardPinned]}
-                        onPress={() => onItemPress(item)}
-                        // PHASE B (AU-222): long-press as a secondary
-                        // affordance for pin toggle. Primary tap target is
-                        // the pin badge overlay below — long-press is the
-                        // "tap anywhere on the tile" fallback per the spec.
-                        onLongPress={() => onTogglePin(item)}
-                        delayLongPress={500}
-                      >
-                        <GarmentPreview item={item} />
-                        {/* PHASE B (AU-222): pin badge tap target — Figma
-                            1711:17062 places this at the top-right of every
-                            tile. Tapping toggles pin for this item. */}
-                        <TouchableOpacity
-                          testID={
-                            isPinned
-                              ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set`
-                              : `home-tile-pin-${sheetIndex}-${flatTileIndex}`
-                          }
-                          activeOpacity={0.7}
-                          // C-4 (2026-05-05): stopPropagation prevents the
-                          // outer tile TouchableOpacity from also firing
-                          // onPress (which would open ItemDetailBottomSheet
-                          // instead of toggling pin). If this turns out to be
-                          // unreliable on iOS in QA, swap to <Pressable>
-                          // which has cleaner gesture isolation.
-                          onPress={e => {
-                            e.stopPropagation();
-                            onTogglePin(item);
-                          }}
-                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                          style={[
-                            styles.pinBadge,
-                            isPinned && styles.pinBadgeActive,
-                          ]}
-                          accessibilityRole="button"
-                          accessibilityLabel={
-                            isPinned ? 'Unpin item' : 'Pin item'
-                          }
-                        >
-                          <IconHomePin width={14} height={14} />
-                        </TouchableOpacity>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={[styles.card, styles.placeholderCard]} />
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          ))}
-        </View>
+        <View testID={`home-outfit-grid-${itemCount}`}>{renderLayout()}</View>
       </ScrollView>
 
       {/* Bottom action cluster (Frame 2017 in Figma) — "This works" + "Edit context" */}
@@ -1124,19 +1319,46 @@ const OptionSheet = ({
           textStyle={styles.secondaryActionText}
         />
 
-        {/* #3 fix (2026-05-13): "Show another" moved here per Figma spec —
-            Figma y=785/896px places it at the bottom peek, below action cluster. */}
-        <PillButton
-          testID={`home-show-another-${sheetIndex}`}
-          title="Show another"
-          variant="outline"
-          onPress={onShowAnother}
-          style={styles.showAnotherAction}
-        />
+        {/* Pagination counter ("1/3", "2/3", …). Designer note: "User need
+            to swipe left/right to see other options - rotate within 3 options".
+            C5 fix (2026-05-22): only the active sheet renders the counter,
+            and it shows its own sheetIndex+1 / totalSheets. Inactive sheets
+            skip the render entirely so React.memo can short-circuit them. */}
+        {isActiveSheet && totalSheets > 1 ? (
+          <View style={styles.sheetCounterSlot}>
+            <Text testID="home-sheet-counter" style={styles.sheetCounterText}>
+              {`${sheetIndex + 1}/${totalSheets}`}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
-};
+});
+OptionSheet.displayName = 'OptionSheet';
+
+// Error UI fix (2026-05-22): rendered when the cold-start V05 fetch
+// fails and the user is left without any outfit to display. A simple
+// Retry restarts the same mutation; deeper diagnosis lives in console
+// logs (onError) and Sentry.
+const HomeErrorState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <View style={styles.errorState} testID="home-error-state">
+    <Text style={styles.errorStateTitle}>Couldn't load your outfits</Text>
+    <Text style={styles.errorStateBody}>
+      Check your connection and try again.
+    </Text>
+    <TouchableOpacity
+      testID="home-error-retry"
+      onPress={onRetry}
+      style={styles.errorStateRetry}
+      activeOpacity={0.82}
+      accessibilityRole="button"
+      accessibilityLabel="Retry loading outfits"
+    >
+      <Text style={styles.errorStateRetryLabel}>Try again</Text>
+    </TouchableOpacity>
+  </View>
+);
 
 const HomeLoadingState = () => (
   <View style={styles.optionSheet}>
@@ -1337,12 +1559,55 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    aspectRatio: 3 / 4,
+    height: CARD_HEIGHT,
     borderRadius: 12, // Figma border-radius/xl = 12
     backgroundColor: theme.colors.figmaCardSurface,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // C1 fix (2026-05-22): transparent placeholder shell for nullable slots
+  // (sparse outfits + row2 spacer in twoRowOneLarge). Keeps grid geometry
+  // without rendering the dark card surface so the empty slot reads as
+  // "intentionally blank" rather than "missing tile".
+  cardPlaceholder: {
+    backgroundColor: 'transparent',
+  },
+  // 5/6/7+ item layout — row1 = hero (≈2/3 width) + right column (≈1/3
+  // width) stacked into 2 cards. Figma `2850:9580` shows hero at 253×339
+  // inside the 414-content frame ⇒ ~69% width; the right column stack
+  // mirrors the hero height with a 4px internal gap. RN flex (2 : 1)
+  // approximates the ratio cleanly without hardcoding pixel widths.
+  heroRow: {
+    flexDirection: 'row',
+    gap: GRID_GAP,
+  },
+  heroCol: {
+    flex: 2,
+  },
+  heroStackCol: {
+    flex: 1,
+    gap: GRID_GAP,
+  },
+  heroStackCell: {
+    flex: 1,
+  },
+  // 2026-05-22 (AU-242): pagination indicator slot ("1/3"). Figma `2036`
+  // sits between Remix (left) and Show another (right) at 94×32. Remix
+  // is dropped (per project memory), so this slot floats just above the
+  // "Show another" pill in the action cluster.
+  sheetCounterSlot: {
+    width: 94,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetCounterText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    lineHeight: 16,
+    color: theme.colors.figmaText,
+    textAlign: 'center',
   },
   // PHASE B (AU-222): pinned tile gets a 2px action-coloured ring.
   // Figma 1711:17062 communicates pin via the badge rather than a border;
@@ -1423,10 +1688,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     borderRadius: 16,
   },
-  // #3 fix (2026-05-13): "Show another" bottom peek style.
-  showAnotherAction: {
-    alignSelf: 'stretch',
-  },
   saveErrorText: {
     ...theme.typography.aliases.manropeCaption,
     color: theme.colors.figmaRed,
@@ -1454,6 +1715,40 @@ const styles = StyleSheet.create({
   loadingFooterText: {
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaAction,
+  },
+  // Error UI fix (2026-05-22): cold-start fetch failure fallback.
+  errorState: {
+    flex: 1,
+    minHeight: 320,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  errorStateTitle: {
+    ...theme.typography.aliases.poppinsButton,
+    fontSize: 18,
+    color: theme.colors.figmaText,
+    textAlign: 'center',
+  },
+  errorStateBody: {
+    ...theme.typography.aliases.poppinsBody,
+    fontSize: 14,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
+  },
+  errorStateRetry: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: theme.colors.figmaText,
+  },
+  errorStateRetryLabel: {
+    ...theme.typography.aliases.poppinsButton,
+    fontSize: 16,
+    color: theme.colors.figmaText,
   },
   loadingMoreIndicator: {
     marginHorizontal: 24,
