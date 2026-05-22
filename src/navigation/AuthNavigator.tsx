@@ -1,70 +1,45 @@
 /**
  * AU-242 — UAC v2 auth stack.
  *
- * Phase 04 foundation (this commit) registers 11 new routes with
- * placeholder screen bodies. Real bodies land in batches B-D:
- *   - Batch B: Welcome, LanguageSettings, EmailInput, PasswordCreation,
- *              VerifyEmail, Verified
- *   - Batch C: SignIn (replaces legacy LoginScreen)
- *   - Batch D: ForgotPasswordRequest, ForgotPasswordCheckMail,
- *              ResetNewPassword, EmailGoogleNotice
+ * Phase 04 integration: placeholder screen bodies created by the
+ * foundation commit are now replaced 1:1 with the real screen
+ * components landed in batches B/C/D. Route names, param shapes
+ * (in `types/navigation.ts`), and the legacy `Login` / `Register`
+ * fallback path are unchanged so the feature flag still works.
+ *
+ * Real screens by batch:
+ *   - Batch B (signup primary): Welcome, EmailInput, PasswordCreation,
+ *                                VerifyEmail, Verified
+ *   - Batch C (signin):          SignIn, EmailGoogleNotice
+ *   - Batch D (reset + lang):    LanguageSettings, ForgotPasswordRequest,
+ *                                ForgotPasswordCheckMail, ResetNewPassword
  *
  * The legacy `Login` / `Register` routes are still registered behind
- * `UAC_V2_ENABLED=false`, which lets us ship the foundation without
- * exposing half-built screens to users. Flip the flag on in dev to
- * iterate against the new tree.
+ * `UAC_V2_ENABLED=false`. Cleanup phase will delete them once the
+ * flag is permanently on.
  */
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { AuthStackParamList } from '../types/navigation';
 import { UAC_V2_ENABLED } from '../config/featureFlags';
 
+// UAC v2 screens — wired post-phase-04 integration.
+import { WelcomeScreen } from '../screens/auth/WelcomeScreen';
+import { LanguageSettingsScreen } from '../screens/auth/LanguageSettingsScreen';
+import { EmailInputScreen } from '../screens/auth/EmailInputScreen';
+import { PasswordCreationScreen } from '../screens/auth/PasswordCreationScreen';
+import { VerifyEmailScreen } from '../screens/auth/VerifyEmailScreen';
+import { EmailGoogleNoticeScreen } from '../screens/auth/EmailGoogleNoticeScreen';
+import { SignInScreen } from '../screens/auth/SignInScreen';
+import { ForgotPasswordRequestScreen } from '../screens/auth/ForgotPasswordRequestScreen';
+import { ForgotPasswordCheckMailScreen } from '../screens/auth/ForgotPasswordCheckMailScreen';
+import { ResetNewPasswordScreen } from '../screens/auth/ResetNewPasswordScreen';
+import { VerifiedScreen } from '../screens/auth/VerifiedScreen';
+
 const Stack = createNativeStackNavigator<AuthStackParamList>();
-
-/**
- * Throwaway placeholder used until phase 04 batches B-D land. Renders
- * the route name so devs can verify routing without committing to a
- * design yet. Replaced 1:1 by real screen components.
- */
-const makePlaceholder = (routeName: string) => () =>
-  (
-    <View style={styles.placeholder} testID={`uac-placeholder-${routeName}`}>
-      <Text style={styles.placeholderText}>{routeName} placeholder</Text>
-      <Text style={styles.placeholderHint}>
-        UAC v2 screen lands in phase 04 batch B/C/D.
-      </Text>
-    </View>
-  );
-
-// TODO(phase-04-batch-B): replace with real WelcomeScreen (spec 01).
-const WelcomePlaceholder = makePlaceholder('Welcome');
-// TODO(phase-04-batch-B): replace with LanguageSettingsScreen (spec 02).
-const LanguageSettingsPlaceholder = makePlaceholder('LanguageSettings');
-// TODO(phase-04-batch-B): replace with EmailInputScreen (spec 03 + 08).
-const EmailInputPlaceholder = makePlaceholder('EmailInput');
-// TODO(phase-04-batch-B): replace with PasswordCreationScreen (spec 04 + 05).
-const PasswordCreationPlaceholder = makePlaceholder('PasswordCreation');
-// TODO(phase-04-batch-B): replace with VerifyEmailScreen (spec 06).
-const VerifyEmailPlaceholder = makePlaceholder('VerifyEmail');
-// TODO(phase-04-batch-D): replace with EmailGoogleNoticeScreen (spec 07).
-const EmailGoogleNoticePlaceholder = makePlaceholder('EmailGoogleNotice');
-// TODO(phase-04-batch-C): replace with SignInScreen (spec 09).
-const SignInPlaceholder = makePlaceholder('SignIn');
-// TODO(phase-04-batch-D): replace with ForgotPasswordRequestScreen (spec 10).
-const ForgotPasswordRequestPlaceholder = makePlaceholder(
-  'ForgotPasswordRequest',
-);
-// TODO(phase-04-batch-D): replace with ForgotPasswordCheckMailScreen (spec 11).
-const ForgotPasswordCheckMailPlaceholder = makePlaceholder(
-  'ForgotPasswordCheckMail',
-);
-// TODO(phase-04-batch-D): replace with ResetNewPasswordScreen (spec 12).
-const ResetNewPasswordPlaceholder = makePlaceholder('ResetNewPassword');
-// TODO(phase-04-batch-B): replace with VerifiedSuccessScreen (spec 13).
-const VerifiedPlaceholder = makePlaceholder('Verified');
 
 export const AuthNavigator = () => {
   const initialRoute: keyof AuthStackParamList = UAC_V2_ENABLED
@@ -81,35 +56,35 @@ export const AuthNavigator = () => {
     >
       {UAC_V2_ENABLED ? (
         <>
-          <Stack.Screen name="Welcome" component={WelcomePlaceholder} />
+          <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen
             name="LanguageSettings"
-            component={LanguageSettingsPlaceholder}
+            component={LanguageSettingsScreen}
           />
-          <Stack.Screen name="EmailInput" component={EmailInputPlaceholder} />
+          <Stack.Screen name="EmailInput" component={EmailInputScreen} />
           <Stack.Screen
             name="PasswordCreation"
-            component={PasswordCreationPlaceholder}
+            component={PasswordCreationScreen}
           />
-          <Stack.Screen name="VerifyEmail" component={VerifyEmailPlaceholder} />
+          <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
           <Stack.Screen
             name="EmailGoogleNotice"
-            component={EmailGoogleNoticePlaceholder}
+            component={EmailGoogleNoticeScreen}
           />
-          <Stack.Screen name="SignIn" component={SignInPlaceholder} />
+          <Stack.Screen name="SignIn" component={SignInScreen} />
           <Stack.Screen
             name="ForgotPasswordRequest"
-            component={ForgotPasswordRequestPlaceholder}
+            component={ForgotPasswordRequestScreen}
           />
           <Stack.Screen
             name="ForgotPasswordCheckMail"
-            component={ForgotPasswordCheckMailPlaceholder}
+            component={ForgotPasswordCheckMailScreen}
           />
           <Stack.Screen
             name="ResetNewPassword"
-            component={ResetNewPasswordPlaceholder}
+            component={ResetNewPasswordScreen}
           />
-          <Stack.Screen name="Verified" component={VerifiedPlaceholder} />
+          <Stack.Screen name="Verified" component={VerifiedScreen} />
         </>
       ) : (
         <>
@@ -120,24 +95,3 @@ export const AuthNavigator = () => {
     </Stack.Navigator>
   );
 };
-
-const styles = StyleSheet.create({
-  placeholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#ffffff',
-  },
-  placeholderText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1d1f23',
-    marginBottom: 8,
-  },
-  placeholderHint: {
-    fontSize: 12,
-    color: '#7a7f89',
-    textAlign: 'center',
-  },
-});
