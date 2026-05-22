@@ -981,8 +981,15 @@ export const HomeScreen = () => {
 //     aspect 3:4. No truncation, no overflow badge — Figma frame
 //     2850:9542 shows all 9 items for the >6 case.
 type GridLayout =
-  | { kind: 'twoRowOneLarge'; row1: [Item, Item]; row2Large: Item }
-  | { kind: 'twoByTwo'; rows: [[Item, Item], [Item, Item]] }
+  | {
+      kind: 'twoRowOneLarge';
+      row1: [Item | null, Item | null];
+      row2Large: Item | null;
+    }
+  | {
+      kind: 'twoByTwo';
+      rows: [[Item | null, Item | null], [Item | null, Item | null]];
+    }
   | {
       kind: 'heroStackPlusRows';
       hero: Item;
@@ -991,11 +998,21 @@ type GridLayout =
     };
 
 const pickLayout = (items: Item[]): GridLayout | null => {
-  // Defensive: any sparse slot drops us back to the safe equal-grid
-  // rendering (caller renders nothing meaningful for null layout).
+  // Drop sparse slots so the count reflects renderable items; sparse
+  // outfits still get a layout (with placeholders) instead of a blank
+  // sheet — count 0 alone returns null because there's nothing to draw.
   const filled = items.filter((it): it is Item => !!it);
   const count = filled.length;
 
+  if (count === 0) return null;
+
+  if (count <= 2) {
+    return {
+      kind: 'twoRowOneLarge',
+      row1: [filled[0] ?? null, filled[1] ?? null],
+      row2Large: null,
+    };
+  }
   if (count === 3) {
     return {
       kind: 'twoRowOneLarge',
@@ -1012,15 +1029,25 @@ const pickLayout = (items: Item[]): GridLayout | null => {
       ],
     };
   }
-  if (count >= 5) {
-    return {
-      kind: 'heroStackPlusRows',
-      hero: filled[0],
-      stack: [filled[1], filled[2]],
-      rest: filled.slice(3),
-    };
-  }
-  return null;
+  return {
+    kind: 'heroStackPlusRows',
+    hero: filled[0],
+    stack: [filled[1], filled[2]],
+    rest: filled.slice(3),
+  };
+};
+
+// C4 fix (2026-05-22): variant grids must stay inside OPTION_SHEET_HEIGHT
+// or the inner gridScroll activates and re-introduces the nested-scroll
+// bug the 2026-05-18 fix was tracking. For 2-row layouts the existing
+// CARD_HEIGHT constant is already sized for exactly 2 rows. For
+// heroStackPlusRows (1 hero row + N rest rows of 3) the row height must
+// shrink proportionally. Aspect ratio 3:4 is the Figma intent but
+// available height wins on smaller phones.
+const computeHeroRowHeight = (restCount: number): number => {
+  const rows = 1 + Math.ceil(restCount / 3);
+  const available = OPTION_SHEET_HEIGHT - OPTION_ACTIONS_HEIGHT - GRID_GAP;
+  return Math.floor((available - (rows - 1) * GRID_GAP) / rows);
 };
 
 const OptionSheet = ({
@@ -1050,8 +1077,23 @@ const OptionSheet = ({
   const layout = pickLayout(items);
   const itemCount = items.length;
 
-  const renderTile = (item: Item, flatTileIndex: number, style?: object) => {
-    const isPinned = !!item && item.id === pinnedItemId;
+  const renderTile = (
+    item: Item | null,
+    flatTileIndex: number,
+    style?: object,
+  ) => {
+    // C1 fix (2026-05-22): nullable slot for sparse outfits (count 1/2)
+    // and the row2 spacer in twoRowOneLarge. Renders a transparent card
+    // shell that preserves grid geometry without crashing on item.id.
+    if (!item) {
+      return (
+        <View
+          key={`card-placeholder-${outfit.outfitHash}-${flatTileIndex}`}
+          style={[styles.card, style, styles.cardPlaceholder]}
+        />
+      );
+    }
+    const isPinned = item.id === pinnedItemId;
     return (
       <TouchableOpacity
         key={`card-${outfit.outfitHash}-${flatTileIndex}`}
@@ -1096,19 +1138,22 @@ const OptionSheet = ({
     if (layout.kind === 'twoRowOneLarge') {
       // 3 items: row1 of 2 equal cards (flex-1 each), row2 with single card
       // taking ~50% width (matches Figma 189×252 / 414px-content frame).
+      // C1: count 1/2 reuses this layout with placeholder cells.
+      // C4: card height defaults to CARD_HEIGHT (sized for exactly 2 rows
+      // in the available grid area) — no aspect-ratio override.
       return (
         <View style={styles.gridWrap}>
           <View style={styles.cardRow}>
             <View style={styles.cardShell}>
-              {renderTile(layout.row1[0], 0, styles.cardAspect)}
+              {renderTile(layout.row1[0], 0)}
             </View>
             <View style={styles.cardShell}>
-              {renderTile(layout.row1[1], 1, styles.cardAspect)}
+              {renderTile(layout.row1[1], 1)}
             </View>
           </View>
           <View style={styles.cardRow}>
             <View style={styles.cardShell}>
-              {renderTile(layout.row2Large, 2, styles.cardAspect)}
+              {renderTile(layout.row2Large, 2)}
             </View>
             {/* Transparent spacer to keep row2 card left-aligned at ~50% */}
             <View style={styles.cardShell} />
@@ -1130,11 +1175,7 @@ const OptionSheet = ({
                   key={`shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
                   style={styles.cardShell}
                 >
-                  {renderTile(
-                    item,
-                    rowIndex * 2 + itemIndex,
-                    styles.cardAspect,
-                  )}
+                  {renderTile(item, rowIndex * 2 + itemIndex)}
                 </View>
               ))}
             </View>
@@ -1146,22 +1187,28 @@ const OptionSheet = ({
     // heroStackPlusRows (5/6/7+ items)
     // Row 1: hero (flex 2) + right column of 2 stacked cards (flex 1).
     // Subsequent rows: up to 3 flex cards each.
+    // C4: row height computed dynamically so total grid fits available
+    // sheet space — prevents inner gridScroll from activating.
+    const heroRowHeight = computeHeroRowHeight(layout.rest.length);
+    const heroRowStyle = { height: heroRowHeight };
+    const heroStackCellHeight = Math.floor((heroRowHeight - GRID_GAP) / 2);
+    const heroStackCellStyle = { height: heroStackCellHeight };
     const restRows: Item[][] = [];
     for (let i = 0; i < layout.rest.length; i += 3) {
       restRows.push(layout.rest.slice(i, i + 3));
     }
     return (
       <View style={styles.gridWrap}>
-        <View style={styles.heroRow}>
+        <View style={[styles.heroRow, { height: heroRowHeight }]}>
           <View style={styles.heroCol}>
-            {renderTile(layout.hero, 0, styles.cardAspect)}
+            {renderTile(layout.hero, 0, heroRowStyle)}
           </View>
           <View style={styles.heroStackCol}>
             <View style={styles.heroStackCell}>
-              {renderTile(layout.stack[0], 1, styles.cardAspect)}
+              {renderTile(layout.stack[0], 1, heroStackCellStyle)}
             </View>
             <View style={styles.heroStackCell}>
-              {renderTile(layout.stack[1], 2, styles.cardAspect)}
+              {renderTile(layout.stack[1], 2, heroStackCellStyle)}
             </View>
           </View>
         </View>
@@ -1175,11 +1222,7 @@ const OptionSheet = ({
                 key={`rest-shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
                 style={styles.cardShell}
               >
-                {renderTile(
-                  item,
-                  3 + rowIndex * 3 + itemIndex,
-                  styles.cardAspect,
-                )}
+                {renderTile(item, 3 + rowIndex * 3 + itemIndex, heroRowStyle)}
               </View>
             ))}
             {/* Pad trailing partial rows with transparent spacers so cards
@@ -1460,13 +1503,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // 2026-05-22 (AU-242): for variable-item-count layouts every card uses
-  // Figma's 3:4 aspect (width/height = 0.75) instead of the legacy fixed
-  // CARD_HEIGHT (which assumed exactly 2 rows of 2 columns). Applied via
-  // the `style` override on renderTile.
-  cardAspect: {
-    height: undefined,
-    aspectRatio: 3 / 4,
+  // C1 fix (2026-05-22): transparent placeholder shell for nullable slots
+  // (sparse outfits + row2 spacer in twoRowOneLarge). Keeps grid geometry
+  // without rendering the dark card surface so the empty slot reads as
+  // "intentionally blank" rather than "missing tile".
+  cardPlaceholder: {
+    backgroundColor: 'transparent',
   },
   // 5/6/7+ item layout — row1 = hero (≈2/3 width) + right column (≈1/3
   // width) stacked into 2 cards. Figma `2850:9580` shows hero at 253×339
