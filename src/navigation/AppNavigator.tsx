@@ -6,7 +6,7 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
-import { WelcomeScreen } from '../screens/WelcomeScreen';
+import { AppWelcomeScreen } from '../screens/AppWelcomeScreen';
 import { ItemDetailScreen } from '../screens/ItemDetailScreen';
 import { GenderPreferenceScreen } from '../screens/GenderPreferenceScreen';
 import { StylePreferenceScreen } from '../screens/StylePreferenceScreen';
@@ -55,7 +55,7 @@ export const AppNavigator = () => {
                 {user ? (
                     user.is_first_login ? (
                         <>
-                            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                            <Stack.Screen name="Welcome" component={AppWelcomeScreen} />
                             <Stack.Screen name="LocationPermission" component={LocationPermissionScreen} />
                             <Stack.Screen name="GenderPreference" component={GenderPreferenceScreen} />
                             <Stack.Screen name="StylePreference" component={StylePreferenceScreen} />

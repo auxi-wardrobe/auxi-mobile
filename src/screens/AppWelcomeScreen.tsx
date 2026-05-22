@@ -9,7 +9,7 @@ import { AppStackParamList } from '../types/navigation';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Welcome'>;
 
-export const WelcomeScreen = () => {
+export const AppWelcomeScreen = () => {
   const navigation = useNavigation<Navigation>();
   const { isLoading } = useAuth();
 
