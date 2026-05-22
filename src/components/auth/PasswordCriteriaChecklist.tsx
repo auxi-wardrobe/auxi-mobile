@@ -40,7 +40,7 @@ export const PasswordCriteriaChecklist: React.FC<
 
   return (
     <View style={styles.list} testID={`${testIDPrefix}-list`}>
-      {rules.map((rule) => (
+      {rules.map(rule => (
         <View key={rule.key} style={styles.row}>
           <View
             style={[

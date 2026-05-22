@@ -36,7 +36,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import {
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 
@@ -91,7 +95,7 @@ export const ResetNewPasswordScreen: React.FC = () => {
         onSuccess: () => {
           navigation.navigate('Verified', { source: 'reset' });
         },
-        onError: (err) => {
+        onError: err => {
           if (
             err.code === 'TOKEN_INVALID' ||
             err.code === 'TOKEN_EXPIRED' ||
@@ -133,7 +137,10 @@ export const ResetNewPasswordScreen: React.FC = () => {
 
         <ScrollView contentContainerStyle={styles.body}>
           <View style={styles.headingBlock}>
-            <Text style={styles.heading} testID="reset-password-token-error-heading">
+            <Text
+              style={styles.heading}
+              testID="reset-password-token-error-heading"
+            >
               {t('uac.reset_new_password.section_heading')}
             </Text>
             <Text
@@ -149,18 +156,13 @@ export const ResetNewPasswordScreen: React.FC = () => {
           <Pressable
             testID="reset-password-request-new-link"
             accessibilityRole="button"
-            accessibilityLabel={
-              t('uac.forgot_request.submit_cta') as string
-            }
+            accessibilityLabel={t('uac.forgot_request.submit_cta') as string}
             onPress={() =>
               navigation.navigate('ForgotPasswordRequest', {
                 email: carriedEmail ?? '',
               })
             }
-            style={({ pressed }) => [
-              styles.cta,
-              pressed && styles.ctaPressed,
-            ]}
+            style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
           >
             <Text style={styles.ctaLabel}>
               {t('uac.forgot_request.submit_cta')}
@@ -218,7 +220,7 @@ export const ResetNewPasswordScreen: React.FC = () => {
                 }
                 style={styles.input}
                 value={password}
-                onChangeText={(text) => {
+                onChangeText={text => {
                   setPassword(text);
                   if (submissionError) setSubmissionError(null);
                 }}
@@ -241,7 +243,7 @@ export const ResetNewPasswordScreen: React.FC = () => {
                     ? (t('uac.reset_new_password.hide_password') as string)
                     : (t('uac.reset_new_password.show_password') as string)
                 }
-                onPress={() => setPasswordVisible((v) => !v)}
+                onPress={() => setPasswordVisible(v => !v)}
                 hitSlop={8}
                 style={styles.eyeToggle}
               >
@@ -282,10 +284,7 @@ export const ResetNewPasswordScreen: React.FC = () => {
           </View>
 
           {submissionError ? (
-            <Text
-              style={styles.errorText}
-              testID="reset-password-error"
-            >
+            <Text style={styles.errorText} testID="reset-password-error">
               {submissionError}
             </Text>
           ) : null}
@@ -407,7 +406,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: theme.spacing.uacBodyPadding,
-    paddingBottom: theme.spacing.uacSafeAreaBottom + theme.spacing.uacDimension16,
+    paddingBottom:
+      theme.spacing.uacSafeAreaBottom + theme.spacing.uacDimension16,
     paddingTop: theme.spacing.uacDimension8,
   },
   cta: {

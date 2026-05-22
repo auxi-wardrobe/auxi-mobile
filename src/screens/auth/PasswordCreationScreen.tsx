@@ -36,7 +36,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import {
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
@@ -48,7 +52,10 @@ import type { AuthStackParamList } from '../../types/navigation';
 import { PasswordCriteriaChecklist } from '../../components/auth/PasswordCriteriaChecklist';
 import { validatePassword } from '../../utils/password-rules';
 
-type Navigation = NativeStackNavigationProp<AuthStackParamList, 'PasswordCreation'>;
+type Navigation = NativeStackNavigationProp<
+  AuthStackParamList,
+  'PasswordCreation'
+>;
 type Route = RouteProp<AuthStackParamList, 'PasswordCreation'>;
 
 const ChevronLeftGlyph = () => (
@@ -126,10 +133,13 @@ export const PasswordCreationScreen = () => {
     [password],
   );
 
-  const handleChange = useCallback((text: string) => {
-    setPassword(text);
-    if (error) setError(null);
-  }, [error]);
+  const handleChange = useCallback(
+    (text: string) => {
+      setPassword(text);
+      if (error) setError(null);
+    },
+    [error],
+  );
 
   const handleSubmit = useCallback(() => {
     if (!allMet || register.isPending) return;
@@ -143,7 +153,7 @@ export const PasswordCreationScreen = () => {
           setPendingVerifyEmail(email);
           navigation.navigate('VerifyEmail', { email });
         },
-        onError: (err) => {
+        onError: err => {
           switch (err.code) {
             case 'EMAIL_ALREADY_EXISTS':
               navigation.navigate('SignIn', { email });
@@ -223,15 +233,22 @@ export const PasswordCreationScreen = () => {
                 style={styles.input}
               />
               <Pressable
-                testID={visible ? 'password-visibility-hide' : 'password-visibility-show'}
+                testID={
+                  visible
+                    ? 'password-visibility-hide'
+                    : 'password-visibility-show'
+                }
                 accessibilityRole="button"
                 accessibilityLabel={
                   visible
                     ? t('uac.password_creation.hide_password')
                     : t('uac.password_creation.show_password')
                 }
-                onPress={() => setVisible((v) => !v)}
-                style={({ pressed }) => [styles.eyeBtn, pressed && styles.pressed]}
+                onPress={() => setVisible(v => !v)}
+                style={({ pressed }) => [
+                  styles.eyeBtn,
+                  pressed && styles.pressed,
+                ]}
                 hitSlop={8}
               >
                 {visible ? <EyeOpenGlyph /> : <EyeClosedGlyph />}

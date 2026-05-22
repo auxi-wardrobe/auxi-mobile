@@ -75,7 +75,11 @@ export const buildCriteriaList = (
   const { criteria } = validatePassword(password);
   return [
     { key: 'length', label: labels.length, satisfied: criteria.length },
-    { key: 'lowercase', label: labels.lowercase, satisfied: criteria.lowercase },
+    {
+      key: 'lowercase',
+      label: labels.lowercase,
+      satisfied: criteria.lowercase,
+    },
     { key: 'digit', label: labels.digit, satisfied: criteria.digit },
   ];
 };
