@@ -36,6 +36,25 @@
 				<string>auxi</string>
 			</array>
 		</dict>
+		<!--
+			AU-242 Phase 05 — Google Sign-In callback URL scheme.
+			Replace REVERSED_CLIENT_ID_PLACEHOLDER with the
+			REVERSED_CLIENT_ID value from GoogleService-Info.plist
+			(format: com.googleusercontent.apps.NNNNNNN-XXXX).
+			Until then the Google SDK will fail to return from the
+			auth flow; the JS layer guards via isOAuthConfigured()
+			so the app surfaces an info toast rather than crashing.
+		-->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>app.auxi.googlesignin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>REVERSED_CLIENT_ID_PLACEHOLDER</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>

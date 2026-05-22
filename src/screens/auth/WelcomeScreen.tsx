@@ -1,47 +1,54 @@
 /**
- * AU-242 Phase 04 Batch B — Welcome (auth stack root).
+ * AU-242 Phase 05 — Welcome (auth stack root) with live OAuth wiring.
  *
  * Spec: plans/260521-2335-au-242-figma-spec/01-welcome.md
  * Figma node: 2849:10085
  *
- * Replaces the foundation placeholder. Layout follows the Figma frame
- * verbatim modulo three pragmatic deltas (all from the spec's
- * "Notes / gotchas" section):
- *   1. Brand mark is rendered as text per i18n key `welcome.headline`
- *      so we ship "Auxi" even though the Figma label still reads
- *      "Macgie". Open question for Việt — see open-questions block at
- *      EOF.
- *   2. Google/Apple/Email glyphs are minimal inline SVGs via
- *      `react-native-svg` (no new asset files added — keeps batch B
- *      diff small).
- *   3. Apple button is unconditionally rendered. Android-only hide is
- *      handled at the batch-D platform check, not here.
+ * Phase 04 batch B shipped the visual scaffold; phase 05 wires the
+ * Google + Apple CTAs to the real OAuth flows. Layout untouched.
  *
- * Wiring: route is registered in `AuthNavigator` (foundation). Mutation
- * isn't called here — Welcome is purely a router into the email /
- * Google / Apple paths. Google + Apple CTAs are stubs in this batch;
- * the real OAuth wiring lives in batch C (`useGoogleSignInMutation` /
- * `useAppleSignInMutation`).
+ * Behaviour summary
+ * - "Continue with Google" → Google SDK sheet → POST /api/auth/google
+ *   → AuthContext refreshUser → AppNavigator gate swaps to AppStack.
+ * - "Continue with Apple" → Apple SDK sheet → POST /api/auth/apple →
+ *   same success path. iOS-only via `Platform.OS === 'ios'`.
+ * - User cancels SDK sheet → silent return to Welcome (no toast).
+ * - Backend 409 EMAIL_LINKED_TO_PASSWORD → navigate to SignIn with the
+ *   email prefilled (backend echoes the email in the conflict detail).
+ * - Backend 409 EMAIL_LINKED_TO_OTHER_PROVIDER → info toast naming the
+ *   provider; user stays on Welcome to pick the other CTA.
+ * - OAuth not yet configured (placeholder client IDs) → info toast
+ *   "Sign-in is not set up" so the app doesn't crash at the SDK
+ *   boundary on builds that haven't received `GoogleService-Info.plist`.
  */
 import React from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
+import Toast from 'react-native-toast-message';
 
 import { theme } from '../../theme/theme';
 import type { AuthStackParamList } from '../../types/navigation';
+import { useAuth } from '../../context/AuthContext';
+import {
+  useAppleSignInMutation,
+  useGoogleSignInMutation,
+} from '../../hooks/auth/useAuthMutations';
+import { appleSignInRequest } from '../../services/oauth/appleSignIn';
+import { googleSignInRequest } from '../../services/oauth/googleSignIn';
+import { isOAuthCancelled } from '../../services/oauth/oauthErrors';
+import { isOAuthConfigured } from '../../services/oauth/oauthConfig';
+import {
+  isOAuthConflictError,
+  type AuthErrorEnvelope,
+} from '../../services/authTypes';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
-// Minimal inline glyphs — keep batch B diff small (no new SVG assets).
+// Minimal inline glyphs — keep diff small (no new SVG assets).
 // Sizes match the Figma 24×24 trailing-icon slot.
 const GoogleGlyph = () => (
   <Svg width={24} height={24} viewBox="0 0 24 24">
@@ -104,12 +111,109 @@ const CaretDownGlyph = () => (
 export const WelcomeScreen = () => {
   const navigation = useNavigation<Navigation>();
   const { t } = useTranslation();
+  const { refreshUser } = useAuth();
+  const googleMutation = useGoogleSignInMutation();
+  const appleMutation = useAppleSignInMutation();
 
-  const onPressEmail = () => navigation.navigate('EmailInput', { mode: 'signup' });
+  const isAppleAvailable = Platform.OS === 'ios';
+  const isBusy = googleMutation.isPending || appleMutation.isPending;
+
+  const onPressEmail = () =>
+    navigation.navigate('EmailInput', { mode: 'signup' });
   const onPressLanguage = () => navigation.navigate('LanguageSettings');
-  // OAuth stubs — real flow lands in batch C.
-  const onPressGoogle = () => navigation.navigate('EmailGoogleNotice', { email: '' });
-  const onPressApple = () => navigation.navigate('EmailInput', { mode: 'signin' });
+
+  /**
+   * Translate a backend AuthErrorEnvelope into the appropriate UX action:
+   * - EMAIL_LINKED_TO_PASSWORD → bounce to SignIn (email prefilled if
+   *   backend echoed it in detail; otherwise leave blank).
+   * - EMAIL_LINKED_TO_OTHER_PROVIDER → info toast naming the other
+   *   provider; user stays on Welcome.
+   * - anything else → generic toast.
+   */
+  const handleAuthError = (err: AuthErrorEnvelope) => {
+    if (isOAuthConflictError(err)) {
+      if (err.code === 'EMAIL_LINKED_TO_PASSWORD') {
+        const email =
+          typeof err.detail?.email === 'string'
+            ? (err.detail.email as string)
+            : '';
+        navigation.navigate('SignIn', { email });
+        return;
+      }
+      // EMAIL_LINKED_TO_OTHER_PROVIDER
+      Toast.show({
+        type: 'info',
+        text1: t('uac.welcome.oauth_conflict_other_provider', {
+          provider: err.detail.provider,
+        }),
+      });
+      return;
+    }
+    Toast.show({
+      type: 'error',
+      text1: t('uac.welcome.oauth_generic_error'),
+    });
+  };
+
+  const onPressGoogle = async () => {
+    if (isBusy) return;
+    if (!isOAuthConfigured()) {
+      Toast.show({
+        type: 'info',
+        text1: t('uac.welcome.oauth_not_configured'),
+      });
+      return;
+    }
+    try {
+      const { idToken } = await googleSignInRequest();
+      await googleMutation.mutateAsync({ id_token: idToken });
+      // Tokens have already been persisted by `signInWithGoogle`. Pull
+      // the user record so AuthContext flips AppNavigator over to the
+      // AppStack — no manual reset() needed.
+      await refreshUser();
+    } catch (err) {
+      if (isOAuthCancelled(err)) return;
+      // Mutation errors land here as AuthErrorEnvelope; native SDK
+      // failures land here as something else (typically Error).
+      if (err && typeof err === 'object' && 'code' in err && 'status' in err) {
+        handleAuthError(err as AuthErrorEnvelope);
+        return;
+      }
+      Toast.show({
+        type: 'error',
+        text1: t('uac.welcome.oauth_generic_error'),
+      });
+    }
+  };
+
+  const onPressApple = async () => {
+    if (isBusy) return;
+    if (!isOAuthConfigured()) {
+      // OAuth config is currently shared between Google + Apple — until
+      // anh confirms Apple Sign-In is provisioned, we surface the same
+      // info toast as Google to avoid crashing on tap.
+      Toast.show({
+        type: 'info',
+        text1: t('uac.welcome.oauth_not_configured'),
+      });
+      return;
+    }
+    try {
+      const { identityToken, name } = await appleSignInRequest();
+      await appleMutation.mutateAsync({ identity_token: identityToken, name });
+      await refreshUser();
+    } catch (err) {
+      if (isOAuthCancelled(err)) return;
+      if (err && typeof err === 'object' && 'code' in err && 'status' in err) {
+        handleAuthError(err as AuthErrorEnvelope);
+        return;
+      }
+      Toast.show({
+        type: 'error',
+        text1: t('uac.welcome.oauth_generic_error'),
+      });
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -120,9 +224,14 @@ export const WelcomeScreen = () => {
           accessibilityRole="button"
           accessibilityLabel={t('uac.welcome.language_button')}
           onPress={onPressLanguage}
-          style={({ pressed }) => [styles.langButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.langButton,
+            pressed && styles.pressed,
+          ]}
         >
-          <Text style={styles.langText}>{t('uac.welcome.language_button')}</Text>
+          <Text style={styles.langText}>
+            {t('uac.welcome.language_button')}
+          </Text>
           <CaretDownGlyph />
         </Pressable>
       </View>
@@ -142,31 +251,41 @@ export const WelcomeScreen = () => {
               testID="welcome-cta-google"
               accessibilityRole="button"
               accessibilityLabel={t('uac.welcome.google_cta')}
+              accessibilityState={{ disabled: isBusy }}
+              disabled={isBusy}
               onPress={onPressGoogle}
               style={({ pressed }) => [
                 styles.buttonBase,
                 styles.buttonSecondary,
-                pressed && styles.pressed,
+                (pressed || isBusy) && styles.pressed,
               ]}
             >
-              <Text style={styles.buttonLabelDark}>{t('uac.welcome.google_cta')}</Text>
+              <Text style={styles.buttonLabelDark}>
+                {t('uac.welcome.google_cta')}
+              </Text>
               <GoogleGlyph />
             </Pressable>
 
-            <Pressable
-              testID="welcome-cta-apple"
-              accessibilityRole="button"
-              accessibilityLabel={t('uac.welcome.apple_cta')}
-              onPress={onPressApple}
-              style={({ pressed }) => [
-                styles.buttonBase,
-                styles.buttonPrimary,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.buttonLabelLight}>{t('uac.welcome.apple_cta')}</Text>
-              <AppleGlyph />
-            </Pressable>
+            {isAppleAvailable && (
+              <Pressable
+                testID="welcome-cta-apple"
+                accessibilityRole="button"
+                accessibilityLabel={t('uac.welcome.apple_cta')}
+                accessibilityState={{ disabled: isBusy }}
+                disabled={isBusy}
+                onPress={onPressApple}
+                style={({ pressed }) => [
+                  styles.buttonBase,
+                  styles.buttonPrimary,
+                  (pressed || isBusy) && styles.pressed,
+                ]}
+              >
+                <Text style={styles.buttonLabelLight}>
+                  {t('uac.welcome.apple_cta')}
+                </Text>
+                <AppleGlyph />
+              </Pressable>
+            )}
           </View>
 
           {/* 3b. Divider (1px, neutral border) */}
@@ -177,14 +296,18 @@ export const WelcomeScreen = () => {
             testID="welcome-cta-email"
             accessibilityRole="button"
             accessibilityLabel={t('uac.welcome.email_cta')}
+            accessibilityState={{ disabled: isBusy }}
+            disabled={isBusy}
             onPress={onPressEmail}
             style={({ pressed }) => [
               styles.buttonBase,
               styles.buttonSecondary,
-              pressed && styles.pressed,
+              (pressed || isBusy) && styles.pressed,
             ]}
           >
-            <Text style={styles.buttonLabelDark}>{t('uac.welcome.email_cta')}</Text>
+            <Text style={styles.buttonLabelDark}>
+              {t('uac.welcome.email_cta')}
+            </Text>
             <EnvelopeGlyph />
           </Pressable>
         </View>
