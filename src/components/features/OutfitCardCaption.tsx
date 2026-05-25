@@ -8,9 +8,10 @@ import IconIdea from '../../assets/images/icon_idea.svg';
 // (color/primary/200 bg, 40×40) holding the carbon:idea lightbulb.
 // Gap 4 between them, both radius border-radius/xs (4).
 //
-// TODO(AU-253): `caption` is rendered from a prop with a fallback below
-// because the backend Outfit / V05Outfit contract has no caption / insight
-// field yet. Do NOT invent the endpoint — escalated to tech-lead.
+// `caption` is the V05 `reasoning_human` text, threaded from the /build and
+// /try_another responses (HomeScreen buildViaV05 → normalizeOutfits). The
+// constant below is only a defensive fallback for the rare case the field is
+// absent (empty/fallback batch or a legacy cached payload).
 const DEFAULT_CAPTION = 'Clean. Ready for today';
 
 type Props = {
