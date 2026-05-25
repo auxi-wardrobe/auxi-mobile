@@ -6,12 +6,16 @@ export type WeatherData = {
   icon_code: string;
 };
 
-const MOCK_FALLBACK: WeatherData = { temp_c: 22, condition: 'Clear', icon_code: '01d' };
+const MOCK_FALLBACK: WeatherData = {
+  temp_c: 22,
+  condition: 'Clear',
+  icon_code: '01d',
+};
 
 export const weatherService = {
   async getWeather(lat: number, lon: number): Promise<WeatherData> {
     try {
-      const res = await apiClient.get<WeatherData>('/api/weather', {
+      const res = await apiClient.get<WeatherData>('/weather', {
         params: { lat, lon },
       });
       return res.data;
