@@ -101,11 +101,9 @@ const PREFETCH_LOOKAHEAD = 2;
 type OutfitSheet = {
   items: Item[];
   outfitHash: string;
-  // TODO(AU-253): per-outfit caption/insight text. The current Outfit /
-  // V05Outfit backend contract has NO caption field — do NOT invent the
-  // endpoint. Until the backend ships it, this stays undefined and
-  // OutfitCardCaption renders its stubbed fallback copy. Escalated to
-  // tech-lead (see extraction artifact "New backend fields").
+  // Per-outfit caption text. Sourced from V05 `reasoning_human` (the engine
+  // §6.4 template or LLM-3 override) via buildViaV05 → normalizeOutfits.
+  // Null when absent → OutfitCardCaption renders DEFAULT_CAPTION fallback.
   caption?: string | null;
 };
 
@@ -208,6 +206,10 @@ const normalizeOutfits = (
         return {
           items: outfit.items || [],
           outfitHash: outfit.outfit_hash || fallbackHash,
+          // Carried from V05 `reasoning_human` by buildViaV05 (not on the
+          // legacy Outfit type, hence the local widen). Null when absent so
+          // OutfitCardCaption falls back to DEFAULT_CAPTION.
+          caption: (outfit as { caption?: string | null }).caption ?? null,
         };
       }
 
@@ -455,6 +457,11 @@ export const HomeScreen = () => {
         outfits: v05.outfits.map(o => ({
           items: o.items.map(mapItem),
           outfit_hash: o.outfit_hash,
+          // V05 `reasoning_human` (engine §6.4 template or LLM-3 override) is
+          // the per-outfit caption copy — same field on /build and
+          // /try_another. Carry it so normalizeOutfits → OutfitCardCaption
+          // renders real text instead of the stubbed DEFAULT_CAPTION fallback.
+          caption: o.reasoning_human,
         })) as unknown as Outfit[],
       };
     },
@@ -1362,8 +1369,8 @@ const OptionSheet = React.memo(
         style={styles.optionSheet}
       >
         {/* AU-253: caption + insight title row (Figma Frame 2104). Caption text
-          is stubbed via OutfitCardCaption's fallback — no backend field yet
-          (TODO(AU-253) flagged in that component + the report). */}
+          is the V05 `reasoning_human` threaded via buildViaV05; OutfitCardCaption
+          falls back to DEFAULT_CAPTION only when it's absent. */}
         <OutfitCardCaption
           testID={`home-card-caption-${sheetIndex}`}
           caption={outfit.caption}
