@@ -1,4 +1,6 @@
 import IconWater from '../images/icon_water.svg';
+import IconGrid from '../images/icon_grid.svg';
+import IconSetting from '../images/icon_setting.svg';
 import IconWardrobe from '../images/icon_wardrobe.svg';
 import IconWardrobeNew from '../images/icon_wardrobe_new.svg';
 import IconHeart from '../images/icon_heart.svg';
@@ -27,6 +29,8 @@ import IconCanvasDelete from '../images/canvas-icons/icon_canvas_delete.svg';
 
 export const Icons = {
   Water: IconWater,
+  Grid: IconGrid,
+  Setting: IconSetting,
   Wardrobe: IconWardrobe,
   WardrobeNew: IconWardrobeNew,
   Heart: IconHeart,
@@ -56,6 +60,8 @@ export const Icons = {
 
 export {
   IconWater,
+  IconGrid,
+  IconSetting,
   IconWardrobe,
   IconWardrobeNew,
   IconHeart,

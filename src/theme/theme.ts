@@ -37,6 +37,10 @@ export const theme = {
     figmaDestructive: '#bb251a', // red for Cancel/delete actions — aliased by uacTextDangerBase below
     figmaOnboardingBackground: '#f7f7f8', // onboarding screens bg (differs from app figmaBackground #f2efec)
     figmaTextDark: '#070707', // near-black for expand/collapse text buttons
+    // Sidebar dark redesign (node 2852:24670) — divider hairline on the dark
+    // sidebar bg. Figma maps Black/10% but that is invisible on #1d1f23, so per
+    // CEO (Q9) use the cream text tone (#f2efec / uacTextPrimaryBase) at 10%.
+    figmaDividerOnDark: 'rgba(242, 239, 236, 0.1)',
     // UAC (Account-access flow) tokens — AU-242 spec
     // Spec: plans/260521-2335-au-242-figma-spec/00-index.md "Colors"
     uacBackgroundBase: '#1d1f23', // --background/neutral/base

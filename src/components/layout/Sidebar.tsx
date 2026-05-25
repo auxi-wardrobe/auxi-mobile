@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-// import { theme } from '../../theme/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../../assets/icons';
 import { AppStackParamList } from '../../types/navigation';
@@ -26,7 +27,8 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const { logout } = useAuth(); // Using logout here
+  const insets = useSafeAreaInsets();
+  const { logout } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
@@ -60,84 +62,91 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     }
   }, [isOpen, slideAnim, fadeAnim]);
 
-  // if (!isOpen && slideAnim._value === -SIDEBAR_WIDTH) {
-  //    // Optimization removed to fix TS error and complexity
-  // }
-
   return (
-    <View
-      style={[styles.container, !isOpen && styles.pointerEventsNone]}
-      pointerEvents={isOpen ? 'auto' : 'none'}
-    >
+    <View style={styles.container} pointerEvents={isOpen ? 'auto' : 'none'}>
       {/* Backdrop */}
       <TouchableWithoutFeedback onPress={onClose}>
-        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
+        <Animated.View
+          style={[styles.backdrop, { opacity: fadeAnim }]}
+          testID="sidebar-backdrop"
+          accessibilityLabel="Close menu"
+        />
       </TouchableWithoutFeedback>
 
       {/* Sidebar Content */}
       <Animated.View
         style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
       >
-        {/* Get Dressed Button */}
-        <View style={styles.topSection}>
+        {/* Top group — "See my outfits" pill */}
+        <View style={[styles.topGroup, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity
-            style={styles.getDressedButton}
+            style={styles.pill}
+            testID="sidebar-pill-see-outfits"
+            accessibilityLabel="See my outfits"
             onPress={() => {
               navigation.navigate('Home');
               onClose();
             }}
           >
-            <Text style={styles.getDressedText}>Get dressed</Text>
-            <Icons.Water width={16} height={16} />
+            <Icons.Grid
+              width={24}
+              height={24}
+              color={theme.colors.figmaTextDark}
+            />
+            <Text style={styles.pillText}>See my outfits</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
-          <MenuItem
-            label="Home"
-            Icon={Icons.GetDressed}
-            testID="sidebar-menu-home"
-            onPress={() => {
-              navigation.navigate('Home');
-              onClose();
-            }}
-          />
+        {/* Bottom group — menu rows (anchored to bottom via space-between) */}
+        <View style={styles.bottomGroup}>
           <MenuItem
             label="Wardrobe"
             Icon={Icons.Wardrobe}
+            testID="sidebar-menu-wardrobe"
             onPress={() => {
               navigation.navigate('Wardrobe');
               onClose();
             }}
           />
           <MenuItem
-            label="My body"
-            Icon={Icons.Body}
-            onPress={() => {
-              navigation.navigate('Body');
-              onClose();
-            }}
+            label="My Favourite"
+            Icon={Icons.Heart}
+            testID="sidebar-menu-favourite"
+            // TODO(sidebar): no Favourite route yet
+            onPress={() => {}}
           />
-          <MenuItem label="My favourite" Icon={Icons.Heart} />
           <MenuItem
-            label="My account"
-            Icon={Icons.User}
+            label="Feedback"
+            Icon={Icons.Feedback}
+            testID="sidebar-menu-feedback"
+            // TODO(sidebar): no Feedback route yet
+            onPress={() => {}}
+          />
+          <MenuItem
+            label="Setting"
+            Icon={Icons.Setting}
+            testID="sidebar-menu-setting"
             onPress={() => {
               navigation.navigate('Settings');
               onClose();
             }}
           />
-          <MenuItem label="Archive" Icon={Icons.Archive} />
           <MenuItem
-            label="Outfit Canvas"
+            label="My account"
             Icon={Icons.User}
+            testID="sidebar-menu-account"
+            // TODO(sidebar): no My account route yet
+            onPress={() => {}}
+          />
+          <MenuItem
+            label="Log out"
+            Icon={Icons.Logout}
+            testID="sidebar-menu-logout"
             onPress={() => {
-              navigation.navigate('OutfitCanvas');
+              logout();
               onClose();
             }}
           />
-          <MenuItem label="Log out" Icon={Icons.Logout} onPress={logout} />
         </View>
       </Animated.View>
     </View>
@@ -155,8 +164,13 @@ const MenuItem = ({
   onPress?: () => void;
   testID?: string;
 }) => (
-  <TouchableOpacity style={styles.menuItem} onPress={onPress} testID={testID}>
-    <Icon width={24} height={24} />
+  <TouchableOpacity
+    style={styles.menuItem}
+    onPress={onPress}
+    testID={testID}
+    accessibilityLabel={label}
+  >
+    <Icon width={24} height={24} color={theme.colors.uacTextPrimaryBase} />
     <Text style={styles.menuText}>{label}</Text>
   </TouchableOpacity>
 );
@@ -170,71 +184,53 @@ const styles = StyleSheet.create({
     height: height,
     zIndex: 1000,
   },
-  pointerEventsNone: {
-    // No style needed, handled by pointerEvents prop, but simpler to use null
-  },
   backdrop: {
     position: 'absolute',
     top: 0,
     left: 0,
     width: width,
     height: height,
-    backgroundColor: '#000',
+    backgroundColor: theme.colors.primary,
   },
   sidebar: {
     width: SIDEBAR_WIDTH,
     height: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(0, 0, 0, 0.1)',
-    paddingVertical: 58, // Top padding from Figma
-    // paddingHorizontal: 20
+    backgroundColor: theme.colors.uacBackgroundBase,
+    justifyContent: 'space-between',
   },
-  topSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24, // Spacer between header and menu
+  topGroup: {
+    paddingHorizontal: theme.spacing.uacButtonPaddingX,
+    gap: theme.spacing.uacDimension4,
   },
-  getDressedButton: {
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#141718',
-    borderRadius: 42,
-    height: 48,
-    paddingHorizontal: 24, // approx
+    padding: theme.spacing.uacDimension12,
+    gap: theme.spacing.uacDimension8,
+    borderRadius: theme.borderRadius.figmaTile,
+    backgroundColor: theme.colors.figmaBackground,
   },
-  getDressedText: {
-    color: '#FFFFFF',
-    fontFamily: 'Manrope-SemiBold',
-    fontSize: 16,
-    fontWeight: '600',
+  pillText: {
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.figmaTextDark,
   },
-  iconSmall: {
-    width: 16,
-    height: 16,
-    resizeMode: 'contain',
-  },
-  menuSection: {
-    paddingHorizontal: 20,
-    gap: 4,
+  bottomGroup: {
+    paddingHorizontal: theme.spacing.uacButtonPaddingX,
+    paddingVertical: theme.spacing.xl,
+    gap: theme.spacing.uacDimension4,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.figmaDividerOnDark,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    gap: 8,
-    borderRadius: 12,
+    padding: theme.spacing.uacDimension12,
+    gap: theme.spacing.uacDimension8,
+    borderRadius: theme.borderRadius.figmaTile,
     height: 48,
   },
-  menuIcon: {
-    width: 24,
-    height: 24,
-    resizeMode: 'contain',
-  },
   menuText: {
-    fontSize: 16,
-    fontFamily: 'Manrope-Medium',
-    color: '#000000',
-    fontWeight: '500',
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.uacTextPrimaryBase,
   },
 });
