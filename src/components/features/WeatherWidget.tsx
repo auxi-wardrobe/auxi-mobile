@@ -1,6 +1,7 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme/theme';
+import { WeatherIcon } from '../atoms/WeatherIcon';
 
 const DAY_FULL_NAMES = [
   'Sunday',
@@ -14,32 +15,27 @@ const DAY_FULL_NAMES = [
 
 type Props = {
   tempC: number;
-  // Kept for backward compat with HomeScreen call site; Figma 1769:10382
-  // ships a single illustrated sun-cloud asset, so dynamic OpenWeather
-  // codes are no longer honored. Remove this prop after callers update.
+  // OpenWeather icon code (e.g. "10d"); drives the dynamic vector glyph so the
+  // icon reflects the real condition instead of a fixed sun-cloud image.
   iconCode?: string;
 };
 
 // Figma-faithful weather block from header node 1769:10380 (verified
 // against rendered screenshot of 2850:9152). Row layout:
-// - Illustrated sun-cloud icon on the LEFT (35×32 in design).
+// - Weather icon on the LEFT (35×32 in design).
 // - Text column on the RIGHT, left-aligned: temperature on top, day
 //   name below. Temperature integer at Inter 600 / 16px; "°C" suffix
 //   at ~10px to match the Figma typographic hierarchy. Day uses the
 //   FULL name ("Monday") not the 3-letter abbrev.
-// - Icon is the local sun-cloud PNG exported from Figma (Ellipse4/5 +
-//   cloud Union composited), replacing the prior remote OpenWeather PNG.
-export const WeatherWidget: React.FC<Props> = ({ tempC }) => {
+// - Icon is the self-rendered <WeatherIcon> (react-native-svg), mapped from
+//   the live OpenWeather code — replaces the static weather_sun_cloud.png,
+//   which always showed sun regardless of the actual weather.
+export const WeatherWidget: React.FC<Props> = ({ tempC, iconCode }) => {
   const dayName = DAY_FULL_NAMES[new Date().getDay()];
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../../assets/images/weather_sun_cloud.png')}
-        style={styles.icon}
-        accessibilityLabel="current weather icon"
-        resizeMode="contain"
-      />
+      <WeatherIcon code={iconCode} size={34} />
       <View style={styles.textColumn}>
         <Text style={styles.temp} numberOfLines={1}>
           {tempC}
@@ -77,9 +73,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     color: theme.colors.figmaTextSecondary,
-  },
-  icon: {
-    width: 35,
-    height: 32,
   },
 });
