@@ -471,40 +471,39 @@ export const HomeScreen = () => {
     // attempt.
     error: startError,
     reset: resetStartMutation,
-  } =
-    useMutation({
-      mutationFn: buildViaV05,
-      onSuccess: (data: unknown) => {
-        // First load (cold start) → replace. Subsequent loads (prefetch) →
-        // append so the user's scroll position isn't yanked back to 0.
-        if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
-          isFirstLoadRef.current = false;
-          const incoming = normalizeOutfits(data, 0);
-          setListOutfits(incoming);
-          setActiveSheetIndex(0);
-        } else {
-          // Offset fallback-hash indices by the existing list length so the
-          // second batch never collides with first-batch hashes (Bug 1).
-          const offset = listOutfitsRef.current.length;
-          const incoming = normalizeOutfits(data, offset);
-          // De-dup against existing hashes — drop any genuine duplicates the
-          // backend returns AND any fallback collisions we couldn't avoid.
-          setListOutfits(current => {
-            const existingHashes = new Set(current.map(o => o.outfitHash));
-            const deduped = incoming.filter(
-              sheet => !existingHashes.has(sheet.outfitHash),
-            );
-            return [...current, ...deduped];
-          });
-        }
+  } = useMutation({
+    mutationFn: buildViaV05,
+    onSuccess: (data: unknown) => {
+      // First load (cold start) → replace. Subsequent loads (prefetch) →
+      // append so the user's scroll position isn't yanked back to 0.
+      if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
+        isFirstLoadRef.current = false;
+        const incoming = normalizeOutfits(data, 0);
+        setListOutfits(incoming);
+        setActiveSheetIndex(0);
+      } else {
+        // Offset fallback-hash indices by the existing list length so the
+        // second batch never collides with first-batch hashes (Bug 1).
+        const offset = listOutfitsRef.current.length;
+        const incoming = normalizeOutfits(data, offset);
+        // De-dup against existing hashes — drop any genuine duplicates the
+        // backend returns AND any fallback collisions we couldn't avoid.
+        setListOutfits(current => {
+          const existingHashes = new Set(current.map(o => o.outfitHash));
+          const deduped = incoming.filter(
+            sheet => !existingHashes.has(sheet.outfitHash),
+          );
+          return [...current, ...deduped];
+        });
+      }
 
-        isPrefetchingRef.current = false;
-      },
-      onError: error => {
-        console.error('Failed to load recommendation', error);
-        isPrefetchingRef.current = false;
-      },
-    });
+      isPrefetchingRef.current = false;
+    },
+    onError: error => {
+      console.error('Failed to load recommendation', error);
+      isPrefetchingRef.current = false;
+    },
+  });
 
   useEffect(() => {
     // First fetch — pin is null at cold start so no need to thread it here.
@@ -574,6 +573,14 @@ export const HomeScreen = () => {
       }
       if (nextIndex >= total - PREFETCH_LOOKAHEAD) {
         isPrefetchingRef.current = true;
+        // V05 try_another (260525): thread the active sheet's hash as
+        // `current_outfit_hash` so the prefetch hits `/try_another` (cheap
+        // pool serve) instead of a full `/build`. The first prefetch after
+        // a cold start still rebuilds (no session yet); after that every
+        // swipe prefetch is a variation. The service falls back to its own
+        // cached last-hash when this is undefined.
+        const currentHash =
+          listOutfitsRef.current[activeSheetIndexRef.current]?.outfitHash;
         // PHASE B (AU-222): thread `pinned_item_id` through the prefetch.
         // Note: pin changes intentionally do NOT auto-refetch — the next
         // regular prefetch (or a "Show another" tap that reaches the
@@ -588,6 +595,7 @@ export const HomeScreen = () => {
           // session_manager sliding-windows last 3 notes, so re-sending
           // on every prefetch is redundant but cheap and contract-clean.
           style_feedback: styleFeedbackRef.current ?? undefined,
+          current_outfit_hash: currentHash,
         });
       }
     },
@@ -673,6 +681,13 @@ export const HomeScreen = () => {
       }
       console.info('home.mode.change', { from: current, to: next });
       // TODO(analytics): replace console.info with the real telemetry hook.
+      // V05 try_another (260525): `mode` is a no-op on `/try_another` in the
+      // MVP engine, so a mode change can only take effect on a fresh
+      // `/build`. Reset the session here (lazy) — the next prefetch / "Show
+      // another" rebuilds with the new mode. We do NOT refetch immediately
+      // (would feel jarring mid-swipe loop), matching the existing
+      // pick-up-on-next-prefetch behaviour.
+      resetV05Session();
       return next;
     });
   }, []);
@@ -807,6 +822,12 @@ export const HomeScreen = () => {
     });
 
     closeContextModal();
+
+    // V05 try_another (260525): a refine/context submit is a fresh dressing
+    // intent → start a NEW session so the next fetch rebuilds via `/build`
+    // (and re-seeds the pool) rather than serving a variation off the stale
+    // session. Mirrors recommendationService's reset-on-context-change.
+    resetV05Session();
 
     // Trigger an immediate fetch carrying the new feedback. Subsequent
     // prefetches inherit via `styleFeedbackRef` automatically (Task 4).
@@ -1137,269 +1158,272 @@ const computeHeroRowHeight = (restCount: number): number => {
   return Math.floor((available - (rows - 1) * GRID_GAP) / rows);
 };
 
-const OptionSheet = React.memo(({
-  sheetIndex,
-  outfit,
-  saveState,
-  pinnedItemId,
-  totalSheets,
-  onItemPress,
-  onTogglePin,
-  onConfirm,
-  onEditContext,
-  onShowAnother,
-}: {
-  sheetIndex: number;
-  outfit: OutfitSheetWithGrid;
-  saveState: SaveState;
-  pinnedItemId: string | null;
-  totalSheets: number;
-  onItemPress: (item: Item) => void;
-  onTogglePin: (item: Item) => void;
-  onConfirm: () => void;
-  onEditContext: () => void;
-  onShowAnother: () => void;
-}) => {
-  const items = outfit.items;
-  const layout = pickLayout(items);
-  const itemCount = items.length;
+const OptionSheet = React.memo(
+  ({
+    sheetIndex,
+    outfit,
+    saveState,
+    pinnedItemId,
+    totalSheets,
+    onItemPress,
+    onTogglePin,
+    onConfirm,
+    onEditContext,
+    onShowAnother,
+  }: {
+    sheetIndex: number;
+    outfit: OutfitSheetWithGrid;
+    saveState: SaveState;
+    pinnedItemId: string | null;
+    totalSheets: number;
+    onItemPress: (item: Item) => void;
+    onTogglePin: (item: Item) => void;
+    onConfirm: () => void;
+    onEditContext: () => void;
+    onShowAnother: () => void;
+  }) => {
+    const items = outfit.items;
+    const layout = pickLayout(items);
+    const itemCount = items.length;
 
-  const renderTile = (
-    item: Item | null,
-    flatTileIndex: number,
-    style?: object,
-  ) => {
-    // C1 fix (2026-05-22): nullable slot for sparse outfits (count 1/2)
-    // and the row2 spacer in twoRowOneLarge. Renders a transparent card
-    // shell that preserves grid geometry without crashing on item.id.
-    if (!item) {
+    const renderTile = (
+      item: Item | null,
+      flatTileIndex: number,
+      style?: object,
+    ) => {
+      // C1 fix (2026-05-22): nullable slot for sparse outfits (count 1/2)
+      // and the row2 spacer in twoRowOneLarge. Renders a transparent card
+      // shell that preserves grid geometry without crashing on item.id.
+      if (!item) {
+        return (
+          <View
+            key={`card-placeholder-${outfit.outfitHash}-${flatTileIndex}`}
+            style={[styles.card, style, styles.cardPlaceholder]}
+          />
+        );
+      }
+      const isPinned = item.id === pinnedItemId;
       return (
-        <View
-          key={`card-placeholder-${outfit.outfitHash}-${flatTileIndex}`}
-          style={[styles.card, style, styles.cardPlaceholder]}
-        />
-      );
-    }
-    const isPinned = item.id === pinnedItemId;
-    return (
-      <TouchableOpacity
-        key={`card-${outfit.outfitHash}-${flatTileIndex}`}
-        testID={`home-tile-${sheetIndex}-${flatTileIndex}`}
-        accessibilityLabel={`home-tile-${sheetIndex}-${flatTileIndex}`}
-        activeOpacity={0.86}
-        style={[styles.card, style, isPinned && styles.cardPinned]}
-        onPress={() => onItemPress(item)}
-        // PHASE B (AU-222): long-press as a secondary affordance for pin
-        // toggle. Primary tap target is the pin badge overlay below.
-        onLongPress={() => onTogglePin(item)}
-        delayLongPress={500}
-      >
-        <GarmentPreview item={item} />
         <TouchableOpacity
-          testID={
-            isPinned
-              ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set`
-              : `home-tile-pin-${sheetIndex}-${flatTileIndex}`
-          }
-          activeOpacity={0.7}
-          onPress={e => {
-            e.stopPropagation();
-            onTogglePin(item);
-          }}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
-          accessibilityRole="button"
-          accessibilityLabel={isPinned ? 'Unpin item' : 'Pin item'}
+          key={`card-${outfit.outfitHash}-${flatTileIndex}`}
+          testID={`home-tile-${sheetIndex}-${flatTileIndex}`}
+          accessibilityLabel={`home-tile-${sheetIndex}-${flatTileIndex}`}
+          activeOpacity={0.86}
+          style={[styles.card, style, isPinned && styles.cardPinned]}
+          onPress={() => onItemPress(item)}
+          // PHASE B (AU-222): long-press as a secondary affordance for pin
+          // toggle. Primary tap target is the pin badge overlay below.
+          onLongPress={() => onTogglePin(item)}
+          delayLongPress={500}
         >
-          <IconHomePin width={24} height={24} />
+          <GarmentPreview item={item} />
+          <TouchableOpacity
+            testID={
+              isPinned
+                ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set`
+                : `home-tile-pin-${sheetIndex}-${flatTileIndex}`
+            }
+            activeOpacity={0.7}
+            onPress={e => {
+              e.stopPropagation();
+              onTogglePin(item);
+            }}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
+            accessibilityRole="button"
+            accessibilityLabel={isPinned ? 'Unpin item' : 'Pin item'}
+          >
+            <IconHomePin width={24} height={24} />
+          </TouchableOpacity>
         </TouchableOpacity>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderLayout = () => {
-    if (!layout) {
-      return null;
-    }
-
-    if (layout.kind === 'twoRowOneLarge') {
-      // 3 items: row1 of 2 equal cards (flex-1 each), row2 with single card
-      // taking ~50% width (matches Figma 189×252 / 414px-content frame).
-      // C1: count 1/2 reuses this layout with placeholder cells.
-      // C4: card height defaults to CARD_HEIGHT (sized for exactly 2 rows
-      // in the available grid area) — no aspect-ratio override.
-      return (
-        <View style={styles.gridWrap}>
-          <View style={styles.cardRow}>
-            <View style={styles.cardShell}>
-              {renderTile(layout.row1[0], 0)}
-            </View>
-            <View style={styles.cardShell}>
-              {renderTile(layout.row1[1], 1)}
-            </View>
-          </View>
-          <View style={styles.cardRow}>
-            <View style={styles.cardShell}>
-              {renderTile(layout.row2Large, 2)}
-            </View>
-            {/* Transparent spacer to keep row2 card left-aligned at ~50% */}
-            <View style={styles.cardShell} />
-          </View>
-        </View>
       );
-    }
+    };
 
-    if (layout.kind === 'twoByTwo') {
+    const renderLayout = () => {
+      if (!layout) {
+        return null;
+      }
+
+      if (layout.kind === 'twoRowOneLarge') {
+        // 3 items: row1 of 2 equal cards (flex-1 each), row2 with single card
+        // taking ~50% width (matches Figma 189×252 / 414px-content frame).
+        // C1: count 1/2 reuses this layout with placeholder cells.
+        // C4: card height defaults to CARD_HEIGHT (sized for exactly 2 rows
+        // in the available grid area) — no aspect-ratio override.
+        return (
+          <View style={styles.gridWrap}>
+            <View style={styles.cardRow}>
+              <View style={styles.cardShell}>
+                {renderTile(layout.row1[0], 0)}
+              </View>
+              <View style={styles.cardShell}>
+                {renderTile(layout.row1[1], 1)}
+              </View>
+            </View>
+            <View style={styles.cardRow}>
+              <View style={styles.cardShell}>
+                {renderTile(layout.row2Large, 2)}
+              </View>
+              {/* Transparent spacer to keep row2 card left-aligned at ~50% */}
+              <View style={styles.cardShell} />
+            </View>
+          </View>
+        );
+      }
+
+      if (layout.kind === 'twoByTwo') {
+        return (
+          <View style={styles.gridWrap}>
+            {layout.rows.map((row, rowIndex) => (
+              <View
+                key={`row-${outfit.outfitHash}-${rowIndex}`}
+                style={styles.cardRow}
+              >
+                {row.map((item, itemIndex) => (
+                  <View
+                    key={`shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
+                    style={styles.cardShell}
+                  >
+                    {renderTile(item, rowIndex * 2 + itemIndex)}
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+        );
+      }
+
+      // heroStackPlusRows (5/6/7+ items)
+      // Row 1: hero (flex 2) + right column of 2 stacked cards (flex 1).
+      // Subsequent rows: up to 3 flex cards each.
+      // C4: row height computed dynamically so total grid fits available
+      // sheet space — prevents inner gridScroll from activating.
+      const heroRowHeight = computeHeroRowHeight(layout.rest.length);
+      const heroRowStyle = { height: heroRowHeight };
+      const heroStackCellHeight = Math.floor((heroRowHeight - GRID_GAP) / 2);
+      const heroStackCellStyle = { height: heroStackCellHeight };
+      const restRows: Item[][] = [];
+      for (let i = 0; i < layout.rest.length; i += 3) {
+        restRows.push(layout.rest.slice(i, i + 3));
+      }
       return (
         <View style={styles.gridWrap}>
-          {layout.rows.map((row, rowIndex) => (
+          <View style={[styles.heroRow, { height: heroRowHeight }]}>
+            <View style={styles.heroCol}>
+              {renderTile(layout.hero, 0, heroRowStyle)}
+            </View>
+            <View style={styles.heroStackCol}>
+              <View style={styles.heroStackCell}>
+                {renderTile(layout.stack[0], 1, heroStackCellStyle)}
+              </View>
+              <View style={styles.heroStackCell}>
+                {renderTile(layout.stack[1], 2, heroStackCellStyle)}
+              </View>
+            </View>
+          </View>
+          {restRows.map((row, rowIndex) => (
             <View
-              key={`row-${outfit.outfitHash}-${rowIndex}`}
+              key={`rest-row-${outfit.outfitHash}-${rowIndex}`}
               style={styles.cardRow}
             >
               {row.map((item, itemIndex) => (
                 <View
-                  key={`shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
+                  key={`rest-shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
                   style={styles.cardShell}
                 >
-                  {renderTile(item, rowIndex * 2 + itemIndex)}
+                  {renderTile(item, 3 + rowIndex * 3 + itemIndex, heroRowStyle)}
                 </View>
               ))}
+              {/* Pad trailing partial rows with transparent spacers so cards
+                don't stretch to fill the row width — keeps every card the
+                same width across rows. */}
+              {row.length < 3
+                ? Array.from({ length: 3 - row.length }).map((_, padIdx) => (
+                    <View
+                      key={`rest-pad-${outfit.outfitHash}-${rowIndex}-${padIdx}`}
+                      style={styles.cardShell}
+                    />
+                  ))
+                : null}
             </View>
           ))}
         </View>
       );
-    }
+    };
 
-    // heroStackPlusRows (5/6/7+ items)
-    // Row 1: hero (flex 2) + right column of 2 stacked cards (flex 1).
-    // Subsequent rows: up to 3 flex cards each.
-    // C4: row height computed dynamically so total grid fits available
-    // sheet space — prevents inner gridScroll from activating.
-    const heroRowHeight = computeHeroRowHeight(layout.rest.length);
-    const heroRowStyle = { height: heroRowHeight };
-    const heroStackCellHeight = Math.floor((heroRowHeight - GRID_GAP) / 2);
-    const heroStackCellStyle = { height: heroStackCellHeight };
-    const restRows: Item[][] = [];
-    for (let i = 0; i < layout.rest.length; i += 3) {
-      restRows.push(layout.rest.slice(i, i + 3));
-    }
+    // AU-253: "Show another" is rendered disabled (opacity 0.5) at the tail of
+    // the carousel where there is no further option to rotate to — matching the
+    // Figma State=Disable variant on the edge frame.
+    const showAnotherDisabled = sheetIndex >= totalSheets - 1;
+
     return (
-      <View style={styles.gridWrap}>
-        <View style={[styles.heroRow, { height: heroRowHeight }]}>
-          <View style={styles.heroCol}>
-            {renderTile(layout.hero, 0, heroRowStyle)}
-          </View>
-          <View style={styles.heroStackCol}>
-            <View style={styles.heroStackCell}>
-              {renderTile(layout.stack[0], 1, heroStackCellStyle)}
-            </View>
-            <View style={styles.heroStackCell}>
-              {renderTile(layout.stack[1], 2, heroStackCellStyle)}
-            </View>
-          </View>
-        </View>
-        {restRows.map((row, rowIndex) => (
-          <View
-            key={`rest-row-${outfit.outfitHash}-${rowIndex}`}
-            style={styles.cardRow}
-          >
-            {row.map((item, itemIndex) => (
-              <View
-                key={`rest-shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
-                style={styles.cardShell}
-              >
-                {renderTile(item, 3 + rowIndex * 3 + itemIndex, heroRowStyle)}
-              </View>
-            ))}
-            {/* Pad trailing partial rows with transparent spacers so cards
-                don't stretch to fill the row width — keeps every card the
-                same width across rows. */}
-            {row.length < 3
-              ? Array.from({ length: 3 - row.length }).map((_, padIdx) => (
-                  <View
-                    key={`rest-pad-${outfit.outfitHash}-${rowIndex}-${padIdx}`}
-                    style={styles.cardShell}
-                  />
-                ))
-              : null}
-          </View>
-        ))}
-      </View>
-    );
-  };
-
-  // AU-253: "Show another" is rendered disabled (opacity 0.5) at the tail of
-  // the carousel where there is no further option to rotate to — matching the
-  // Figma State=Disable variant on the edge frame.
-  const showAnotherDisabled = sheetIndex >= totalSheets - 1;
-
-  return (
-    <View testID={`home-outfit-sheet-${sheetIndex}`} style={styles.optionSheet}>
-      {/* AU-253: caption + insight title row (Figma Frame 2104). Caption text
+      <View
+        testID={`home-outfit-sheet-${sheetIndex}`}
+        style={styles.optionSheet}
+      >
+        {/* AU-253: caption + insight title row (Figma Frame 2104). Caption text
           is stubbed via OutfitCardCaption's fallback — no backend field yet
           (TODO(AU-253) flagged in that component + the report). */}
-      <OutfitCardCaption
-        testID={`home-card-caption-${sheetIndex}`}
-        caption={outfit.caption}
-      />
-
-      <ScrollView
-        style={styles.gridScroll}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.gridScrollContent}
-      >
-        <View testID={`home-outfit-grid-${itemCount}`}>{renderLayout()}</View>
-      </ScrollView>
-
-      {/* AU-253: pager/action row (Figma Frame 2105) — 3 dots + "Show another".
-          Remix button OMITTED per CEO scope decision (= AU-285, separate). */}
-      <OutfitActionRow
-        testID={`home-action-row-${sheetIndex}`}
-        activeIndex={sheetIndex}
-        onShowAnother={onShowAnother}
-        showAnotherDisabled={showAnotherDisabled}
-      />
-
-      {/* Bottom action cluster — primary CTA + Edit context affordance. */}
-      <View style={styles.actionCluster}>
-        {/* Figma primary CTA: Secondary/outline, borderRadius 16, trailing
-            heart icon, height 56, label "Wear this" (border/primary/bold_600). */}
-        <PillButton
-          testID={`home-this-works-${sheetIndex}`}
-          title={saveState === 'saved' ? 'Saved to favourite' : 'Wear this'}
-          variant="outline"
-          onPress={onConfirm}
-          disabled={saveState === 'saved'}
-          loading={saveState === 'saving'}
-          trailing={
-            <IconHomeHeartOutline width={24} height={24} />
-          }
-          style={styles.primaryActionFull}
-          textStyle={styles.primaryActionLabel}
+        <OutfitCardCaption
+          testID={`home-card-caption-${sheetIndex}`}
+          caption={outfit.caption}
         />
 
-        {saveState === 'error' ? (
-          <Text style={styles.saveErrorText}>
-            {'Couldn\'t save this look. Tap "Wear this" to retry.'}
-          </Text>
-        ) : null}
+        <ScrollView
+          style={styles.gridScroll}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.gridScrollContent}
+        >
+          <View testID={`home-outfit-grid-${itemCount}`}>{renderLayout()}</View>
+        </ScrollView>
 
-        {/* Edit context entry point (AU-252 refine flow). Not in the Figma
+        {/* AU-253: pager/action row (Figma Frame 2105) — 3 dots + "Show another".
+          Remix button OMITTED per CEO scope decision (= AU-285, separate). */}
+        <OutfitActionRow
+          testID={`home-action-row-${sheetIndex}`}
+          activeIndex={sheetIndex}
+          onShowAnother={onShowAnother}
+          showAnotherDisabled={showAnotherDisabled}
+        />
+
+        {/* Bottom action cluster — primary CTA + Edit context affordance. */}
+        <View style={styles.actionCluster}>
+          {/* Figma primary CTA: Secondary/outline, borderRadius 16, trailing
+            heart icon, height 56, label "Wear this" (border/primary/bold_600). */}
+          <PillButton
+            testID={`home-this-works-${sheetIndex}`}
+            title={saveState === 'saved' ? 'Saved to favourite' : 'Wear this'}
+            variant="outline"
+            onPress={onConfirm}
+            disabled={saveState === 'saved'}
+            loading={saveState === 'saving'}
+            trailing={<IconHomeHeartOutline width={24} height={24} />}
+            style={styles.primaryActionFull}
+            textStyle={styles.primaryActionLabel}
+          />
+
+          {saveState === 'error' ? (
+            <Text style={styles.saveErrorText}>
+              {'Couldn\'t save this look. Tap "Wear this" to retry.'}
+            </Text>
+          ) : null}
+
+          {/* Edit context entry point (AU-252 refine flow). Not in the Figma
             Home grid frame, but it is the only way to reach the refine modal
             from this screen and the swipe-nudge flow depends on it. Kept. */}
-        <PillButton
-          testID={`home-edit-context-${sheetIndex}`}
-          title="Edit context +"
-          variant="text"
-          onPress={onEditContext}
-          style={styles.secondaryAction}
-          textStyle={styles.secondaryActionText}
-        />
+          <PillButton
+            testID={`home-edit-context-${sheetIndex}`}
+            title="Edit context +"
+            variant="text"
+            onPress={onEditContext}
+            style={styles.secondaryAction}
+            textStyle={styles.secondaryActionText}
+          />
+        </View>
       </View>
-    </View>
-  );
-});
+    );
+  },
+);
 OptionSheet.displayName = 'OptionSheet';
 
 // Error UI fix (2026-05-22): rendered when the cold-start V05 fetch

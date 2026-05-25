@@ -331,6 +331,66 @@ export interface BuildRecommendationResponse {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Try Another — POST /api/v05/recommendation/try_another
+// (contract: wardrobe-backend/docs/v05-try-another-mobile-contract.md)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * V05 variation axis (contract §3). FIVE values — kept deliberately
+ * SEPARATE from the V2 `RecommendationVariationAxis` enum (4 values incl.
+ * `NEW_ANCHOR`). Per contract §7: do NOT share enum strings between V2 and
+ * V05 calls.
+ */
+export const V05_VARIATION_AXES = [
+  'silhouette',
+  'color',
+  'layering',
+  'footwear',
+  'accessory',
+] as const;
+export type VariationAxis = (typeof V05_VARIATION_AXES)[number];
+
+/**
+ * V05 mode tone hint (contract §3). Recorded for telemetry; a no-op in the
+ * MVP engine until AU-221 wires modes through. Mirrors the V2-side
+ * `RecommendationMode` string union but kept local so V05 stays
+ * self-contained.
+ */
+export type V05RecommendationMode = 'safe' | 'power' | 'creative';
+
+/**
+ * Body for `POST /api/v05/recommendation/try_another` (contract §3).
+ * `session_id` + `current_outfit_hash` are required; the rest are optional.
+ */
+export interface TryAnotherInput {
+  session_id: string;
+  current_outfit_hash: string;
+  axis?: VariationAxis;
+  style_feedback?: string;
+  pinned_item_id?: string;
+  mode?: V05RecommendationMode;
+}
+
+/**
+ * Response for `/try_another` (contract §4). `outfit` reuses the existing
+ * `V05Outfit` / `V05OutfitItem` shapes already defined above. `outfit` is
+ * `null` only when `fallback=true` (pool exhausted + recompose failed) or
+ * on a wardrobe gap.
+ */
+export interface TryAnotherResponse {
+  outfit: V05Outfit | null;
+  session_id: string;
+  variation_axis: VariationAxis;
+  fallback: boolean;
+  fallback_flags: string[];
+  trace?: BuildTrace;
+  message: string | null;
+  /** Spec v2 §4.6 — set when no outfit is composable even with commons. */
+  wardrobe_gap?: boolean;
+  wardrobe_gap_reason?: V05WardrobeGapReason | null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Feedback — POST /api/v05/feedback (Phase 2 LLM-2)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -427,4 +487,195 @@ export const submitFeedback = async (
   input: SubmitFeedbackInput,
 ): Promise<void> => {
   await apiClient.post('/v05/feedback', input);
+};
+
+/**
+ * `POST /api/v05/recommendation/try_another` — thin wrapper. Serves a
+ * cheap variation from the session's Redis pool (axis-distance scored),
+ * recomposing only on cache-miss. ~1/100th the cost of `/build`.
+ *
+ * Auth: Bearer JWT (apiClient interceptor handles it).
+ * Errors (see contract §5 — handled by the `recommendV05` façade):
+ *   - 410 `session_expired` (also cross-user ownership) → reset + build
+ *   - 422 `stale_hash` → reset + build
+ *   - 429 `session_locked` → silent backoff retry
+ *   - 429 rate-limit / 401 / 500 / timeout → bubble
+ */
+export const tryAnother = async (
+  input: TryAnotherInput,
+): Promise<TryAnotherResponse> => {
+  const response = await apiClient.post<TryAnotherResponse>(
+    '/v05/recommendation/try_another',
+    input,
+  );
+  return response.data;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V05 sticky session (mirror of recommendationService's V2 closure pattern)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// `session_id` + the latest served `outfit_hash` live at module scope for
+// the lifetime of one dressing session. The first `recommendV05` call hits
+// `/build` (heavy: engine + LLM-1, seeds a Redis pool); every subsequent
+// call hits `/try_another` (cheap: pool serve). Reset on:
+//   - context/refine submit (HomeScreen.handleSubmitContext → fresh build)
+//   - mode change (HomeScreen.handleSelectMode → next prefetch rebuilds)
+//   - 410 session_expired / 422 stale_hash (auto-fallback to /build)
+//
+// `session_id` is bearer-equivalent (contract §8) — NEVER log it (no
+// `console.*` with session_id; do not embed in deep links / aggregators).
+//
+// TODO: clear v05SessionId on logout — there is no clean hook today; once
+// the AuthContext exposes a logout subscription we should listen for it and
+// call `resetV05Session()`. (Same gap as recommendationService.resetSession.)
+let v05SessionId: string | null = null;
+let v05LastOutfitHash: string | null = null;
+
+/** Reset the cached V05 session — forces the next `recommendV05` to `/build`. */
+export const resetV05Session = (): void => {
+  v05SessionId = null;
+  v05LastOutfitHash = null;
+};
+
+/**
+ * Params accepted by the `recommendV05` façade. Combines the build-shaping
+ * inputs (weather/user/intent/count) with the per-variation inputs the
+ * HomeScreen threads (mode, style_feedback, pinned_item_id,
+ * current_outfit_hash).
+ */
+export interface RecommendV05Params {
+  // Build-shaping inputs (used only on the cold-start `/build`).
+  weather: BuildWeather;
+  user?: BuildUser;
+  intent?: BuildIntent;
+  count?: number;
+  // Per-variation inputs (threaded into `/try_another`).
+  current_outfit_hash?: string;
+  axis?: VariationAxis;
+  style_feedback?: string;
+  pinned_item_id?: string;
+  mode?: V05RecommendationMode;
+}
+
+const RETRY_LOCKED_MAX_ATTEMPTS = 3;
+const RETRY_LOCKED_BACKOFF_MS = 200;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise(resolve => setTimeout(resolve, ms));
+
+type ErrorWithDetail = {
+  response?: {
+    status?: number;
+    data?: { detail?: { code?: string } };
+  };
+};
+
+const errStatus = (error: unknown): number | undefined =>
+  (error as ErrorWithDetail)?.response?.status;
+const errCode = (error: unknown): string | undefined =>
+  (error as ErrorWithDetail)?.response?.data?.detail?.code;
+
+/**
+ * Run `/build`, cache the new session_id + the suggested-default outfit's
+ * hash (guarding an out-of-range `suggested_default`), and return its
+ * outfits.
+ */
+const buildAndStore = async (
+  params: RecommendV05Params,
+): Promise<{ outfits: V05Outfit[] }> => {
+  const data = await buildRecommendation({
+    weather: params.weather,
+    user: params.user,
+    intent: params.intent,
+    count: params.count ?? 3,
+  });
+  v05SessionId = data.session_id ?? null;
+  const defaultIdx = data.suggested_default ?? 0;
+  v05LastOutfitHash = data.outfits[defaultIdx]?.outfit_hash ?? null;
+  return { outfits: data.outfits };
+};
+
+/**
+ * Façade used by HomeScreen. First invocation (no session) calls `/build`
+ * and caches the `session_id`; every subsequent invocation calls
+ * `/try_another` with the cached session + the active outfit hash.
+ *
+ * Returns the V05 build contract `{ outfits: V05Outfit[] }` so HomeScreen's
+ * existing `V05Outfit → legacy Outfit` mapping + append/dedup logic stay
+ * unchanged. `/try_another` returns a single outfit → a one-element batch;
+ * `fallback` / `wardrobe_gap` → an empty batch (no card appended, no throw).
+ *
+ * Error handling (contract §5/§6):
+ *   - 410 `session_expired` (incl. cross-user ownership) → silent reset + build
+ *   - 422 `stale_hash` → identical to 410
+ *   - 429 `session_locked` → silent backoff retry (≤3 attempts) then bubble
+ *   - everything else (429 rate-limit, 401, 500, timeout) → rethrow so the
+ *     HomeScreen mutation `onError` shows the existing fallback UI.
+ */
+export const recommendV05 = async (
+  params: RecommendV05Params,
+): Promise<{ outfits: V05Outfit[] }> => {
+  // Cold start / post-reset → /build.
+  if (!v05SessionId) {
+    return buildAndStore(params);
+  }
+
+  const tryAnotherInput: TryAnotherInput = {
+    session_id: v05SessionId,
+    current_outfit_hash:
+      params.current_outfit_hash ?? v05LastOutfitHash ?? '',
+    ...(params.axis ? { axis: params.axis } : {}),
+    ...(params.style_feedback
+      ? { style_feedback: params.style_feedback }
+      : {}),
+    ...(params.pinned_item_id
+      ? { pinned_item_id: params.pinned_item_id }
+      : {}),
+    ...(params.mode ? { mode: params.mode } : {}),
+  };
+
+  for (let attempt = 0; attempt < RETRY_LOCKED_MAX_ATTEMPTS; attempt++) {
+    try {
+      const data = await tryAnother(tryAnotherInput);
+      // fallback / wardrobe_gap → empty batch (no card, no throw — the
+      // toast / gap CTA is a separate follow-up ticket).
+      if (data.outfit?.outfit_hash) {
+        v05LastOutfitHash = data.outfit.outfit_hash;
+      }
+      return { outfits: data.outfit ? [data.outfit] : [] };
+    } catch (error: unknown) {
+      const status = errStatus(error);
+      const code = errCode(error);
+
+      // 410 session_expired (also cross-user) OR 422 stale_hash → reset +
+      // build silently and return the fresh build's outfits.
+      if (
+        (status === 410 && code === 'session_expired') ||
+        (status === 422 && code === 'stale_hash')
+      ) {
+        resetV05Session();
+        return buildAndStore(params);
+      }
+
+      // 429 session_locked → benign race against a previous tap still in
+      // flight. Silent backoff retry; bubble after the cap.
+      if (status === 429 && code === 'session_locked') {
+        if (attempt < RETRY_LOCKED_MAX_ATTEMPTS - 1) {
+          await sleep(RETRY_LOCKED_BACKOFF_MS);
+          continue;
+        }
+        throw error;
+      }
+
+      // 429 rate-limit, 401, 500, timeout, validation 422, etc. → bubble to
+      // HomeScreen's mutation onError (existing fallback UI). Do NOT log
+      // session_id (contract §8).
+      throw error;
+    }
+  }
+
+  // Unreachable (the loop either returns or throws), but satisfies the
+  // compiler's return-path analysis.
+  return { outfits: [] };
 };

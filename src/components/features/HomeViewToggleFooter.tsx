@@ -70,7 +70,11 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
           style={styles.tab}
         >
           {activeView === 'alt' && <View style={styles.activeCell} />}
-          <IconGridAlt width={24} height={24} color={theme.colors.figmaTextDark} />
+          <IconGridAlt
+            width={24}
+            height={24}
+            color={theme.colors.figmaTextDark}
+          />
         </TouchableOpacity>
       </View>
     </View>

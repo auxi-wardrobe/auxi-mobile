@@ -121,3 +121,55 @@
 1. Should `auxi-deploy-testflight` skill be updated to (a) include yarn install check, (b) accept Fastlane location agnostically (main or feat branch)? Worth a small PR to `.claude/skills/`.
 2. The dual-MCP-naming for Figma (`claude_ai_Figma` vs `plugin_figma_figma`) is a project-wide issue affecting any agent that declares one name. Worth a sweep through `.claude/agents/*.md` to standardize?
 3. Should the project have a "release" branch policy doc? Currently Fastlane lives on `fix/ios-archive-sentry-pbxproj` for historical reasons but conceptually should be on main. Worth a PR to merge that branch when Sentry/iOS WIP stabilizes.
+
+---
+
+# Section 2 — Quantified stuck audit (added 260522-1552)
+
+Re-audit via 10 parallel sub-agents grepping the session transcript at `/Users/nguyenminhduc/.claude/projects/-Users-nguyenminhduc-Desktop-wardrobe-project/c9570470-8d6c-4219-a05b-f6b8994874f0.jsonl`. Each agent owned 1 stuck, returned count + time + token + severity + evidence.
+
+## Audit table
+
+| # | Stuck | Count | Time | Tokens | Severity |
+|---|---|---|---|---|---|
+| 1 | Submodule bump thrash | 5 intermediate bumps | ~13 min | ~7.5K | P1 |
+| 2 | Stash + branch dance | 21 stash + 19 checkout + 15 `/tmp` copy | ~35 min | ~14K | P1 |
+| 3 | Fact-Gate ceremony | 52 mutations (43 Edit + 9 Write) | ~9 min | ~4-7.5K | P1 |
+| 4 | scout-block hook denials | 6 (2 false-positive substring matches) | ~9 min | ~6K | P2 |
+| 5 | HomeScreen.tsx reads | 29 reads / 35 edits (all targeted, 0 unbounded) | ~3 min | ~13K | P2 |
+| 6 | qa-ui Figma MCP gap | **5 parallel agents blocked** | ~20 min wall | **~611K** | P1 |
+| 7 | TestFlight build 1 fail | 1 failed deploy + retry | ~8 min | ~7K | P1 |
+| 8 | Figma metadata 544K overflow | 1 root + 22 jq follow-ups | ~7 min | ~80-120K | P1 |
+| 9 | Mobile MCP friction | 22 crashes + 16 ToolSearch reloads + 1 phantom acct | ~50 min | ~100K | P1 |
+| 10 | AskUserQuestion overuse | 7 calls (3 clearly should have just-acted) | ~25 min | ~8K | P1 |
+
+**Totals**: ~3 hr wall-clock waste (~21% of ~14hr session), ~870K tokens, 8 P1 + 2 P2.
+
+## Surprises vs original 6-stuck retro
+
+- **Stuck #6 dominates**: 611K tokens = 70% of all waste in one bucket. The original retro called it out but undercounted scale.
+- **Stuck #5 over-feared**: HomeScreen reads were disciplined (all `offset`/`limit` constrained), only 13K not 278K worst-case. Split-file fix is still right but for *edit blast radius* (35 edits) not read cost.
+- **Stuck #4 only P2**: 6 hook denials in 14hr is low-frequency. The bug is *substring matching* (`build` inside `/recommendation/build` URL), not volume.
+- **Stuck #2 distrust signal**: 15 manual `cp ... /tmp/` backups before stash = assistant didn't trust git stash to survive context switches. Worktree fix is structural, not behavioral.
+
+## Top 3 ROI mitigations (by waste eliminated per fix)
+
+| Rank | Fix | Saves per occurrence | Effort |
+|---|---|---|---|
+| 1 | Add `mcp__plugin_figma_figma__*` to `.claude/agents/qa-ui.md` tools allowlist | **~611K + 20min** per Compare batch | 1 PR, ~5 LOC |
+| 2 | Adopt `git worktree` for parallel branches (skill exists: `/ck:worktree`) | **~35min + 14K** per PR-juggle day | Behavioral |
+| 3 | Pre-seed canonical QA account in DB fixture; pin mobile-mcp in `.mcp.json`; mandate `list_elements` before any click | **~50min + 100K** per QA session | Mixed: 1 fixture + 1 config + agent skill update |
+
+## Secondary fixes (medium ROI)
+
+- Skip 4-fact gate ceremony for markdown-only edits (`*.md`, `docs/**`, `plans/**`). Saves ~4-7K tokens / session.
+- Tighten `scout-block.cjs` to whole-path-segment match. Eliminates `build`/`node_modules/<pkg>` false positives.
+- Always pass `nodeId` to Figma `get_metadata` — never call on bare fileKey. Pre-flight reminder in `figma-design-extraction` skill.
+- Default to acting on low-risk reversible decisions; reserve AskUserQuestion for irreversible/high-blast (force-push, prod deploy, scope drop).
+- Pin node version via `.nvmrc` to match `package.json` engines field. Eliminates `yarn install --ignore-engines` workaround.
+
+## Audit method (reproducible)
+
+10 sub-agents dispatched in parallel via main controller. Each agent grep-ed session JSONL for stuck-specific patterns and returned structured (count, time, tokens, severity, evidence, mitigation). Total audit cost: ~750K tokens across 10 agents, ~6 min wall-clock.
+
+Audit token cost itself was ~85% of Stuck #6's waste. **Lesson: audit cost ≈ single Compare batch wasted on the unfixed Figma MCP bug.** Fixing Stuck #6 pays for this audit twice over.
