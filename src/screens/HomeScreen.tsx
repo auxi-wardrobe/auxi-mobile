@@ -31,21 +31,20 @@ import {
   PillButton,
   TopIconButton,
 } from '../components/primitives/FigmaPrimitives';
-import IconHomePin from '../assets/images/icon_home_pin.svg';
+import IconHomeMenu from '../assets/images/icon_home_menu.svg';
 import IconHomeHeartOutline from '../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../assets/images/icon_home_heart_filled.svg';
-import IconHomeMenu from '../assets/images/icon_home_menu.svg';
+import IconHomePin from '../assets/images/icon_home_pin.svg';
 import { theme } from '../theme/theme';
 import { Item } from '../types/item';
 import {
   DEFAULT_RECOMMENDATION_MODE,
   Outfit,
   RecommendationMode,
-  recommendationService,
 } from '../services/recommendationService';
 import {
-  buildRecommendation as v05BuildRecommendation,
-  V05Outfit,
+  recommendV05,
+  resetV05Session,
   V05OutfitItem,
 } from '../services/v05Api';
 import { favouriteService } from '../services/favouriteService';
@@ -53,6 +52,9 @@ import { track } from '../services/analytics';
 import { getImageUrl } from '../utils/url';
 import { weatherService } from '../services/weatherService';
 import { WeatherWidget } from '../components/features/WeatherWidget';
+import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
+import { OutfitActionRow } from '../components/features/OutfitActionRow';
+import { HomeViewToggleFooter } from '../components/features/HomeViewToggleFooter';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -99,6 +101,12 @@ const PREFETCH_LOOKAHEAD = 2;
 type OutfitSheet = {
   items: Item[];
   outfitHash: string;
+  // TODO(AU-253): per-outfit caption/insight text. The current Outfit /
+  // V05Outfit backend contract has NO caption field — do NOT invent the
+  // endpoint. Until the backend ships it, this stays undefined and
+  // OutfitCardCaption renders its stubbed fallback copy. Escalated to
+  // tech-lead (see extraction artifact "New backend fields").
+  caption?: string | null;
 };
 
 type OutfitSheetWithGrid = OutfitSheet & {
@@ -382,9 +390,13 @@ export const HomeScreen = () => {
     async (input: {
       mode: RecommendationMode;
       style_feedback?: string;
-      // Legacy Valen-only field — V05 has no pinned-item concept yet;
-      // accepted here so existing callsites compile but ignored downstream.
       pinned_item_id?: string | null;
+      // V05 try_another (260525): the active sheet's hash. The
+      // `recommendV05` façade routes the first call to `/build` (no
+      // session) and every subsequent call to `/try_another`, threading
+      // this as `current_outfit_hash`. Falls back to the service's cached
+      // last hash when the call site can't supply it (cold start).
+      current_outfit_hash?: string;
     }): Promise<{ outfits: Outfit[] }> => {
       // H6 fix (2026-05-22): the previous map was keyed on occasion-like
       // strings (casual/work/play/date/weekend) but `input.mode` is the
@@ -401,11 +413,21 @@ export const HomeScreen = () => {
       const mood = moodMap[input.mode] ?? null;
       const occasion = input.mode || DEFAULT_RECOMMENDATION_MODE;
 
-      const v05 = await v05BuildRecommendation({
+      // recommendV05 routes build-vs-try_another internally off the cached
+      // V05 session. Build-shaping inputs (weather/user/intent/count) are
+      // consumed only on the cold-start `/build`; the variation inputs
+      // (mode/style_feedback/pinned_item_id/current_outfit_hash) flow into
+      // `/try_another`. RecommendationMode and V05RecommendationMode share
+      // the same string union ('safe'|'power'|'creative').
+      const v05 = await recommendV05({
         weather: { temp_c: weather.tempC, is_rainy: false },
         user: { gender: 'U', occasion },
         intent: { mood: mood as never },
         count: 3,
+        mode: input.mode,
+        style_feedback: input.style_feedback,
+        pinned_item_id: input.pinned_item_id ?? undefined,
+        current_outfit_hash: input.current_outfit_hash,
       });
 
       // Map V05Outfit -> legacy Outfit shape. normalizeOutfits picks up
@@ -799,6 +821,30 @@ export const HomeScreen = () => {
     setIsSidebarOpen(true);
   };
 
+  // AU-253: "Show another" button in the pager row programmatically advances
+  // to the next outfit sheet (same vertical snap-scroll the swipe gesture
+  // drives). At the tail it tops up the buffer via the prefetch trigger so
+  // the user can keep rotating. Mirrors the swipe path's advanceToSheet.
+  const handleShowAnother = useCallback(() => {
+    const total = listOutfitsRef.current.length;
+    if (total === 0) {
+      return;
+    }
+    const current = activeSheetIndexRef.current;
+    const nextIndex = current + 1;
+    // At the edge there is nothing further to show yet — nudge a prefetch so
+    // the next option becomes available, but don't scroll past the end.
+    if (nextIndex >= total) {
+      triggerPrefetchIfNeeded(current);
+      return;
+    }
+    scrollViewRef.current?.scrollTo({
+      y: nextIndex * OPTION_SHEET_SNAP_INTERVAL,
+      animated: true,
+    });
+    advanceToSheet(nextIndex, 'swipe');
+  }, [advanceToSheet, triggerPrefetchIfNeeded]);
+
   const handleMomentumScrollEnd = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
@@ -817,7 +863,7 @@ export const HomeScreen = () => {
       <View style={styles.header}>
         <TopIconButton
           onPress={handleLeadingAction}
-          icon={<IconHomeMenu width={18} height={12} />}
+          icon={<IconHomeMenu width={24} height={24} />}
         />
 
         <WeatherWidget tempC={weather.tempC} iconCode={weather.iconCode} />
@@ -906,7 +952,7 @@ export const HomeScreen = () => {
           onPress={handleClearPin}
           style={styles.pinHeaderLabel}
         >
-          <IconHomePin width={12} height={12} />
+          <IconHomePin width={24} height={24} />
           <Text style={styles.pinHeaderLabelText} numberOfLines={1}>
             {`Pinned: ${pinnedItem.category || pinnedItem.color || 'item'}`}
           </Text>
@@ -956,11 +1002,11 @@ export const HomeScreen = () => {
                   saveState={sheetSaveState}
                   pinnedItemId={pinnedItemId}
                   totalSheets={optionSets.length}
-                  isActiveSheet={sheetIndex === activeSheetIndex}
                   onItemPress={item => setSelectedItem(item)}
                   onTogglePin={handleToggleItemPin}
                   onConfirm={() => handleHeartTapForOutfit(outfit)}
                   onEditContext={handleOpenContextEditModal}
+                  onShowAnother={handleShowAnother}
                 />
               );
             })}
@@ -970,6 +1016,14 @@ export const HomeScreen = () => {
           </>
         )}
       </ScrollView>
+
+      {/* AU-253: Home grid-view toggle bar (Figma footer 2464:17348). Tab 1
+          = current grid view (active). Tab 2 = alternate view (not yet built
+          — see Q3 in extraction artifact); rendered faithfully, no-op for now. */}
+      <HomeViewToggleFooter
+        testID="home-footer-view-toggle"
+        activeView="grid"
+      />
 
       <ItemDetailBottomSheet
         visible={!!selectedItem}
@@ -1089,26 +1143,22 @@ const OptionSheet = React.memo(({
   saveState,
   pinnedItemId,
   totalSheets,
-  isActiveSheet,
   onItemPress,
   onTogglePin,
   onConfirm,
   onEditContext,
+  onShowAnother,
 }: {
   sheetIndex: number;
   outfit: OutfitSheetWithGrid;
   saveState: SaveState;
   pinnedItemId: string | null;
   totalSheets: number;
-  // C5 fix (2026-05-22): pass a per-sheet boolean instead of the global
-  // `activeSheetIndex`. With React.memo this keeps inactive sheets out
-  // of re-render on every swipe; only the leaving + arriving sheets
-  // re-render (toggle false→true and true→false respectively).
-  isActiveSheet: boolean;
   onItemPress: (item: Item) => void;
   onTogglePin: (item: Item) => void;
   onConfirm: () => void;
   onEditContext: () => void;
+  onShowAnother: () => void;
 }) => {
   const items = outfit.items;
   const layout = pickLayout(items);
@@ -1161,7 +1211,7 @@ const OptionSheet = React.memo(({
           accessibilityRole="button"
           accessibilityLabel={isPinned ? 'Unpin item' : 'Pin item'}
         >
-          <IconHomePin width={14} height={14} />
+          <IconHomePin width={24} height={24} />
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -1279,8 +1329,21 @@ const OptionSheet = React.memo(({
     );
   };
 
+  // AU-253: "Show another" is rendered disabled (opacity 0.5) at the tail of
+  // the carousel where there is no further option to rotate to — matching the
+  // Figma State=Disable variant on the edge frame.
+  const showAnotherDisabled = sheetIndex >= totalSheets - 1;
+
   return (
     <View testID={`home-outfit-sheet-${sheetIndex}`} style={styles.optionSheet}>
+      {/* AU-253: caption + insight title row (Figma Frame 2104). Caption text
+          is stubbed via OutfitCardCaption's fallback — no backend field yet
+          (TODO(AU-253) flagged in that component + the report). */}
+      <OutfitCardCaption
+        testID={`home-card-caption-${sheetIndex}`}
+        caption={outfit.caption}
+      />
+
       <ScrollView
         style={styles.gridScroll}
         showsVerticalScrollIndicator={false}
@@ -1289,10 +1352,19 @@ const OptionSheet = React.memo(({
         <View testID={`home-outfit-grid-${itemCount}`}>{renderLayout()}</View>
       </ScrollView>
 
-      {/* Bottom action cluster (Frame 2017 in Figma) — "This works" + "Edit context" */}
+      {/* AU-253: pager/action row (Figma Frame 2105) — 3 dots + "Show another".
+          Remix button OMITTED per CEO scope decision (= AU-285, separate). */}
+      <OutfitActionRow
+        testID={`home-action-row-${sheetIndex}`}
+        activeIndex={sheetIndex}
+        onShowAnother={onShowAnother}
+        showAnotherDisabled={showAnotherDisabled}
+      />
+
+      {/* Bottom action cluster — primary CTA + Edit context affordance. */}
       <View style={styles.actionCluster}>
-        {/* #2 fix (2026-05-13): Figma spec = Secondary/outline, borderRadius 16,
-            trailing heart icon, height 56. Was filled/pill (borderRadius 100). */}
+        {/* Figma primary CTA: Secondary/outline, borderRadius 16, trailing
+            heart icon, height 56, label "Wear this" (border/primary/bold_600). */}
         <PillButton
           testID={`home-this-works-${sheetIndex}`}
           title={saveState === 'saved' ? 'Saved to favourite' : 'Wear this'}
@@ -1300,8 +1372,11 @@ const OptionSheet = React.memo(({
           onPress={onConfirm}
           disabled={saveState === 'saved'}
           loading={saveState === 'saving'}
-          trailing={<IconHomeHeartOutline width={20} height={20} />}
+          trailing={
+            <IconHomeHeartOutline width={24} height={24} />
+          }
           style={styles.primaryActionFull}
+          textStyle={styles.primaryActionLabel}
         />
 
         {saveState === 'error' ? (
@@ -1310,6 +1385,9 @@ const OptionSheet = React.memo(({
           </Text>
         ) : null}
 
+        {/* Edit context entry point (AU-252 refine flow). Not in the Figma
+            Home grid frame, but it is the only way to reach the refine modal
+            from this screen and the swipe-nudge flow depends on it. Kept. */}
         <PillButton
           testID={`home-edit-context-${sheetIndex}`}
           title="Edit context +"
@@ -1318,19 +1396,6 @@ const OptionSheet = React.memo(({
           style={styles.secondaryAction}
           textStyle={styles.secondaryActionText}
         />
-
-        {/* Pagination counter ("1/3", "2/3", …). Designer note: "User need
-            to swipe left/right to see other options - rotate within 3 options".
-            C5 fix (2026-05-22): only the active sheet renders the counter,
-            and it shows its own sheetIndex+1 / totalSheets. Inactive sheets
-            skip the render entirely so React.memo can short-circuit them. */}
-        {isActiveSheet && totalSheets > 1 ? (
-          <View style={styles.sheetCounterSlot}>
-            <Text testID="home-sheet-counter" style={styles.sheetCounterText}>
-              {`${sheetIndex + 1}/${totalSheets}`}
-            </Text>
-          </View>
-        ) : null}
       </View>
     </View>
   );
@@ -1406,7 +1471,7 @@ const GarmentPreview = ({ item }: { item: Item }) => {
         <View style={styles.cardFallback} />
       )}
       <View style={styles.cardTag}>
-        <Text style={styles.cardTagText}>common items</Text>
+        <Text style={styles.cardTagText}>common</Text>
       </View>
     </>
   );
@@ -1592,23 +1657,6 @@ const styles = StyleSheet.create({
   heroStackCell: {
     flex: 1,
   },
-  // 2026-05-22 (AU-242): pagination indicator slot ("1/3"). Figma `2036`
-  // sits between Remix (left) and Show another (right) at 94×32. Remix
-  // is dropped (per project memory), so this slot floats just above the
-  // "Show another" pill in the action cluster.
-  sheetCounterSlot: {
-    width: 94,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetCounterText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    lineHeight: 16,
-    color: theme.colors.figmaText,
-    textAlign: 'center',
-  },
   // PHASE B (AU-222): pinned tile gets a 2px action-coloured ring.
   // Figma 1711:17062 communicates pin via the badge rather than a border;
   // the ring is a small extra cue the spec asked for explicitly.
@@ -1687,6 +1735,11 @@ const styles = StyleSheet.create({
   primaryActionFull: {
     alignSelf: 'stretch',
     borderRadius: 16,
+    borderColor: theme.colors.uacBorderBase, // border/neutral/base #1d1f23
+  },
+  // AU-253: "Wear this" label color = border/primary/bold_600 (#262421).
+  primaryActionLabel: {
+    color: theme.colors.figmaCtaLabel,
   },
   saveErrorText: {
     ...theme.typography.aliases.manropeCaption,

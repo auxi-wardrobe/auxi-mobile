@@ -16,6 +16,14 @@ export const theme = {
     figmaCardSurface: '#f2efec', // background/primary/subtle_50 — clothing tile bg
     figmaCardTag: 'rgba(18,18,18,0.75)', // color/neutral/black/Alpha300 (#121212bf)
     figmaSurface: '#FFFFFF',
+    // Home Grid View (AU-253) tokens — Figma node 2849:11340
+    // Source: plans/260525-1505-home-grid-view-extraction/figma-extraction-home-grid-view.md
+    figmaCaptionPillBg: '#eee6df', // color/primary/100 — caption pill bg (Frame 2036)
+    figmaInsightPillBg: '#e0d2c4', // color/primary/200 — insight icon pill bg (Frame 2037)
+    figmaCtaLabel: '#262421', // border/primary/bold_600 — "Wear this" CTA label
+    figmaFooterActivePill: '#eee6df', // background/primary/subtle_200 — footer active-tab pill
+    figmaTooltipBg: '#322f35', // Schemes/Inverse Surface — Plain Tooltip bg
+    figmaTooltipText: '#f5eff7', // Schemes/Inverse On Surface — Plain Tooltip text
     figmaSurfaceSoft: '#F3F5F9',
     figmaText: '#272A32',
     figmaTextPrimary: '#272A32',
@@ -56,6 +64,7 @@ export const theme = {
     uacBodyPadding: 24, // --body horizontal padding
     uacDimension24: 24,
     uacDimension16: 16,
+    uacDimension12: 12, // dimension/12 - 0.75rem — caption/icon pill padX, pager gaps
     uacDimension8: 8,
     uacDimension4: 4,
     uacButtonPaddingX: 20,
@@ -131,6 +140,15 @@ export const theme = {
         lineHeight: 24,
         letterSpacing: 0,
       },
+      // Figma Text-xs/Regular = font-family/body (Poppins) 12/16.
+      // Use for small body labels (e.g. Home Grid "Show another"). Distinct
+      // from uacBodyXsRegular, which is Inter 12/16 for the UAC auth flow.
+      poppinsXs: {
+        fontFamily: 'Poppins-Regular',
+        fontSize: 12,
+        lineHeight: 16,
+        letterSpacing: 0,
+      },
       // UAC (Account-access flow) typography — AU-242 spec
       // Spec: plans/260521-2335-au-242-figma-spec/00-index.md "Typography"
       uacH1Bold: {
@@ -186,6 +204,8 @@ export const theme = {
     m: 8,
     l: 16,
     round: 9999,
+    // Home Grid View (AU-253): border-radius/xl = 12 — outfit image tile radius
+    figmaTile: 12,
     // UAC named radii — AU-242 spec
     uacScreen: 18,
     uacPanel: 16,
