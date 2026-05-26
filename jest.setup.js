@@ -40,3 +40,55 @@ jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: {} }),
   useIsFocused: () => true,
 }));
+
+// @react-native-async-storage/async-storage: in-memory store (consent flag).
+jest.mock('@react-native-async-storage/async-storage', () => {
+  const store = new Map();
+  return {
+    __esModule: true,
+    default: {
+      getItem: jest.fn(key =>
+        Promise.resolve(store.has(key) ? store.get(key) : null),
+      ),
+      setItem: jest.fn((key, value) => {
+        store.set(key, value);
+        return Promise.resolve();
+      }),
+      removeItem: jest.fn(key => {
+        store.delete(key);
+        return Promise.resolve();
+      }),
+    },
+  };
+});
+
+// mixpanel-react-native: inert stub so the analytics seam imports cleanly.
+jest.mock('mixpanel-react-native', () => {
+  class People {
+    set() {}
+    setOnce() {}
+    increment() {}
+  }
+  class Mixpanel {
+    init() {
+      return Promise.resolve();
+    }
+    identify() {
+      return Promise.resolve();
+    }
+    track() {}
+    reset() {}
+    flush() {}
+    optInTracking() {}
+    optOutTracking() {}
+    hasOptedOutTracking() {
+      return Promise.resolve(false);
+    }
+    registerSuperProperties() {}
+    setUseIpAddressForGeolocation() {}
+    getPeople() {
+      return new People();
+    }
+  }
+  return { __esModule: true, Mixpanel };
+});
