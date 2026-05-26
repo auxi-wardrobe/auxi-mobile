@@ -466,6 +466,23 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.uacDimension16,
   },
+  // Dev-only QA bypass — dashed outline so it reads as a non-production
+  // affordance, distinct from the real CTAs. Theme tokens only.
+  qaBypassButton: {
+    marginTop: theme.spacing.uacDimension16,
+    height: theme.spacing.uacButtonHeight,
+    borderRadius: theme.borderRadius.uacButtonCta,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: theme.colors.uacBorderBase,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qaBypassLabel: {
+    ...theme.typography.aliases.uacBodyMdMedium,
+    color: theme.colors.uacTextBase,
+  },
   pressed: {
     opacity: 0.7,
   },
