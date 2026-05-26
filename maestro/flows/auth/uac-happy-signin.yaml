@@ -1,0 +1,80 @@
+# auxi/maestro/flows/auth/uac-happy-signin.yaml
+# AU-242 returning user happy path. Existing user via Email entry goes
+# Welcome → Email → PasswordCreation → 409 → SignIn → login → Home.
+#
+# Prerequisites: verified test user qa-signin@auxi.app/Pass1234.
+# Seed:
+#   curl -X POST http://localhost:5001/api/register \
+#     -H 'Content-Type: application/json' \
+#     -d '{"email":"qa-signin@auxi.app","password":"Pass1234"}'
+#   sqlite3 wardrobe.db "UPDATE users SET email_verified_at = datetime('now') \
+#     WHERE email = 'qa-signin@auxi.app';"
+#
+# Run: maestro test maestro/flows/auth/uac-happy-signin.yaml \
+#      -e QA_EMAIL=qa-signin@auxi.app -e QA_PASSWORD=Pass1234
+
+appId: com.auxi2026.app
+name: uac-happy-signin
+tags:
+  - au-242
+  - auth
+  - uac
+  - regression
+env:
+  QA_EMAIL: qa-signin@auxi.app
+  QA_PASSWORD: Pass1234
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  HOME_TIMEOUT_MS: 30000
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- extendedWaitUntil:
+    visible:
+      id: welcome-cta-email
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
+- tapOn:
+    id: welcome-cta-email
+
+- extendedWaitUntil:
+    visible:
+      id: email-input-field
+    timeout: 5000
+- tapOn:
+    id: email-input-field
+- inputText: ${QA_EMAIL}
+- tapOn:
+    id: email-submit-button
+
+- extendedWaitUntil:
+    visible:
+      id: password-input-field
+    timeout: 5000
+- tapOn:
+    id: password-input-field
+- inputText: ${QA_PASSWORD}
+- tapOn:
+    id: password-submit-button
+
+- extendedWaitUntil:
+    visible:
+      id: signin-password-input
+    timeout: 5000
+- assertVisible:
+    id: signin-email-readonly
+- assertVisible:
+    text: ${QA_EMAIL}
+- tapOn:
+    id: signin-password-input
+- inputText: ${QA_PASSWORD}
+- tapOn:
+    id: signin-submit
+
+# AppStack post-login — first-login users see onboarding welcome.
+- extendedWaitUntil:
+    visible:
+      id: app-welcome-headline
+    timeout: ${HOME_TIMEOUT_MS}
+- assertNotVisible:
+    id: welcome-cta-email

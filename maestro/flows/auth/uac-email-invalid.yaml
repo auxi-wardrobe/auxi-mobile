@@ -1,0 +1,49 @@
+# auxi/maestro/flows/auth/uac-email-invalid.yaml
+# AU-242 edge case: invalid email format. Submit must NOT proceed.
+
+appId: com.auxi2026.app
+name: uac-email-invalid
+tags:
+  - au-242
+  - auth
+  - uac
+  - edge-case
+env:
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- extendedWaitUntil:
+    visible:
+      id: welcome-cta-email
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
+- tapOn:
+    id: welcome-cta-email
+
+- extendedWaitUntil:
+    visible:
+      id: email-input-field
+    timeout: 5000
+- tapOn:
+    id: email-input-field
+- inputText: not-an-email
+
+# Submit must be a no-op for malformed email (button disabled by regex).
+- tapOn:
+    id: email-submit-button
+- assertVisible:
+    id: email-input-field
+- assertNotVisible:
+    id: password-input-field
+
+# Re-try with no-TLD malformed input.
+- eraseText: 12
+- inputText: foo@bar
+- tapOn:
+    id: email-submit-button
+- assertVisible:
+    id: email-input-field
+- assertNotVisible:
+    id: password-input-field
