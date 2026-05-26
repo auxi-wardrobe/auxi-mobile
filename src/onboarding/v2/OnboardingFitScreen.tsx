@@ -23,11 +23,14 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStepHeader } from './OnboardingStepHeader';
-import { OnboardingSelectionCard } from '../../components/primitives/OnboardingSelectionCard';
+import {
+  OnboardingSelectionCard,
+  OnboardingSelectionFigure,
+} from '../../components/primitives/OnboardingSelectionCard';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { theme } from '../../theme/theme';
 import type { FitPreference } from '../../services/v05Api';
-import { FIT_OPTIONS, STEP_COPY } from '../config';
+import { FIT_OPTIONS, STEP_COPY, fitTileArt } from '../config';
 import { AppStackParamList } from '../../types/navigation';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'OnboardingFit'>;
@@ -59,10 +62,14 @@ export const OnboardingFitScreen = () => {
     const isSelected = selected === option.wireValue;
     // Once a fit is chosen, the un-chosen tiles dim (Figma Step-2 states).
     const isDimmed = selected !== null && !isSelected;
+    // testID stays a stable single-word slug (slim/regular/relaxed) decoupled
+    // from the display copy — the label now carries a " Fit" suffix to match
+    // Figma, but Maestro selectors + the screen test must not churn with copy.
+    const testSlug = option.label.toLowerCase().replace(/\s*fit$/, '');
     return (
       <TouchableOpacity
         key={option.wireValue}
-        testID={`onboarding-fit-tile-${option.label.toLowerCase()}`}
+        testID={`onboarding-fit-tile-${testSlug}`}
         accessibilityLabel={option.label}
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
@@ -76,7 +83,11 @@ export const OnboardingFitScreen = () => {
           selected={isSelected}
           dimmed={isDimmed}
         >
-          <View />
+          <OnboardingSelectionFigure
+            source={fitTileArt(wardrobe_direction, option.wireValue)}
+            inset
+            resizeMode="contain"
+          />
         </OnboardingSelectionCard>
       </TouchableOpacity>
     );

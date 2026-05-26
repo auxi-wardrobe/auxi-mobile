@@ -106,5 +106,5 @@ export const QA_BYPASS_ENABLED: boolean = __DEV__;
  * `QA_BYPASS_PASSWORD`) once the env config surface lands, alongside the
  * `localhost:5001` host externalisation.
  */
-export const QA_BYPASS_EMAIL = 'qa-test@auxi.app';
-export const QA_BYPASS_PASSWORD = 'QaTest!2026';
+export const QA_BYPASS_EMAIL = __DEV__ ? 'qa-test@auxi.app' : '';
+export const QA_BYPASS_PASSWORD = __DEV__ ? 'QaTest!2026' : '';

@@ -97,7 +97,7 @@ describe('OnboardingFitScreen — Continue gating + D2 wire forwarding', () => {
     expect(oneByTestID(root, 'onboarding-fit-continue').props.disabled).toBe(
       true,
     );
-    // tile testID uses the display label (lowercased): "regular"
+    // tile testID is a stable slug (display label "Regular Fit" → "regular")
     press(oneByTestID(root, 'onboarding-fit-tile-regular'));
     expect(oneByTestID(root, 'onboarding-fit-continue').props.disabled).toBe(
       false,

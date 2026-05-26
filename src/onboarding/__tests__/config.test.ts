@@ -36,16 +36,16 @@ describe('config — D2 fit label↔wire mapping', () => {
       FIT_OPTIONS.map(o => [o.label, o.wireValue]),
     );
     expect(byLabel).toEqual({
-      Slim: 'Slim Fit',
-      Regular: 'Classic Fit',
-      Relaxed: 'Relaxed Fit',
+      'Slim Fit': 'Slim Fit',
+      'Regular Fit': 'Classic Fit',
+      'Relaxed Fit': 'Relaxed Fit',
     });
   });
 
-  it('UI label "Regular" is NOT a wire value (the wire never sees it)', () => {
-    expect(FIT_PREFERENCES).not.toContain('Regular' as never);
-    // wire value for Regular is the spaced "Classic Fit"
-    const regular = FIT_OPTIONS.find(o => o.label === 'Regular');
+  it('UI label "Regular Fit" is NOT a wire value (the wire never sees it)', () => {
+    expect(FIT_PREFERENCES).not.toContain('Regular Fit' as never);
+    // wire value for "Regular Fit" is the spaced "Classic Fit"
+    const regular = FIT_OPTIONS.find(o => o.label === 'Regular Fit');
     expect(regular?.wireValue).toBe('Classic Fit');
   });
 });
@@ -57,7 +57,7 @@ describe('config — selectionChipLabels reverse-mapping', () => {
       fit_preference: 'Classic Fit',
       style_preferences: ['Minimal', 'Bold'],
     });
-    expect(chips).toEqual(['Menswear', 'Regular', 'Minimal', 'Bold']);
+    expect(chips).toEqual(['Menswear', 'Regular Fit', 'Minimal', 'Bold']);
     expect(chips).not.toContain('Classic Fit');
   });
 
@@ -67,8 +67,9 @@ describe('config — selectionChipLabels reverse-mapping', () => {
       fit_preference: 'Slim Fit',
       style_preferences: ['Formal', 'Soft'],
     });
-    // wardrobe, fit, then styles in ranked order
-    expect(chips).toEqual(['Womenswear', 'Slim', 'Formal', 'Soft']);
+    // wardrobe, fit, then styles in ranked order. Wire `Formal` displays as the
+    // Figma label "Classic" (D2-style label↔wire split).
+    expect(chips).toEqual(['Womenswear', 'Slim Fit', 'Classic', 'Soft']);
   });
 });
 

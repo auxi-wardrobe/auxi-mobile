@@ -16,12 +16,81 @@
  * from `v05Api` so the backend allowlist stays the single authority — never
  * hardcode the literal wire strings in a screen; read them from here.
  */
+import type { ImageSourcePropType } from 'react-native';
 import type {
   FitPreference,
   StyleTag,
   WardrobeDirection,
 } from '../services/v05Api';
 import type { V05OnboardingSelection } from '../types/navigation';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tile artwork (Figma node 2849:8331 — "Image 3:4" fills)
+//
+// Every onboarding selection tile shows a distinct flat-lay garment render
+// lifted from Figma (no placeholder — confirmed each tile has real art). The
+// images are clean garment flat-lays on a neutral ground; the tile's cream
+// `figmaCardSurface` shows as the inset margin, matching the Figma "Image 3:4"
+// component (garment is inset ~18px, not full-bleed).
+//
+// require() is resolved at bundle time by Metro — these are static refs.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TILE_ART = {
+  // Step 1 — wardrobe direction (node 2849:8339, `image 18/16/17`).
+  wardrobe: {
+    Womenswear: require('../assets/images/onboarding/wardrobe-womenswear.png'),
+    Menswear: require('../assets/images/onboarding/wardrobe-menswear.png'),
+    Mixed: require('../assets/images/onboarding/wardrobe-mixed.png'),
+  } as Record<WardrobeDirection, ImageSourcePropType>,
+  // Step 2 — fit, per wardrobe branch (nodes 2849:8423 / 8443 / 8460). Keyed
+  // by the fit WIRE value so the screen resolves art straight from selection.
+  fit: {
+    Menswear: {
+      'Slim Fit': require('../assets/images/onboarding/fit-men-slim.png'),
+      'Classic Fit': require('../assets/images/onboarding/fit-men-regular.png'),
+      'Relaxed Fit': require('../assets/images/onboarding/fit-men-relaxed.png'),
+    },
+    Womenswear: {
+      'Slim Fit': require('../assets/images/onboarding/fit-women-slim.png'),
+      'Classic Fit': require('../assets/images/onboarding/fit-women-regular.png'),
+      'Relaxed Fit': require('../assets/images/onboarding/fit-women-relaxed.png'),
+    },
+    Mixed: {
+      'Slim Fit': require('../assets/images/onboarding/fit-mixed-slim.png'),
+      'Classic Fit': require('../assets/images/onboarding/fit-mixed-regular.png'),
+      'Relaxed Fit': require('../assets/images/onboarding/fit-mixed-relaxed.png'),
+    },
+  } as Record<WardrobeDirection, Record<FitPreference, ImageSourcePropType>>,
+  // Step 3 — style picks (node 2849:9748). `Formal` reuses Figma's "Classic"
+  // flat-lay (white shirt + tailored trousers) — the closest visual match,
+  // since the backend vocabulary has `Formal` where Figma labelled "Classic".
+  style: {
+    Minimal: require('../assets/images/onboarding/style-minimal.png'),
+    Casual: require('../assets/images/onboarding/style-casual.png'),
+    Soft: require('../assets/images/onboarding/style-soft.png'),
+    Bold: require('../assets/images/onboarding/style-bold.png'),
+    Formal: require('../assets/images/onboarding/style-formal.png'),
+  } as Record<StyleTag, ImageSourcePropType>,
+};
+
+/** Step 1 tile art for a wardrobe option. */
+export const wardrobeTileArt = (
+  value: WardrobeDirection,
+): ImageSourcePropType => TILE_ART.wardrobe[value];
+
+/**
+ * Step 2 tile art for a fit option within the chosen wardrobe branch (D8 —
+ * fit imagery differs per wardrobe; the screen is parameterised by route).
+ */
+export const fitTileArt = (
+  wardrobe: WardrobeDirection,
+  fit: FitPreference,
+): ImageSourcePropType => TILE_ART.fit[wardrobe][fit];
+
+/** Step 3 tile art for a style option. */
+export const styleTileArt = (value: StyleTag): ImageSourcePropType =>
+  TILE_ART.style[value];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Welcome (intro splash → LocationPermission)
@@ -51,9 +120,10 @@ export interface WardrobeOption {
   label: string;
 }
 
+// Figma node 2849:8339 order: Womenswear (left), Menswear (right), then Mixed.
 export const WARDROBE_OPTIONS: WardrobeOption[] = [
-  { value: 'Menswear', label: 'Menswear' },
   { value: 'Womenswear', label: 'Womenswear' },
+  { value: 'Menswear', label: 'Menswear' },
   { value: 'Mixed', label: 'Mixed' },
 ];
 
@@ -64,19 +134,21 @@ export const WARDROBE_OPTIONS: WardrobeOption[] = [
 export interface FitOption {
   /** Wire value sent to `/onboarding/generate` (backend literal allowlist). */
   wireValue: FitPreference;
-  /** User-facing label. Note "Regular" → wire `Classic Fit` (D2). */
+  /** User-facing label. Note "Regular Fit" → wire `Classic Fit` (D2). */
   label: string;
 }
 
 /**
- * D2 mapping: Slim→`Slim Fit`, Regular→`Classic Fit`, Relaxed→`Relaxed Fit`.
- * The UI shows "Regular"; the wire never sees it. Art is resolved per
- * wardrobe branch in the screen (men_/women_*_fit.png), not stored here.
+ * D2 mapping: Slim Fit→`Slim Fit`, Regular Fit→`Classic Fit`,
+ * Relaxed Fit→`Relaxed Fit`. Display labels carry the "Fit" suffix to match
+ * Figma (node 2849:8423/8443/8460); the UI shows "Regular Fit" while the wire
+ * value stays `Classic Fit` — the wire never sees the display label. Art is
+ * resolved per wardrobe branch in the screen (men_/women_*_fit.png), not here.
  */
 export const FIT_OPTIONS: FitOption[] = [
-  { wireValue: 'Slim Fit', label: 'Slim' },
-  { wireValue: 'Classic Fit', label: 'Regular' },
-  { wireValue: 'Relaxed Fit', label: 'Relaxed' },
+  { wireValue: 'Slim Fit', label: 'Slim Fit' },
+  { wireValue: 'Classic Fit', label: 'Regular Fit' },
+  { wireValue: 'Relaxed Fit', label: 'Relaxed Fit' },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -90,12 +162,25 @@ export interface StyleOption {
   label: string;
 }
 
+/**
+ * Display order matches Figma node 2849:9748 — [Minimal, Classic, Casual, Soft,
+ * Bold] — so the "Classic" tile sits in position 2. Reordering this array is
+ * purely visual: the ranked-selection array in OnboardingStylesScreen stores
+ * StyleTag VALUES by pick order (via indexOf on `ranked`), not by display
+ * index, so grid order and selection ranking are independent.
+ *
+ * Label note (mirrors the D2 fit Regular→`Classic Fit` pattern): the display
+ * label "Classic" maps to wire value `Formal` (the backend StyleTag enum has no
+ * "Classic"). Figma labels this white-shirt + tailored-trousers flat-lay
+ * (`style-formal.png`) "Classic"; only the user-facing label changes — the wire
+ * value stays `Formal`.
+ */
 export const STYLE_OPTIONS: StyleOption[] = [
   { value: 'Minimal', label: 'Minimal' },
+  { value: 'Formal', label: 'Classic' },
   { value: 'Casual', label: 'Casual' },
   { value: 'Soft', label: 'Soft' },
   { value: 'Bold', label: 'Bold' },
-  { value: 'Formal', label: 'Formal' },
 ];
 
 /** D7 — exactly the max number of ranked picks (Figma pins show "1","2"). */
@@ -126,8 +211,9 @@ export const STEP_COPY: Record<'step1' | 'step2' | 'step3', StepCopy> = {
   },
   step2: {
     stepLabel: 'Step 2/3',
-    title: 'How do you like things to fit?',
-    subtitle: 'Think about the pieces you reach for without thinking.',
+    title: 'Which fit makes you feel most confident?',
+    subtitle:
+      "This will be Auxi's starting point. You can switch up your style anytime.",
   },
   step3: {
     stepLabel: 'Step 3/3',

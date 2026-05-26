@@ -45,6 +45,14 @@ interface OnboardingSelectionFigureProps {
   source: ImageSourcePropType;
   style?: StyleProp<ViewStyle>;
   imageStyle?: StyleProp<ImageStyle>;
+  /**
+   * v2 tiles inset the flat-lay so the cream `figmaCardSurface` shows as a
+   * margin (Figma "Image 3:4" insets the garment ~9.5% V / 18px H). Default
+   * `false` keeps legacy full-bleed behaviour.
+   */
+  inset?: boolean;
+  /** Defaults to `cover`; v2 flat-lays use `contain` to avoid cropping. */
+  resizeMode?: 'cover' | 'contain';
 }
 
 export const OnboardingSelectionCard: React.FC<
@@ -104,11 +112,11 @@ export const OnboardingSelectionCard: React.FC<
 
 export const OnboardingSelectionFigure: React.FC<
   OnboardingSelectionFigureProps
-> = ({ source, style, imageStyle }) => (
-  <View style={[styles.figureFrame, style]}>
+> = ({ source, style, imageStyle, inset = false, resizeMode = 'cover' }) => (
+  <View style={[styles.figureFrame, inset && styles.figureFrameInset, style]}>
     <Image
       source={source}
-      resizeMode="cover"
+      resizeMode={resizeMode}
       style={[styles.figureImage, imageStyle]}
     />
   </View>
@@ -206,7 +214,20 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
   },
+  // v2 inset: garment sits within the tile with cream margin (Figma "Image 3:4"
+  // insets the flat-lay ~9.5% vertical / ~10% horizontal of the tile). Use
+  // padding (not absolute %-insets) so the Image keeps a concrete flex box to
+  // measure into — bare nested absoluteFill collapses the Image to 0×0 under
+  // `resizeMode="contain"` and never paints (the blank-tile bug).
+  figureFrameInset: {
+    paddingVertical: '9.5%',
+    paddingHorizontal: '10%',
+  },
+  // Concrete bounds: fill the (possibly inset-padded) frame. Without a definite
+  // size, `resizeMode="contain"` has no box to fit the image into and renders
+  // nothing even with a valid source.
   figureImage: {
-    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
 });

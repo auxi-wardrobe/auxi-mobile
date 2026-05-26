@@ -33,12 +33,20 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStepHeader } from './OnboardingStepHeader';
-import { OnboardingSelectionCard } from '../../components/primitives/OnboardingSelectionCard';
+import {
+  OnboardingSelectionCard,
+  OnboardingSelectionFigure,
+} from '../../components/primitives/OnboardingSelectionCard';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { StyleTag } from '../../services/v05Api';
-import { MAX_STYLE_PICKS, STEP_COPY, STYLE_OPTIONS } from '../config';
+import {
+  MAX_STYLE_PICKS,
+  STEP_COPY,
+  STYLE_OPTIONS,
+  styleTileArt,
+} from '../config';
 import { AppStackParamList } from '../../types/navigation';
 
 type Navigation = NativeStackNavigationProp<
@@ -135,7 +143,11 @@ export const OnboardingStylesScreen = () => {
                       dimmed={limitReached}
                       pinNumber={rank}
                     >
-                      <View />
+                      <OnboardingSelectionFigure
+                        source={styleTileArt(option.value)}
+                        inset
+                        resizeMode="contain"
+                      />
                     </OnboardingSelectionCard>
                   </TouchableOpacity>
                 );

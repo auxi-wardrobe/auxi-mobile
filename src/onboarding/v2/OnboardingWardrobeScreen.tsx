@@ -21,11 +21,14 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStepHeader } from './OnboardingStepHeader';
-import { OnboardingSelectionCard } from '../../components/primitives/OnboardingSelectionCard';
+import {
+  OnboardingSelectionCard,
+  OnboardingSelectionFigure,
+} from '../../components/primitives/OnboardingSelectionCard';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { theme } from '../../theme/theme';
 import type { WardrobeDirection } from '../../services/v05Api';
-import { STEP_COPY, WARDROBE_OPTIONS } from '../config';
+import { STEP_COPY, WARDROBE_OPTIONS, wardrobeTileArt } from '../config';
 import { AppStackParamList } from '../../types/navigation';
 
 type Navigation = NativeStackNavigationProp<
@@ -70,7 +73,11 @@ export const OnboardingWardrobeScreen = () => {
           label={option.label}
           selected={isSelected}
         >
-          <View />
+          <OnboardingSelectionFigure
+            source={wardrobeTileArt(option.value)}
+            inset
+            resizeMode="contain"
+          />
         </OnboardingSelectionCard>
       </TouchableOpacity>
     );
