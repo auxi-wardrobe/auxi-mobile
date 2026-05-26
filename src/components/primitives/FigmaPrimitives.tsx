@@ -83,7 +83,9 @@ export const DividerRow: React.FC<DividerRowProps> = ({
 }) => (
   <View style={[styles.dividerRow, !hideDivider && styles.rowDivider, style]}>
     <Text style={[styles.dividerLabel, labelStyle]}>{label}</Text>
-    {rightNode || <Text style={[styles.dividerValue, valueStyle]}>{value}</Text>}
+    {rightNode || (
+      <Text style={[styles.dividerValue, valueStyle]}>{value}</Text>
+    )}
   </View>
 );
 
@@ -121,7 +123,9 @@ export const PillButton: React.FC<PillButtonProps> = ({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'filled' ? theme.colors.white : theme.colors.figmaAction}
+          color={
+            variant === 'filled' ? theme.colors.white : theme.colors.figmaAction
+          }
         />
       ) : (
         <>
@@ -144,9 +148,10 @@ export const PillButton: React.FC<PillButtonProps> = ({
   );
 };
 
-export const BottomSheetSurface: React.FC<BottomSheetSurfaceProps> = ({ children, style }) => (
-  <View style={[styles.bottomSheetSurface, style]}>{children}</View>
-);
+export const BottomSheetSurface: React.FC<BottomSheetSurfaceProps> = ({
+  children,
+  style,
+}) => <View style={[styles.bottomSheetSurface, style]}>{children}</View>;
 
 const styles = StyleSheet.create({
   disabled: {

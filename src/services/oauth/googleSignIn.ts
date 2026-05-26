@@ -24,11 +24,25 @@ let configured = false;
  */
 export const configureGoogleSignIn = (): void => {
   if (configured) return;
-  GoogleSignin.configure({
-    webClientId: OAUTH_CONFIG.google.webClientId,
-    iosClientId: OAUTH_CONFIG.google.iosClientId,
-    offlineAccess: OAUTH_CONFIG.google.offlineAccess,
-  });
+  try {
+    GoogleSignin.configure({
+      webClientId: OAUTH_CONFIG.google.webClientId,
+      iosClientId: OAUTH_CONFIG.google.iosClientId,
+      offlineAccess: OAUTH_CONFIG.google.offlineAccess,
+    });
+  } catch (error) {
+    // The RNGoogleSignin native TurboModule may be absent from the running
+    // binary (e.g. a dev build produced before `pod install` linked the pod).
+    // Don't crash the whole app at bootstrap over one optional OAuth provider —
+    // log and continue. The Google button surfaces its own error if tapped.
+    console.warn(
+      '[googleSignIn] configure failed — native module unavailable; ' +
+        'rebuild the app (pod install) to enable Google Sign-In.',
+      error,
+    );
+  }
+  // Mark as attempted regardless so we don't retry a permanently-missing module
+  // on every call.
   configured = true;
 };
 

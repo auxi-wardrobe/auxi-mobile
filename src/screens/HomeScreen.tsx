@@ -54,49 +54,90 @@ import { weatherService } from '../services/weatherService';
 import { WeatherWidget } from '../components/features/WeatherWidget';
 import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
 import { OutfitActionRow } from '../components/features/OutfitActionRow';
-import { HomeViewToggleFooter } from '../components/features/HomeViewToggleFooter';
+import {
+  HomeViewToggleFooter,
+  HOME_VIEW_TOGGLE_FOOTER_HEIGHT,
+} from '../components/features/HomeViewToggleFooter';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GRID_GAP = 4;
 const SHEET_GAP = 4;
 const SHEET_PADDING = 16; // Figma Frame 2009 x=16 → 16px inset
-// #3 fix (2026-05-13): "Show another" moved from topActionBand to bottom
-// actionCluster per Figma spec (y=785 of 896px screen, below action cluster).
-// Added 56px button + 8px gap = 64px to former bottom-zone height of 188.
-const OPTION_ACTIONS_HEIGHT = 252;
-const CARD_WIDTH = Math.floor((screenWidth - SHEET_PADDING * 2 - GRID_GAP) / 2);
+const CARD_ASPECT = 0.75; // Figma 3:4 (width / height) — the CEO's tracked metric
 
-// C-5 (2026-05-05): On iPhone 16 the math-product formula
-// (CARD_WIDTH * 8/3 + OPTION_ACTIONS_HEIGHT) exceeded the available viewport
-// by ~31pt, clipping the bottom action cluster. Cap the sheet height to the
-// viewport minus the safe-area + header + mode-selector chrome.
+// optionSheet vertical chrome that is NOT the grid. Kept explicit so the
+// GRID_AREA derivation below stays arithmetically honest.
+// - OPTION_SHEET_VPAD: optionSheet paddingTop(12) + paddingBottom(24).
+// - OPTION_ACTIONS_HEIGHT: true non-grid CONTENT inside the sheet —
+//   caption pill 40 + 3×12 inter-block gaps (flex-start + gap:12, A2) +
+//   action row 32 + CTA 56 = 164. (A3 2026-05-25: was 200, which silently
+//   folded the 36pt of padding into this constant and double-counted with
+//   the gap rhythm; padding is now its own term so the grid area is exact.)
+const OPTION_SHEET_VPAD = 36;
+const OPTION_ACTIONS_HEIGHT = 164;
+
+// Widest a tile can be if it filled the content frame edge-to-edge (the old
+// full-bleed width). Used only to size the *ideal* (uncapped) sheet height on
+// large screens — on iPhone-class devices AVAILABLE_VIEWPORT caps it.
+const MAX_CARD_WIDTH = Math.floor(
+  (screenWidth - SHEET_PADDING * 2 - GRID_GAP) / 2,
+);
+
+// C-5 (2026-05-05): On iPhone 16 the full-bleed sheet height exceeded the
+// available viewport by ~31pt, clipping the bottom action cluster. Cap the
+// sheet height to the viewport minus the safe-area + header + footer chrome.
 // TODO: replace approximated chrome constants with useSafeAreaInsets() +
 // measured header heights once the runtime context is hoisted out of module
 // scope (would require restructuring the snap-paging math into the component).
-const APPROX_TOP_CHROME = 115; // header (63) + mode selector (48) + scrollContent paddingTop (4)
+// 2026-05-25: mode selector (48pt) is commented out (see JSX ~950), so its
+// space must NOT be reserved here — the phantom reservation capped the sheet
+// 48pt too short, squashing tiles below the Figma 3:4 ratio. Now: header (63)
+// + scrollContent paddingTop (4). Re-add 48 if the mode selector is restored.
+const APPROX_TOP_CHROME = 67;
 const APPROX_BOTTOM_SAFE = 34; // home indicator
 const APPROX_TOP_SAFE = 59; // status bar / notch (iPhone 16)
+// AU-253 fix (2026-05-25): the HomeViewToggleFooter bar is a sibling rendered
+// BELOW the outfit ScrollView, so it eats into the scrollable viewport. The
+// original viewport math omitted it, leaving each sheet ~98px too tall — the
+// bottom "Wear this" CTA fell behind the footer line and rendered clipped.
+// Subtract the footer height so the full sheet (incl. CTA) fits above it.
 const AVAILABLE_VIEWPORT =
-  screenHeight - APPROX_TOP_SAFE - APPROX_BOTTOM_SAFE - APPROX_TOP_CHROME;
+  screenHeight -
+  APPROX_TOP_SAFE -
+  APPROX_BOTTOM_SAFE -
+  APPROX_TOP_CHROME -
+  HOME_VIEW_TOGGLE_FOOTER_HEIGHT;
+// Ideal (uncapped) sheet height: 2 rows of full-bleed-width 3:4 tiles + the
+// non-grid chrome + padding. On large screens this wins; on iPhone-class it's
+// capped by AVAILABLE_VIEWPORT.
 const COMPUTED_SHEET_HEIGHT = Math.round(
-  CARD_WIDTH * (8 / 3) + OPTION_ACTIONS_HEIGHT,
+  (MAX_CARD_WIDTH / CARD_ASPECT) * 2 +
+    GRID_GAP +
+    OPTION_ACTIONS_HEIGHT +
+    OPTION_SHEET_VPAD,
 );
 const OPTION_SHEET_HEIGHT = Math.min(COMPUTED_SHEET_HEIGHT, AVAILABLE_VIEWPORT);
 const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
 
-// 2026-05-18 fix: when sheet height is capped to AVAILABLE_VIEWPORT on smaller
-// screens (e.g. iPhone 16), keeping aspectRatio 3/4 on tiles overflows the
-// gridScroll area and forces nested scroll inside the snap-paged outer scroll.
-// Derive tile height from actual grid space so 2 rows always fit. On large
-// screens this yields CARD_WIDTH × 4/3 (Figma 3:4); on capped screens it
-// shrinks proportionally.
-const CARD_HEIGHT = Math.floor(
-  (OPTION_SHEET_HEIGHT - OPTION_ACTIONS_HEIGHT - GRID_GAP) / 2,
-);
+// AU-253 (2026-05-25, Direction 1 — CEO-approved): lock tiles to true 3:4.
+// INVERT the old logic — derive HEIGHT from the grid area the sheet can afford
+// (2 rows + 1 inter-row gap), then WIDTH from the aspect. The old code fixed
+// WIDTH at full-bleed (MAX_CARD_WIDTH) and squashed HEIGHT to fit, yielding a
+// ~0.91 aspect (22% off Figma's 0.75). Now tiles stay pixel-true 3:4; the
+// trade is horizontal fill (tiles are narrower, the row centers with side
+// gutters — see cardRow/cardShell/card styles).
+const GRID_AREA_H =
+  OPTION_SHEET_HEIGHT - OPTION_ACTIONS_HEIGHT - OPTION_SHEET_VPAD;
+const CARD_HEIGHT = Math.floor((GRID_AREA_H - GRID_GAP) / 2);
+const CARD_WIDTH = Math.round(CARD_HEIGHT * CARD_ASPECT);
 
 const UNFAVORITED_SWIPE_THRESHOLD = 3;
-const PREFETCH_LOOKAHEAD = 2;
+// Prefetch pipeline (260526): keep TARGET_AHEAD outfits buffered ahead of the
+// active sheet. `ensureBuffer` fires one `/try_another` whenever the lookahead
+// gap drops below this. Numerically identical to the old PREFETCH_LOOKAHEAD
+// (the trigger `nextIndex >= total - 2` ≡ `ahead < 2`).
+const TARGET_AHEAD = 2;
 
 type OutfitSheet = {
   items: Item[];
@@ -112,6 +153,25 @@ type OutfitSheetWithGrid = OutfitSheet & {
 };
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+// V05 fetch input (260526): the mutation variables shared by `buildViaV05`
+// and the `requestRecommendation` guard. Naming the type (instead of
+// `Parameters<typeof mutate>[0]`) keeps ESLint's scope analysis happy.
+type BuildViaV05Input = {
+  mode?: RecommendationMode;
+  style_feedback?: string;
+  pinned_item_id?: string | null;
+  // V05 try_another (260525): the active sheet's hash. The `recommendV05`
+  // façade routes the first call to `/build` (no session) and every
+  // subsequent call to `/try_another`, threading this as
+  // `current_outfit_hash`. Falls back to the service's cached last hash when
+  // the call site can't supply it (cold start).
+  current_outfit_hash?: string;
+  // Prefetch pipeline (260526): session generation captured at mutate time.
+  // NOT sent over the wire — consumed only in `onSuccess` (via mutation
+  // `variables`) to drop stale-session results. See `fetchGenerationRef`.
+  __gen?: number;
+};
 
 // H2 fix (2026-05-05 QA sweep): previously hardcoded `Math.max(4, items.length)`
 // which forced a 4-tile grid even when the backend returned 3 items, leaving
@@ -304,8 +364,35 @@ export const HomeScreen = () => {
   // scroll end) read the current values without forcing handler recreation.
   const listOutfitsRef = useRef<OutfitSheet[]>([]);
   const saveStateByHashRef = useRef<Record<string, SaveState>>({});
-  const isPrefetchingRef = useRef(false);
+  // Prefetch pipeline (260526): COUNT of in-flight recommendation fetches, not
+  // a boolean. A forced refine-submit can briefly overlap a still-draining
+  // stale prefetch (2 in flight); a boolean can't represent that and would let
+  // a swipe slip a 3rd concurrent call through when the stale one resolves and
+  // flips the flag while the forced build is still loading. The counter gates
+  // any new fetch until it returns to 0, so swipe-spam never exceeds 1 in
+  // flight and a refine overlap is capped at 2 (the stale result is dropped).
+  const inFlightCountRef = useRef(0);
+  // Prefetch pipeline (260526): set when a `try_another` resolves with an empty
+  // outfit (200 + v05_pool_insufficient — the pool has nothing left for this
+  // session/context). Stops the chained/swipe prefetch from instantly re-firing
+  // an empty pool into the rate limiter (the A2 spam bug). Cleared on cold-start
+  // build and on every `resetV05Session()` (refine / mode change) — a new
+  // context may replenish the pool.
+  const poolDepletedRef = useRef(false);
   const isFirstLoadRef = useRef(true);
+  // Prefetch pipeline (260526): generation counter bumped on every
+  // `resetV05Session()` (refine submit, mode change). Each in-flight fetch
+  // captures the generation at mutate time; on resolve we drop the result if
+  // the generation has since advanced, so a prefetch fired against the OLD
+  // session can't append stale outfits into the NEW session's list.
+  const fetchGenerationRef = useRef(0);
+  // Prefetch pipeline (260526): holds the latest `ensureBuffer` so the
+  // mutation `onSuccess` can chain the next prefetch without a
+  // declaration-order cycle (ensureBuffer depends on the mutation's mutate).
+  // `force` bypasses the `ahead < TARGET_AHEAD` gate — used once on cold
+  // start to prime the pipeline even though build already returned a full
+  // buffer (CEO's "build → +1 try_another" eager kick).
+  const ensureBufferRef = useRef<(force?: boolean) => void>(() => {});
   // PHASE B (AU-222): mirror pinnedItemId so the prefetch trigger reads the
   // latest value without recreating callbacks on every pin/unpin tap.
   const pinnedItemIdRef = useRef<string | null>(null);
@@ -389,17 +476,7 @@ export const HomeScreen = () => {
   // structured input (weather + user + intent + count). V05 response items
   // need shape-mapping to the legacy `Item` type before normalizeOutfits.
   const buildViaV05 = useCallback(
-    async (input: {
-      mode: RecommendationMode;
-      style_feedback?: string;
-      pinned_item_id?: string | null;
-      // V05 try_another (260525): the active sheet's hash. The
-      // `recommendV05` façade routes the first call to `/build` (no
-      // session) and every subsequent call to `/try_another`, threading
-      // this as `current_outfit_hash`. Falls back to the service's cached
-      // last hash when the call site can't supply it (cold start).
-      current_outfit_hash?: string;
-    }): Promise<{ outfits: Outfit[] }> => {
+    async (input: BuildViaV05Input): Promise<{ outfits: Outfit[] }> => {
       // H6 fix (2026-05-22): the previous map was keyed on occasion-like
       // strings (casual/work/play/date/weekend) but `input.mode` is the
       // RecommendationMode enum ('safe'|'power'|'creative'). The lookup
@@ -412,8 +489,11 @@ export const HomeScreen = () => {
         power: 'confident',
         creative: 'playful',
       };
-      const mood = moodMap[input.mode] ?? null;
-      const occasion = input.mode || DEFAULT_RECOMMENDATION_MODE;
+      // `mode` is optional on the shared input type but every call site
+      // supplies it; fall back to the default so the index access stays typed.
+      const mode = input.mode ?? DEFAULT_RECOMMENDATION_MODE;
+      const mood = moodMap[mode] ?? null;
+      const occasion = mode || DEFAULT_RECOMMENDATION_MODE;
 
       // recommendV05 routes build-vs-try_another internally off the cached
       // V05 session. Build-shaping inputs (weather/user/intent/count) are
@@ -426,7 +506,7 @@ export const HomeScreen = () => {
         user: { gender: 'U', occasion },
         intent: { mood: mood as never },
         count: 3,
-        mode: input.mode,
+        mode,
         style_feedback: input.style_feedback,
         pinned_item_id: input.pinned_item_id ?? undefined,
         current_outfit_hash: input.current_outfit_hash,
@@ -480,14 +560,36 @@ export const HomeScreen = () => {
     reset: resetStartMutation,
   } = useMutation({
     mutationFn: buildViaV05,
-    onSuccess: (data: unknown) => {
+    onSuccess: (data: unknown, variables) => {
+      // Stale-session guard (Change 3): always decrement the in-flight counter
+      // first (every mutate is paired with exactly one onSuccess/onError, so
+      // this can't leak), THEN drop a result captured against a superseded
+      // session (refine/mode reset bumped the generation mid-flight) — never
+      // appended/replaced into the new session's list. Decrementing even for
+      // dropped results is what lets the mode-change path (no immediate
+      // refetch) resume prefetching once its stale call drains.
+      inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
+      const capturedGen = variables?.__gen ?? 0;
+      if (capturedGen !== fetchGenerationRef.current) {
+        return;
+      }
+
+      let isColdStart = false;
+      // `addedCount` = how many NEW sheets this resolve actually contributed.
+      // 0 means an empty/depleted pool (or an all-duplicate batch) — used below
+      // to STOP the chain instead of spam-retrying (the A2 fix).
+      let addedCount = 0;
       // First load (cold start) → replace. Subsequent loads (prefetch) →
       // append so the user's scroll position isn't yanked back to 0.
       if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
         isFirstLoadRef.current = false;
+        isColdStart = true;
         const incoming = normalizeOutfits(data, 0);
+        addedCount = incoming.length;
         setListOutfits(incoming);
         setActiveSheetIndex(0);
+        // Fresh session/context → the pool may have outfits again.
+        poolDepletedRef.current = false;
       } else {
         // Offset fallback-hash indices by the existing list length so the
         // second batch never collides with first-batch hashes (Bug 1).
@@ -495,22 +597,62 @@ export const HomeScreen = () => {
         const incoming = normalizeOutfits(data, offset);
         // De-dup against existing hashes — drop any genuine duplicates the
         // backend returns AND any fallback collisions we couldn't avoid.
-        setListOutfits(current => {
-          const existingHashes = new Set(current.map(o => o.outfitHash));
-          const deduped = incoming.filter(
-            sheet => !existingHashes.has(sheet.outfitHash),
-          );
-          return [...current, ...deduped];
-        });
+        // Compute synchronously so we know whether the list actually grew.
+        const existingHashes = new Set(
+          listOutfitsRef.current.map(o => o.outfitHash),
+        );
+        const deduped = incoming.filter(
+          sheet => !existingHashes.has(sheet.outfitHash),
+        );
+        addedCount = deduped.length;
+        if (deduped.length > 0) {
+          setListOutfits(current => [...current, ...deduped]);
+        }
       }
 
-      isPrefetchingRef.current = false;
+      // Eager + chained prefetch (Change 2) — but ONLY when this resolve added
+      // an outfit. A `try_another` against a depleted pool returns 200 with an
+      // empty outfit (v05_pool_insufficient); it never grows `ahead`, so
+      // chaining on it re-fires instantly and spam-loops into the rate limiter
+      // (the A2 bug). On a no-progress result, mark the pool depleted and STOP
+      // — a later refine/mode reset clears the flag and resumes the pipeline.
+      if (addedCount === 0) {
+        poolDepletedRef.current = true;
+        return;
+      }
+      // The cold-start branch force-primes one prefetch (build returns 3 →
+      // ahead=2, which `ensureBuffer` treats as full); every other resolve
+      // re-checks the buffer so the next prefetch chains while the user is
+      // paused. listOutfitsRef is synced from listOutfits in an effect, so
+      // defer to the next tick.
+      setTimeout(() => {
+        ensureBufferRef.current(isColdStart);
+      }, 0);
     },
     onError: error => {
       console.error('Failed to load recommendation', error);
-      isPrefetchingRef.current = false;
+      inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
     },
   });
+
+  // Single in-flight guard (Change 1, 260526): the ONE entry point for every
+  // fetch. Increments the in-flight counter before mutating and stamps the
+  // current session generation so `onSuccess` can drop stale results. Without
+  // `force` it no-ops while any call is in flight (spam guard: rapid swipes /
+  // taps can never produce two concurrent `/try_another` calls). With `force`
+  // (user intent — refine submit) it proceeds even if a stale prefetch is still
+  // draining; the counter caps the overlap at 2 and the stale result is dropped
+  // via the generation guard, so no swipe can sneak in a 3rd concurrent call.
+  const requestRecommendation = useCallback(
+    (params: BuildViaV05Input, opts?: { force?: boolean }) => {
+      if (inFlightCountRef.current > 0 && !opts?.force) {
+        return;
+      }
+      inFlightCountRef.current += 1;
+      valenGetRecommendation({ ...params, __gen: fetchGenerationRef.current });
+    },
+    [valenGetRecommendation],
+  );
 
   useEffect(() => {
     // First fetch — pin is null at cold start so no need to thread it here.
@@ -520,11 +662,11 @@ export const HomeScreen = () => {
     // PHASE D (AU-252): style_feedback is null at cold start (refs init
     // null, only set after `handleSubmitContext`). Thread anyway so the
     // call shape stays consistent across all 3 fetch sites.
-    valenGetRecommendation({
+    requestRecommendation({
       mode: selectedModeRef.current,
       style_feedback: styleFeedbackRef.current ?? undefined,
     });
-  }, [valenGetRecommendation]);
+  }, [requestRecommendation]);
 
   useEffect(() => {
     return () => {
@@ -569,45 +711,64 @@ export const HomeScreen = () => {
     ? saveStateByHash[activeOutfitHash] ?? 'idle'
     : 'idle';
 
-  const triggerPrefetchIfNeeded = useCallback(
-    (nextIndex: number) => {
+  // Prefetch pipeline (Change 2, 260526): the buffer check. Fires ONE
+  // `/try_another` when the lookahead gap drops below TARGET_AHEAD (or always,
+  // when `force` — the eager cold-start kick). Reads everything from refs so
+  // it can run from swipe, from `onSuccess` chaining, and from the eager
+  // build-prime without re-binding. The single in-flight guard lives in
+  // `requestRecommendation`, so a no-op-while-in-flight call here is harmless
+  // and naturally stops the chain once TARGET_AHEAD is met (no infinite loop).
+  const ensureBuffer = useCallback(
+    (force = false) => {
       const total = listOutfitsRef.current.length;
       if (total === 0) {
         return;
       }
-      if (isPrefetchingRef.current || isStartPending) {
+      if (inFlightCountRef.current > 0) {
         return;
       }
-      if (nextIndex >= total - PREFETCH_LOOKAHEAD) {
-        isPrefetchingRef.current = true;
-        // V05 try_another (260525): thread the active sheet's hash as
-        // `current_outfit_hash` so the prefetch hits `/try_another` (cheap
-        // pool serve) instead of a full `/build`. The first prefetch after
-        // a cold start still rebuilds (no session yet); after that every
-        // swipe prefetch is a variation. The service falls back to its own
-        // cached last-hash when this is undefined.
-        const currentHash =
-          listOutfitsRef.current[activeSheetIndexRef.current]?.outfitHash;
-        // PHASE B (AU-222): thread `pinned_item_id` through the prefetch.
-        // Note: pin changes intentionally do NOT auto-refetch — the next
-        // regular prefetch (or a "Show another" tap that reaches the
-        // lookahead window) picks up the latest value via the ref.
-        // PHASE C (AU-221): same pattern for `mode` — changing the mode
-        // does NOT trigger an immediate refetch (would feel jarring inside
-        // the swipe loop); the next prefetch picks it up via the ref.
-        valenGetRecommendation({
-          pinned_item_id: pinnedItemIdRef.current ?? undefined,
-          mode: selectedModeRef.current,
-          // PHASE D (AU-252): inherit active style feedback. BE
-          // session_manager sliding-windows last 3 notes, so re-sending
-          // on every prefetch is redundant but cheap and contract-clean.
-          style_feedback: styleFeedbackRef.current ?? undefined,
-          current_outfit_hash: currentHash,
-        });
+      // Pool depleted for this session/context — don't keep probing an empty
+      // pool on every swipe (A2 fix). Cleared on cold-start build / session
+      // reset (refine, mode change).
+      if (poolDepletedRef.current) {
+        return;
       }
+      const ahead = total - 1 - activeSheetIndexRef.current;
+      if (!force && ahead >= TARGET_AHEAD) {
+        return;
+      }
+      // V05 try_another (260525): thread the active sheet's hash as
+      // `current_outfit_hash` so the prefetch hits `/try_another` (cheap
+      // pool serve) instead of a full `/build`. The first prefetch after
+      // a cold start still rebuilds (no session yet); after that every
+      // prefetch is a variation. The service falls back to its own cached
+      // last-hash when this is undefined.
+      const currentHash =
+        listOutfitsRef.current[activeSheetIndexRef.current]?.outfitHash;
+      // PHASE B (AU-222): thread `pinned_item_id` through the prefetch.
+      // Note: pin changes intentionally do NOT auto-refetch — the next
+      // prefetch (or a "Show another" tap that reaches the lookahead
+      // window) picks up the latest value via the ref.
+      // PHASE C (AU-221): same pattern for `mode` — changing the mode does
+      // NOT trigger an immediate refetch; the next prefetch picks it up.
+      requestRecommendation({
+        pinned_item_id: pinnedItemIdRef.current ?? undefined,
+        mode: selectedModeRef.current,
+        // PHASE D (AU-252): inherit active style feedback. BE
+        // session_manager sliding-windows last 3 notes, so re-sending on
+        // every prefetch is redundant but cheap and contract-clean.
+        style_feedback: styleFeedbackRef.current ?? undefined,
+        current_outfit_hash: currentHash,
+      });
     },
-    [isStartPending, valenGetRecommendation],
+    [requestRecommendation],
   );
+
+  // Keep the ref pointing at the latest `ensureBuffer` so the mutation
+  // `onSuccess` (declared above) can chain the next prefetch.
+  useEffect(() => {
+    ensureBufferRef.current = ensureBuffer;
+  }, [ensureBuffer]);
 
   const handleHeartTapForOutfit = useCallback(
     (outfit: OutfitSheetWithGrid | OutfitSheet | undefined) => {
@@ -701,6 +862,16 @@ export const HomeScreen = () => {
       // (would feel jarring mid-swipe loop), matching the existing
       // pick-up-on-next-prefetch behaviour.
       resetV05Session();
+      // Bump the generation (Change 3, 260526): a mode change resets the
+      // session, so any prefetch still in flight against the OLD session is
+      // stale and must be dropped on arrival (it would otherwise append
+      // old-mode outfits to the list). We do NOT touch the in-flight counter
+      // here — there's no immediate refetch, and the in-flight call decrements
+      // the counter itself on resolve (its result is just discarded), which
+      // lets the next swipe resume prefetching against the new session.
+      fetchGenerationRef.current += 1;
+      // New context may replenish the pool — let prefetch resume.
+      poolDepletedRef.current = false;
       return next;
     });
   }, []);
@@ -757,11 +928,11 @@ export const HomeScreen = () => {
         activeSheetIndexRef.current = nextIndex;
         setActiveSheetIndex(nextIndex);
       }
-      // Always run prefetch — at the tail end the user can rebound on the
-      // same sheet and we still want to top up the buffer.
-      triggerPrefetchIfNeeded(nextIndex);
+      // Always run the buffer check — at the tail end the user can rebound on
+      // the same sheet and we still want to top up the buffer.
+      ensureBuffer();
     },
-    [triggerPrefetchIfNeeded],
+    [ensureBuffer],
   );
 
   const handleOpenContextEditModal = useCallback(() => {
@@ -841,14 +1012,30 @@ export const HomeScreen = () => {
     // (and re-seeds the pool) rather than serving a variation off the stale
     // session. Mirrors recommendationService's reset-on-context-change.
     resetV05Session();
+    // Bump the generation (Change 3, 260526): any prefetch still in flight
+    // against the OLD session is now stale and will be dropped on arrival.
+    fetchGenerationRef.current += 1;
+    // Fresh dressing intent re-seeds the pool — let prefetch resume.
+    poolDepletedRef.current = false;
+    // Do NOT touch the in-flight counter here. `force: true` below bypasses the
+    // guard so this user-intent build starts even while a stale prefetch is
+    // still draining; the counter then reflects both (capped at 2). The stale
+    // result is discarded via the generation guard, and no further fetch starts
+    // until the counter returns to 0 — so a swipe mid-refine can't add a 3rd.
+    // Cold-start path so the new session replaces (not appends) the list.
+    isFirstLoadRef.current = true;
 
-    // Trigger an immediate fetch carrying the new feedback. Subsequent
-    // prefetches inherit via `styleFeedbackRef` automatically (Task 4).
-    valenGetRecommendation({
-      style_feedback: payload,
-      pinned_item_id: pinnedItemIdRef.current ?? undefined,
-      mode: selectedModeRef.current,
-    });
+    // Trigger an immediate fetch carrying the new feedback (force: user
+    // intent wins over any in-flight prefetch). Subsequent prefetches inherit
+    // via `styleFeedbackRef` automatically (Task 4).
+    requestRecommendation(
+      {
+        style_feedback: payload,
+        pinned_item_id: pinnedItemIdRef.current ?? undefined,
+        mode: selectedModeRef.current,
+      },
+      { force: true },
+    );
   };
 
   const handleLeadingAction = () => {
@@ -869,7 +1056,7 @@ export const HomeScreen = () => {
     // At the edge there is nothing further to show yet — nudge a prefetch so
     // the next option becomes available, but don't scroll past the end.
     if (nextIndex >= total) {
-      triggerPrefetchIfNeeded(current);
+      ensureBuffer();
       return;
     }
     scrollViewRef.current?.scrollTo({
@@ -877,7 +1064,7 @@ export const HomeScreen = () => {
       animated: true,
     });
     advanceToSheet(nextIndex, 'swipe');
-  }, [advanceToSheet, triggerPrefetchIfNeeded]);
+  }, [advanceToSheet, ensureBuffer]);
 
   const handleMomentumScrollEnd = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
@@ -941,7 +1128,7 @@ export const HomeScreen = () => {
           below the header band per the plan in HOME_SWIPE_PLAN.md §4 phase C.
           Visual spec is text-only — no dedicated Figma frame yet — refine when
           designer provides icons / colors / position. */}
-      <View style={styles.modeSelectorRow}>
+      {/* <View style={styles.modeSelectorRow}>
         {RECOMMENDATION_MODE_OPTIONS.map(option => {
           const isSelected = option.id === selectedMode;
           return (
@@ -974,7 +1161,7 @@ export const HomeScreen = () => {
             </TouchableOpacity>
           );
         })}
-      </View>
+      </View> */}
 
       {/* PHASE B (AU-222): subtle pin label below the header — tap to clear.
           Figma 1711:17062's header band itself is unchanged; we render this
@@ -1017,7 +1204,7 @@ export const HomeScreen = () => {
           <HomeErrorState
             onRetry={() => {
               resetStartMutation();
-              valenGetRecommendation({
+              requestRecommendation({
                 mode: selectedModeRef.current,
                 style_feedback: styleFeedbackRef.current ?? undefined,
               });
@@ -1167,7 +1354,11 @@ const pickLayout = (items: Item[]): GridLayout | null => {
 // available height wins on smaller phones.
 const computeHeroRowHeight = (restCount: number): number => {
   const rows = 1 + Math.ceil(restCount / 3);
-  const available = OPTION_SHEET_HEIGHT - OPTION_ACTIONS_HEIGHT - GRID_GAP;
+  // Same grid area the 2-row layouts size against (GRID_AREA_H already nets
+  // out OPTION_ACTIONS_HEIGHT + OPTION_SHEET_VPAD). Divide across all rows so
+  // the whole grid fits the sheet — keeps the inner gridScroll dormant for
+  // 5/6/>6-item outfits too (no nested-scroll regression).
+  const available = GRID_AREA_H - GRID_GAP;
   return Math.floor((available - (rows - 1) * GRID_GAP) / rows);
 };
 
@@ -1266,19 +1457,19 @@ const OptionSheet = React.memo(
         return (
           <View style={styles.gridWrap}>
             <View style={styles.cardRow}>
-              <View style={styles.cardShell}>
+              <View style={styles.cardShellFixed}>
                 {renderTile(layout.row1[0], 0)}
               </View>
-              <View style={styles.cardShell}>
+              <View style={styles.cardShellFixed}>
                 {renderTile(layout.row1[1], 1)}
               </View>
             </View>
+            {/* AU-253: row2 single tile is centred (no flex spacer) — the
+                centred cardRow places it under the gap between row1's tiles. */}
             <View style={styles.cardRow}>
-              <View style={styles.cardShell}>
+              <View style={styles.cardShellFixed}>
                 {renderTile(layout.row2Large, 2)}
               </View>
-              {/* Transparent spacer to keep row2 card left-aligned at ~50% */}
-              <View style={styles.cardShell} />
             </View>
           </View>
         );
@@ -1295,7 +1486,7 @@ const OptionSheet = React.memo(
                 {row.map((item, itemIndex) => (
                   <View
                     key={`shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
-                    style={styles.cardShell}
+                    style={styles.cardShellFixed}
                   >
                     {renderTile(item, rowIndex * 2 + itemIndex)}
                   </View>
@@ -1424,14 +1615,14 @@ const OptionSheet = React.memo(
           {/* Edit context entry point (AU-252 refine flow). Not in the Figma
             Home grid frame, but it is the only way to reach the refine modal
             from this screen and the swipe-nudge flow depends on it. Kept. */}
-          <PillButton
+          {/* <PillButton
             testID={`home-edit-context-${sheetIndex}`}
             title="Edit context +"
             variant="text"
             onPress={onEditContext}
             style={styles.secondaryAction}
             textStyle={styles.secondaryActionText}
-          />
+          /> */}
         </View>
       </View>
     );
@@ -1470,7 +1661,7 @@ const HomeLoadingState = () => (
           {[0, 1].map(column => (
             <View
               key={`loading-card-${row}-${column}`}
-              style={styles.cardShell}
+              style={styles.cardShellFixed}
             >
               <View style={[styles.card, styles.loadingCard]} />
             </View>
@@ -1634,7 +1825,13 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: SHEET_PADDING,
     paddingBottom: 24,
-    justifyContent: 'space-between',
+    // A2 (AU-253 2026-05-25): Figma uniform 12pt rhythm between the sheet's
+    // blocks (caption · grid · action row · CTA). Was 'space-between', which
+    // distributed leftover slack as a ~36pt void between the grid and the
+    // "Wear this" CTA. flex-start + gap:12 makes the stack content-sized so
+    // there is no slack to dump → void eliminated by construction.
+    justifyContent: 'flex-start',
+    gap: 12,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.12,
@@ -1644,8 +1841,16 @@ const styles = StyleSheet.create({
   gridWrap: {
     gap: GRID_GAP,
   },
+  // AU-253 (2026-05-25): was `flex:1`, which over-claimed the leftover sheet
+  // height and (with space-between) produced the ~36pt void. Now content-sized
+  // with a hard `maxHeight` bound. By derivation every layout fits GRID_AREA_H
+  // exactly (2×CARD_HEIGHT+gap for 2-row; computeHeroRowHeight for 5/6/>6), so
+  // the inner scroll stays DORMANT on iPhone 16 — no nested-scroll regression.
+  // The bound is retained purely as a safety net: should a future
+  // >6-item / smaller-device case exceed GRID_AREA_H, it scrolls inside the
+  // grid block instead of pushing the CTA off-sheet.
   gridScroll: {
-    flex: 1,
+    maxHeight: GRID_AREA_H,
   },
   gridScrollContent: {
     paddingBottom: 16,
@@ -1656,9 +1861,23 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: 'row',
     gap: GRID_GAP,
+    // AU-253 (2026-05-25): centre rows horizontally. For the 2-row layouts
+    // (twoRowOneLarge / twoByTwo) the tiles are fixed-width 3:4 and narrower
+    // than the content frame, so this centres them with symmetric side
+    // gutters. For heroStackPlusRows the cells flex to fill the row, so
+    // centring is a no-op there.
+    justifyContent: 'center',
   },
   cardShell: {
     flex: 1,
+  },
+  // AU-253 (2026-05-25): fixed-width shell for the 2-row layouts. The tile
+  // takes its intrinsic CARD_WIDTH (true 3:4 of CARD_HEIGHT) instead of
+  // stretching full-bleed, and the centred cardRow gives it side gutters.
+  // Hero/stack/rest tiles keep the flex `cardShell` so they still fill rows.
+  cardShellFixed: {
+    flexGrow: 0,
+    width: CARD_WIDTH,
   },
   card: {
     height: CARD_HEIGHT,

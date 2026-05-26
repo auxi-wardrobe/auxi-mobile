@@ -623,15 +623,10 @@ export const recommendV05 = async (
 
   const tryAnotherInput: TryAnotherInput = {
     session_id: v05SessionId,
-    current_outfit_hash:
-      params.current_outfit_hash ?? v05LastOutfitHash ?? '',
+    current_outfit_hash: params.current_outfit_hash ?? v05LastOutfitHash ?? '',
     ...(params.axis ? { axis: params.axis } : {}),
-    ...(params.style_feedback
-      ? { style_feedback: params.style_feedback }
-      : {}),
-    ...(params.pinned_item_id
-      ? { pinned_item_id: params.pinned_item_id }
-      : {}),
+    ...(params.style_feedback ? { style_feedback: params.style_feedback } : {}),
+    ...(params.pinned_item_id ? { pinned_item_id: params.pinned_item_id } : {}),
     ...(params.mode ? { mode: params.mode } : {}),
   };
 
