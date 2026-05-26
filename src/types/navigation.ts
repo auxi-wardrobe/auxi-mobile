@@ -66,7 +66,10 @@ export type AppStackParamList = {
   Wardrobe: undefined;
   Body:
     | {
-        mode?: 'manage' | 'tryOn';
+        // 'photoDetail' (Settings redesign Frame 5) opens the single body-photo
+        // detail view (full 3:4 image + metadata + Delete/Retake) instead of
+        // the multi-photo manager grid. Reached from Settings "Manage body photo".
+        mode?: 'manage' | 'tryOn' | 'photoDetail';
         outfit?: TryOnOutfitContext;
       }
     | undefined;

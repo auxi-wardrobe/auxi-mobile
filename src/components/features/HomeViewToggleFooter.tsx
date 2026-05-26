@@ -18,6 +18,13 @@ import IconGridAlt from '../../assets/images/icon_grid_alt.svg';
 // is NOT installed, so we approximate with a translucent white surface
 // (opacity 0.85) per the extraction artifact's documented fallback.
 
+// Fixed bar height (Figma footer 2464:17348 = 414×98). Exported so the
+// HomeScreen snap-paging math can reserve this space when computing sheet
+// height — the footer is a sibling rendered below the outfit ScrollView, so
+// the available viewport must subtract it or the bottom "Wear this" CTA is
+// clipped behind the footer line.
+export const HOME_VIEW_TOGGLE_FOOTER_HEIGHT = 98;
+
 export type HomeView = 'grid' | 'alt';
 
 type Props = {
@@ -83,7 +90,7 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   bar: {
-    height: 98,
+    height: HOME_VIEW_TOGGLE_FOOTER_HEIGHT,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',

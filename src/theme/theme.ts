@@ -37,6 +37,17 @@ export const theme = {
     figmaDestructive: '#bb251a', // red for Cancel/delete actions — aliased by uacTextDangerBase below
     figmaOnboardingBackground: '#f7f7f8', // onboarding screens bg (differs from app figmaBackground #f2efec)
     figmaTextDark: '#070707', // near-black for expand/collapse text buttons
+    // Sidebar dark redesign (node 2852:24670) — divider hairline on the dark
+    // sidebar bg. Figma maps Black/10% but that is invisible on #1d1f23, so per
+    // CEO (Q9) use the cream text tone (#f2efec / uacTextPrimaryBase) at 10%.
+    figmaDividerOnDark: 'rgba(242, 239, 236, 0.1)',
+    // Settings redesign (node 2850:15840) — 5-frame redesign tokens.
+    // Source: plans/260526-0019-settings-redesign/figma-extraction-settings.md
+    figmaToggleOn: '#039855', // fixed/success/base — switch + radio ON (green)
+    figmaToggleOffTrack: '#e4e7ec', // background/neutral/subtle_200 — switch OFF track (Q2 resolved)
+    figmaButtonDark: '#121212', // background/neutral/bold_400 — primary dialog button bg (Update)
+    figmaListDivider: '#eee6df', // border/primary/subtle_300 — settings list hairline divider
+    figmaDetailSurface: '#eee6df', // background/primary/subtle_200 — body-photo detail panel bg
     // UAC (Account-access flow) tokens — AU-242 spec
     // Spec: plans/260521-2335-au-242-figma-spec/00-index.md "Colors"
     uacBackgroundBase: '#1d1f23', // --background/neutral/base
@@ -140,6 +151,22 @@ export const theme = {
         lineHeight: 24,
         letterSpacing: 0,
       },
+      // Settings redesign (node 2850:15840) — main-list big time value.
+      // Figma heading/H2 = Poppins Bold 32/40, letter-spacing −0.64.
+      poppinsTimeLg: {
+        fontFamily: 'Poppins-Bold',
+        fontSize: 32,
+        lineHeight: 40,
+        letterSpacing: -0.64,
+      },
+      // Settings redesign — small Poppins body (body/sm).
+      // Figma body/sm = Poppins Regular 14/16 (main-list "AM" period label).
+      poppinsBodySm: {
+        fontFamily: 'Poppins-Regular',
+        fontSize: 14,
+        lineHeight: 16,
+        letterSpacing: 0,
+      },
       // Figma Text-xs/Regular = font-family/body (Poppins) 12/16.
       // Use for small body labels (e.g. Home Grid "Show another"). Distinct
       // from uacBodyXsRegular, which is Inter 12/16 for the UAC auth flow.
@@ -165,6 +192,13 @@ export const theme = {
         fontFamily: 'Inter-SemiBold',
         fontSize: 16,
         lineHeight: 24,
+      },
+      // Settings redesign — Delete-data dialog title (Frame 4).
+      // Inter SemiBold 16/20 (Text-md l-20/Semibold) — line-height 20, not 24.
+      interSemiboldSm: {
+        fontFamily: 'Inter-SemiBold',
+        fontSize: 16,
+        lineHeight: 20,
       },
       uacBodyMdMedium: {
         fontFamily: 'Poppins-Medium',
