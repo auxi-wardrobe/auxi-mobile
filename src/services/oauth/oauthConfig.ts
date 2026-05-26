@@ -27,13 +27,15 @@ export const OAUTH_CONFIG = {
      * Web client ID — must match the backend `GOOGLE_OAUTH_WEB_CLIENT_ID`
      * env var. Used as the `audience` for backend ID-token verification.
      */
-    webClientId: '23012725464-l9piv25qrnishre7or0kjv58ifo12ub0.apps.googleusercontent.com',
+    webClientId:
+      '23012725464-l9piv25qrnishre7or0kjv58ifo12ub0.apps.googleusercontent.com',
     /**
      * iOS client ID — used by the Google Sign-In SDK on device. From the
      * Google Cloud Console OAuth 2.0 iOS client (bundle com.auxi2026.app).
      * Its reversed form is the CFBundleURLScheme in ios/auxi/Info.plist.
      */
-    iosClientId: '23012725464-d3nc6042ed7vmnmc50l5jm7fg51t6lm0.apps.googleusercontent.com',
+    iosClientId:
+      '23012725464-d3nc6042ed7vmnmc50l5jm7fg51t6lm0.apps.googleusercontent.com',
     /** We do not need offline (refresh) access — backend mints its own session. */
     offlineAccess: false,
   },
