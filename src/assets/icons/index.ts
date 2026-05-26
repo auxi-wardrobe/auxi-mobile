@@ -17,6 +17,8 @@ import IconSort from '../images/sort_icon.svg';
 import IconPlus from '../images/icon_plus.svg';
 import IconChevronLeft from '../images/icon_chevron_left.svg';
 import IconChevronRight from '../images/icon_chevron_right.svg';
+import IconArrowRight from '../images/icon_arrow_right.svg';
+import IconDelete from '../images/icon_delete.svg';
 import IconMenu from '../images/icon_menu.svg';
 import IconCamera from '../images/icon_camera.svg';
 import IconCanvasUndo from '../images/canvas-icons/icon_canvas_undo.svg';
@@ -47,6 +49,8 @@ export const Icons = {
   Plus: IconPlus,
   ChevronLeft: IconChevronLeft,
   ChevronRight: IconChevronRight,
+  ArrowRight: IconArrowRight,
+  Delete: IconDelete,
   Menu: IconMenu,
   Camera: IconCamera,
   CanvasUndo: IconCanvasUndo,
@@ -78,6 +82,8 @@ export {
   IconPlus,
   IconChevronLeft,
   IconChevronRight,
+  IconArrowRight,
+  IconDelete,
   IconMenu,
   IconCamera,
   IconCanvasUndo,

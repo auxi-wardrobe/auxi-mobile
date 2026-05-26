@@ -27,7 +27,7 @@ import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Settings'>;
-type ActiveModal = 'none' | 'direction' | 'deleteConfirm';
+type ActiveModal = 'none' | 'direction' | 'changeTime' | 'deleteConfirm';
 
 type ResolvedSettingsState = {
   dailyNotification: {
@@ -72,6 +72,22 @@ const DIRECTION_OPTIONS: Array<{
   },
 ];
 
+const FREQUENCY_OPTIONS: Array<{
+  key: DailyNotificationFrequency;
+  label: string;
+  description?: string;
+}> = [
+  {
+    key: 'weekdays',
+    label: 'Weekdays',
+    description: 'Mon, Tue, Wed, Thu, Fri',
+  },
+  {
+    key: 'everydays',
+    label: 'Everydays',
+  },
+];
+
 const directionLabelMap: Record<UserStyleDirection, string> = {
   stay_balanced: 'Stay Balanced',
   more_relaxed: 'More Relaxed',
@@ -80,13 +96,7 @@ const directionLabelMap: Record<UserStyleDirection, string> = {
 
 const frequencyLabelMap: Record<DailyNotificationFrequency, string> = {
   weekdays: 'Weekdays',
-  everydays: 'Every day',
-};
-
-const badgeForLabel = (label: string) => {
-  const words = label.split(' ').filter(Boolean);
-  if (words[0] === 'More' && words[1]) return words[1][0];
-  return words[0]?.[0] || 'A';
+  everydays: 'Everydays',
 };
 
 const resolveSettings = (metadata?: UserMetadata | null): ResolvedSettingsState => ({
@@ -132,15 +142,27 @@ export const SettingsScreen = () => {
   const [settings, setSettings] = useState<ResolvedSettingsState>(DEFAULT_SETTINGS);
   const [pendingDisplayDirection, setPendingDisplayDirection] =
     useState<UserStyleDirection>(DEFAULT_SETTINGS.styleDirection);
+  const [pendingPeriod, setPendingPeriod] = useState<DailyNotificationPeriod>(
+    DEFAULT_SETTINGS.dailyNotification.period,
+  );
+  const [pendingFrequency, setPendingFrequency] = useState<DailyNotificationFrequency>(
+    DEFAULT_SETTINGS.dailyNotification.frequency,
+  );
   const [activeModal, setActiveModal] = useState<ActiveModal>('none');
   const [isSavingDirection, setIsSavingDirection] = useState(false);
+  const [isSavingTime, setIsSavingTime] = useState(false);
   const [isResettingPreferences, setIsResettingPreferences] = useState(false);
+  // Dark Mode: VISUAL-ONLY local stub — no theming infra wired.
+  // TODO(settings): dark theme not implemented.
+  const [darkModeStub, setDarkModeStub] = useState(false);
   const reminderSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const syncFromUser = useCallback((nextUser: User | null) => {
     const nextSettings = resolveSettings(nextUser?.user_metadata);
     setSettings(nextSettings);
     setPendingDisplayDirection(nextSettings.styleDirection);
+    setPendingPeriod(nextSettings.dailyNotification.period);
+    setPendingFrequency(nextSettings.dailyNotification.frequency);
   }, []);
 
   useEffect(() => {
@@ -214,6 +236,19 @@ export const SettingsScreen = () => {
     setActiveModal('none');
   };
 
+  const openChangeTimeModal = () => {
+    setPendingPeriod(settings.dailyNotification.period);
+    setPendingFrequency(settings.dailyNotification.frequency);
+    setActiveModal('changeTime');
+  };
+
+  const closeChangeTimeModal = () => {
+    if (isSavingTime) return;
+    setPendingPeriod(settings.dailyNotification.period);
+    setPendingFrequency(settings.dailyNotification.frequency);
+    setActiveModal('none');
+  };
+
   const closeDeleteModal = () => {
     if (isResettingPreferences) return;
     setActiveModal('none');
@@ -266,8 +301,42 @@ export const SettingsScreen = () => {
         'Failed to update style direction',
       );
       setActiveModal('none');
+    } catch {
+      // persistUserMetadata already surfaced the error toast (and handled 401);
+      // swallow the rethrow so the async onPress doesn't reject unhandled.
+      // Keep the modal open so the user can retry.
     } finally {
       setIsSavingDirection(false);
+    }
+  };
+
+  // Change-time dialog (Frame 3). Per CEO (Q12): the "07:30" time value is
+  // READ-ONLY display; only AM/PM (period) + Weekdays/Everydays (frequency)
+  // are interactive and persisted — mirrors the enabled-toggle persist path.
+  const applyChangeTime = async () => {
+    if (isSavingTime) return;
+
+    setIsSavingTime(true);
+    try {
+      await persistUserMetadata(
+        // I2 (review): assumes backend deep-merges daily_notification; only
+        // period + frequency are sent (time is read-only display per CEO Q12).
+        // Merge semantics pending backend-dev — shape intentionally unchanged.
+        {
+          daily_notification: {
+            period: pendingPeriod,
+            frequency: pendingFrequency,
+          },
+        },
+        'Failed to update daily time',
+      );
+      setActiveModal('none');
+    } catch {
+      // persistUserMetadata already surfaced the error toast (and handled 401);
+      // swallow the rethrow so the async onPress doesn't reject unhandled.
+      // Keep the modal open so the user can retry.
+    } finally {
+      setIsSavingTime(false);
     }
   };
 
@@ -297,45 +366,46 @@ export const SettingsScreen = () => {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       <BottomSheetSurface style={styles.sheet}>
+        {/* Header — hamburger-left + centered title only (no right icon, qa-ui C1). */}
         <View style={styles.header}>
-          <TopIconButton icon={<Icons.Menu width={24} height={24} />} onPress={() => setIsSidebarOpen(true)} />
+          <TopIconButton
+            testID="settings-menu-button"
+            icon={<Icons.Menu width={24} height={24} />}
+            onPress={() => setIsSidebarOpen(true)}
+          />
           <View pointerEvents="none" style={styles.titleWrap}>
             <Text style={styles.title}>Settings</Text>
           </View>
-          <TouchableOpacity
-            activeOpacity={0.82}
-            accessibilityRole="button"
-            accessibilityLabel="Send feedback"
-            style={styles.feedbackWrap}
-            onPress={() => {
-              Toast.show({
-                type: 'info',
-                text1: 'Feedback',
-                text2: 'Feedback channel is coming soon.',
-                position: 'bottom',
-                visibilityTime: 2500,
-              });
-            }}
-          >
-            <Icons.Feedback width={24} height={24} />
-          </TouchableOpacity>
+          <View style={styles.headerSpacer} />
         </View>
 
         <View style={styles.content}>
+          {/* Daily Time block */}
           <View style={styles.group}>
             <View style={styles.rowHeader}>
-              <Text style={styles.mutedText}>Daily Time</Text>
+              <Text style={styles.rowLabel}>Daily Time</Text>
               <Switch
+                testID="settings-daily-toggle"
+                accessibilityLabel="Toggle daily reminder"
                 value={settings.dailyNotification.enabled}
                 onValueChange={handleReminderToggle}
-                trackColor={{ false: '#D6D8DE', true: '#3AA0D8' }}
+                trackColor={{
+                  false: theme.colors.figmaToggleOffTrack,
+                  true: theme.colors.figmaToggleOn,
+                }}
                 thumbColor={theme.colors.white}
-                ios_backgroundColor="#D6D8DE"
+                ios_backgroundColor={theme.colors.figmaToggleOffTrack}
               />
             </View>
 
-            <View style={styles.timeBlock}>
-              <View style={styles.timeRow}>
+            <TouchableOpacity
+              testID="settings-time-row"
+              accessibilityLabel="Change daily time"
+              activeOpacity={0.82}
+              style={styles.timeRow}
+              onPress={openChangeTimeModal}
+            >
+              <View style={styles.timeValueWrap}>
                 <Text style={styles.timeValueMain} allowFontScaling={false}>
                   {settings.dailyNotification.time}
                 </Text>
@@ -343,53 +413,99 @@ export const SettingsScreen = () => {
                   {settings.dailyNotification.period}
                 </Text>
               </View>
-              <Text style={styles.timeCaption}>
-                {`Repeats · ${currentFrequencyLabel}`}
-              </Text>
-            </View>
+              <Text style={styles.rowValue}>{currentFrequencyLabel}</Text>
+            </TouchableOpacity>
           </View>
 
           <Divider />
 
-          <TouchableOpacity activeOpacity={0.82} style={styles.singleRow} onPress={openDirectionModal}>
+          {/* Style Direction row */}
+          <TouchableOpacity
+            testID="settings-style-direction-row"
+            activeOpacity={0.82}
+            style={styles.singleRow}
+            onPress={openDirectionModal}
+          >
             <Text style={styles.rowLabel}>Style Direction</Text>
             <Text style={styles.rowValue}>{currentDirectionLabel}</Text>
           </TouchableOpacity>
 
           <Divider />
 
+          {/* Privacy control group */}
           <View style={styles.sectionLabelWrap}>
-            <Text style={styles.sectionLabel}>Privacy control</Text>
+            <Text style={styles.rowLabel}>Privacy control</Text>
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.82}
-            style={styles.singleRow}
-            onPress={() => navigation.navigate('Body')}
-          >
-            <Text style={styles.rowLabel}>Manage body photo</Text>
-            <Icons.ChevronRight width={20} height={20} />
-          </TouchableOpacity>
+          <Divider />
 
           <TouchableOpacity
+            testID="settings-your-information-row"
             activeOpacity={0.82}
             style={styles.singleRow}
-            onPress={() => setActiveModal('deleteConfirm')}
+            // TODO(settings): no route yet — NO-OP per CEO decision.
+            onPress={() => {}}
           >
-            <Text style={styles.deleteLabel}>Delete data</Text>
-            <DeleteGlyph />
+            <Text style={styles.rowLabel}>Your information</Text>
+            <Icons.ArrowRight width={24} height={24} color={theme.colors.uacTextBase} />
           </TouchableOpacity>
 
           <Divider />
 
+          <TouchableOpacity
+            testID="settings-manage-body-row"
+            activeOpacity={0.82}
+            style={styles.singleRow}
+            onPress={() => navigation.navigate('Body', { mode: 'photoDetail' })}
+          >
+            <Text style={styles.rowLabel}>Manage body photo</Text>
+            <Icons.ArrowRight width={24} height={24} color={theme.colors.uacTextBase} />
+          </TouchableOpacity>
+
+          <Divider />
+
+          <TouchableOpacity
+            testID="settings-delete-data-row"
+            activeOpacity={0.82}
+            style={styles.singleRow}
+            onPress={() => setActiveModal('deleteConfirm')}
+          >
+            {/* Main-list "Delete data" row is NEUTRAL (qa-ui C2) — not red. */}
+            <Text style={styles.rowLabel}>Delete data</Text>
+            <Icons.Delete width={24} height={24} color={theme.colors.uacTextBase} />
+          </TouchableOpacity>
+
+          <Divider />
+
+          {/* Version row */}
           <View style={styles.versionRow}>
-            <Text style={styles.versionText}>Version {APP_VERSION}</Text>
+            <Text style={styles.rowLabel}>Version {APP_VERSION}</Text>
+          </View>
+
+          <Divider />
+
+          {/* Dark Mode — visual-only toggle stub */}
+          <View style={styles.rowHeader}>
+            <Text style={styles.rowLabel}>Dark Mode</Text>
+            <Switch
+              testID="settings-dark-mode-toggle"
+              accessibilityLabel="Toggle dark mode"
+              value={darkModeStub}
+              onValueChange={setDarkModeStub}
+              trackColor={{
+                false: theme.colors.figmaToggleOffTrack,
+                true: theme.colors.figmaToggleOn,
+              }}
+              thumbColor={theme.colors.white}
+              ios_backgroundColor={theme.colors.figmaToggleOffTrack}
+            />
           </View>
 
           <Divider />
         </View>
       </BottomSheetSurface>
 
+      {/* Style-direction dialog (Frame 2) */}
       <Modal
         transparent
         animationType="fade"
@@ -407,35 +523,28 @@ export const SettingsScreen = () => {
                   {DIRECTION_OPTIONS.map((option, index) => (
                     <TouchableOpacity
                       key={option.key}
+                      testID={`settings-direction-option-${option.key}`}
                       activeOpacity={0.82}
                       style={styles.optionRow}
                       onPress={() => setPendingDisplayDirection(option.key)}
                     >
-                      <View style={styles.optionBadge}>
-                        <Text style={styles.optionBadgeText}>{badgeForLabel(option.label)}</Text>
-                      </View>
-
                       <View style={styles.optionCopy}>
                         <Text style={styles.optionTitle}>{option.label}</Text>
                         <Text style={styles.optionDescription}>{option.description}</Text>
                       </View>
 
-                      <View
-                        style={[
-                          styles.radioOuter,
-                          pendingDisplayDirection === option.key && styles.radioOuterActive,
-                        ]}
-                      >
-                        {pendingDisplayDirection === option.key ? <View style={styles.radioInner} /> : null}
-                      </View>
+                      <Radio selected={pendingDisplayDirection === option.key} />
 
-                      {index < DIRECTION_OPTIONS.length - 1 ? <View style={styles.optionDivider} /> : null}
+                      {index < DIRECTION_OPTIONS.length - 1 ? (
+                        <View style={styles.optionDivider} />
+                      ) : null}
                     </TouchableOpacity>
                   ))}
                 </View>
 
                 <View style={styles.modalActions}>
                   <TouchableOpacity
+                    testID="settings-direction-cancel"
                     activeOpacity={0.82}
                     disabled={isSavingDirection}
                     style={[
@@ -449,6 +558,7 @@ export const SettingsScreen = () => {
                   </TouchableOpacity>
 
                   <TouchableOpacity
+                    testID="settings-direction-update"
                     activeOpacity={0.82}
                     disabled={isSavingDirection}
                     style={[
@@ -458,7 +568,7 @@ export const SettingsScreen = () => {
                     ]}
                     onPress={applyDirection}
                   >
-                    <Text style={styles.modalPrimaryActionLabel}>Update Focus</Text>
+                    <Text style={styles.modalPrimaryActionLabel}>Update</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -467,6 +577,102 @@ export const SettingsScreen = () => {
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* Change-time dialog (Frame 3) — NEW */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={activeModal === 'changeTime'}
+        onRequestClose={closeChangeTimeModal}
+      >
+        <TouchableWithoutFeedback onPress={closeChangeTimeModal}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Daily Time</Text>
+
+                <View style={styles.timeDialogRow}>
+                  {/* Time value is READ-ONLY display (CEO Q12) — no editor. */}
+                  <Text style={styles.timeDialogValue} allowFontScaling={false}>
+                    {settings.dailyNotification.time.replace(':', ' : ')}
+                  </Text>
+
+                  <View style={styles.periodStack}>
+                    {(['AM', 'PM'] as DailyNotificationPeriod[]).map((period) => (
+                      <TouchableOpacity
+                        key={period}
+                        testID={`settings-time-period-${period.toLowerCase()}`}
+                        activeOpacity={0.82}
+                        style={styles.periodRow}
+                        onPress={() => setPendingPeriod(period)}
+                      >
+                        <Text style={styles.optionTitle}>{period}</Text>
+                        <Radio selected={pendingPeriod === period} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.optionList}>
+                  {FREQUENCY_OPTIONS.map((option, index) => (
+                    <TouchableOpacity
+                      key={option.key}
+                      testID={`settings-time-freq-${option.key}`}
+                      activeOpacity={0.82}
+                      style={styles.optionRow}
+                      onPress={() => setPendingFrequency(option.key)}
+                    >
+                      <View style={styles.optionCopy}>
+                        <Text style={styles.optionTitle}>{option.label}</Text>
+                        {option.description ? (
+                          <Text style={styles.optionDescription}>{option.description}</Text>
+                        ) : null}
+                      </View>
+
+                      <Radio selected={pendingFrequency === option.key} />
+
+                      {index < FREQUENCY_OPTIONS.length - 1 ? (
+                        <View style={styles.optionDivider} />
+                      ) : null}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    testID="settings-time-cancel"
+                    activeOpacity={0.82}
+                    disabled={isSavingTime}
+                    style={[
+                      styles.modalAction,
+                      styles.modalTextAction,
+                      isSavingTime && styles.disabledAction,
+                    ]}
+                    onPress={closeChangeTimeModal}
+                  >
+                    <Text style={styles.modalTextActionLabel}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    testID="settings-time-update"
+                    activeOpacity={0.82}
+                    disabled={isSavingTime}
+                    style={[
+                      styles.modalAction,
+                      styles.modalPrimaryAction,
+                      isSavingTime && styles.disabledAction,
+                    ]}
+                    onPress={applyChangeTime}
+                  >
+                    <Text style={styles.modalPrimaryActionLabel}>Update</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Delete-data dialog (Frame 4) */}
       <Modal
         transparent
         animationType="fade"
@@ -477,13 +683,14 @@ export const SettingsScreen = () => {
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
               <View style={styles.deleteModalCard}>
-                <Text style={styles.modalTitle}>Delete Data</Text>
+                <Text style={styles.deleteModalTitle}>Delete Data</Text>
                 <Text style={styles.modalBody}>
                   Auxi will revert to day one. This cannot be undone.
                 </Text>
 
                 <View style={styles.modalActions}>
                   <TouchableOpacity
+                    testID="settings-delete-cancel"
                     activeOpacity={0.82}
                     disabled={isResettingPreferences}
                     style={[
@@ -497,6 +704,7 @@ export const SettingsScreen = () => {
                   </TouchableOpacity>
 
                   <TouchableOpacity
+                    testID="settings-delete-confirm"
                     activeOpacity={0.82}
                     disabled={isResettingPreferences}
                     style={[
@@ -506,7 +714,7 @@ export const SettingsScreen = () => {
                     ]}
                     onPress={handleResetPreferences}
                   >
-                    <Text style={styles.modalPrimaryActionLabel}>Reset preferences</Text>
+                    <Text style={styles.modalPrimaryActionLabel}>Delete</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -520,14 +728,10 @@ export const SettingsScreen = () => {
 
 const Divider = () => <View style={styles.divider} />;
 
-const DeleteGlyph = () => (
-  <View style={styles.deleteGlyph}>
-    <View style={styles.deleteLid} />
-    <View style={styles.deleteBody}>
-      <View style={styles.deleteColumn} />
-      <View style={styles.deleteColumn} />
-      <View style={styles.deleteColumn} />
-    </View>
+// Green M3-style radio (View-based, no SVG). Selected = green ring + green dot.
+const Radio = ({ selected }: { selected: boolean }) => (
+  <View style={[styles.radioOuter, selected && styles.radioOuterActive]}>
+    {selected ? <View style={styles.radioInner} /> : null}
   </View>
 );
 
@@ -561,14 +765,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    ...theme.typography.aliases.playfairDisplaySection,
-    color: theme.colors.figmaText,
+    ...theme.typography.aliases.uacBodyMdSemibold,
+    color: theme.colors.figmaTextDark,
   },
-  feedbackWrap: {
-    width: 47,
-    height: 47,
-    alignItems: 'center',
-    justifyContent: 'center',
+  headerSpacer: {
+    width: 45,
+    height: 45,
   },
   content: {
     flex: 1,
@@ -584,104 +786,56 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  mutedText: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaTextSecondary,
-  },
-  timeBlock: {
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingVertical: 8,
   },
   timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
+  timeValueWrap: {
     flexDirection: 'row',
     alignItems: 'baseline',
   },
   timeValueMain: {
-    fontFamily: 'ArchivoNarrow-Regular',
-    fontSize: 44,
-    lineHeight: 48,
-    color: theme.colors.figmaText,
+    ...theme.typography.aliases.poppinsTimeLg,
+    color: theme.colors.figmaTextDark,
   },
   timeValuePeriod: {
-    fontFamily: 'ArchivoNarrow-Regular',
-    fontSize: 44,
-    lineHeight: 48,
-    color: theme.colors.figmaText,
+    ...theme.typography.aliases.poppinsBodySm,
+    color: theme.colors.uacTextBase,
     marginLeft: 8,
-  },
-  timeCaption: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaTextSecondary,
-    marginTop: 4,
   },
   singleRow: {
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   rowLabel: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaText,
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.uacTextBase,
   },
   rowValue: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaText,
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.uacTextBase,
   },
   divider: {
     height: 1,
-    backgroundColor: theme.colors.figmaDivider,
+    backgroundColor: theme.colors.figmaListDivider,
   },
   sectionLabelWrap: {
-    paddingTop: 14,
-    paddingBottom: 10,
-  },
-  sectionLabel: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaTextSecondary,
-  },
-  deleteLabel: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaRed,
-  },
-  deleteGlyph: {
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-  },
-  deleteLid: {
-    width: 12,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: theme.colors.figmaRed,
-    marginBottom: 2,
-  },
-  deleteBody: {
-    width: 12,
-    height: 12,
-    borderWidth: 1.6,
-    borderColor: theme.colors.figmaRed,
-    borderRadius: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-    paddingHorizontal: 1,
-  },
-  deleteColumn: {
-    width: 1,
-    height: 6,
-    backgroundColor: theme.colors.figmaRed,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: 8,
   },
   versionRow: {
     minHeight: 44,
     justifyContent: 'center',
-    paddingVertical: 10,
-  },
-  versionText: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaTextSecondary,
+    paddingVertical: 8,
   },
   modalOverlay: {
     flex: 1,
@@ -691,30 +845,51 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     backgroundColor: theme.colors.white,
-    borderRadius: 28,
+    borderRadius: theme.borderRadius.uacPanel,
     paddingTop: 24,
     paddingHorizontal: 24,
     paddingBottom: 24,
   },
   deleteModalCard: {
     backgroundColor: theme.colors.white,
-    borderRadius: 28,
+    borderRadius: theme.borderRadius.uacPanel,
     paddingTop: 24,
     paddingHorizontal: 24,
     paddingBottom: 24,
-    marginTop: 118,
   },
   modalTitle: {
-    fontFamily: 'ArchivoNarrow-Regular',
-    fontSize: 24,
-    lineHeight: 32,
-    letterSpacing: 0.15,
-    color: theme.colors.figmaText,
+    ...theme.typography.aliases.uacBodyMdSemibold,
+    color: theme.colors.uacTextBase,
+  },
+  // Delete-data dialog title is 16/20 (line-height 20), not 24 (artifact §5).
+  deleteModalTitle: {
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.uacTextBase,
   },
   modalBody: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaText,
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.uacTextBase,
     marginTop: 16,
+  },
+  timeDialogRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  timeDialogValue: {
+    ...theme.typography.aliases.uacH1Bold,
+    color: theme.colors.uacTextBase,
+  },
+  periodStack: {
+    gap: 4,
+  },
+  periodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+    minWidth: 80,
   },
   optionList: {
     marginTop: 16,
@@ -726,65 +901,50 @@ const styles = StyleSheet.create({
     position: 'relative',
     paddingVertical: 8,
   },
-  optionBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EADDFE',
-    marginRight: 16,
-  },
-  optionBadgeText: {
-    ...theme.typography.aliases.archivoButton,
-    color: '#4F378A',
-  },
   optionCopy: {
     flex: 1,
     gap: 2,
   },
   optionTitle: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaText,
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.uacTextBase,
   },
   optionDescription: {
-    fontFamily: 'ArchivoNarrow-Regular',
-    fontSize: 12,
-    lineHeight: 16,
-    color: theme.colors.figmaTextMuted,
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
   },
   optionDivider: {
     position: 'absolute',
-    left: 56,
+    left: 0,
     right: 0,
     bottom: 0,
     height: 1,
-    backgroundColor: theme.colors.figmaDivider,
+    backgroundColor: theme.colors.figmaListDivider,
   },
   radioOuter: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: theme.colors.figmaTextMuted,
+    borderColor: theme.colors.uacTextBase,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 16,
   },
   radioOuterActive: {
-    borderColor: '#3AA0D8',
+    borderColor: theme.colors.figmaToggleOn,
   },
   radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#3AA0D8',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: theme.colors.figmaToggleOn,
   },
   modalActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 16,
+    marginTop: 12,
   },
   modalAction: {
     flex: 1,
@@ -793,22 +953,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalTextAction: {
-    borderRadius: 100,
+    borderRadius: theme.borderRadius.uacRadioPill,
   },
   modalPrimaryAction: {
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaAction,
+    borderRadius: theme.borderRadius.uacButtonCta,
+    backgroundColor: theme.colors.figmaButtonDark,
   },
   modalDangerAction: {
-    borderRadius: 16,
-    backgroundColor: '#D34F3E',
+    borderRadius: theme.borderRadius.uacButtonCta,
+    backgroundColor: theme.colors.figmaDestructive,
   },
   modalTextActionLabel: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.figmaText,
+    ...theme.typography.aliases.poppinsButton,
+    color: theme.colors.uacTextBase,
   },
   modalPrimaryActionLabel: {
-    ...theme.typography.aliases.archivoButton,
+    ...theme.typography.aliases.poppinsButton,
     color: theme.colors.white,
   },
   disabledAction: {

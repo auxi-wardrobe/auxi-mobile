@@ -19,6 +19,8 @@ interface TopIconButtonProps {
   label?: string;
   style?: ViewStyle;
   disabled?: boolean;
+  testID?: string;
+  accessibilityLabel?: string;
 }
 
 interface DividerRowProps {
@@ -55,8 +57,12 @@ export const TopIconButton: React.FC<TopIconButtonProps> = ({
   label,
   style,
   disabled,
+  testID,
+  accessibilityLabel,
 }) => (
   <TouchableOpacity
+    testID={testID}
+    accessibilityLabel={accessibilityLabel}
     activeOpacity={0.82}
     onPress={onPress}
     disabled={disabled}

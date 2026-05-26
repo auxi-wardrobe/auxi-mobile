@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   Image,
@@ -15,29 +16,80 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import Toast from 'react-native-toast-message';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
+import { useAuth } from '../context/AuthContext';
 import { bodyService, BodyItem } from '../services/bodyService';
 import { tryOnService } from '../services/tryOnService';
 import { theme } from '../theme/theme';
-import { AppStackParamList } from '../types/navigation';
+import { AppStackParamList, TryOnOutfitContext } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
 import { Icons } from '../assets/icons';
 
 const { width: screenWidth } = Dimensions.get('window');
 const IMAGE_GAP = 8;
 const IMAGE_SIZE = Math.floor((screenWidth - 44 - IMAGE_GAP * 2) / 3);
+// Body-photo detail (Settings redesign Frame 5): full-bleed 3:4 image.
+const DETAIL_IMAGE_HEIGHT = Math.round(screenWidth * (4 / 3));
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Body'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'Body'>;
 
+// Modes the Body route can resolve to. `manage` is the default (undefined params).
+type BodyMode = 'manage' | 'tryOn' | 'photoDetail';
+
 const resolveImageUrl = (url: string) => getImageUrl(url) || url;
+
+// Mirror of SettingsScreen.getErrorStatus — pull HTTP status off an axios-like error.
+const getErrorStatus = (error: unknown) =>
+  (error as { response?: { status?: number } } | undefined)?.response?.status;
+
+// Exhaustiveness guard for the discriminated Body route union. A `never` arg
+// means every mode is handled; a new mode added later forces a compile error here.
+const assertNever = (value: never): never => {
+  throw new Error(`Unhandled Body mode: ${String(value)}`);
+};
+
+// Format BodyItem.created_at → "HH:MM - DD MMM, YYYY" (e.g. "12:23 - 12 Feb, 2026").
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const formatPhotoTimestamp = (createdAt?: string): string | null => {
+  if (!createdAt) return null;
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(date.getHours())}:${pad(date.getMinutes())} - ${date.getDate()} ${
+    MONTHS[date.getMonth()]
+  }, ${date.getFullYear()}`;
+};
 
 export const BodyScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<ScreenRoute>();
-  const outfitContext = route.params?.outfit;
-  const isTryOnMode = route.params?.mode === 'tryOn' && !!outfitContext;
-  const tryOnOutfit = isTryOnMode ? outfitContext! : null;
+  const { checkAuth } = useAuth();
+
+  // Derive mode once + narrow the discriminated union. The union guarantees
+  // `outfit` is present when mode === 'tryOn' and `bodyId` only on 'photoDetail',
+  // so no non-null assertions are needed below.
+  const params = route.params;
+  const mode: BodyMode = params?.mode ?? 'manage';
+  let tryOnOutfit: TryOnOutfitContext | null = null;
+  let detailBodyId: string | undefined;
+  switch (mode) {
+    case 'tryOn':
+      // params is narrowed to { mode: 'tryOn'; outfit } here.
+      tryOnOutfit = params && params.mode === 'tryOn' ? params.outfit : null;
+      break;
+    case 'photoDetail':
+      detailBodyId = params && params.mode === 'photoDetail' ? params.bodyId : undefined;
+      break;
+    case 'manage':
+      break;
+    default:
+      assertNever(mode);
+  }
+  const isTryOnMode = mode === 'tryOn' && !!tryOnOutfit;
+  const isPhotoDetailMode = mode === 'photoDetail';
+
   const [items, setItems] = useState<BodyItem[]>([]);
   const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,32 +101,52 @@ export const BodyScreen = () => {
   const [largeImageModalVisible, setLargeImageModalVisible] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
-  const fetchItems = useCallback(async (preferredId?: string) => {
-    try {
-      setLoading(true);
-      const data = await bodyService.getBodies();
-      setItems(data);
-      setSelectedBodyId((currentSelected) => {
-        if (preferredId && data.some((item) => item.id === preferredId)) {
-          return preferredId;
-        }
+  const fetchItems = useCallback(
+    async (preferredId?: string) => {
+      try {
+        setLoading(true);
+        const data = await bodyService.getBodies();
+        setItems(data);
+        setSelectedBodyId((currentSelected) => {
+          if (preferredId && data.some((item) => item.id === preferredId)) {
+            return preferredId;
+          }
 
-        if (currentSelected && data.some((item) => item.id === currentSelected)) {
-          return currentSelected;
-        }
+          if (currentSelected && data.some((item) => item.id === currentSelected)) {
+            return currentSelected;
+          }
 
-        return data[0]?.id || null;
-      });
-    } catch (error) {
-      console.error('Error fetching body items', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+          return data[0]?.id || null;
+        });
+      } catch (error) {
+        console.error('Error fetching body items', error);
+        if (getErrorStatus(error) === 401) {
+          await checkAuth();
+        } else if (isPhotoDetailMode) {
+          // photoDetail must not silently fall through to the "no photo yet"
+          // placeholder on a fetch failure — surface it (other modes keep the
+          // existing grid placeholder behavior).
+          Toast.show({
+            type: 'error',
+            text1: 'My body',
+            text2: 'Could not load your body photo. Please try again.',
+            position: 'bottom',
+            visibilityTime: 4000,
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [checkAuth, isPhotoDetailMode],
+  );
 
   useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+    // In photoDetail mode, prefer the explicitly-passed bodyId; otherwise
+    // fetchItems falls back to current/first selected body (preserves behavior
+    // when bodyId is absent).
+    fetchItems(detailBodyId);
+  }, [fetchItems, detailBodyId]);
 
   const selectedBody = useMemo(
     () => items.find((item) => item.id === selectedBodyId) || null,
@@ -100,11 +172,24 @@ export const BodyScreen = () => {
             }
 
             await bodyService.deleteBody(id);
+
+            // photoDetail shows a single photo — after deleting it there's
+            // nothing left to show, so return rather than strand the user on
+            // an empty detail screen.
+            if (isPhotoDetailMode) {
+              navigation.goBack();
+              return;
+            }
+
             const fallbackId = selectedBodyId === id ? undefined : selectedBodyId || undefined;
             await fetchItems(fallbackId);
           } catch (error) {
             console.error('Error deleting body', error);
-            Alert.alert('Error', 'Failed to delete body');
+            if (getErrorStatus(error) === 401) {
+              await checkAuth();
+            } else {
+              Alert.alert('Error', 'Failed to delete body');
+            }
           }
         },
       },
@@ -146,7 +231,11 @@ export const BodyScreen = () => {
         await fetchItems(uploadedItem.id);
       } catch (error) {
         console.error('Upload error', error);
-        Alert.alert('Error', 'Failed to upload body');
+        if (getErrorStatus(error) === 401) {
+          await checkAuth();
+        } else {
+          Alert.alert('Error', 'Failed to upload body');
+        }
       } finally {
         setUploading(false);
       }
@@ -229,6 +318,129 @@ export const BodyScreen = () => {
       </View>
     );
   };
+
+  // Body-photo detail view (Settings redesign Frame 5).
+  // Single photo: full 3:4 image + metadata caption + Delete (red, left) / Retake (right).
+  // Reuses existing handleDelete + handleImageSelection (Retake = re-capture/upload).
+  if (isPhotoDetailMode) {
+    const detailImageUrl = selectedBody ? resolveImageUrl(selectedBody.image_url) : null;
+    const photoTimestamp = formatPhotoTimestamp(selectedBody?.created_at);
+
+    return (
+      <SafeAreaView style={styles.detailContainer}>
+        <View style={styles.detailImageWrap}>
+          {detailImageUrl ? (
+            <Image
+              source={{ uri: detailImageUrl }}
+              style={styles.detailImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.detailImage, styles.detailImagePlaceholder]}>
+              <Text style={styles.detailPlaceholderText}>
+                {loading ? 'Loading…' : 'No body photo yet. Tap Retake to add one.'}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.detailBackWrap}>
+            <TopIconButton
+              testID="body-detail-back"
+              onPress={() => navigation.goBack()}
+              icon={<Icons.ChevronLeft width={20} height={20} />}
+            />
+          </View>
+        </View>
+
+        <View style={styles.detailPanel}>
+          <View style={styles.detailCopy}>
+            {photoTimestamp ? (
+              <Text style={styles.detailText}>{`Time: ${photoTimestamp}`}</Text>
+            ) : null}
+            <Text style={styles.detailText}>
+              This photo helps show how outfits look on you
+            </Text>
+            <Text style={styles.detailText}>🔒 Your photo stays private.</Text>
+          </View>
+
+          <View style={styles.detailActions}>
+            <TouchableOpacity
+              testID="body-detail-delete"
+              activeOpacity={0.82}
+              disabled={!selectedBody}
+              style={[styles.detailActionButton, !selectedBody && styles.detailActionDisabled]}
+              onPress={() => {
+                if (selectedBody) {
+                  handleDelete(selectedBody.id);
+                }
+              }}
+            >
+              <Text style={styles.detailDeleteLabel}>Delete</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              testID="body-detail-retake"
+              activeOpacity={0.82}
+              disabled={uploading}
+              style={[styles.detailActionButton, uploading && styles.detailActionDisabled]}
+              onPress={() => setModalVisible(true)}
+            >
+              {uploading ? (
+                <ActivityIndicator size="small" color={theme.colors.uacTextBase} />
+              ) : (
+                <Text style={styles.detailRetakeLabel}>Retake</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <Modal
+          animationType="fade"
+          transparent
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Retake body photo</Text>
+
+                  <TouchableOpacity
+                    testID="body-detail-retake-camera"
+                    style={styles.modalAction}
+                    onPress={() => handleImageSelection('camera')}
+                  >
+                    <Text style={styles.modalActionText}>Take a photo</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.modalDivider} />
+
+                  <TouchableOpacity
+                    testID="body-detail-retake-gallery"
+                    style={styles.modalAction}
+                    onPress={() => handleImageSelection('gallery')}
+                  >
+                    <Text style={styles.modalActionText}>Upload from gallery</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.modalDivider} />
+
+                  <TouchableOpacity
+                    testID="body-detail-retake-cancel"
+                    style={styles.modalCancel}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -621,5 +833,72 @@ const styles = StyleSheet.create({
   largeImage: {
     width: '100%',
     height: '100%',
+  },
+  // Body-photo detail view (Settings redesign Frame 5).
+  detailContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.figmaDetailSurface,
+  },
+  detailImageWrap: {
+    width: '100%',
+    height: DETAIL_IMAGE_HEIGHT,
+  },
+  detailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  detailImagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.figmaCardSurface,
+    paddingHorizontal: 28,
+  },
+  detailPlaceholderText: {
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.uacTextBase,
+    textAlign: 'center',
+  },
+  detailBackWrap: {
+    position: 'absolute',
+    top: 8,
+    left: 22,
+  },
+  detailPanel: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 24,
+    justifyContent: 'space-between',
+  },
+  detailCopy: {
+    gap: 12,
+  },
+  detailText: {
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.uacTextBase,
+  },
+  detailActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  detailActionButton: {
+    minHeight: 56,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: theme.borderRadius.uacRadioPill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailActionDisabled: {
+    opacity: 0.45,
+  },
+  detailDeleteLabel: {
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.figmaRed,
+  },
+  detailRetakeLabel: {
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.uacTextBase,
   },
 });
