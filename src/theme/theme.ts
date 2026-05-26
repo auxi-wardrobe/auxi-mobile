@@ -41,7 +41,6 @@ export const theme = {
     // sidebar bg. Figma maps Black/10% but that is invisible on #1d1f23, so per
     // CEO (Q9) use the cream text tone (#f2efec / uacTextPrimaryBase) at 10%.
     figmaDividerOnDark: 'rgba(242, 239, 236, 0.1)',
-<<<<<<< HEAD
     // Settings redesign (node 2850:15840) — 5-frame redesign tokens.
     // Source: plans/260526-0019-settings-redesign/figma-extraction-settings.md
     figmaToggleOn: '#039855', // fixed/success/base — switch + radio ON (green)
@@ -49,8 +48,6 @@ export const theme = {
     figmaButtonDark: '#121212', // background/neutral/bold_400 — primary dialog button bg (Update)
     figmaListDivider: '#eee6df', // border/primary/subtle_300 — settings list hairline divider
     figmaDetailSurface: '#eee6df', // background/primary/subtle_200 — body-photo detail panel bg
-=======
->>>>>>> 4fa5c6b30e203583c43480b269a200cd7bd2fbd3
     // UAC (Account-access flow) tokens — AU-242 spec
     // Spec: plans/260521-2335-au-242-figma-spec/00-index.md "Colors"
     uacBackgroundBase: '#1d1f23', // --background/neutral/base

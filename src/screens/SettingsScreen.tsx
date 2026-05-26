@@ -80,7 +80,7 @@ const FREQUENCY_OPTIONS: Array<{
   {
     key: 'weekdays',
     label: 'Weekdays',
-    description: 'Mon, Tue, Wed, Thus, Fri',
+    description: 'Mon, Tue, Wed, Thu, Fri',
   },
   {
     key: 'everydays',
@@ -301,6 +301,10 @@ export const SettingsScreen = () => {
         'Failed to update style direction',
       );
       setActiveModal('none');
+    } catch {
+      // persistUserMetadata already surfaced the error toast (and handled 401);
+      // swallow the rethrow so the async onPress doesn't reject unhandled.
+      // Keep the modal open so the user can retry.
     } finally {
       setIsSavingDirection(false);
     }
@@ -315,6 +319,9 @@ export const SettingsScreen = () => {
     setIsSavingTime(true);
     try {
       await persistUserMetadata(
+        // I2 (review): assumes backend deep-merges daily_notification; only
+        // period + frequency are sent (time is read-only display per CEO Q12).
+        // Merge semantics pending backend-dev — shape intentionally unchanged.
         {
           daily_notification: {
             period: pendingPeriod,
@@ -324,6 +331,10 @@ export const SettingsScreen = () => {
         'Failed to update daily time',
       );
       setActiveModal('none');
+    } catch {
+      // persistUserMetadata already surfaced the error toast (and handled 401);
+      // swallow the rethrow so the async onPress doesn't reject unhandled.
+      // Keep the modal open so the user can retry.
     } finally {
       setIsSavingTime(false);
     }
