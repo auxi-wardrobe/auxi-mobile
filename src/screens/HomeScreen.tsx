@@ -372,6 +372,13 @@ export const HomeScreen = () => {
   // any new fetch until it returns to 0, so swipe-spam never exceeds 1 in
   // flight and a refine overlap is capped at 2 (the stale result is dropped).
   const inFlightCountRef = useRef(0);
+  // Prefetch pipeline (260526): set when a `try_another` resolves with an empty
+  // outfit (200 + v05_pool_insufficient — the pool has nothing left for this
+  // session/context). Stops the chained/swipe prefetch from instantly re-firing
+  // an empty pool into the rate limiter (the A2 spam bug). Cleared on cold-start
+  // build and on every `resetV05Session()` (refine / mode change) — a new
+  // context may replenish the pool.
+  const poolDepletedRef = useRef(false);
   const isFirstLoadRef = useRef(true);
   // Prefetch pipeline (260526): generation counter bumped on every
   // `resetV05Session()` (refine submit, mode change). Each in-flight fetch
@@ -568,14 +575,21 @@ export const HomeScreen = () => {
       }
 
       let isColdStart = false;
+      // `addedCount` = how many NEW sheets this resolve actually contributed.
+      // 0 means an empty/depleted pool (or an all-duplicate batch) — used below
+      // to STOP the chain instead of spam-retrying (the A2 fix).
+      let addedCount = 0;
       // First load (cold start) → replace. Subsequent loads (prefetch) →
       // append so the user's scroll position isn't yanked back to 0.
       if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
         isFirstLoadRef.current = false;
         isColdStart = true;
         const incoming = normalizeOutfits(data, 0);
+        addedCount = incoming.length;
         setListOutfits(incoming);
         setActiveSheetIndex(0);
+        // Fresh session/context → the pool may have outfits again.
+        poolDepletedRef.current = false;
       } else {
         // Offset fallback-hash indices by the existing list length so the
         // second batch never collides with first-batch hashes (Bug 1).
@@ -583,21 +597,34 @@ export const HomeScreen = () => {
         const incoming = normalizeOutfits(data, offset);
         // De-dup against existing hashes — drop any genuine duplicates the
         // backend returns AND any fallback collisions we couldn't avoid.
-        setListOutfits(current => {
-          const existingHashes = new Set(current.map(o => o.outfitHash));
-          const deduped = incoming.filter(
-            sheet => !existingHashes.has(sheet.outfitHash),
-          );
-          return [...current, ...deduped];
-        });
+        // Compute synchronously so we know whether the list actually grew.
+        const existingHashes = new Set(
+          listOutfitsRef.current.map(o => o.outfitHash),
+        );
+        const deduped = incoming.filter(
+          sheet => !existingHashes.has(sheet.outfitHash),
+        );
+        addedCount = deduped.length;
+        if (deduped.length > 0) {
+          setListOutfits(current => [...current, ...deduped]);
+        }
       }
 
-      // Eager + chained prefetch (Change 2). The cold-start branch kicks one
-      // prefetch unconditionally to prime the pipeline (build returns 3 →
-      // ahead=2, which `ensureBuffer` would treat as full, so we force-prime
-      // here exactly once). Every other resolve re-runs the buffer check so
-      // the next prefetch chains while the user is paused. listOutfitsRef is
-      // synced from listOutfits in an effect, so defer to the next tick.
+      // Eager + chained prefetch (Change 2) — but ONLY when this resolve added
+      // an outfit. A `try_another` against a depleted pool returns 200 with an
+      // empty outfit (v05_pool_insufficient); it never grows `ahead`, so
+      // chaining on it re-fires instantly and spam-loops into the rate limiter
+      // (the A2 bug). On a no-progress result, mark the pool depleted and STOP
+      // — a later refine/mode reset clears the flag and resumes the pipeline.
+      if (addedCount === 0) {
+        poolDepletedRef.current = true;
+        return;
+      }
+      // The cold-start branch force-primes one prefetch (build returns 3 →
+      // ahead=2, which `ensureBuffer` treats as full); every other resolve
+      // re-checks the buffer so the next prefetch chains while the user is
+      // paused. listOutfitsRef is synced from listOutfits in an effect, so
+      // defer to the next tick.
       setTimeout(() => {
         ensureBufferRef.current(isColdStart);
       }, 0);
@@ -700,6 +727,12 @@ export const HomeScreen = () => {
       if (inFlightCountRef.current > 0) {
         return;
       }
+      // Pool depleted for this session/context — don't keep probing an empty
+      // pool on every swipe (A2 fix). Cleared on cold-start build / session
+      // reset (refine, mode change).
+      if (poolDepletedRef.current) {
+        return;
+      }
       const ahead = total - 1 - activeSheetIndexRef.current;
       if (!force && ahead >= TARGET_AHEAD) {
         return;
@@ -772,6 +805,12 @@ export const HomeScreen = () => {
         })
         .then(() => {
           setSaveStateByHash(current => ({ ...current, [hash]: 'saved' }));
+          // Value Moment: a recommended outfit the user actively saved.
+          track('outfit_favorited', {
+            outfit_hash: hash,
+            item_count: items.length,
+            source: 'home',
+          });
         })
         .catch(error => {
           console.warn('saveFavourite failed', error);
@@ -831,6 +870,8 @@ export const HomeScreen = () => {
       // the counter itself on resolve (its result is just discarded), which
       // lets the next swipe resume prefetching against the new session.
       fetchGenerationRef.current += 1;
+      // New context may replenish the pool — let prefetch resume.
+      poolDepletedRef.current = false;
       return next;
     });
   }, []);
@@ -974,6 +1015,8 @@ export const HomeScreen = () => {
     // Bump the generation (Change 3, 260526): any prefetch still in flight
     // against the OLD session is now stale and will be dropped on arrival.
     fetchGenerationRef.current += 1;
+    // Fresh dressing intent re-seeds the pool — let prefetch resume.
+    poolDepletedRef.current = false;
     // Do NOT touch the in-flight counter here. `force: true` below bypasses the
     // guard so this user-intent build starts even while a stale prefetch is
     // still draining; the counter then reflects both (capped at 2). The stale
