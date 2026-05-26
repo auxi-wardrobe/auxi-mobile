@@ -62,16 +62,35 @@ const TILE_ART = {
       'Relaxed Fit': require('../assets/images/onboarding/fit-mixed-relaxed.png'),
     },
   } as Record<WardrobeDirection, Record<FitPreference, ImageSourcePropType>>,
-  // Step 3 — style picks (node 2849:9748). `Formal` reuses Figma's "Classic"
-  // flat-lay (white shirt + tailored trousers) — the closest visual match,
-  // since the backend vocabulary has `Formal` where Figma labelled "Classic".
+  // Step 3 — style picks, per wardrobe branch (Figma frames: Menswear
+  // 2849:9748, Womenswear 2849:9793, Mixed 2849:9838). Each wardrobe shows the
+  // SAME 5 labels but DIFFERENT outfit flat-lays, mirroring the Step 2 `fit`
+  // pattern — so a Womenswear/Mixed user no longer sees the men's outfits.
+  // `Formal` reuses each frame's "Classic" tile (the closest visual match,
+  // since the backend vocabulary has `Formal` where Figma labelled "Classic").
   style: {
-    Minimal: require('../assets/images/onboarding/style-minimal.png'),
-    Casual: require('../assets/images/onboarding/style-casual.png'),
-    Soft: require('../assets/images/onboarding/style-soft.png'),
-    Bold: require('../assets/images/onboarding/style-bold.png'),
-    Formal: require('../assets/images/onboarding/style-formal.png'),
-  } as Record<StyleTag, ImageSourcePropType>,
+    Menswear: {
+      Minimal: require('../assets/images/onboarding/style-men-minimal.png'),
+      Formal: require('../assets/images/onboarding/style-men-formal.png'),
+      Casual: require('../assets/images/onboarding/style-men-casual.png'),
+      Soft: require('../assets/images/onboarding/style-men-soft.png'),
+      Bold: require('../assets/images/onboarding/style-men-bold.png'),
+    },
+    Womenswear: {
+      Minimal: require('../assets/images/onboarding/style-women-minimal.png'),
+      Formal: require('../assets/images/onboarding/style-women-formal.png'),
+      Casual: require('../assets/images/onboarding/style-women-casual.png'),
+      Soft: require('../assets/images/onboarding/style-women-soft.png'),
+      Bold: require('../assets/images/onboarding/style-women-bold.png'),
+    },
+    Mixed: {
+      Minimal: require('../assets/images/onboarding/style-mixed-minimal.png'),
+      Formal: require('../assets/images/onboarding/style-mixed-formal.png'),
+      Casual: require('../assets/images/onboarding/style-mixed-casual.png'),
+      Soft: require('../assets/images/onboarding/style-mixed-soft.png'),
+      Bold: require('../assets/images/onboarding/style-mixed-bold.png'),
+    },
+  } as Record<WardrobeDirection, Record<StyleTag, ImageSourcePropType>>,
 };
 
 /** Step 1 tile art for a wardrobe option. */
@@ -88,9 +107,16 @@ export const fitTileArt = (
   fit: FitPreference,
 ): ImageSourcePropType => TILE_ART.fit[wardrobe][fit];
 
-/** Step 3 tile art for a style option. */
-export const styleTileArt = (value: StyleTag): ImageSourcePropType =>
-  TILE_ART.style[value];
+/**
+ * Step 3 tile art for a style option within the chosen wardrobe branch — the
+ * style imagery differs per wardrobe (Menswear/Womenswear/Mixed) exactly like
+ * `fitTileArt`, so the screen resolves art from the route's `wardrobe_direction`
+ * + the option's StyleTag wire value.
+ */
+export const styleTileArt = (
+  wardrobe: WardrobeDirection,
+  value: StyleTag,
+): ImageSourcePropType => TILE_ART.style[wardrobe][value];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Welcome (intro splash → LocationPermission)

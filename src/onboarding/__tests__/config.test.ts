@@ -23,6 +23,7 @@ import {
   STEP_COPY,
   WELCOME_COPY,
   selectionChipLabels,
+  styleTileArt,
 } from '../config';
 import {
   FIT_PREFERENCES,
@@ -102,6 +103,44 @@ describe('config — enum parity with v05Api allowlist', () => {
 describe('config — D7 pick count', () => {
   it('MAX_STYLE_PICKS is exactly 2', () => {
     expect(MAX_STYLE_PICKS).toBe(2);
+  });
+});
+
+describe('config — per-wardrobe Step-3 style art (mirrors fitTileArt)', () => {
+  it('resolves all 15 (3 wardrobes × 5 styles) style tile images', () => {
+    let resolved = 0;
+    WARDROBE_DIRECTIONS.forEach(wardrobe => {
+      STYLE_TAGS.forEach(style => {
+        const art = styleTileArt(wardrobe, style);
+        // Metro resolves a PNG require() to a defined asset (numeric id under
+        // the RN jest preset) — every cell must be wired, no undefined holes.
+        expect(art).toBeDefined();
+        expect(art).not.toBeNull();
+        resolved += 1;
+      });
+    });
+    expect(resolved).toBe(15);
+  });
+
+  it('serves a DISTINCT image per wardrobe for the same style (no cross-leak)', () => {
+    // The whole point of this change: Womenswear/Mixed must NOT reuse the
+    // menswear art. For each style, the three wardrobe variants are distinct.
+    STYLE_TAGS.forEach(style => {
+      const men = styleTileArt('Menswear', style);
+      const women = styleTileArt('Womenswear', style);
+      const mixed = styleTileArt('Mixed', style);
+      expect(men).not.toBe(women);
+      expect(women).not.toBe(mixed);
+      expect(men).not.toBe(mixed);
+    });
+  });
+
+  it('is keyed by the StyleTag WIRE value (Formal, not the "Classic" label)', () => {
+    // Guards the label↔wire split: the resolver takes wire `Formal`, the UI
+    // label "Classic" never reaches the art map.
+    WARDROBE_DIRECTIONS.forEach(wardrobe => {
+      expect(styleTileArt(wardrobe, 'Formal')).toBeDefined();
+    });
   });
 });
 

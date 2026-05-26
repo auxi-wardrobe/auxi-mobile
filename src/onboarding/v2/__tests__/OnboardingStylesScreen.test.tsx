@@ -19,6 +19,7 @@
 import React from 'react';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
 import { OnboardingStylesScreen } from '../OnboardingStylesScreen';
+import { styleTileArt } from '../../config';
 
 const mockNavigate = jest.fn();
 const ROUTE_PARAMS = {
@@ -141,6 +142,34 @@ describe('OnboardingStylesScreen — selection ranking', () => {
     // bold is now selectable again
     expect(oneByTestID(root, 'onboarding-style-tile-bold').props.disabled).toBe(
       false,
+    );
+  });
+});
+
+describe('OnboardingStylesScreen — per-wardrobe tile art wiring', () => {
+  /** The OnboardingSelectionFigure under a style tile — carries `source`. */
+  const figureFor = (root: ReactTestInstance, tag: string): ReactTestInstance => {
+    const tile = oneByTestID(root, `onboarding-style-tile-${tag}`);
+    const figs = tile.findAll(
+      n => typeof n.type !== 'string' && 'source' in (n.props ?? {}),
+    );
+    if (figs.length === 0) throw new Error(`no figure under ${tag}`);
+    return figs[0];
+  };
+
+  it("threads the route's wardrobe_direction into styleTileArt (Menswear art)", () => {
+    // ROUTE_PARAMS.wardrobe_direction === 'Menswear' → each tile must resolve
+    // the MENSWEAR art for its StyleTag, proving the wardrobe is threaded.
+    const { root } = render();
+    expect(figureFor(root, 'minimal').props.source).toBe(
+      styleTileArt('Menswear', 'Minimal'),
+    );
+    expect(figureFor(root, 'bold').props.source).toBe(
+      styleTileArt('Menswear', 'Bold'),
+    );
+    // and NOT the womenswear variant (cross-leak guard)
+    expect(figureFor(root, 'minimal').props.source).not.toBe(
+      styleTileArt('Womenswear', 'Minimal'),
     );
   });
 });
