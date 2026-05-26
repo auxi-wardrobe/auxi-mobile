@@ -6,6 +6,30 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ## [Unreleased]
 
+## [v1.0-build8] - 2026-05-26
+
+### Added
+- integrate Mixpanel with consent gating
+- redesign Settings screen, dialogs + body-photo detail (Figma 2850:15839)
+- redesign navigation drawer to dark theme (Figma 2852:24670)
+- surface V05 reasoning_human as outfit card caption
+- redesign Home as outfit grid view (AU-253)
+- wire Welcome OAuth CTAs to Google + Apple sign-in
+
+### Fixed
+- set Google OAuth client IDs + valid REVERSED_CLIENT_ID URL scheme (AU-242)
+- prevent try_another spam + eager outfit prefetch
+- resolve theme.ts conflict + address PR #37 review
+- render condition-driven icon via SVG instead of static PNG
+- correct doubled /api prefix in weather request path
+
+### Changed
+- wip snapshot before main merge (analytics/settings/body/nav)
+- extract SettingsDialog + RadioOptionList; disable Dark Mode stub; confirm I2 deep-merge
+- add Google Sign-In URL scheme placeholder to Info.plist
+- install Google + Apple Sign-In SDKs
+
+
 ## [v1.0-build7] - 2026-05-22
 
 
