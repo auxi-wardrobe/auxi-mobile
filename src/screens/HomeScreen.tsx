@@ -644,6 +644,12 @@ export const HomeScreen = () => {
         })
         .then(() => {
           setSaveStateByHash(current => ({ ...current, [hash]: 'saved' }));
+          // Value Moment: a recommended outfit the user actively saved.
+          track('outfit_favorited', {
+            outfit_hash: hash,
+            item_count: items.length,
+            source: 'home',
+          });
         })
         .catch(error => {
           console.warn('saveFavourite failed', error);

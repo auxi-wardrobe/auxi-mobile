@@ -15,6 +15,7 @@ import Toast from 'react-native-toast-message';
 import { initI18n } from './src/i18n/init';
 import { theme } from './src/theme/theme';
 import { configureGoogleSignIn } from './src/services/oauth/googleSignIn';
+import { initAnalytics } from './src/services/analytics';
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,10 @@ const queryClient = new QueryClient();
 // wrapper guards against double-configure. Apple's SDK is stateless and
 // needs no startup hook.
 configureGoogleSignIn();
+
+// Bring analytics up if the user previously granted consent. Fire-and-forget;
+// the SDK stays inert until consent is granted (see services/analytics.ts).
+initAnalytics().catch(err => console.warn('[App] analytics init failed', err));
 
 function App() {
   // i18next must finish initialising before any screen renders, otherwise

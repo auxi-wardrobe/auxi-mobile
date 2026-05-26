@@ -27,6 +27,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
+import { track } from '../services/analytics';
 import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
 import {
@@ -143,11 +144,17 @@ export const StylePickerScreen = () => {
         fit_preference,
         style_preferences,
       }),
-    onSuccess: async () => {
+    onSuccess: async (_data, style_preferences) => {
       // Flip is_first_login=false so the AppNavigator switches to the
       // Home stack. Wardrobe items are already persisted server-side.
       try {
         await completeOnboarding();
+        // Activation milestone — a new user finished required setup.
+        track('onboarding_completed', {
+          styles_selected: style_preferences.length,
+          wardrobe_direction,
+          fit_preference,
+        });
       } catch (err) {
         // If completeOnboarding fails the user is stranded on this
         // screen but the wardrobe IS materialised. Log + let them retry

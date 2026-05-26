@@ -21,6 +21,7 @@ import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimiti
 import { useAuth } from '../context/AuthContext';
 import { bodyService, BodyItem } from '../services/bodyService';
 import { tryOnService } from '../services/tryOnService';
+import { track } from '../services/analytics';
 import { theme } from '../theme/theme';
 import { AppStackParamList, TryOnOutfitContext } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
@@ -250,14 +251,21 @@ export const BodyScreen = () => {
     try {
       setIsGenerating(true);
       setTryOnError(null);
+      track('try_on_started', {
+        outfit_hash: tryOnOutfit.outfitHash,
+        item_count: tryOnOutfit.itemIds.length,
+        has_body_photo: !!selectedBodyId,
+      });
       const response = await tryOnService.generateTryOn({
         outfit_hash: tryOnOutfit.outfitHash,
         item_ids: tryOnOutfit.itemIds,
         body_id: selectedBodyId,
       });
       setGeneratedTryOnUrl(response.image_url);
+      track('try_on_completed', { outfit_hash: tryOnOutfit.outfitHash });
     } catch (error) {
       console.error('Try-on generation error', error);
+      track('try_on_failed', { outfit_hash: tryOnOutfit.outfitHash });
       setTryOnError('Could not generate your try-on image. Please try again.');
     } finally {
       setIsGenerating(false);

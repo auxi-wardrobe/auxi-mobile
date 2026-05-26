@@ -3,6 +3,7 @@ import Toast from 'react-native-toast-message';
 import { authService } from '../services/auth';
 import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { registerSessionExpiredListener } from '../services/apiClient';
+import { identifyUser, resetAnalytics, track } from '../services/analytics';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
 
 interface AuthContextType {
@@ -117,12 +118,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return unregister;
     }, []);
 
+    // Set by login() so the identity effect can emit `sign_in_completed`
+    // AFTER identify() lands (correct attribution) and only for explicit
+    // logins — not cold-start restores.
+    const justLoggedInRef = useRef(false);
+    // Analytics identity. identify() when a user is present (login,
+    // cold-start restore, post-verify); reset() when they leave (logout /
+    // session expiry). The ref guard means we only fire on real identity
+    // transitions, not on every render.
+    const analyticsIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (user) {
+            const distinctId = String(user.id);
+            if (analyticsIdRef.current === distinctId) return;
+            analyticsIdRef.current = distinctId;
+            const profile: Record<string, unknown> = {
+                $email: user.email,
+                $created: user.created_at,
+            };
+            if (user.gender) {
+                profile.gender = user.gender;
+            }
+            if (user.user_metadata?.style_direction) {
+                profile.style_direction = user.user_metadata.style_direction;
+            }
+            if (user.user_metadata?.confidence_level) {
+                profile.confidence_level = user.user_metadata.confidence_level;
+            }
+            identifyUser(distinctId, profile);
+            if (justLoggedInRef.current) {
+                justLoggedInRef.current = false;
+                track('sign_in_completed', { method: 'email' });
+            }
+        } else if (analyticsIdRef.current !== null) {
+            analyticsIdRef.current = null;
+            resetAnalytics();
+        }
+    }, [user]);
+
     const login = useCallback(async (data: LoginRequest) => {
         setIsLoading(true);
         try {
             await authService.login(data);
             // Manual login clears any stale verify-email handoff.
             setPendingVerifyEmail(null);
+            // Flag the fresh sign-in so the identity effect emits
+            // `sign_in_completed` after identify() lands. Signup completion
+            // is tracked at onboarding completion, not here.
+            justLoggedInRef.current = true;
             await checkAuth(); // Fetch user details after login
         } catch (error) {
             throw error;
