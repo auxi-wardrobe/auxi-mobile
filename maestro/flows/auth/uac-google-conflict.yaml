@@ -1,0 +1,67 @@
+# auxi/maestro/flows/auth/uac-google-conflict.yaml
+# AU-242 Google-linked account notice. Triggered when an email already
+# bound to oauth_provider='google' tries the email signup path.
+#
+# Prerequisites: Google-linked test user seeded in backend DB:
+#   sqlite3 wardrobe.db "INSERT INTO users (id, email, oauth_provider, \
+#     oauth_subject, email_verified_at, role, is_first_login, \
+#     user_metadata, created_at, updated_at) VALUES ( \
+#     '00000000-0000-4000-8000-aaaaaaaaaaa1', 'qa-google@auxi.app', \
+#     'google', 'fake-google-sub-1', datetime('now'), 'user', 1, '{}', \
+#     datetime('now'), datetime('now'));"
+#
+# Stops at EmailGoogleNotice screen — does NOT tap "Continue with Google"
+# (OAuth provisioning per phase 05 PR #27 follow-up).
+
+appId: com.auxi2026.app
+name: uac-google-conflict
+tags:
+  - au-242
+  - auth
+  - uac
+  - oauth
+env:
+  QA_GOOGLE_EMAIL: qa-google@auxi.app
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- extendedWaitUntil:
+    visible:
+      id: welcome-cta-email
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
+- tapOn:
+    id: welcome-cta-email
+
+- extendedWaitUntil:
+    visible:
+      id: email-input-field
+    timeout: 5000
+- tapOn:
+    id: email-input-field
+- inputText: ${QA_GOOGLE_EMAIL}
+- tapOn:
+    id: email-submit-button
+
+# Submit register (precheck enumeration-safe surfaces 'password' first;
+# backend returns 409 EMAIL_LINKED_TO_OTHER_PROVIDER → app navigates
+# to EmailGoogleNotice).
+- runFlow:
+    when:
+      visible:
+        id: password-input-field
+    commands:
+      - tapOn:
+          id: password-input-field
+      - inputText: Pass1234
+      - tapOn:
+          id: password-submit-button
+
+- extendedWaitUntil:
+    visible:
+      id: email-google-notice-screen
+    timeout: 10000
+- assertVisible:
+    id: email-google-notice-continue-google

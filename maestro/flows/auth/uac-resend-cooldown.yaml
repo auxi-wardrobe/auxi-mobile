@@ -1,0 +1,30 @@
+# auxi/maestro/flows/auth/uac-resend-cooldown.yaml
+# AU-242 edge case: VerifyEmail screen resend button cooldown (60s, local).
+# After signup, resend button shows countdown like "(NNs)" + disabled.
+
+appId: com.auxi2026.app
+name: uac-resend-cooldown
+tags:
+  - au-242
+  - auth
+  - uac
+  - edge-case
+env:
+  RUN_ID: dev
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  VERIFY_TIMEOUT_MS: 15000
+  COOLDOWN_SECONDS: 60
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- runFlow: ./uac-happy-signup.yaml
+
+# Resend button visible but disabled with countdown.
+- assertVisible:
+    id: verify-email-resend
+- tapOn:
+    id: verify-email-resend
+- assertVisible:
+    id: verify-email-resend

@@ -64,14 +64,17 @@ export type AppStackParamList = {
   Home: undefined;
   Settings: undefined;
   Wardrobe: undefined;
+  // Discriminated union on `mode` so call sites are type-checked:
+  //  - tryOn MUST carry an `outfit` (removes the old `outfit!` assertion in BodyScreen)
+  //  - photoDetail (Settings redesign Frame 5) opens the single body-photo
+  //    detail view (full 3:4 image + metadata + Delete/Retake) instead of the
+  //    multi-photo manager grid. Reached from Settings "Manage body photo".
+  //    `bodyId` optional — absent means show current/first selected body.
+  //  - manage / undefined → multi-photo manager grid (default).
   Body:
-    | {
-        // 'photoDetail' (Settings redesign Frame 5) opens the single body-photo
-        // detail view (full 3:4 image + metadata + Delete/Retake) instead of
-        // the multi-photo manager grid. Reached from Settings "Manage body photo".
-        mode?: 'manage' | 'tryOn' | 'photoDetail';
-        outfit?: TryOnOutfitContext;
-      }
+    | { mode?: 'manage' }
+    | { mode: 'tryOn'; outfit: TryOnOutfitContext }
+    | { mode: 'photoDetail'; bodyId?: string }
     | undefined;
   Welcome: undefined;
   LocationPermission: undefined;
@@ -90,10 +93,8 @@ export type AppStackParamList = {
   };
   ItemDetail: { itemId: string };
   Database: undefined;
-  OutfitCanvas:
-    | {
-        outfitId?: string;
-        items?: Array<{ id: string; imageUrl: string }>;
-      }
-    | undefined;
+  OutfitCanvas: {
+    outfitId?: string;
+    items?: Array<{ id: string; imageUrl: string }>;
+  } | undefined;
 };
