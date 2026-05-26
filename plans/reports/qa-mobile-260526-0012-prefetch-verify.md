@@ -284,3 +284,208 @@ across both launch attempts (terminate+relaunch, then Metro /reload+relaunch).
 to the JS dependency tree — guarding native-module call sites one at a time
 just exposes the next missing module. The durable fix is one native
 rebuild/reinstall (mobile-dev). Did not loop builds per constraints.
+
+---
+---
+
+# RE-RUN #3 (2026-05-26 09:39) — working binary (com.auxi2026.app)
+
+**Status:** DONE_WITH_CONCERNS — Home reached; **A2 FAILS** (no single-in-flight guard / spam); A1 + A3 PASS-with-caveats
+**Date:** 2026-05-26 09:33-09:39
+**Device:** iOS Simulator iPhone 16 (id 6371F8E8-893E-4D7C-8683-8A128B7996F8, iOS 18.2)
+**Bundle under test:** com.auxi2026.app (fresh native binary — boots to Home cleanly, no redbox). The stale com.auxi from runs #1/#2 was NOT used.
+**View under test:** AU-253 Home **grid view** (home-footer-tab-grid-active). The home-show-another button is the grid-view "advance" control hitting try_another. (Swipe/alternate view — see Caveat C.)
+**Backend log (ground truth):** wardrobe-backend/eval_backend_llm3.log
+
+## Outcome
+
+| Assertion | Result | Evidence |
+|---|---|---|
+| A1 — eager prefetch after buil. | PASS-with-caveat | 1 buil. 200 auto-fires try_another with zero interaction — but does NOT stop at 1 (see A1 detail + A2) |
+| A2 — no spam / single in-flight guard | **FAIL** | 6 rapid home-show-another taps -> **10 try_another 200 + 1 try_another 429** on the app's port. No debounce, no in-flight guard. |
+| A3 — functional smoke | PASS | Grid tiles populate; advance changes the outfit; no redbox; no crash. Graceful error toast on 429. |
+
+## CRITICAL ENV NOTE — shared rate-limit bucket
+
+The V05 router rate-limits **per client IP** (SimpleRateLimiter(20), 20 req/min sliding window, keyed on request.client.host -> 127.0.0.1; see wardrobe-backend/routers/v05_feedback.py:31,43-48 and the same limiter on the recommendation router). The sim AND the concurrently-running V05 eval both originate from 127.0.0.1, so **they share one 20/min bucket**. On launch the app's cold-start buil. was repeatedly 429'd (lines ~2168-2234) because eval traffic had saturated the bucket. I drained it by terminating the app and waiting for the sliding window + cleanup worker to purge 127.0.0.1 (utils.rate_limiter - DEBUG - Cleaned up 1 IPs at 09:33:11), then relaunched into a clean window. **Source ports rotate per request** (not stable per session as the dispatch hoped) — I attributed traffic by the contiguous burst on a single fresh port per action.
+
+## A2 — the rate-limit bug (PRIMARY FINDING) — FAIL
+
+Two independent reproductions, both on a clean bucket, both 100% attributable to the app (single source port, zero eval lines interleaved):
+
+### Repro 1 — cold-start eager prefetch over-fires (ZERO interaction)
+After tapping "Try again" (home-error-retry) to kick a fresh buil. on the clean bucket, the app fired — with **no swipe and no tap** beyond that one retry — a burst of try_another calls in ~850 ms:
+
+```
+2238  127.0.0.1:60536  POST /api/v05/recommendation/buil.       200 OK   (09:34:15.18)
+2239  127.0.0.1:60536  POST /api/v05/recommendation/try_another 200 OK
+2243  127.0.0.1:60536  POST /api/v05/recommendation/try_another 200 OK
+2247  127.0.0.1:60536  POST /api/v05/recommendation/try_another 200 OK
+2251  127.0.0.1:60536  POST /api/v05/recommendation/try_another 200 OK
+2255  127.0.0.1:60536  POST /api/v05/recommendation/try_another 200 OK
+2259  127.0.0.1:60536  POST /api/v05/recommendation/try_another 200 OK
+2263  127.0.0.1:60536  POST /api/v05/recommendation/try_another 200 OK
+2267  127.0.0.1:60536  POST /api/v05/recommendation/try_another 200 OK
+2271  127.0.0.1:60536  POST /api/v05/recommendation/try_another 200 OK   (09:34:16.03)
+2272  127.0.0.1:60536  POST /api/v05/recommendation/try_another 429 Too Many Requests
+```
+
+Count: **1 buil. + 9 try_another 200 + 1 try_another 429** off a single buil., no user interaction. Expected per A1 spec: 1 buil. -> 1 try_another.
+
+### Repro 2 — rapid advance fans out (the CEO's reported bug)
+Drained the bucket again, then tapped home-show-another (238,596) **6 times back-to-back** (~3 s):
+
+```
+2276  127.0.0.1:60968  POST /api/v05/recommendation/try_another 200 OK
+2280  127.0.0.1:60968  POST /api/v05/recommendation/try_another 200 OK
+2284  127.0.0.1:60968  POST /api/v05/recommendation/try_another 200 OK
+2288  127.0.0.1:60968  POST /api/v05/recommendation/try_another 200 OK
+2292  127.0.0.1:60968  POST /api/v05/recommendation/try_another 200 OK
+2296  127.0.0.1:60968  POST /api/v05/recommendation/try_another 200 OK
+2300  127.0.0.1:60968  POST /api/v05/recommendation/try_another 200 OK
+2304  127.0.0.1:60968  POST /api/v05/recommendation/try_another 200 OK
+2308  127.0.0.1:60968  POST /api/v05/recommendation/try_another 200 OK
+2312  127.0.0.1:60968  POST /api/v05/recommendation/try_another 200 OK
+2313  127.0.0.1:60968  POST /api/v05/recommendation/try_another 429 Too Many Requests
+```
+
+Count delta: **6 taps -> 10 try_another 200 + 1 try_another 429** (11 calls), all on the app's single port 60968, **zero eval interleave** (uniq -c on the window = "11  127.0.0.1:60968"). PASS threshold was ~1-3 new calls. **FAIL by ~3-4x**, and it reproduces the CEO's rate-limit/spam report — the 429 was caused by MY burst, on the app's current port, inside my window.
+
+### Likely mechanism (for mobile-dev)
+Every try_another in both bursts is paired in the log with:
+```
+v05.pool_insufficient  WARNING  ... "reason": "hot_weather_no_lightwear" ... "raised_at_layer": "L1"
+services.v05_try_another_service  INFO  V05 recompose wardrobe gap: hot_weather_no_lightwear
+```
+i.e. the backend returns **HTTP 200 but with an empty/failed pool** (this user's wardrobe has no light-wear for HOT 35C — the known climate-starved-slot case). The app appears to **immediately re-fire try_another on an empty/200 result with no in-flight guard and no debounce**, so prefetch + rapid advance both fan out until the 20/min limiter cuts them off. Two-fold, both mobile-dev:
+1. **No single-in-flight guard** on try_another — concurrent/rapid calls are not coalesced (spec A2 explicitly required this).
+2. **Retry-on-empty loop** — a 200-with-empty-pool result should NOT trigger an automatic re-request; it should surface "no alternates" and stop.
+
+## A1 — eager prefetch after buil. — PASS-with-caveat
+Eager-prefetch DOES fire as designed (1 buil. -> auto try_another, no interaction) and does NOT spam on a steady idle in a healthy pool. BUT in this wardrobe/weather state the single eager prefetch degenerates into the 9-10-call burst in A2 Repro 1, because the pool comes back empty and the app retries. So A1's "exactly 1 try_another" cannot be cleanly confirmed here — eager prefetch is entangled with the A2 retry bug.
+
+## A3 — functional smoke — PASS
+- Grid view renders: header, weather (35C / Tuesday), 2 outfit cards ("Just the basics", "Calm and clear"), home-tile-pin-*, home-show-another, home-heart-toggle, Wear this.
+- Advance works: outfit content changed across the burst (tee+pants+grey shoes -> tee+pants+black slides); the second card flips to home-show-another-disabled when the pool depletes — correct degraded state.
+- **No redbox. No crash.** mobile_list_crashes shows only unrelated processes (IDECacheDeleteAppExtension, Comet, Cursor) — no auxi crash.
+- On 429 the app shows a graceful toast ("Failed to load recommendation AxiosError..."), not a hard failure.
+
+## Caveats / limitations
+- **C — swipe/alternate view not exercised.** The home-footer-tab-alt toggle did not switch views via repeated coordinate taps (stayed home-footer-tab-grid-active) — likely gated/disabled while the pool is empty/depleted, or an overlap-tap issue. So A2 was proven via the **grid-view advance control** (home-show-another), which hits the same try_another endpoint, rather than swipe gestures. The spam finding holds for the grid path; mobile-dev should confirm the swipe path shares the same (missing) guard — almost certainly does, same service.
+- **Refine/context modal (A3 sub-item) not submitted** — entry point not reachable from the depleted-pool grid state (hamburger opened nothing; bucket exhausted). Could not verify "submits without crash." Re-test once a wardrobe with HOT-weather light-wear is seeded.
+- **Environment caveat** — the perpetually-empty pool (hot_weather_no_lightwear) both amplifies the A2 retry loop and blocks clean A1/refine testing. A wardrobe with warmth-1 BOTTOM/FULL_BODY items would give a non-empty pool. The guard FAIL is real regardless, but the magnitude (10 calls) is inflated by the empty-pool retry.
+
+## Screenshots
+- auxi/docs/qa-findings/screenshots/2026-05-26/qa-mobile-grid-after-coldstart-prefetch-burst.png — grid renders after cold-start buil. + eager-prefetch burst (Repro 1)
+- auxi/docs/qa-findings/screenshots/2026-05-26/qa-mobile-grid-after-showanother-burst.png — grid after 6 rapid show-another taps (Repro 2)
+
+## Routing
+- **mobile-dev** — try_another lacks a single-in-flight guard AND retries on empty 200 results. Add (1) in-flight coalescing so concurrent/rapid advances collapse to one outstanding request, and (2) stop auto-re-firing when a 200 comes back with an empty/insufficient pool (surface "no more alternates"). Suspected area: the Home recommendation hook/service wiring prefetch + home-show-another / swipe advance to the recommendation service try_another (e.g. auxi/src/screens/HomeScreen.tsx + src/services/recommendation.ts + the prefetch hook). Evidence: backend log lines 2238-2272 and 2276-2313.
+- **backend-dev / qa (info only)** — the shared-IP SimpleRateLimiter(20) means the V05 eval and the sim contend for one bucket on 127.0.0.1; future prefetch verifies should pause eval or run the app against a separate backend instance.
+
+## Unresolved questions / asks
+1. Confirm the swipe/alternate view shares the same try_another guard gap (Caveat C) — needs the toggle to engage (seed a non-empty HOT-weather pool).
+2. Refine/context modal submit (A3) still unverified — re-test with a seeded light-wear wardrobe.
+3. Is the 9-10-call eager-prefetch burst (Repro 1) intended retry behavior or a bug independent of the in-flight guard? Both point to mobile-dev but confirm scope.
+
+---
+
+**Status:** DONE_WITH_CONCERNS
+**Summary:** Working binary com.auxi2026.app reaches Home cleanly (no redbox/crash). **A2 FAILS**: 6 rapid home-show-another taps produced 10 try_another 200 + 1 try_another 429 on the app's own port (clean bucket, zero eval interleave); a single cold-start buil. also fanned out into 9 try_another 200 + 1 429 with zero interaction. No single-in-flight guard / debounce, plus a retry-on-empty-pool loop (hot_weather_no_lightwear). A1 fires as designed but is entangled with the A2 retry. A3 grid smoke PASSES (tiles populate, advance works, graceful 429 toast). Evidence: backend log lines 2238-2272, 2276-2313.
+**Concerns/Blockers:** (1) Swipe view not exercised — toggle wouldn't engage in depleted-pool state; A2 proven via grid advance, which calls the same endpoint. (2) Refine modal submit unverified (unreachable in empty-pool state). (3) Shared 127.0.0.1 rate-limit bucket with V05 eval complicated windowing — drained and isolated per action. Did not rebuild native (out of scope, per constraints).
+
+---
+
+# Re-run #4 (after empty-pool fix) — A2 interactive only
+
+> Focused re-test of the single A2 interactive case after the JS fix landed in
+> `HomeScreen.tsx` (prefetch chain + swipe-prefetch now STOP on empty pool via
+> `poolDepletedRef`). Lead already confirmed cold-start fires only 1 build + 1
+> try_another. This run confirms the INTERACTIVE rapid-advance burst is bounded.
+
+**Status:** PASS
+**Date:** 2026-05-26 (test window 09:49–09:51)
+**Device:** iOS Simulator iPhone 16 (id `6371F8E8-893E-4D7C-8683-8A128B7996F8`, iOS 18.2)
+**Bundle under test:** `com.auxi2026.app` — terminate+relaunch to pull latest JS bundle (no native rebuild)
+**Backend log (ground truth):** `wardrobe-backend/eval_backend_llm3.log`
+**MCP pre-flight:** `./scripts/mcp-doctor.sh` exit 0 (sim booted, WDA :8100, mobile-mcp pinned 0.0.56)
+
+## Method
+1. Drained the shared 20/min `127.0.0.1` rate-limit bucket BEFORE testing —
+   polled the log until 65s of zero growth (held flat at 2368 lines). Window
+   confirmed clear, so the app's burst hits a fresh limiter with no eval interleave.
+2. Terminated + relaunched `com.auxi2026.app`, reached Home (AU-253 grid view),
+   let cold-start settle ~12s.
+3. Snapshot cold-start try_another.
+4. Tapped `home-show-another` at (238,596) 6× back-to-back (~3s).
+5. Waited ~12s for drain. Snapshot again.
+
+## Results — counts & source ports
+
+| Marker | try_another total | delta | source port(s) | statuses |
+|---|---|---|---|---|
+| Pre-launch baseline | 215 | — | (prior run: 602xx/605xx/609xx/615-616xx) | — |
+| After cold-start settle | 216 | **+1** | 61998 | 1× 200 |
+| After 6-tap burst + 12s drain | 218 | **+2** | 62068 | 2× 422 |
+
+- **Cold-start:** exactly 1 try_another (200), matching lead's confirmation
+  (was ~10 + 1×429 before the fix). Bounded.
+- **Interactive burst delta = 2** new try_another (was **11** incl. a self-inflicted
+  429 in Re-run #3). PASS threshold was ≤~2.
+- **429s caused by my burst on the app's ports (62068) during the window: 0.**
+  PASS threshold was zero self-inflicted 429.
+- The 2 burst calls returned **422 Unprocessable Content** (not 200-empty) — each
+  was preceded by a `/build` 200 on the same port 62068. The app rebuilt then
+  asked try_another, which the backend rejected as unprocessable in the depleted
+  state. This is bounded, non-looping behavior — exactly what the fix targets.
+- Post-burst UI: `home-show-another` correctly flipped to
+  `home-show-another-disabled` (pool depleted, button disabled — expected & fine
+  per dispatch). Outfit advanced to "Calm and clear." (tile row index 3), so the
+  landed calls did advance the grid.
+
+## Evidence — `tail -n 25` filtered to `recommendation/try_another`
+```
+INFO:     127.0.0.1:60536 ... try_another ... 200 OK        # ← prior run (Re-run #3)
+INFO:     127.0.0.1:60536 ... try_another ... 429 Too Many Requests   # ← prior self-inflicted 429
+INFO:     127.0.0.1:60968 ... try_another ... 200 OK   (×10)          # ← prior run loop
+INFO:     127.0.0.1:60968 ... try_another ... 429 Too Many Requests   # ← prior self-inflicted 429
+INFO:     127.0.0.1:61581 ... try_another ... 200 OK
+INFO:     127.0.0.1:61597 ... try_another ... 200 OK
+INFO:     127.0.0.1:61628 ... try_another ... 200 OK
+INFO:     127.0.0.1:61639 ... try_another ... 200 OK
+INFO:     127.0.0.1:61692 ... try_another ... 200 OK
+INFO:     127.0.0.1:61998 - "POST /api/v05/recommendation/try_another HTTP/1.1" 200 OK   # ← THIS RUN cold-start (+1)
+INFO:     127.0.0.1:62068 - "POST /api/v05/recommendation/try_another HTTP/1.1" 422 Unprocessable Content  # ← THIS RUN burst
+INFO:     127.0.0.1:62068 - "POST /api/v05/recommendation/try_another HTTP/1.1" 422 Unprocessable Content  # ← THIS RUN burst
+```
+This-run window (log lines 2369+): 3 try_another total (1 cold-start 200 on
+61998, 2 burst 422 on 62068), **zero 429**.
+
+## Screenshot
+- `auxi/docs/qa-findings/screenshots/2026-05-26/qa-mobile-a2-rerun4-postburst.png`
+  — grid after 6 rapid show-another taps; button disabled, outfit "Calm and clear."
+
+## Verdict
+**A2 interactive PASS.** Burst delta dropped from 11 (incl. a self-inflicted 429)
+to 2, with zero self-inflicted 429. The empty-pool retry loop is fixed: rapid
+advance no longer fans out. Cold-start also confirmed at 1 try_another.
+
+## Minor follow-up (not a spam-guard failure — informational)
+- Burst try_another now returns **422 Unprocessable Content** in the depleted
+  state rather than 200-empty. Bounded and non-looping, so it does NOT affect the
+  A2 PASS, but the 422 is a minor contract observation: a depleted-pool advance
+  ideally returns 200 with an empty/insufficient signal (or the client should
+  suppress the call once `poolDepletedRef` is set) rather than POSTing an
+  unprocessable payload. Suggest mobile-dev confirm whether the trailing 422s are
+  intended or a small residual of the rebuild-then-try_another path. Low priority.
+
+**Status:** DONE
+**Summary:** A2 interactive re-test PASSES after the empty-pool fix. 6 rapid
+`home-show-another` taps produced only 2 new try_another (was 11) with 0
+self-inflicted 429 (was 1). Cold-start confirmed at 1 try_another. Button
+correctly disables on depletion. Drained the shared rate-limit window first so
+the app's traffic was fully isolated (ports 61998 cold-start, 62068 burst).
+**Concerns/Blockers:** Minor/informational only — the 2 bounded burst calls
+returned 422 (rebuild-then-try_another in depleted pool) instead of 200-empty;
+non-looping, does not affect the A2 PASS. Flagged to mobile-dev as low-priority
+contract polish.

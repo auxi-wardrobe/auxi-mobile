@@ -23,6 +23,7 @@
     "axios": "^1.13.5",
     "i18next": "^26.2.0",
     "intl-pluralrules": "^2.0.1",
+    "mixpanel-react-native": "^3.3.0",
     "react": "19.2.0",
     "react-i18next": "^17.0.8",
     "react-native": "0.83.1",

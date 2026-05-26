@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Modal,
   SafeAreaView,
@@ -14,7 +20,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../context/AuthContext';
 import { Sidebar } from '../components/layout/Sidebar';
-import { BottomSheetSurface, TopIconButton } from '../components/primitives/FigmaPrimitives';
+import {
+  BottomSheetSurface,
+  TopIconButton,
+} from '../components/primitives/FigmaPrimitives';
 import { Icons } from '../assets/icons';
 import {
   DailyNotificationFrequency,
@@ -99,12 +108,22 @@ const frequencyLabelMap: Record<DailyNotificationFrequency, string> = {
   everydays: 'Everydays',
 };
 
-const resolveSettings = (metadata?: UserMetadata | null): ResolvedSettingsState => ({
+const resolveSettings = (
+  metadata?: UserMetadata | null,
+): ResolvedSettingsState => ({
   dailyNotification: {
-    enabled: metadata?.daily_notification?.enabled ?? DEFAULT_SETTINGS.dailyNotification.enabled,
-    time: metadata?.daily_notification?.time ?? DEFAULT_SETTINGS.dailyNotification.time,
-    period: metadata?.daily_notification?.period ?? DEFAULT_SETTINGS.dailyNotification.period,
-    frequency: metadata?.daily_notification?.frequency ?? DEFAULT_SETTINGS.dailyNotification.frequency,
+    enabled:
+      metadata?.daily_notification?.enabled ??
+      DEFAULT_SETTINGS.dailyNotification.enabled,
+    time:
+      metadata?.daily_notification?.time ??
+      DEFAULT_SETTINGS.dailyNotification.time,
+    period:
+      metadata?.daily_notification?.period ??
+      DEFAULT_SETTINGS.dailyNotification.period,
+    frequency:
+      metadata?.daily_notification?.frequency ??
+      DEFAULT_SETTINGS.dailyNotification.frequency,
   },
   styleDirection: metadata?.style_direction ?? DEFAULT_SETTINGS.styleDirection,
 });
@@ -113,14 +132,18 @@ const getErrorStatus = (error: unknown) =>
   (error as { response?: { status?: number } } | undefined)?.response?.status;
 
 const getErrorMessage = (error: unknown, fallback: string) => {
-  const responseData = (error as {
-    response?: {
-      data?: {
-        detail?: Array<{ msg?: string }>;
-        message?: string;
-      };
-    };
-  } | undefined)?.response?.data;
+  const responseData = (
+    error as
+      | {
+          response?: {
+            data?: {
+              detail?: Array<{ msg?: string }>;
+              message?: string;
+            };
+          };
+        }
+      | undefined
+  )?.response?.data;
 
   return responseData?.detail?.[0]?.msg || responseData?.message || fallback;
 };
@@ -137,17 +160,25 @@ const showSettingsError = (title: string, message: string) => {
 
 export const SettingsScreen = () => {
   const navigation = useNavigation<Navigation>();
-  const { checkAuth, refreshUser, resetUserPreferences, updateCurrentUser, user } = useAuth();
+  const {
+    checkAuth,
+    refreshUser,
+    resetUserPreferences,
+    updateCurrentUser,
+    user,
+  } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [settings, setSettings] = useState<ResolvedSettingsState>(DEFAULT_SETTINGS);
+  const [settings, setSettings] =
+    useState<ResolvedSettingsState>(DEFAULT_SETTINGS);
   const [pendingDisplayDirection, setPendingDisplayDirection] =
     useState<UserStyleDirection>(DEFAULT_SETTINGS.styleDirection);
   const [pendingPeriod, setPendingPeriod] = useState<DailyNotificationPeriod>(
     DEFAULT_SETTINGS.dailyNotification.period,
   );
-  const [pendingFrequency, setPendingFrequency] = useState<DailyNotificationFrequency>(
-    DEFAULT_SETTINGS.dailyNotification.frequency,
-  );
+  const [pendingFrequency, setPendingFrequency] =
+    useState<DailyNotificationFrequency>(
+      DEFAULT_SETTINGS.dailyNotification.frequency,
+    );
   const [activeModal, setActiveModal] = useState<ActiveModal>('none');
   const [isSavingDirection, setIsSavingDirection] = useState(false);
   const [isSavingTime, setIsSavingTime] = useState(false);
@@ -155,7 +186,9 @@ export const SettingsScreen = () => {
   // Dark Mode: VISUAL-ONLY local stub — no theming infra wired.
   // TODO(settings): dark theme not implemented.
   const [darkModeStub, setDarkModeStub] = useState(false);
-  const reminderSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reminderSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const syncFromUser = useCallback((nextUser: User | null) => {
     const nextSettings = resolveSettings(nextUser?.user_metadata);
@@ -257,7 +290,7 @@ export const SettingsScreen = () => {
   const handleReminderToggle = (enabled: boolean) => {
     const previousValue = settings.dailyNotification.enabled;
 
-    setSettings((current) => ({
+    setSettings(current => ({
       ...current,
       dailyNotification: {
         ...current.dailyNotification,
@@ -278,7 +311,7 @@ export const SettingsScreen = () => {
         },
         'Failed to update daily time',
       ).catch(() => {
-        setSettings((current) => ({
+        setSettings(current => ({
           ...current,
           dailyNotification: {
             ...current.dailyNotification,
@@ -436,7 +469,11 @@ export const SettingsScreen = () => {
             onPress={() => {}}
           >
             <Text style={styles.rowLabel}>Your information</Text>
-            <Icons.ArrowRight width={24} height={24} color={theme.colors.uacTextBase} />
+            <Icons.ArrowRight
+              width={24}
+              height={24}
+              color={theme.colors.uacTextBase}
+            />
           </TouchableOpacity>
 
           <Divider />
@@ -448,7 +485,11 @@ export const SettingsScreen = () => {
             onPress={() => navigation.navigate('Body', { mode: 'photoDetail' })}
           >
             <Text style={styles.rowLabel}>Manage body photo</Text>
-            <Icons.ArrowRight width={24} height={24} color={theme.colors.uacTextBase} />
+            <Icons.ArrowRight
+              width={24}
+              height={24}
+              color={theme.colors.uacTextBase}
+            />
           </TouchableOpacity>
 
           <Divider />
@@ -461,7 +502,11 @@ export const SettingsScreen = () => {
           >
             {/* Main-list "Delete data" row is NEUTRAL (qa-ui C2) — not red. */}
             <Text style={styles.rowLabel}>Delete data</Text>
-            <Icons.Delete width={24} height={24} color={theme.colors.uacTextBase} />
+            <Icons.Delete
+              width={24}
+              height={24}
+              color={theme.colors.uacTextBase}
+            />
           </TouchableOpacity>
 
           <Divider />
@@ -506,7 +551,9 @@ export const SettingsScreen = () => {
             <TouchableWithoutFeedback>
               <View style={styles.modalCard}>
                 <Text style={styles.modalTitle}>Adjust your direction</Text>
-                <Text style={styles.modalBody}>This shifts your upcoming suggestions.</Text>
+                <Text style={styles.modalBody}>
+                  This shifts your upcoming suggestions.
+                </Text>
 
                 <View style={styles.optionList}>
                   {DIRECTION_OPTIONS.map((option, index) => (
@@ -519,10 +566,14 @@ export const SettingsScreen = () => {
                     >
                       <View style={styles.optionCopy}>
                         <Text style={styles.optionTitle}>{option.label}</Text>
-                        <Text style={styles.optionDescription}>{option.description}</Text>
+                        <Text style={styles.optionDescription}>
+                          {option.description}
+                        </Text>
                       </View>
 
-                      <Radio selected={pendingDisplayDirection === option.key} />
+                      <Radio
+                        selected={pendingDisplayDirection === option.key}
+                      />
 
                       {index < DIRECTION_OPTIONS.length - 1 ? (
                         <View style={styles.optionDivider} />
@@ -586,7 +637,7 @@ export const SettingsScreen = () => {
                   </Text>
 
                   <View style={styles.periodStack}>
-                    {(['AM', 'PM'] as DailyNotificationPeriod[]).map((period) => (
+                    {(['AM', 'PM'] as DailyNotificationPeriod[]).map(period => (
                       <TouchableOpacity
                         key={period}
                         testID={`settings-time-period-${period.toLowerCase()}`}
@@ -613,7 +664,9 @@ export const SettingsScreen = () => {
                       <View style={styles.optionCopy}>
                         <Text style={styles.optionTitle}>{option.label}</Text>
                         {option.description ? (
-                          <Text style={styles.optionDescription}>{option.description}</Text>
+                          <Text style={styles.optionDescription}>
+                            {option.description}
+                          </Text>
                         ) : null}
                       </View>
 

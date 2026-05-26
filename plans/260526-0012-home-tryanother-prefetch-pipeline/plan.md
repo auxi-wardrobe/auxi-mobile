@@ -69,6 +69,17 @@ Keep `build = 3` (instant first impression, no per-card wait). Layer a
   !== current `fetchGenerationRef.current`, **drop** the result (don't
   append/replace). Prevents a pre-reset prefetch from polluting the new session.
 
+### Change 4 — Stop chaining on a depleted pool (regression fix, found in QA)
+- Change 2's chaining regressed: a `try_another` against a depleted pool returns
+  `200` with an EMPTY outfit (`v05_pool_insufficient`). Empty never grows
+  `ahead`, so the chain re-fired instantly (~85ms apart, no LLM) and spam-looped
+  into the backend's 20/min limiter (cold-start fanned out to ~10 calls + 429).
+- Fix: `poolDepletedRef` — set when a resolve adds 0 outfits; stops both the
+  chain (in `onSuccess`) and swipe-driven `ensureBuffer`. Cleared on cold-start
+  build and on every `resetV05Session()` (refine / mode change).
+- Verified on sim (com.auxi2026.app): cold-start 1 build + 1 try_another (was
+  1 + ~10); 6 rapid advances → 2 try_another (was 11), 0 self-inflicted 429.
+
 ## Out of scope (YAGNI)
 - No aggregate rate-limit throttle unless a real 429 rate-limit is observed
   (CEO unsure; single-in-flight already self-throttles to 1 call / resolve).

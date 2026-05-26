@@ -1,0 +1,24 @@
+// Mixpanel configuration.
+//
+// The project token is a PUBLIC client identifier — it is safe to ship in
+// the app bundle and is NOT a secret API key (it only allows *writing*
+// events into the project, which is exactly what the client does).
+//
+// Mirrors the __DEV__ split in `env.ts`: dev and prod must be SEPARATE
+// Mixpanel projects because Simplified ID Merge and the project timezone
+// cannot be changed retroactively. Keeping dev traffic out of the prod
+// project is the whole reason for two tokens.
+//
+// TODO(prod, before first release): create the production Mixpanel project
+// and paste its token into PROD_TOKEN. Until then PROD_TOKEN is empty and
+// analytics no-ops in release builds (see `doInit` in services/analytics.ts),
+// so we never pollute a real project with test data.
+const DEV_TOKEN = 'b402f392536a20f92a54f18dc5df1f93';
+const PROD_TOKEN = ''; // <-- set before launch
+
+export const MIXPANEL_TOKEN: string = __DEV__ ? DEV_TOKEN : PROD_TOKEN;
+
+// Persisted analytics-consent decision. EU/CA users must opt in before the
+// SDK initialises (see services/analytics.ts). Versioned so a future policy
+// change can force a fresh consent prompt by bumping the suffix.
+export const ANALYTICS_CONSENT_KEY = 'auxi.analytics.consent.v1';

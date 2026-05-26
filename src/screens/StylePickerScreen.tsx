@@ -27,7 +27,11 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
+import { track } from '../services/analytics';
+import {
+  PillButton,
+  TopIconButton,
+} from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
 import {
   STYLE_TAGS,
@@ -50,7 +54,12 @@ interface StyleTileProps {
   onPress: () => void;
 }
 
-const StyleTile: React.FC<StyleTileProps> = ({ label, rank, disabled, onPress }) => {
+const StyleTile: React.FC<StyleTileProps> = ({
+  label,
+  rank,
+  disabled,
+  onPress,
+}) => {
   const isSelected = rank !== null;
   return (
     <TouchableOpacity
@@ -67,7 +76,9 @@ const StyleTile: React.FC<StyleTileProps> = ({ label, rank, disabled, onPress })
         disabled && !isSelected && styles.tileDisabled,
       ]}
     >
-      <Text style={[styles.tileLabel, isSelected && styles.tileLabelSelected]}>{label}</Text>
+      <Text style={[styles.tileLabel, isSelected && styles.tileLabelSelected]}>
+        {label}
+      </Text>
       {isSelected ? (
         <View style={styles.rankBadge}>
           <Text style={styles.rankBadgeText}>{rank}</Text>
@@ -86,7 +97,14 @@ interface ParsedError {
 const parseGenerateError = (err: unknown): ParsedError => {
   // axios error with response payload
   if (err && typeof err === 'object' && 'response' in err) {
-    const response = (err as { response?: { status?: number; data?: { error?: string; message?: string } } }).response;
+    const response = (
+      err as {
+        response?: {
+          status?: number;
+          data?: { error?: string; message?: string };
+        };
+      }
+    ).response;
     const status = response?.status;
     const data = response?.data;
     const errorCode = data?.error ?? '';
@@ -117,7 +135,7 @@ const parseGenerateError = (err: unknown): ParsedError => {
     }
   }
   return {
-    title: "Something went wrong",
+    title: 'Something went wrong',
     message: "We couldn't generate your wardrobe. Please try again.",
     isPoolError: false,
   };
@@ -137,47 +155,62 @@ export const StylePickerScreen = () => {
     unknown,
     StyleTag[]
   >({
-    mutationFn: (style_preferences) =>
+    mutationFn: style_preferences =>
       generateStarterWardrobe({
         wardrobe_direction,
         fit_preference,
         style_preferences,
       }),
-    onSuccess: async () => {
+    onSuccess: async (_data, style_preferences) => {
       // Flip is_first_login=false so the AppNavigator switches to the
       // Home stack. Wardrobe items are already persisted server-side.
       try {
         await completeOnboarding();
+        // Activation milestone — a new user finished required setup.
+        track('onboarding_completed', {
+          styles_selected: style_preferences.length,
+          wardrobe_direction,
+          fit_preference,
+        });
       } catch (err) {
         // If completeOnboarding fails the user is stranded on this
         // screen but the wardrobe IS materialised. Log + let them retry
         // — re-running generateStarterWardrobe is idempotent (server
         // hard-deletes prior auto-clones first).
-        console.error('Failed to complete onboarding after V05 generation', err);
+        console.error(
+          'Failed to complete onboarding after V05 generation',
+          err,
+        );
       }
     },
   });
 
   const togglePick = useCallback((tag: StyleTag) => {
-    setRanked((prev) => {
+    setRanked(prev => {
       const idx = prev.indexOf(tag);
       if (idx >= 0) {
         // Deselect: collapse the rank order.
-        return prev.filter((t) => t !== tag);
+        return prev.filter(t => t !== tag);
       }
       if (prev.length >= MAX_SELECTION) return prev;
       return [...prev, tag];
     });
   }, []);
 
-  const isReady = ranked.length >= MIN_SELECTION && ranked.length <= MAX_SELECTION;
+  const isReady =
+    ranked.length >= MIN_SELECTION && ranked.length <= MAX_SELECTION;
   const isLoading = generateMutation.isPending;
-  const error = generateMutation.isError ? parseGenerateError(generateMutation.error) : null;
+  const error = generateMutation.isError
+    ? parseGenerateError(generateMutation.error)
+    : null;
 
   const helperCopy = useMemo(() => {
-    if (ranked.length === 0) return `Pick ${MIN_SELECTION}-${MAX_SELECTION} that feel like you.`;
-    if (ranked.length < MIN_SELECTION) return `Pick ${MIN_SELECTION - ranked.length} more.`;
-    if (ranked.length === MAX_SELECTION) return "Looks great. Tap Continue when you're ready.";
+    if (ranked.length === 0)
+      return `Pick ${MIN_SELECTION}-${MAX_SELECTION} that feel like you.`;
+    if (ranked.length < MIN_SELECTION)
+      return `Pick ${MIN_SELECTION - ranked.length} more.`;
+    if (ranked.length === MAX_SELECTION)
+      return "Looks great. Tap Continue when you're ready.";
     return 'Add one more or continue.';
   }, [ranked.length]);
 
@@ -217,11 +250,8 @@ export const StylePickerScreen = () => {
               <Text style={styles.subtitle}>{helperCopy}</Text>
             </View>
 
-            <View
-              style={styles.tileGrid}
-              testID="onboarding-style-grid"
-            >
-              {STYLE_TAGS.map((tag) => {
+            <View style={styles.tileGrid} testID="onboarding-style-grid">
+              {STYLE_TAGS.map(tag => {
                 const idx = ranked.indexOf(tag);
                 const rank = idx >= 0 ? idx + 1 : null;
                 const limitReached =
