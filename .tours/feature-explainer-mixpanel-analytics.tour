@@ -1,0 +1,73 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Mixpanel Analytics — Consent-Gated Integration",
+  "description": "How product analytics works in auxi: a single seam (services/analytics.ts) that stays inert until the user grants consent, the identity wiring in AuthContext, and where events fire. Read top to bottom to trace any event from its call site to the SDK.",
+  "steps": [
+    {
+      "file": "src/config/analytics.ts",
+      "pattern": "MIXPANEL_TOKEN: string",
+      "title": "1 · Where the token lives",
+      "description": "Situation: the Mixpanel project token, with a __DEV__ dev/prod split mirroring env.ts. Mechanism: dev and prod are SEPARATE Mixpanel projects (Simplified ID Merge + timezone can't be changed retroactively). Implication: PROD_TOKEN is empty today, so release builds no-op until it's filled in. Gotcha: this token is a PUBLIC client identifier (write-only) — NOT a secret key, so it's safe in the bundle. ANALYTICS_CONSENT_KEY just below is the AsyncStorage key for the persisted consent decision."
+    },
+    {
+      "file": "src/services/analytics.ts",
+      "pattern": "let mixpanel: Mixpanel",
+      "title": "2 · The seam's single source of truth",
+      "description": "Situation: the whole integration hangs off this one module-scoped singleton. Mechanism: `mixpanel` is null until consent is granted AND init resolves. Implication: every public function guards on it, so 'is the SDK live?' has exactly one answer. Gotcha: this is module state — tests reset the module (jest.resetModules) to get a clean gate per case."
+    },
+    {
+      "file": "src/services/analytics.ts",
+      "pattern": "export const track =",
+      "title": "3 · The consent guarantee",
+      "description": "Situation: this is the function every screen calls. Mechanism: `mixpanel?.track(...)` — when the singleton is null (pre-consent), it's a no-op beyond a dev console line; nothing leaves the device. Implication: the EU/CA privacy promise is structural, not a runtime flag you can forget to check. Gotcha: it never throws — call sites are fire-and-forget by contract (see analytics.test.ts)."
+    },
+    {
+      "file": "src/services/analytics.ts",
+      "pattern": "grantAnalyticsConsent = async",
+      "title": "4 · Opening the gate",
+      "description": "Situation: this is what a consent UI calls when the user opts in. Mechanism: persist 'granted' to AsyncStorage, then ensureInit() to bring the SDK up. Implication: only after this does `mixpanel` become non-null and events start flowing. Gotcha: revokeAnalyticsConsent (just below) is the inverse — optOutTracking + reset + tear the singleton back to null, so post-revoke track() goes silent again. NOTE: no consent UI exists yet — nothing calls this in-app, so no events flow until that's wired."
+    },
+    {
+      "file": "src/services/analytics.ts",
+      "pattern": "const ensureInit",
+      "title": "5 · Retry-safe init (don't poison the session)",
+      "description": "Situation: a single-flight wrapper around doInit(). Mechanism: it memoizes the in-flight promise BUT nulls `initInFlight` if doInit rejects. Implication: a transient AsyncStorage/native failure during init doesn't permanently disable analytics — the next grant/init attempt retries. Gotcha: this exact behaviour was a review finding (M1) and is covered by the 'does not memoize a failed init' test."
+    },
+    {
+      "file": "src/services/analytics.ts",
+      "pattern": "const doInit = async",
+      "title": "6 · The only place the SDK is constructed",
+      "description": "Situation: the single construction site for `new Mixpanel(...)`. Mechanism: reached ONLY post-consent; registers super properties at init and calls setUseIpAddressForGeolocation(false) for the EU/CA privacy posture. Implication: if you're auditing 'can the SDK exist before consent?', this is the only place to check — and it's unreachable pre-consent. Gotcha: it bails early when MIXPANEL_TOKEN is empty (the release-without-prod-token case), staying disabled rather than half-configured."
+    },
+    {
+      "file": "src/services/analytics.ts",
+      "pattern": "export const identifyUser =",
+      "title": "7 · Identity done right",
+      "description": "Situation: links events to a known user after auth. Mechanism: distinct_id is the DB user id (NEVER email); the People profile is written only AFTER identify() resolves, so it can't land on the anonymous id. Implication: profiles and events attribute to the right user. Gotcha: if called before the SDK is up, identity is stashed in `pendingIdentity` and replayed (identify-before-People) inside doInit — the ordering test asserts exactly this."
+    },
+    {
+      "file": "App.tsx",
+      "pattern": "analytics init failed",
+      "title": "8 · Boot wiring",
+      "description": "Situation: app startup. Mechanism: initAnalytics() runs at module load, fire-and-forget. Implication: it only actually boots the SDK if consent was granted in a previous session (re-reads the stored flag); otherwise it stays inert. Gotcha: this is the re-identify-on-relaunch entry point — pair it with AuthContext (next step) which re-identifies once the restored user lands."
+    },
+    {
+      "file": "src/context/AuthContext.tsx",
+      "pattern": "analyticsIdRef.current = distinctId",
+      "title": "9 · Identity transitions",
+      "description": "Situation: a single useEffect on `user` is the one place identity is driven. Mechanism: on user-present (login, cold-start restore, post-verify) it calls identifyUser; on user-cleared (logout / session expiry) it calls resetAnalytics. Implication: identify/reset can't drift out of sync with auth state. Gotcha: `sign_in_completed` fires HERE (after identify lands, gated by justLoggedInRef) — not in login() — so the event attributes to the identified user, not the anonymous id, and only for explicit logins."
+    },
+    {
+      "file": "src/screens/HomeScreen.tsx",
+      "pattern": "outfit_favorited",
+      "title": "10 · The Value Moment",
+      "description": "Situation: a user favoriting a recommended outfit — the product's core value signal. Mechanism: track('outfit_favorited', ...) fires on the saveFavourite SUCCESS path, so it counts genuine saves, not intents. Implication: this is the headline metric the whole integration exists to measure. Gotcha: it routes through the same `track` seam from step 3, so it's a no-op until consent — same as every other event."
+    },
+    {
+      "file": "docs/analytics/mixpanel-tracking-plan.md",
+      "pattern": "IMPLEMENTED",
+      "title": "11 · Where to go next",
+      "description": "You can now trace any event end to end: call site -> track() seam -> consent gate -> SDK. This tracking plan is the source of truth for the full event list (onboarding_completed, try_on_started/completed/failed, sign_in_completed), the identity/super-property design, the deferred follow-ups (consent UI, OAuth method tagging, outfit_recommendation_viewed), and the manual Mixpanel dashboard steps (create the prod project, verify Simplified ID Merge before sending events)."
+    }
+  ]
+}

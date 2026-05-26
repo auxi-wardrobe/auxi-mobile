@@ -81,7 +81,9 @@
         "oauth_not_configured": "[VI] Sign-in is not set up on this build yet.",
         "oauth_generic_error": "[VI] Couldn't sign in. Please try again.",
         "oauth_conflict_other_provider": "[VI] This email is linked to {{provider}}. Sign in with {{provider}} instead.",
-        "oauth_conflict_password": "[VI] This email already has a password. Sign in with your password."
+        "oauth_conflict_password": "[VI] This email already has a password. Sign in with your password.",
+        "qa_bypass_cta": "[VI] QA: Skip to Onboarding",
+        "qa_bypass_error": "[VI] QA bypass login failed. Check the backend on :5001."
       },
       "language_settings": {
         "title": "[VI] Language",

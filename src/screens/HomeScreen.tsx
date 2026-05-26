@@ -1083,6 +1083,8 @@ export const HomeScreen = () => {
 
       <View style={styles.header}>
         <TopIconButton
+          testID="home-menu-button"
+          accessibilityLabel="Open menu"
           onPress={handleLeadingAction}
           icon={<IconHomeMenu width={24} height={24} />}
         />

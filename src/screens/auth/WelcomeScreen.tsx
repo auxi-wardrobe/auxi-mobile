@@ -21,7 +21,7 @@
  *   "Sign-in is not set up" so the app doesn't crash at the SDK
  *   boundary on builds that haven't received `GoogleService-Info.plist`.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -45,6 +45,11 @@ import {
   isOAuthConflictError,
   type AuthErrorEnvelope,
 } from '../../services/authTypes';
+import {
+  QA_BYPASS_EMAIL,
+  QA_BYPASS_ENABLED,
+  QA_BYPASS_PASSWORD,
+} from '../../config/featureFlags';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
@@ -111,12 +116,18 @@ const CaretDownGlyph = () => (
 export const WelcomeScreen = () => {
   const navigation = useNavigation<Navigation>();
   const { t } = useTranslation();
-  const { refreshUser } = useAuth();
+  const { refreshUser, login, startOnboardingReplay } = useAuth();
   const googleMutation = useGoogleSignInMutation();
   const appleMutation = useAppleSignInMutation();
 
+  // Dev-only QA bypass busy flag (separate from OAuth busy so a failed
+  // bypass doesn't wedge the social CTAs).
+  const [qaBypassBusy, setQaBypassBusy] = useState(false);
+
   const isAppleAvailable = Platform.OS === 'ios';
-  const isBusy = googleMutation.isPending || appleMutation.isPending;
+  const showQaBypass = __DEV__ && QA_BYPASS_ENABLED;
+  const isBusy =
+    googleMutation.isPending || appleMutation.isPending || qaBypassBusy;
 
   const onPressEmail = () =>
     navigation.navigate('EmailInput', { mode: 'signup' });
@@ -212,6 +223,36 @@ export const WelcomeScreen = () => {
         type: 'error',
         text1: t('uac.welcome.oauth_generic_error'),
       });
+    }
+  };
+
+  /**
+   * Dev-only QA bypass — skip the (in-flight, fragile) email UI and land
+   * directly in V2 onboarding. Authenticates the QA account via the same
+   * AuthContext.login() a normal sign-in uses (tokens persisted, user
+   * fetched), then sets `forceOnboarding=true` via startOnboardingReplay()
+   * so AppNavigator shows the onboarding stack regardless of the account's
+   * `is_first_login`. Never reachable in release builds (gated by
+   * `showQaBypass`).
+   */
+  const onPressQaBypass = async () => {
+    if (isBusy) return;
+    setQaBypassBusy(true);
+    try {
+      // login() drives authService.login + checkAuth → AuthContext.user set.
+      await login({ email: QA_BYPASS_EMAIL, password: QA_BYPASS_PASSWORD });
+      // Force the onboarding stack even though qa-test is not a first login.
+      await startOnboardingReplay();
+      // No manual navigation: AppNavigator's `user` gate swaps to the
+      // onboarding stack as soon as user + forceOnboarding are set.
+    } catch (err) {
+      console.warn('QA bypass login failed', err);
+      Toast.show({
+        type: 'error',
+        text1: t('uac.welcome.qa_bypass_error'),
+      });
+    } finally {
+      setQaBypassBusy(false);
     }
   };
 
@@ -317,6 +358,28 @@ export const WelcomeScreen = () => {
         <Text style={styles.legalText} testID="welcome-legal-text">
           {t('uac.welcome.legal_text')}
         </Text>
+
+        {/* Dev-only QA bypass — never rendered in release builds
+            (gated by `__DEV__ && QA_BYPASS_ENABLED`). Logs in the QA
+            account and forces onboarding, skipping the email UI. */}
+        {showQaBypass && (
+          <Pressable
+            testID="welcome-qa-bypass-onboarding"
+            accessibilityRole="button"
+            accessibilityLabel={t('uac.welcome.qa_bypass_cta')}
+            accessibilityState={{ disabled: isBusy, busy: qaBypassBusy }}
+            disabled={isBusy}
+            onPress={onPressQaBypass}
+            style={({ pressed }) => [
+              styles.qaBypassButton,
+              (pressed || isBusy) && styles.pressed,
+            ]}
+          >
+            <Text style={styles.qaBypassLabel}>
+              {t('uac.welcome.qa_bypass_cta')}
+            </Text>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );

@@ -91,10 +91,43 @@ export type AppStackParamList = {
     wardrobe_direction: WardrobeDirection;
     fit_preference: FitPreference;
   };
+  // ───────────────────────────────────────────────────────────────────────
+  // Onboarding V2 redesign (behind `ONBOARDING_V2_ENABLED`). NEW route names
+  // so the legacy V05 routes above stay intact as the flag-OFF fallback.
+  //
+  // Selections thread through route params (no store — per auxi "no Zustand"
+  // rule). Each step forwards the accumulated selection to the next:
+  //   OnboardingWardrobe → wardrobe_direction
+  //   OnboardingFit      → + fit_preference (wire value; UI label per D2)
+  //   OnboardingStyles   → ranked StyleTag[] picked in local state; Next
+  //                        forwards the full selection to OnboardingLoading
+  //                        (the screen no longer owns the /generate call).
+  //   OnboardingLoading  → owns POST /generate (Loading IS the in-flight call,
+  //                        D10). On success → replace to OnboardingCompleted;
+  //                        on error → back to OnboardingStyles with a retry.
+  //   OnboardingCompleted → "Your wardrobe is ready" → OnboardingOutro
+  //   OnboardingOutro    → "See my outfit" → completeOnboarding() → Home swap
+  //
+  // `OnboardingFit` and `OnboardingStyles` are each ONE screen parameterised
+  // by the upstream wardrobe choice (D8) — not 3 distinct flows.
+  OnboardingWardrobe: undefined;
+  OnboardingFit: { wardrobe_direction: WardrobeDirection };
+  OnboardingStyles: {
+    wardrobe_direction: WardrobeDirection;
+    fit_preference: FitPreference;
+  };
+  // Loading owns the /generate mutation (moved out of Styles per D10). Carries
+  // the full selection forward so it can fire the call and, on success,
+  // hand the same selection to Completed (which renders from it instantly).
+  OnboardingLoading: { selection: V05OnboardingSelection };
+  OnboardingCompleted: { selection: V05OnboardingSelection };
+  OnboardingOutro: { selection: V05OnboardingSelection };
   ItemDetail: { itemId: string };
   Database: undefined;
-  OutfitCanvas: {
-    outfitId?: string;
-    items?: Array<{ id: string; imageUrl: string }>;
-  } | undefined;
+  OutfitCanvas:
+    | {
+        outfitId?: string;
+        items?: Array<{ id: string; imageUrl: string }>;
+      }
+    | undefined;
 };

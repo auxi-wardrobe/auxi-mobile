@@ -28,6 +28,8 @@ import IconCanvasLayerDown from '../images/canvas-icons/icon_canvas_layer_down.s
 import IconCanvasDuplicate from '../images/canvas-icons/icon_canvas_duplicate.svg';
 import IconCanvasReplace from '../images/canvas-icons/icon_canvas_replace.svg';
 import IconCanvasDelete from '../images/canvas-icons/icon_canvas_delete.svg';
+import IconLoading from '../images/icon_loading.svg';
+import IconSeeOutfit from '../images/icon_see_outfit.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -60,6 +62,8 @@ export const Icons = {
   CanvasDuplicate: IconCanvasDuplicate,
   CanvasReplace: IconCanvasReplace,
   CanvasDelete: IconCanvasDelete,
+  Loading: IconLoading,
+  SeeOutfit: IconSeeOutfit,
 };
 
 export {
@@ -93,4 +97,6 @@ export {
   IconCanvasDuplicate,
   IconCanvasReplace,
   IconCanvasDelete,
+  IconLoading,
+  IconSeeOutfit,
 };

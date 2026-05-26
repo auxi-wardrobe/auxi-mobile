@@ -34,6 +34,7 @@ import {
 } from '../types/auth';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
+import { ONBOARDING_REPLAY_ENABLED } from '../config/featureFlags';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Settings'>;
 type ActiveModal = 'none' | 'direction' | 'changeTime' | 'deleteConfirm';
@@ -167,6 +168,7 @@ export const SettingsScreen = () => {
     refreshUser,
     resetUserPreferences,
     updateCurrentUser,
+    startOnboardingReplay,
     user,
   } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -395,6 +397,23 @@ export const SettingsScreen = () => {
     }
   };
 
+  // Dev-only "Replay onboarding". Flips the forceOnboarding override so
+  // AppNavigator remounts the Onboarding stack at its first screen
+  // (Welcome). No navigation.reset here: the conditional stack swap in
+  // AppNavigator handles the transition, and Settings doesn't have the
+  // onboarding routes registered to reset to. completeOnboarding() clears
+  // the override when the replayed flow finishes.
+  const handleReplayOnboarding = async () => {
+    try {
+      await startOnboardingReplay();
+    } catch (error) {
+      showSettingsError(
+        'Replay onboarding',
+        getErrorMessage(error, 'Could not start onboarding replay'),
+      );
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
@@ -523,6 +542,30 @@ export const SettingsScreen = () => {
           </View>
 
           <Divider />
+
+          {/* Dev-only "Replay onboarding" — QA tooling, never shipped to
+              prod. Double-gated: __DEV__ (stripped from release bundles)
+              AND ONBOARDING_REPLAY_ENABLED (= __DEV__). */}
+          {__DEV__ && ONBOARDING_REPLAY_ENABLED ? (
+            <>
+              <TouchableOpacity
+                testID="settings-replay-onboarding-row"
+                accessibilityLabel="Replay onboarding (dev only)"
+                activeOpacity={0.82}
+                style={styles.singleRow}
+                onPress={handleReplayOnboarding}
+              >
+                <Text style={styles.rowLabel}>Replay onboarding (dev)</Text>
+                <Icons.ArrowRight
+                  width={24}
+                  height={24}
+                  color={theme.colors.uacTextBase}
+                />
+              </TouchableOpacity>
+
+              <Divider />
+            </>
+          ) : null}
 
           {/* Dark Mode: non-functional stub — disabled + dimmed so users don't
               expect a theme change until theming infra lands. */}
