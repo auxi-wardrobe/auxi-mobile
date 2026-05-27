@@ -148,7 +148,10 @@ describe('OnboardingStylesScreen — selection ranking', () => {
 
 describe('OnboardingStylesScreen — per-wardrobe tile art wiring', () => {
   /** The OnboardingSelectionFigure under a style tile — carries `source`. */
-  const figureFor = (root: ReactTestInstance, tag: string): ReactTestInstance => {
+  const figureFor = (
+    root: ReactTestInstance,
+    tag: string,
+  ): ReactTestInstance => {
     const tile = oneByTestID(root, `onboarding-style-tile-${tag}`);
     const figs = tile.findAll(
       n => typeof n.type !== 'string' && 'source' in (n.props ?? {}),

@@ -108,3 +108,12 @@ export const QA_BYPASS_ENABLED: boolean = __DEV__;
  */
 export const QA_BYPASS_EMAIL = __DEV__ ? 'qa-test@auxi.app' : '';
 export const QA_BYPASS_PASSWORD = __DEV__ ? 'QaTest!2026' : '';
+
+/**
+ * Dev-only: force the app to cold-start on the auth (login) screen by
+ * clearing any saved session on launch. Lets QA re-test sign-in
+ * (Google/Apple/email) repeatedly without manual logout. Never ships —
+ * `__DEV__` only, so release builds compile it to `false` and resume the
+ * saved session as normal.
+ */
+export const FORCE_LOGIN_ON_LAUNCH: boolean = __DEV__;

@@ -9,12 +9,16 @@
 // cannot be changed retroactively. Keeping dev traffic out of the prod
 // project is the whole reason for two tokens.
 //
-// TODO(prod, before first release): create the production Mixpanel project
-// and paste its token into PROD_TOKEN. Until then PROD_TOKEN is empty and
-// analytics no-ops in release builds (see `doInit` in services/analytics.ts),
-// so we never pollute a real project with test data.
+// TEMPORARY (per request): prod reuses the dev token so release builds aren't
+// inert before a dedicated prod Mixpanel project exists.
+// ⚠️ This routes PRODUCTION traffic into the DEV project. Because Simplified
+// ID Merge and the project timezone are NOT retroactive, that data cannot be
+// cleanly separated out later — treat the dev project as throwaway until the
+// real prod token lands.
+// TODO(prod, before first release): create the production Mixpanel project and
+// replace PROD_TOKEN with its own token (do NOT ship the dev token to users).
 const DEV_TOKEN = 'b402f392536a20f92a54f18dc5df1f93';
-const PROD_TOKEN = ''; // <-- set before launch
+const PROD_TOKEN = DEV_TOKEN; // TEMP: real prod token pending — see note above
 
 export const MIXPANEL_TOKEN: string = __DEV__ ? DEV_TOKEN : PROD_TOKEN;
 

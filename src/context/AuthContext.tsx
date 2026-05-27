@@ -12,6 +12,7 @@ import { authService } from '../services/auth';
 import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { registerSessionExpiredListener } from '../services/apiClient';
 import { identifyUser, resetAnalytics, track } from '../services/analytics';
+import { FORCE_LOGIN_ON_LAUNCH } from '../config/featureFlags';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
 
 /**
@@ -20,6 +21,16 @@ import { LoginRequest, RegisterRequest, User } from '../types/auth';
  * `forceOnboarding` below.
  */
 const FORCE_ONBOARDING_STORAGE_KEY = '@auxi/force_onboarding';
+
+/**
+ * Module-level latch for the dev-only FORCE_LOGIN_ON_LAUNCH flag. The
+ * force-logout must fire EXACTLY ONCE per app launch (the first
+ * `checkAuth`, i.e. cold start) — otherwise a real login is undone the
+ * next time `checkAuth` runs (e.g. the email-login path calls it, or a
+ * remount). Module scope (not a ref) so it survives component remounts
+ * within the same JS runtime; resets naturally on a true app restart.
+ */
+let forceLoginConsumed = false;
 
 interface AuthContextType {
   user: User | null;
@@ -105,6 +116,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const checkAuth = useCallback(async () => {
     try {
+      // Dev-only: on the FIRST checkAuth of the app launch (cold start),
+      // clear any saved session so QA lands on the login screen and can
+      // re-test sign-in without manual logout. Latched via
+      // `forceLoginConsumed` so subsequent checkAuth calls (email-login
+      // path, remounts) run normally and a real login sticks.
+      if (FORCE_LOGIN_ON_LAUNCH && !forceLoginConsumed) {
+        forceLoginConsumed = true;
+        try {
+          await authService.logout();
+        } catch (forceLogoutError) {
+          console.warn(
+            'Force-login: logout failed (ignored)',
+            forceLogoutError,
+          );
+        }
+        setUser(null);
+        return;
+      }
       // One-time upgrade for users coming from legacy single-entry Keychain.
       // Idempotent — safe to call on every cold start. Must run BEFORE
       // isAuthenticated() so the new layout is populated.

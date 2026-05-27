@@ -35,6 +35,11 @@ import {
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
 import { ONBOARDING_REPLAY_ENABLED } from '../config/featureFlags';
+import {
+  grantAnalyticsConsent,
+  hasAnalyticsConsent,
+  revokeAnalyticsConsent,
+} from '../services/analytics';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Settings'>;
 type ActiveModal = 'none' | 'direction' | 'changeTime' | 'deleteConfirm';
@@ -189,6 +194,10 @@ export const SettingsScreen = () => {
   const [isResettingPreferences, setIsResettingPreferences] = useState(false);
   // Dark Mode: visual-only stub shipped disabled — no theming infra wired yet.
   const [darkModeStub] = useState(false);
+  // Analytics consent (EU/CA opt-in). Mirrors the persisted decision in the
+  // analytics seam; the Privacy-control toggle below is the production path
+  // that grants/revokes it.
+  const [analyticsConsent, setAnalyticsConsent] = useState(false);
   const reminderSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -204,6 +213,19 @@ export const SettingsScreen = () => {
   useEffect(() => {
     syncFromUser(user);
   }, [syncFromUser, user]);
+
+  // Reflect the persisted analytics-consent decision in the toggle on mount.
+  useEffect(() => {
+    let isMounted = true;
+    hasAnalyticsConsent().then(granted => {
+      if (isMounted) {
+        setAnalyticsConsent(granted);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -323,6 +345,18 @@ export const SettingsScreen = () => {
         }));
       });
     }, 500);
+  };
+
+  // Optimistic flip with rollback on failure (mirrors handleReminderToggle).
+  // grant/revoke persist the decision and bring the SDK up / tear it down.
+  const handleAnalyticsConsentToggle = (enabled: boolean) => {
+    const previousValue = analyticsConsent;
+    setAnalyticsConsent(enabled);
+    const persist = enabled ? grantAnalyticsConsent : revokeAnalyticsConsent;
+    persist().catch(() => {
+      setAnalyticsConsent(previousValue);
+      showSettingsError('Settings', 'Failed to update analytics preference');
+    });
   };
 
   const applyDirection = async () => {
@@ -482,6 +516,21 @@ export const SettingsScreen = () => {
           {/* Privacy control group */}
           <View style={styles.sectionLabelWrap}>
             <Text style={styles.rowLabel}>Privacy control</Text>
+          </View>
+
+          <Divider />
+
+          {/* Analytics consent (EU/CA opt-in). The only production path to
+              grant/revoke — until granted, the Mixpanel SDK stays inert and
+              every track() call no-ops (see services/analytics.ts). */}
+          <View style={styles.rowHeader}>
+            <Text style={styles.rowLabel}>Share usage analytics</Text>
+            <SettingsSwitch
+              testID="settings-analytics-consent-toggle"
+              accessibilityLabel="Toggle sharing usage analytics"
+              value={analyticsConsent}
+              onValueChange={handleAnalyticsConsentToggle}
+            />
           </View>
 
           <Divider />

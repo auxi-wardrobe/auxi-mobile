@@ -15,7 +15,7 @@ import Toast from 'react-native-toast-message';
 import { initI18n } from './src/i18n/init';
 import { theme } from './src/theme/theme';
 import { configureGoogleSignIn } from './src/services/oauth/googleSignIn';
-import { initAnalytics } from './src/services/analytics';
+import { grantAnalyticsConsent, initAnalytics } from './src/services/analytics';
 
 const queryClient = new QueryClient();
 
@@ -24,9 +24,20 @@ const queryClient = new QueryClient();
 // needs no startup hook.
 configureGoogleSignIn();
 
-// Bring analytics up if the user previously granted consent. Fire-and-forget;
-// the SDK stays inert until consent is granted (see services/analytics.ts).
-initAnalytics().catch(err => console.warn('[App] analytics init failed', err));
+// Bring analytics up. Production honours stored consent — the SDK stays inert
+// until the user opts in via Settings → Privacy control. Dev auto-grants so
+// events reach the dev Mixpanel project without a consent gesture; note this
+// re-grants on every dev restart, overriding a revoke made via the Settings
+// toggle within the same dev session. Fire-and-forget either way.
+if (__DEV__) {
+  grantAnalyticsConsent().catch(err =>
+    console.warn('[App] analytics init failed', err),
+  );
+} else {
+  initAnalytics().catch(err =>
+    console.warn('[App] analytics init failed', err),
+  );
+}
 
 function App() {
   // i18next must finish initialising before any screen renders, otherwise

@@ -52,7 +52,7 @@
 			<string>app.auxi.googlesignin</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>REVERSED_CLIENT_ID_PLACEHOLDER</string>
+				<string>com.googleusercontent.apps.23012725464-d3nc6042ed7vmnmc50l5jm7fg51t6lm0</string>
 			</array>
 		</dict>
 	</array>

@@ -29,13 +29,15 @@ export const OAUTH_CONFIG = {
      * TODO: needs ios provisioning — replace with real value from
      * Google Cloud Console once available.
      */
-    webClientId: '',
+    webClientId:
+      '23012725464-l9piv25qrnishre7or0kjv58ifo12ub0.apps.googleusercontent.com',
     /**
      * iOS client ID — used by the Google Sign-In SDK on device. Comes
      * from the `CLIENT_ID` field in `GoogleService-Info.plist`.
      * TODO: needs ios provisioning.
      */
-    iosClientId: '',
+    iosClientId:
+      '23012725464-d3nc6042ed7vmnmc50l5jm7fg51t6lm0.apps.googleusercontent.com',
     /** We do not need offline (refresh) access — backend mints its own session. */
     offlineAccess: false,
   },
