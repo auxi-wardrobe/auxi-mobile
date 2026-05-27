@@ -8,20 +8,14 @@ import type {
 /**
  * AU-242 — UAC v2 auth stack routes.
  *
- * The 11 new routes registered here cover the UAC flow specced in
+ * The 11 routes registered here cover the UAC flow specced in
  * `plans/260521-2335-au-242-figma-spec/`. Param shapes follow the
  * branching documented in `phase-04-screens.md` §5 (Architecture).
- *
- * `Login` / `Register` are retained as feature-flagged fallbacks so
- * we can revert to the legacy auth experience by flipping
- * `UAC_V2_ENABLED` off. They will be deleted in the cleanup phase
- * once batch D lands and the flag is permanently on.
  */
 export type UacEmailInputMode = 'signup' | 'signin';
 export type UacVerifiedSource = 'signup' | 'reset';
 
 export type AuthStackParamList = {
-  // New (UAC v2)
   Welcome: undefined;
   LanguageSettings: undefined;
   EmailInput: { mode: UacEmailInputMode };
@@ -33,13 +27,7 @@ export type AuthStackParamList = {
   ForgotPasswordCheckMail: { email: string };
   ResetNewPassword: { token: string; email?: string };
   Verified: { source: UacVerifiedSource };
-
-  // Legacy (kept while UAC_V2_ENABLED=false; deleted in cleanup phase)
-  Login: undefined;
-  Register: undefined;
 };
-
-export type GenderPreferenceValue = 'womenswear' | 'menswear' | 'mixed';
 
 export interface TryOnOutfitContext {
   outfitHash: string;
@@ -78,22 +66,8 @@ export type AppStackParamList = {
     | undefined;
   Welcome: undefined;
   LocationPermission: undefined;
-  // V05 onboarding flow (AU-249).
-  // GenderPreference → wardrobe_direction (Menswear/Womenswear/Mixed)
-  // StylePreference → fit_preference (Slim/Classic/Relaxed)
-  // StylePicker → style_preferences (2-3 of Minimal/Casual/Soft/Bold/Formal)
-  //   then triggers generation + lands on Home.
-  GenderPreference: undefined;
-  StylePreference:
-    | { gender?: GenderPreferenceValue; wardrobe_direction?: WardrobeDirection }
-    | undefined;
-  StylePicker: {
-    wardrobe_direction: WardrobeDirection;
-    fit_preference: FitPreference;
-  };
   // ───────────────────────────────────────────────────────────────────────
-  // Onboarding V2 redesign (behind `ONBOARDING_V2_ENABLED`). NEW route names
-  // so the legacy V05 routes above stay intact as the flag-OFF fallback.
+  // Onboarding V2 redesign (AU-249) — the only onboarding flow.
   //
   // Selections thread through route params (no store — per auxi "no Zustand"
   // rule). Each step forwards the accumulated selection to the next:

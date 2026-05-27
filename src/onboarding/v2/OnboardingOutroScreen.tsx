@@ -4,9 +4,8 @@
  * The ONLY place `completeOnboarding()` is called in the V2 flow (the
  * deferred-completion endpoint). "See my outfit" → `completeOnboarding()`
  * flips `is_first_login=false`, which makes AppNavigator swap to the Home
- * stack (and clears the dev `forceOnboarding` replay override inside
- * `completeOnboarding()`). No `navigation.reset` needed — the conditional
- * stack swap unmounts onboarding and mounts Home.
+ * stack. No `navigation.reset` needed — the conditional stack swap unmounts
+ * onboarding and mounts Home.
  *
  * Visual (extraction §3.7): cream bg (#eee6df = figmaCaptionPillBg), no header,
  * a Poppins-Bold quote, and a bottom sheet (top corners radius 16) holding the

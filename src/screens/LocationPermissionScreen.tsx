@@ -15,7 +15,6 @@ import {
 } from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
 import { requestLocationPermission } from '../utils/location';
-import { ONBOARDING_V2_ENABLED } from '../config/featureFlags';
 import { AppStackParamList } from '../types/navigation';
 
 type Navigation = NativeStackNavigationProp<
@@ -28,21 +27,17 @@ export const LocationPermissionScreen = () => {
   const [loading, setLoading] = useState(false);
 
   // Both location-permission outcomes funnel into the first wardrobe-direction
-  // step. The V2 redesign (ONBOARDING_V2_ENABLED) starts at OnboardingWardrobe;
-  // the legacy V05 flow starts at GenderPreference. Skipping straight to the
-  // fit picker silently defaults wardrobe_direction to "Mixed", which violates
-  // the V05 spec contract requiring an explicit direction pick. AU-249.
-  const goToGenderPreference = () =>
-    ONBOARDING_V2_ENABLED
-      ? navigation.navigate('OnboardingWardrobe')
-      : navigation.navigate('GenderPreference');
+  // step (OnboardingWardrobe). Skipping straight to the fit picker would
+  // silently default wardrobe_direction to "Mixed", which violates the V05
+  // spec contract requiring an explicit direction pick. AU-249.
+  const goToOnboarding = () => navigation.navigate('OnboardingWardrobe');
 
   const handleEnableLocation = async () => {
     setLoading(true);
     try {
       const hasPermission = await requestLocationPermission();
       if (hasPermission) {
-        goToGenderPreference();
+        goToOnboarding();
       } else {
         Alert.alert(
           'Permission Denied',
@@ -51,7 +46,7 @@ export const LocationPermissionScreen = () => {
             {
               text: 'Continue without location',
               style: 'cancel',
-              onPress: goToGenderPreference,
+              onPress: goToOnboarding,
             },
             { text: 'Open Settings', onPress: () => Linking.openSettings() },
           ],
@@ -59,7 +54,7 @@ export const LocationPermissionScreen = () => {
       }
     } catch (error) {
       console.error(error);
-      goToGenderPreference();
+      goToOnboarding();
     } finally {
       setLoading(false);
     }
@@ -90,7 +85,7 @@ export const LocationPermissionScreen = () => {
             <PillButton
               title="Not now"
               variant="text"
-              onPress={goToGenderPreference}
+              onPress={goToOnboarding}
               style={styles.notNowButton}
               testID="onboarding-location-skip"
             />

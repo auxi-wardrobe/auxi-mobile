@@ -8,9 +8,6 @@ import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
 import { AppWelcomeScreen } from '../screens/AppWelcomeScreen';
 import { ItemDetailScreen } from '../screens/ItemDetailScreen';
-import { GenderPreferenceScreen } from '../screens/GenderPreferenceScreen';
-import { StylePreferenceScreen } from '../screens/StylePreferenceScreen';
-import { StylePickerScreen } from '../screens/StylePickerScreen';
 import { LocationPermissionScreen } from '../screens/LocationPermissionScreen';
 import { OnboardingWardrobeScreen } from '../onboarding/v2/OnboardingWardrobeScreen';
 import { OnboardingFitScreen } from '../onboarding/v2/OnboardingFitScreen';
@@ -18,7 +15,6 @@ import { OnboardingStylesScreen } from '../onboarding/v2/OnboardingStylesScreen'
 import { OnboardingLoadingScreen } from '../onboarding/v2/OnboardingLoadingScreen';
 import { OnboardingCompletedScreen } from '../onboarding/v2/OnboardingCompletedScreen';
 import { OnboardingOutroScreen } from '../onboarding/v2/OnboardingOutroScreen';
-import { ONBOARDING_V2_ENABLED } from '../config/featureFlags';
 import { useAuth } from '../context/AuthContext';
 import { ActivityIndicator, View, StyleSheet } from 'react-native'; // Import View and StyleSheet
 import { theme } from '../theme/theme';
@@ -44,7 +40,7 @@ export const AppNavigator = () => {
     const unregister = registerDeepLinkListeners(() => navRef.current);
     return unregister;
   }, []);
-  const { user, isLoading, forceOnboarding } = useAuth();
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -58,66 +54,41 @@ export const AppNavigator = () => {
     <NavigationContainer ref={navRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          // `forceOnboarding` is a dev-only client override (see AuthContext)
-          // that re-shows the Onboarding stack after first completion so QA
-          // can replay onboarding without a new account. It is cleared by
-          // completeOnboarding() on real completion.
-          user.is_first_login || forceOnboarding ? (
+          user.is_first_login ? (
             <>
-              {/* Welcome + LocationPermission are shared by both onboarding
-                  flows (D9 keeps this order). The middle steps switch on
-                  ONBOARDING_V2_ENABLED: V2 redesign routes when ON, legacy
-                  V05 routes when OFF (instant rollback by flipping the flag). */}
+              {/* Welcome → LocationPermission → V2 onboarding (Wardrobe →
+                  Fit → Styles → Loading → Completed → Outro). */}
               <Stack.Screen name="Welcome" component={AppWelcomeScreen} />
               <Stack.Screen
                 name="LocationPermission"
                 component={LocationPermissionScreen}
               />
-              {ONBOARDING_V2_ENABLED ? (
-                <>
-                  <Stack.Screen
-                    name="OnboardingWardrobe"
-                    component={OnboardingWardrobeScreen}
-                  />
-                  <Stack.Screen
-                    name="OnboardingFit"
-                    component={OnboardingFitScreen}
-                  />
-                  <Stack.Screen
-                    name="OnboardingStyles"
-                    component={OnboardingStylesScreen}
-                  />
-                  <Stack.Screen
-                    name="OnboardingLoading"
-                    component={OnboardingLoadingScreen}
-                    options={{ gestureEnabled: false }}
-                  />
-                  <Stack.Screen
-                    name="OnboardingCompleted"
-                    component={OnboardingCompletedScreen}
-                    options={{ gestureEnabled: false }}
-                  />
-                  <Stack.Screen
-                    name="OnboardingOutro"
-                    component={OnboardingOutroScreen}
-                  />
-                </>
-              ) : (
-                <>
-                  <Stack.Screen
-                    name="GenderPreference"
-                    component={GenderPreferenceScreen}
-                  />
-                  <Stack.Screen
-                    name="StylePreference"
-                    component={StylePreferenceScreen}
-                  />
-                  <Stack.Screen
-                    name="StylePicker"
-                    component={StylePickerScreen}
-                  />
-                </>
-              )}
+              <Stack.Screen
+                name="OnboardingWardrobe"
+                component={OnboardingWardrobeScreen}
+              />
+              <Stack.Screen
+                name="OnboardingFit"
+                component={OnboardingFitScreen}
+              />
+              <Stack.Screen
+                name="OnboardingStyles"
+                component={OnboardingStylesScreen}
+              />
+              <Stack.Screen
+                name="OnboardingLoading"
+                component={OnboardingLoadingScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="OnboardingCompleted"
+                component={OnboardingCompletedScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="OnboardingOutro"
+                component={OnboardingOutroScreen}
+              />
             </>
           ) : (
             <>
