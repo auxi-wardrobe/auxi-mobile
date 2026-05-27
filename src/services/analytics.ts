@@ -127,6 +127,12 @@ export const track = (event: string, props: TrackProps = {}): void => {
     console.info('analytics.track', event, props);
   }
   mixpanel?.track(event, props);
+  // Dev: flush immediately so events land in the dashboard without waiting for
+  // the SDK's batch timer (~60s) or an app-background. Prod keeps batching for
+  // network/battery efficiency.
+  if (__DEV__) {
+    mixpanel?.flush();
+  }
 };
 
 /**
