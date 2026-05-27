@@ -232,10 +232,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const distinctId = String(user.id);
       if (analyticsIdRef.current === distinctId) return;
       analyticsIdRef.current = distinctId;
+      // People profile — full user attributes (incl. reserved $email/$created).
       const profile: Record<string, unknown> = {
         $email: user.email,
         $created: user.created_at,
+        user_id: user.id,
       };
+      if (user.role) {
+        profile.role = user.role;
+      }
       if (user.gender) {
         profile.gender = user.gender;
       }
@@ -245,7 +250,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (user.user_metadata?.confidence_level) {
         profile.confidence_level = user.user_metadata.confidence_level;
       }
-      identifyUser(distinctId, profile);
+      if (user.user_metadata?.display_state) {
+        profile.display_state = user.user_metadata.display_state;
+      }
+      // Super properties — non-PII user dimensions that tag EVERY event for
+      // segmentation (no email here; that stays on the People profile only).
+      const superProps: Record<string, unknown> = { user_id: user.id };
+      if (user.gender) {
+        superProps.gender = user.gender;
+      }
+      if (user.user_metadata?.style_direction) {
+        superProps.style_direction = user.user_metadata.style_direction;
+      }
+      if (user.user_metadata?.confidence_level) {
+        superProps.confidence_level = user.user_metadata.confidence_level;
+      }
+      if (user.user_metadata?.display_state) {
+        superProps.display_state = user.user_metadata.display_state;
+      }
+      identifyUser(distinctId, profile, superProps);
       if (justLoggedInRef.current) {
         justLoggedInRef.current = false;
         track('sign_in_completed', { method: 'email' });

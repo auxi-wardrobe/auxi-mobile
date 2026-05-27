@@ -6,6 +6,21 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ## [Unreleased]
 
+## [v1.0-build9] - 2026-05-27
+
+### Added
+- step-3 style tiles + dev sign-in test scaffolds
+- per-wardrobe Step 3 style tiles + downsize tile assets
+
+### Fixed
+- flush events in dev so they reach Mixpanel immediately
+- render tile artwork + Figma fidelity polish
+
+### Changed
+- restore main's pre-existing QA screenshot
+- drop QA screenshots from PR, gitignore them
+
+
 ## [v1.0-build8] - 2026-05-26
 
 ### Added
