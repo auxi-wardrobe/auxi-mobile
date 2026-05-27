@@ -22,6 +22,12 @@ const PROD_TOKEN = DEV_TOKEN; // TEMP: real prod token pending — see note abov
 
 export const MIXPANEL_TOKEN: string = __DEV__ ? DEV_TOKEN : PROD_TOKEN;
 
+// Data residency: the Mixpanel project is hosted in the EU zone, so the SDK
+// MUST post to the EU ingestion endpoint. The SDK defaults to the US endpoint
+// (https://api.mixpanel.com); events sent there for an EU-resident project are
+// accepted (HTTP 200) but never stored — which is why nothing showed up.
+export const MIXPANEL_SERVER_URL = 'https://api-eu.mixpanel.com';
+
 // Persisted analytics-consent decision. EU/CA users must opt in before the
 // SDK initialises (see services/analytics.ts). Versioned so a future policy
 // change can force a fresh consent prompt by bumping the suffix.

@@ -12,7 +12,11 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Mixpanel } from 'mixpanel-react-native';
-import { MIXPANEL_TOKEN, ANALYTICS_CONSENT_KEY } from '../config/analytics';
+import {
+  MIXPANEL_TOKEN,
+  MIXPANEL_SERVER_URL,
+  ANALYTICS_CONSENT_KEY,
+} from '../config/analytics';
 
 type TrackProps = Record<string, unknown>;
 type UserProfile = Record<string, unknown>;
@@ -23,8 +27,11 @@ let initInFlight: Promise<void> | null = null;
 
 // If identity is established before the SDK is up (cold start: user already
 // authenticated, consent init still resolving), stash it and replay on init.
-let pendingIdentity: { distinctId: string; profile?: UserProfile } | null =
-  null;
+let pendingIdentity: {
+  distinctId: string;
+  profile?: UserProfile;
+  superProps?: TrackProps;
+} | null = null;
 
 // Super properties auto-attach to every event. Kept minimal; app_version
 // needs react-native-device-info (not installed) — tracked as a follow-up.
@@ -54,14 +61,19 @@ const doInit = async (): Promise<void> => {
   // trackAutomaticEvents=true captures app sessions/updates automatically.
   const instance = new Mixpanel(MIXPANEL_TOKEN, true);
   // We only ever reach here after consent, so opt-out default is false.
-  await instance.init(false, SUPER_PROPERTIES);
+  // 3rd arg routes ingestion to the project's region (EU) — without it the SDK
+  // posts to the US endpoint and events are silently dropped for an EU project.
+  await instance.init(false, SUPER_PROPERTIES, MIXPANEL_SERVER_URL);
   // Privacy posture for EU/CA: don't derive geolocation from IP.
   instance.setUseIpAddressForGeolocation(false);
   mixpanel = instance;
 
   if (pendingIdentity) {
-    const { distinctId, profile } = pendingIdentity;
+    const { distinctId, profile, superProps } = pendingIdentity;
     pendingIdentity = null;
+    if (superProps) {
+      mixpanel.registerSuperProperties(superProps);
+    }
     // Await identify so the People profile below lands on the identified
     // user, not the anonymous distinct_id.
     await mixpanel.identify(distinctId);
@@ -143,13 +155,19 @@ export const track = (event: string, props: TrackProps = {}): void => {
 export const identifyUser = (
   distinctId: string,
   profile?: UserProfile,
+  superProps?: TrackProps,
 ): void => {
   if (__DEV__) {
     console.info('analytics.identify', distinctId, profile ?? {});
   }
   if (!mixpanel) {
-    pendingIdentity = { distinctId, profile };
+    pendingIdentity = { distinctId, profile, superProps };
     return;
+  }
+  // Super properties auto-attach to every subsequent event, so user context
+  // (id, gender, style_direction…) tags all events for segmentation.
+  if (superProps) {
+    mixpanel.registerSuperProperties(superProps);
   }
   // Write the People profile only AFTER identify resolves, else it lands on
   // the anonymous profile. Fire-and-forget — never throws to the caller.
