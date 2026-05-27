@@ -20,6 +20,9 @@ import {
   View,
 } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AppStackParamList } from '../types/navigation';
 import { Sidebar } from '../components/layout/Sidebar';
 import {
   ContextChipId,
@@ -327,6 +330,8 @@ const CONTEXT_CHIP_SETS: ContextChipOption[][] = [
 ];
 
 export const HomeScreen = () => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
@@ -355,6 +360,17 @@ export const HomeScreen = () => {
   // Set by `handleSubmitContext`. Read by `valenGetRecommendation` call
   // sites via `styleFeedbackRef`. Per-session, never persisted.
   const [styleFeedback, setStyleFeedback] = useState<string | null>(null);
+  // Sustainability (2026-05-27): the backend now re-serves a real (cycled)
+  // outfit once uniques are exhausted. `true` once any resolve carries
+  // `cycled` — drives a subtle non-blocking "seen them all" hint. Cleared on
+  // a fresh build (cold start) so a new context starts clean.
+  const [hasCycled, setHasCycled] = useState(false);
+  // Sustainability (2026-05-27): set when `/try_another` reports a GENUINE
+  // `wardrobe_gap` (wardrobe too small to compose any outfit). Terminal —
+  // drives a visible "add items" CTA instead of the silent freeze. Distinct
+  // from `startError` (thrown errors) and from transient pool exhaustion
+  // (which no longer dead-ends thanks to the backend replenish + cycle).
+  const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   // Unfavorited-swipe counter is per-session, never rendered, so we keep it
   // in a ref instead of state to avoid useless re-renders on every swipe.
   const unfavoritedSwipeCountRef = useRef(0);
@@ -476,7 +492,13 @@ export const HomeScreen = () => {
   // structured input (weather + user + intent + count). V05 response items
   // need shape-mapping to the legacy `Item` type before normalizeOutfits.
   const buildViaV05 = useCallback(
-    async (input: BuildViaV05Input): Promise<{ outfits: Outfit[] }> => {
+    async (
+      input: BuildViaV05Input,
+    ): Promise<{
+      outfits: Outfit[];
+      cycled?: boolean;
+      wardrobeGap?: boolean;
+    }> => {
       // H6 fix (2026-05-22): the previous map was keyed on occasion-like
       // strings (casual/work/play/date/weekend) but `input.mode` is the
       // RecommendationMode enum ('safe'|'power'|'creative'). The lookup
@@ -543,6 +565,11 @@ export const HomeScreen = () => {
           // renders real text instead of the stubbed DEFAULT_CAPTION fallback.
           caption: o.reasoning_human,
         })) as unknown as Outfit[],
+        // Sustainability flags (2026-05-27): `cycled` = real re-served outfit
+        // (uniques exhausted, show subtle hint); `wardrobeGap` = genuine
+        // dead-end (wardrobe too small, surface terminal CTA). See onSuccess.
+        cycled: v05.cycled,
+        wardrobeGap: v05.wardrobeGap,
       };
     },
     [weather.tempC],
@@ -574,6 +601,14 @@ export const HomeScreen = () => {
         return;
       }
 
+      // Sustainability flags (2026-05-27). `data` is typed `unknown` (the
+      // mutation erases buildViaV05's return type); read the two optional
+      // flags off it without disturbing normalizeOutfits.
+      const flags = data as { cycled?: boolean; wardrobeGap?: boolean };
+      if (flags?.cycled) {
+        setHasCycled(true);
+      }
+
       let isColdStart = false;
       // `addedCount` = how many NEW sheets this resolve actually contributed.
       // 0 means an empty/depleted pool (or an all-duplicate batch) — used below
@@ -588,8 +623,14 @@ export const HomeScreen = () => {
         addedCount = incoming.length;
         setListOutfits(incoming);
         setActiveSheetIndex(0);
-        // Fresh session/context → the pool may have outfits again.
+        // Fresh session/context → the pool may have outfits again. Clear the
+        // sustainability flags too — a new build is a clean slate (the gap
+        // CTA / cycled hint should not bleed across a refine/mode reset).
         poolDepletedRef.current = false;
+        if (addedCount > 0) {
+          setHasCycled(false);
+          setIsWardrobeGap(false);
+        }
       } else {
         // Offset fallback-hash indices by the existing list length so the
         // second batch never collides with first-batch hashes (Bug 1).
@@ -618,6 +659,16 @@ export const HomeScreen = () => {
       // — a later refine/mode reset clears the flag and resumes the pipeline.
       if (addedCount === 0) {
         poolDepletedRef.current = true;
+        // Fix D (2026-05-27): distinguish a GENUINE wardrobe gap (terminal —
+        // wardrobe too small to compose anything) from transient exhaustion.
+        // With the backend replenish + cycle fix, transient exhaustion should
+        // no longer reach here (it re-serves a `cycled` outfit). Only a real
+        // `wardrobe_gap` produces an empty batch now → surface the CTA so the
+        // user isn't left staring at a silently frozen list. We do NOT
+        // auto-rebuild — the backend owns sustainability.
+        if (flags?.wardrobeGap) {
+          setIsWardrobeGap(true);
+        }
         return;
       }
       // The cold-start branch force-primes one prefetch (build returns 3 →
@@ -1066,6 +1117,14 @@ export const HomeScreen = () => {
     advanceToSheet(nextIndex, 'swipe');
   }, [advanceToSheet, ensureBuffer]);
 
+  // CEO re-enabled the Home "Remix" button (overrides AU-253 omission). It
+  // opens the Outfit Canvas (AU-285 Remix editor). Navigate without params for
+  // now — the canvas renders mock items; passing the real outfit in is a
+  // separate backend-wiring task.
+  const handleRemix = useCallback(() => {
+    navigation.navigate('OutfitCanvas');
+  }, [navigation]);
+
   const handleMomentumScrollEnd = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
@@ -1183,6 +1242,19 @@ export const HomeScreen = () => {
         </TouchableOpacity>
       ) : null}
 
+      {/* Sustainability (2026-05-27): subtle, non-blocking hint once the
+          backend starts cycling (uniques exhausted, real outfits re-served).
+          Does NOT gate swiping — purely informational. Hidden once a fresh
+          build resets the session. Not shown during the wardrobe-gap dead-end
+          (that has its own CTA) or while loading. */}
+      {hasCycled && !isWardrobeGap && optionSets.length > 0 ? (
+        <View style={styles.cycledHint} testID="home-cycled-hint">
+          <Text style={styles.cycledHintText} numberOfLines={1}>
+            Đã xem hết — gợi ý lặp lại
+          </Text>
+        </View>
+      ) : null}
+
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -1198,6 +1270,14 @@ export const HomeScreen = () => {
       >
         {loading ? (
           <HomeLoadingState />
+        ) : optionSets.length === 0 && isWardrobeGap ? (
+          // Fix D (2026-05-27): genuine wardrobe gap with nothing to show —
+          // a terminal dead-end the user CAN act on. Surface a CTA to add
+          // items instead of the old silent freeze. No auto-rebuild (backend
+          // owns sustainability). Distinct from `startError` (thrown errors).
+          <HomeWardrobeGapState
+            onAddItems={() => navigation.navigate('Wardrobe')}
+          />
         ) : optionSets.length === 0 && startError ? (
           // Error UI fix (2026-05-22): give the user a way out of a
           // failed cold-start fetch. Without this, an API timeout or
@@ -1230,6 +1310,7 @@ export const HomeScreen = () => {
                   onConfirm={() => handleHeartTapForOutfit(outfit)}
                   onEditContext={handleOpenContextEditModal}
                   onShowAnother={handleShowAnother}
+                  onRemix={handleRemix}
                 />
               );
             })}
@@ -1376,6 +1457,7 @@ const OptionSheet = React.memo(
     onConfirm,
     onEditContext,
     onShowAnother,
+    onRemix,
   }: {
     sheetIndex: number;
     outfit: OutfitSheetWithGrid;
@@ -1387,6 +1469,7 @@ const OptionSheet = React.memo(
     onConfirm: () => void;
     onEditContext: () => void;
     onShowAnother: () => void;
+    onRemix: () => void;
   }) => {
     const items = outfit.items;
     const layout = pickLayout(items);
@@ -1583,11 +1666,13 @@ const OptionSheet = React.memo(
           <View testID={`home-outfit-grid-${itemCount}`}>{renderLayout()}</View>
         </ScrollView>
 
-        {/* AU-253: pager/action row (Figma Frame 2105) — 3 dots + "Show another".
-          Remix button OMITTED per CEO scope decision (= AU-285, separate). */}
+        {/* Pager/action row (Figma Frame 2105) — [Remix | 3 dots | "Show
+          another"]. CEO re-enabled the left Remix button (overrides the earlier
+          AU-253 omission); it opens the Outfit Canvas (AU-285) via onRemix. */}
         <OutfitActionRow
           testID={`home-action-row-${sheetIndex}`}
           activeIndex={sheetIndex}
+          onRemix={onRemix}
           onShowAnother={onShowAnother}
           showAnotherDisabled={showAnotherDisabled}
         />
@@ -1651,6 +1736,31 @@ const HomeErrorState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
       accessibilityLabel="Retry loading outfits"
     >
       <Text style={styles.errorStateRetryLabel}>Try again</Text>
+    </TouchableOpacity>
+  </View>
+);
+
+// Fix D (2026-05-27): terminal dead-end when the wardrobe is genuinely too
+// small to compose any outfit (backend `wardrobe_gap`). Reuses the error-state
+// layout/tokens — a focused message + one CTA into the wardrobe. No retry/
+// rebuild affordance (adding items is the only real fix; backend owns the rest).
+const HomeWardrobeGapState: React.FC<{ onAddItems: () => void }> = ({
+  onAddItems,
+}) => (
+  <View style={styles.errorState} testID="home-wardrobe-gap-state">
+    <Text style={styles.errorStateTitle}>Tủ đồ chưa đủ để tạo thêm gợi ý</Text>
+    <Text style={styles.errorStateBody}>
+      Thêm vài món vào tủ để Auxi gợi ý nhiều hơn.
+    </Text>
+    <TouchableOpacity
+      testID="home-wardrobe-gap-add-items"
+      onPress={onAddItems}
+      style={styles.errorStateRetry}
+      activeOpacity={0.82}
+      accessibilityRole="button"
+      accessibilityLabel="Thêm món vào tủ đồ"
+    >
+      <Text style={styles.errorStateRetryLabel}>Thêm vào tủ đồ</Text>
     </TouchableOpacity>
   </View>
 );
@@ -2076,5 +2186,21 @@ const styles = StyleSheet.create({
   loadingMoreText: {
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaAction,
+  },
+  // Sustainability (2026-05-27): subtle non-blocking "seen them all" hint.
+  // Mirrors the pinHeaderLabel micro-affordance — muted, single line, does
+  // not gate interaction.
+  cycledHint: {
+    marginHorizontal: SHEET_PADDING,
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: theme.colors.figmaSurfaceSoft,
+    alignSelf: 'center',
+  },
+  cycledHintText: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaTextSecondary,
   },
 });
