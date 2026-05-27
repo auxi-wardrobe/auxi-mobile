@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
+import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
@@ -33,7 +33,11 @@ const testJeansImg = require('../assets/images/test_jeans.png');
 type Props = NativeStackScreenProps<AppStackParamList, 'OutfitCanvas'>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CANVAS_HEIGHT = SCREEN_WIDTH * 1.1;
+// Figma "remix" frame (node 2852:16582): the canvas card "Image 3:4" is an
+// inset rounded card sitting inside the body's 24px horizontal padding
+// (theme.spacing.l each side), aspect 3:4 (height = width × 4/3).
+const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.l;
+const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
 const ITEM_DEFAULT_SIZE = 160;
 
 type CanvasItemData = {
@@ -79,14 +83,46 @@ const INITIAL_MOCK_ITEMS: CanvasItemData[] = [
 ];
 
 // --- Grid background ---
-const GridBackground = ({ width, height }: { width: number; height: number }) => (
+// Figma "remix" frame (node 2852:16582) uses a square LINE grid (graph-paper)
+// at 16px spacing, not a dot pattern. Line tone = theme.colors.figmaCanvasGridLine.
+const GRID_STEP = 16;
+const GridBackground = ({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) => (
   <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
     <Defs>
-      <Pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-        <Circle cx="1" cy="1" r="1" fill="#C8CAD0" />
+      <Pattern
+        id="grid"
+        x="0"
+        y="0"
+        width={GRID_STEP}
+        height={GRID_STEP}
+        patternUnits="userSpaceOnUse"
+      >
+        {/* top + left edge of each cell → continuous square grid */}
+        <Line
+          x1="0"
+          y1="0"
+          x2={GRID_STEP}
+          y2="0"
+          stroke={theme.colors.figmaCanvasGridLine}
+          strokeWidth={1}
+        />
+        <Line
+          x1="0"
+          y1="0"
+          x2="0"
+          y2={GRID_STEP}
+          stroke={theme.colors.figmaCanvasGridLine}
+          strokeWidth={1}
+        />
       </Pattern>
     </Defs>
-    <Rect width={width} height={height} fill="url(#dots)" />
+    <Rect width={width} height={height} fill="url(#grid)" />
   </Svg>
 );
 
@@ -130,7 +166,11 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
         dragOffset.setValue({ x: gs.dx, y: gs.dy });
       },
       onPanResponderRelease: (_, gs) => {
-        const { item: it, onSelect: os, onPositionChange: opc } = propsRef.current;
+        const {
+          item: it,
+          onSelect: os,
+          onPositionChange: opc,
+        } = propsRef.current;
         if (!hasMoved.current) {
           os(it.id);
           dragOffset.setValue({ x: 0, y: 0 });
@@ -226,7 +266,7 @@ const ToolbarBtn = ({
 export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const [items, setItems] = useState<CanvasItemData[]>(INITIAL_MOCK_ITEMS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [tags, setTags] = useState<string[]>(['Happy']);
+  const [tags, setTags] = useState<string[]>(['Low Energy', 'Calm']);
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState('');
 
@@ -245,14 +285,18 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const canRedo = historyIndex.current < history.current.length - 1;
 
   const handleUndo = useCallback(() => {
-    if (!canUndo) { return; }
+    if (!canUndo) {
+      return;
+    }
     historyIndex.current -= 1;
     setItems(history.current[historyIndex.current]);
     setSelectedId(null);
   }, [canUndo]);
 
   const handleRedo = useCallback(() => {
-    if (!canRedo) { return; }
+    if (!canRedo) {
+      return;
+    }
     historyIndex.current += 1;
     setItems(history.current[historyIndex.current]);
     setSelectedId(null);
@@ -275,11 +319,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   const handleLayerUp = useCallback(() => {
-    if (!selectedId) { return; }
+    if (!selectedId) {
+      return;
+    }
     setItems(prev => {
       const maxZ = Math.max(...prev.map(it => it.zIndex));
       const next = prev.map(it =>
-        it.id === selectedId ? { ...it, zIndex: Math.min(it.zIndex + 1, maxZ + 1) } : it,
+        it.id === selectedId
+          ? { ...it, zIndex: Math.min(it.zIndex + 1, maxZ + 1) }
+          : it,
       );
       pushHistory(next);
       return next;
@@ -287,10 +335,14 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   }, [selectedId, pushHistory]);
 
   const handleLayerDown = useCallback(() => {
-    if (!selectedId) { return; }
+    if (!selectedId) {
+      return;
+    }
     setItems(prev => {
       const next = prev.map(it =>
-        it.id === selectedId ? { ...it, zIndex: Math.max(it.zIndex - 1, 1) } : it,
+        it.id === selectedId
+          ? { ...it, zIndex: Math.max(it.zIndex - 1, 1) }
+          : it,
       );
       pushHistory(next);
       return next;
@@ -298,10 +350,14 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   }, [selectedId, pushHistory]);
 
   const handleDuplicate = useCallback(() => {
-    if (!selectedId) { return; }
+    if (!selectedId) {
+      return;
+    }
     setItems(prev => {
       const source = prev.find(it => it.id === selectedId);
-      if (!source) { return prev; }
+      if (!source) {
+        return prev;
+      }
       const maxZ = Math.max(...prev.map(it => it.zIndex));
       const copy: CanvasItemData = {
         ...source,
@@ -317,7 +373,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   }, [selectedId, pushHistory]);
 
   const handleDelete = useCallback(() => {
-    if (!selectedId) { return; }
+    if (!selectedId) {
+      return;
+    }
     setItems(prev => {
       const next = prev.filter(it => it.id !== selectedId);
       pushHistory(next);
@@ -385,7 +443,10 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             onPress={handleUndo}
             disabled={!canUndo}
             accessibilityLabel="Undo"
-            style={[styles.headerIconBtn, !canUndo && styles.headerIconBtnDisabled]}
+            style={[
+              styles.headerIconBtn,
+              !canUndo && styles.headerIconBtnDisabled,
+            ]}
           >
             <IconCanvasUndo width={28} height={28} />
           </Pressable>
@@ -394,139 +455,167 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             onPress={handleRedo}
             disabled={!canRedo}
             accessibilityLabel="Redo"
-            style={[styles.headerIconBtn, !canRedo && styles.headerIconBtnDisabled]}
+            style={[
+              styles.headerIconBtn,
+              !canRedo && styles.headerIconBtnDisabled,
+            ]}
           >
             <IconCanvasRedo width={28} height={28} />
           </Pressable>
         </View>
       </View>
 
-      {/* Canvas */}
+      {/* Body — Figma justify-between: canvas card / add-row / tags grouped at
+          top, Save pinned at the bottom. Backdrop tap deselects. */}
       <Pressable
         testID="canvas-backdrop"
         onPress={() => setSelectedId(null)}
-        style={styles.canvasWrapper}
+        style={styles.body}
       >
-        <View
-          style={[styles.canvas, { height: CANVAS_HEIGHT }]}
-          pointerEvents="box-none"
-        >
-          <GridBackground width={SCREEN_WIDTH} height={CANVAS_HEIGHT} />
-          {sortedItems.map(item => (
-            <DraggableItem
-              key={item.id}
-              item={item}
-              isSelected={selectedId === item.id}
-              onSelect={handleSelect}
-              onPositionChange={handlePositionChange}
-            />
-          ))}
+        {/* Top group — gap 16 (theme.spacing.m) between card / add-row / tags */}
+        <View style={styles.topGroup}>
+          {/* Canvas card — fixed-size inset rounded card (Figma "Image 3:4") */}
+          <View
+            style={[
+              styles.canvas,
+              { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+            ]}
+            pointerEvents="box-none"
+          >
+            <GridBackground width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />
+            {sortedItems.map(item => (
+              <DraggableItem
+                key={item.id}
+                item={item}
+                isSelected={selectedId === item.id}
+                onSelect={handleSelect}
+                onPositionChange={handlePositionChange}
+              />
+            ))}
+          </View>
+
+          {/* Add-item row — circular bordered "+" below the canvas (Figma Group 36) */}
+          <View style={styles.addRow}>
+            <Pressable
+              testID="canvas-add-item"
+              onPress={handleAddItem}
+              accessibilityLabel="Add item"
+              style={({ pressed }) => [
+                styles.addItemBtn,
+                pressed && styles.addItemBtnPressed,
+              ]}
+            >
+              <IconCanvasAdd width={20} height={20} />
+            </Pressable>
+          </View>
+
+          {/* Editing toolbar — Figma hides this in the static frame (Group 35 hidden);
+          shown contextually only when an item is selected to preserve the
+          approved layer/duplicate/swap/delete actions. */}
+          {selectedId !== null && (
+            <View style={styles.toolbar} testID="canvas-toolbar">
+              <ToolbarBtn
+                testID="canvas-tool-layer-up"
+                onPress={handleLayerUp}
+                disabled={actionDisabled}
+                accessibilityLabel="Bring forward"
+              >
+                <IconCanvasLayerUp width={32} height={31} />
+              </ToolbarBtn>
+              <ToolbarBtn
+                testID="canvas-tool-layer-down"
+                onPress={handleLayerDown}
+                disabled={actionDisabled}
+                accessibilityLabel="Send backward"
+              >
+                <IconCanvasLayerDown width={32} height={31} />
+              </ToolbarBtn>
+              <ToolbarBtn
+                testID="canvas-tool-duplicate"
+                onPress={handleDuplicate}
+                disabled={actionDisabled}
+                accessibilityLabel="Duplicate item"
+              >
+                <IconCanvasDuplicate width={32} height={31} />
+              </ToolbarBtn>
+              <ToolbarBtn
+                testID="canvas-tool-swap"
+                onPress={() => {
+                  /* TODO: navigate to item picker */
+                }}
+                disabled={actionDisabled}
+                accessibilityLabel="Swap item"
+              >
+                <IconCanvasSwap width={32} height={31} />
+              </ToolbarBtn>
+              <ToolbarBtn
+                testID="canvas-tool-delete"
+                onPress={handleDelete}
+                disabled={actionDisabled}
+                accessibilityLabel="Delete item"
+              >
+                <IconCanvasDelete width={32} height={31} />
+              </ToolbarBtn>
+            </View>
+          )}
+
+          {/* Tags row */}
+          <View style={styles.tagsRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tagsScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              {tags.map(tag => (
+                <TagChip
+                  key={tag}
+                  label={tag}
+                  onRemove={() => handleRemoveTag(tag)}
+                />
+              ))}
+              {addingTag ? (
+                <TextInput
+                  testID="canvas-tag-input"
+                  value={tagInput}
+                  onChangeText={setTagInput}
+                  onSubmitEditing={handleConfirmTag}
+                  onBlur={handleConfirmTag}
+                  autoFocus
+                  returnKeyType="done"
+                  placeholder="Tag name"
+                  style={styles.tagInput}
+                  accessibilityLabel="Tag name input"
+                />
+              ) : (
+                <Pressable
+                  testID="canvas-tag-add"
+                  onPress={() => setAddingTag(true)}
+                  accessibilityLabel="Add tag"
+                  style={styles.tagAddBtn}
+                >
+                  <IconCanvasAdd width={14} height={14} />
+                </Pressable>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+
+        {/* Save button — pinned at the bottom of the body (Figma justify-between) */}
+        <View style={styles.saveRow}>
+          <Pressable
+            testID="canvas-save"
+            onPress={handleSave}
+            accessibilityLabel="Save outfit"
+            style={({ pressed }) => [
+              styles.saveBtn,
+              pressed && styles.saveBtnPressed,
+            ]}
+          >
+            <Text style={styles.saveBtnLabel}>Save</Text>
+          </Pressable>
         </View>
       </Pressable>
-
-      {/* Toolbar */}
-      <View style={styles.toolbar}>
-        <ToolbarBtn
-          testID="canvas-tool-add"
-          onPress={handleAddItem}
-          accessibilityLabel="Add item"
-        >
-          <IconCanvasAdd width={32} height={31} />
-        </ToolbarBtn>
-        <ToolbarBtn
-          testID="canvas-tool-layer-up"
-          onPress={handleLayerUp}
-          disabled={actionDisabled}
-          accessibilityLabel="Bring forward"
-        >
-          <IconCanvasLayerUp width={32} height={31} />
-        </ToolbarBtn>
-        <ToolbarBtn
-          testID="canvas-tool-layer-down"
-          onPress={handleLayerDown}
-          disabled={actionDisabled}
-          accessibilityLabel="Send backward"
-        >
-          <IconCanvasLayerDown width={32} height={31} />
-        </ToolbarBtn>
-        <ToolbarBtn
-          testID="canvas-tool-duplicate"
-          onPress={handleDuplicate}
-          disabled={actionDisabled}
-          accessibilityLabel="Duplicate item"
-        >
-          <IconCanvasDuplicate width={32} height={31} />
-        </ToolbarBtn>
-        <ToolbarBtn
-          testID="canvas-tool-swap"
-          onPress={() => { /* TODO: navigate to item picker */ }}
-          disabled={actionDisabled}
-          accessibilityLabel="Swap item"
-        >
-          <IconCanvasSwap width={32} height={31} />
-        </ToolbarBtn>
-        <ToolbarBtn
-          testID="canvas-tool-delete"
-          onPress={handleDelete}
-          disabled={actionDisabled}
-          accessibilityLabel="Delete item"
-        >
-          <IconCanvasDelete width={32} height={31} />
-        </ToolbarBtn>
-      </View>
-
-      {/* Tags row */}
-      <View style={styles.tagsRow}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tagsScroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          {tags.map(tag => (
-            <TagChip
-              key={tag}
-              label={tag}
-              onRemove={() => handleRemoveTag(tag)}
-            />
-          ))}
-          {addingTag ? (
-            <TextInput
-              testID="canvas-tag-input"
-              value={tagInput}
-              onChangeText={setTagInput}
-              onSubmitEditing={handleConfirmTag}
-              onBlur={handleConfirmTag}
-              autoFocus
-              returnKeyType="done"
-              placeholder="Tag name"
-              style={styles.tagInput}
-              accessibilityLabel="Tag name input"
-            />
-          ) : (
-            <Pressable
-              testID="canvas-tag-add"
-              onPress={() => setAddingTag(true)}
-              accessibilityLabel="Add tag"
-              style={styles.tagAddBtn}
-            >
-              <IconCanvasAdd width={12} height={12} />
-            </Pressable>
-          )}
-        </ScrollView>
-      </View>
-
-      {/* Save button */}
-      <View style={styles.saveRow}>
-        <Pressable
-          testID="canvas-save"
-          onPress={handleSave}
-          accessibilityLabel="Save outfit"
-          style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
-        >
-          <Text style={styles.saveBtnLabel}>Save</Text>
-        </Pressable>
-      </View>
     </SafeAreaView>
   );
 };
@@ -559,13 +648,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 4,
   },
-  // Canvas
-  canvasWrapper: {
+  // Body — fills remaining height; Figma justify-between pins Save at bottom.
+  // 24px (theme.spacing.l) horizontal inset matches the canvas card inset.
+  body: {
     flex: 1,
+    paddingHorizontal: theme.spacing.l,
+    justifyContent: 'space-between',
   },
+  // Top group — canvas card / add-row / tags stacked with 16px gap.
+  topGroup: {
+    gap: theme.spacing.m,
+  },
+  // Canvas card — inset rounded card (Figma "Image 3:4"), width/height set
+  // inline (CANVAS_WIDTH × 4/3). overflow:hidden clips items + grid to radius.
   canvas: {
-    width: SCREEN_WIDTH,
-    backgroundColor: '#F7F5F0',
+    // Figma canvas card bg = background/primary/subtle_50 (#f2efec)
+    backgroundColor: theme.colors.figmaCardSurface,
+    borderRadius: theme.borderRadius.figmaTile,
     overflow: 'hidden',
   },
   draggableItem: {
@@ -573,9 +672,27 @@ const styles = StyleSheet.create({
   },
   selectedItem: {
     borderWidth: 2,
-    borderColor: '#4CAF50',
+    borderColor: theme.colors.uacBorderBase,
     borderStyle: 'dashed',
     borderRadius: 4,
+  },
+  // Add-item button (circular, below canvas — Figma Group 36, 48×48).
+  // Left-aligned, flush to the canvas card's left edge (body provides the
+  // 24px horizontal inset; gap handled by topGroup).
+  addRow: {
+    flexDirection: 'row',
+  },
+  addItemBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.round,
+    borderWidth: 1.5,
+    borderColor: theme.colors.uacBorderBase,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addItemBtnPressed: {
+    backgroundColor: theme.colors.figmaCardSurface,
   },
   // Toolbar
   toolbar: {
@@ -601,78 +718,78 @@ const styles = StyleSheet.create({
   toolbarBtnPressed: {
     backgroundColor: theme.colors.figmaSurfaceSoft,
   },
-  // Tags
-  tagsRow: {
-    paddingVertical: theme.spacing.s,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.figmaDivider,
-  },
+  // Tags — row sits in topGroup (gap 16 above); chips flush to body inset.
+  tagsRow: {},
   tagsScroll: {
-    paddingHorizontal: theme.spacing.m,
-    gap: 8,
+    gap: 10, // Figma chip row gap
     alignItems: 'center',
   },
+  // Tag chip — Figma: bg background/primary/subtle_100 (#e0d2c4), radius 6,
+  // height 32, padding 8/12, gap 4, text Inter Regular 12/16 #070707.
   tagChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.figmaSurfaceSoft,
-    borderRadius: theme.borderRadius.round,
-    paddingVertical: 5,
-    paddingLeft: 12,
-    paddingRight: 8,
+    height: 32,
+    backgroundColor: theme.colors.figmaInsightPillBg,
+    borderRadius: theme.borderRadius.chip,
+    paddingVertical: theme.spacing.s,
+    paddingHorizontal: theme.spacing.uacDimension12,
+    gap: theme.spacing.xs,
   },
   tagChipLabel: {
-    fontFamily: 'Manrope-Regular',
-    fontSize: 13,
-    color: theme.colors.figmaTextPrimary,
+    ...theme.typography.aliases.uacBodyXsRegular, // Inter Regular 12/16
+    color: theme.colors.figmaTextDark,
   },
   tagChipRemove: {
-    marginLeft: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tagChipX: {
-    fontSize: 16,
-    lineHeight: 18,
-    color: theme.colors.figmaTextSecondary,
+    fontSize: 14,
+    lineHeight: 16,
+    color: theme.colors.figmaTextDark,
   },
+  // Add chip — Figma: bg background/primary/subtle_50 (#f2efec), radius 6,
+  // height 32, icon-only "+".
   tagAddBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: theme.borderRadius.round,
-    borderWidth: 1.5,
-    borderColor: theme.colors.figmaDivider,
+    width: 38,
+    height: 32,
+    borderRadius: theme.borderRadius.chip,
+    backgroundColor: theme.colors.figmaCardSurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tagInput: {
-    height: 30,
+    ...theme.typography.aliases.uacBodyXsRegular, // Inter Regular 12/16
+    height: 32,
     minWidth: 80,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaDivider,
-    borderRadius: theme.borderRadius.round,
-    paddingHorizontal: 10,
-    fontSize: 13,
-    color: theme.colors.figmaTextPrimary,
+    backgroundColor: theme.colors.figmaCardSurface,
+    borderRadius: theme.borderRadius.chip,
+    paddingHorizontal: theme.spacing.uacDimension12,
+    color: theme.colors.figmaTextDark,
   },
-  // Save button
+  // Save button — Figma: 1.5px border border/neutral/base (#1d1f23), radius 16,
+  // height 56, transparent fill, label Poppins Medium 16/24 #262421.
+  // Side inset = 24px (theme.spacing.l), supplied by the body padding so the
+  // button aligns flush with the canvas card edges.
   saveRow: {
-    paddingHorizontal: theme.spacing.m,
     paddingBottom: theme.spacing.m,
     paddingTop: theme.spacing.s,
   },
   saveBtn: {
-    backgroundColor: theme.colors.figmaButton,
-    borderRadius: theme.borderRadius.round,
-    height: 52,
+    backgroundColor: theme.colors.transparent,
+    borderWidth: 1.5,
+    borderColor: theme.colors.uacBorderBase,
+    borderRadius: theme.borderRadius.l,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBtnPressed: {
-    opacity: 0.85,
+    backgroundColor: theme.colors.figmaCardSurface,
   },
   saveBtnLabel: {
-    fontFamily: 'ArchivoNarrow-SemiBold',
-    fontSize: 16,
-    color: theme.colors.white,
-    letterSpacing: 0.15,
+    ...theme.typography.aliases.poppinsButton, // Poppins Medium 16/24
+    color: theme.colors.figmaCtaLabel,
   },
 });

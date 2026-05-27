@@ -25,6 +25,12 @@ export const theme = {
     figmaTooltipBg: '#322f35', // Schemes/Inverse Surface — Plain Tooltip bg
     figmaTooltipText: '#f5eff7', // Schemes/Inverse On Surface — Plain Tooltip text
     figmaSurfaceSoft: '#F3F5F9',
+    // Outfit Canvas / Remix (AU-285) — graph-paper grid line on the #f2efec
+    // canvas. Sampled from Figma remix frame (node 2852:16582); the grid is a
+    // 16px square LINE grid, line tone between subtle_50 (#f2efec) and
+    // subtle_100 (#e0d2c4). Source:
+    // plans/260527-1817-canvas-figma-fidelity/figma-extraction-outfit-canvas.md
+    figmaCanvasGridLine: '#e9e0d8',
     figmaText: '#272A32',
     figmaTextPrimary: '#272A32',
     figmaTextSecondary: '#616161',
@@ -171,15 +177,6 @@ export const theme = {
       poppinsBodySm: {
         fontFamily: 'Poppins-Regular',
         fontSize: 14,
-        lineHeight: 16,
-        letterSpacing: 0,
-      },
-      // Figma Text-xs/Regular = font-family/body (Poppins) 12/16.
-      // Use for small body labels (e.g. Home Grid "Show another"). Distinct
-      // from uacBodyXsRegular, which is Inter 12/16 for the UAC auth flow.
-      poppinsXs: {
-        fontFamily: 'Poppins-Regular',
-        fontSize: 12,
         lineHeight: 16,
         letterSpacing: 0,
       },
