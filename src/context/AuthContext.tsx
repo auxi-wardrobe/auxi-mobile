@@ -6,51 +6,16 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { authService } from '../services/auth';
 import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { registerSessionExpiredListener } from '../services/apiClient';
 import { identifyUser, resetAnalytics, track } from '../services/analytics';
-import { FORCE_LOGIN_ON_LAUNCH } from '../config/featureFlags';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
-
-/**
- * AsyncStorage key for the dev-only "Replay onboarding" override.
- * Persisted so a reload mid-test keeps the user in replay. See
- * `forceOnboarding` below.
- */
-const FORCE_ONBOARDING_STORAGE_KEY = '@auxi/force_onboarding';
-
-/**
- * Module-level latch for the dev-only FORCE_LOGIN_ON_LAUNCH flag. The
- * force-logout must fire EXACTLY ONCE per app launch (the first
- * `checkAuth`, i.e. cold start) — otherwise a real login is undone the
- * next time `checkAuth` runs (e.g. the email-login path calls it, or a
- * remount). Module scope (not a ref) so it survives component remounts
- * within the same JS runtime; resets naturally on a true app restart.
- */
-let forceLoginConsumed = false;
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  /**
-   * Dev-only client-side override that forces the Onboarding stack to
-   * render even when the backend `is_first_login` flag is already
-   * `false`. Lets QA re-run onboarding without registering a new
-   * account. Persisted in AsyncStorage so a reload during a test
-   * session keeps replay active. Defaults to `false`; cleared
-   * automatically inside `completeOnboarding()`.
-   */
-  forceOnboarding: boolean;
-  /**
-   * Dev-only entry point for "Replay onboarding". Sets
-   * `forceOnboarding=true` (persisted) so AppNavigator swaps to the
-   * Onboarding stack at its first screen. Gated behind `__DEV__` +
-   * `ONBOARDING_REPLAY_ENABLED` at the call site (SettingsScreen).
-   */
-  startOnboardingReplay: () => Promise<void>;
   /**
    * Email of the account that just registered and is awaiting
    * verification. Read by VerifyEmail / SignIn screens to pre-fill
@@ -86,9 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [pendingVerifyEmail, setPendingVerifyEmail] = useState<string | null>(
     null,
   );
-  // Dev-only replay override. Default false; hydrated from AsyncStorage on
-  // mount so a reload mid-test keeps the user in onboarding replay.
-  const [forceOnboarding, setForceOnboarding] = useState(false);
   // Guard so the session-expired toast doesn't fire repeatedly when
   // multiple in-flight 401s land at the same instant.
   const sessionExpiredFiredRef = useRef(false);
@@ -116,24 +78,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const checkAuth = useCallback(async () => {
     try {
-      // Dev-only: on the FIRST checkAuth of the app launch (cold start),
-      // clear any saved session so QA lands on the login screen and can
-      // re-test sign-in without manual logout. Latched via
-      // `forceLoginConsumed` so subsequent checkAuth calls (email-login
-      // path, remounts) run normally and a real login sticks.
-      if (FORCE_LOGIN_ON_LAUNCH && !forceLoginConsumed) {
-        forceLoginConsumed = true;
-        try {
-          await authService.logout();
-        } catch (forceLogoutError) {
-          console.warn(
-            'Force-login: logout failed (ignored)',
-            forceLogoutError,
-          );
-        }
-        setUser(null);
-        return;
-      }
       // One-time upgrade for users coming from legacy single-entry Keychain.
       // Idempotent — safe to call on every cold start. Must run BEFORE
       // isAuthenticated() so the new layout is populated.
@@ -161,36 +105,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-
-  // Hydrate the dev-only replay override from AsyncStorage on cold start.
-  // Best-effort: a read failure just leaves the safe default (false).
-  useEffect(() => {
-    let isMounted = true;
-    AsyncStorage.getItem(FORCE_ONBOARDING_STORAGE_KEY)
-      .then(value => {
-        if (isMounted && value === 'true') {
-          setForceOnboarding(true);
-        }
-      })
-      .catch(error => {
-        console.warn('Failed to read force-onboarding override', error);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  /**
-   * Dev-only: enter onboarding replay. Persist + set the override so
-   * AppNavigator remounts the Onboarding stack at its first screen
-   * (Welcome). No navigation.reset is needed — the conditional stack
-   * swap in AppNavigator unmounts the Home routes and mounts the
-   * Onboarding routes, landing on the first registered screen.
-   */
-  const startOnboardingReplay = useCallback(async () => {
-    await AsyncStorage.setItem(FORCE_ONBOARDING_STORAGE_KEY, 'true');
-    setForceOnboarding(true);
-  }, []);
 
   // Wire the session-expired hook from apiClient. When the 401-retry
   // interceptor exhausts the refresh path (refresh token missing /
@@ -339,15 +253,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         const updateData = { ...data, is_first_login: false };
         await updateCurrentUser(updateData);
-        // Clear the dev replay override here (not at the call site) so it
-        // works wherever completeOnboarding() runs — today on /generate
-        // success, and after the V2 cutover when it moves to the Outro
-        // "See my outfit" tap. Best-effort persist clear; the in-memory
-        // flip is what actually drops the user back onto Home.
-        setForceOnboarding(false);
-        AsyncStorage.removeItem(FORCE_ONBOARDING_STORAGE_KEY).catch(error => {
-          console.warn('Failed to clear force-onboarding override', error);
-        });
       } catch (error) {
         console.error('Failed to complete onboarding', error);
         throw error;
@@ -363,8 +268,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       value={{
         user,
         isLoading,
-        forceOnboarding,
-        startOnboardingReplay,
         pendingVerifyEmail,
         login,
         register,

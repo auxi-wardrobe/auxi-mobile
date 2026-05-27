@@ -22,7 +22,14 @@
  *   boundary on builds that haven't received `GoogleService-Info.plist`.
  */
 import React, { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -45,11 +52,6 @@ import {
   isOAuthConflictError,
   type AuthErrorEnvelope,
 } from '../../services/authTypes';
-import {
-  QA_BYPASS_EMAIL,
-  QA_BYPASS_ENABLED,
-  QA_BYPASS_PASSWORD,
-} from '../../config/featureFlags';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
@@ -116,18 +118,20 @@ const CaretDownGlyph = () => (
 export const WelcomeScreen = () => {
   const navigation = useNavigation<Navigation>();
   const { t } = useTranslation();
-  const { refreshUser, login, startOnboardingReplay } = useAuth();
+  const { refreshUser } = useAuth();
   const googleMutation = useGoogleSignInMutation();
   const appleMutation = useAppleSignInMutation();
 
-  // Dev-only QA bypass busy flag (separate from OAuth busy so a failed
-  // bypass doesn't wedge the social CTAs).
-  const [qaBypassBusy, setQaBypassBusy] = useState(false);
+  // Which social provider (if any) is mid-authentication. Drives both the
+  // disabled state and the inline spinner. A single state value (rather than
+  // the mutation's `isPending`) so the busy window spans the WHOLE flow —
+  // native SDK sheet → backend verify → refreshUser — instead of only the
+  // mutation, which would leave a dead, spinner-less gap after the Google
+  // sheet dismisses while the backend round-trip is still in flight.
+  const [socialBusy, setSocialBusy] = useState<'google' | 'apple' | null>(null);
 
   const isAppleAvailable = Platform.OS === 'ios';
-  const showQaBypass = __DEV__ && QA_BYPASS_ENABLED;
-  const isBusy =
-    googleMutation.isPending || appleMutation.isPending || qaBypassBusy;
+  const isBusy = socialBusy !== null;
 
   const onPressEmail = () =>
     navigation.navigate('EmailInput', { mode: 'signup' });
@@ -175,6 +179,7 @@ export const WelcomeScreen = () => {
       });
       return;
     }
+    setSocialBusy('google');
     try {
       const { idToken } = await googleSignInRequest();
       await googleMutation.mutateAsync({ id_token: idToken });
@@ -194,6 +199,10 @@ export const WelcomeScreen = () => {
         type: 'error',
         text1: t('uac.welcome.oauth_generic_error'),
       });
+    } finally {
+      // Clears the spinner on cancel / error. On success the navigator
+      // unmounts this screen, so this is a harmless no-op there.
+      setSocialBusy(null);
     }
   };
 
@@ -209,6 +218,7 @@ export const WelcomeScreen = () => {
       });
       return;
     }
+    setSocialBusy('apple');
     try {
       const { identityToken, name } = await appleSignInRequest();
       await appleMutation.mutateAsync({ identity_token: identityToken, name });
@@ -223,36 +233,8 @@ export const WelcomeScreen = () => {
         type: 'error',
         text1: t('uac.welcome.oauth_generic_error'),
       });
-    }
-  };
-
-  /**
-   * Dev-only QA bypass — skip the (in-flight, fragile) email UI and land
-   * directly in V2 onboarding. Authenticates the QA account via the same
-   * AuthContext.login() a normal sign-in uses (tokens persisted, user
-   * fetched), then sets `forceOnboarding=true` via startOnboardingReplay()
-   * so AppNavigator shows the onboarding stack regardless of the account's
-   * `is_first_login`. Never reachable in release builds (gated by
-   * `showQaBypass`).
-   */
-  const onPressQaBypass = async () => {
-    if (isBusy) return;
-    setQaBypassBusy(true);
-    try {
-      // login() drives authService.login + checkAuth → AuthContext.user set.
-      await login({ email: QA_BYPASS_EMAIL, password: QA_BYPASS_PASSWORD });
-      // Force the onboarding stack even though qa-test is not a first login.
-      await startOnboardingReplay();
-      // No manual navigation: AppNavigator's `user` gate swaps to the
-      // onboarding stack as soon as user + forceOnboarding are set.
-    } catch (err) {
-      console.warn('QA bypass login failed', err);
-      Toast.show({
-        type: 'error',
-        text1: t('uac.welcome.qa_bypass_error'),
-      });
     } finally {
-      setQaBypassBusy(false);
+      setSocialBusy(null);
     }
   };
 
@@ -292,7 +274,10 @@ export const WelcomeScreen = () => {
               testID="welcome-cta-google"
               accessibilityRole="button"
               accessibilityLabel={t('uac.welcome.google_cta')}
-              accessibilityState={{ disabled: isBusy }}
+              accessibilityState={{
+                disabled: isBusy,
+                busy: socialBusy === 'google',
+              }}
               disabled={isBusy}
               onPress={onPressGoogle}
               style={({ pressed }) => [
@@ -301,10 +286,19 @@ export const WelcomeScreen = () => {
                 (pressed || isBusy) && styles.pressed,
               ]}
             >
-              <Text style={styles.buttonLabelDark}>
-                {t('uac.welcome.google_cta')}
-              </Text>
-              <GoogleGlyph />
+              {socialBusy === 'google' ? (
+                <ActivityIndicator
+                  testID="welcome-cta-google-spinner"
+                  color={theme.colors.uacTextBase}
+                />
+              ) : (
+                <>
+                  <Text style={styles.buttonLabelDark}>
+                    {t('uac.welcome.google_cta')}
+                  </Text>
+                  <GoogleGlyph />
+                </>
+              )}
             </Pressable>
 
             {isAppleAvailable && (
@@ -312,7 +306,10 @@ export const WelcomeScreen = () => {
                 testID="welcome-cta-apple"
                 accessibilityRole="button"
                 accessibilityLabel={t('uac.welcome.apple_cta')}
-                accessibilityState={{ disabled: isBusy }}
+                accessibilityState={{
+                  disabled: isBusy,
+                  busy: socialBusy === 'apple',
+                }}
                 disabled={isBusy}
                 onPress={onPressApple}
                 style={({ pressed }) => [
@@ -321,10 +318,19 @@ export const WelcomeScreen = () => {
                   (pressed || isBusy) && styles.pressed,
                 ]}
               >
-                <Text style={styles.buttonLabelLight}>
-                  {t('uac.welcome.apple_cta')}
-                </Text>
-                <AppleGlyph />
+                {socialBusy === 'apple' ? (
+                  <ActivityIndicator
+                    testID="welcome-cta-apple-spinner"
+                    color={theme.colors.uacTextPrimaryBase}
+                  />
+                ) : (
+                  <>
+                    <Text style={styles.buttonLabelLight}>
+                      {t('uac.welcome.apple_cta')}
+                    </Text>
+                    <AppleGlyph />
+                  </>
+                )}
               </Pressable>
             )}
           </View>
@@ -358,28 +364,6 @@ export const WelcomeScreen = () => {
         <Text style={styles.legalText} testID="welcome-legal-text">
           {t('uac.welcome.legal_text')}
         </Text>
-
-        {/* Dev-only QA bypass — never rendered in release builds
-            (gated by `__DEV__ && QA_BYPASS_ENABLED`). Logs in the QA
-            account and forces onboarding, skipping the email UI. */}
-        {showQaBypass && (
-          <Pressable
-            testID="welcome-qa-bypass-onboarding"
-            accessibilityRole="button"
-            accessibilityLabel={t('uac.welcome.qa_bypass_cta')}
-            accessibilityState={{ disabled: isBusy, busy: qaBypassBusy }}
-            disabled={isBusy}
-            onPress={onPressQaBypass}
-            style={({ pressed }) => [
-              styles.qaBypassButton,
-              (pressed || isBusy) && styles.pressed,
-            ]}
-          >
-            <Text style={styles.qaBypassLabel}>
-              {t('uac.welcome.qa_bypass_cta')}
-            </Text>
-          </Pressable>
-        )}
       </View>
     </SafeAreaView>
   );
@@ -465,23 +449,6 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.uacDimension16,
-  },
-  // Dev-only QA bypass — dashed outline so it reads as a non-production
-  // affordance, distinct from the real CTAs. Theme tokens only.
-  qaBypassButton: {
-    marginTop: theme.spacing.uacDimension16,
-    height: theme.spacing.uacButtonHeight,
-    borderRadius: theme.borderRadius.uacButtonCta,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: theme.colors.uacBorderBase,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qaBypassLabel: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextBase,
   },
   pressed: {
     opacity: 0.7,
