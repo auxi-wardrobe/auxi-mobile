@@ -1,0 +1,253 @@
+# auxi/maestro/flows/onboarding/onboarding-v2.yaml
+# Onboarding V2 redesign — happy path (feat/onboarding-v2-redesign).
+#
+# Journey (D8/D9 — Welcome + LocationPermission shared, V2 middle steps):
+#   Welcome -> LocationPermission -> Step 1 Wardrobe -> Step 2 Fit ->
+#   Step 3 Styles (max-2 ranked picks) -> Loading (real /generate) ->
+#   Completed -> Outro -> [completeOnboarding] -> Home stack swap.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# BUILD PRECONDITION (qa-mobile, read first):
+#   The V2 stack is gated behind ONBOARDING_V2_ENABLED, which is `__DEV__`
+#   (src/config/featureFlags.ts:81). A RELEASE build routes the LEGACY V05
+#   stack (GenderPreference -> StylePreference -> StylePicker), NOT these
+#   screens. This flow REQUIRES a DEBUG build of the app on the sim. Same
+#   gate applies to the Settings "Replay onboarding" row
+#   (ONBOARDING_REPLAY_ENABLED = __DEV__, featureFlags.ts:62).
+#
+# ACCOUNT-STATE PRECONDITION (pick ONE):
+#   This flow needs the app to enter the Onboarding stack, which AppNavigator
+#   mounts only when `user.is_first_login === true` (or the dev `forceOnboarding`
+#   replay override is set). Two ways to satisfy that:
+#
+#   (A) FRESH FIRST-LOGIN ACCOUNT (what this flow does by default):
+#       The test account must be is_first_login=true at run start. If a prior
+#       run completed onboarding, the account is is_first_login=false and step 2
+#       below will fail fast (Welcome never appears; Home shows instead). Reset
+#       via local DB:
+#           UPDATE users SET is_first_login=true WHERE email='qa-test@auxi.app';
+#       …or register a brand-new user through the app UI first.
+#
+#   (B) REPLAY MODE (no DB poke, reuses an already-onboarded account):
+#       From Home open the Sidebar, tap the Settings menu item, then tap
+#       `settings-replay-onboarding-row` (dev-only; __DEV__ +
+#       ONBOARDING_REPLAY_ENABLED). That flips `forceOnboarding=true` and
+#       AppNavigator remounts the Onboarding stack at Welcome. To run this flow
+#       in replay mode, REPLACE the cold-login block (steps 1–2) with:
+#           - runFlow: ../_shared/ensure-home.yaml
+#           - tapOn: { id: <home-menu-button> }   # GAP: the Home Sidebar-open
+#                                                  # button has NO testID yet
+#                                                  # (HomeScreen.tsx:1085) — see
+#                                                  # the qa-ui hand-off report.
+#           - tapOn: { id: sidebar-menu-setting }
+#           - tapOn: { id: settings-replay-onboarding-row }
+#       then resume at step 3 (Welcome CTA). Left as a documented alternative;
+#       the default path below uses (A) so the flow is self-contained and does
+#       NOT depend on the missing Home-menu testID.
+#
+# BACKEND PRECONDITION:
+#   POST /api/v05/onboarding/generate must reach a real backend (prod-mirror on
+#   :5001 — the qa-test account 401s against the Railway-backed instance; see
+#   v05_live_eval_local_db memory). Loading IS the in-flight /generate call
+#   (D10), so this is a genuine network wait, not a timed splash.
+#
+# LOCATION PERMISSION (why we take the "Not now" path):
+#   `onboarding-location-allow` triggers the NATIVE iOS location-permission
+#   dialog (CoreLocation system alert). Maestro cannot address that system
+#   alert by testID — it would require a brittle `tapOn: text` against OS UI
+#   that varies by iOS version/locale. The "Not now" skip
+#   (`onboarding-location-skip`) routes straight to OnboardingWardrobe with
+#   NO system dialog, keeping the flow fully deterministic. (Mirrors how
+#   onboarding/v05.yaml already takes the skip path.) A separate flow can
+#   cover the allow-path + OS-dialog handling if product wants that coverage.
+
+appId: com.auxi2026.app
+name: onboarding-v2
+tags:
+  - onboarding
+  - v2
+  - regression
+# env defaults — override on the CLI via `-e KEY=VALUE`. Credentials are
+# intentionally NOT defaulted here (pass via -e so they never hit CI logs).
+env:
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  # Welcome / LocationPermission / step screens are static (no network).
+  ONBOARDING_NAV_TIMEOUT_MS: 10000
+  # POST /api/v05/onboarding/generate is 3-4s on local; 60s gives comfortable
+  # margin for a cold DB without papering over a real regression.
+  V05_GENERATE_TIMEOUT_MS: 60000
+  # First-login user lands on Home after the Outro CTA + completeOnboarding().
+  HOME_TIMEOUT_MS: 30000
+---
+# --- 1. Cold launch + login (inline; first-login user lands on Welcome, ---
+# --- not Home, so we can't reuse _shared/login.yaml which asserts Home). ---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- extendedWaitUntil:
+    visible:
+      id: auth-email-input
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
+- tapOn:
+    id: auth-email-input
+- inputText: ${QA_EMAIL}
+- hideKeyboard
+- tapOn:
+    id: auth-password-input
+- inputText: ${QA_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: auth-login-submit
+
+# --- 2. Land on Welcome (is_first_login=true branch) ---
+# Welcome CTA now carries a testID (onboarding-welcome-cta); prefer it over
+# the copy match the v05 flow used as a fallback.
+- extendedWaitUntil:
+    visible:
+      id: onboarding-welcome-cta
+    timeout: ${HOME_TIMEOUT_MS}
+
+# --- 3. Welcome -> LocationPermission ---
+- tapOn:
+    id: onboarding-welcome-cta
+- extendedWaitUntil:
+    visible:
+      id: onboarding-location-skip
+    timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
+
+# --- 4. LocationPermission -> Step 1 (skip; no OS dialog — see header) ---
+- tapOn:
+    id: onboarding-location-skip
+- extendedWaitUntil:
+    visible:
+      id: onboarding-wardrobe-screen
+    timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
+
+# --- 5. Step 1 Wardrobe: header + Continue-disabled-until-pick contract ---
+# CTA is disabled until a tile is selected (Continue is NOT tappable on entry).
+# Assert the step header is present, the Continue is mounted-but-disabled,
+# pick Womenswear, then assert Continue flips enabled before tapping it.
+- assertVisible:
+    id: onboarding-step-back
+- assertVisible:
+    id: onboarding-wardrobe-continue
+    enabled: false
+- tapOn:
+    id: onboarding-wardrobe-tile-womenswear   # testID lowercases the wire value
+- assertVisible:
+    id: onboarding-wardrobe-tile-womenswear   # still mounted; a11yState selected flipped
+- assertVisible:
+    id: onboarding-wardrobe-continue
+    enabled: true
+- tapOn:
+    id: onboarding-wardrobe-continue
+- extendedWaitUntil:
+    visible:
+      id: onboarding-fit-screen
+    timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
+
+# --- 6. Step 2 Fit: pick Regular, advance ---
+# testID uses the UI LABEL lowercased ("regular"), not the wire value
+# ("Classic Fit") — D2 mapping in onboarding/config.ts.
+- assertVisible:
+    id: onboarding-fit-continue
+    enabled: false
+- tapOn:
+    id: onboarding-fit-tile-regular
+- assertVisible:
+    id: onboarding-fit-continue
+    enabled: true
+- tapOn:
+    id: onboarding-fit-continue
+- extendedWaitUntil:
+    visible:
+      id: onboarding-styles-screen
+    timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
+
+# --- 7. Step 3 Styles: ranked max-2 picks + pin badges ---
+# MAX_STYLE_PICKS=2 (D7). The sticky Next bar shows "(n/2) Next" and is
+# disabled until exactly 2 picks. Each pick renders a numbered pin badge
+# (onboarding-style-pin-<rank>, owned by OnboardingSelectionCard). A 3rd
+# tile is disabled while 2 are held (limitReached) — we don't tap a 3rd.
+- assertVisible:
+    id: onboarding-style-next
+    enabled: false
+# Pick #1 -> pin badge "1" appears on the first tile.
+- tapOn:
+    id: onboarding-style-tile-minimal
+- assertVisible:
+    id: onboarding-style-pin-1
+# Pick #2 -> pin badge "2" appears on the second tile; Next enables at 2/2.
+- tapOn:
+    id: onboarding-style-tile-soft
+- assertVisible:
+    id: onboarding-style-pin-2
+- assertVisible:
+    id: onboarding-style-next
+    enabled: true
+# The Next title is "(2/2) Next" once both picks are held. Asserting the
+# label is the explicit count contract (count is deterministic, not random).
+- assertVisible:
+    text: "(2/2) Next"
+- tapOn:
+    id: onboarding-style-next
+
+# --- 8. Loading: real /generate in-flight wait (D10) ---
+# OnboardingLoadingScreen fires POST /v05/onboarding/generate on mount and
+# replaces to Completed on success. Assert the loading screen mounts and the
+# error block did NOT surface (pool_insufficient / 4xx would mount it instead).
+- extendedWaitUntil:
+    visible:
+      id: onboarding-loading-screen
+    timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
+- assertNotVisible:
+    id: onboarding-loading-error
+
+# --- 9. Completed: chips render from local selection + CTA -> Outro ---
+# Reached via navigation.replace once /generate succeeds. The single
+# extendedWaitUntil below spans the network call (we wait on the post-state
+# marker, not the transient loading view).
+- extendedWaitUntil:
+    visible:
+      id: onboarding-completed-screen
+    timeout: ${V05_GENERATE_TIMEOUT_MS}
+- assertVisible:
+    id: onboarding-completed-chips
+- tapOn:
+    id: onboarding-completed-continue
+
+# --- 10. Outro: quote + "See my outfit" -> completeOnboarding -> Home ---
+- extendedWaitUntil:
+    visible:
+      id: onboarding-outro-screen
+    timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
+# Quote copy is designer-confirmed static (OUTRO_COPY.quote in config.ts).
+- assertVisible:
+    text: "Great style is built one good choice at a time."
+- tapOn:
+    id: onboarding-outro-see-outfit
+
+# --- 11. Land on Home (is_first_login flipped false -> AppNavigator swap) ---
+# "See my outfit" calls completeOnboarding() (the ONLY completion point),
+# flipping is_first_login=false; AppNavigator unmounts the onboarding stack
+# and mounts the Home stack. home-screen-root is the deterministic post-state.
+- extendedWaitUntil:
+    visible:
+      id: home-screen-root
+    timeout: ${HOME_TIMEOUT_MS}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Back-navigation note (NOT asserted as a step; documented for qa-mobile):
+#   Steps 1-3 keep a back affordance (onboarding-step-back). Tapping it on
+#   Step 2 returns to Step 1 with the prior pick still selected (route param
+#   threads forward, local pick is per-screen). Loading and Completed set
+#   gestureEnabled:false (AppNavigator) so a back-swipe cannot re-trigger
+#   /generate. Outro has no back affordance. A dedicated back-nav flow can
+#   cover the Step-2 -> Step-1 -> Step-2 round-trip if regression needs it;
+#   the happy path above intentionally does not, to keep one flow = one journey.
+#
+# Max-2 behaviour note (NOT asserted; documented):
+#   On Step 3, holding 2 picks disables the remaining tiles (limitReached ->
+#   accessibilityState.disabled). To pick a different 2nd style you must first
+#   deselect a held tile (tap it again, which removes it and re-ranks). The
+#   happy path picks exactly 2 and never tests the 3rd-tile-disabled edge.

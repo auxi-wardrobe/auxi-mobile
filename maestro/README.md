@@ -71,6 +71,7 @@ Exit code: 0 = pass, non-zero = fail.
 | `auth/login.yaml` | auth, regression | Login persists across relaunch |
 | `home/swipe.yaml` | home, regression | Vertical sheet swipe + index advance + Show another / This works / Edit context buttons |
 | `onboarding/v05.yaml` | onboarding, v05, regression | V05 onboarding journey: WardrobeDirection -> FitPreference -> StylePicker -> POST /api/v05/onboarding/generate -> Home stack swap. Requires `is_first_login=true` test account; ~60s runtime to absorb slow generate endpoint. |
+| `onboarding/onboarding-v2.yaml` | onboarding, v2, regression | Onboarding V2 redesign happy path: Welcome -> LocationPermission (skip) -> Step1 Wardrobe -> Step2 Fit -> Step3 Styles (max-2 ranked picks + pin badges) -> Loading (real /generate) -> Completed -> Outro -> Home stack swap. **DEBUG build only** (V2 stack gated on `__DEV__`). Requires `is_first_login=true` test account (or replay mode); prod-mirror backend on :5001. ~60s runtime. |
 
 Add new flows here when you ship them. Tags drive grouped runs.
 
@@ -90,9 +91,10 @@ If you start hitting "still logged in as someone else" issues, run
 `auth/login.yaml` once (or `xcrun simctl uninstall booted com.auxi2026.app`)
 to reset the keychain.
 
-`onboarding/v05.yaml` deliberately inlines its own cold-login (rather
-than reusing `_shared/login.yaml`) because the post-credentials assertion
-differs: a first-login user lands on Welcome, not Home.
+`onboarding/v05.yaml` and `onboarding/onboarding-v2.yaml` deliberately
+inline their own cold-login (rather than reusing `_shared/login.yaml`)
+because the post-credentials assertion differs: a first-login user lands
+on Welcome, not Home.
 
 ## Conventions (must read before authoring)
 
@@ -127,13 +129,22 @@ Naming convention (mirrored in `mobile-dev` agent rules):
 
 Open testID gaps (filed with mobile-dev):
 
-- `WelcomeScreen.tsx` — "Get started" PillButton has no testID. Proposed:
-  `onboarding-welcome-cta`. `onboarding/v05.yaml` falls back to
-  `text: "Get started"` (designer-confirmed static copy).
-- `LocationPermissionScreen.tsx` — "Enable location" / "Not now" buttons
-  have no testIDs. Proposed: `onboarding-location-enable`,
-  `onboarding-location-skip`. `onboarding/v05.yaml` falls back to
-  `text: "Not now"` for the skip path.
+- `HomeScreen.tsx:1085` — the header `TopIconButton` that opens the
+  Sidebar (and is the only path Home -> Settings) has NO testID. Blocks
+  any Maestro flow that needs to reach Settings from Home — including the
+  `onboarding/onboarding-v2.yaml` replay-mode setup variant (B). Proposed:
+  `home-menu-button`. The default onboarding-v2 path avoids this by
+  cold-logging-in a fresh first-login account.
+
+Resolved (now have testIDs on `feat/onboarding-v2-redesign`):
+
+- `AppWelcomeScreen.tsx` — "Get started" CTA → `onboarding-welcome-cta`.
+- `LocationPermissionScreen.tsx` — `onboarding-location-allow` /
+  `onboarding-location-skip`. (`onboarding/v05.yaml` still uses the
+  `text: "Not now"` fallback; can be upgraded to the testID.)
+
+Still open elsewhere:
+
 - `screens/auth/RegisterScreen.tsx` — entire register screen has no
   testIDs (`Input` placeholders + Sign Up button). Blocks any future
   "register fresh user" subflow. Proposed: `auth-register-email`,

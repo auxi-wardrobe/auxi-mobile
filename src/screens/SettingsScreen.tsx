@@ -34,6 +34,12 @@ import {
 } from '../types/auth';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
+import { ONBOARDING_REPLAY_ENABLED } from '../config/featureFlags';
+import {
+  grantAnalyticsConsent,
+  hasAnalyticsConsent,
+  revokeAnalyticsConsent,
+} from '../services/analytics';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Settings'>;
 type ActiveModal = 'none' | 'direction' | 'changeTime' | 'deleteConfirm';
@@ -167,6 +173,7 @@ export const SettingsScreen = () => {
     refreshUser,
     resetUserPreferences,
     updateCurrentUser,
+    startOnboardingReplay,
     user,
   } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -187,6 +194,10 @@ export const SettingsScreen = () => {
   const [isResettingPreferences, setIsResettingPreferences] = useState(false);
   // Dark Mode: visual-only stub shipped disabled — no theming infra wired yet.
   const [darkModeStub] = useState(false);
+  // Analytics consent (EU/CA opt-in). Mirrors the persisted decision in the
+  // analytics seam; the Privacy-control toggle below is the production path
+  // that grants/revokes it.
+  const [analyticsConsent, setAnalyticsConsent] = useState(false);
   const reminderSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -202,6 +213,19 @@ export const SettingsScreen = () => {
   useEffect(() => {
     syncFromUser(user);
   }, [syncFromUser, user]);
+
+  // Reflect the persisted analytics-consent decision in the toggle on mount.
+  useEffect(() => {
+    let isMounted = true;
+    hasAnalyticsConsent().then(granted => {
+      if (isMounted) {
+        setAnalyticsConsent(granted);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -323,6 +347,18 @@ export const SettingsScreen = () => {
     }, 500);
   };
 
+  // Optimistic flip with rollback on failure (mirrors handleReminderToggle).
+  // grant/revoke persist the decision and bring the SDK up / tear it down.
+  const handleAnalyticsConsentToggle = (enabled: boolean) => {
+    const previousValue = analyticsConsent;
+    setAnalyticsConsent(enabled);
+    const persist = enabled ? grantAnalyticsConsent : revokeAnalyticsConsent;
+    persist().catch(() => {
+      setAnalyticsConsent(previousValue);
+      showSettingsError('Settings', 'Failed to update analytics preference');
+    });
+  };
+
   const applyDirection = async () => {
     if (isSavingDirection) return;
 
@@ -392,6 +428,23 @@ export const SettingsScreen = () => {
       }
     } finally {
       setIsResettingPreferences(false);
+    }
+  };
+
+  // Dev-only "Replay onboarding". Flips the forceOnboarding override so
+  // AppNavigator remounts the Onboarding stack at its first screen
+  // (Welcome). No navigation.reset here: the conditional stack swap in
+  // AppNavigator handles the transition, and Settings doesn't have the
+  // onboarding routes registered to reset to. completeOnboarding() clears
+  // the override when the replayed flow finishes.
+  const handleReplayOnboarding = async () => {
+    try {
+      await startOnboardingReplay();
+    } catch (error) {
+      showSettingsError(
+        'Replay onboarding',
+        getErrorMessage(error, 'Could not start onboarding replay'),
+      );
     }
   };
 
@@ -467,6 +520,21 @@ export const SettingsScreen = () => {
 
           <Divider />
 
+          {/* Analytics consent (EU/CA opt-in). The only production path to
+              grant/revoke — until granted, the Mixpanel SDK stays inert and
+              every track() call no-ops (see services/analytics.ts). */}
+          <View style={styles.rowHeader}>
+            <Text style={styles.rowLabel}>Share usage analytics</Text>
+            <SettingsSwitch
+              testID="settings-analytics-consent-toggle"
+              accessibilityLabel="Toggle sharing usage analytics"
+              value={analyticsConsent}
+              onValueChange={handleAnalyticsConsentToggle}
+            />
+          </View>
+
+          <Divider />
+
           <TouchableOpacity
             testID="settings-your-information-row"
             activeOpacity={0.82}
@@ -523,6 +591,30 @@ export const SettingsScreen = () => {
           </View>
 
           <Divider />
+
+          {/* Dev-only "Replay onboarding" — QA tooling, never shipped to
+              prod. Double-gated: __DEV__ (stripped from release bundles)
+              AND ONBOARDING_REPLAY_ENABLED (= __DEV__). */}
+          {__DEV__ && ONBOARDING_REPLAY_ENABLED ? (
+            <>
+              <TouchableOpacity
+                testID="settings-replay-onboarding-row"
+                accessibilityLabel="Replay onboarding (dev only)"
+                activeOpacity={0.82}
+                style={styles.singleRow}
+                onPress={handleReplayOnboarding}
+              >
+                <Text style={styles.rowLabel}>Replay onboarding (dev)</Text>
+                <Icons.ArrowRight
+                  width={24}
+                  height={24}
+                  color={theme.colors.uacTextBase}
+                />
+              </TouchableOpacity>
+
+              <Divider />
+            </>
+          ) : null}
 
           {/* Dark Mode: non-functional stub — disabled + dimmed so users don't
               expect a theme change until theming infra lands. */}

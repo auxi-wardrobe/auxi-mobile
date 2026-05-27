@@ -15,12 +15,13 @@
  *     existed prior to this batch — see open Qs).
  *   - Call `useEmailPrecheckMutation`. Backend returns:
  *       * 'google' / 'apple' → navigate `EmailGoogleNotice` (batch C/D).
- *       * 'password' → navigate to `SignIn` (existing user) OR
- *                       `PasswordCreation` (signup mode) depending on
- *                       route param `mode`.
+ *       * 'password' → existing password account → navigate `SignIn`
+ *                       (the user logs in). We HONOR the precheck result
+ *                       here regardless of how the screen was entered, so
+ *                       returning users always reach Sign-In.
  *       * 'none' (admin only — anonymous sees 'password' for enum
  *         safety, so this branch is effectively unreachable) → fall
- *         through to PasswordCreation.
+ *         through to PasswordCreation (signup).
  *   - 429 RATE_LIMITED → error_rate_limited copy.
  *   - NETWORK_ERROR → toast.
  *
@@ -121,6 +122,15 @@ export const EmailInputScreen = () => {
         onSuccess: (result) => {
           if (result.provider === 'google' || result.provider === 'apple') {
             navigation.navigate('EmailGoogleNotice', { email: trimmed });
+            return;
+          }
+          // `provider:'password'` means the email already has a
+          // password-based account → route to SignIn so the user logs in.
+          // Anything else (`'none'` — new email, admin-only visibility) →
+          // PasswordCreation for signup. Honor the precheck result rather
+          // than assuming signup (AU bugfix: existing users could not log in).
+          if (result.provider === 'password') {
+            navigation.navigate('SignIn', { email: trimmed });
             return;
           }
           navigation.navigate('PasswordCreation', { email: trimmed });

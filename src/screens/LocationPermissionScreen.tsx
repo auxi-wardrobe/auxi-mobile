@@ -15,6 +15,7 @@ import {
 } from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
 import { requestLocationPermission } from '../utils/location';
+import { ONBOARDING_V2_ENABLED } from '../config/featureFlags';
 import { AppStackParamList } from '../types/navigation';
 
 type Navigation = NativeStackNavigationProp<
@@ -26,11 +27,15 @@ export const LocationPermissionScreen = () => {
   const navigation = useNavigation<Navigation>();
   const [loading, setLoading] = useState(false);
 
-  // Both location-permission outcomes funnel into GenderPreference. Skipping
-  // straight to StylePreference (the V05 fit picker) silently defaults
-  // wardrobe_direction to "Mixed", which violates the V05 spec contract that
-  // requires the user to explicitly pick direction. AU-249.
-  const goToGenderPreference = () => navigation.navigate('GenderPreference');
+  // Both location-permission outcomes funnel into the first wardrobe-direction
+  // step. The V2 redesign (ONBOARDING_V2_ENABLED) starts at OnboardingWardrobe;
+  // the legacy V05 flow starts at GenderPreference. Skipping straight to the
+  // fit picker silently defaults wardrobe_direction to "Mixed", which violates
+  // the V05 spec contract requiring an explicit direction pick. AU-249.
+  const goToGenderPreference = () =>
+    ONBOARDING_V2_ENABLED
+      ? navigation.navigate('OnboardingWardrobe')
+      : navigation.navigate('GenderPreference');
 
   const handleEnableLocation = async () => {
     setLoading(true);

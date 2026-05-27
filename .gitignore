@@ -55,6 +55,9 @@ yarn-error.log
 **/fastlane/test_output
 **/fastlane/.env
 **/fastlane/.env.*
+
+# QA findings screenshots — ephemeral sim/Figma captures, regenerate on demand; do not commit
+docs/qa-findings/screenshots/
 !**/fastlane/.env.default
 **/fastlane/*.p8
 **/fastlane/AuthKey_*.p8

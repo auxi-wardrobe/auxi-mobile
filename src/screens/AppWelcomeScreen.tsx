@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { theme } from '../theme/theme';
+import { WELCOME_COPY } from '../onboarding/config';
 import { AppStackParamList } from '../types/navigation';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Welcome'>;
@@ -24,19 +25,18 @@ export const AppWelcomeScreen = () => {
           />
 
           <View style={styles.textContainer}>
-            <Text style={styles.title}>Welcome to{`\n`}auxi</Text>
-            <Text style={styles.subtitle}>
-              Get outfit suggestions{`\n`}that work for your day.
-            </Text>
+            <Text style={styles.title}>{WELCOME_COPY.title}</Text>
+            <Text style={styles.subtitle}>{WELCOME_COPY.subtitle}</Text>
           </View>
         </View>
 
         <PillButton
-          title="Get started — takes 1 min"
+          title={WELCOME_COPY.ctaLabel}
           variant="filled"
           loading={isLoading}
           onPress={() => navigation.navigate('LocationPermission')}
           style={styles.cta}
+          testID="onboarding-welcome-cta"
         />
       </View>
     </SafeAreaView>
@@ -46,7 +46,8 @@ export const AppWelcomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fcfcfd', // Figma: #fcfcfd (near-white welcome bg — no matching theme token)
+    // Figma background/primary/neutral_50 (#fcfcfd) = uacBackgroundNeutral50.
+    backgroundColor: theme.colors.uacBackgroundNeutral50,
   },
   content: {
     flex: 1,
@@ -69,23 +70,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontFamily: 'Poppins-Bold',
-    fontSize: 40,
-    lineHeight: 52,
+    ...theme.typography.aliases.uacH1Bold,
+    // Figma H1 letter-spacing −0.72 (not baked into the alias — applied inline).
     letterSpacing: -0.72,
-    color: theme.colors.figmaText,
+    color: theme.colors.uacTextBase,
     textAlign: 'center',
     marginBottom: 16,
   },
   subtitle: {
     ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.figmaText,
+    color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
   cta: {
     marginBottom: 6,
     width: 327,
     alignSelf: 'center',
-    borderRadius: 16,
+    borderRadius: theme.borderRadius.l,
   },
 });

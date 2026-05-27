@@ -36,6 +36,13 @@ export const theme = {
     figmaIconSurface: '#E3E3EC',
     figmaDestructive: '#bb251a', // red for Cancel/delete actions — aliased by uacTextDangerBase below
     figmaOnboardingBackground: '#f7f7f8', // onboarding screens bg (differs from app figmaBackground #f2efec)
+    // Onboarding redesign (node 2849:8331) — 3 genuinely-new colors.
+    // Source: plans/260526-1443-onboarding-figma-extraction/figma-extraction-onboarding.md §4.1
+    // Everything else reuses existing tokens (caption pill = figmaCardTag rgba(18,18,18,0.75) per D5;
+    // screen bg #fcfcfd = uacBackgroundNeutral50; loading/outro bg #eee6df = figmaCaptionPillBg).
+    figmaOnboardingStepLabel: '#9e968e', // text/primary/bold_400 — "Step n/3" label + muted greige
+    figmaChipBg: '#5b5550', // background/primary/bold_500 — selected "You selected" chip bg
+    figmaOnboardingStickyBarBg: 'rgba(255, 255, 255, 0.6)', // color/neutral/white/Alpha200 — Step-3 sticky bar (backdrop-blur 2 in Figma)
     figmaTextDark: '#070707', // near-black for expand/collapse text buttons
     // Sidebar dark redesign (node 2852:24670) — divider hairline on the dark
     // sidebar bg. Figma maps Black/10% but that is invisible on #1d1f23, so per
@@ -220,6 +227,14 @@ export const theme = {
         fontSize: 12,
         lineHeight: 16,
       },
+      // Onboarding redesign (node 2849:8331) — Text-xxs caption pill label.
+      // Figma Text-xxs = Inter Regular 10/12. No existing 10/12 Inter alias.
+      // Source: figma-extraction-onboarding.md §4.2
+      interCaptionXxs: {
+        fontFamily: 'Inter-Regular',
+        fontSize: 10,
+        lineHeight: 12,
+      },
       uacM3BodyLarge: {
         fontFamily: 'Poppins-Regular',
         fontSize: 16,
@@ -240,6 +255,8 @@ export const theme = {
     round: 9999,
     // Home Grid View (AU-253): border-radius/xl = 12 — outfit image tile radius
     figmaTile: 12,
+    // Onboarding redesign (node 2849:8331): border-radius/sm = 6 — "You selected" chip radius
+    chip: 6,
     // UAC named radii — AU-242 spec
     uacScreen: 18,
     uacPanel: 16,
