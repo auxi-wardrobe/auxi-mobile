@@ -6,6 +6,13 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ## [Unreleased]
 
+## [v1.0-build11] - 2026-05-28
+
+### Added
+- sync try_another cycled flag into v05Api client
+- add Home Remix entry and align Outfit Canvas with Figma
+
+
 ## [v1.0-build9] - 2026-05-27
 
 ### Added
