@@ -385,6 +385,14 @@ export interface TryAnotherResponse {
   fallback_flags: string[];
   trace?: BuildTrace;
   message: string | null;
+  /**
+   * Backend sustainability contract (2026-05-27): `true` when the unique
+   * variation pool was exhausted and this is a controlled RE-SERVE of a
+   * previously-seen outfit. `fallback` is `false` and a real `outfit` is
+   * still present — render it like any normal outfit; do NOT treat this as
+   * a dead-end. `fallback_flags` may also include `"variations_cycled"`.
+   */
+  cycled?: boolean;
   /** Spec v2 §4.6 — set when no outfit is composable even with commons. */
   wardrobe_gap?: boolean;
   wardrobe_gap_reason?: V05WardrobeGapReason | null;
@@ -539,6 +547,22 @@ export const resetV05Session = (): void => {
 };
 
 /**
+ * Façade result. `outfits` is the V05 build batch HomeScreen maps + dedups
+ * (unchanged). The optional flags let HomeScreen distinguish exhaustion cases
+ * without re-plumbing the raw `/try_another` response:
+ *   - `cycled`: a real (re-served) outfit is present — render normally; HOME
+ *     may show a subtle "seen them all" hint. Never a dead-end.
+ *   - `wardrobeGap`: GENUINE dead-end — the wardrobe is too small to compose
+ *     any outfit. `outfits` is empty. HOME surfaces a terminal "add items" CTA.
+ * `/build` results carry neither flag.
+ */
+export interface RecommendV05Result {
+  outfits: V05Outfit[];
+  cycled?: boolean;
+  wardrobeGap?: boolean;
+}
+
+/**
  * Params accepted by the `recommendV05` façade. Combines the build-shaping
  * inputs (weather/user/intent/count) with the per-variation inputs the
  * HomeScreen threads (mode, style_feedback, pinned_item_id,
@@ -583,7 +607,7 @@ const errCode = (error: unknown): string | undefined =>
  */
 const buildAndStore = async (
   params: RecommendV05Params,
-): Promise<{ outfits: V05Outfit[] }> => {
+): Promise<RecommendV05Result> => {
   const data = await buildRecommendation({
     weather: params.weather,
     user: params.user,
@@ -601,10 +625,14 @@ const buildAndStore = async (
  * and caches the `session_id`; every subsequent invocation calls
  * `/try_another` with the cached session + the active outfit hash.
  *
- * Returns the V05 build contract `{ outfits: V05Outfit[] }` so HomeScreen's
- * existing `V05Outfit → legacy Outfit` mapping + append/dedup logic stay
- * unchanged. `/try_another` returns a single outfit → a one-element batch;
- * `fallback` / `wardrobe_gap` → an empty batch (no card appended, no throw).
+ * Returns `RecommendV05Result` — `outfits` keeps HomeScreen's existing
+ * `V05Outfit → legacy Outfit` mapping + append/dedup logic unchanged.
+ * `/try_another` returns a single outfit → a one-element batch. With the
+ * backend sustainability fix (2026-05-27) transient exhaustion now re-serves
+ * a real outfit flagged `cycled` (still a one-element batch). A GENUINE
+ * `wardrobe_gap` is the only remaining empty batch — surfaced via the
+ * `wardrobeGap` flag so HomeScreen can show a terminal CTA instead of a
+ * silent freeze.
  *
  * Error handling (contract §5/§6):
  *   - 410 `session_expired` (incl. cross-user ownership) → silent reset + build
@@ -615,7 +643,7 @@ const buildAndStore = async (
  */
 export const recommendV05 = async (
   params: RecommendV05Params,
-): Promise<{ outfits: V05Outfit[] }> => {
+): Promise<RecommendV05Result> => {
   // Cold start / post-reset → /build.
   if (!v05SessionId) {
     return buildAndStore(params);
@@ -633,12 +661,23 @@ export const recommendV05 = async (
   for (let attempt = 0; attempt < RETRY_LOCKED_MAX_ATTEMPTS; attempt++) {
     try {
       const data = await tryAnother(tryAnotherInput);
-      // fallback / wardrobe_gap → empty batch (no card, no throw — the
-      // toast / gap CTA is a separate follow-up ticket).
+      // `cycled` re-serves a real outfit (uniques exhausted, controlled
+      // re-serve) — pass it through with the outfit so HomeScreen can show a
+      // subtle hint. A GENUINE `wardrobe_gap` is the honest dead-end (no
+      // outfit) — surface it so HomeScreen renders a terminal CTA instead of a
+      // silent freeze. `cycled` may also appear in `fallback_flags`
+      // ("variations_cycled") — the top-level field is authoritative.
       if (data.outfit?.outfit_hash) {
         v05LastOutfitHash = data.outfit.outfit_hash;
       }
-      return { outfits: data.outfit ? [data.outfit] : [] };
+      const cycled =
+        data.cycled === true ||
+        data.fallback_flags?.includes('variations_cycled');
+      return {
+        outfits: data.outfit ? [data.outfit] : [],
+        cycled,
+        wardrobeGap: data.wardrobe_gap === true,
+      };
     } catch (error: unknown) {
       const status = errStatus(error);
       const code = errCode(error);
