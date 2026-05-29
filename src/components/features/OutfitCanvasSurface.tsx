@@ -72,11 +72,24 @@ const GridBackground = ({
   </Svg>
 );
 
+// Hold duration (ms) before an item becomes draggable in `longPress` mode.
+const LONG_PRESS_MS = 180;
+// Movement (px) that counts as a real drag/swipe (vs a tap jitter).
+const MOVE_THRESHOLD = 6;
+
+// How an item starts dragging:
+// - 'immediate' (editor): claim the touch on press — there's no scroll to fight.
+// - 'longPress' (collage): the item lives inside Home's paging ScrollView, so a
+//   quick swipe must page/scroll while a press-and-hold picks the item up to
+//   drag. This is how we DISAMBIGUATE swipe vs drag-drop.
+export type DragActivation = 'immediate' | 'longPress';
+
 // --- Draggable canvas item ---
 interface DraggableItemProps {
   item: CanvasItemData;
   isSelected: boolean;
   testIDPrefix: string;
+  dragActivation: DragActivation;
   onSelect?: (id: string) => void;
   onPositionChange: (id: string, x: number, y: number) => void;
 }
@@ -85,39 +98,95 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   item,
   isSelected,
   testIDPrefix,
+  dragActivation,
   onSelect,
   onPositionChange,
 }) => {
   const dragOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  // 0 → 1 "lifted" cue (scale up) while an armed drag is in progress.
+  const lift = useRef(new Animated.Value(0)).current;
   const hasMoved = useRef(false);
+  // In longPress mode the item is NOT draggable until the hold timer arms it;
+  // in immediate mode it is always armed. `armed` gates whether a move on this
+  // item captures the gesture (drag) or falls through to the ScrollView (swipe).
+  const armed = useRef(dragActivation === 'immediate');
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Keep latest props fresh inside the PanResponder closure (created once).
-  const propsRef = useRef({ item, onSelect, onPositionChange });
-  propsRef.current = { item, onSelect, onPositionChange };
+  const propsRef = useRef({ item, onSelect, onPositionChange, dragActivation });
+  propsRef.current = { item, onSelect, onPositionChange, dragActivation };
 
   // Reset offset only after the committed position has propagated via state.
   useEffect(() => {
     dragOffset.setValue({ x: 0, y: 0 });
   }, [item.x, item.y, dragOffset]);
 
+  const clearTimer = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const setLifted = (on: boolean) => {
+    Animated.spring(lift, {
+      toValue: on ? 1 : 0,
+      useNativeDriver: true,
+      friction: 7,
+      tension: 120,
+    }).start();
+  };
+
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 3 || Math.abs(gs.dy) > 3,
+      // START — claim immediately only in immediate mode. In longPress mode we
+      // decline the touch (so a swipe can scroll) and start the hold timer that
+      // arms dragging if the finger stays put.
+      onStartShouldSetPanResponder: () => {
+        if (propsRef.current.dragActivation === 'immediate') {
+          armed.current = true;
+          return true;
+        }
+        armed.current = false;
+        clearTimer();
+        longPressTimer.current = setTimeout(() => {
+          armed.current = true;
+        }, LONG_PRESS_MS);
+        return false;
+      },
+      // MOVE (capture phase) — once armed, capture the move BEFORE the native
+      // ScrollView so the drag wins. While not armed, a real move means the user
+      // is swiping: cancel the hold timer and let the ScrollView scroll.
+      onMoveShouldSetPanResponderCapture: (_, gs) => {
+        if (armed.current) {
+          return true;
+        }
+        if (Math.abs(gs.dx) > MOVE_THRESHOLD || Math.abs(gs.dy) > MOVE_THRESHOLD) {
+          clearTimer();
+        }
+        return false;
+      },
+      onMoveShouldSetPanResponder: () => armed.current,
       onPanResponderGrant: () => {
         hasMoved.current = false;
+        setLifted(true);
       },
       onPanResponderMove: (_, gs) => {
-        if (Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4) {
+        if (
+          Math.abs(gs.dx) > MOVE_THRESHOLD ||
+          Math.abs(gs.dy) > MOVE_THRESHOLD
+        ) {
           hasMoved.current = true;
         }
         dragOffset.setValue({ x: gs.dx, y: gs.dy });
       },
       onPanResponderRelease: (_, gs) => {
+        clearTimer();
+        setLifted(false);
         const {
           item: it,
           onSelect: os,
           onPositionChange: opc,
+          dragActivation: da,
         } = propsRef.current;
         if (!hasMoved.current) {
           os?.(it.id);
@@ -126,12 +195,21 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
           opc(it.id, it.x + gs.dx, it.y + gs.dy);
           // dragOffset reset by useEffect once item.x/y updates.
         }
+        armed.current = da === 'immediate';
       },
       onPanResponderTerminate: () => {
+        clearTimer();
+        setLifted(false);
         dragOffset.setValue({ x: 0, y: 0 });
+        armed.current = propsRef.current.dragActivation === 'immediate';
       },
+      // Don't yield an in-progress armed drag back to the ScrollView.
+      onPanResponderTerminationRequest: () => false,
     }),
   ).current;
+
+  // Cleanup the hold timer if the item unmounts mid-press.
+  useEffect(() => clearTimer, []);
 
   return (
     <Animated.View
@@ -144,7 +222,15 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
           zIndex: item.zIndex,
           width: item.width,
           height: item.height,
-          transform: dragOffset.getTranslateTransform(),
+          transform: [
+            ...dragOffset.getTranslateTransform(),
+            {
+              scale: lift.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.06],
+              }),
+            },
+          ],
         },
         isSelected && styles.selectedItem,
       ]}
@@ -170,6 +256,8 @@ type SurfaceProps = {
   showGrid?: boolean;
   // 'canvas-item' (editor) | 'home-collage-item' (collage-play).
   itemTestIDPrefix?: string;
+  // 'immediate' (editor, default) | 'longPress' (collage, inside a ScrollView).
+  dragActivation?: DragActivation;
   testID?: string;
 };
 
@@ -182,6 +270,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
   onSelect,
   showGrid = false,
   itemTestIDPrefix = 'canvas-item',
+  dragActivation = 'immediate',
   testID,
 }) => {
   const sortedItems = [...items].sort((a, b) => a.zIndex - b.zIndex);
@@ -198,6 +287,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
           item={item}
           isSelected={selectedId === item.id}
           testIDPrefix={itemTestIDPrefix}
+          dragActivation={dragActivation}
           onSelect={onSelect}
           onPositionChange={onPositionChange}
         />

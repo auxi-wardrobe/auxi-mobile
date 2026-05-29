@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Item } from '../../types/item';
-import {
-  CanvasItemData,
-  OutfitCanvasSurface,
-} from './OutfitCanvasSurface';
+import { CanvasItemData, OutfitCanvasSurface } from './OutfitCanvasSurface';
 import { seedFromOutfit } from './collage-seed-layout';
 
 // Stateful wrapper around OutfitCanvasSurface for the Home "collage-play" view.
@@ -59,6 +56,9 @@ export const CollageSheetCanvas: React.FC<Props> = ({
       selectedId={null}
       showGrid={false}
       itemTestIDPrefix="home-collage-item"
+      // Inside Home's paging ScrollView: hold-to-drag so a quick swipe still
+      // pages/scrolls; press-and-hold picks the item up to rearrange.
+      dragActivation="longPress"
     />
   );
 };
