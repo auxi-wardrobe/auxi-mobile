@@ -25,7 +25,7 @@ import IconGridAlt from '../../assets/images/icon_grid_alt.svg';
 // clipped behind the footer line.
 export const HOME_VIEW_TOGGLE_FOOTER_HEIGHT = 98;
 
-export type HomeView = 'grid' | 'alt';
+export type HomeView = 'grid' | 'collage';
 
 type Props = {
   activeView?: HomeView;
@@ -65,18 +65,18 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
         </TouchableOpacity>
         <TouchableOpacity
           testID={
-            activeView === 'alt'
-              ? 'home-footer-tab-alt-active'
-              : 'home-footer-tab-alt'
+            activeView === 'collage'
+              ? 'home-footer-tab-collage-active'
+              : 'home-footer-tab-collage'
           }
           accessibilityRole="button"
-          accessibilityLabel="Alternate view"
-          accessibilityState={{ selected: activeView === 'alt' }}
+          accessibilityLabel="Collage view"
+          accessibilityState={{ selected: activeView === 'collage' }}
           activeOpacity={0.82}
-          onPress={() => onSelectView?.('alt')}
+          onPress={() => onSelectView?.('collage')}
           style={styles.tab}
         >
-          {activeView === 'alt' && <View style={styles.activeCell} />}
+          {activeView === 'collage' && <View style={styles.activeCell} />}
           <IconGridAlt
             width={24}
             height={24}

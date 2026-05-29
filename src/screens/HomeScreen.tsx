@@ -58,9 +58,12 @@ import { WeatherWidget } from '../components/features/WeatherWidget';
 import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
 import { OutfitActionRow } from '../components/features/OutfitActionRow';
 import {
+  HomeView,
   HomeViewToggleFooter,
   HOME_VIEW_TOGGLE_FOOTER_HEIGHT,
 } from '../components/features/HomeViewToggleFooter';
+import { CollageSheetCanvas } from '../components/features/CollageSheetCanvas';
+import { COLLAGE_ASPECT } from '../components/features/collage-seed-layout';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -134,6 +137,14 @@ const GRID_AREA_H =
   OPTION_SHEET_HEIGHT - OPTION_ACTIONS_HEIGHT - OPTION_SHEET_VPAD;
 const CARD_HEIGHT = Math.floor((GRID_AREA_H - GRID_GAP) / 2);
 const CARD_WIDTH = Math.round(CARD_HEIGHT * CARD_ASPECT);
+
+// Home collage-play surface (Figma section 2850:13589). The "Image 3:4" cream
+// tile spans the content width (screen − 2×SHEET_PADDING) at a 3:4 aspect; the
+// existing gridScroll ScrollView absorbs any overflow below the fold.
+const COLLAGE_SURFACE_WIDTH = screenWidth - SHEET_PADDING * 2;
+const COLLAGE_SURFACE_HEIGHT = Math.round(
+  COLLAGE_SURFACE_WIDTH * COLLAGE_ASPECT,
+);
 
 const UNFAVORITED_SWIPE_THRESHOLD = 3;
 // Prefetch pipeline (260526): keep TARGET_AHEAD outfits buffered ahead of the
@@ -333,6 +344,9 @@ export const HomeScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // AU-253 / collage-play: Home view mode toggled by the bottom footer bar.
+  // 'grid' = adaptive image grid (default); 'collage' = drag-to-play canvas.
+  const [homeView, setHomeView] = useState<HomeView>('grid');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [contextSuggestionSetIndex, setContextSuggestionSetIndex] = useState(0);
@@ -1118,11 +1132,17 @@ export const HomeScreen = () => {
   }, [advanceToSheet, ensureBuffer]);
 
   // CEO re-enabled the Home "Remix" button (overrides AU-253 omission). It
-  // opens the Outfit Canvas (AU-285 Remix editor). Navigate without params for
-  // now — the canvas renders mock items; passing the real outfit in is a
-  // separate backend-wiring task.
+  // opens the Outfit Canvas (AU-285 Remix editor), seeded with the CURRENT
+  // outfit's real items so the editor no longer shows mock jeans.
   const handleRemix = useCallback(() => {
-    navigation.navigate('OutfitCanvas');
+    const current = listOutfitsRef.current[activeSheetIndexRef.current];
+    const items = (current?.items ?? [])
+      .filter((it): it is Item => !!it)
+      .map(it => ({
+        id: it.id,
+        imageUrl: getImageUrl(it.image_url) || it.image_url,
+      }));
+    navigation.navigate('OutfitCanvas', items.length ? { items } : undefined);
   }, [navigation]);
 
   const handleMomentumScrollEnd = (
@@ -1311,6 +1331,7 @@ export const HomeScreen = () => {
                   onEditContext={handleOpenContextEditModal}
                   onShowAnother={handleShowAnother}
                   onRemix={handleRemix}
+                  homeView={homeView}
                 />
               );
             })}
@@ -1326,7 +1347,8 @@ export const HomeScreen = () => {
           — see Q3 in extraction artifact); rendered faithfully, no-op for now. */}
       <HomeViewToggleFooter
         testID="home-footer-view-toggle"
-        activeView="grid"
+        activeView={homeView}
+        onSelectView={setHomeView}
       />
 
       <ItemDetailBottomSheet
@@ -1458,6 +1480,7 @@ const OptionSheet = React.memo(
     onEditContext,
     onShowAnother,
     onRemix,
+    homeView,
   }: {
     sheetIndex: number;
     outfit: OutfitSheetWithGrid;
@@ -1470,6 +1493,7 @@ const OptionSheet = React.memo(
     onEditContext: () => void;
     onShowAnother: () => void;
     onRemix: () => void;
+    homeView: HomeView;
   }) => {
     const items = outfit.items;
     const layout = pickLayout(items);
@@ -1663,7 +1687,18 @@ const OptionSheet = React.memo(
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.gridScrollContent}
         >
-          <View testID={`home-outfit-grid-${itemCount}`}>{renderLayout()}</View>
+          <View testID={`home-outfit-grid-${itemCount}`}>
+            {homeView === 'collage' ? (
+              <CollageSheetCanvas
+                testID={`home-collage-${sheetIndex}`}
+                outfitItems={items}
+                surfaceWidth={COLLAGE_SURFACE_WIDTH}
+                surfaceHeight={COLLAGE_SURFACE_HEIGHT}
+              />
+            ) : (
+              renderLayout()
+            )}
+          </View>
         </ScrollView>
 
         {/* Pager/action row (Figma Frame 2105) — [Remix | 3 dots | "Show
