@@ -40,11 +40,14 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
 }) => {
   return (
     <View testID={testID} style={styles.bar}>
-      <View style={styles.translucentSurface} />
+      {/* Decorative layers MUST NOT capture touches — without pointerEvents
+          "none" the absolute-fill surface intercepts taps before they reach
+          the tab TouchableOpacity, making the toggle a silent no-op. */}
+      <View style={styles.translucentSurface} pointerEvents="none" />
       {/* Static cream capsule (Figma 2464:17314) sits behind BOTH tabs —
           158w × 56h, radius 14. It does NOT slide; only the white inner cell
           (below) moves to the active tab. */}
-      <View style={styles.activeCapsule} />
+      <View style={styles.activeCapsule} pointerEvents="none" />
       <View style={styles.tabCluster}>
         <TouchableOpacity
           testID={
