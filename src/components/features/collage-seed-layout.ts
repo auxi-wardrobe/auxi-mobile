@@ -1,5 +1,5 @@
 import { Item } from '../../types/item';
-import { getImageUrl } from '../../utils/url';
+import { resolveItemImage } from '../../utils/url';
 import type { CanvasItemData } from './OutfitCanvasSurface';
 
 // Seed positions for the Home collage-play view, lifted from Figma section
@@ -46,7 +46,7 @@ const SEED_TABLE: Record<number, Slot[]> = {
 export const COLLAGE_ASPECT = FIGMA_REF_HEIGHT / FIGMA_REF_WIDTH; // 4/3
 
 const resolveUri = (item: Item): string =>
-  getImageUrl(item.image_url) || item.image_url || '';
+  resolveItemImage(item) || '';
 
 // Fallback for counts outside the 3–6 Figma tables: stagger items diagonally so
 // they overlap pleasantly without a hand-tuned table. Never crashes.

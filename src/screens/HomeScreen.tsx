@@ -52,7 +52,7 @@ import {
 } from '../services/v05Api';
 import { favouriteService } from '../services/favouriteService';
 import { track } from '../services/analytics';
-import { getImageUrl } from '../utils/url';
+import { resolveItemImage } from '../utils/url';
 import { weatherService } from '../services/weatherService';
 import { WeatherWidget } from '../components/features/WeatherWidget';
 import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
@@ -561,6 +561,7 @@ export const HomeScreen = () => {
       const mapItem = (it: V05OutfitItem): Item => ({
         id: it.id,
         image_url: it.image_url ?? '',
+        image_png: it.image_png ?? null,
         category: it.category_family
           ? FAMILY_TO_CATEGORY[it.category_family] ?? it.category_family
           : 'Top',
@@ -1140,7 +1141,7 @@ export const HomeScreen = () => {
       .filter((it): it is Item => !!it)
       .map(it => ({
         id: it.id,
-        imageUrl: getImageUrl(it.image_url) || it.image_url,
+        imageUrl: resolveItemImage(it) || it.image_url,
       }));
     navigation.navigate('OutfitCanvas', items.length ? { items } : undefined);
   }, [navigation]);
@@ -1832,7 +1833,7 @@ const LoadingMoreIndicator = () => (
 );
 
 const GarmentPreview = ({ item }: { item: Item }) => {
-  const imageUrl = getImageUrl(item.image_url) || item.image_url;
+  const imageUrl = resolveItemImage(item);
 
   return (
     <>

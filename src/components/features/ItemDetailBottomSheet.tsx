@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
-import { getImageUrl } from '../../utils/url';
+import { resolveItemImage } from '../../utils/url';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -85,8 +85,8 @@ export const ItemDetailBottomSheet: React.FC<ItemDetailBottomSheetProps> = ({
                     <ScrollView contentContainerStyle={styles.content}>
                         {/* Image Section */}
                         <View style={styles.imageContainer}>
-                            {getImageUrl(item.image_url) && (
-                                <Image source={{ uri: getImageUrl(item.image_url)! }} style={styles.image} resizeMode="cover" />
+                            {resolveItemImage(item) && (
+                                <Image source={{ uri: resolveItemImage(item)! }} style={styles.image} resizeMode="cover" />
                             )}
                             <View style={styles.commonItemsTag}>
                                 <Text style={styles.commonItemsText}>common items</Text>

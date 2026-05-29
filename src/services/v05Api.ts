@@ -224,6 +224,7 @@ export interface V05OutfitItem {
   human_readable_id: string | null;
   name: string | null;
   image_url: string | null;
+  image_png?: string | null; // background-removed PNG cutout (backend to_dict), nullable
   category_family: CategoryFamily | null;
   color_code?: string | null;
   style_tags: string[];

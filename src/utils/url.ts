@@ -1,4 +1,5 @@
 import { ROOT_URL } from '../services/apiClient';
+import type { Item } from '../types/item';
 
 export const getImageUrl = (url: string | undefined | null): string | undefined => {
     if (!url) return undefined;
@@ -32,4 +33,18 @@ export const getImageUrl = (url: string | undefined | null): string | undefined 
     // Remove leading slash if present to avoid double slash
     const cleanUrl = url.startsWith('/') ? url.slice(1) : url;
     return `${ROOT_URL}/${cleanUrl}`;
+};
+
+/**
+ * Pick the display image for a garment item: prefer the background-removed
+ * cutout (`image_png`) and fall back to the original photo (`image_url`) when
+ * the cutout is absent. Runs both through `getImageUrl` for S3 path-style
+ * normalisation. Returns `undefined` only when neither source resolves.
+ */
+export const resolveItemImage = (
+    item: Pick<Item, 'image_png' | 'image_url'>,
+): string | undefined => {
+    const png = item.image_png?.trim() ? item.image_png : undefined;
+    const source = png ?? item.image_url;
+    return getImageUrl(source) || source || undefined;
 };
