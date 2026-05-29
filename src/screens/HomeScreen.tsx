@@ -347,6 +347,10 @@ export const HomeScreen = () => {
   // AU-253 / collage-play: Home view mode toggled by the bottom footer bar.
   // 'grid' = adaptive image grid (default); 'collage' = drag-to-play canvas.
   const [homeView, setHomeView] = useState<HomeView>('grid');
+  // True while a collage item is being dragged — freezes both the paging
+  // ScrollView and the inner grid scroll so a native scroll can't hijack the
+  // drag (the long-press arm fires this before any movement).
+  const [collageDragActive, setCollageDragActive] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [contextSuggestionSetIndex, setContextSuggestionSetIndex] = useState(0);
@@ -1280,6 +1284,8 @@ export const HomeScreen = () => {
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        // Freeze paging while a collage item is being dragged.
+        scrollEnabled={!collageDragActive}
         snapToAlignment="start"
         snapToInterval={OPTION_SHEET_SNAP_INTERVAL}
         decelerationRate="fast"
@@ -1333,6 +1339,8 @@ export const HomeScreen = () => {
                   onShowAnother={handleShowAnother}
                   onRemix={handleRemix}
                   homeView={homeView}
+                  collageDragActive={collageDragActive}
+                  onCollageDragActiveChange={setCollageDragActive}
                 />
               );
             })}
@@ -1482,6 +1490,8 @@ const OptionSheet = React.memo(
     onShowAnother,
     onRemix,
     homeView,
+    collageDragActive,
+    onCollageDragActiveChange,
   }: {
     sheetIndex: number;
     outfit: OutfitSheetWithGrid;
@@ -1495,6 +1505,8 @@ const OptionSheet = React.memo(
     onShowAnother: () => void;
     onRemix: () => void;
     homeView: HomeView;
+    collageDragActive: boolean;
+    onCollageDragActiveChange: (active: boolean) => void;
   }) => {
     const items = outfit.items;
     const layout = pickLayout(items);
@@ -1687,6 +1699,8 @@ const OptionSheet = React.memo(
           style={styles.gridScroll}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.gridScrollContent}
+          // Freeze inner scroll while dragging a collage item.
+          scrollEnabled={!collageDragActive}
         >
           <View testID={`home-outfit-grid-${itemCount}`}>
             {homeView === 'collage' ? (
@@ -1695,6 +1709,7 @@ const OptionSheet = React.memo(
                 outfitItems={items}
                 surfaceWidth={COLLAGE_SURFACE_WIDTH}
                 surfaceHeight={COLLAGE_SURFACE_HEIGHT}
+                onDragActiveChange={onCollageDragActiveChange}
               />
             ) : (
               renderLayout()

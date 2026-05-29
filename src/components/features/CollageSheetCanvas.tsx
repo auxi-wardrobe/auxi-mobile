@@ -14,6 +14,8 @@ type Props = {
   surfaceWidth: number;
   surfaceHeight: number;
   testID?: string;
+  // Bubbles up while an item is being dragged so Home can freeze paging scroll.
+  onDragActiveChange?: (active: boolean) => void;
 };
 
 // Stable identity for "is this a different outfit?" — re-seed only when the set
@@ -27,6 +29,7 @@ export const CollageSheetCanvas: React.FC<Props> = ({
   surfaceWidth,
   surfaceHeight,
   testID,
+  onDragActiveChange,
 }) => {
   const [items, setItems] = useState<CanvasItemData[]>(() =>
     seedFromOutfit(outfitItems, surfaceWidth),
@@ -59,6 +62,7 @@ export const CollageSheetCanvas: React.FC<Props> = ({
       // Inside Home's paging ScrollView: hold-to-drag so a quick swipe still
       // pages/scrolls; press-and-hold picks the item up to rearrange.
       dragActivation="longPress"
+      onDragActiveChange={onDragActiveChange}
     />
   );
 };

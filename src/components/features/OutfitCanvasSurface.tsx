@@ -92,6 +92,9 @@ interface DraggableItemProps {
   dragActivation: DragActivation;
   onSelect?: (id: string) => void;
   onPositionChange: (id: string, x: number, y: number) => void;
+  // Fired true when a drag is armed/active, false when it ends. Lets the parent
+  // disable its ScrollView so a native scroll can't steal the in-progress drag.
+  onDragActiveChange?: (active: boolean) => void;
 }
 
 const DraggableItem: React.FC<DraggableItemProps> = ({
@@ -101,6 +104,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   dragActivation,
   onSelect,
   onPositionChange,
+  onDragActiveChange,
 }) => {
   const dragOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   // 0 → 1 "lifted" cue (scale up) while an armed drag is in progress.
@@ -112,8 +116,20 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   const armed = useRef(dragActivation === 'immediate');
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Keep latest props fresh inside the PanResponder closure (created once).
-  const propsRef = useRef({ item, onSelect, onPositionChange, dragActivation });
-  propsRef.current = { item, onSelect, onPositionChange, dragActivation };
+  const propsRef = useRef({
+    item,
+    onSelect,
+    onPositionChange,
+    dragActivation,
+    onDragActiveChange,
+  });
+  propsRef.current = {
+    item,
+    onSelect,
+    onPositionChange,
+    dragActivation,
+    onDragActiveChange,
+  };
 
   // Reset offset only after the committed position has propagated via state.
   useEffect(() => {
@@ -147,9 +163,15 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
           return true;
         }
         armed.current = false;
+        // New touch begins → make sure paging scroll is re-enabled (heals any
+        // leak from an armed-but-not-dragged previous touch).
+        propsRef.current.onDragActiveChange?.(false);
         clearTimer();
         longPressTimer.current = setTimeout(() => {
           armed.current = true;
+          // Item picked up → freeze the parent ScrollView so the drag can't be
+          // stolen by a native scroll.
+          propsRef.current.onDragActiveChange?.(true);
         }, LONG_PRESS_MS);
         return false;
       },
@@ -160,7 +182,10 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
         if (armed.current) {
           return true;
         }
-        if (Math.abs(gs.dx) > MOVE_THRESHOLD || Math.abs(gs.dy) > MOVE_THRESHOLD) {
+        if (
+          Math.abs(gs.dx) > MOVE_THRESHOLD ||
+          Math.abs(gs.dy) > MOVE_THRESHOLD
+        ) {
           clearTimer();
         }
         return false;
@@ -169,6 +194,8 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       onPanResponderGrant: () => {
         hasMoved.current = false;
         setLifted(true);
+        // Covers immediate mode (no arm step) + idempotent for longPress.
+        propsRef.current.onDragActiveChange?.(true);
       },
       onPanResponderMove: (_, gs) => {
         if (
@@ -196,12 +223,14 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
           // dragOffset reset by useEffect once item.x/y updates.
         }
         armed.current = da === 'immediate';
+        propsRef.current.onDragActiveChange?.(false);
       },
       onPanResponderTerminate: () => {
         clearTimer();
         setLifted(false);
         dragOffset.setValue({ x: 0, y: 0 });
         armed.current = propsRef.current.dragActivation === 'immediate';
+        propsRef.current.onDragActiveChange?.(false);
       },
       // Don't yield an in-progress armed drag back to the ScrollView.
       onPanResponderTerminationRequest: () => false,
@@ -258,6 +287,8 @@ type SurfaceProps = {
   itemTestIDPrefix?: string;
   // 'immediate' (editor, default) | 'longPress' (collage, inside a ScrollView).
   dragActivation?: DragActivation;
+  // Notifies the parent when a drag is armed/active so it can freeze its scroll.
+  onDragActiveChange?: (active: boolean) => void;
   testID?: string;
 };
 
@@ -271,6 +302,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
   showGrid = false,
   itemTestIDPrefix = 'canvas-item',
   dragActivation = 'immediate',
+  onDragActiveChange,
   testID,
 }) => {
   const sortedItems = [...items].sort((a, b) => a.zIndex - b.zIndex);
@@ -290,6 +322,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
           dragActivation={dragActivation}
           onSelect={onSelect}
           onPositionChange={onPositionChange}
+          onDragActiveChange={onDragActiveChange}
         />
       ))}
     </View>
