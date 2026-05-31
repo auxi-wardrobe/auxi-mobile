@@ -136,7 +136,19 @@ const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
 // gutters — see cardRow/cardShell/card styles).
 const GRID_AREA_H =
   OPTION_SHEET_HEIGHT - OPTION_ACTIONS_HEIGHT - OPTION_SHEET_VPAD;
-const CARD_HEIGHT = Math.floor((GRID_AREA_H - GRID_GAP) / 2);
+// Auto-fit fix (2026-05-31): the inner gridScroll's contentContainer adds a
+// bottom pad (see styles.gridScrollContent). It was NOT netted out of the
+// row-height math, so a 2-row grid (twoRowOneLarge / twoByTwo) measured
+// 2×CARD_HEIGHT + GRID_GAP + GRID_CONTENT_PAD — ~GRID_CONTENT_PAD over the
+// maxHeight:GRID_AREA_H bound → bottom row clipped (scroll is dormant by C4
+// design, so the user couldn't recover it). GRID_FIT_H is the TRUE height the
+// grid rows must fit within. Single source of truth: every layout kind
+// (CARD_HEIGHT for 2-row, computeHeroRowHeight for 5+) sizes against it, so
+// total grid height ≤ GRID_AREA_H for any item count → nothing clips, no
+// scroll needed (preserves the collage drag-to-play C4 fix).
+const GRID_CONTENT_PAD = 16;
+const GRID_FIT_H = GRID_AREA_H - GRID_CONTENT_PAD;
+const CARD_HEIGHT = Math.floor((GRID_FIT_H - GRID_GAP) / 2);
 const CARD_WIDTH = Math.round(CARD_HEIGHT * CARD_ASPECT);
 
 // Home collage-play surface (Figma section 2850:13589). The "Image 3:4" cream
@@ -1473,11 +1485,12 @@ const pickLayout = (items: Item[]): GridLayout | null => {
 // available height wins on smaller phones.
 const computeHeroRowHeight = (restCount: number): number => {
   const rows = 1 + Math.ceil(restCount / 3);
-  // Same grid area the 2-row layouts size against (GRID_AREA_H already nets
-  // out OPTION_ACTIONS_HEIGHT + OPTION_SHEET_VPAD). Divide across all rows so
-  // the whole grid fits the sheet — keeps the inner gridScroll dormant for
-  // 5/6/>6-item outfits too (no nested-scroll regression).
-  const available = GRID_AREA_H - GRID_GAP;
+  // Same grid area the 2-row layouts size against. GRID_FIT_H already nets out
+  // OPTION_ACTIONS_HEIGHT + OPTION_SHEET_VPAD AND the gridScroll content pad
+  // (GRID_CONTENT_PAD), so dividing across all rows keeps the whole grid inside
+  // the sheet — inner gridScroll stays dormant for 5/6/>6-item outfits too (no
+  // nested-scroll regression, no bottom clip).
+  const available = GRID_FIT_H - GRID_GAP;
   return Math.floor((available - (rows - 1) * GRID_GAP) / rows);
 };
 
@@ -2021,7 +2034,7 @@ const styles = StyleSheet.create({
     maxHeight: GRID_AREA_H,
   },
   gridScrollContent: {
-    paddingBottom: 16,
+    paddingBottom: GRID_CONTENT_PAD,
   },
   loadingCards: {
     gap: GRID_GAP,
