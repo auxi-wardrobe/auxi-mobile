@@ -19,6 +19,7 @@ import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { track } from '../../services/analytics';
+import { persistWardrobeDirection } from '../../services/wardrobeDirection';
 import {
   BottomSheetSurface,
   PillButton,
@@ -40,6 +41,12 @@ export const OnboardingOutroScreen = () => {
     if (isFinishing) return;
     setIsFinishing(true);
     try {
+      // Persist the chosen wardrobe_direction locally so HomeScreen can derive
+      // the V05 build `gender` (Womenswear→W / Menswear→M / Mixed→U). The
+      // backend derives gender server-side for /generate but never round-trips
+      // it onto the User object, so Home has no other source. Best-effort —
+      // a write failure just leaves Home on the safe "U" fallback.
+      await persistWardrobeDirection(selection.wardrobe_direction);
       // Deferred completion: flips is_first_login=false → AppNavigator swaps
       // to Home. Clears the dev replay override internally.
       await completeOnboarding();

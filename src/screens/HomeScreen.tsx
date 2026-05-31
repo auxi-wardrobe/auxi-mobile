@@ -51,6 +51,11 @@ import {
   resetV05Session,
   V05OutfitItem,
 } from '../services/v05Api';
+import {
+  DEFAULT_GENDER,
+  Gender,
+  readGender,
+} from '../services/wardrobeDirection';
 import { favouriteService } from '../services/favouriteService';
 import { track } from '../services/analytics';
 import { resolveItemImage } from '../utils/url';
@@ -473,6 +478,21 @@ export const HomeScreen = () => {
       .catch(() => {});
   }, []);
 
+  // V05 build `gender`, derived from the user's onboarding wardrobe_direction
+  // (Womenswear→W / Menswear→M / Mixed→U; absent→U). Held in a ref so the
+  // build call reads the latest without re-running its memo. Loaded once on
+  // mount — the persisted direction is stable for the session. Previously the
+  // build hardcoded `gender: 'U'`, so every Home recommendation ran as unisex
+  // and the backend's womenswear/menswear behavior never applied here.
+  const genderRef = useRef<Gender>(DEFAULT_GENDER);
+  useEffect(() => {
+    readGender()
+      .then(g => {
+        genderRef.current = g;
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     listOutfitsRef.current = listOutfits;
   }, [listOutfits]);
@@ -556,7 +576,11 @@ export const HomeScreen = () => {
       // the same string union ('safe'|'power'|'creative').
       const v05 = await recommendV05({
         weather: { temp_c: weather.tempC, is_rainy: false },
-        user: { gender: 'U', occasion },
+        // gender derived from onboarding wardrobe_direction (see genderRef),
+        // NOT hardcoded — so womenswear/menswear engine behavior applies on
+        // Home, not just unisex. `gender` is already part of the V05 /build
+        // request contract; this only computes the right value.
+        user: { gender: genderRef.current, occasion },
         intent: { mood: mood as never },
         count: 3,
         mode,
