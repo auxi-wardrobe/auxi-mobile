@@ -6,6 +6,20 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ## [Unreleased]
 
+## [v1.0-build14] - 2026-05-31
+
+### Added
+- display background-removed cutout (image_png) for items
+- collage-play view — toggle grid to drag-drop canvas
+
+### Fixed
+- auto-fit outfit grid so no item is clipped
+- reflect active page in nav drawer (AU-304)
+- freeze paging/inner scroll during collage item drag
+- disambiguate collage swipe vs item drag-drop
+- footer toggle no-op — decorative layers swallowed taps
+
+
 ## [v1.0-build11] - 2026-05-28
 
 ### Added
