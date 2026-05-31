@@ -30,6 +30,7 @@ import IconCanvasReplace from '../images/canvas-icons/icon_canvas_replace.svg';
 import IconCanvasDelete from '../images/canvas-icons/icon_canvas_delete.svg';
 import IconLoading from '../images/icon_loading.svg';
 import IconSeeOutfit from '../images/icon_see_outfit.svg';
+import IconSwipeHand from '../images/icon_swipe_hand.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -64,6 +65,7 @@ export const Icons = {
   CanvasDelete: IconCanvasDelete,
   Loading: IconLoading,
   SeeOutfit: IconSeeOutfit,
+  SwipeHand: IconSwipeHand,
 };
 
 export {
@@ -99,4 +101,5 @@ export {
   IconCanvasDelete,
   IconLoading,
   IconSeeOutfit,
+  IconSwipeHand,
 };

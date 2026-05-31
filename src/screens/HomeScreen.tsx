@@ -30,6 +30,7 @@ import {
   ContextChipsModal,
 } from '../components/features/ContextChipsModal';
 import { ItemDetailBottomSheet } from '../components/features/ItemDetailBottomSheet';
+import { SwipeCoachMark } from '../components/features/SwipeCoachMark';
 import {
   PillButton,
   TopIconButton,
@@ -1387,6 +1388,10 @@ export const HomeScreen = () => {
         }}
         onConfirm={handleSubmitContext}
       />
+
+      {/* First-time swipe coach-mark (Figma "first time" 3140:9395). Armed
+          only once outfits exist; shows once, persisted via AsyncStorage. */}
+      <SwipeCoachMark enabled={optionSets.length > 0} />
     </SafeAreaView>
   );
 };

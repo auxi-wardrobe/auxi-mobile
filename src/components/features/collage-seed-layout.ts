@@ -45,8 +45,7 @@ const SEED_TABLE: Record<number, Slot[]> = {
 
 export const COLLAGE_ASPECT = FIGMA_REF_HEIGHT / FIGMA_REF_WIDTH; // 4/3
 
-const resolveUri = (item: Item): string =>
-  resolveItemImage(item) || '';
+const resolveUri = (item: Item): string => resolveItemImage(item) || '';
 
 // Fallback for counts outside the 3–6 Figma tables: stagger items diagonally so
 // they overlap pleasantly without a hand-tuned table. Never crashes.
