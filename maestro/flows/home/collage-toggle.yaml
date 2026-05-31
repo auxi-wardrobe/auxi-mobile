@@ -1,0 +1,69 @@
+# auxi/maestro/flows/home/collage-toggle.yaml
+# Home collage-play view — toggle + drag smoke.
+#
+# Plan: plans/260529-1401-home-collage-canvas-play/plan.md (Phase 05)
+# Figma: 0nXXMAR4Arf1ZfjtQvtBh0 section 2850:13589 "Home | Collage View"
+#
+# Scope: footer 2-icon toggle switches the sheet's middle region between the
+#   adaptive grid and the drag-to-play canvas surface, in-place, and back.
+#   Also smoke-drags an item on the collage surface (no crash).
+#
+# Out of scope: exact seed positions (visual fidelity → qa-ui Compare mode),
+#   per-item id assertions (ids are backend-dynamic; we assert the surface
+#   container instead), persistence (collage layout is not saved — by design).
+
+appId: com.auxi2026.app
+name: home-collage-toggle
+tags:
+  - home
+  - collage
+  - regression
+env:
+  HOME_TIMEOUT_MS: 30000
+  RECOMMENDATION_TIMEOUT_MS: 180000
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+---
+- runFlow: ../_shared/ensure-home.yaml
+
+# --- 0. First outfit lands (LLM cold-call up to 180s) ---
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-0
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
+
+# --- 1. Default = grid view: tile + grid tab active ---
+- extendedWaitUntil:
+    visible:
+      id: home-tile-0-0
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
+- assertVisible:
+    id: home-footer-tab-grid-active
+
+# --- 2. Toggle to collage: surface appears, grid tiles swapped out ---
+- tapOn:
+    id: home-footer-tab-collage
+- waitForAnimationToEnd
+- assertVisible:
+    id: home-collage-0
+- assertVisible:
+    id: home-footer-tab-collage-active
+- assertNotVisible:
+    id: home-tile-0-0
+
+# --- 3. Drag smoke on the collage surface (rearrange "play") — no crash ---
+- swipe:
+    from:
+      id: home-collage-0
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible:
+    id: home-collage-0
+
+# --- 4. Toggle back to grid: tiles return ---
+- tapOn:
+    id: home-footer-tab-grid
+- waitForAnimationToEnd
+- assertVisible:
+    id: home-tile-0-0
+- assertVisible:
+    id: home-footer-tab-grid-active

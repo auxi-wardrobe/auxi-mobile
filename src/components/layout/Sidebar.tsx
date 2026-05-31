@@ -8,7 +8,7 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
@@ -31,6 +31,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { logout } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+
+  // Read the focused route from navigation state so the active highlight
+  // always matches the actually-focused screen, regardless of where the
+  // Sidebar overlay is mounted (it lives inside several screens). Avoids
+  // local useState that could desync from real navigation.
+  const currentRouteName = useNavigationState(
+    state => state.routes[state.index]?.name,
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -103,6 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             label="Wardrobe"
             Icon={Icons.Wardrobe}
             testID="sidebar-menu-wardrobe"
+            isActive={currentRouteName === 'Wardrobe'}
             onPress={() => {
               navigation.navigate('Wardrobe');
               onClose();
@@ -126,6 +135,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             label="Setting"
             Icon={Icons.Setting}
             testID="sidebar-menu-setting"
+            isActive={currentRouteName === 'Settings'}
             onPress={() => {
               navigation.navigate('Settings');
               onClose();
@@ -167,20 +177,32 @@ const MenuItem = ({
   Icon,
   onPress,
   testID,
+  isActive = false,
 }: {
   label: string;
   Icon: React.FC<any>;
   onPress?: () => void;
-  testID?: string;
+  testID: string;
+  isActive?: boolean;
 }) => (
   <TouchableOpacity
-    style={styles.menuItem}
+    style={[styles.menuItem, isActive && styles.menuItemActive]}
     onPress={onPress}
-    testID={testID}
+    // Flip the testID suffix when active so Maestro can assert the
+    // selected-page state; testID stays defined in both states.
+    testID={isActive ? `${testID}-active` : testID}
     accessibilityLabel={label}
   >
-    <Icon width={24} height={24} color={theme.colors.uacTextPrimaryBase} />
-    <Text style={styles.menuText}>{label}</Text>
+    <Icon
+      width={24}
+      height={24}
+      color={
+        isActive ? theme.colors.figmaTextDark : theme.colors.uacTextPrimaryBase
+      }
+    />
+    <Text style={[styles.menuText, isActive && styles.menuTextActive]}>
+      {label}
+    </Text>
   </TouchableOpacity>
 );
 
@@ -238,8 +260,17 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.figmaTile,
     height: 48,
   },
+  // Active page: white pill on the dark sidebar (Figma active state).
+  menuItemActive: {
+    backgroundColor: theme.colors.white,
+  },
   menuText: {
     ...theme.typography.aliases.poppinsBody,
     color: theme.colors.uacTextPrimaryBase,
+  },
+  // Dark text on the white active pill for contrast (light cream base
+  // would be invisible on white).
+  menuTextActive: {
+    color: theme.colors.figmaTextDark,
   },
 });

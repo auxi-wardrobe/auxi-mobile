@@ -23,6 +23,7 @@ import IconMenu from '../images/icon_menu.svg';
 import IconCamera from '../images/icon_camera.svg';
 import IconLoading from '../images/icon_loading.svg';
 import IconSeeOutfit from '../images/icon_see_outfit.svg';
+import IconSwipeHand from '../images/icon_swipe_hand.svg';
 import IconCanvasUndo from '../images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../images/canvas-icons/redo.svg';
 import IconCanvasLayerUp from '../images/canvas-icons/layer_up.svg';
@@ -63,6 +64,7 @@ export const Icons = {
   CanvasDelete: IconCanvasDelete,
   Loading: IconLoading,
   SeeOutfit: IconSeeOutfit,
+  SwipeHand: IconSwipeHand,
   CanvasSwap: IconCanvasSwap,
 };
 
@@ -98,4 +100,5 @@ export {
   IconCanvasDelete,
   IconLoading,
   IconSeeOutfit,
+  IconSwipeHand,
 };
