@@ -47,7 +47,12 @@ export const theme = {
     // Everything else reuses existing tokens (caption pill = figmaCardTag rgba(18,18,18,0.75) per D5;
     // screen bg #fcfcfd = uacBackgroundNeutral50; loading/outro bg #eee6df = figmaCaptionPillBg).
     figmaOnboardingStepLabel: '#9e968e', // text/primary/bold_400 — "Step n/3" label + muted greige
-    figmaChipBg: '#5b5550', // background/primary/bold_500 — selected "You selected" chip bg
+    figmaChipBg: '#5b5550', // background/primary/bold_500 — selected "You selected" chip bg + AU-303 active pagination dot (icon/primary/bold_500, same hex)
+    // AU-303 two-axis swipe (Figma node 3140-8191) — 2 token drifts confirmed by
+    // figma-theme-sync + qa-ui review-extraction PASS (2026-05-31).
+    // Source: plans/260531-1326-au-303-two-axis-swipe/figma-extraction-au303-guidance.md §8
+    figmaDotInactive: '#c6bcb1', // icon/primary/subtle_300 — inactive pagination dot
+    figmaOverlayScrim: 'rgba(38, 36, 33, 0.7)', // background/primary/bold_600 (#262421) @ 70% — guidance-overlay backdrop
     figmaOnboardingStickyBarBg: 'rgba(255, 255, 255, 0.6)', // color/neutral/white/Alpha200 — Step-3 sticky bar (backdrop-blur 2 in Figma)
     figmaTextDark: '#070707', // near-black for expand/collapse text buttons
     // Sidebar dark redesign (node 2852:24670) — divider hairline on the dark

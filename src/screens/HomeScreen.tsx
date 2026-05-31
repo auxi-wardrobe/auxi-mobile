@@ -8,8 +8,10 @@ import React, {
 import {
   ActivityIndicator,
   Dimensions,
+  FlatList,
   Image,
   Keyboard,
+  ListRenderItemInfo,
   NativeScrollEvent,
   NativeSyntheticEvent,
   SafeAreaView,
@@ -30,7 +32,10 @@ import {
   ContextChipsModal,
 } from '../components/features/ContextChipsModal';
 import { ItemDetailBottomSheet } from '../components/features/ItemDetailBottomSheet';
-import { SwipeCoachMark } from '../components/features/SwipeCoachMark';
+import {
+  LEGACY_COACHMARK_STORAGE_KEY,
+  SwipeCoachMark,
+} from '../components/features/SwipeCoachMark';
 import {
   PillButton,
   TopIconButton,
@@ -65,6 +70,13 @@ import {
 } from '../components/features/HomeViewToggleFooter';
 import { CollageSheetCanvas } from '../components/features/CollageSheetCanvas';
 import { COLLAGE_ASPECT } from '../components/features/collage-seed-layout';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  groupOutfitsIntoSets,
+  OUTFITS_PER_SET,
+  OutfitSet,
+  toFlatIndex,
+} from '../utils/groupOutfitsIntoSets';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -148,11 +160,12 @@ const COLLAGE_SURFACE_HEIGHT = Math.round(
 );
 
 const UNFAVORITED_SWIPE_THRESHOLD = 3;
-// Prefetch pipeline (260526): keep TARGET_AHEAD outfits buffered ahead of the
-// active sheet. `ensureBuffer` fires one `/try_another` whenever the lookahead
-// gap drops below this. Numerically identical to the old PREFETCH_LOOKAHEAD
-// (the trigger `nextIndex >= total - 2` ≡ `ahead < 2`).
-const TARGET_AHEAD = 2;
+// AU-303 prefetch pipeline (re-keyed to SET position): keep ≥1 full set (3
+// outfits) buffered ahead of the active FLAT position (setIndex*3+outfitIndex).
+// `ensureBuffer` fires one `/try_another` whenever the flat-outfit lookahead gap
+// drops below this. A batch from /build or /try_another (count 3) ≈ one set, so
+// 3 keeps roughly one set buffered ahead.
+const TARGET_AHEAD = OUTFITS_PER_SET; // 3 — one full set ahead
 
 type OutfitSheet = {
   items: Item[];
@@ -362,7 +375,11 @@ export const HomeScreen = () => {
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [listOutfits, setListOutfits] = useState<OutfitSheet[]>([]);
-  const [activeSheetIndex, setActiveSheetIndex] = useState(0);
+  // AU-303 two-axis position. `setIndex` = vertical (which set of 3), `outfitIndex`
+  // = horizontal (which of the set's 3 outfits, 0..2). Legacy flat index is
+  // derived = setIndex*3 + outfitIndex for favorite/caption/hash code.
+  const [setIndex, setSetIndex] = useState(0);
+  const [outfitIndex, setOutfitIndex] = useState(0);
   const [saveStateByHash, setSaveStateByHash] = useState<
     Record<string, SaveState>
   >({});
@@ -393,8 +410,29 @@ export const HomeScreen = () => {
   // Unfavorited-swipe counter is per-session, never rendered, so we keep it
   // in a ref instead of state to avoid useless re-renders on every swipe.
   const unfavoritedSwipeCountRef = useRef(0);
+  // AU-303: which (setIndex,outfitIndex) outfits the user has already browsed
+  // this session. Prevents the unfavorited-swipe counter from double-counting a
+  // back-swipe onto an already-seen outfit. Keyed by flat index.
+  const seenOutfitKeysRef = useRef<Set<number>>(new Set());
+  // AU-303: once the user has viewed all 3 outfits of set 0, arm the VERTICAL
+  // guidance overlay. State (not just ref) because it gates a rendered overlay;
+  // mirrored into a ref so the browse handler reads the latest value without a
+  // stale closure.
+  const [verticalCoachArmed, setVerticalCoachArmed] = useState(false);
+  const verticalCoachArmedRef = useRef(false);
+  // AU-303 sequencing refs. `resolved` = the overlay finished its one-time-flag
+  // AsyncStorage read; `willShow` = that read said it should display (flag unset).
+  // Together they let openContextModalSequenced decide whether to defer the
+  // recurring context modal behind the guidance overlay.
+  const verticalCoachResolvedRef = useRef(false);
+  const verticalCoachWillShowRef = useRef(false);
+  // AU-303: when the vertical guidance overlay wins priority on the 3rd browse,
+  // we suppress the context modal that one time and re-evaluate after the
+  // overlay is dismissed (sequencing — they must never collide).
+  const contextModalDeferredRef = useRef(false);
 
-  const scrollViewRef = useRef<ScrollView>(null);
+  // AU-303: vertical pager (sets) ref — programmatic scroll for "Show another".
+  const setPagerRef = useRef<FlatList<OutfitSet<OutfitSheetWithGrid>>>(null);
   // Mirror state into refs so async handlers (mutation onSuccess, momentum
   // scroll end) read the current values without forcing handler recreation.
   const listOutfitsRef = useRef<OutfitSheet[]>([]);
@@ -437,10 +475,12 @@ export const HomeScreen = () => {
   const selectedModeRef = useRef<RecommendationMode>(
     DEFAULT_RECOMMENDATION_MODE,
   );
-  // Bug 3 fix: read the previous active index from a ref instead of inside
+  // Bug 3 fix: read the previous active position from refs instead of inside
   // a setState updater (updaters must be pure; StrictMode invokes them
   // twice which double-incremented the unfavorited-swipe counter).
-  const activeSheetIndexRef = useRef(0);
+  // AU-303: two coordinates now — setIndex (vertical) + outfitIndex (horizontal).
+  const setIndexRef = useRef(0);
+  const outfitIndexRef = useRef(0);
   // PHASE D (AU-252): mirror styleFeedback so prefetch + show-another reads
   // the latest value without recreating callbacks on every submit. Sticky
   // for the session — cleared only when the user re-submits the modal
@@ -466,8 +506,19 @@ export const HomeScreen = () => {
   }, [listOutfits]);
 
   useEffect(() => {
-    activeSheetIndexRef.current = activeSheetIndex;
-  }, [activeSheetIndex]);
+    setIndexRef.current = setIndex;
+  }, [setIndex]);
+
+  useEffect(() => {
+    outfitIndexRef.current = outfitIndex;
+  }, [outfitIndex]);
+
+  // AU-303: retire the old single-overlay coachmark key on mount so existing
+  // users (who already dismissed `swipe-home`) see the corrected two-axis
+  // first-time flow once. Fire-and-forget; failure just means no migration.
+  useEffect(() => {
+    AsyncStorage.removeItem(LEGACY_COACHMARK_STORAGE_KEY).catch(() => {});
+  }, []);
 
   useEffect(() => {
     saveStateByHashRef.current = saveStateByHash;
@@ -642,7 +693,20 @@ export const HomeScreen = () => {
         const incoming = normalizeOutfits(data, 0);
         addedCount = incoming.length;
         setListOutfits(incoming);
-        setActiveSheetIndex(0);
+        // AU-303: cold start resets BOTH axes to (0,0) and clears the
+        // per-session "seen" set so the counter + vertical coachmark restart.
+        // The vertical coach re-arms on this fresh set's full browse (it still
+        // only DISPLAYS if its AsyncStorage flag is unset — see SwipeCoachMark).
+        setSetIndex(0);
+        setOutfitIndex(0);
+        setIndexRef.current = 0;
+        outfitIndexRef.current = 0;
+        seenOutfitKeysRef.current = new Set([0]);
+        verticalCoachArmedRef.current = false;
+        verticalCoachResolvedRef.current = false;
+        verticalCoachWillShowRef.current = false;
+        contextModalDeferredRef.current = false;
+        setVerticalCoachArmed(false);
         // Fresh session/context → the pool may have outfits again. Clear the
         // sustainability flags too — a new build is a clean slate (the gap
         // CTA / cycled hint should not bleed across a refine/mode reset).
@@ -776,7 +840,20 @@ export const HomeScreen = () => {
     [listOutfits, pinnedItem],
   );
 
-  const activeOutfit = optionSets[activeSheetIndex];
+  // AU-303: derived two-axis view. `listOutfits` stays the single source of
+  // truth; `sets` is a memoized grouping (chunks of 3). Re-derives on append.
+  const sets = useMemo<OutfitSet<OutfitSheetWithGrid>[]>(
+    () => groupOutfitsIntoSets(optionSets, OUTFITS_PER_SET),
+    [optionSets],
+  );
+
+  // Clamp the active position into the available data (prefetch append /
+  // partial last set can shrink bounds momentarily).
+  const activeSet = sets[setIndex];
+  const activeSetLength = activeSet?.outfits.length ?? 0;
+  const clampedOutfitIndex =
+    activeSetLength > 0 ? Math.min(outfitIndex, activeSetLength - 1) : 0;
+  const activeOutfit = activeSet?.outfits[clampedOutfitIndex];
   const activeOutfitHash = activeOutfit?.outfitHash;
   const activeSaveState: SaveState = activeOutfitHash
     ? saveStateByHash[activeOutfitHash] ?? 'idle'
@@ -804,7 +881,14 @@ export const HomeScreen = () => {
       if (poolDepletedRef.current) {
         return;
       }
-      const ahead = total - 1 - activeSheetIndexRef.current;
+      // AU-303: lookahead is measured against the FLAT active position
+      // (setIndex*3 + outfitIndex). Keeping ≥1 set (TARGET_AHEAD=3) buffered
+      // ahead means the next vertical swipe always has a full set ready.
+      const activeFlat = toFlatIndex(
+        setIndexRef.current,
+        outfitIndexRef.current,
+      );
+      const ahead = total - 1 - activeFlat;
       if (!force && ahead >= TARGET_AHEAD) {
         return;
       }
@@ -814,8 +898,7 @@ export const HomeScreen = () => {
       // a cold start still rebuilds (no session yet); after that every
       // prefetch is a variation. The service falls back to its own cached
       // last-hash when this is undefined.
-      const currentHash =
-        listOutfitsRef.current[activeSheetIndexRef.current]?.outfitHash;
+      const currentHash = listOutfitsRef.current[activeFlat]?.outfitHash;
       // PHASE B (AU-222): thread `pinned_item_id` through the prefetch.
       // Note: pin changes intentionally do NOT auto-refetch — the next
       // prefetch (or a "Show another" tap that reaches the lookahead
@@ -958,18 +1041,72 @@ export const HomeScreen = () => {
     });
   }, []);
 
-  // Bug 3 + Bug 4 fix: shared advance helper. Pure ref reads + a single
-  // plain setState (not an updater) so StrictMode double-invocations can't
-  // double-increment the unfavorited-swipe counter. Called from the
-  // momentum-end callback on real swipe.
-  const advanceToSheet = useCallback(
-    (nextIndex: number, source: 'swipe') => {
-      const previousIndex = activeSheetIndexRef.current;
+  // AU-303 sequencing helper. The vertical guidance overlay (overlay 2) and the
+  // recurring context modal can both want to fire on the 3rd unfavorited browse.
+  // Overlay 2 has priority: if it is armed and either hasn't finished its
+  // one-time-flag check yet OR is going to show, we DEFER the context modal and
+  // flush it when the overlay is dismissed (or immediately if the overlay turns
+  // out to be already-seen — see handleVerticalCoachResolved). Otherwise the
+  // context modal opens normally.
+  const openContextModalSequenced = useCallback(() => {
+    const armed = verticalCoachArmedRef.current;
+    const resolvedNotShown =
+      verticalCoachResolvedRef.current && !verticalCoachWillShowRef.current;
+    if (armed && !resolvedNotShown) {
+      contextModalDeferredRef.current = true;
+      return;
+    }
+    setIsContextModalOpen(true);
+    track('refine_modal_opened', { source: 'unfavorited_swipe' });
+  }, []);
 
-      // Counter increments only on transitions to a HIGHER index where the
-      // sheet we are leaving was NOT favorited. Scroll-back is ignored.
-      if (nextIndex > previousIndex) {
-        const fromOutfit = listOutfitsRef.current[previousIndex];
+  // AU-303: arm the VERTICAL guidance overlay once all 3 outfits of set 0 have
+  // been browsed (CEO Q2: fires after viewing all 3 outfits of the first set).
+  // Sets the ref synchronously (so the same-tick browse sees it armed) and the
+  // state (to render the overlay).
+  const maybeArmVerticalCoach = useCallback(() => {
+    if (verticalCoachArmedRef.current) {
+      return;
+    }
+    const set0Length = listOutfitsRef.current.slice(0, OUTFITS_PER_SET).length;
+    const seen = seenOutfitKeysRef.current;
+    const allSeen = [0, 1, 2]
+      .slice(0, set0Length)
+      .every(flat => seen.has(flat));
+    if (set0Length > 0 && allSeen) {
+      verticalCoachArmedRef.current = true;
+      setVerticalCoachArmed(true);
+    }
+  }, []);
+
+  // AU-303: a "browse" = landing on a (setIndex, outfitIndex) on EITHER axis.
+  // Re-anchors the unfavorited-swipe counter to two-axis browse events, with a
+  // per-session "seen" set so a back-swipe onto an already-seen outfit doesn't
+  // double-count. Order matters: (1) check/mark seen, (2) arm the vertical
+  // overlay if set 0 is now complete (so the 3rd-browse sequencing sees it
+  // armed), (3) count + sequence the context modal. Pure ref reads + plain
+  // setState (StrictMode-safe, like the old helper).
+  const recordBrowse = useCallback(
+    (
+      nextSet: number,
+      nextOutfit: number,
+      prevSet: number,
+      prevOutfit: number,
+    ) => {
+      const nextFlat = toFlatIndex(nextSet, nextOutfit);
+      const prevFlat = toFlatIndex(prevSet, prevOutfit);
+
+      const alreadySeen = seenOutfitKeysRef.current.has(nextFlat);
+      seenOutfitKeysRef.current.add(nextFlat);
+
+      // Arm overlay 2 BEFORE counting so a 3rd-browse that also completes set 0
+      // defers the context modal behind the guidance overlay.
+      maybeArmVerticalCoach();
+
+      // Only a move to a NOT-yet-seen outfit counts (forward exploration on
+      // either axis). Back-swipes onto seen outfits are ignored.
+      if (!alreadySeen && nextFlat !== prevFlat) {
+        const fromOutfit = listOutfitsRef.current[prevFlat];
         const fromHash = fromOutfit?.outfitHash;
         const fromState = fromHash
           ? saveStateByHashRef.current[fromHash] ?? 'idle'
@@ -977,9 +1114,8 @@ export const HomeScreen = () => {
         const wasFavorited = fromState === 'saved' || fromState === 'saving';
 
         console.info('home.swipe.miss', {
-          fromIndex: previousIndex,
-          toIndex: nextIndex,
-          source,
+          from: { set: prevSet, outfit: prevOutfit },
+          to: { set: nextSet, outfit: nextOutfit },
         });
         // TODO(analytics): replace console.info with the real telemetry hook.
 
@@ -987,24 +1123,75 @@ export const HomeScreen = () => {
           const nextCount = unfavoritedSwipeCountRef.current + 1;
           if (nextCount >= UNFAVORITED_SWIPE_THRESHOLD) {
             unfavoritedSwipeCountRef.current = 0;
-            setIsContextModalOpen(true);
-            track('refine_modal_opened', { source: 'unfavorited_swipe' });
+            openContextModalSequenced();
           } else {
             unfavoritedSwipeCountRef.current = nextCount;
           }
         }
       }
 
-      if (nextIndex !== previousIndex) {
-        activeSheetIndexRef.current = nextIndex;
-        setActiveSheetIndex(nextIndex);
-      }
-      // Always run the buffer check — at the tail end the user can rebound on
-      // the same sheet and we still want to top up the buffer.
       ensureBuffer();
     },
-    [ensureBuffer],
+    [ensureBuffer, openContextModalSequenced, maybeArmVerticalCoach],
   );
+
+  // AU-303: horizontal (within-set) page change. Updates outfitIndex, marks the
+  // new outfit seen + (if set 0 now complete) arms the vertical overlay BEFORE
+  // recording the browse, so the 3rd-browse sequencing sees the armed state.
+  const handleOutfitChange = useCallback(
+    (nextOutfit: number) => {
+      const prevSet = setIndexRef.current;
+      const prevOutfit = outfitIndexRef.current;
+      if (nextOutfit === prevOutfit) {
+        return;
+      }
+      outfitIndexRef.current = nextOutfit;
+      setOutfitIndex(nextOutfit);
+      recordBrowse(prevSet, nextOutfit, prevSet, prevOutfit);
+    },
+    [recordBrowse],
+  );
+
+  // AU-303: vertical (set) page change. Resets outfitIndex to 0 (a fresh set
+  // starts at its first outfit) and records the browse.
+  const handleSetChange = useCallback(
+    (nextSet: number) => {
+      const prevSet = setIndexRef.current;
+      const prevOutfit = outfitIndexRef.current;
+      if (nextSet === prevSet) {
+        return;
+      }
+      setIndexRef.current = nextSet;
+      outfitIndexRef.current = 0;
+      setSetIndex(nextSet);
+      setOutfitIndex(0);
+      recordBrowse(nextSet, 0, prevSet, prevOutfit);
+    },
+    [recordBrowse],
+  );
+
+  // AU-303: the vertical overlay finished its one-time-flag check. Record
+  // whether it will show; if it WON'T (already seen) and a context modal was
+  // deferred behind it, flush that modal now so it isn't stranded.
+  const handleVerticalCoachResolved = useCallback((shown: boolean) => {
+    verticalCoachResolvedRef.current = true;
+    verticalCoachWillShowRef.current = shown;
+    if (!shown && contextModalDeferredRef.current) {
+      contextModalDeferredRef.current = false;
+      setIsContextModalOpen(true);
+      track('refine_modal_opened', { source: 'unfavorited_swipe' });
+    }
+  }, []);
+
+  // AU-303: after the vertical guidance overlay is dismissed, fire any context
+  // modal that was deferred for sequencing (so the two never collide).
+  const handleVerticalCoachDismissed = useCallback(() => {
+    if (contextModalDeferredRef.current) {
+      contextModalDeferredRef.current = false;
+      setIsContextModalOpen(true);
+      track('refine_modal_opened', { source: 'unfavorited_swipe' });
+    }
+  }, []);
 
   const handleOpenContextEditModal = useCallback(() => {
     Keyboard.dismiss();
@@ -1113,35 +1300,38 @@ export const HomeScreen = () => {
     setIsSidebarOpen(true);
   };
 
-  // AU-253: "Show another" button in the pager row programmatically advances
-  // to the next outfit sheet (same vertical snap-scroll the swipe gesture
-  // drives). At the tail it tops up the buffer via the prefetch trigger so
-  // the user can keep rotating. Mirrors the swipe path's advanceToSheet.
+  // AU-303: "Show another" (Figma swipe-up glyph) programmatically advances to
+  // the next SET — the vertical axis. At the tail it tops up the buffer via the
+  // prefetch trigger so the user can keep rotating. Mirrors the vertical swipe.
+  const totalSetsRef = useRef(0);
+  useEffect(() => {
+    totalSetsRef.current = Math.ceil(listOutfits.length / OUTFITS_PER_SET);
+  }, [listOutfits.length]);
+
   const handleShowAnother = useCallback(() => {
-    const total = listOutfitsRef.current.length;
-    if (total === 0) {
+    const totalSets = totalSetsRef.current;
+    if (totalSets === 0) {
       return;
     }
-    const current = activeSheetIndexRef.current;
-    const nextIndex = current + 1;
-    // At the edge there is nothing further to show yet — nudge a prefetch so
-    // the next option becomes available, but don't scroll past the end.
-    if (nextIndex >= total) {
+    const nextSet = setIndexRef.current + 1;
+    // At the edge there is no further set yet — nudge a prefetch so the next
+    // set becomes available, but don't scroll past the end.
+    if (nextSet >= totalSets) {
       ensureBuffer();
       return;
     }
-    scrollViewRef.current?.scrollTo({
-      y: nextIndex * OPTION_SHEET_SNAP_INTERVAL,
-      animated: true,
-    });
-    advanceToSheet(nextIndex, 'swipe');
-  }, [advanceToSheet, ensureBuffer]);
+    setPagerRef.current?.scrollToIndex({ index: nextSet, animated: true });
+    handleSetChange(nextSet);
+  }, [ensureBuffer, handleSetChange]);
 
   // CEO re-enabled the Home "Remix" button (overrides AU-253 omission). It
   // opens the Outfit Canvas (AU-285 Remix editor), seeded with the CURRENT
   // outfit's real items so the editor no longer shows mock jeans.
   const handleRemix = useCallback(() => {
-    const current = listOutfitsRef.current[activeSheetIndexRef.current];
+    const current =
+      listOutfitsRef.current[
+        toFlatIndex(setIndexRef.current, outfitIndexRef.current)
+      ];
     const items = (current?.items ?? [])
       .filter((it): it is Item => !!it)
       .map(it => ({
@@ -1151,15 +1341,13 @@ export const HomeScreen = () => {
     navigation.navigate('OutfitCanvas', items.length ? { items } : undefined);
   }, [navigation]);
 
-  const handleMomentumScrollEnd = (
+  // AU-303: outer vertical pager momentum-end → resolve which SET the viewport
+  // landed on (offset / set height) and commit it.
+  const handleSetMomentumEnd = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
-    const nextIndex = getSheetIndexFromOffset(
-      event.nativeEvent.contentOffset.y,
-    );
-    // Bug 3 fix: counter mutation lives in advanceToSheet (outer function
-    // body), NOT inside a setState updater.
-    advanceToSheet(nextIndex, 'swipe');
+    const nextSet = getSheetIndexFromOffset(event.nativeEvent.contentOffset.y);
+    handleSetChange(nextSet);
   };
 
   return (
@@ -1281,76 +1469,98 @@ export const HomeScreen = () => {
         </View>
       ) : null}
 
-      <ScrollView
-        ref={scrollViewRef}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        // Freeze paging while a collage item is being dragged.
-        scrollEnabled={!collageDragActive}
-        snapToAlignment="start"
-        snapToInterval={OPTION_SHEET_SNAP_INTERVAL}
-        decelerationRate="fast"
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        // C5 fix (2026-05-22): drop off-screen sheets from the native
-        // view hierarchy so swipe deceleration doesn't drag N tile
-        // images through layout/paint per frame on small phones.
-        removeClippedSubviews={true}
-      >
-        {loading ? (
+      {loading ? (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          scrollEnabled={false}
+        >
           <HomeLoadingState />
-        ) : optionSets.length === 0 && isWardrobeGap ? (
-          // Fix D (2026-05-27): genuine wardrobe gap with nothing to show —
-          // a terminal dead-end the user CAN act on. Surface a CTA to add
-          // items instead of the old silent freeze. No auto-rebuild (backend
-          // owns sustainability). Distinct from `startError` (thrown errors).
-          <HomeWardrobeGapState
-            onAddItems={() => navigation.navigate('Wardrobe')}
-          />
-        ) : optionSets.length === 0 && startError ? (
-          // Error UI fix (2026-05-22): give the user a way out of a
-          // failed cold-start fetch. Without this, an API timeout or
-          // 5xx left the screen blank and the only recovery was to
-          // force-quit the app.
-          <HomeErrorState
-            onRetry={() => {
-              resetStartMutation();
-              requestRecommendation({
-                mode: selectedModeRef.current,
-                style_feedback: styleFeedbackRef.current ?? undefined,
-              });
-            }}
-          />
-        ) : (
-          <>
-            {optionSets.map((outfit, sheetIndex) => {
-              const sheetSaveState: SaveState =
-                saveStateByHash[outfit.outfitHash] ?? 'idle';
-              return (
-                <OptionSheet
-                  key={outfit.outfitHash}
-                  sheetIndex={sheetIndex}
-                  outfit={outfit}
-                  saveState={sheetSaveState}
-                  pinnedItemId={pinnedItemId}
-                  totalSheets={optionSets.length}
-                  onItemPress={item => setSelectedItem(item)}
-                  onTogglePin={handleToggleItemPin}
-                  onConfirm={() => handleHeartTapForOutfit(outfit)}
-                  onEditContext={handleOpenContextEditModal}
-                  onShowAnother={handleShowAnother}
-                  onRemix={handleRemix}
-                  homeView={homeView}
-                  collageDragActive={collageDragActive}
-                  onCollageDragActiveChange={setCollageDragActive}
-                />
-              );
-            })}
-            {isStartPending && listOutfits.length > 0 ? (
+        </ScrollView>
+      ) : sets.length === 0 && isWardrobeGap ? (
+        // Fix D (2026-05-27): genuine wardrobe gap with nothing to show —
+        // a terminal dead-end the user CAN act on. Surface a CTA to add
+        // items instead of the old silent freeze. No auto-rebuild (backend
+        // owns sustainability). Distinct from `startError` (thrown errors).
+        <HomeWardrobeGapState
+          onAddItems={() => navigation.navigate('Wardrobe')}
+        />
+      ) : sets.length === 0 && startError ? (
+        // Error UI fix (2026-05-22): give the user a way out of a
+        // failed cold-start fetch. Without this, an API timeout or
+        // 5xx left the screen blank and the only recovery was to
+        // force-quit the app.
+        <HomeErrorState
+          onRetry={() => {
+            resetStartMutation();
+            requestRecommendation({
+              mode: selectedModeRef.current,
+              style_feedback: styleFeedbackRef.current ?? undefined,
+            });
+          }}
+        />
+      ) : (
+        // AU-303 TWO-AXIS PAGER. Outer vertical FlatList pages between SETS;
+        // each row is a horizontal FlatList of the set's (1..3) outfits, each
+        // cell the existing OptionSheet shell. No new dependency — RN-native
+        // paging on both axes (Option A in phase-03). `directionalLockEnabled`
+        // commits a diagonal drag to one axis so the two pagers don't fight.
+        <FlatList
+          ref={setPagerRef}
+          testID="home-set-pager"
+          data={sets}
+          keyExtractor={set =>
+            `set-${set.outfits[0]?.outfitHash ?? set.setIndex}`
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          // Per-SET snap (matches the pre-AU-303 ScrollView snap). NOT
+          // `pagingEnabled` — that would snap to full viewport height, but a set
+          // row is OPTION_SHEET_HEIGHT + SHEET_GAP, shorter than the screen.
+          snapToAlignment="start"
+          snapToInterval={OPTION_SHEET_SNAP_INTERVAL}
+          decelerationRate="fast"
+          directionalLockEnabled
+          // Freeze vertical paging while a collage item is being dragged.
+          scrollEnabled={!collageDragActive}
+          onMomentumScrollEnd={handleSetMomentumEnd}
+          // Fixed-height rows (set stride = sheet height + gap) → constant-time
+          // layout so "Show another" scrollToIndex(nextSet) lands precisely.
+          getItemLayout={(_, index) => ({
+            length: OPTION_SHEET_SNAP_INTERVAL,
+            offset: OPTION_SHEET_SNAP_INTERVAL * index,
+            index,
+          })}
+          removeClippedSubviews
+          renderItem={({
+            item: set,
+          }: ListRenderItemInfo<OutfitSet<OutfitSheetWithGrid>>) => (
+            <OutfitSetRow
+              set={set}
+              activeOutfitIndex={
+                set.setIndex === setIndex ? clampedOutfitIndex : 0
+              }
+              pinnedItemId={pinnedItemId}
+              saveStateByHash={saveStateByHash}
+              collageDragActive={collageDragActive}
+              homeView={homeView}
+              isLastSet={set.setIndex >= sets.length - 1}
+              onItemPress={item => setSelectedItem(item)}
+              onTogglePin={handleToggleItemPin}
+              onHeartTap={handleHeartTapForOutfit}
+              onEditContext={handleOpenContextEditModal}
+              onShowAnother={handleShowAnother}
+              onRemix={handleRemix}
+              onOutfitChange={handleOutfitChange}
+              onCollageDragActiveChange={setCollageDragActive}
+            />
+          )}
+          ListFooterComponent={
+            isStartPending && listOutfits.length > 0 ? (
               <LoadingMoreIndicator />
-            ) : null}
-          </>
-        )}
-      </ScrollView>
+            ) : null
+          }
+        />
+      )}
 
       {/* AU-253: Home grid-view toggle bar (Figma footer 2464:17348). Tab 1
           = current grid view (active). Tab 2 = alternate view (not yet built
@@ -1389,9 +1599,19 @@ export const HomeScreen = () => {
         onConfirm={handleSubmitContext}
       />
 
-      {/* First-time swipe coach-mark (Figma "first time" 3140:9395). Armed
-          only once outfits exist; shows once, persisted via AsyncStorage. */}
-      <SwipeCoachMark enabled={optionSets.length > 0} />
+      {/* AU-303 guidance overlay 1 — HORIZONTAL (Figma "first time" 3140:9395).
+          Fires the first time Home shows outfits. */}
+      <SwipeCoachMark variant="horizontal" enabled={sets.length > 0} />
+
+      {/* AU-303 guidance overlay 2 — VERTICAL (Figma "after see 1 set"
+          3140:9763). Armed only after the user has viewed all 3 outfits of set
+          0 (CEO Q2). Sequenced ahead of the context modal on the 3rd browse. */}
+      <SwipeCoachMark
+        variant="vertical"
+        enabled={verticalCoachArmed}
+        onResolved={handleVerticalCoachResolved}
+        onDismissed={handleVerticalCoachDismissed}
+      />
     </SafeAreaView>
   );
 };
@@ -1481,13 +1701,108 @@ const computeHeroRowHeight = (restCount: number): number => {
   return Math.floor((available - (rows - 1) * GRID_GAP) / rows);
 };
 
+// AU-303: one SET row = a horizontal pager of the set's 1..3 outfits. Each cell
+// is an OptionSheet. This is the INNER (horizontal) axis of the two-axis pager;
+// the outer vertical FlatList in HomeScreen pages between these rows.
+// directionalLockEnabled keeps a diagonal drag on the horizontal axis so it
+// doesn't fight the outer vertical pager.
+const OutfitSetRow = React.memo(
+  ({
+    set,
+    activeOutfitIndex,
+    pinnedItemId,
+    saveStateByHash,
+    collageDragActive,
+    homeView,
+    isLastSet,
+    onItemPress,
+    onTogglePin,
+    onHeartTap,
+    onEditContext,
+    onShowAnother,
+    onRemix,
+    onOutfitChange,
+    onCollageDragActiveChange,
+  }: {
+    set: OutfitSet<OutfitSheetWithGrid>;
+    activeOutfitIndex: number;
+    pinnedItemId: string | null;
+    saveStateByHash: Record<string, SaveState>;
+    collageDragActive: boolean;
+    homeView: HomeView;
+    isLastSet: boolean;
+    onItemPress: (item: Item) => void;
+    onTogglePin: (item: Item) => void;
+    onHeartTap: (outfit: OutfitSheetWithGrid) => void;
+    onEditContext: () => void;
+    onShowAnother: () => void;
+    onRemix: () => void;
+    onOutfitChange: (outfitIndex: number) => void;
+    onCollageDragActiveChange: (active: boolean) => void;
+  }) => {
+    const setLength = set.outfits.length;
+
+    const handleHorizontalMomentumEnd = (
+      event: NativeSyntheticEvent<NativeScrollEvent>,
+    ) => {
+      const nextOutfit = Math.max(
+        0,
+        Math.round(event.nativeEvent.contentOffset.x / screenWidth),
+      );
+      onOutfitChange(nextOutfit);
+    };
+
+    return (
+      <View style={styles.setRow}>
+        <FlatList
+          testID={`home-outfit-pager-${set.setIndex}`}
+          data={set.outfits}
+          horizontal
+          pagingEnabled
+          directionalLockEnabled
+          showsHorizontalScrollIndicator={false}
+          // Freeze horizontal paging while a collage item is being dragged.
+          scrollEnabled={!collageDragActive}
+          onMomentumScrollEnd={handleHorizontalMomentumEnd}
+          keyExtractor={outfit => outfit.outfitHash}
+          renderItem={({
+            item: outfit,
+            index: outfitIndexInSet,
+          }: ListRenderItemInfo<OutfitSheetWithGrid>) => (
+            <OptionSheet
+              cellKey={`${set.setIndex}-${outfitIndexInSet}`}
+              outfitIndexInSet={activeOutfitIndex}
+              setLength={setLength}
+              outfit={outfit}
+              saveState={saveStateByHash[outfit.outfitHash] ?? 'idle'}
+              pinnedItemId={pinnedItemId}
+              showAnotherDisabled={isLastSet}
+              onItemPress={onItemPress}
+              onTogglePin={onTogglePin}
+              onConfirm={() => onHeartTap(outfit)}
+              onEditContext={onEditContext}
+              onShowAnother={onShowAnother}
+              onRemix={onRemix}
+              homeView={homeView}
+              onCollageDragActiveChange={onCollageDragActiveChange}
+            />
+          )}
+        />
+      </View>
+    );
+  },
+);
+OutfitSetRow.displayName = 'OutfitSetRow';
+
 const OptionSheet = React.memo(
   ({
-    sheetIndex,
+    cellKey,
+    outfitIndexInSet,
+    setLength,
     outfit,
     saveState,
     pinnedItemId,
-    totalSheets,
+    showAnotherDisabled,
     onItemPress,
     onTogglePin,
     onConfirm,
@@ -1495,14 +1810,19 @@ const OptionSheet = React.memo(
     onShowAnother,
     onRemix,
     homeView,
-    collageDragActive,
     onCollageDragActiveChange,
   }: {
-    sheetIndex: number;
+    // AU-303: testID namespace = `<setIndex>-<outfitIndexInSet>` so Maestro can
+    // address a specific cell on either axis.
+    cellKey: string;
+    // Which of the set's 1..3 outfits this cell is (0..2) — drives the dots.
+    outfitIndexInSet: number;
+    // How many outfits are in this set (1..3) — dot count.
+    setLength: number;
     outfit: OutfitSheetWithGrid;
     saveState: SaveState;
     pinnedItemId: string | null;
-    totalSheets: number;
+    showAnotherDisabled: boolean;
     onItemPress: (item: Item) => void;
     onTogglePin: (item: Item) => void;
     onConfirm: () => void;
@@ -1510,7 +1830,6 @@ const OptionSheet = React.memo(
     onShowAnother: () => void;
     onRemix: () => void;
     homeView: HomeView;
-    collageDragActive: boolean;
     onCollageDragActiveChange: (active: boolean) => void;
   }) => {
     const items = outfit.items;
@@ -1537,8 +1856,8 @@ const OptionSheet = React.memo(
       return (
         <TouchableOpacity
           key={`card-${outfit.outfitHash}-${flatTileIndex}`}
-          testID={`home-tile-${sheetIndex}-${flatTileIndex}`}
-          accessibilityLabel={`home-tile-${sheetIndex}-${flatTileIndex}`}
+          testID={`home-tile-${cellKey}-${flatTileIndex}`}
+          accessibilityLabel={`home-tile-${cellKey}-${flatTileIndex}`}
           activeOpacity={0.86}
           style={[styles.card, style, isPinned && styles.cardPinned]}
           onPress={() => onItemPress(item)}
@@ -1551,8 +1870,8 @@ const OptionSheet = React.memo(
           <TouchableOpacity
             testID={
               isPinned
-                ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set`
-                : `home-tile-pin-${sheetIndex}-${flatTileIndex}`
+                ? `home-tile-pin-${cellKey}-${flatTileIndex}-set`
+                : `home-tile-pin-${cellKey}-${flatTileIndex}`
             }
             activeOpacity={0.7}
             onPress={e => {
@@ -1682,90 +2001,96 @@ const OptionSheet = React.memo(
       );
     };
 
-    // AU-253: "Show another" is rendered disabled (opacity 0.5) at the tail of
-    // the carousel where there is no further option to rotate to — matching the
-    // Figma State=Disable variant on the edge frame.
-    const showAnotherDisabled = sheetIndex >= totalSheets - 1;
-
     return (
-      <View
-        testID={`home-outfit-sheet-${sheetIndex}`}
-        style={styles.optionSheet}
-      >
-        {/* AU-253: caption + insight title row (Figma Frame 2104). Caption text
-          is the V05 `reasoning_human` threaded via buildViaV05; OutfitCardCaption
-          falls back to DEFAULT_CAPTION only when it's absent. */}
-        <OutfitCardCaption
-          testID={`home-card-caption-${sheetIndex}`}
-          caption={outfit.caption}
-        />
-
-        <ScrollView
-          style={styles.gridScroll}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.gridScrollContent}
-          // Freeze inner scroll while dragging a collage item.
-          scrollEnabled={!collageDragActive}
-        >
-          <View testID={`home-outfit-grid-${itemCount}`}>
-            {homeView === 'collage' ? (
-              <CollageSheetCanvas
-                testID={`home-collage-${sheetIndex}`}
-                outfitItems={items}
-                surfaceWidth={COLLAGE_SURFACE_WIDTH}
-                surfaceHeight={COLLAGE_SURFACE_HEIGHT}
-                onDragActiveChange={onCollageDragActiveChange}
-              />
-            ) : (
-              renderLayout()
-            )}
-          </View>
-        </ScrollView>
-
-        {/* Pager/action row (Figma Frame 2105) — [Remix | 3 dots | "Show
-          another"]. CEO re-enabled the left Remix button (overrides the earlier
-          AU-253 omission); it opens the Outfit Canvas (AU-285) via onRemix. */}
-        <OutfitActionRow
-          testID={`home-action-row-${sheetIndex}`}
-          activeIndex={sheetIndex}
-          onRemix={onRemix}
-          onShowAnother={onShowAnother}
-          showAnotherDisabled={showAnotherDisabled}
-        />
-
-        {/* Bottom action cluster — primary CTA + Edit context affordance. */}
-        <View style={styles.actionCluster}>
-          {/* Figma primary CTA: Secondary/outline, borderRadius 16, trailing
-            heart icon, height 56, label "Wear this" (border/primary/bold_600). */}
-          <PillButton
-            testID={`home-this-works-${sheetIndex}`}
-            title={saveState === 'saved' ? 'Saved to favourite' : 'Wear this'}
-            variant="outline"
-            onPress={onConfirm}
-            disabled={saveState === 'saved'}
-            loading={saveState === 'saving'}
-            trailing={<IconHomeHeartOutline width={24} height={24} />}
-            style={styles.primaryActionFull}
-            textStyle={styles.primaryActionLabel}
+      // AU-303: each OptionSheet is now a horizontal-pager CELL of fixed
+      // screen width so the inner FlatList pages one outfit at a time.
+      <View testID={`home-outfit-sheet-${cellKey}`} style={styles.outfitCell}>
+        <View style={styles.optionSheet}>
+          {/* AU-253: caption + insight title row (Figma Frame 2104). Caption
+            text is the V05 `reasoning_human` threaded via buildViaV05;
+            OutfitCardCaption falls back to DEFAULT_CAPTION only when absent. */}
+          <OutfitCardCaption
+            testID={`home-card-caption-${cellKey}`}
+            caption={outfit.caption}
           />
 
-          {saveState === 'error' ? (
-            <Text style={styles.saveErrorText}>
-              {'Couldn\'t save this look. Tap "Wear this" to retry.'}
-            </Text>
-          ) : null}
+          <ScrollView
+            style={styles.gridScroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.gridScrollContent}
+            // AU-303 fix: this inner grid ScrollView is DORMANT by derivation —
+            // every layout is sized to fit GRID_AREA_H exactly (see gridScroll
+            // style note), so it never actually needs to scroll. While enabled,
+            // though, it claimed the vertical pan responder and starved the
+            // outer `home-set-pager` FlatList, killing vertical set paging
+            // (it also let stray long swipes mis-arbitrate to the hamburger).
+            // Disabling scroll lets the vertical pan bubble to the set-pager.
+            // Collage-item drag is owned by CollageSheetCanvas (its own
+            // PanResponder over a fixed-height surface), not this ScrollView,
+            // so freezing on collageDragActive is no longer needed here.
+            scrollEnabled={false}
+          >
+            <View testID={`home-outfit-grid-${itemCount}`}>
+              {homeView === 'collage' ? (
+                <CollageSheetCanvas
+                  testID={`home-collage-${cellKey}`}
+                  outfitItems={items}
+                  surfaceWidth={COLLAGE_SURFACE_WIDTH}
+                  surfaceHeight={COLLAGE_SURFACE_HEIGHT}
+                  onDragActiveChange={onCollageDragActiveChange}
+                />
+              ) : (
+                renderLayout()
+              )}
+            </View>
+          </ScrollView>
 
-          {/* Edit context entry point (AU-252 refine flow). Not in the Figma
-            Home grid frame, but it is the only way to reach the refine modal
-            from this screen and the swipe-nudge flow depends on it. Kept. */}
-          {/* <PillButton
-            testID={`home-edit-context-${sheetIndex}`}
-            title="Edit context +"
-            variant="text"
-            onPress={onEditContext}
-            style={styles.secondaryAction}
-            textStyle={styles.secondaryActionText}
-          /> */}
+          {/* Pager/action row (Figma Frame 2105) — [Remix | • • • | "Show
+            another"]. AU-303: dots track the outfitIndex within the active set
+            (1..3); "Show another" advances to the next SET (vertical axis). */}
+          <OutfitActionRow
+            testID={`home-action-row-${cellKey}`}
+            activeIndex={outfitIndexInSet}
+            dotCount={setLength}
+            onRemix={onRemix}
+            onShowAnother={onShowAnother}
+            showAnotherDisabled={showAnotherDisabled}
+          />
+
+          {/* Bottom action cluster — primary CTA + Edit context affordance. */}
+          <View style={styles.actionCluster}>
+            {/* Figma primary CTA: Secondary/outline, borderRadius 16, trailing
+              heart icon, height 56, label "Wear this" (border/primary/bold_600). */}
+            <PillButton
+              testID={`home-this-works-${cellKey}`}
+              title={saveState === 'saved' ? 'Saved to favourite' : 'Wear this'}
+              variant="outline"
+              onPress={onConfirm}
+              disabled={saveState === 'saved'}
+              loading={saveState === 'saving'}
+              trailing={<IconHomeHeartOutline width={24} height={24} />}
+              style={styles.primaryActionFull}
+              textStyle={styles.primaryActionLabel}
+            />
+
+            {saveState === 'error' ? (
+              <Text style={styles.saveErrorText}>
+                {'Couldn\'t save this look. Tap "Wear this" to retry.'}
+              </Text>
+            ) : null}
+
+            {/* Edit context entry point (AU-252 refine flow). Not in the Figma
+              Home grid frame, but it is the only way to reach the refine modal
+              from this screen and the swipe-nudge flow depends on it. Kept. */}
+            {/* <PillButton
+              testID={`home-edit-context-${cellKey}`}
+              title="Edit context +"
+              variant="text"
+              onPress={onEditContext}
+              style={styles.secondaryAction}
+              textStyle={styles.secondaryActionText}
+            /> */}
+          </View>
         </View>
       </View>
     );
@@ -1985,6 +2310,19 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 24,
     gap: SHEET_GAP,
+  },
+  // AU-303: outer vertical pager row — one SET. Snap height matches the set
+  // pager's snapToInterval so each vertical page lands on one set.
+  setRow: {
+    width: screenWidth,
+    height: OPTION_SHEET_HEIGHT,
+  },
+  // AU-303: horizontal pager cell — one OUTFIT. Fixed screen width so the inner
+  // FlatList pages exactly one outfit per swipe. The white optionSheet fills the
+  // cell edge-to-edge (it carries its own SHEET_PADDING internally), matching
+  // the pre-AU-303 full-bleed sheet width.
+  outfitCell: {
+    width: screenWidth,
   },
   optionSheet: {
     height: OPTION_SHEET_HEIGHT,
