@@ -49,20 +49,34 @@ const ITEM_DEFAULT_SIZE = 160;
 
 const PICKER_COLUMNS = 3;
 const PICKER_GAP = 4;
-const PICKER_TILE = (SCREEN_WIDTH - 32 - PICKER_GAP * (PICKER_COLUMNS - 1)) / PICKER_COLUMNS;
+const PICKER_TILE =
+  (SCREEN_WIDTH - 32 - PICKER_GAP * (PICKER_COLUMNS - 1)) / PICKER_COLUMNS;
 const PICKER_TILE_HEIGHT = PICKER_TILE * (4 / 3);
 
-const PICKER_FILTER_TABS = ['All', 'Tops', 'Bottoms', 'Shoes', 'One-piece', 'AC'] as const;
+const PICKER_FILTER_TABS = [
+  'All',
+  'Tops',
+  'Bottoms',
+  'Shoes',
+  'One-piece',
+  'AC',
+] as const;
 type PickerFilterTab = (typeof PICKER_FILTER_TABS)[number];
 
 const resolvePickerCategory = (tab: PickerFilterTab): string | undefined => {
   switch (tab) {
-    case 'Tops': return 'top';
-    case 'Bottoms': return 'bottom';
-    case 'Shoes': return 'shoes';
-    case 'One-piece': return 'one_piece';
-    case 'AC': return 'accessory';
-    default: return undefined;
+    case 'Tops':
+      return 'top';
+    case 'Bottoms':
+      return 'bottom';
+    case 'Shoes':
+      return 'shoes';
+    case 'One-piece':
+      return 'one_piece';
+    case 'AC':
+      return 'accessory';
+    default:
+      return undefined;
   }
 };
 
@@ -77,7 +91,11 @@ interface ItemPickerPanelProps {
   onConfirm: (items: WardrobeItem[]) => void;
 }
 
-const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({ visible, onClose, onConfirm }) => {
+const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
+  visible,
+  onClose,
+  onConfirm,
+}) => {
   const slideX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const [selectedTab, setSelectedTab] = useState<PickerFilterTab>('All');
   const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
@@ -96,15 +114,32 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({ visible, onClose, onC
   }, [visible, slideX]);
 
   useEffect(() => {
-    if (!visible) { return; }
+    if (!visible) {
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     const category = resolvePickerCategory(selectedTab);
-    wardrobeService.filterWardrobeItems({ category })
-      .then(data => { if (!cancelled) { setWardrobeItems(data); } })
-      .catch(() => { if (!cancelled) { setWardrobeItems([]); } })
-      .finally(() => { if (!cancelled) { setLoading(false); } });
-    return () => { cancelled = true; };
+    wardrobeService
+      .filterWardrobeItems({ category })
+      .then(data => {
+        if (!cancelled) {
+          setWardrobeItems(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setWardrobeItems([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [visible, selectedTab]);
 
   const toggleItem = (id: string) => {
@@ -126,7 +161,11 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({ visible, onClose, onC
       <SafeAreaView style={pickerStyles.safeArea}>
         {/* Header */}
         <View style={pickerStyles.header}>
-          <TouchableOpacity onPress={onClose} style={pickerStyles.backBtn} accessibilityLabel="Close picker">
+          <TouchableOpacity
+            onPress={onClose}
+            style={pickerStyles.backBtn}
+            accessibilityLabel="Close picker"
+          >
             <IconChevronLeft width={24} height={24} />
           </TouchableOpacity>
           <Text style={pickerStyles.title}>Add to Canvas</Text>
@@ -140,7 +179,10 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({ visible, onClose, onC
             selectedCategory={selectedTab}
             onSelectCategory={tab => setSelectedTab(tab as PickerFilterTab)}
           />
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={pickerStyles.scrollContent}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={pickerStyles.scrollContent}
+          >
             {loading ? (
               <ActivityIndicator style={{ marginTop: 40 }} />
             ) : wardrobeItems.length === 0 ? (
@@ -153,15 +195,24 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({ visible, onClose, onC
                   return (
                     <TouchableOpacity
                       key={item.id}
-                      style={[pickerStyles.tile, isSelected && pickerStyles.tileSelected]}
+                      style={[
+                        pickerStyles.tile,
+                        isSelected && pickerStyles.tileSelected,
+                      ]}
                       activeOpacity={0.82}
                       onPress={() => toggleItem(item.id)}
                     >
                       {uri ? (
-                        <Image source={{ uri }} style={pickerStyles.tileImage} resizeMode="cover" />
+                        <Image
+                          source={{ uri }}
+                          style={pickerStyles.tileImage}
+                          resizeMode="cover"
+                        />
                       ) : (
                         <View style={pickerStyles.tileFallback}>
-                          <Text style={pickerStyles.tileFallbackText}>No image</Text>
+                          <Text style={pickerStyles.tileFallbackText}>
+                            No image
+                          </Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -175,13 +226,20 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({ visible, onClose, onC
         {/* Confirm button */}
         <View style={pickerStyles.footer}>
           <TouchableOpacity
-            style={[pickerStyles.confirmBtn, selectedIds.length === 0 && pickerStyles.confirmBtnDisabled]}
+            style={[
+              pickerStyles.confirmBtn,
+              selectedIds.length === 0 && pickerStyles.confirmBtnDisabled,
+            ]}
             onPress={handleConfirm}
             disabled={selectedIds.length === 0}
             activeOpacity={0.85}
           >
             <Text style={pickerStyles.confirmBtnLabel}>
-              {selectedIds.length > 0 ? `Add ${selectedIds.length} item${selectedIds.length > 1 ? 's' : ''}` : 'Add to Canvas'}
+              {selectedIds.length > 0
+                ? `Add ${selectedIds.length} item${
+                    selectedIds.length > 1 ? 's' : ''
+                  }`
+                : 'Add to Canvas'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -385,28 +443,33 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     setPickerVisible(true);
   }, []);
 
-  const handlePickerConfirm = useCallback((picked: WardrobeItem[]) => {
-    setPickerVisible(false);
-    if (picked.length === 0) { return; }
-    setItems(prev => {
-      let maxZ = prev.length > 0 ? Math.max(...prev.map(it => it.zIndex)) : 0;
-      const newItems: CanvasItemData[] = picked.map((item, i) => {
-        const uri = getImageUrl(item.image_png ?? item.image_url);
-        return {
-          id: `item-${item.id}-${Date.now()}-${i}`,
-          imageSource: uri ? { uri } : testJeansImg,
-          x: 40 + i * 20,
-          y: 40 + i * 20,
-          zIndex: ++maxZ,
-          width: ITEM_DEFAULT_SIZE,
-          height: ITEM_DEFAULT_SIZE,
-        };
+  const handlePickerConfirm = useCallback(
+    (picked: WardrobeItem[]) => {
+      setPickerVisible(false);
+      if (picked.length === 0) {
+        return;
+      }
+      setItems(prev => {
+        let maxZ = prev.length > 0 ? Math.max(...prev.map(it => it.zIndex)) : 0;
+        const newItems: CanvasItemData[] = picked.map((item, i) => {
+          const uri = getImageUrl(item.image_png ?? item.image_url);
+          return {
+            id: `item-${item.id}-${Date.now()}-${i}`,
+            imageSource: uri ? { uri } : testJeansImg,
+            x: 40 + i * 20,
+            y: 40 + i * 20,
+            zIndex: ++maxZ,
+            width: ITEM_DEFAULT_SIZE,
+            height: ITEM_DEFAULT_SIZE,
+          };
+        });
+        const next = [...prev, ...newItems];
+        pushHistory(next);
+        return next;
       });
-      const next = [...prev, ...newItems];
-      pushHistory(next);
-      return next;
-    });
-  }, [pushHistory]);
+    },
+    [pushHistory],
+  );
 
   // Tag actions
   const handleRemoveTag = useCallback((tag: string) => {
@@ -432,169 +495,176 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable
-          testID="canvas-header-back"
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Go back"
-          style={styles.headerIconBtn}
-        >
-          <IconChevronLeft width={24} height={24} />
-        </Pressable>
-
-        <View style={styles.headerActions}>
+        {/* Header */}
+        <View style={styles.header}>
           <Pressable
-            testID="canvas-header-redo"
-            onPress={handleRedo}
-            disabled={!canRedo}
-            accessibilityLabel="Redo"
-            style={[
-              styles.headerIconBtn,
-              !canRedo && styles.headerIconBtnDisabled,
-            ]}
+            testID="canvas-header-back"
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Go back"
+            style={styles.headerIconBtn}
           >
-            <IconCanvasRedo width={18} height={18} />
+            <IconChevronLeft width={24} height={24} />
           </Pressable>
-          <Pressable
-            testID="canvas-header-undo"
-            onPress={handleUndo}
-            disabled={!canUndo}
-            accessibilityLabel="Undo"
-            style={[styles.headerIconBtn, !canUndo && styles.headerIconBtnDisabled]}
-          >
-            <IconCanvasUndo width={18} height={18} />
-          </Pressable>
-        </View>
-      </View>
 
-      {/* Body — Figma justify-between: canvas card / add-row / tags grouped at
-          top, Save pinned at the bottom. Backdrop tap deselects. */}
-      <Pressable
-        testID="canvas-backdrop"
-        onPress={() => setSelectedId(null)}
-        style={styles.body}
-      >
-        {/* Top group — gap 16 (theme.spacing.m) between card / add-row / tags */}
-        <View style={styles.topGroup}>
-          {/* Canvas card — fixed-size inset rounded card (Figma "Image 3:4") */}
-          <OutfitCanvasSurface
-            items={items}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            selectedId={selectedId}
-            onSelect={handleSelect}
-            onPositionChange={handlePositionChange}
-            showGrid
-            itemTestIDPrefix="canvas-item"
-          />
-
-          {/* Toolbar */}
-          <View style={styles.toolbar}>
-            <ToolbarBtn
-              testID="canvas-tool-add"
-              onPress={handleAddItem}
-              accessibilityLabel="Add item"
-            >
-              <IconCanvasAdd width={18} height={18} />
-            </ToolbarBtn>
-            <ToolbarBtn
-              testID="canvas-tool-layer-up"
-              onPress={handleLayerUp}
-              disabled={actionDisabled}
-              accessibilityLabel="Bring forward"
-            >
-              <IconCanvasLayerUp width={32} height={31} />
-            </ToolbarBtn>
-            <ToolbarBtn
-              testID="canvas-tool-layer-down"
-              onPress={handleLayerDown}
-              disabled={actionDisabled}
-              accessibilityLabel="Send backward"
-            >
-              <IconCanvasLayerDown width={32} height={31} />
-            </ToolbarBtn>
-            <ToolbarBtn
-              testID="canvas-tool-duplicate"
-              onPress={handleDuplicate}
-              disabled={actionDisabled}
-              accessibilityLabel="Duplicate item"
-            >
-              <IconCanvasDuplicate width={32} height={31} />
-            </ToolbarBtn>
-            <ToolbarBtn
-              testID="canvas-tool-swap"
-              onPress={() => { /* TODO: navigate to item picker */ }}
-              disabled={actionDisabled}
-              accessibilityLabel="Swap item"
-            >
-              <IconCanvasSwap width={32} height={31} />
-            </ToolbarBtn>
-            <ToolbarBtn
-              testID="canvas-tool-delete"
-              onPress={handleDelete}
-              disabled={actionDisabled}
-              accessibilityLabel="Delete item"
-            >
-              <IconCanvasDelete width={18} height={18} />
-            </ToolbarBtn>
-          </View>
-
-          {/* Tags row */}
-          <View style={styles.tagsRow}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.tagsScroll}
-              keyboardShouldPersistTaps="handled"
-            >
-              {tags.map(tag => (
-                <TagChip
-                  key={tag}
-                  label={tag}
-                  onRemove={() => handleRemoveTag(tag)}
-                />
-              ))}
-              {addingTag ? (
-                <TextInput
-                  testID="canvas-tag-input"
-                  value={tagInput}
-                  onChangeText={setTagInput}
-                  onSubmitEditing={handleConfirmTag}
-                  onBlur={handleConfirmTag}
-                  autoFocus
-                  returnKeyType="done"
-                  placeholder="Tag name"
-                  style={styles.tagInput}
-                  accessibilityLabel="Tag name input"
-                />
-              ) : (
-                <Pressable
-                  testID="canvas-tag-add"
-                  onPress={() => setAddingTag(true)}
-                  accessibilityLabel="Add tag"
-                  style={styles.tagAddBtn}
-                >
-                  <IconCanvasAdd width={12} height={12} />
-                </Pressable>
-              )}
-            </ScrollView>
-          </View>
-
-          {/* Save button */}
-          <View style={styles.saveRow}>
+          <View style={styles.headerActions}>
             <Pressable
-              testID="canvas-save"
-              onPress={handleSave}
-              accessibilityLabel="Save outfit"
-              style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
+              testID="canvas-header-redo"
+              onPress={handleRedo}
+              disabled={!canRedo}
+              accessibilityLabel="Redo"
+              style={[
+                styles.headerIconBtn,
+                !canRedo && styles.headerIconBtnDisabled,
+              ]}
             >
-              <Text style={styles.saveBtnLabel}>Save</Text>
+              <IconCanvasRedo width={18} height={18} />
+            </Pressable>
+            <Pressable
+              testID="canvas-header-undo"
+              onPress={handleUndo}
+              disabled={!canUndo}
+              accessibilityLabel="Undo"
+              style={[
+                styles.headerIconBtn,
+                !canUndo && styles.headerIconBtnDisabled,
+              ]}
+            >
+              <IconCanvasUndo width={18} height={18} />
             </Pressable>
           </View>
         </View>
-      </Pressable>
 
+        {/* Body — Figma justify-between: canvas card / add-row / tags grouped at
+          top, Save pinned at the bottom. Backdrop tap deselects. */}
+        <Pressable
+          testID="canvas-backdrop"
+          onPress={() => setSelectedId(null)}
+          style={styles.body}
+        >
+          {/* Top group — gap 16 (theme.spacing.m) between card / add-row / tags */}
+          <View style={styles.topGroup}>
+            {/* Canvas card — fixed-size inset rounded card (Figma "Image 3:4") */}
+            <OutfitCanvasSurface
+              items={items}
+              width={CANVAS_WIDTH}
+              height={CANVAS_HEIGHT}
+              selectedId={selectedId}
+              onSelect={handleSelect}
+              onPositionChange={handlePositionChange}
+              showGrid
+              itemTestIDPrefix="canvas-item"
+            />
+
+            {/* Toolbar */}
+            <View style={styles.toolbar}>
+              <ToolbarBtn
+                testID="canvas-tool-add"
+                onPress={handleAddItem}
+                accessibilityLabel="Add item"
+              >
+                <IconCanvasAdd width={18} height={18} />
+              </ToolbarBtn>
+              <ToolbarBtn
+                testID="canvas-tool-layer-up"
+                onPress={handleLayerUp}
+                disabled={actionDisabled}
+                accessibilityLabel="Bring forward"
+              >
+                <IconCanvasLayerUp width={32} height={31} />
+              </ToolbarBtn>
+              <ToolbarBtn
+                testID="canvas-tool-layer-down"
+                onPress={handleLayerDown}
+                disabled={actionDisabled}
+                accessibilityLabel="Send backward"
+              >
+                <IconCanvasLayerDown width={32} height={31} />
+              </ToolbarBtn>
+              <ToolbarBtn
+                testID="canvas-tool-duplicate"
+                onPress={handleDuplicate}
+                disabled={actionDisabled}
+                accessibilityLabel="Duplicate item"
+              >
+                <IconCanvasDuplicate width={32} height={31} />
+              </ToolbarBtn>
+              <ToolbarBtn
+                testID="canvas-tool-swap"
+                onPress={() => {
+                  /* TODO: navigate to item picker */
+                }}
+                disabled={actionDisabled}
+                accessibilityLabel="Swap item"
+              >
+                <IconCanvasSwap width={32} height={31} />
+              </ToolbarBtn>
+              <ToolbarBtn
+                testID="canvas-tool-delete"
+                onPress={handleDelete}
+                disabled={actionDisabled}
+                accessibilityLabel="Delete item"
+              >
+                <IconCanvasDelete width={18} height={18} />
+              </ToolbarBtn>
+            </View>
+
+            {/* Tags row */}
+            <View style={styles.tagsRow}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.tagsScroll}
+                keyboardShouldPersistTaps="handled"
+              >
+                {tags.map(tag => (
+                  <TagChip
+                    key={tag}
+                    label={tag}
+                    onRemove={() => handleRemoveTag(tag)}
+                  />
+                ))}
+                {addingTag ? (
+                  <TextInput
+                    testID="canvas-tag-input"
+                    value={tagInput}
+                    onChangeText={setTagInput}
+                    onSubmitEditing={handleConfirmTag}
+                    onBlur={handleConfirmTag}
+                    autoFocus
+                    returnKeyType="done"
+                    placeholder="Tag name"
+                    style={styles.tagInput}
+                    accessibilityLabel="Tag name input"
+                  />
+                ) : (
+                  <Pressable
+                    testID="canvas-tag-add"
+                    onPress={() => setAddingTag(true)}
+                    accessibilityLabel="Add tag"
+                    style={styles.tagAddBtn}
+                  >
+                    <IconCanvasAdd width={12} height={12} />
+                  </Pressable>
+                )}
+              </ScrollView>
+            </View>
+
+            {/* Save button */}
+            <View style={styles.saveRow}>
+              <Pressable
+                testID="canvas-save"
+                onPress={handleSave}
+                accessibilityLabel="Save outfit"
+                style={({ pressed }) => [
+                  styles.saveBtn,
+                  pressed && styles.saveBtnPressed,
+                ]}
+              >
+                <Text style={styles.saveBtnLabel}>Save</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
       </SafeAreaView>
 
       {/* Item picker panel */}
@@ -866,4 +936,3 @@ const pickerStyles = StyleSheet.create({
     letterSpacing: 0.15,
   },
 });
-
