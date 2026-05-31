@@ -22,10 +22,16 @@ import IconRemix from '../../assets/images/icon_remix.svg';
 // on the 1/3 frame). We drive that off the `disabled` prop so the edge state
 // matches the design while the button stays functional when enabled.
 
-const DOT_COUNT = 3;
+const DEFAULT_DOT_COUNT = 3;
 
 type Props = {
+  // AU-303: `activeIndex` is now the HORIZONTAL outfitIndex within the active
+  // set (0..2), NOT the flat sheet index. Dots track which of the set's 3
+  // outfits is currently shown.
   activeIndex: number;
+  // AU-303: number of outfits in this set (1..3) — a trailing partial set
+  // renders fewer dots so the pager reflects the real option count.
+  dotCount?: number;
   onRemix?: () => void;
   onShowAnother?: () => void;
   showAnotherDisabled?: boolean;
@@ -34,14 +40,16 @@ type Props = {
 
 export const OutfitActionRow: React.FC<Props> = ({
   activeIndex,
+  dotCount = DEFAULT_DOT_COUNT,
   onRemix,
   onShowAnother,
   showAnotherDisabled = false,
   testID,
 }) => {
-  // Clamp the active dot into the 3-dot window so the pager always shows a
-  // valid highlighted dot even if the outfit list is longer than 3.
-  const activeDot = ((activeIndex % DOT_COUNT) + DOT_COUNT) % DOT_COUNT;
+  const count = Math.max(1, dotCount);
+  // Clamp the active dot into the dot window so the pager always shows a valid
+  // highlighted dot.
+  const activeDot = ((activeIndex % count) + count) % count;
 
   return (
     <View testID={testID} style={styles.row}>
@@ -64,15 +72,15 @@ export const OutfitActionRow: React.FC<Props> = ({
       <View
         style={styles.dots}
         accessibilityRole="adjustable"
-        accessibilityLabel={`Option ${activeDot + 1} of ${DOT_COUNT}`}
+        accessibilityLabel={`Option ${activeDot + 1} of ${count}`}
       >
-        {Array.from({ length: DOT_COUNT }).map((_, index) => (
+        {Array.from({ length: count }).map((_, index) => (
           <View
             key={`pager-dot-${index}`}
             testID={
               index === activeDot
-                ? 'home-pager-dot-active'
-                : `home-pager-dot-${index}`
+                ? `home-pagination-dot-${index}-active`
+                : `home-pagination-dot-${index}`
             }
             style={[styles.dot, index === activeDot && styles.dotActive]}
           />
@@ -131,10 +139,12 @@ const styles = StyleSheet.create({
     width: theme.spacing.xs,
     height: theme.spacing.xs,
     borderRadius: theme.spacing.xs / 2,
-    backgroundColor: theme.colors.figmaInsightPillBg,
+    // AU-303: inactive dot icon/primary/subtle_300 (#c6bcb1).
+    backgroundColor: theme.colors.figmaDotInactive,
   },
   dotActive: {
-    backgroundColor: theme.colors.uacTextBase,
+    // AU-303: active dot icon/primary/bold_500 (#5b5550 = figmaChipBg, same hex).
+    backgroundColor: theme.colors.figmaChipBg,
   },
   showAnother: {
     flexDirection: 'row',

@@ -5,7 +5,55 @@
 **Source of truth:** Figma file `0nXXMAR4Arf1ZfjtQvtBh0`, page `470:1121`, section `909:7328` "Home adjust"
 **Linked tickets:** AU-221 (3 modes), AU-222 (Pin), AU-223 (3-swipe context), AU-226 (Love collection)
 
-## 1. The swipe model (Figma-confirmed)
+## 1. The swipe model — TWO AXES (AU-303, current source of truth)
+
+> **SUPERSEDE NOTE (2026-05-31, AU-303 · Figma section `3140-8191` "Home | behavior
+> guide"):** The original single-axis model below this note is **obsolete**. The CEO
+> redesigned Home exploration onto **two intentional axes** to avoid infinite scroll.
+> Earlier revisions of this doc claimed "Tinder-style horizontal cards are NOT what
+> this design uses" — that is now **INVERTED**: horizontal swipe IS used, for
+> browsing the 3 outfits *within a set*. The two-axis model is authoritative; do not
+> reintroduce the vertical-only model.
+
+**Two axes:**
+
+| Axis | Gesture | Navigation unit |
+|---|---|---|
+| **Horizontal** | swipe **left / right** | browse the **3 outfits within the current SET** (`outfitIndex` 0..2) |
+| **Vertical** | swipe **up** = next set · **down** = previous set | move between **SETS of 3** (`setIndex`) |
+
+A "set" is one batch of (up to) 3 outfits — exactly what `/build` or `/try_another`
+returns per call (`count: 3`). The active position is the coordinate
+`(setIndex, outfitIndex)`; the legacy flat index is derived `setIndex*3 + outfitIndex`
+for favorite / caption / hash code that still keys on a single number.
+
+Each outfit cell is the existing `OptionSheet` shell (header weather + 2×2-ish item
+grid + `• • •` pagination + "Wear this"). The pagination dots (between **Remix** and
+**Show another**) track `outfitIndex` within the active set: active dot `#5b5550`
+(`figmaChipBg`), inactive `#c6bcb1` (`figmaDotInactive`).
+
+**First-time guidance overlays** (two, parameterized `SwipeCoachMark`):
+1. **Horizontal** ("Swipe left or right to explore different outfit options.") — fires
+   the first time Home shows outfits. Key `@auxi/coachmark/swipe-outfit`.
+2. **Vertical** ("Swipe up to explore another outfit set." / "Swipe down to go back")
+   — fires after the user has viewed all 3 outfits of set 0. Key
+   `@auxi/coachmark/swipe-set`. Old key `@auxi/coachmark/swipe-home` is retired on
+   mount so existing users see the corrected flow once.
+
+Dismiss is the **"Got it" button only** (CEO, overrides the ticket's "touch every to
+close"). On the 3rd unfavorited browse, the vertical overlay (if unseen) takes priority
+and the recurring `ContextChipsModal` is deferred until the overlay is dismissed — the
+two never collide.
+
+**Implementation:** nested RN-native pagers (no new dependency) — outer vertical
+`FlatList` (sets) where each row is a horizontal `FlatList` of the set's outfits;
+`directionalLockEnabled` on both so a diagonal drag commits to one axis. See
+`HomeScreen.tsx` (`home-set-pager` / `home-outfit-pager-<setIndex>`) and
+`src/utils/groupOutfitsIntoSets.ts`.
+
+---
+
+### OBSOLETE — original single-axis model (pre-AU-303, retained for history)
 
 Each outfit is rendered as a full-screen **sheet** (414×896 frame in Figma).
 The sheet is a vertical slab:
@@ -30,9 +78,11 @@ The sheet is a vertical slab:
 └────────────────────────────────────────────────────────────┘
 ```
 
-**Swipe = vertical scroll between sheets, snapped per sheet.** Tinder-style horizontal cards
-are NOT what this design uses. Confirmed by 4 Figma frames (`1666:9723`, `1711:17062`,
-`1711:16686`, `1666:9869`) all sharing this same structural shell.
+~~**Swipe = vertical scroll between sheets, snapped per sheet.** Tinder-style horizontal
+cards are NOT what this design uses.~~ **(INVERTED by AU-303 — see supersede note above:
+horizontal swipe browses the 3 outfits within a set; vertical swipe moves between sets.)**
+The shared structural shell was confirmed by 4 Figma frames (`1666:9723`, `1711:17062`,
+`1711:16686`, `1666:9869`).
 
 ### Variant frames in Figma (same layout, different state)
 
