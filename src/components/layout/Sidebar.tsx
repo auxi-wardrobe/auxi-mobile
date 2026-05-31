@@ -149,6 +149,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             onPress={() => {}}
           />
           <MenuItem
+            label="Outfit Canvas"
+            Icon={Icons.Setting}
+            testID="sidebar-menu-outfit-canvas"
+            onPress={() => {
+              navigation.navigate('OutfitCanvas');
+              onClose();
+            }}
+          />
+          <MenuItem
             label="Log out"
             Icon={Icons.Logout}
             testID="sidebar-menu-logout"
