@@ -33,6 +33,7 @@ export interface WardrobeItem {
   owner_id?: string | number;
   category?: string;
   image_url?: string;
+  image_png?: string;
   name?: string;
   created_at?: string;
   description?: string;

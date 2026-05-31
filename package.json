@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
+    "start:ios": "yarn start",
     "ios:sim": "open -a Simulator && yarn ios",
     "typecheck": "tsc --noEmit"
   },

@@ -21,15 +21,15 @@ import IconArrowRight from '../images/icon_arrow_right.svg';
 import IconDelete from '../images/icon_delete.svg';
 import IconMenu from '../images/icon_menu.svg';
 import IconCamera from '../images/icon_camera.svg';
-import IconCanvasUndo from '../images/canvas-icons/icon_canvas_undo.svg';
-import IconCanvasRedo from '../images/canvas-icons/icon_canvas_redo.svg';
-import IconCanvasLayerUp from '../images/canvas-icons/icon_canvas_layer_up.svg';
-import IconCanvasLayerDown from '../images/canvas-icons/icon_canvas_layer_down.svg';
-import IconCanvasDuplicate from '../images/canvas-icons/icon_canvas_duplicate.svg';
-import IconCanvasReplace from '../images/canvas-icons/icon_canvas_replace.svg';
-import IconCanvasDelete from '../images/canvas-icons/icon_canvas_delete.svg';
 import IconLoading from '../images/icon_loading.svg';
 import IconSeeOutfit from '../images/icon_see_outfit.svg';
+import IconCanvasUndo from '../images/canvas-icons/undo.svg';
+import IconCanvasRedo from '../images/canvas-icons/redo.svg';
+import IconCanvasLayerUp from '../images/canvas-icons/layer_up.svg';
+import IconCanvasLayerDown from '../images/canvas-icons/layer_down.svg';
+import IconCanvasDuplicate from '../images/canvas-icons/duplicate.svg';
+import IconCanvasSwap from '../images/canvas-icons/swap.svg';
+import IconCanvasDelete from '../images/canvas-icons/trash.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -60,10 +60,10 @@ export const Icons = {
   CanvasLayerUp: IconCanvasLayerUp,
   CanvasLayerDown: IconCanvasLayerDown,
   CanvasDuplicate: IconCanvasDuplicate,
-  CanvasReplace: IconCanvasReplace,
   CanvasDelete: IconCanvasDelete,
   Loading: IconLoading,
   SeeOutfit: IconSeeOutfit,
+  CanvasSwap: IconCanvasSwap,
 };
 
 export {
@@ -95,7 +95,6 @@ export {
   IconCanvasLayerUp,
   IconCanvasLayerDown,
   IconCanvasDuplicate,
-  IconCanvasReplace,
   IconCanvasDelete,
   IconLoading,
   IconSeeOutfit,

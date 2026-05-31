@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
@@ -11,21 +12,25 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
+import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
+import { CategoryTabs } from '../components/features/CategoryTabs';
+import { getImageUrl } from '../utils/url';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
-import IconCanvasUndo from '../assets/images/canvas-icons/icon_canvas_undo.svg';
-import IconCanvasRedo from '../assets/images/canvas-icons/icon_canvas_redo.svg';
-import IconCanvasAdd from '../assets/images/canvas-icons/icon_canvas_add.svg';
-import IconCanvasLayerUp from '../assets/images/canvas-icons/icon_canvas_layer_up.svg';
-import IconCanvasLayerDown from '../assets/images/canvas-icons/icon_canvas_layer_down.svg';
-import IconCanvasDuplicate from '../assets/images/canvas-icons/icon_canvas_duplicate.svg';
-import IconCanvasSwap from '../assets/images/canvas-icons/icon_canvas_swap.svg';
-import IconCanvasDelete from '../assets/images/canvas-icons/icon_canvas_delete.svg';
+import IconCanvasUndo from '../assets/images/canvas-icons/undo.svg';
+import IconCanvasRedo from '../assets/images/canvas-icons/redo.svg';
+import IconCanvasAdd from '../assets/images/canvas-icons/add.svg';
+import IconCanvasLayerUp from '../assets/images/canvas-icons/layer_up.svg';
+import IconCanvasLayerDown from '../assets/images/canvas-icons/layer_down.svg';
+import IconCanvasDuplicate from '../assets/images/canvas-icons/duplicate.svg';
+import IconCanvasSwap from '../assets/images/canvas-icons/swap.svg';
+import IconCanvasDelete from '../assets/images/canvas-icons/trash.svg';
 
 // Test image for canvas preview
 const testJeansImg = require('../assets/images/test_jeans.png');
@@ -40,6 +45,25 @@ const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.l;
 const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
 const ITEM_DEFAULT_SIZE = 160;
 
+const PICKER_COLUMNS = 3;
+const PICKER_GAP = 4;
+const PICKER_TILE = (SCREEN_WIDTH - 32 - PICKER_GAP * (PICKER_COLUMNS - 1)) / PICKER_COLUMNS;
+const PICKER_TILE_HEIGHT = PICKER_TILE * (4 / 3);
+
+const PICKER_FILTER_TABS = ['All', 'Tops', 'Bottoms', 'Shoes', 'One-piece', 'AC'] as const;
+type PickerFilterTab = (typeof PICKER_FILTER_TABS)[number];
+
+const resolvePickerCategory = (tab: PickerFilterTab): string | undefined => {
+  switch (tab) {
+    case 'Tops': return 'top';
+    case 'Bottoms': return 'bottom';
+    case 'Shoes': return 'shoes';
+    case 'One-piece': return 'one_piece';
+    case 'AC': return 'accessory';
+    default: return undefined;
+  }
+};
+
 type CanvasItemData = {
   id: string;
   imageSource: ImageSourcePropType;
@@ -52,35 +76,127 @@ type CanvasItemData = {
 
 type HistorySnapshot = CanvasItemData[];
 
-const INITIAL_MOCK_ITEMS: CanvasItemData[] = [
-  {
-    id: 'item-1',
-    imageSource: testJeansImg,
-    x: 10,
-    y: 20,
-    zIndex: 1,
-    width: ITEM_DEFAULT_SIZE,
-    height: ITEM_DEFAULT_SIZE,
-  },
-  {
-    id: 'item-2',
-    imageSource: testJeansImg,
-    x: 160,
-    y: 40,
-    zIndex: 2,
-    width: ITEM_DEFAULT_SIZE,
-    height: ITEM_DEFAULT_SIZE,
-  },
-  {
-    id: 'item-3',
-    imageSource: testJeansImg,
-    x: 180,
-    y: 200,
-    zIndex: 3,
-    width: ITEM_DEFAULT_SIZE - 20,
-    height: ITEM_DEFAULT_SIZE - 20,
-  },
-];
+const INITIAL_MOCK_ITEMS: CanvasItemData[] = [];
+
+// --- Item picker panel (slides in from right) ---
+interface ItemPickerPanelProps {
+  visible: boolean;
+  onClose: () => void;
+  onConfirm: (items: WardrobeItem[]) => void;
+}
+
+const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({ visible, onClose, onConfirm }) => {
+  const slideX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+  const [selectedTab, setSelectedTab] = useState<PickerFilterTab>('All');
+  const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    Animated.timing(slideX, {
+      toValue: visible ? 0 : SCREEN_WIDTH,
+      duration: 280,
+      useNativeDriver: true,
+    }).start();
+    if (!visible) {
+      setSelectedIds([]);
+    }
+  }, [visible, slideX]);
+
+  useEffect(() => {
+    if (!visible) { return; }
+    let cancelled = false;
+    setLoading(true);
+    const category = resolvePickerCategory(selectedTab);
+    wardrobeService.filterWardrobeItems({ category })
+      .then(data => { if (!cancelled) { setWardrobeItems(data); } })
+      .catch(() => { if (!cancelled) { setWardrobeItems([]); } })
+      .finally(() => { if (!cancelled) { setLoading(false); } });
+    return () => { cancelled = true; };
+  }, [visible, selectedTab]);
+
+  const toggleItem = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
+    );
+  };
+
+  const handleConfirm = () => {
+    const chosen = wardrobeItems.filter(it => selectedIds.includes(it.id));
+    onConfirm(chosen);
+  };
+
+  return (
+    <Animated.View
+      style={[pickerStyles.panel, { transform: [{ translateX: slideX }] }]}
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
+      <SafeAreaView style={pickerStyles.safeArea}>
+        {/* Header */}
+        <View style={pickerStyles.header}>
+          <TouchableOpacity onPress={onClose} style={pickerStyles.backBtn} accessibilityLabel="Close picker">
+            <IconChevronLeft width={24} height={24} />
+          </TouchableOpacity>
+          <Text style={pickerStyles.title}>Add to Canvas</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        {/* Category tabs + grid */}
+        <View style={pickerStyles.body}>
+          <CategoryTabs
+            categories={[...PICKER_FILTER_TABS]}
+            selectedCategory={selectedTab}
+            onSelectCategory={tab => setSelectedTab(tab as PickerFilterTab)}
+          />
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={pickerStyles.scrollContent}>
+            {loading ? (
+              <ActivityIndicator style={{ marginTop: 40 }} />
+            ) : wardrobeItems.length === 0 ? (
+              <Text style={pickerStyles.empty}>No items found</Text>
+            ) : (
+              <View style={pickerStyles.grid}>
+                {wardrobeItems.map(item => {
+                  const uri = getImageUrl(item.image_url);
+                  const isSelected = selectedIds.includes(item.id);
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[pickerStyles.tile, isSelected && pickerStyles.tileSelected]}
+                      activeOpacity={0.82}
+                      onPress={() => toggleItem(item.id)}
+                    >
+                      {uri ? (
+                        <Image source={{ uri }} style={pickerStyles.tileImage} resizeMode="cover" />
+                      ) : (
+                        <View style={pickerStyles.tileFallback}>
+                          <Text style={pickerStyles.tileFallbackText}>No image</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+
+        {/* Confirm button */}
+        <View style={pickerStyles.footer}>
+          <TouchableOpacity
+            style={[pickerStyles.confirmBtn, selectedIds.length === 0 && pickerStyles.confirmBtnDisabled]}
+            onPress={handleConfirm}
+            disabled={selectedIds.length === 0}
+            activeOpacity={0.85}
+          >
+            <Text style={pickerStyles.confirmBtnLabel}>
+              {selectedIds.length > 0 ? `Add ${selectedIds.length} item${selectedIds.length > 1 ? 's' : ''}` : 'Add to Canvas'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </Animated.View>
+  );
+};
 
 // --- Grid background ---
 // Figma "remix" frame (node 2852:16582) uses a square LINE grid (graph-paper)
@@ -269,6 +385,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const [tags, setTags] = useState<string[]>(['Low Energy', 'Calm']);
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   // Undo / redo
   const history = useRef<HistorySnapshot[]>([INITIAL_MOCK_ITEMS]);
@@ -385,22 +502,31 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   }, [selectedId, pushHistory]);
 
   const handleAddItem = useCallback(() => {
-    const maxZ = items.length > 0 ? Math.max(...items.map(it => it.zIndex)) : 0;
-    const newItem: CanvasItemData = {
-      id: `item-new-${Date.now()}`,
-      imageSource: testJeansImg,
-      x: 40,
-      y: 40,
-      zIndex: maxZ + 1,
-      width: ITEM_DEFAULT_SIZE,
-      height: ITEM_DEFAULT_SIZE,
-    };
+    setPickerVisible(true);
+  }, []);
+
+  const handlePickerConfirm = useCallback((picked: WardrobeItem[]) => {
+    setPickerVisible(false);
+    if (picked.length === 0) { return; }
     setItems(prev => {
-      const next = [...prev, newItem];
+      let maxZ = prev.length > 0 ? Math.max(...prev.map(it => it.zIndex)) : 0;
+      const newItems: CanvasItemData[] = picked.map((item, i) => {
+        const uri = getImageUrl(item.image_png ?? item.image_url);
+        return {
+          id: `item-${item.id}-${Date.now()}-${i}`,
+          imageSource: uri ? { uri } : testJeansImg,
+          x: 40 + i * 20,
+          y: 40 + i * 20,
+          zIndex: ++maxZ,
+          width: ITEM_DEFAULT_SIZE,
+          height: ITEM_DEFAULT_SIZE,
+        };
+      });
+      const next = [...prev, ...newItems];
       pushHistory(next);
       return next;
     });
-  }, [items, pushHistory]);
+  }, [pushHistory]);
 
   // Tag actions
   const handleRemoveTag = useCallback((tag: string) => {
@@ -425,7 +551,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const sortedItems = [...items].sort((a, b) => a.zIndex - b.zIndex);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <SafeAreaView style={{ flex: 1 }}>
       {/* Header */}
       <View style={styles.header}>
         <Pressable
@@ -439,18 +566,6 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.headerActions}>
           <Pressable
-            testID="canvas-header-undo"
-            onPress={handleUndo}
-            disabled={!canUndo}
-            accessibilityLabel="Undo"
-            style={[
-              styles.headerIconBtn,
-              !canUndo && styles.headerIconBtnDisabled,
-            ]}
-          >
-            <IconCanvasUndo width={28} height={28} />
-          </Pressable>
-          <Pressable
             testID="canvas-header-redo"
             onPress={handleRedo}
             disabled={!canRedo}
@@ -460,7 +575,16 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               !canRedo && styles.headerIconBtnDisabled,
             ]}
           >
-            <IconCanvasRedo width={28} height={28} />
+            <IconCanvasRedo width={18} height={18} />
+          </Pressable>
+          <Pressable
+            testID="canvas-header-undo"
+            onPress={handleUndo}
+            disabled={!canUndo}
+            accessibilityLabel="Undo"
+            style={[styles.headerIconBtn, !canUndo && styles.headerIconBtnDisabled]}
+          >
+            <IconCanvasUndo width={18} height={18} />
           </Pressable>
         </View>
       </View>
@@ -494,70 +618,56 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             ))}
           </View>
 
-          {/* Add-item row — circular bordered "+" below the canvas (Figma Group 36) */}
-          <View style={styles.addRow}>
-            <Pressable
-              testID="canvas-add-item"
+          {/* Toolbar */}
+          <View style={styles.toolbar}>
+            <ToolbarBtn
+              testID="canvas-tool-add"
               onPress={handleAddItem}
               accessibilityLabel="Add item"
-              style={({ pressed }) => [
-                styles.addItemBtn,
-                pressed && styles.addItemBtnPressed,
-              ]}
             >
-              <IconCanvasAdd width={20} height={20} />
-            </Pressable>
+              <IconCanvasAdd width={18} height={18} />
+            </ToolbarBtn>
+            <ToolbarBtn
+              testID="canvas-tool-layer-up"
+              onPress={handleLayerUp}
+              disabled={actionDisabled}
+              accessibilityLabel="Bring forward"
+            >
+              <IconCanvasLayerUp width={32} height={31} />
+            </ToolbarBtn>
+            <ToolbarBtn
+              testID="canvas-tool-layer-down"
+              onPress={handleLayerDown}
+              disabled={actionDisabled}
+              accessibilityLabel="Send backward"
+            >
+              <IconCanvasLayerDown width={32} height={31} />
+            </ToolbarBtn>
+            <ToolbarBtn
+              testID="canvas-tool-duplicate"
+              onPress={handleDuplicate}
+              disabled={actionDisabled}
+              accessibilityLabel="Duplicate item"
+            >
+              <IconCanvasDuplicate width={32} height={31} />
+            </ToolbarBtn>
+            <ToolbarBtn
+              testID="canvas-tool-swap"
+              onPress={() => { /* TODO: navigate to item picker */ }}
+              disabled={actionDisabled}
+              accessibilityLabel="Swap item"
+            >
+              <IconCanvasSwap width={32} height={31} />
+            </ToolbarBtn>
+            <ToolbarBtn
+              testID="canvas-tool-delete"
+              onPress={handleDelete}
+              disabled={actionDisabled}
+              accessibilityLabel="Delete item"
+            >
+              <IconCanvasDelete width={18} height={18} />
+            </ToolbarBtn>
           </View>
-
-          {/* Editing toolbar — Figma hides this in the static frame (Group 35 hidden);
-          shown contextually only when an item is selected to preserve the
-          approved layer/duplicate/swap/delete actions. */}
-          {selectedId !== null && (
-            <View style={styles.toolbar} testID="canvas-toolbar">
-              <ToolbarBtn
-                testID="canvas-tool-layer-up"
-                onPress={handleLayerUp}
-                disabled={actionDisabled}
-                accessibilityLabel="Bring forward"
-              >
-                <IconCanvasLayerUp width={32} height={31} />
-              </ToolbarBtn>
-              <ToolbarBtn
-                testID="canvas-tool-layer-down"
-                onPress={handleLayerDown}
-                disabled={actionDisabled}
-                accessibilityLabel="Send backward"
-              >
-                <IconCanvasLayerDown width={32} height={31} />
-              </ToolbarBtn>
-              <ToolbarBtn
-                testID="canvas-tool-duplicate"
-                onPress={handleDuplicate}
-                disabled={actionDisabled}
-                accessibilityLabel="Duplicate item"
-              >
-                <IconCanvasDuplicate width={32} height={31} />
-              </ToolbarBtn>
-              <ToolbarBtn
-                testID="canvas-tool-swap"
-                onPress={() => {
-                  /* TODO: navigate to item picker */
-                }}
-                disabled={actionDisabled}
-                accessibilityLabel="Swap item"
-              >
-                <IconCanvasSwap width={32} height={31} />
-              </ToolbarBtn>
-              <ToolbarBtn
-                testID="canvas-tool-delete"
-                onPress={handleDelete}
-                disabled={actionDisabled}
-                accessibilityLabel="Delete item"
-              >
-                <IconCanvasDelete width={32} height={31} />
-              </ToolbarBtn>
-            </View>
-          )}
 
           {/* Tags row */}
           <View style={styles.tagsRow}>
@@ -594,29 +704,35 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                   accessibilityLabel="Add tag"
                   style={styles.tagAddBtn}
                 >
-                  <IconCanvasAdd width={14} height={14} />
+                  <IconCanvasAdd width={12} height={12} />
                 </Pressable>
               )}
             </ScrollView>
           </View>
-        </View>
 
-        {/* Save button — pinned at the bottom of the body (Figma justify-between) */}
-        <View style={styles.saveRow}>
-          <Pressable
-            testID="canvas-save"
-            onPress={handleSave}
-            accessibilityLabel="Save outfit"
-            style={({ pressed }) => [
-              styles.saveBtn,
-              pressed && styles.saveBtnPressed,
-            ]}
-          >
-            <Text style={styles.saveBtnLabel}>Save</Text>
-          </Pressable>
+          {/* Save button */}
+          <View style={styles.saveRow}>
+            <Pressable
+              testID="canvas-save"
+              onPress={handleSave}
+              accessibilityLabel="Save outfit"
+              style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
+            >
+              <Text style={styles.saveBtnLabel}>Save</Text>
+            </Pressable>
+          </View>
         </View>
       </Pressable>
-    </SafeAreaView>
+
+      </SafeAreaView>
+
+      {/* Item picker panel */}
+      <ItemPickerPanel
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        onConfirm={handlePickerConfirm}
+      />
+    </View>
   );
 };
 
@@ -624,6 +740,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+    overflow: 'hidden',
   },
   // Header
   header: {
@@ -793,3 +910,106 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaCtaLabel,
   },
 });
+
+const pickerStyles = StyleSheet.create({
+  panel: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: theme.colors.figmaBackground,
+    zIndex: 100,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.m,
+    height: 56,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.figmaDivider,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontFamily: 'ArchivoNarrow-SemiBold',
+    fontSize: 16,
+    color: theme.colors.figmaTextPrimary,
+  },
+  body: {
+    flex: 1,
+    paddingTop: 12,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: PICKER_GAP,
+  },
+  tile: {
+    width: PICKER_TILE,
+    height: PICKER_TILE_HEIGHT,
+    borderRadius: theme.borderRadius.m,
+    overflow: 'hidden',
+    backgroundColor: '#E8EBF0',
+  },
+  tileSelected: {
+    borderWidth: 3,
+    borderColor: '#5B5550',
+    borderRadius: 12,
+  },
+  tileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  tileFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileFallbackText: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaTextSecondary,
+  },
+  empty: {
+    textAlign: 'center',
+    marginTop: 40,
+    color: theme.colors.figmaTextSecondary,
+    fontFamily: 'Manrope-Regular',
+  },
+  footer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.figmaDivider,
+  },
+  confirmBtn: {
+    backgroundColor: theme.colors.figmaButton,
+    borderRadius: theme.borderRadius.round,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnDisabled: {
+    opacity: 0.4,
+  },
+  confirmBtnLabel: {
+    fontFamily: 'ArchivoNarrow-SemiBold',
+    fontSize: 16,
+    color: theme.colors.white,
+    letterSpacing: 0.15,
+  },
+});
+
