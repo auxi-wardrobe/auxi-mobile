@@ -39,6 +39,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const currentRouteName = useNavigationState(
     state => state.routes[state.index]?.name,
   );
+  // The top "See my outfits" pill navigates to Home, so it should only read as
+  // the active page when Home is actually focused (AU-304 follow-up).
+  const isHomeActive = currentRouteName === 'Home';
 
   useEffect(() => {
     if (isOpen) {
@@ -88,8 +91,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         {/* Top group — "See my outfits" pill */}
         <View style={[styles.topGroup, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity
-            style={styles.pill}
-            testID="sidebar-pill-see-outfits"
+            style={[styles.pill, !isHomeActive && styles.pillInactive]}
+            // Flip the testID suffix when active so Maestro can assert the
+            // selected-page state; testID stays defined in both states.
+            testID={
+              isHomeActive
+                ? 'sidebar-pill-see-outfits-active'
+                : 'sidebar-pill-see-outfits'
+            }
             accessibilityLabel="See my outfits"
             onPress={() => {
               navigation.navigate('Home');
@@ -99,9 +108,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <Icons.Grid
               width={24}
               height={24}
-              color={theme.colors.figmaTextDark}
+              color={
+                isHomeActive
+                  ? theme.colors.figmaTextDark
+                  : theme.colors.uacTextPrimaryBase
+              }
             />
-            <Text style={styles.pillText}>See my outfits</Text>
+            <Text
+              style={[
+                styles.pillText,
+                !isHomeActive && styles.pillTextInactive,
+              ]}
+            >
+              See my outfits
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -244,6 +264,14 @@ const styles = StyleSheet.create({
   pillText: {
     ...theme.typography.aliases.poppinsBody,
     color: theme.colors.figmaTextDark,
+  },
+  // Inactive (not on Home): drop the light pill + use the cream-on-dark
+  // text/icon so it matches the other unselected menu rows.
+  pillInactive: {
+    backgroundColor: 'transparent',
+  },
+  pillTextInactive: {
+    color: theme.colors.uacTextPrimaryBase,
   },
   bottomGroup: {
     paddingHorizontal: theme.spacing.uacButtonPaddingX,
