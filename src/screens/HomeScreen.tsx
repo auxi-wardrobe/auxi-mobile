@@ -469,13 +469,17 @@ export const HomeScreen = () => {
     tempC: 22,
     iconCode: '01d',
   });
+  // AU-306: gate the initial recommendation until real weather is known so the
+  // engine receives the actual temperature rather than the 22°C placeholder.
+  const [weatherLoaded, setWeatherLoaded] = useState(false);
 
   useEffect(() => {
     // Default coords: Hanoi. Replace with real geolocation when available.
     weatherService
       .getWeather(21.0285, 105.8542)
       .then(w => setWeather({ tempC: w.temp_c, iconCode: w.icon_code }))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setWeatherLoaded(true));
   }, []);
 
   // V05 build `gender`, derived from the user's onboarding wardrobe_direction
@@ -762,6 +766,9 @@ export const HomeScreen = () => {
   );
 
   useEffect(() => {
+    // AU-306: wait for real weather before triggering the first build so the
+    // engine receives the actual temp_c instead of the 22°C placeholder state.
+    if (!weatherLoaded) return;
     // First fetch — pin is null at cold start so no need to thread it here.
     // Pass `mode` consistently with the prefetch call site (Bug 2). The
     // service strips it when it equals DEFAULT_RECOMMENDATION_MODE so the
@@ -773,7 +780,7 @@ export const HomeScreen = () => {
       mode: selectedModeRef.current,
       style_feedback: styleFeedbackRef.current ?? undefined,
     });
-  }, [requestRecommendation]);
+  }, [requestRecommendation, weatherLoaded]);
 
   useEffect(() => {
     return () => {
@@ -781,7 +788,10 @@ export const HomeScreen = () => {
     };
   }, []);
 
-  const loading = isStartPending && listOutfits.length === 0;
+  // AU-306: include weatherLoaded so the screen shows a spinner while weather
+  // is being fetched (avoids a momentary empty-state flash before the guard
+  // above allows the first recommendation to fire).
+  const loading = (!weatherLoaded || isStartPending) && listOutfits.length === 0;
   const activeContextChipOptions =
     CONTEXT_CHIP_SETS[contextSuggestionSetIndex] ?? CONTEXT_CHIP_SETS[0];
   const trimmedCustomContextText = customContextText.trim();
