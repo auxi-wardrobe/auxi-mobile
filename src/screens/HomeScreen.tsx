@@ -8,7 +8,6 @@ import React, {
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
   Keyboard,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -59,7 +58,12 @@ import {
 import { favouriteService } from '../services/favouriteService';
 import { track } from '../services/analytics';
 import { resolveItemImage } from '../utils/url';
-import { weatherService } from '../services/weatherService';
+import {
+  NEUTRAL_WEATHER,
+  weatherService,
+  type WeatherData,
+} from '../services/weatherService';
+import { getCurrentLocation } from '../utils/location';
 import { WeatherWidget } from '../components/features/WeatherWidget';
 import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
 import { OutfitActionRow } from '../components/features/OutfitActionRow';
@@ -70,6 +74,8 @@ import {
 } from '../components/features/HomeViewToggleFooter';
 import { CollageSheetCanvas } from '../components/features/CollageSheetCanvas';
 import { COLLAGE_ASPECT } from '../components/features/collage-seed-layout';
+import { OutfitCardGrid } from '../components/features/OutfitCardGrid';
+import { OutfitCardSkeleton } from '../components/features/OutfitCardSkeleton';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -465,17 +471,52 @@ export const HomeScreen = () => {
   const styleFeedbackRef = useRef<string | null>(null);
 
   // #1 fix (2026-05-13): weather widget replaces "Auxi" header text per Figma spec.
-  const [weather, setWeather] = useState<{ tempC: number; iconCode: string }>({
+  const [weather, setWeather] = useState<{
+    tempC: number;
+    iconCode: string;
+    condition: string;
+  }>({
     tempC: 22,
     iconCode: '01d',
+    condition: 'Clear',
   });
+  // AU-306: gate the initial recommendation until real weather is known so the
+  // engine receives the actual temperature rather than the 22°C placeholder.
+  const [weatherLoaded, setWeatherLoaded] = useState(false);
 
   useEffect(() => {
-    // Default coords: Hanoi. Replace with real geolocation when available.
-    weatherService
-      .getWeather(21.0285, 105.8542)
-      .then(w => setWeather({ tempC: w.temp_c, iconCode: w.icon_code }))
-      .catch(() => {});
+    // AU-306: fetch weather for the user's REAL device location instead of the
+    // hardcoded Hanoi coords (which dressed every user for a warm climate). On
+    // geolocation failure, fall back to the last cached reading (or a logged
+    // mild placeholder) — never a silent warm default.
+    let cancelled = false;
+    (async () => {
+      try {
+        let w: WeatherData;
+        try {
+          const loc = await getCurrentLocation();
+          w = await weatherService.getWeather(loc.latitude, loc.longitude);
+        } catch (geoErr) {
+          console.warn(
+            '[Home] geolocation unavailable; using last-known weather',
+            geoErr,
+          );
+          w = (await weatherService.getLastKnownWeather()) ?? NEUTRAL_WEATHER;
+        }
+        if (!cancelled) {
+          setWeather({
+            tempC: w.temp_c,
+            iconCode: w.icon_code,
+            condition: w.condition,
+          });
+        }
+      } finally {
+        if (!cancelled) setWeatherLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // V05 build `gender`, derived from the user's onboarding wardrobe_direction
@@ -575,7 +616,12 @@ export const HomeScreen = () => {
       // `/try_another`. RecommendationMode and V05RecommendationMode share
       // the same string union ('safe'|'power'|'creative').
       const v05 = await recommendV05({
-        weather: { temp_c: weather.tempC, is_rainy: false },
+        weather: {
+          temp_c: weather.tempC,
+          // AU-306: derive rain from the weather condition so the engine's
+          // water-resistant-footwear path can trigger, instead of always false.
+          is_rainy: /rain|drizzle|snow|thunder/i.test(weather.condition),
+        },
         // gender derived from onboarding wardrobe_direction (see genderRef),
         // NOT hardcoded — so womenswear/menswear engine behavior applies on
         // Home, not just unisex. `gender` is already part of the V05 /build
@@ -628,7 +674,7 @@ export const HomeScreen = () => {
         wardrobeGap: v05.wardrobeGap,
       };
     },
-    [weather.tempC],
+    [weather.tempC, weather.condition],
   );
 
   const {
@@ -762,6 +808,9 @@ export const HomeScreen = () => {
   );
 
   useEffect(() => {
+    // AU-306: wait for real weather before triggering the first build so the
+    // engine receives the actual temp_c instead of the 22°C placeholder state.
+    if (!weatherLoaded) return;
     // First fetch — pin is null at cold start so no need to thread it here.
     // Pass `mode` consistently with the prefetch call site (Bug 2). The
     // service strips it when it equals DEFAULT_RECOMMENDATION_MODE so the
@@ -773,7 +822,7 @@ export const HomeScreen = () => {
       mode: selectedModeRef.current,
       style_feedback: styleFeedbackRef.current ?? undefined,
     });
-  }, [requestRecommendation]);
+  }, [requestRecommendation, weatherLoaded]);
 
   useEffect(() => {
     return () => {
@@ -781,7 +830,11 @@ export const HomeScreen = () => {
     };
   }, []);
 
-  const loading = isStartPending && listOutfits.length === 0;
+  // AU-306: include weatherLoaded so the screen shows a spinner while weather
+  // is being fetched (avoids a momentary empty-state flash before the guard
+  // above allows the first recommendation to fire).
+  const loading =
+    (!weatherLoaded || isStartPending) && listOutfits.length === 0;
   const activeContextChipOptions =
     CONTEXT_CHIP_SETS[contextSuggestionSetIndex] ?? CONTEXT_CHIP_SETS[0];
   const trimmedCustomContextText = customContextText.trim();
@@ -1432,91 +1485,13 @@ export const HomeScreen = () => {
   );
 };
 
-// 2026-05-22 (AU-242 Figma spec): variable-item-count grid layouts per
-// Figma node 2849:11340 children. Designer confirmed: "We have layouts to
-// present 3-4-5-6 and >6 items in an outfit". All cards are aspect 3:4 with
-// 12px border radius, 4px gap. The three layout shapes cover every count:
-//   - 'twoRowOneLarge' (3 items): row1 = 2 equal flex cards · row2 = 1
-//     half-width card (left-aligned), all aspect 3:4
-//   - 'twoByTwo' (4 items): 2×2 grid, all flex-1 cards aspect 3:4
-//   - 'heroStackPlusRows' (5/6/7+): row1 = hero (≈2/3 width) + 2 stacked
-//     cards (≈1/3 width); subsequent rows = up to 3 flex cards each, all
-//     aspect 3:4. No truncation, no overflow badge — Figma frame
-//     2850:9542 shows all 9 items for the >6 case.
-type GridLayout =
-  | {
-      kind: 'twoRowOneLarge';
-      row1: [Item | null, Item | null];
-      row2Large: Item | null;
-    }
-  | {
-      kind: 'twoByTwo';
-      rows: [[Item | null, Item | null], [Item | null, Item | null]];
-    }
-  | {
-      kind: 'heroStackPlusRows';
-      hero: Item;
-      stack: [Item, Item];
-      rest: Item[];
-    };
-
-const pickLayout = (items: Item[]): GridLayout | null => {
-  // Drop sparse slots so the count reflects renderable items; sparse
-  // outfits still get a layout (with placeholders) instead of a blank
-  // sheet — count 0 alone returns null because there's nothing to draw.
-  const filled = items.filter((it): it is Item => !!it);
-  const count = filled.length;
-
-  if (count === 0) return null;
-
-  if (count <= 2) {
-    return {
-      kind: 'twoRowOneLarge',
-      row1: [filled[0] ?? null, filled[1] ?? null],
-      row2Large: null,
-    };
-  }
-  if (count === 3) {
-    return {
-      kind: 'twoRowOneLarge',
-      row1: [filled[0], filled[1]],
-      row2Large: filled[2],
-    };
-  }
-  if (count === 4) {
-    return {
-      kind: 'twoByTwo',
-      rows: [
-        [filled[0], filled[1]],
-        [filled[2], filled[3]],
-      ],
-    };
-  }
-  return {
-    kind: 'heroStackPlusRows',
-    hero: filled[0],
-    stack: [filled[1], filled[2]],
-    rest: filled.slice(3),
-  };
-};
-
-// C4 fix (2026-05-22): variant grids must stay inside OPTION_SHEET_HEIGHT
-// or the inner gridScroll activates and re-introduces the nested-scroll
-// bug the 2026-05-18 fix was tracking. For 2-row layouts the existing
-// CARD_HEIGHT constant is already sized for exactly 2 rows. For
-// heroStackPlusRows (1 hero row + N rest rows of 3) the row height must
-// shrink proportionally. Aspect ratio 3:4 is the Figma intent but
-// available height wins on smaller phones.
-const computeHeroRowHeight = (restCount: number): number => {
-  const rows = 1 + Math.ceil(restCount / 3);
-  // Same grid area the 2-row layouts size against. GRID_FIT_H already nets out
-  // OPTION_ACTIONS_HEIGHT + OPTION_SHEET_VPAD AND the gridScroll content pad
-  // (GRID_CONTENT_PAD), so dividing across all rows keeps the whole grid inside
-  // the sheet — inner gridScroll stays dormant for 5/6/>6-item outfits too (no
-  // nested-scroll regression, no bottom clip).
-  const available = GRID_FIT_H - GRID_GAP;
-  return Math.floor((available - (rows - 1) * GRID_GAP) / rows);
-};
+// AU-310 (2026-06-01): the inline variable-item-count grid machinery
+// (GridLayout type, pickLayout, computeHeroRowHeight) was extracted into the
+// reusable OutfitCardGrid + outfit-card-layouts descriptor. OptionSheet now
+// renders <OutfitCardGrid> directly; geometry is derived from screen width in
+// the descriptor (gap 4, padding 16, 3:4) rather than the OPTION_SHEET_HEIGHT
+// arithmetic below — the grid sizes its own cards and the inner gridScroll
+// absorbs any >6-item overflow.
 
 const OptionSheet = React.memo(
   ({
@@ -1551,173 +1526,7 @@ const OptionSheet = React.memo(
     onCollageDragActiveChange: (active: boolean) => void;
   }) => {
     const items = outfit.items;
-    const layout = pickLayout(items);
     const itemCount = items.length;
-
-    const renderTile = (
-      item: Item | null,
-      flatTileIndex: number,
-      style?: object,
-    ) => {
-      // C1 fix (2026-05-22): nullable slot for sparse outfits (count 1/2)
-      // and the row2 spacer in twoRowOneLarge. Renders a transparent card
-      // shell that preserves grid geometry without crashing on item.id.
-      if (!item) {
-        return (
-          <View
-            key={`card-placeholder-${outfit.outfitHash}-${flatTileIndex}`}
-            style={[styles.card, style, styles.cardPlaceholder]}
-          />
-        );
-      }
-      const isPinned = item.id === pinnedItemId;
-      return (
-        <TouchableOpacity
-          key={`card-${outfit.outfitHash}-${flatTileIndex}`}
-          testID={`home-tile-${sheetIndex}-${flatTileIndex}`}
-          accessibilityLabel={`home-tile-${sheetIndex}-${flatTileIndex}`}
-          activeOpacity={0.86}
-          style={[styles.card, style, isPinned && styles.cardPinned]}
-          onPress={() => onItemPress(item)}
-          // PHASE B (AU-222): long-press as a secondary affordance for pin
-          // toggle. Primary tap target is the pin badge overlay below.
-          onLongPress={() => onTogglePin(item)}
-          delayLongPress={500}
-        >
-          <GarmentPreview item={item} />
-          <TouchableOpacity
-            testID={
-              isPinned
-                ? `home-tile-pin-${sheetIndex}-${flatTileIndex}-set`
-                : `home-tile-pin-${sheetIndex}-${flatTileIndex}`
-            }
-            activeOpacity={0.7}
-            onPress={e => {
-              e.stopPropagation();
-              onTogglePin(item);
-            }}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
-            accessibilityRole="button"
-            accessibilityLabel={isPinned ? 'Unpin item' : 'Pin item'}
-          >
-            <IconHomePin width={24} height={24} />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      );
-    };
-
-    const renderLayout = () => {
-      if (!layout) {
-        return null;
-      }
-
-      if (layout.kind === 'twoRowOneLarge') {
-        // 3 items: row1 of 2 equal cards (flex-1 each), row2 with single card
-        // taking ~50% width (matches Figma 189×252 / 414px-content frame).
-        // C1: count 1/2 reuses this layout with placeholder cells.
-        // C4: card height defaults to CARD_HEIGHT (sized for exactly 2 rows
-        // in the available grid area) — no aspect-ratio override.
-        return (
-          <View style={styles.gridWrap}>
-            <View style={styles.cardRow}>
-              <View style={styles.cardShellFixed}>
-                {renderTile(layout.row1[0], 0)}
-              </View>
-              <View style={styles.cardShellFixed}>
-                {renderTile(layout.row1[1], 1)}
-              </View>
-            </View>
-            {/* AU-253: row2 single tile is centred (no flex spacer) — the
-                centred cardRow places it under the gap between row1's tiles. */}
-            <View style={styles.cardRow}>
-              <View style={styles.cardShellFixed}>
-                {renderTile(layout.row2Large, 2)}
-              </View>
-            </View>
-          </View>
-        );
-      }
-
-      if (layout.kind === 'twoByTwo') {
-        return (
-          <View style={styles.gridWrap}>
-            {layout.rows.map((row, rowIndex) => (
-              <View
-                key={`row-${outfit.outfitHash}-${rowIndex}`}
-                style={styles.cardRow}
-              >
-                {row.map((item, itemIndex) => (
-                  <View
-                    key={`shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
-                    style={styles.cardShellFixed}
-                  >
-                    {renderTile(item, rowIndex * 2 + itemIndex)}
-                  </View>
-                ))}
-              </View>
-            ))}
-          </View>
-        );
-      }
-
-      // heroStackPlusRows (5/6/7+ items)
-      // Row 1: hero (flex 2) + right column of 2 stacked cards (flex 1).
-      // Subsequent rows: up to 3 flex cards each.
-      // C4: row height computed dynamically so total grid fits available
-      // sheet space — prevents inner gridScroll from activating.
-      const heroRowHeight = computeHeroRowHeight(layout.rest.length);
-      const heroRowStyle = { height: heroRowHeight };
-      const heroStackCellHeight = Math.floor((heroRowHeight - GRID_GAP) / 2);
-      const heroStackCellStyle = { height: heroStackCellHeight };
-      const restRows: Item[][] = [];
-      for (let i = 0; i < layout.rest.length; i += 3) {
-        restRows.push(layout.rest.slice(i, i + 3));
-      }
-      return (
-        <View style={styles.gridWrap}>
-          <View style={[styles.heroRow, { height: heroRowHeight }]}>
-            <View style={styles.heroCol}>
-              {renderTile(layout.hero, 0, heroRowStyle)}
-            </View>
-            <View style={styles.heroStackCol}>
-              <View style={styles.heroStackCell}>
-                {renderTile(layout.stack[0], 1, heroStackCellStyle)}
-              </View>
-              <View style={styles.heroStackCell}>
-                {renderTile(layout.stack[1], 2, heroStackCellStyle)}
-              </View>
-            </View>
-          </View>
-          {restRows.map((row, rowIndex) => (
-            <View
-              key={`rest-row-${outfit.outfitHash}-${rowIndex}`}
-              style={styles.cardRow}
-            >
-              {row.map((item, itemIndex) => (
-                <View
-                  key={`rest-shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
-                  style={styles.cardShell}
-                >
-                  {renderTile(item, 3 + rowIndex * 3 + itemIndex, heroRowStyle)}
-                </View>
-              ))}
-              {/* Pad trailing partial rows with transparent spacers so cards
-                don't stretch to fill the row width — keeps every card the
-                same width across rows. */}
-              {row.length < 3
-                ? Array.from({ length: 3 - row.length }).map((_, padIdx) => (
-                    <View
-                      key={`rest-pad-${outfit.outfitHash}-${rowIndex}-${padIdx}`}
-                      style={styles.cardShell}
-                    />
-                  ))
-                : null}
-            </View>
-          ))}
-        </View>
-      );
-    };
 
     // AU-253: "Show another" is rendered disabled (opacity 0.5) at the tail of
     // the carousel where there is no further option to rotate to — matching the
@@ -1754,7 +1563,19 @@ const OptionSheet = React.memo(
                 onDragActiveChange={onCollageDragActiveChange}
               />
             ) : (
-              renderLayout()
+              // AU-310: count-driven grid (1/2/3/4/5/6/>6) extracted from the
+              // inline layout machinery. Staggered reveal + image fade-in +
+              // reduced-motion live in OutfitCardGrid. Geometry is derived from
+              // screen width (gap 4, padding 16, 3:4) — see outfit-card-layouts.
+              <OutfitCardGrid
+                testID={`home-outfit-card-grid-${sheetIndex}`}
+                items={items}
+                screenWidth={screenWidth}
+                pinnedItemId={pinnedItemId}
+                sheetIndex={sheetIndex}
+                onItemPress={onItemPress}
+                onTogglePin={onTogglePin}
+              />
             )}
           </View>
         </ScrollView>
@@ -1858,27 +1679,22 @@ const HomeWardrobeGapState: React.FC<{ onAddItems: () => void }> = ({
   </View>
 );
 
+// AU-310: loading state. The "Generating" pill (Figma Frame 2104) sits above
+// the layout-matched skeleton (Figma Frame 2009, 2×2 variant) so the skeleton
+// occupies the exact final slots → zero layout shift when images arrive.
+// Skeleton breathing + reduced-motion live in OutfitCardSkeleton.
 const HomeLoadingState = () => (
   <View style={styles.optionSheet}>
-    <View style={styles.loadingCards}>
-      {[0, 1].map(row => (
-        <View key={`loading-row-${row}`} style={styles.cardRow}>
-          {[0, 1].map(column => (
-            <View
-              key={`loading-card-${row}-${column}`}
-              style={styles.cardShellFixed}
-            >
-              <View style={[styles.card, styles.loadingCard]} />
-            </View>
-          ))}
-        </View>
-      ))}
+    <View style={styles.generatingPill} testID="home-generating-pill">
+      <Text style={styles.generatingPillText}>Generating</Text>
+      <ActivityIndicator size="small" color={theme.colors.figmaAction} />
     </View>
 
-    <View style={styles.loadingFooter}>
-      <ActivityIndicator size="small" color={theme.colors.figmaAction} />
-      <Text style={styles.loadingFooterText}>Building your next looks</Text>
-    </View>
+    <OutfitCardSkeleton
+      testID="home-outfit-card-skeleton"
+      count={4}
+      screenWidth={screenWidth}
+    />
   </View>
 );
 
@@ -1888,27 +1704,6 @@ const LoadingMoreIndicator = () => (
     <Text style={styles.loadingMoreText}>Loading more options...</Text>
   </View>
 );
-
-const GarmentPreview = ({ item }: { item: Item }) => {
-  const imageUrl = resolveItemImage(item);
-
-  return (
-    <>
-      {imageUrl ? (
-        <Image
-          source={{ uri: imageUrl }}
-          style={styles.cardImage}
-          resizeMode="contain"
-        />
-      ) : (
-        <View style={styles.cardFallback} />
-      )}
-      <View style={styles.cardTag}>
-        <Text style={styles.cardTagText}>common</Text>
-      </View>
-    </>
-  );
-};
 
 const styles = StyleSheet.create({
   container: {
@@ -2217,18 +2012,21 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.archivoButton,
     color: theme.colors.figmaAction,
   },
-  loadingFooter: {
-    minHeight: 56,
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaSurfaceSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+  // AU-310: "Generating" status pill (Figma Frame 2104) — caption-pill bg,
+  // pill radius, dimension/12 horizontal padding, label + inline spinner.
+  generatingPill: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: theme.spacing.s,
+    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingVertical: theme.spacing.s,
+    borderRadius: theme.borderRadius.round,
+    backgroundColor: theme.colors.figmaCaptionPillBg,
   },
-  loadingFooterText: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
+  generatingPillText: {
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.uacTextBase,
   },
   // Error UI fix (2026-05-22): cold-start fetch failure fallback.
   errorState: {
