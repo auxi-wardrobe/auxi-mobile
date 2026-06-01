@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextStyle } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextStyle,
+  ViewStyle,
+} from 'react-native';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
 import { TopIconButton } from '../primitives/FigmaPrimitives';
@@ -9,6 +16,7 @@ interface HeaderProps {
     showBack?: boolean;
     leftIcon?: React.ReactNode;
     titleTextStyle?: TextStyle;
+    leftIconStyle?: ViewStyle;
     onBack?: () => void;
     onFeedback?: () => void;
     rightComponent?: React.ReactNode;
@@ -19,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
     showBack = true,
     leftIcon,
     titleTextStyle,
+    leftIconStyle,
     onBack,
     onFeedback,
     rightComponent
@@ -29,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {showBack && (
                     <TopIconButton
                         onPress={onBack}
+                        style={leftIconStyle}
                         icon={
                             leftIcon || (
                                 <View style={styles.menuIconPlaceholder}>
