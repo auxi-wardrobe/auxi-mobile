@@ -256,7 +256,7 @@ export const WardrobeScreen = () => {
       >
         {imageUrl ? (
           <Image
-            source={{ uri: imageUrl }}
+            source={{ uri: imageUrl, cache: 'force-cache' }}
             style={styles.tileImage}
             resizeMode="contain"
           />
