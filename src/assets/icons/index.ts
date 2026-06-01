@@ -21,6 +21,8 @@ import IconArrowRight from '../images/icon_arrow_right.svg';
 import IconDelete from '../images/icon_delete.svg';
 import IconMenu from '../images/icon_menu.svg';
 import IconCamera from '../images/icon_camera.svg';
+import IconDatabase from '../images/icon_database.svg';
+import IconGlobe from '../images/icon_globe.svg';
 import IconLoading from '../images/icon_loading.svg';
 import IconSeeOutfit from '../images/icon_see_outfit.svg';
 import IconSwipeHand from '../images/icon_swipe_hand.svg';
@@ -56,6 +58,8 @@ export const Icons = {
   Delete: IconDelete,
   Menu: IconMenu,
   Camera: IconCamera,
+  Database: IconDatabase,
+  Globe: IconGlobe,
   CanvasUndo: IconCanvasUndo,
   CanvasRedo: IconCanvasRedo,
   CanvasLayerUp: IconCanvasLayerUp,
@@ -92,6 +96,8 @@ export {
   IconDelete,
   IconMenu,
   IconCamera,
+  IconDatabase,
+  IconGlobe,
   IconCanvasUndo,
   IconCanvasRedo,
   IconCanvasLayerUp,

@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   Image,
   Modal,
-  // Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -17,114 +16,61 @@ import {
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import {
+  launchCamera,
+  launchImageLibrary,
+  Asset,
+} from 'react-native-image-picker';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { Header } from '../components/layout/Header';
 import { Sidebar } from '../components/layout/Sidebar';
-import {
-  BottomSheetSurface,
-  PillButton,
-  TopIconButton,
-} from '../components/primitives/FigmaPrimitives';
+import { BottomSheetSurface } from '../components/primitives/FigmaPrimitives';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
 import { AppStackParamList } from '../types/navigation';
-import { getImageUrl } from '../utils/url';
+import { resolveItemImage } from '../utils/url';
 import { Icons } from '../assets/icons';
+import { track } from '../services/analytics';
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// Wardrobe filter chips — design order (node 3234:17793).
 const FILTER_TABS = [
   'All',
-  'Tops',
+  'Top',
   'Bottoms',
+  'One-Piece',
   'Shoes',
-  'One-piece',
-  'AC',
+  'Ac',
 ] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
 
+// Grid — Figma node 2850:16492: 3 columns, 24px side padding, 4px gaps, 3:4 tiles.
 const HORIZONTAL_PADDING = 24;
 const GRID_GAP = 4;
-const WARDROBE_COLUMNS = 4;
-const CATALOG_COLUMNS = 3;
+const GRID_COLUMNS = 3;
 const TILE_WIDTH =
-  (screenWidth - HORIZONTAL_PADDING * 2 - GRID_GAP * (WARDROBE_COLUMNS - 1)) /
-  WARDROBE_COLUMNS;
+  (screenWidth - HORIZONTAL_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) /
+  GRID_COLUMNS;
 const TILE_HEIGHT = TILE_WIDTH * (4 / 3);
-const CATALOG_TILE_WIDTH =
-  (screenWidth - HORIZONTAL_PADDING * 2 - 8 * (CATALOG_COLUMNS - 1)) /
-  CATALOG_COLUMNS;
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
   'Wardrobe'
 >;
 
-const resolveItemTab = (category?: string): FilterTab => {
-  const normalized = category?.trim().toLowerCase() || '';
-
-  if (!normalized) {
-    return 'AC';
-  }
-
-  if (
-    normalized.includes('shoe') ||
-    normalized.includes('sneaker') ||
-    normalized.includes('heel') ||
-    normalized.includes('boot')
-  ) {
-    return 'Shoes';
-  }
-
-  if (
-    normalized.includes('bottom') ||
-    normalized.includes('pant') ||
-    normalized.includes('trouser') ||
-    normalized.includes('jean') ||
-    normalized.includes('skirt') ||
-    normalized.includes('short')
-  ) {
-    return 'Bottoms';
-  }
-
-  if (
-    normalized.includes('dress') ||
-    normalized.includes('one-piece') ||
-    normalized.includes('one piece') ||
-    normalized.includes('one_piece') ||
-    normalized.includes('jumpsuit') ||
-    normalized.includes('romper')
-  ) {
-    return 'One-piece';
-  }
-
-  if (
-    normalized === 'ac' ||
-    normalized.includes('accessor') ||
-    normalized.includes('bag') ||
-    normalized.includes('belt') ||
-    normalized.includes('hat') ||
-    normalized.includes('jewel')
-  ) {
-    return 'AC';
-  }
-
-  return 'Tops';
-};
-
 const resolveFilterQuery = (selectedTab: FilterTab): string | undefined => {
   switch (selectedTab) {
-    case 'Tops':
+    case 'Top':
       return 'top';
     case 'Bottoms':
       return 'bottom';
     case 'Shoes':
       return 'shoes';
-    case 'One-piece':
+    case 'One-Piece':
       return 'one_piece';
-    case 'AC':
+    case 'Ac':
       return 'accessory';
     case 'All':
     default:
@@ -145,18 +91,12 @@ export const WardrobeScreen = () => {
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadingPhotoUri, setUploadingPhotoUri] = useState<string | null>(
+    null,
+  );
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
   const [addSheetVisible, setAddSheetVisible] = useState(false);
-  const [catalogLoading, setCatalogLoading] = useState(false);
-  const [commonItems, setCommonItems] = useState<WardrobeItem[]>([]);
-  const [selectedCommonItemId, setSelectedCommonItemId] = useState<
-    string | null
-  >(null);
-  const [addingCatalogItem, setAddingCatalogItem] = useState(false);
-
-  const [modalAddItemVisible, setModalAddItemVisible] = useState(false);
-  // const [modalSearchDatabaseVisible, setModalSearchDatabaseVisible] = useState(false);
 
   const fetchItems = useCallback(async () => {
     try {
@@ -182,63 +122,43 @@ export const WardrobeScreen = () => {
   useEffect(() => {
     if (isFocused) {
       fetchItems();
+      track('wardrobe_viewed', { category: selectedTab });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchItems, isFocused]);
 
-  useEffect(() => {
-    if (!addSheetVisible) {
-      return;
-    }
+  const handleSelectTab = (category: FilterTab) => {
+    setSelectedTab(category);
+    track('wardrobe_filter_changed', { category });
+  };
 
-    let cancelled = false;
+  const handleItemPress = (item: WardrobeItem) => {
+    track('wardrobe_item_opened', {
+      item_id: item.id,
+      is_common: isCommonItem(item),
+    });
+    navigation.navigate('ItemDetail', { itemId: item.id });
+  };
 
-    const loadCatalog = async () => {
-      try {
-        setCatalogLoading(true);
-        setSelectedCommonItemId(null);
-        const data = await wardrobeService.getCommonItems();
+  const openAddSheet = (source: 'header' | 'empty_state') => {
+    track('add_item_opened', { source });
+    setAddSheetVisible(true);
+  };
 
-        if (!cancelled) {
-          setCommonItems(data);
-        }
-      } catch (error) {
-        console.error('Error loading common item catalog', error);
+  const handleSearchDatabase = () => {
+    track('add_item_method_selected', { method: 'search_database' });
+    setAddSheetVisible(false);
+    navigation.navigate('Database');
+  };
 
-        if (!cancelled) {
-          setCommonItems([]);
-          Toast.show({
-            type: 'error',
-            text1: 'Catalog unavailable',
-            text2: 'You can still add an item with a photo.',
-            position: 'bottom',
-          });
-        }
-      } finally {
-        if (!cancelled) {
-          setCatalogLoading(false);
-        }
-      }
-    };
-
-    loadCatalog();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [addSheetVisible]);
-
-  const visibleCatalogItems = useMemo(() => {
-    if (selectedTab === 'All') {
-      return commonItems;
-    }
-
-    return commonItems.filter(
-      item => resolveItemTab(item.category) === selectedTab,
-    );
-  }, [commonItems, selectedTab]);
-
-  const handleItemPress = (itemId: string) => {
-    navigation.navigate('ItemDetail', { itemId });
+  const handleImportFromWeb = () => {
+    track('add_item_method_selected', { method: 'import_web' });
+    Toast.show({
+      type: 'info',
+      text1: 'Coming soon',
+      text2: 'Importing from a web link will be available shortly.',
+      position: 'bottom',
+    });
   };
 
   const handleImageSelection = async (type: 'camera' | 'gallery') => {
@@ -264,30 +184,33 @@ export const WardrobeScreen = () => {
         return;
       }
 
-      if (!result.assets?.length) {
+      const asset: Asset | undefined = result.assets?.[0];
+      if (!asset) {
         return;
       }
 
       try {
+        setUploadingPhotoUri(asset.uri ?? null);
         setUploading(true);
+        track('add_item_upload_started', { source: type });
+
         await wardrobeService.uploadWardrobeItem(
-          result.assets[0],
+          asset,
           user!,
           resolveFilterQuery(selectedTab),
         );
 
-        setModalAddItemVisible(false);
-
+        track('add_item_upload_succeeded', { source: type });
         Toast.show({
           type: 'success',
           text1: 'Added to your wardrobe',
           position: 'bottom',
         });
 
-        // await fetchItems();
-        navigation.navigate('Wardrobe');
+        await fetchItems();
       } catch (error) {
         console.error('Upload error', error);
+        track('add_item_upload_failed', { source: type });
         Toast.show({
           type: 'error',
           text1: 'Upload failed',
@@ -296,80 +219,46 @@ export const WardrobeScreen = () => {
         });
       } finally {
         setUploading(false);
+        setUploadingPhotoUri(null);
       }
     }, 250);
   };
 
-  const handlePhotoTilePress = () => {
-    Alert.alert('Add item', 'Choose how you want to add this item.', [
-      {
-        text: 'Take a photo',
-        onPress: () => {
-          handleImageSelection('camera');
+  const handleTakePhoto = () => {
+    track('add_item_method_selected', { method: 'take_photo' });
+    setAddSheetVisible(false);
+    setTimeout(() => {
+      Alert.alert('Add a photo', 'Use your camera or pick from your library.', [
+        { text: 'Take a photo', onPress: () => handleImageSelection('camera') },
+        {
+          text: 'Choose from library',
+          onPress: () => handleImageSelection('gallery'),
         },
-      },
-      {
-        text: 'Choose from library',
-        onPress: () => {
-          handleImageSelection('gallery');
-        },
-      },
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-    ]);
-  };
-
-  const handleCloneItem = async () => {
-    if (!selectedCommonItemId) {
-      return;
-    }
-
-    try {
-      setAddingCatalogItem(true);
-      const clonedItem = await wardrobeService.cloneCommonItem(
-        selectedCommonItemId,
-      );
-      setAddSheetVisible(false);
-
-      Toast.show({
-        type: 'success',
-        text1: 'Added to your wardrobe',
-        position: 'bottom',
-      });
-
-      await fetchItems();
-      navigation.navigate('ItemDetail', { itemId: clonedItem.id });
-    } catch (error) {
-      console.error('Clone common item error', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Add failed',
-        text2: 'We could not clone that catalog item.',
-        position: 'bottom',
-      });
-    } finally {
-      setAddingCatalogItem(false);
-    }
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }, 250);
   };
 
   const renderGridTile = (item: WardrobeItem) => {
-    const imageUrl = getImageUrl(item.image_url);
+    const imageUrl = resolveItemImage({
+      image_png: item.image_png ?? null,
+      image_url: item.image_url ?? '',
+    });
 
     return (
       <TouchableOpacity
         key={item.id}
         style={styles.tile}
         activeOpacity={0.88}
-        onPress={() => handleItemPress(item.id)}
-        testID={`wardrobe-catalog-tile-${item.id}`}
+        onPress={() => handleItemPress(item)}
+        testID={`wardrobe-item-${item.id}`}
+        accessibilityLabel={item.name || 'Wardrobe item'}
       >
         {imageUrl ? (
           <Image
             source={{ uri: imageUrl }}
             style={styles.tileImage}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         ) : (
           <View style={styles.tileFallback}>
@@ -381,7 +270,7 @@ export const WardrobeScreen = () => {
           <View style={styles.tileBadgeWrap}>
             <View style={styles.tileBadge}>
               <Text numberOfLines={1} style={styles.tileBadgeText}>
-                common items
+                common
               </Text>
             </View>
           </View>
@@ -392,22 +281,11 @@ export const WardrobeScreen = () => {
 
   const renderLoadingGrid = () => (
     <View style={styles.grid}>
-      {Array.from({ length: 8 }).map((_, index) => (
+      {Array.from({ length: 6 }).map((_, index) => (
         <View key={`skeleton-${index}`} style={styles.tileSkeleton} />
       ))}
     </View>
   );
-
-  const handleShowSearchItemModal = async () => {
-    setModalAddItemVisible(false);
-    // setModalSearchDatabaseVisible(true);
-    // if (commonItems.length > 0) return
-
-    // const data = await wardrobeService.getCommonItems();
-    // setCommonItems(data);
-    // redirect to DatabaseScreen
-    navigation.navigate('Database');
-  };
 
   const hasItems = items.length > 0;
 
@@ -418,16 +296,16 @@ export const WardrobeScreen = () => {
       <Header
         title="Wardrobe"
         titleTextStyle={styles.headerTitle}
+        leftIconStyle={styles.headerIconButton}
         onBack={() => setIsSidebarOpen(true)}
         rightComponent={
           <TouchableOpacity
-            // onPress={() => setAddSheetVisible(true)}
-            onPress={() => setModalAddItemVisible(true)}
+            onPress={() => openAddSheet('header')}
             disabled={uploading}
-            style={styles.plusButton}
+            style={[styles.plusButton, styles.headerIconButton]}
             activeOpacity={0.85}
             testID="wardrobe-add-btn"
-            accessibilityLabel="wardrobe-add-btn"
+            accessibilityLabel="Add item"
           >
             {uploading ? (
               <ActivityIndicator
@@ -448,7 +326,8 @@ export const WardrobeScreen = () => {
         <CategoryTabs
           categories={[...FILTER_TABS]}
           selectedCategory={selectedTab}
-          onSelectCategory={category => setSelectedTab(category as FilterTab)}
+          onSelectCategory={category => handleSelectTab(category as FilterTab)}
+          wrap
         />
 
         {loading ? (
@@ -464,437 +343,161 @@ export const WardrobeScreen = () => {
             </Text>
             <Text style={styles.emptySubtitle}>
               {selectedTab === 'All'
-                ? 'Start with a photo or clone a common item from the catalog.'
+                ? 'Add a photo or browse the database to start your wardrobe.'
                 : 'Try another filter or add a new item to this section.'}
             </Text>
             <TouchableOpacity
               style={styles.emptyCta}
               activeOpacity={0.85}
-              onPress={() => setAddSheetVisible(true)}
+              onPress={() => openAddSheet('empty_state')}
+              testID="wardrobe-empty-add-btn"
+              accessibilityLabel="Add item"
             >
-              <Text style={styles.emptyCtaText}>Open add sheet</Text>
+              <Text style={styles.emptyCtaText}>Add an item</Text>
             </TouchableOpacity>
           </View>
         )}
       </ScrollView>
 
-      <Modal
-        animationType="fade"
-        transparent
-        visible={addSheetVisible}
-        onRequestClose={() => setAddSheetVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setAddSheetVisible(false)}>
-          <View
-            style={styles.sheetOverlay}
-            onStartShouldSetResponder={() => true}
-          >
-            <TouchableOpacity activeOpacity={1}>
-              <BottomSheetSurface style={styles.addSheet}>
-                <View style={styles.addSheetHeader}>
-                  <TopIconButton
-                    onPress={() => setAddSheetVisible(false)}
-                    icon={<Icons.ChevronLeft width={20} height={20} />}
-                  />
-
-                  {selectedCommonItemId ? (
-                    <Text style={styles.selectionCountLabel}>1 selected</Text>
-                  ) : null}
-
-                  <PillButton
-                    title="Add"
-                    onPress={() => {
-                      handleCloneItem();
-                    }}
-                    disabled={!selectedCommonItemId || addingCatalogItem}
-                    loading={addingCatalogItem}
-                    style={styles.addActionButton}
-                    trailing={<Icons.Plus width={18} height={18} />}
-                  />
-                </View>
-
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.addSheetScrollContent}
-                >
-                  <View style={styles.catalogGrid}>
-                    <TouchableOpacity
-                      testID="wardrobe-photo-tile"
-                      style={styles.photoTile}
-                      activeOpacity={0.85}
-                      onPress={handlePhotoTilePress}
-                    >
-                      <Icons.Camera
-                        width={24}
-                        height={24}
-                        color={theme.colors.figmaAction}
-                      />
-                    </TouchableOpacity>
-
-                    {catalogLoading ? (
-                      <View style={styles.catalogLoading}>
-                        <ActivityIndicator
-                          size="small"
-                          color={theme.colors.figmaAction}
-                        />
-                        <Text style={styles.catalogLoadingLabel}>
-                          Loading catalog…
-                        </Text>
-                      </View>
-                    ) : (
-                      commonItems.map(item => {
-                        const imageUrl = getImageUrl(item.image_url);
-                        const isSelected = selectedCommonItemId === item.id;
-
-                        return (
-                          <TouchableOpacity
-                            key={item.id}
-                            style={[
-                              styles.catalogTile,
-                              isSelected && styles.catalogTileSelected,
-                            ]}
-                            activeOpacity={0.88}
-                            onPress={() => setSelectedCommonItemId(item.id)}
-                          >
-                            {imageUrl ? (
-                              <Image
-                                source={{ uri: imageUrl }}
-                                style={styles.catalogTileImage}
-                                resizeMode="cover"
-                              />
-                            ) : (
-                              <View style={styles.catalogTileFallback}>
-                                <Text style={styles.catalogTileFallbackText}>
-                                  No image
-                                </Text>
-                              </View>
-                            )}
-
-                            {isSelected ? (
-                              <View style={styles.selectionDotWrap}>
-                                <View style={styles.selectionDotSelected} />
-                              </View>
-                            ) : (
-                              <View style={styles.selectionDotWrapEmpty} />
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })
-                    )}
-                  </View>
-
-                  {!catalogLoading && !visibleCatalogItems.length ? (
-                    <Text style={styles.catalogEmptyText}>
-                      No catalog items are available for this filter yet.
-                    </Text>
-                  ) : null}
-                </ScrollView>
-              </BottomSheetSurface>
-            </TouchableOpacity>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
+      {/* Add item — bottom sheet (Figma node 2852:19750) */}
       <Modal
         accessibilityLabel="add-item-modal"
-        key="add-item-modal"
-        visible={modalAddItemVisible}
-        onRequestClose={() => setModalAddItemVisible(false)}
+        visible={addSheetVisible}
+        onRequestClose={() => setAddSheetVisible(false)}
         animationType="slide"
         transparent
       >
-        <TouchableWithoutFeedback onPress={() => setModalAddItemVisible(false)}>
-          <View style={styles.modalAddItemOverlay}>
-            <TouchableWithoutFeedback
-              onPress={() => setModalAddItemVisible(false)}
-            >
-              <View style={styles.modalAddItemBackdrop} />
-            </TouchableWithoutFeedback>
-            <View style={styles.modalAddItemContent}>
-              {/* title */}
-              <TouchableOpacity activeOpacity={1}>
-                <Text style={styles.modalAddItemTitle}>Add Item</Text>
-                {/* short description */}
-                <Text style={styles.modalAddItemDescription}>
-                  Add a new item to your wardrobe
+        <TouchableWithoutFeedback onPress={() => setAddSheetVisible(false)}>
+          <View style={styles.sheetOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <BottomSheetSurface style={styles.addSheet}>
+                <Text style={styles.addSheetTitle}>Add item</Text>
+                <Text style={styles.addSheetSubtitle}>
+                  Choose how you'd like to add it
                 </Text>
-                {/* implement three sections: search from db, take a photo, import from web */}
-                <View style={styles.modalAddItemActions}>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => handleShowSearchItemModal()}
-                    testID="wardrobe-add-search"
-                  >
-                    <View style={styles.actionButtonContent}>
-                      <View style={styles.actionButtonIcon}>
-                        <Text>🔍</Text>
-                      </View>
-                      <View>
-                        <Text style={styles.actionButtonText}>
-                          Search from Database
-                        </Text>
-                        <Text style={styles.actionButtonSubtext}>
-                          Browse our catalog
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={handlePhotoTilePress}
-                    testID="wardrobe-add-photo"
-                  >
-                    <View style={styles.actionButtonContent}>
-                      <View style={styles.actionButtonIcon}>
-                        <Text>📸</Text>
-                      </View>
-                      <View>
-                        <Text style={styles.actionButtonText}>
-                          Take a Photo
-                        </Text>
-                        <Text style={styles.actionButtonSubtext}>
-                          Upload an image
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => {}}
-                    testID="wardrobe-add-import"
-                  >
-                    <View style={styles.actionButtonContent}>
-                      <View style={styles.actionButtonIcon}>
-                        <Text>🌐</Text>
-                      </View>
-                      <View>
-                        <Text style={styles.actionButtonText}>
-                          Import from Web
-                        </Text>
-                        <Text style={styles.actionButtonSubtext}>
-                          Paste a URL
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            </View>
+                <AddMethodRow
+                  icon={
+                    <Icons.Database
+                      width={24}
+                      height={24}
+                      color={theme.colors.uacBackgroundBase}
+                    />
+                  }
+                  title="Search the database"
+                  description="Fastest way to add an item"
+                  onPress={handleSearchDatabase}
+                  testID="wardrobe-add-search"
+                />
+                <AddMethodRow
+                  icon={
+                    <Icons.Camera
+                      width={24}
+                      height={24}
+                      color={theme.colors.uacBackgroundBase}
+                    />
+                  }
+                  title="Take a photo"
+                  description="Use your camera or library"
+                  onPress={handleTakePhoto}
+                  testID="wardrobe-add-photo"
+                />
+                <AddMethodRow
+                  icon={
+                    <Icons.Globe
+                      width={24}
+                      height={24}
+                      color={theme.colors.uacBackgroundBase}
+                    />
+                  }
+                  title="Import from web"
+                  description="Paste a product link to save an item"
+                  onPress={handleImportFromWeb}
+                  testID="wardrobe-add-import"
+                  isLast
+                />
+              </BottomSheetSurface>
+            </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* <Modal
-        accessibilityLabel="search-database-modal"
-        key="search-database-modal"
-        visible={modalSearchDatabaseVisible}
-        onRequestClose={() => setModalSearchDatabaseVisible(false)}
-        animationType="slide"
-        transparent
-      >
-        <View style={styles.modalAddItemOverlay}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setModalSearchDatabaseVisible(false)}
-          />
-          <View style={styles.modalAddItemList}>
-              <View style={styles.abc}>
-                <ScrollView
-                  style={styles.modalSearchDatabaseScroll}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.modalSearchDatabaseScrollContent}
-                >
-                  <View style={styles.catalogGrid2}>
-                    {catalogLoading ? (
-                      <View style={styles.catalogLoading}>
-                        <ActivityIndicator size="small" color={theme.colors.figmaAction} />
-                      </View>
-                    ) : (
-                      visibleCatalogItems.map((item) => {
-                        const imageUrl = getImageUrl(item.image_url);
-                        const isSelected = selectedCommonItemId === item.id;
-        
-                        return (
-                          <TouchableOpacity
-                            key={item.id}
-                            style={[
-                              styles.catalogTile,
-                              isSelected && styles.catalogTileSelected,
-                            ]}
-                            activeOpacity={0.88}
-                            onPress={() => setSelectedCommonItemId(item.id)}
-                          >
-                            {imageUrl ? (
-                              <Image
-                                source={{ uri: imageUrl }}
-                                style={styles.catalogTileImage}
-                                resizeMode="cover"
-                              />
-                            ) : (
-                              <View style={styles.catalogTileFallback}>
-                                <Text style={styles.catalogTileFallbackText}>No image</Text>
-                              </View>
-                            )}
-                            
-                            {isSelected && (
-                              <View style={styles.selectionDot}>
-                                <View style={styles.selectionDotSelected} />
-                              </View>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })
-                    )}
-                  </View>
-        
-                  {!catalogLoading && !visibleCatalogItems.length ? (
-                    <Text style={styles.catalogEmptyText}>
-                      No catalog items are available yet.
-                    </Text>
-                  ) : null}
-                </ScrollView>
-              </View>
-              <PillButton
-                title="Add to wardrobe"
-                onPress={() => {
-                  handleCloneItem();
-                }}
-                disabled={!selectedCommonItemId}
+      {/* AI processing overlay (Figma node 2852:20021) */}
+      <Modal visible={uploading} transparent animationType="fade">
+        <View style={styles.preparingContainer}>
+          <View style={styles.preparingPhotoWrap}>
+            {uploadingPhotoUri ? (
+              <Image
+                source={{ uri: uploadingPhotoUri }}
+                style={styles.preparingPhoto}
+                resizeMode="contain"
               />
+            ) : null}
+          </View>
+          <View style={styles.preparingPanel}>
+            <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+            <Text style={styles.preparingTitle}>Preparing your item…</Text>
+            <Text style={styles.preparingStep}>
+              • Removing the background and identifying details…
+            </Text>
+            <Text style={styles.preparingStep}>• Auto tagging your items…</Text>
           </View>
         </View>
-      </Modal> */}
+      </Modal>
     </SafeAreaView>
   );
 };
 
+interface AddMethodRowProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onPress: () => void;
+  testID: string;
+  isLast?: boolean;
+}
+
+const AddMethodRow: React.FC<AddMethodRowProps> = ({
+  icon,
+  title,
+  description,
+  onPress,
+  testID,
+  isLast,
+}) => (
+  <TouchableOpacity
+    style={[styles.methodRow, !isLast && styles.methodRowDivider]}
+    activeOpacity={0.7}
+    onPress={onPress}
+    testID={testID}
+    accessibilityLabel={title}
+  >
+    <View style={styles.methodIcon}>{icon}</View>
+    <View style={styles.methodTexts}>
+      <Text style={styles.methodTitle}>{title}</Text>
+      <Text style={styles.methodDescription}>{description}</Text>
+    </View>
+  </TouchableOpacity>
+);
+
 const styles = StyleSheet.create({
-  abc: {
-    height: 600,
-    marginBottom: 16,
-  },
-  modalAddItemOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalAddItemBackdrop: {
-    flex: 1,
-  },
-  modalAddItemContent: {
-    backgroundColor: theme.colors.figmaBackground,
-    padding: 16,
-    width: '90%',
-    height: 'auto',
-    position: 'absolute',
-    borderRadius: 16,
-  },
-  modalAddItemTitle: {
-    ...theme.typography.aliases.archivoBody,
-    fontWeight: '600',
-    fontSize: 20,
-    marginBottom: 8,
-  },
-  modalAddItemDescription: {
-    ...theme.typography.aliases.archivoBody,
-    fontWeight: '400',
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  modalAddItemActions: {
-    flexDirection: 'column',
-    gap: 8,
-  },
-  actionButton: {
-    padding: 12,
-    borderRadius: 8,
-  },
-  actionButtonText: {
-    ...theme.typography.aliases.archivoBody,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  actionButtonSubtext: {
-    ...theme.typography.aliases.archivoBody,
-    fontWeight: '400',
-    fontSize: 12,
-  },
-  actionButtonIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.figmaAction,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  actionButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-
-  modalSearchDatabaseContent: {
-    backgroundColor: theme.colors.figmaBackground,
-    width: '95%',
-    height: '80%',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  modalSearchDatabaseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.figmaSurface,
-  },
-  modalSearchDatabaseTitle: {
-    ...theme.typography.aliases.archivoBody,
-    fontWeight: '600',
-    fontSize: 18,
-  },
-  closeButton: {
-    fontSize: 20,
-    color: theme.colors.figmaTextSecondary,
-    padding: 4,
-  },
-  modalSearchDatabaseScroll: {
-    flex: 1,
-  },
-  modalSearchDatabaseScrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  modalSearchDatabaseFooter: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.figmaSurface,
-  },
-  modalAddItemList: {
-    backgroundColor: theme.colors.figmaBackground,
-    width: '90%',
-    height: 'auto',
-    position: 'absolute',
-    borderRadius: 16,
-  },
-
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
   },
   headerTitle: {
-    ...theme.typography.aliases.archivoBody,
-    fontWeight: '400',
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.figmaTextPrimary,
   },
   plusButton: {
     width: 45,
     height: 45,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerIconButton: {
+    backgroundColor: theme.colors.figmaSurface,
+    borderRadius: 14,
   },
   scrollContent: {
     paddingTop: 12,
@@ -909,9 +512,9 @@ const styles = StyleSheet.create({
   tile: {
     width: TILE_WIDTH,
     height: TILE_HEIGHT,
-    borderRadius: theme.borderRadius.m,
+    borderRadius: theme.borderRadius.figmaTile,
     overflow: 'hidden',
-    backgroundColor: '#E8EBF0',
+    backgroundColor: theme.colors.figmaDetailSurface,
   },
   tileImage: {
     width: '100%',
@@ -924,7 +527,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   tileFallbackText: {
-    ...theme.typography.aliases.manropeCaption,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
   },
@@ -932,188 +535,141 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
+    bottom: 8,
     alignItems: 'center',
   },
   tileBadge: {
-    minWidth: 58,
-    maxWidth: TILE_WIDTH - 8,
-    height: 19,
     paddingHorizontal: 12,
-    borderTopLeftRadius: theme.borderRadius.m,
-    borderTopRightRadius: theme.borderRadius.m,
-    backgroundColor: 'rgba(39, 42, 50, 0.9)',
+    paddingVertical: 3,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(18, 18, 18, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   tileBadgeText: {
-    fontFamily: 'Manrope-Medium',
-    fontSize: 8,
-    lineHeight: 12,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.white,
   },
   tileSkeleton: {
     width: TILE_WIDTH,
     height: TILE_HEIGHT,
-    borderRadius: theme.borderRadius.m,
-    backgroundColor: '#E3E6EB',
+    borderRadius: theme.borderRadius.figmaTile,
+    backgroundColor: theme.colors.figmaDetailSurface,
   },
   emptyState: {
     paddingHorizontal: HORIZONTAL_PADDING,
-    paddingTop: 40,
+    paddingTop: 56,
     alignItems: 'center',
   },
   emptyTitle: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.figmaAction,
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
   emptySubtitle: {
-    ...theme.typography.aliases.manropeCaption,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
     marginTop: 8,
     maxWidth: 280,
   },
   emptyCta: {
-    marginTop: 18,
-    minHeight: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaAction,
-    paddingHorizontal: 18,
+    marginTop: 20,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: theme.colors.uacBackgroundBase,
+    paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyCtaText: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
+    ...theme.typography.aliases.interMediumSm,
+    color: theme.colors.white,
   },
+  // Add-item bottom sheet
   sheetOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(39, 42, 50, 0.25)',
+    backgroundColor: 'rgba(18, 18, 18, 0.4)',
   },
   addSheet: {
-    height: 400,
-    paddingTop: 16,
-    paddingBottom: 18,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 36,
   },
-  addSheetHeader: {
+  addSheetTitle: {
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.figmaTextPrimary,
+  },
+  addSheetSubtitle: {
+    ...theme.typography.aliases.interBodyMd,
+    color: theme.colors.figmaTextPrimary,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  methodRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 16,
+    gap: 16,
+    paddingVertical: 16,
   },
-  addActionButton: {
-    minWidth: 118,
+  methodRowDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.figmaListDivider,
   },
-  addSheetScrollContent: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    paddingBottom: 12,
-  },
-  catalogGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  catalogGrid2: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingVertical: 12,
-  },
-  photoTile: {
-    width: CATALOG_TILE_WIDTH,
-    height: 102,
-    borderRadius: theme.borderRadius.s,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(60,60,67,0.3)',
-    backgroundColor: '#F5F5F5',
+  methodIcon: {
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catalogLoading: {
-    width: CATALOG_TILE_WIDTH,
-    height: 102,
-    borderRadius: theme.borderRadius.s,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+  methodTexts: {
+    flex: 1,
   },
-  catalogLoadingLabel: {
-    ...theme.typography.aliases.manropeCaption,
+  methodTitle: {
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.figmaTextPrimary,
+  },
+  methodDescription: {
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
+    marginTop: 2,
   },
-  catalogTile: {
-    width: CATALOG_TILE_WIDTH,
-    height: 102,
-    borderRadius: theme.borderRadius.s,
-    overflow: 'hidden',
-    backgroundColor: '#ECEFF4',
-    borderWidth: 2,
-    borderColor: 'transparent',
+  // AI processing overlay
+  preparingContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.figmaBackground,
   },
-  catalogTileSelected: {
-    borderColor: theme.colors.figmaAction,
-  },
-  catalogTileImage: {
-    width: '100%',
-    height: '100%',
-  },
-  catalogTileFallback: {
+  preparingPhotoWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingTop: 64,
+    paddingHorizontal: 24,
   },
-  catalogTileFallbackText: {
-    ...theme.typography.aliases.manropeCaption,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
+  preparingPhoto: {
+    width: '100%',
+    height: '100%',
   },
-  selectionDotWrap: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    backgroundColor: theme.colors.figmaAction,
+  preparingPanel: {
+    backgroundColor: theme.colors.figmaDetailSurface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
-  selectionDotWrapEmpty: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#272A32',
-    backgroundColor: 'transparent',
+  preparingTitle: {
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.figmaTextPrimary,
+    marginTop: 4,
   },
-  selectionDotSelected: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
-  selectionCountLabel: {
-    ...theme.typography.aliases.manropeCaption,
-    color: theme.colors.figmaTextSecondary,
-  },
-  catalogEmptyText: {
-    ...theme.typography.aliases.manropeCaption,
+  preparingStep: {
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
-    marginTop: 16,
   },
 });

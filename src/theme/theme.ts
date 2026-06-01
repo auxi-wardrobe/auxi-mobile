@@ -237,6 +237,23 @@ export const theme = {
         fontSize: 10,
         lineHeight: 12,
       },
+      // Wardrobe add-item flow (node 2852:19750) — Inter body text.
+      // Text-md (l-24) Regular 16/24, Text-sm (l-20) Regular/Medium 14/20.
+      interBodyMd: {
+        fontFamily: 'Inter-Regular',
+        fontSize: 16,
+        lineHeight: 24,
+      },
+      interBodySm: {
+        fontFamily: 'Inter-Regular',
+        fontSize: 14,
+        lineHeight: 20,
+      },
+      interMediumSm: {
+        fontFamily: 'Inter-Medium',
+        fontSize: 14,
+        lineHeight: 20,
+      },
       uacM3BodyLarge: {
         fontFamily: 'Poppins-Regular',
         fontSize: 16,
