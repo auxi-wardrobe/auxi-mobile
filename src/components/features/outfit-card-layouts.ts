@@ -57,7 +57,10 @@ export type OutfitCardLayout = {
   scrolls: boolean;
 };
 
-const cell = (itemIndex: number | null, revealGroup: RevealGroup): GridCell => ({
+const cell = (
+  itemIndex: number | null,
+  revealGroup: RevealGroup,
+): GridCell => ({
   itemIndex,
   revealGroup,
 });

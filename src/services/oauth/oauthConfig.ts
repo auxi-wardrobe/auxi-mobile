@@ -24,8 +24,10 @@
 export const OAUTH_CONFIG = {
   google: {
     /**
-     * Web client ID — must match the backend `GOOGLE_OAUTH_WEB_CLIENT_ID`
-     * env var. Used as the `audience` for backend ID-token verification.
+     * Web client ID — must match the backend `GOOGLE_OAUTH_CLIENT_ID`
+     * env var (NOT `GOOGLE_OAUTH_WEB_CLIENT_ID` — that name does not exist
+     * server-side; see wardrobe-backend/services/oauth_service.py). Used as
+     * the `audience` for backend ID-token verification.
      */
     webClientId:
       '23012725464-l9piv25qrnishre7or0kjv58ifo12ub0.apps.googleusercontent.com',

@@ -119,7 +119,9 @@ const AnimatedCard: React.FC<AnimatedCardProps> = ({
     // Intentionally-empty slot — transparent, holds geometry only.
     return (
       <View style={cellStyle}>
-        <View style={[styles.card, { height: size.height }, styles.cardEmpty]} />
+        <View
+          style={[styles.card, { height: size.height }, styles.cardEmpty]}
+        />
       </View>
     );
   }
@@ -133,7 +135,11 @@ const AnimatedCard: React.FC<AnimatedCardProps> = ({
           testID={testID}
           accessibilityLabel={testID}
           activeOpacity={0.86}
-          style={[styles.card, { height: size.height }, isPinned && styles.cardPinned]}
+          style={[
+            styles.card,
+            { height: size.height },
+            isPinned && styles.cardPinned,
+          ]}
           onPress={() => onPress?.(item)}
           onLongPress={() => onTogglePin?.(item)}
           delayLongPress={500}
@@ -195,10 +201,7 @@ export const OutfitCardGrid: React.FC<OutfitCardGridProps> = ({
   testID,
 }) => {
   const reduceMotion = useReduceMotion();
-  const filled = useMemo(
-    () => items.filter((it): it is Item => !!it),
-    [items],
-  );
+  const filled = useMemo(() => items.filter((it): it is Item => !!it), [items]);
   const layout = getOutfitCardLayout(filled.length);
   const geometry = useMemo(
     () => computeOutfitCardGeometry(screenWidth),
@@ -276,11 +279,7 @@ export const OutfitCardGrid: React.FC<OutfitCardGridProps> = ({
     return (
       <View key={rowKey} style={[styles.row, { justifyContent: justify }]}>
         {cells.map(c =>
-          renderCell(
-            c,
-            flex ? { height: fillHeight } : flatSize,
-            flex,
-          ),
+          renderCell(c, flex ? { height: fillHeight } : flatSize, flex),
         )}
       </View>
     );
