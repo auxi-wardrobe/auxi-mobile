@@ -6,6 +6,15 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ## [Unreleased]
 
+## [v1.0-build15] - 2026-06-02
+
+### Added
+- outfit card layouts + loading states (AU-310)
+- wardrobe screen redesign: header, category tabs, theme tokens, database + globe icons
+
+### Changed
+- weatherService + oauthConfig refinements
+
 ## [v1.0-build14] - 2026-05-31
 
 ### Added
