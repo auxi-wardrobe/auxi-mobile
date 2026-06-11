@@ -6,6 +6,20 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ## [Unreleased]
 
+## [v1.0-build16] - 2026-06-11
+
+### Added
+- item-detail redesign, auth email routing, app icon/name
+- rebuild wardrobe + add-item flow to match Figma
+
+### Fixed
+- observable, cold-safe weather fallback (AU-306)
+- two-axis outfit/set swipe per AU-303
+
+### Changed
+- cache item images with force-cache to avoid reload on re-entry
+
+
 ## [v1.0-build11] - 2026-05-28
 
 ### Added
