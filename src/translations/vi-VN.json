@@ -225,6 +225,32 @@
         "a11y_delete": "Xóa món",
         "image_unavailable": "Không có ảnh"
       }
+    },
+    "mood": {
+      "title": "Bộ đồ này mang lại cảm giác thế nào?",
+      "subtitle": "Điều này giúp chúng tôi hiểu hơn về phong cách và cảm xúc của bạn.",
+      "done": "Xong",
+      "dismiss": "Đóng phản hồi cảm xúc",
+      "feelsLikeMe": "Đúng chất tôi",
+      "confident": "Tự tin",
+      "relaxed": "Thư thái",
+      "polished": "Chỉn chu",
+      "comfortable": "Thoải mái",
+      "sharp": "Sắc sảo",
+      "effortless": "Nhẹ nhàng tự nhiên",
+      "elevated": "Nâng tầm",
+      "professional": "Chuyên nghiệp",
+      "prepared": "Sẵn sàng",
+      "easy": "Dễ chịu",
+      "attractive": "Cuốn hút",
+      "expressive": "Cá tính",
+      "functional": "Tiện dụng",
+      "lightweight": "Gọn nhẹ",
+      "notQuiteMe": "Chưa hẳn là tôi",
+      "errorGeneric": "Chưa thể lưu phản hồi của bạn. Vui lòng thử lại.",
+      "errorTimeout": "Kết nối quá thời gian chờ. Vui lòng thử lại.",
+      "savedBanner": "Bộ đồ này đã được lưu vào mục yêu thích của bạn.",
+      "moodUpdatedBanner": "Đã cập nhật cảm xúc cho bộ đồ đã lưu này."
     }
   }
 }
