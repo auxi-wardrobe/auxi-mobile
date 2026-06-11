@@ -1,0 +1,64 @@
+# auxi/maestro/flows/wardrobe/item-detail-edit-cancel.yaml
+# Item detail (AU-311) — enter edit mode → change a field → Cancel discards
+# the draft and exits edit mode.
+#
+# Figma: 0nXXMAR4Arf1ZfjtQvtBh0 node 2852:7175, edit frames 2852:14647 /
+#   2852:16316. Screen: src/screens/ItemDetailScreen.tsx (handleCancelEditing
+#   → syncDraftsFromItem(item) + setIsEditing(false), no service call).
+#
+# Behavior under test: in EDIT mode the bottom bar is [Cancel] [Save]. Cancel
+# resyncs drafts from the saved item (discarding the in-progress change) and
+# returns to the read-mode bar — without any persistence call.
+#
+# Determinism: same as the save flow, we drive the enumerated "Fit" picker
+# (static option labels). We assert the STATE TRANSITION (edit bar → read bar)
+# and that the picker we opened is gone — not a backend value. Cancel is a
+# pure client-state op, so no service-timeout env is needed.
+
+appId: com.auxi2026.app
+name: wardrobe-item-detail-edit-cancel
+tags:
+  - wardrobe
+  - item-detail
+  - regression
+env:
+  HOME_TIMEOUT_MS: 30000
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  WARDROBE_TIMEOUT_MS: 30000
+---
+- runFlow: ../_shared/open-first-wardrobe-item.yaml
+
+# --- 1. Enter edit mode ---
+- tapOn:
+    id: item-detail-change-btn
+- assertVisible:
+    id: item-detail-cancel-btn
+- assertVisible:
+    id: item-detail-save-btn
+- assertNotVisible:
+    id: item-detail-mix-btn
+
+# --- 2. Stage a draft change to the Fit attribute ---
+- tapOn:
+    id: item-detail-more-btn
+- tapOn:
+    id: item-detail-row-fit
+- assertVisible:
+    id: item-detail-option-Oversize
+- tapOn:
+    id: item-detail-option-Oversize
+- assertNotVisible:
+    id: item-detail-option-Oversize
+
+# --- 3. Cancel discards the draft and exits edit mode ---
+- tapOn:
+    id: item-detail-cancel-btn
+# Back to read mode: read-mode bar returns, edit bar gone. No PATCH fired.
+- assertVisible:
+    id: item-detail-mix-btn
+- assertVisible:
+    id: item-detail-change-btn
+- assertNotVisible:
+    id: item-detail-cancel-btn
+- assertNotVisible:
+    id: item-detail-save-btn

@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import {
   BottomSheetSurface,
   DividerRow,
+  PillButton,
   TopIconButton,
 } from '../components/primitives/FigmaPrimitives';
 import { Icons } from '../assets/icons';
@@ -192,14 +194,16 @@ const areTagsEqual = (left: string[], right: string[]): boolean => {
   return left.every((tag, index) => tag === right[index]);
 };
 
-const getFriendlyError = (error: any, fallback: string): string => {
+type TFn = (key: string, options?: Record<string, unknown>) => string;
+
+const getFriendlyError = (error: any, fallback: string, t: TFn): string => {
   switch (error?.response?.status) {
     case 403:
-      return "You don't have permission to modify this item.";
+      return t('wardrobe.itemDetail.error_403');
     case 404:
-      return 'Item not found. It may have been removed already.';
+      return t('wardrobe.itemDetail.error_404');
     case 429:
-      return 'Too many requests. Please wait a moment and try again.';
+      return t('wardrobe.itemDetail.error_429');
     default:
       return fallback;
   }
@@ -208,6 +212,7 @@ const getFriendlyError = (error: any, fallback: string): string => {
 export const ItemDetailScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const route = useRoute<ScreenRoute>();
+  const { t } = useTranslation();
   const { itemId } = route.params;
 
   const [item, setItem] = useState<WardrobeItem | null>(null);
@@ -241,7 +246,7 @@ export const ItemDetailScreen = () => {
         if (!data) {
           Toast.show({
             type: 'error',
-            text1: 'Item not found',
+            text1: t('wardrobe.itemDetail.toast_item_not_found'),
             position: 'bottom',
           });
           navigation.goBack();
@@ -258,8 +263,8 @@ export const ItemDetailScreen = () => {
         if (!cancelled) {
           Toast.show({
             type: 'error',
-            text1: 'Unable to load item',
-            text2: 'Please try again in a moment.',
+            text1: t('wardrobe.itemDetail.toast_load_failed_title'),
+            text2: t('wardrobe.itemDetail.toast_load_failed_body'),
             position: 'bottom',
           });
           navigation.goBack();
@@ -276,7 +281,7 @@ export const ItemDetailScreen = () => {
     return () => {
       cancelled = true;
     };
-  }, [itemId, navigation]);
+  }, [itemId, navigation, t]);
 
   const imageUrl = useMemo(() => getImageUrl(item?.image_url), [item]);
 
@@ -303,6 +308,21 @@ export const ItemDetailScreen = () => {
         return STYLE_OPTIONS;
       default:
         return [];
+    }
+  };
+
+  const getPickerFieldLabel = (field: EditableField): string => {
+    switch (field) {
+      case 'category':
+        return t('wardrobe.itemDetail.row_type');
+      case 'color':
+        return t('wardrobe.itemDetail.row_color');
+      case 'fit':
+        return t('wardrobe.itemDetail.row_fit');
+      case 'style':
+        return t('wardrobe.itemDetail.row_style');
+      default:
+        return '';
     }
   };
 
@@ -372,10 +392,11 @@ export const ItemDetailScreen = () => {
       setItem(previousItem);
       Toast.show({
         type: 'error',
-        text1: 'Favorite update failed',
+        text1: t('wardrobe.itemDetail.toast_favorite_failed_title'),
         text2: getFriendlyError(
           error,
-          'We could not update this item right now.',
+          t('wardrobe.itemDetail.toast_generic_update_failed'),
+          t,
         ),
         position: 'bottom',
       });
@@ -424,10 +445,11 @@ export const ItemDetailScreen = () => {
       setItem(previousItem);
       Toast.show({
         type: 'error',
-        text1: 'Usage update failed',
+        text1: t('wardrobe.itemDetail.toast_usage_failed_title'),
         text2: getFriendlyError(
           error,
-          'We could not update this item right now.',
+          t('wardrobe.itemDetail.toast_generic_update_failed'),
+          t,
         ),
         position: 'bottom',
       });
@@ -445,43 +467,51 @@ export const ItemDetailScreen = () => {
     if (isCatalogItem) {
       Toast.show({
         type: 'error',
-        text1: 'Common items can only be marked as Less Use',
+        text1: t('wardrobe.itemDetail.toast_catalog_delete_blocked'),
         position: 'bottom',
       });
       return;
     }
 
-    Alert.alert('Delete item?', 'This action cannot be undone.', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setSaving(true);
-            await wardrobeService.deleteWardrobeItem(item.id);
-            Toast.show({
-              type: 'success',
-              text1: 'Item deleted',
-              position: 'bottom',
-            });
-            navigation.goBack();
-          } catch (error) {
-            console.error('Failed to delete item', error);
-            Toast.show({
-              type: 'error',
-              text1: 'Delete failed',
-              text2: getFriendlyError(error, 'We could not delete this item.'),
-              position: 'bottom',
-            });
-            setSaving(false);
-          }
+    Alert.alert(
+      t('wardrobe.itemDetail.delete_title'),
+      t('wardrobe.itemDetail.delete_body'),
+      [
+        {
+          text: t('wardrobe.itemDetail.cancel'),
+          style: 'cancel',
         },
-      },
-    ]);
+        {
+          text: t('wardrobe.itemDetail.delete_confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setSaving(true);
+              await wardrobeService.deleteWardrobeItem(item.id);
+              Toast.show({
+                type: 'success',
+                text1: t('wardrobe.itemDetail.toast_deleted'),
+                position: 'bottom',
+              });
+              navigation.goBack();
+            } catch (error) {
+              console.error('Failed to delete item', error);
+              Toast.show({
+                type: 'error',
+                text1: t('wardrobe.itemDetail.toast_delete_failed_title'),
+                text2: getFriendlyError(
+                  error,
+                  t('wardrobe.itemDetail.toast_delete_failed_body'),
+                  t,
+                ),
+                position: 'bottom',
+              });
+              setSaving(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleCancelEditing = () => {
@@ -570,15 +600,19 @@ export const ItemDetailScreen = () => {
 
       Toast.show({
         type: 'success',
-        text1: 'Item updated',
+        text1: t('wardrobe.itemDetail.toast_updated'),
         position: 'bottom',
       });
     } catch (error) {
       console.error('Failed to save item updates', error);
       Toast.show({
         type: 'error',
-        text1: 'Save failed',
-        text2: getFriendlyError(error, 'We could not save your changes.'),
+        text1: t('wardrobe.itemDetail.toast_save_failed_title'),
+        text2: getFriendlyError(
+          error,
+          t('wardrobe.itemDetail.toast_save_failed_body'),
+          t,
+        ),
         position: 'bottom',
       });
     } finally {
@@ -599,6 +633,7 @@ export const ItemDetailScreen = () => {
 
     return (
       <TouchableOpacity
+        testID={`item-detail-row-${field}`}
         activeOpacity={0.85}
         disabled={!canEdit}
         onPress={() => setPickerField(field)}
@@ -606,6 +641,7 @@ export const ItemDetailScreen = () => {
         <DividerRow
           label={label}
           hideDivider={hideDivider}
+          labelStyle={styles.rowLabel}
           rightNode={
             <View style={styles.rowRight}>
               {showColor && colorHex ? (
@@ -614,7 +650,13 @@ export const ItemDetailScreen = () => {
                 />
               ) : null}
               <Text style={styles.rowValue}>{value}</Text>
-              {canEdit ? <Text style={styles.rowChevron}>{'>'}</Text> : null}
+              {canEdit ? (
+                <Icons.Edit
+                  width={18}
+                  height={18}
+                  color={theme.colors.figmaTextDark}
+                />
+              ) : null}
             </View>
           }
         />
@@ -635,15 +677,29 @@ export const ItemDetailScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView testID="item-detail-screen-root" style={styles.container}>
       <View style={styles.topRegion}>
         <View style={styles.topBar}>
           <TopIconButton
+            testID="item-detail-back-btn"
+            accessibilityLabel={t('uac.common.back')}
             onPress={() => navigation.goBack()}
-            icon={<Text style={styles.backGlyph}>{'<'}</Text>}
+            icon={
+              <Icons.ChevronLeft
+                width={22}
+                height={22}
+                color={theme.colors.figmaAction}
+              />
+            }
           />
 
           <TopIconButton
+            testID={
+              isFavorited
+                ? 'item-detail-favorite-btn-active'
+                : 'item-detail-favorite-btn'
+            }
+            accessibilityLabel={t('wardrobe.itemDetail.a11y_favorite')}
             onPress={() => {
               handleToggleFavorite();
             }}
@@ -662,13 +718,17 @@ export const ItemDetailScreen = () => {
             />
           ) : (
             <View style={styles.imageFallback}>
-              <Text style={styles.imageFallbackText}>Image unavailable</Text>
+              <Text style={styles.imageFallbackText}>
+                {t('wardrobe.itemDetail.image_unavailable')}
+              </Text>
             </View>
           )}
 
           {isCatalogItem ? (
             <View style={styles.imageBadge}>
-              <Text style={styles.imageBadgeText}>common items</Text>
+              <Text style={styles.imageBadgeText}>
+                {t('wardrobe.itemDetail.common_badge')}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -676,15 +736,45 @@ export const ItemDetailScreen = () => {
 
       <BottomSheetSurface style={styles.sheet}>
         <View style={styles.details}>
-          {/* TODO: add Name when API supports field */}
-          {renderDetailRow('Type', draftCategory, 'category')}
-          {/* TODO: add Energy when API supports field */}
-          {renderDetailRow('Style', draftStyle, 'style', !showMore)}
-          {showMore ? renderDetailRow('Color', draftColor, 'color') : null}
-          {showMore ? renderDetailRow('Fit', draftFit, 'fit', true) : null}
-          {/* TODO: add Material when API supports field */}
-          {/* TODO: add Occasion when API supports field */}
-          {/* TODO: add Purchase Date when API supports field */}
+          {/* Name — read-only (free-text edit needs a text-input picker; the
+              option picker only supports enumerations. Tracked in extraction
+              note §New backend fields). Energy/Lable/Material/Occasion/Purchase
+              Date in Figma are mock fields with no API contract — omitted until
+              backend support lands. */}
+          {item.name ? (
+            <DividerRow
+              label={t('wardrobe.itemDetail.row_name')}
+              value={item.name}
+              labelStyle={styles.rowLabel}
+              valueStyle={styles.rowValue}
+            />
+          ) : null}
+          {renderDetailRow(
+            t('wardrobe.itemDetail.row_type'),
+            draftCategory,
+            'category',
+          )}
+          {renderDetailRow(
+            t('wardrobe.itemDetail.row_style'),
+            draftStyle,
+            'style',
+            !showMore,
+          )}
+          {showMore
+            ? renderDetailRow(
+                t('wardrobe.itemDetail.row_color'),
+                draftColor,
+                'color',
+              )
+            : null}
+          {showMore
+            ? renderDetailRow(
+                t('wardrobe.itemDetail.row_fit'),
+                draftFit,
+                'fit',
+                true,
+              )
+            : null}
 
           <View style={styles.expandRow}>
             <TouchableOpacity
@@ -695,134 +785,169 @@ export const ItemDetailScreen = () => {
               style={styles.expandButton}
             >
               <Text style={styles.expandText}>
-                {showMore ? 'Less' : 'More'}
+                {showMore
+                  ? t('wardrobe.itemDetail.less')
+                  : t('wardrobe.itemDetail.more')}
               </Text>
             </TouchableOpacity>
 
-            <View style={styles.rightRow}>
-              {isEditing ? (
-                <TouchableOpacity
-                  style={styles.secondaryAction}
-                  onPress={handleCancelEditing}
-                  disabled={saving}
-                >
-                  <Text style={styles.editText}>Cancel</Text>
-                </TouchableOpacity>
-              ) : null}
-
+            {/* Read-mode "Edit" link enters edit mode. In edit mode the link is
+                disabled/greyed (per Figma "more - edit"); discard/persist move to
+                the bottom Cancel/Save bar. Hidden entirely for catalog items. */}
+            {!isCatalogItem ? (
               <TouchableOpacity
-                style={styles.secondaryAction}
-                onPress={isEditing ? handleSaveEdits : () => setIsEditing(true)}
-                disabled={saving || isCatalogItem}
+                testID="item-detail-edit-link"
+                style={styles.editLink}
+                onPress={() => setIsEditing(true)}
+                disabled={isEditing || saving}
               >
                 <Text
-                  style={[
-                    styles.editText,
-                    isCatalogItem && styles.disabledText,
-                  ]}
+                  style={[styles.editText, isEditing && styles.disabledText]}
                 >
-                  {isEditing ? 'Save' : 'Edit'}
-                </Text>
-                <Text
-                  style={[
-                    styles.editIcon,
-                    isCatalogItem && styles.disabledText,
-                  ]}
-                >
-                  {isEditing ? '+' : '*'}
+                  {t('wardrobe.itemDetail.edit')}
                 </Text>
               </TouchableOpacity>
-            </View>
+            ) : null}
           </View>
         </View>
 
         <View style={styles.actionBlock}>
-          <TouchableOpacity
-            testID="item-detail-add-btn"
-            accessibilityLabel="Add item to outfit"
-            style={styles.addPill}
-            onPress={() => {
-              Alert.alert(
-                'Coming soon',
-                'Anchor item recommendations will be enabled after the next backend update.',
-              );
-            }}
-          >
-            <Text style={styles.addPillText}>Add</Text>
-          </TouchableOpacity>
-
-          {/* Hidden while isEditing: the edit-Cancel in expandRow handles discard;
-              showing both simultaneously would let users lose unsaved changes silently.
-              showMore does not hide this — user can still cancel in expanded read mode. */}
-          {!isEditing ? (
-            <TouchableOpacity
-              testID="item-detail-cancel-btn"
-              style={styles.cancelButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          <View style={styles.bottomRow}>
-            <View style={styles.leftRow}>
-              {/* AU-287: Trash hidden for catalog items (SYSTEM + USR_* clones).
-                  User demotes them via the Less used toggle instead. */}
-              {!isCatalogItem ? (
-                <TouchableOpacity
-                  testID="item-detail-delete-btn"
-                  accessibilityLabel="Delete item"
-                  onPress={handleDelete}
-                  style={styles.iconOnlyButton}
-                  disabled={saving}
-                >
-                  <Icons.Trash width={20} height={20} />
-                </TouchableOpacity>
-              ) : null}
-
-              <TouchableOpacity
-                testID={
-                  usageFrequency === 'LESS_USED'
-                    ? 'item-detail-less-used-btn-active'
-                    : 'item-detail-less-used-btn'
-                }
-                style={[
-                  styles.secondaryAction,
-                  usageFrequency === 'LESS_USED' &&
-                    styles.secondaryActionActive,
-                ]}
-                onPress={() => {
-                  handleToggleUsageFrequency();
-                }}
+          {isEditing ? (
+            // EDIT MODE (Figma "detail - save" / "more - edit"): bottom shifts to
+            // [Cancel] [Save]. Cancel discards drafts + exits; Save persists via
+            // wardrobeService.updateWardrobeItemAttributes.
+            <View style={styles.editActionRow}>
+              <PillButton
+                testID="item-detail-cancel-btn"
+                variant="text"
+                title={t('wardrobe.itemDetail.cancel')}
+                onPress={handleCancelEditing}
                 disabled={saving}
-              >
-                <Text
-                  style={[
-                    styles.lessUsedText,
-                    usageFrequency === 'LESS_USED' && styles.lessUsedTextActive,
-                  ]}
-                >
-                  Less used
-                </Text>
-                <Text
-                  style={[
-                    styles.lessUsedIcon,
-                    usageFrequency === 'LESS_USED' && styles.lessUsedTextActive,
-                  ]}
-                >
-                  -
-                </Text>
-              </TouchableOpacity>
+                style={styles.editCancelButton}
+              />
+              <PillButton
+                testID="item-detail-save-btn"
+                variant="filled"
+                title={t('wardrobe.itemDetail.save')}
+                onPress={handleSaveEdits}
+                loading={saving}
+                disabled={saving}
+                style={styles.editSaveButton}
+              />
             </View>
-          </View>
-          {isCatalogItem ? (
-            <Text
-              testID="item-detail-catalog-explainer"
-              style={styles.catalogExplainer}
-            >
-              Common items can only be marked as Less Use.
-            </Text>
-          ) : null}
+          ) : (
+            // READ MODE (Figma "detail item - more"): Mix-with-this pill +
+            // [Trash][Less used] / [Change] row.
+            <>
+              <PillButton
+                testID="item-detail-mix-btn"
+                variant="outline"
+                title={t('wardrobe.itemDetail.mix_with_this')}
+                trailing={
+                  <Icons.Remix
+                    width={20}
+                    height={20}
+                    color={theme.colors.figmaAction}
+                  />
+                }
+                style={styles.mixPill}
+                onPress={() => {
+                  Alert.alert(
+                    t('wardrobe.itemDetail.coming_soon_title'),
+                    t('wardrobe.itemDetail.coming_soon_body'),
+                  );
+                }}
+              />
+
+              <View style={styles.bottomRow}>
+                <View style={styles.leftRow}>
+                  {/* AU-287: Trash hidden for catalog items (SYSTEM + USR_*
+                      clones). User demotes them via the Less used toggle. */}
+                  {!isCatalogItem ? (
+                    <TouchableOpacity
+                      testID="item-detail-delete-btn"
+                      accessibilityLabel={t('wardrobe.itemDetail.a11y_delete')}
+                      onPress={handleDelete}
+                      style={styles.iconOnlyButton}
+                      disabled={saving}
+                    >
+                      <Icons.Trash
+                        width={20}
+                        height={20}
+                        color={theme.colors.figmaItemDetailDanger}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+
+                  <TouchableOpacity
+                    testID={
+                      usageFrequency === 'LESS_USED'
+                        ? 'item-detail-less-used-btn-active'
+                        : 'item-detail-less-used-btn'
+                    }
+                    style={[
+                      styles.secondaryAction,
+                      usageFrequency === 'LESS_USED' &&
+                        styles.secondaryActionActive,
+                    ]}
+                    onPress={() => {
+                      handleToggleUsageFrequency();
+                    }}
+                    disabled={saving}
+                  >
+                    <Text
+                      style={[
+                        styles.lessUsedText,
+                        usageFrequency === 'LESS_USED' &&
+                          styles.lessUsedTextActive,
+                      ]}
+                    >
+                      {t('wardrobe.itemDetail.less_used')}
+                    </Text>
+                    <Icons.MinusCircle
+                      width={20}
+                      height={20}
+                      color={
+                        usageFrequency === 'LESS_USED'
+                          ? theme.colors.figmaItemDetailDanger
+                          : theme.colors.figmaAction
+                      }
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  testID="item-detail-change-btn"
+                  style={styles.secondaryAction}
+                  onPress={() => setIsEditing(true)}
+                  disabled={saving || isCatalogItem}
+                >
+                  <Text
+                    style={[
+                      styles.changeText,
+                      isCatalogItem && styles.disabledText,
+                    ]}
+                  >
+                    {t('wardrobe.itemDetail.change')}
+                  </Text>
+                  <Icons.Change
+                    width={20}
+                    height={20}
+                    color={theme.colors.figmaAction}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {isCatalogItem ? (
+                <Text
+                  testID="item-detail-catalog-explainer"
+                  style={styles.catalogExplainer}
+                >
+                  {t('wardrobe.itemDetail.catalog_explainer')}
+                </Text>
+              ) : null}
+            </>
+          )}
         </View>
       </BottomSheetSurface>
 
@@ -836,10 +961,17 @@ export const ItemDetailScreen = () => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {pickerField ? `Select ${pickerField}` : 'Select'}
+                {t('wardrobe.itemDetail.picker_title', {
+                  field: pickerField ? getPickerFieldLabel(pickerField) : '',
+                })}
               </Text>
-              <TouchableOpacity onPress={() => setPickerField(null)}>
-                <Text style={styles.modalClose}>Close</Text>
+              <TouchableOpacity
+                testID="item-detail-picker-close-btn"
+                onPress={() => setPickerField(null)}
+              >
+                <Text style={styles.modalClose}>
+                  {t('wardrobe.itemDetail.picker_close')}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -855,6 +987,7 @@ export const ItemDetailScreen = () => {
                   return (
                     <TouchableOpacity
                       key={option}
+                      testID={`item-detail-option-${option}`}
                       style={styles.optionItem}
                       onPress={() => handleSelectOption(option)}
                     >
@@ -870,7 +1003,11 @@ export const ItemDetailScreen = () => {
                         <Text style={styles.optionText}>{option}</Text>
                       </View>
                       {isSelected ? (
-                        <Text style={styles.checkedIcon}>x</Text>
+                        <Icons.ChevronRight
+                          width={18}
+                          height={18}
+                          color={theme.colors.figmaAction}
+                        />
                       ) : null}
                     </TouchableOpacity>
                   );
@@ -905,13 +1042,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 8,
   },
-  backGlyph: {
-    fontSize: 22,
-    lineHeight: 22,
-    color: theme.colors.figmaAction,
-  },
   heartButtonActive: {
-    backgroundColor: '#EEDCDD',
+    backgroundColor: theme.colors.figmaItemDetailFavoriteActive,
   },
   imageWrap: {
     flex: 1,
@@ -930,7 +1062,7 @@ const styles = StyleSheet.create({
     width: '92%',
     aspectRatio: 3 / 4,
     borderRadius: 16,
-    backgroundColor: '#E8EBF0',
+    backgroundColor: theme.colors.figmaItemDetailImageFallbackBg,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -950,7 +1082,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   imageBadgeText: {
-    fontFamily: 'Manrope-Medium',
+    ...theme.typography.aliases.interCaptionXxs,
     fontSize: 11,
     lineHeight: 14,
     color: theme.colors.white,
@@ -968,20 +1100,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  rowValue: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaTextMuted,
+  rowLabel: {
+    ...theme.typography.aliases.interBodySm,
+    color: theme.colors.figmaItemDetailRowText,
   },
-  rowChevron: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
+  rowValue: {
+    ...theme.typography.aliases.uacBodyMdSemibold,
+    color: theme.colors.figmaItemDetailRowText,
   },
   colorDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#536173',
+    borderColor: theme.colors.figmaItemDetailColorDotBorder,
   },
   actionBlock: {
     marginTop: 22,
@@ -996,12 +1128,7 @@ const styles = StyleSheet.create({
   leftRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  rightRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    gap: 4,
   },
   iconOnlyButton: {
     width: 56,
@@ -1011,42 +1138,63 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryAction: {
-    minHeight: 56,
-    borderRadius: 28,
+    height: 56,
+    borderRadius: 100,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 20,
   },
   secondaryActionActive: {
-    backgroundColor: '#F6EDEE',
+    backgroundColor: theme.colors.figmaItemDetailLessUsedActive,
   },
   lessUsedText: {
-    ...theme.typography.aliases.archivoBody,
+    ...theme.typography.aliases.uacBodyMdMedium,
     color: theme.colors.figmaAction,
   },
   lessUsedTextActive: {
-    color: theme.colors.figmaRed,
+    color: theme.colors.figmaItemDetailDanger,
   },
-  lessUsedIcon: {
+  changeText: {
+    ...theme.typography.aliases.uacBodyMdMedium,
     color: theme.colors.figmaAction,
-    fontSize: 24,
-    lineHeight: 24,
   },
   editText: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
+    ...theme.typography.aliases.uacBodyXsMedium,
+    color: theme.colors.figmaTextDark,
   },
-  editIcon: {
-    color: theme.colors.figmaAction,
-    fontSize: 18,
-    lineHeight: 18,
+  editLink: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  editActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  editCancelButton: {
+    flex: 1,
+    // Figma "Text button / size 56": match the Save pill's height + radius so
+    // the two bottom buttons align. PillButton's `text` variant defaults to h40.
+    height: 56,
+    borderRadius: 100,
+    paddingHorizontal: 20,
+  },
+  editSaveButton: {
+    flex: 1,
+    borderRadius: 16,
+  },
+  mixPill: {
+    alignSelf: 'stretch',
+    // qa-ui M4 (Figma node 2852-7175): Mix pill is a rounded rect (r16), not a
+    // stadium. PillButton.pillBase defaults to r100; override here only.
+    borderRadius: 16,
   },
   disabledText: {
     opacity: 0.45,
   },
   catalogExplainer: {
-    ...theme.typography.aliases.archivoBody,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextMuted,
     fontSize: 12,
     lineHeight: 16,
@@ -1059,7 +1207,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '55%',
@@ -1072,15 +1220,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: '#ECECEC',
+    borderBottomColor: theme.colors.figmaItemDetailModalDivider,
   },
   modalTitle: {
-    ...theme.typography.aliases.manropeBody,
-    color: theme.colors.figmaAction,
+    ...theme.typography.aliases.uacBodyMdSemibold,
+    color: theme.colors.figmaItemDetailRowText,
   },
   modalClose: {
-    ...theme.typography.aliases.manropeBody,
-    color: '#4F4F4F',
+    ...theme.typography.aliases.uacBodyMdMedium,
+    color: theme.colors.figmaItemDetailModalClose,
   },
   optionItem: {
     flexDirection: 'row',
@@ -1089,7 +1237,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: theme.colors.figmaItemDetailOptionDivider,
   },
   optionLeft: {
     flexDirection: 'row',
@@ -1101,15 +1249,11 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 1,
-    borderColor: '#D0D5DD',
+    borderColor: theme.colors.figmaItemDetailOptionDotBorder,
   },
   optionText: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
-  },
-  checkedIcon: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.figmaAction,
+    ...theme.typography.aliases.interBodyMd,
+    color: theme.colors.figmaItemDetailRowText,
   },
   expandRow: {
     flexDirection: 'row',
@@ -1122,34 +1266,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   expandText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 12,
-    lineHeight: 16,
+    ...theme.typography.aliases.uacBodyXsMedium,
     color: theme.colors.figmaTextDark,
-  },
-  addPill: {
-    height: 56,
-    borderRadius: 28,
-    // TODO AU-272: pending designer confirm — keep '#1d1f23' until token approved
-    backgroundColor: '#1d1f23',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addPillText: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#ffffff',
-  },
-  cancelButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  cancelText: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 16,
-    lineHeight: 24,
-    color: theme.colors.figmaDestructive,
   },
 });

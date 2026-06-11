@@ -33,6 +33,10 @@ import IconCanvasLayerDown from '../images/canvas-icons/layer_down.svg';
 import IconCanvasDuplicate from '../images/canvas-icons/duplicate.svg';
 import IconCanvasSwap from '../images/canvas-icons/swap.svg';
 import IconCanvasDelete from '../images/canvas-icons/trash.svg';
+import IconEdit from '../images/icon_edit.svg';
+import IconMinusCircle from '../images/icon_minus_circle.svg';
+import IconChange from '../images/icon_change.svg';
+import IconRemix from '../images/icon_remix.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -70,6 +74,10 @@ export const Icons = {
   SeeOutfit: IconSeeOutfit,
   SwipeHand: IconSwipeHand,
   CanvasSwap: IconCanvasSwap,
+  Edit: IconEdit,
+  MinusCircle: IconMinusCircle,
+  Change: IconChange,
+  Remix: IconRemix,
 };
 
 export {

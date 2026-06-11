@@ -1,0 +1,119 @@
+# auxi/maestro/flows/auth/au315-forgot-gmail-notice.yaml
+# AU-315: on the forgot-password REQUEST screen, submitting a Gmail-domain
+# address now triggers a REAL action — inline "reset in Gmail" guidance
+# (forgot-request-gmail-notice) instead of the previous no-op that advanced to
+# a check-mail screen which never receives mail. The backend silently skips
+# OAuth-only accounts on /api/auth/forgot-password, so the client short-circuits
+# on isGoogleEmail() and shows neutral info guidance WITHOUT navigating.
+#
+# Entry: this flow reaches ForgotPasswordRequest via the canonical UI path
+# (Welcome -> Email -> PasswordCreation 409 -> SignIn -> "Forgot password?")
+# using a seeded verified password account, then OVERWRITES the prefilled
+# email field with a gmail address to exercise the AU-315 branch. The field is
+# editable (route param is only the initial value), so no gmail account needs
+# to exist in the DB — the gmail check is pure client-side.
+#
+# Prerequisites: a verified password test account so SignIn -> forgot-link is
+# reachable. Reuse the existing qa-signin@auxi.app / Pass1234 seed (see
+# uac-happy-signin.yaml header for the seed commands).
+#
+# Run: maestro test maestro/flows/auth/au315-forgot-gmail-notice.yaml \
+#        -e QA_EMAIL=qa-signin@auxi.app -e QA_PASSWORD=Pass1234 \
+#        -e QA_GMAIL=qa-gmail-au315@gmail.com
+
+appId: com.auxi2026.app
+name: au315-forgot-gmail-notice
+tags:
+  - au-315
+  - auth
+  - uac
+env:
+  QA_EMAIL: qa-signin@auxi.app
+  QA_PASSWORD: Pass1234
+  QA_GMAIL: qa-gmail-au315@gmail.com
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+# --- Reach SignIn via the existing-account email path -------------------
+- extendedWaitUntil:
+    visible:
+      id: welcome-cta-email
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
+- tapOn:
+    id: welcome-cta-email
+
+- extendedWaitUntil:
+    visible:
+      id: email-input-field
+    timeout: 5000
+- tapOn:
+    id: email-input-field
+- inputText: ${QA_EMAIL}
+- tapOn:
+    id: email-submit-button
+
+# Existing password account: precheck "password" -> SignIn directly. (Belt &
+# suspenders: if the build instead routes via PasswordCreation -> 409, submit
+# the password to bounce onward.)
+- runFlow:
+    when:
+      visible:
+        id: password-input-field
+    commands:
+      - tapOn:
+          id: password-input-field
+      - inputText: ${QA_PASSWORD}
+      - tapOn:
+          id: password-submit-button
+
+- extendedWaitUntil:
+    visible:
+      id: signin-forgot-link
+    timeout: 10000
+- tapOn:
+    id: signin-forgot-link
+
+# --- ForgotPasswordRequest: swap in a gmail address ---------------------
+- extendedWaitUntil:
+    visible:
+      id: forgot-request-email-input
+    timeout: 5000
+- assertVisible:
+    id: forgot-request-heading
+
+- tapOn:
+    id: forgot-request-email-input
+- eraseText: 40
+- inputText: ${QA_GMAIL}
+
+# Submit a gmail address -> AU-315 inline notice, NO navigation.
+- tapOn:
+    id: forgot-request-submit
+
+- extendedWaitUntil:
+    visible:
+      id: forgot-request-gmail-notice
+    timeout: 5000
+
+# We must STILL be on the request screen — the no-op check-mail navigation is
+# the exact bug AU-315 fixed. Assert we did NOT advance.
+- assertVisible:
+    id: forgot-request-email-input
+- assertVisible:
+    id: forgot-request-submit
+- assertNotVisible:
+    id: forgot-password-check-mail-screen
+# The generic/rate-limit error must NOT be shown — the notice is informational,
+# not an error state.
+- assertNotVisible:
+    id: forgot-request-error
+
+# --- Editing the email clears the notice (regression guard) -------------
+- tapOn:
+    id: forgot-request-email-input
+- inputText: x
+- assertNotVisible:
+    id: forgot-request-gmail-notice
