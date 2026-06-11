@@ -293,6 +293,13 @@ export interface BuildTrace {
   /** Phase 0 — distinct anchors across primary + alternates. */
   anchor_diversity_score?: number | null;
   anchor_diversity_pool_size?: number | null;
+  /**
+   * Diversity plan 260611-2012 (try_another traces only) — served outfit's
+   * composite distance to the nearest seen outfit, and the active floor
+   * (0.35, or 0.175 when relaxed). Diagnostic only — no UI behavior.
+   */
+  min_distance?: number | null;
+  distance_floor?: number | null;
 }
 
 /**
@@ -311,9 +318,9 @@ export interface BuildRecommendationResponse {
   trace: BuildTrace;
   /**
    * Server-issued session ID (UUIDv4). Pass back to `/try_another` to
-   * preserve seen-set + axis cycling. Null if the session-cache write
-   * failed (stateless degraded mode — try_another still works but
-   * cross-call diversity weakens).
+   * preserve the seen-set for distance-based diversity. Null if the
+   * session-cache write failed (stateless degraded mode — try_another
+   * still works but cross-call diversity weakens).
    */
   session_id?: string | null;
   /**
@@ -337,21 +344,6 @@ export interface BuildRecommendationResponse {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * V05 variation axis (contract §3). FIVE values — kept deliberately
- * SEPARATE from the V2 `RecommendationVariationAxis` enum (4 values incl.
- * `NEW_ANCHOR`). Per contract §7: do NOT share enum strings between V2 and
- * V05 calls.
- */
-export const V05_VARIATION_AXES = [
-  'silhouette',
-  'color',
-  'layering',
-  'footwear',
-  'accessory',
-] as const;
-export type VariationAxis = (typeof V05_VARIATION_AXES)[number];
-
-/**
  * V05 mode tone hint (contract §3). Recorded for telemetry; a no-op in the
  * MVP engine until AU-221 wires modes through. Mirrors the V2-side
  * `RecommendationMode` string union but kept local so V05 stays
@@ -366,7 +358,6 @@ export type V05RecommendationMode = 'safe' | 'power' | 'creative';
 export interface TryAnotherInput {
   session_id: string;
   current_outfit_hash: string;
-  axis?: VariationAxis;
   style_feedback?: string;
   pinned_item_id?: string;
   mode?: V05RecommendationMode;
@@ -381,7 +372,9 @@ export interface TryAnotherInput {
 export interface TryAnotherResponse {
   outfit: V05Outfit | null;
   session_id: string;
-  variation_axis: VariationAxis;
+  // NOTE: the wire still carries a deprecated `variation_axis` field —
+  // ALWAYS null since the diversity plan (260611-2012) — intentionally
+  // undeclared here so nothing can read it. Backend removes it next.
   fallback: boolean;
   fallback_flags: string[];
   trace?: BuildTrace;
@@ -500,7 +493,8 @@ export const submitFeedback = async (
 
 /**
  * `POST /api/v05/recommendation/try_another` — thin wrapper. Serves a
- * cheap variation from the session's Redis pool (axis-distance scored),
+ * cheap variation from the session's Redis pool (distance-based diversity
+ * selection vs ALL outfits seen this session — diversity plan 260611-2012),
  * recomposing only on cache-miss. ~1/100th the cost of `/build`.
  *
  * Auth: Bearer JWT (apiClient interceptor handles it).
@@ -577,7 +571,6 @@ export interface RecommendV05Params {
   count?: number;
   // Per-variation inputs (threaded into `/try_another`).
   current_outfit_hash?: string;
-  axis?: VariationAxis;
   style_feedback?: string;
   pinned_item_id?: string;
   mode?: V05RecommendationMode;
@@ -653,7 +646,6 @@ export const recommendV05 = async (
   const tryAnotherInput: TryAnotherInput = {
     session_id: v05SessionId,
     current_outfit_hash: params.current_outfit_hash ?? v05LastOutfitHash ?? '',
-    ...(params.axis ? { axis: params.axis } : {}),
     ...(params.style_feedback ? { style_feedback: params.style_feedback } : {}),
     ...(params.pinned_item_id ? { pinned_item_id: params.pinned_item_id } : {}),
     ...(params.mode ? { mode: params.mode } : {}),
