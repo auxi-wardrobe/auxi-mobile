@@ -187,11 +187,9 @@
     },
     "wardrobe": {
       "itemDetail": {
-        "mix_with_this": "Mix with this",
-        "less_used": "Less used",
-        "change": "Change",
-        "more": "More",
-        "less": "Less",
+        "build_around_this": "Build around this",
+        "less_used": "Less use",
+        "date_label": "Date: {{date}}",
         "edit": "Edit",
         "save": "Save",
         "cancel": "Cancel",
@@ -201,8 +199,7 @@
         "row_style": "Style",
         "row_color": "Color",
         "row_fit": "Fit",
-        "common_badge": "common items",
-        "catalog_explainer": "Common items can only be marked as Less Use.",
+        "common_badge": "common",
         "picker_title": "Select {{field}}",
         "picker_close": "Close",
         "coming_soon_title": "Coming soon",
@@ -219,7 +216,6 @@
         "toast_updated": "Item updated",
         "toast_save_failed_title": "Save failed",
         "toast_save_failed_body": "We could not save your changes.",
-        "toast_favorite_failed_title": "Favorite update failed",
         "toast_usage_failed_title": "Usage update failed",
         "toast_generic_update_failed": "We could not update this item right now.",
         "toast_catalog_delete_blocked": "Common items can only be marked as Less Use",
@@ -227,7 +223,6 @@
         "error_404": "Item not found. It may have been removed already.",
         "error_429": "Too many requests. Please wait a moment and try again.",
         "a11y_delete": "Delete item",
-        "a11y_favorite": "Toggle favorite",
         "image_unavailable": "Image unavailable"
       }
     }

@@ -93,6 +93,10 @@ export const theme = {
     figmaItemDetailOptionDivider: '#f0f0f0', // picker option-row hairline
     figmaItemDetailOptionDotBorder: '#d0d5dd', // border/neutral/subtle_100 — color option dot border
     figmaItemDetailModalClose: '#4f4f4f', // picker "Close" label
+    // AU-312 item-detail pushed screen (Figma node 2852:14557). Source:
+    // plans/260611-1424-linear-autopilot-eval/figma-extraction-item-detail.md
+    figmaOverlayDark10: 'rgba(130, 113, 55, 0.1)', // background/overlay/dark/10 (#8271371a) — back-button drop-shadow tint
+    figmaItemDetailHeaderBg: 'rgba(255, 255, 255, 0.9)', // header bar: background/neutral/subtlest @90%; approximates Figma backdrop-blur 7.5 without a blur dependency (qa-ui safe default #5)
   },
   spacing: {
     xs: 4,
@@ -206,6 +210,14 @@ export const theme = {
       },
       uacH4Bold: {
         fontFamily: 'Poppins-Bold',
+        fontSize: 24,
+        lineHeight: 32,
+      },
+      // AU-312 item-detail title (Figma 2852:14557 "Denim jacket").
+      // Figma H4/SemiBold = Poppins SemiBold 24/32 — weight 600, NOT the 700
+      // of uacH4Bold above. Poppins-SemiBold.ttf is bundled.
+      poppinsH4SemiBold: {
+        fontFamily: 'Poppins-SemiBold',
         fontSize: 24,
         lineHeight: 32,
       },

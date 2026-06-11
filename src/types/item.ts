@@ -2,6 +2,7 @@ export interface Item {
   id: string;
   image_url: string;
   image_png?: string | null; // background-removed PNG cutout; falls back to image_url
+  name?: string | null; // display name (V05OutfitItem.name); null when backend has none
 
   category: string; // e.g., 'Top', 'Bottom', 'Shoes'
   color: string;

@@ -31,7 +31,6 @@ import {
   ContextChipOption,
   ContextChipsModal,
 } from '../components/features/ContextChipsModal';
-import { ItemDetailBottomSheet } from '../components/features/ItemDetailBottomSheet';
 import {
   LEGACY_COACHMARK_STORAGE_KEY,
   SwipeCoachMark,
@@ -377,7 +376,6 @@ export const HomeScreen = () => {
   // ScrollView and the inner grid scroll so a native scroll can't hijack the
   // drag (the long-press arm fires this before any movement).
   const [collageDragActive, setCollageDragActive] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [contextSuggestionSetIndex, setContextSuggestionSetIndex] = useState(0);
   const [selectedContextChipId, setSelectedContextChipId] =
@@ -630,6 +628,10 @@ export const HomeScreen = () => {
         id: it.id,
         image_url: it.image_url ?? '',
         image_png: it.image_png ?? null,
+        // AU-312 review fix: carry the backend display name so the
+        // ItemDetail fallback payload can render a real title instead of
+        // degrading to the category label.
+        name: it.name ?? null,
         category: it.category_family
           ? FAMILY_TO_CATEGORY[it.category_family] ?? it.category_family
           : 'Top',
@@ -1353,6 +1355,29 @@ export const HomeScreen = () => {
     navigation.navigate('OutfitCanvas', items.length ? { items } : undefined);
   }, [navigation]);
 
+  // AU-312: item tap PUSHES the full ItemDetail screen (Back header) instead
+  // of opening the old ItemDetailBottomSheet modal — the designer rejected
+  // the popup presentation. `fallbackItem` ships the tile payload so V05
+  // `common_essential` injections (ids absent from the user's wardrobe
+  // list → getWardrobeItem misses) still render instead of bouncing back
+  // with a "not found" toast (extraction note Q7).
+  const handleOpenItemDetail = useCallback(
+    (item: Item) => {
+      navigation.navigate('ItemDetail', {
+        itemId: item.id,
+        fallbackItem: {
+          id: item.id,
+          image_url: item.image_url,
+          image_png: item.image_png ?? undefined,
+          name: item.name ?? undefined,
+          category: item.category,
+          is_common_item: item.isSystem,
+        },
+      });
+    },
+    [navigation],
+  );
+
   // AU-303: outer vertical pager momentum-end → resolve which SET the viewport
   // landed on (offset / set height) and commit it.
   const handleSetMomentumEnd = (
@@ -1556,7 +1581,7 @@ export const HomeScreen = () => {
               collageDragActive={collageDragActive}
               homeView={homeView}
               isLastSet={set.setIndex >= sets.length - 1}
-              onItemPress={item => setSelectedItem(item)}
+              onItemPress={handleOpenItemDetail}
               onTogglePin={handleToggleItemPin}
               onHeartTap={handleHeartTapForOutfit}
               onEditContext={handleOpenContextEditModal}
@@ -1581,12 +1606,6 @@ export const HomeScreen = () => {
         testID="home-footer-view-toggle"
         activeView={homeView}
         onSelectView={setHomeView}
-      />
-
-      <ItemDetailBottomSheet
-        visible={!!selectedItem}
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
       />
 
       <ContextChipsModal

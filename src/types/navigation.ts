@@ -29,6 +29,22 @@ export type AuthStackParamList = {
   Verified: { source: UacVerifiedSource };
 };
 
+/**
+ * AU-312 — minimal serializable payload Home passes alongside `itemId` so
+ * ItemDetail can render items whose id misses the user's wardrobe lookup
+ * (V05 `common_essential` injections). Mirrors the WardrobeItem fields the
+ * read-mode screen actually shows; unfetchable fields stay undefined and
+ * the screen degrades gracefully (no date row, category-label title).
+ */
+export interface ItemDetailFallbackItem {
+  id: string;
+  image_url?: string;
+  image_png?: string;
+  name?: string;
+  category?: string;
+  is_common_item?: boolean;
+}
+
 export interface TryOnOutfitContext {
   outfitHash: string;
   itemIds: string[];
@@ -96,7 +112,12 @@ export type AppStackParamList = {
   OnboardingLoading: { selection: V05OnboardingSelection };
   OnboardingCompleted: { selection: V05OnboardingSelection };
   OnboardingOutro: { selection: V05OnboardingSelection };
-  ItemDetail: { itemId: string };
+  // AU-312: `fallbackItem` carries the Home tile's payload so the pushed
+  // detail screen can still render V05 `common_essential` injections —
+  // those ids are NOT in the user's wardrobe list, so the
+  // wardrobeService.getWardrobeItem(id) lookup misses (see
+  // figma-extraction-item-detail.md Q7). Keep it serializable.
+  ItemDetail: { itemId: string; fallbackItem?: ItemDetailFallbackItem };
   Database: undefined;
   OutfitCanvas:
     | {
