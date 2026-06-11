@@ -4,7 +4,6 @@ import {
   Alert,
   Image,
   Modal,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import {
@@ -23,7 +23,6 @@ import {
 } from '../components/primitives/FigmaPrimitives';
 import { Icons } from '../assets/icons';
 import {
-  getItemFavoriteState,
   getItemFitLabel,
   getItemStyleTags,
   getItemUsageFrequency,
@@ -65,9 +64,37 @@ const COLOR_OPTIONS = [
   { label: 'Purple', hex: '#A493BE' },
   { label: 'Orange', hex: '#C68A5A' },
 ];
-const STYLE_TAG_FAVORITE = 'favorite';
 const STYLE_TAG_LESS_USED = 'less-used';
 const FIT_TAG_PREFIX = 'fit:';
+
+// AU-312 (Figma 2852:14557) one-off literals — flagged in
+// figma-extraction-item-detail.md §One-off literals, not in the spacing scale:
+// image frame is 378 wide on the 414 frame → 18px side margins; frame is
+// 378×504 (3:4); button group bottom padding 36 = home-indicator allowance.
+const IMAGE_SIDE_MARGIN = 18;
+const IMAGE_ASPECT = 3 / 4;
+const SHEET_BOTTOM_PADDING = 36;
+
+/**
+ * AU-312: Figma read mode shows "Date: 11/06/2026" under the title.
+ * Source field is `created_at`, rendered dd/mm/yyyy (qa-ui safe default #2).
+ * Returns null on missing/invalid input so the row can be hidden (fallback
+ * items pushed from Home carry no created_at). Exported for unit tests.
+ */
+export const formatItemDate = (iso?: string): string | null => {
+  if (!iso) {
+    return null;
+  }
+
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const dd = String(parsed.getDate()).padStart(2, '0');
+  const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${parsed.getFullYear()}`;
+};
 
 const toTitleCase = (value: string): string =>
   value.replace(/_/g, ' ').replace(/\b\w/g, match => match.toUpperCase());
@@ -212,8 +239,9 @@ const getFriendlyError = (error: any, fallback: string, t: TFn): string => {
 export const ItemDetailScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const route = useRoute<ScreenRoute>();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { itemId } = route.params;
+  const { itemId, fallbackItem } = route.params;
 
   const [item, setItem] = useState<WardrobeItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -224,7 +252,13 @@ export const ItemDetailScreen = () => {
   const [draftColor, setDraftColor] = useState('Blue');
   const [draftFit, setDraftFit] = useState('Regular');
   const [draftStyle, setDraftStyle] = useState('Casual');
-  const [showMore, setShowMore] = useState(false);
+  // Measured size of the flexible region between header and bottom panel —
+  // the 3:4 image frame is fitted into it (Figma: 378×504 centred, 18px
+  // side margins; height-constrained devices shrink the frame, not crop it).
+  const [imageRegion, setImageRegion] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   const syncDraftsFromItem = (nextItem: WardrobeItem) => {
     setDraftCategory(normalizeCategoryLabel(nextItem.category));
@@ -238,12 +272,37 @@ export const ItemDetailScreen = () => {
   useEffect(() => {
     let cancelled = false;
 
+    // AU-312 Q7 guard (documented decision): Home passes V05 recommendation
+    // ids. `wardrobeService.getWardrobeItem` is a list+find over the USER's
+    // wardrobe, so V05 `common_essential` injections (not cloned into the
+    // wardrobe) miss the lookup. Instead of bouncing back with a "not found"
+    // toast, render from the route's fallback payload; unfetchable fields
+    // degrade gracefully (no created_at → date row hidden, no name →
+    // category-label title, is_common_item → catalog rules apply).
+    const applyFallback = (): boolean => {
+      if (!fallbackItem) {
+        return false;
+      }
+
+      const fromFallback: WardrobeItem = { ...fallbackItem };
+      setItem(fromFallback);
+      syncDraftsFromItem(fromFallback);
+      return true;
+    };
+
     const loadItem = async () => {
       try {
         setLoading(true);
         const data = await wardrobeService.getWardrobeItem(itemId);
 
+        if (cancelled) {
+          return;
+        }
+
         if (!data) {
+          if (applyFallback()) {
+            return;
+          }
           Toast.show({
             type: 'error',
             text1: t('wardrobe.itemDetail.toast_item_not_found'),
@@ -253,22 +312,26 @@ export const ItemDetailScreen = () => {
           return;
         }
 
-        if (!cancelled) {
-          setItem(data);
-          syncDraftsFromItem(data);
-        }
+        setItem(data);
+        syncDraftsFromItem(data);
       } catch (error) {
         console.error('Failed to load wardrobe item', error);
 
-        if (!cancelled) {
-          Toast.show({
-            type: 'error',
-            text1: t('wardrobe.itemDetail.toast_load_failed_title'),
-            text2: t('wardrobe.itemDetail.toast_load_failed_body'),
-            position: 'bottom',
-          });
-          navigation.goBack();
+        if (cancelled) {
+          return;
         }
+
+        if (applyFallback()) {
+          return;
+        }
+
+        Toast.show({
+          type: 'error',
+          text1: t('wardrobe.itemDetail.toast_load_failed_title'),
+          text2: t('wardrobe.itemDetail.toast_load_failed_body'),
+          position: 'bottom',
+        });
+        navigation.goBack();
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -281,11 +344,36 @@ export const ItemDetailScreen = () => {
     return () => {
       cancelled = true;
     };
-  }, [itemId, navigation, t]);
+  }, [itemId, fallbackItem, navigation, t]);
 
-  const imageUrl = useMemo(() => getImageUrl(item?.image_url), [item]);
+  // AU-312 review fix: prefer the background-removed cutout (`image_png`)
+  // like every other surface (see utils/url.ts resolveItemImage). That
+  // helper's input requires a non-optional `image_url` (legacy Item shape),
+  // which WardrobeItem doesn't satisfy — apply the same png-first
+  // preference via getImageUrl directly.
+  const imageUrl = useMemo(
+    () => getImageUrl(item?.image_png || item?.image_url),
+    [item],
+  );
 
-  const isFavorited = getItemFavoriteState(item);
+  // Fit the Figma 378×504 (3:4) image frame into the measured flexible
+  // region: width-bound on tall screens (region width − 2×18 margins),
+  // height-bound on short ones so the frame never pushes the bottom panel.
+  const imageFrame = useMemo(() => {
+    if (!imageRegion) {
+      return null;
+    }
+
+    const width = Math.max(
+      Math.min(
+        imageRegion.width - IMAGE_SIDE_MARGIN * 2,
+        imageRegion.height * IMAGE_ASPECT,
+      ),
+      0,
+    );
+    return { width, height: width / IMAGE_ASPECT };
+  }, [imageRegion]);
+
   const usageFrequency = getItemUsageFrequency(item);
   const isCommonSystemItem = item?.is_common_item === true;
   // AU-287: SYSTEM common items AND per-user clones (USR_* hrid) belong to
@@ -351,57 +439,9 @@ export const ItemDetailScreen = () => {
     setPickerField(null);
   };
 
-  const handleToggleFavorite = async () => {
-    if (!item || saving) {
-      return;
-    }
-
-    const nextFavorited = !isFavorited;
-    const previousItem = item;
-    const nextTags = replaceTag(
-      getItemStyleTags(item),
-      STYLE_TAG_FAVORITE,
-      nextFavorited,
-    );
-
-    setItem({
-      ...item,
-      is_favorited: nextFavorited,
-      style_tags: nextTags,
-    });
-
-    try {
-      const updatedItem = await wardrobeService.toggleFavorite(
-        item.id,
-        nextFavorited,
-      );
-      setItem(currentItem =>
-        currentItem
-          ? {
-              ...currentItem,
-              ...updatedItem,
-              is_favorited: nextFavorited,
-              style_tags: Array.isArray(updatedItem.style_tags)
-                ? updatedItem.style_tags
-                : nextTags,
-            }
-          : currentItem,
-      );
-    } catch (error) {
-      console.error('Failed to toggle favorite', error);
-      setItem(previousItem);
-      Toast.show({
-        type: 'error',
-        text1: t('wardrobe.itemDetail.toast_favorite_failed_title'),
-        text2: getFriendlyError(
-          error,
-          t('wardrobe.itemDetail.toast_generic_update_failed'),
-          t,
-        ),
-        position: 'bottom',
-      });
-    }
-  };
+  // AU-312: favorite/heart removed from this screen — updated Figma header
+  // variant is rightIcon=no (qa-ui safe default #1; flagged for CEO: where
+  // does item-favoriting live next?).
 
   const handleToggleUsageFrequency = async () => {
     if (!item || saving) {
@@ -676,181 +716,171 @@ export const ItemDetailScreen = () => {
     return null;
   }
 
+  // Figma read mode shows ONLY title + date. Title = item name; fallback
+  // items pushed from Home may carry no name → degrade to the category label.
+  const titleText = item.name?.trim() || normalizeCategoryLabel(item.category);
+  const dateText = formatItemDate(item.created_at);
+
   return (
-    <SafeAreaView testID="item-detail-screen-root" style={styles.container}>
-      <View style={styles.topRegion}>
-        <View style={styles.topBar}>
-          <TopIconButton
-            testID="item-detail-back-btn"
-            accessibilityLabel={t('uac.common.back')}
-            onPress={() => navigation.goBack()}
-            icon={
-              <Icons.ChevronLeft
-                width={22}
-                height={22}
-                color={theme.colors.figmaAction}
-              />
-            }
-          />
-
-          <TopIconButton
-            testID={
-              isFavorited
-                ? 'item-detail-favorite-btn-active'
-                : 'item-detail-favorite-btn'
-            }
-            accessibilityLabel={t('wardrobe.itemDetail.a11y_favorite')}
-            onPress={() => {
-              handleToggleFavorite();
-            }}
-            disabled={saving}
-            style={isFavorited ? styles.heartButtonActive : undefined}
-            icon={<Icons.Heart width={22} height={22} />}
-          />
-        </View>
-
-        <View style={styles.imageWrap}>
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.image}
-              resizeMode="contain"
-            />
-          ) : (
-            <View style={styles.imageFallback}>
-              <Text style={styles.imageFallbackText}>
-                {t('wardrobe.itemDetail.image_unavailable')}
-              </Text>
-            </View>
-          )}
-
-          {isCatalogItem ? (
-            <View style={styles.imageBadge}>
-              <Text style={styles.imageBadgeText}>
-                {t('wardrobe.itemDetail.common_badge')}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+    <View testID="item-detail-screen-root" style={styles.container}>
+      {/* Pinned header (Figma instance 3227:24191, variant rightIcon=no):
+          single back button, white@90% bar extends behind the status bar.
+          The Figma backdrop-blur 7.5 is approximated by the near-opaque
+          rgba token — no blur dependency (qa-ui safe default #5). */}
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <TopIconButton
+          testID="item-detail-back-btn"
+          accessibilityLabel={t('uac.common.back')}
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          icon={
+            // icon_chevron_left.svg has a baked #272A32 stroke shared by 6
+            // other screens — normalizing it to currentColor is outside the
+            // AU-312 blast radius. Figma wants #070707; the delta between
+            // the two near-blacks is imperceptible. Follow-up: a
+            // figma-icons-sync normalization pass over legacy SVGs.
+            <Icons.ChevronLeft width={24} height={24} />
+          }
+        />
       </View>
 
-      <BottomSheetSurface style={styles.sheet}>
-        <View style={styles.details}>
-          {/* Name — read-only (free-text edit needs a text-input picker; the
-              option picker only supports enumerations. Tracked in extraction
-              note §New backend fields). Energy/Lable/Material/Occasion/Purchase
-              Date in Figma are mock fields with no API contract — omitted until
-              backend support lands. */}
-          {item.name ? (
-            <DividerRow
-              label={t('wardrobe.itemDetail.row_name')}
-              value={item.name}
-              labelStyle={styles.rowLabel}
-              valueStyle={styles.rowValue}
-            />
-          ) : null}
-          {renderDetailRow(
-            t('wardrobe.itemDetail.row_type'),
-            draftCategory,
-            'category',
-          )}
-          {renderDetailRow(
-            t('wardrobe.itemDetail.row_style'),
-            draftStyle,
-            'style',
-            !showMore,
-          )}
-          {showMore
-            ? renderDetailRow(
+      <View
+        style={styles.imageRegion}
+        onLayout={event => {
+          const { width, height } = event.nativeEvent.layout;
+          setImageRegion({ width, height });
+        }}
+      >
+        {imageFrame ? (
+          <View style={[styles.imageFrame, imageFrame]}>
+            {imageUrl ? (
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.imageFallback}>
+                <Text style={styles.imageFallbackText}>
+                  {t('wardrobe.itemDetail.image_unavailable')}
+                </Text>
+              </View>
+            )}
+
+            {isCatalogItem ? (
+              <View style={styles.imageBadge}>
+                <Text style={styles.imageBadgeText}>
+                  {t('wardrobe.itemDetail.common_badge')}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+
+      {/* Bottom panel (Figma component 3516:18640). Read mode = title +
+          date + button group ONLY — attribute rows moved to the Edit flow
+          (qa-ui safe default #3). pb 36 covers the home indicator zone
+          (extraction §One-off literals); larger future insets win. */}
+      <BottomSheetSurface
+        style={{
+          ...styles.sheet,
+          paddingBottom: Math.max(SHEET_BOTTOM_PADDING, insets.bottom),
+        }}
+      >
+        {isEditing ? (
+          // EDIT MODE (Figma 3508:8356): editable attribute list + bottom
+          // [Cancel] [Save]. Name stays read-only (free-text edit needs a
+          // text-input picker; the option picker only supports enumerations
+          // — tracked in extraction note §New backend fields).
+          <>
+            <View style={styles.details}>
+              {item.name ? (
+                <DividerRow
+                  label={t('wardrobe.itemDetail.row_name')}
+                  value={item.name}
+                  labelStyle={styles.rowLabel}
+                  valueStyle={styles.rowValue}
+                />
+              ) : null}
+              {renderDetailRow(
+                t('wardrobe.itemDetail.row_type'),
+                draftCategory,
+                'category',
+              )}
+              {renderDetailRow(
+                t('wardrobe.itemDetail.row_style'),
+                draftStyle,
+                'style',
+              )}
+              {renderDetailRow(
                 t('wardrobe.itemDetail.row_color'),
                 draftColor,
                 'color',
-              )
-            : null}
-          {showMore
-            ? renderDetailRow(
+              )}
+              {renderDetailRow(
                 t('wardrobe.itemDetail.row_fit'),
                 draftFit,
                 'fit',
                 true,
-              )
-            : null}
-
-          <View style={styles.expandRow}>
-            <TouchableOpacity
-              testID={
-                showMore ? 'item-detail-less-btn' : 'item-detail-more-btn'
-              }
-              onPress={() => setShowMore(prev => !prev)}
-              style={styles.expandButton}
-            >
-              <Text style={styles.expandText}>
-                {showMore
-                  ? t('wardrobe.itemDetail.less')
-                  : t('wardrobe.itemDetail.more')}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Read-mode "Edit" link enters edit mode. In edit mode the link is
-                disabled/greyed (per Figma "more - edit"); discard/persist move to
-                the bottom Cancel/Save bar. Hidden entirely for catalog items. */}
-            {!isCatalogItem ? (
-              <TouchableOpacity
-                testID="item-detail-edit-link"
-                style={styles.editLink}
-                onPress={() => setIsEditing(true)}
-                disabled={isEditing || saving}
-              >
-                <Text
-                  style={[styles.editText, isEditing && styles.disabledText]}
-                >
-                  {t('wardrobe.itemDetail.edit')}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
-
-        <View style={styles.actionBlock}>
-          {isEditing ? (
-            // EDIT MODE (Figma "detail - save" / "more - edit"): bottom shifts to
-            // [Cancel] [Save]. Cancel discards drafts + exits; Save persists via
-            // wardrobeService.updateWardrobeItemAttributes.
-            <View style={styles.editActionRow}>
-              <PillButton
-                testID="item-detail-cancel-btn"
-                variant="text"
-                title={t('wardrobe.itemDetail.cancel')}
-                onPress={handleCancelEditing}
-                disabled={saving}
-                style={styles.editCancelButton}
-              />
-              <PillButton
-                testID="item-detail-save-btn"
-                variant="filled"
-                title={t('wardrobe.itemDetail.save')}
-                onPress={handleSaveEdits}
-                loading={saving}
-                disabled={saving}
-                style={styles.editSaveButton}
-              />
+              )}
             </View>
-          ) : (
-            // READ MODE (Figma "detail item - more"): Mix-with-this pill +
-            // [Trash][Less used] / [Change] row.
-            <>
+
+            <View style={styles.actionBlock}>
+              <View style={styles.editActionRow}>
+                <PillButton
+                  testID="item-detail-cancel-btn"
+                  variant="text"
+                  title={t('wardrobe.itemDetail.cancel')}
+                  onPress={handleCancelEditing}
+                  disabled={saving}
+                  style={styles.editCancelButton}
+                />
+                <PillButton
+                  testID="item-detail-save-btn"
+                  variant="filled"
+                  title={t('wardrobe.itemDetail.save')}
+                  onPress={handleSaveEdits}
+                  loading={saving}
+                  disabled={saving}
+                  style={styles.editSaveButton}
+                />
+              </View>
+            </View>
+          </>
+        ) : (
+          // READ MODE (Figma 2852:14557 "detail"): centred title + date,
+          // outlined "Build around this" CTA, [trash][Less use] … [Edit].
+          <>
+            <View style={styles.titleBlock}>
+              <Text testID="item-detail-title" style={styles.titleText}>
+                {titleText}
+              </Text>
+              {dateText ? (
+                <Text testID="item-detail-date" style={styles.dateText}>
+                  {t('wardrobe.itemDetail.date_label', { date: dateText })}
+                </Text>
+              ) : null}
+            </View>
+
+            <View style={styles.buttonGroup}>
+              {/* Copy renamed "Mix with this" → "Build around this" (design
+                  update); same coming-soon behaviour until the pin+recommend
+                  wiring lands (qa-ui safe default #6). testID preserved so
+                  existing Maestro flows keep resolving. */}
               <PillButton
                 testID="item-detail-mix-btn"
                 variant="outline"
-                title={t('wardrobe.itemDetail.mix_with_this')}
+                title={t('wardrobe.itemDetail.build_around_this')}
                 trailing={
                   <Icons.Remix
-                    width={20}
-                    height={20}
-                    color={theme.colors.figmaAction}
+                    width={24}
+                    height={24}
+                    color={theme.colors.uacTextBase}
                   />
                 }
-                style={styles.mixPill}
+                style={styles.ctaPill}
+                textStyle={styles.ctaPillText}
                 onPress={() => {
                   Alert.alert(
                     t('wardrobe.itemDetail.coming_soon_title'),
@@ -862,7 +892,7 @@ export const ItemDetailScreen = () => {
               <View style={styles.bottomRow}>
                 <View style={styles.leftRow}>
                   {/* AU-287: Trash hidden for catalog items (SYSTEM + USR_*
-                      clones). User demotes them via the Less used toggle. */}
+                      clones). User demotes them via the Less use toggle. */}
                   {!isCatalogItem ? (
                     <TouchableOpacity
                       testID="item-detail-delete-btn"
@@ -872,8 +902,8 @@ export const ItemDetailScreen = () => {
                       disabled={saving}
                     >
                       <Icons.Trash
-                        width={20}
-                        height={20}
+                        width={24}
+                        height={24}
                         color={theme.colors.figmaItemDetailDanger}
                       />
                     </TouchableOpacity>
@@ -905,17 +935,16 @@ export const ItemDetailScreen = () => {
                       {t('wardrobe.itemDetail.less_used')}
                     </Text>
                     <Icons.MinusCircle
-                      width={20}
-                      height={20}
-                      color={
-                        usageFrequency === 'LESS_USED'
-                          ? theme.colors.figmaItemDetailDanger
-                          : theme.colors.figmaAction
-                      }
+                      width={24}
+                      height={24}
+                      color={theme.colors.figmaItemDetailDanger}
                     />
                   </TouchableOpacity>
                 </View>
 
+                {/* Figma renames "Change" → "Edit" with a pencil glyph; same
+                    behaviour (enters edit mode). testID preserved for
+                    existing Maestro flows. */}
                 <TouchableOpacity
                   testID="item-detail-change-btn"
                   style={styles.secondaryAction}
@@ -924,31 +953,22 @@ export const ItemDetailScreen = () => {
                 >
                   <Text
                     style={[
-                      styles.changeText,
+                      styles.editActionText,
                       isCatalogItem && styles.disabledText,
                     ]}
                   >
-                    {t('wardrobe.itemDetail.change')}
+                    {t('wardrobe.itemDetail.edit')}
                   </Text>
-                  <Icons.Change
-                    width={20}
-                    height={20}
-                    color={theme.colors.figmaAction}
+                  <Icons.Edit
+                    width={24}
+                    height={24}
+                    color={theme.colors.uacTextBase}
                   />
                 </TouchableOpacity>
               </View>
-
-              {isCatalogItem ? (
-                <Text
-                  testID="item-detail-catalog-explainer"
-                  style={styles.catalogExplainer}
-                >
-                  {t('wardrobe.itemDetail.catalog_explainer')}
-                </Text>
-              ) : null}
-            </>
-          )}
-        </View>
+            </View>
+          </>
+        )}
       </BottomSheetSurface>
 
       <Modal
@@ -1017,51 +1037,62 @@ export const ItemDetailScreen = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.figmaSurfaceSoft,
+    // Figma frame bg: background/primary/subtle_50 #f2efec
+    backgroundColor: theme.colors.figmaBackground,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.figmaSurfaceSoft,
+    backgroundColor: theme.colors.figmaBackground,
   },
-  topRegion: {
-    flex: 1,
-  },
-  topBar: {
+  // Figma header inner: column justify-end, padding 12 → bar = status area
+  // + 44pt button + 12pt bottom padding (≈107 on the 414×896 frame).
+  header: {
+    backgroundColor: theme.colors.figmaItemDetailHeaderBg,
+    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingBottom: theme.spacing.uacDimension12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingTop: 8,
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
   },
-  heartButtonActive: {
-    backgroundColor: theme.colors.figmaItemDetailFavoriteActive,
+  // Figma "menu" back button: 44×44 white rounded square (r≈14, baked into
+  // an image asset — qa-ui safe default #8), soft warm drop shadow tinted
+  // background/overlay/dark/10 (#827137 @10%).
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: theme.colors.white,
+    shadowColor: theme.colors.figmaOverlayDark10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  imageWrap: {
+  imageRegion: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 14,
+    justifyContent: 'center',
+  },
+  imageFrame: {
+    backgroundColor: theme.colors.figmaBackground,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
     height: '100%',
-    maxHeight: 430,
   },
   imageFallback: {
-    width: '92%',
-    aspectRatio: 3 / 4,
-    borderRadius: 16,
+    width: '100%',
+    height: '100%',
     backgroundColor: theme.colors.figmaItemDetailImageFallbackBg,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1070,27 +1101,59 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaTextMuted,
   },
+  // Figma "common" badge: centred, bottom 19 (one-off), h19, padX 12, r8,
+  // bg color/neutral/black/Alpha300, Inter Regular 10/12, text #fcfcfd.
   imageBadge: {
     position: 'absolute',
-    bottom: 10,
+    bottom: 19,
     alignSelf: 'center',
-    minHeight: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(39, 42, 50, 0.9)',
-    paddingHorizontal: 14,
+    minHeight: 19,
+    borderRadius: theme.borderRadius.m,
+    backgroundColor: theme.colors.figmaCardTag,
+    paddingHorizontal: theme.spacing.uacDimension12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   imageBadgeText: {
     ...theme.typography.aliases.interCaptionXxs,
-    fontSize: 11,
-    lineHeight: 14,
-    color: theme.colors.white,
+    color: theme.colors.uacBackgroundNeutral50,
   },
   sheet: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
+    paddingHorizontal: theme.spacing.m,
+    paddingTop: theme.spacing.m,
+  },
+  // Figma "List items": pt 12, column gap 16, centred, text/neutral/base.
+  titleBlock: {
+    paddingTop: theme.spacing.uacDimension12,
+    alignItems: 'center',
+    gap: theme.spacing.m,
+  },
+  titleText: {
+    ...theme.typography.aliases.poppinsH4SemiBold,
+    color: theme.colors.uacTextBase,
+    textAlign: 'center',
+  },
+  dateText: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
+  },
+  // Figma "button group": column, gap 12, pt 16 (pb handled inline with the
+  // safe-area inset).
+  buttonGroup: {
+    paddingTop: theme.spacing.m,
+    gap: theme.spacing.uacDimension12,
+  },
+  // "Build around this": outline pill, border 1.5 border/neutral/base,
+  // padX 20. Radius reuses uacButtonCta=16 — Figma draws 17, deliberate 1px
+  // deviation pending CEO answer (qa-ui safe default #4).
+  ctaPill: {
+    alignSelf: 'stretch',
+    borderRadius: theme.borderRadius.uacButtonCta,
+    borderColor: theme.colors.uacBorderBase,
+    paddingHorizontal: theme.spacing.uacButtonPaddingX,
+  },
+  ctaPillText: {
+    color: theme.colors.uacTextBase,
   },
   details: {
     gap: 8,
@@ -1120,7 +1183,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bottomRow: {
-    marginTop: 2,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1128,7 +1190,7 @@ const styles = StyleSheet.create({
   leftRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: theme.spacing.uacDimension12,
   },
   iconOnlyButton: {
     width: 56,
@@ -1150,22 +1212,14 @@ const styles = StyleSheet.create({
   },
   lessUsedText: {
     ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.figmaAction,
+    color: theme.colors.uacTextBase,
   },
   lessUsedTextActive: {
     color: theme.colors.figmaItemDetailDanger,
   },
-  changeText: {
+  editActionText: {
     ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.figmaAction,
-  },
-  editText: {
-    ...theme.typography.aliases.uacBodyXsMedium,
-    color: theme.colors.figmaTextDark,
-  },
-  editLink: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+    color: theme.colors.uacTextBase,
   },
   editActionRow: {
     flexDirection: 'row',
@@ -1184,22 +1238,8 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 16,
   },
-  mixPill: {
-    alignSelf: 'stretch',
-    // qa-ui M4 (Figma node 2852-7175): Mix pill is a rounded rect (r16), not a
-    // stadium. PillButton.pillBase defaults to r100; override here only.
-    borderRadius: 16,
-  },
   disabledText: {
     opacity: 0.45,
-  },
-  catalogExplainer: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextMuted,
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 12,
-    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
@@ -1254,19 +1294,5 @@ const styles = StyleSheet.create({
   optionText: {
     ...theme.typography.aliases.interBodyMd,
     color: theme.colors.figmaItemDetailRowText,
-  },
-  expandRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  expandButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  expandText: {
-    ...theme.typography.aliases.uacBodyXsMedium,
-    color: theme.colors.figmaTextDark,
   },
 });

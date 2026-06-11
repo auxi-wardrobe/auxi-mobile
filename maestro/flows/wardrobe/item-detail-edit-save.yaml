@@ -51,9 +51,9 @@ env:
 - assertNotVisible:
     id: item-detail-mix-btn
 
-# --- 2. Reveal + change the Fit attribute (enumerated, static labels) ---
-- tapOn:
-    id: item-detail-more-btn
+# --- 2. Change the Fit attribute (enumerated, static labels) ---
+# AU-312: the More/Less expander is gone — edit mode lists ALL attribute
+# rows directly (read mode shows title + date only per Figma 2852:14557).
 - tapOn:
     id: item-detail-row-fit
 # Picker opens; pick a deterministic, static option.
