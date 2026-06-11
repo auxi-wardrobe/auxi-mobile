@@ -81,6 +81,18 @@ export const theme = {
     uacTextDangerBase: '#bb251a', // --text/danger/base (= figmaDestructive)
     uacTextInfoBase: '#1465b4', // --text/info/base
     uacOnSurfaceVariant: '#49454f', // M3/sys/light/on-surface-variant
+    // Item Detail redesign (AU-311, Figma node 2852:7175). Source:
+    // plans/260610-1632-au311-item-detail-figma/figma-extraction-item-detail.md §Tokens
+    figmaItemDetailDanger: '#c0392b', // text/danger/base — Less used label + Trash icon
+    figmaItemDetailFavoriteActive: '#eedcdd', // soft pink — active heart button bg
+    figmaItemDetailLessUsedActive: '#f6edee', // soft pink — active "Less used" pill bg
+    figmaItemDetailRowText: '#1d1f23', // text/neutral/base — detail row label + value
+    figmaItemDetailColorDotBorder: '#536173', // color-swatch dot border
+    figmaItemDetailImageFallbackBg: '#e8ebf0', // image-unavailable placeholder bg
+    figmaItemDetailModalDivider: '#ececec', // picker header hairline
+    figmaItemDetailOptionDivider: '#f0f0f0', // picker option-row hairline
+    figmaItemDetailOptionDotBorder: '#d0d5dd', // border/neutral/subtle_100 — color option dot border
+    figmaItemDetailModalClose: '#4f4f4f', // picker "Close" label
   },
   spacing: {
     xs: 4,

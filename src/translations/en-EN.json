@@ -97,6 +97,7 @@
         "submit_a11y": "Continue",
         "error_invalid": "Please enter a valid email adress",
         "error_required": "Email is required",
+        "error_no_account": "No account found for this email. Please sign in or create one.",
         "error_rate_limited": "Too many attempts. Please try again later."
       },
       "password_creation": {
@@ -147,6 +148,7 @@
       "forgot_request": {
         "section_heading": "Reset your password",
         "body": "We'll send a password reseting to your email",
+        "gmail_notice": "This email uses Google. Reset your password in the Gmail app or your Google account settings.",
         "email_label": "Your email",
         "submit_cta": "Send reset password",
         "error_rate_limited": "Too many requests. Please try again later.",
@@ -181,6 +183,52 @@
         "error_token_expired": "This verification link has expired. Resend a new one.",
         "error_token_consumed": "Your email is already verified.",
         "error_generic": "We couldn't verify right now. Try again in a moment."
+      }
+    },
+    "wardrobe": {
+      "itemDetail": {
+        "mix_with_this": "Mix with this",
+        "less_used": "Less used",
+        "change": "Change",
+        "more": "More",
+        "less": "Less",
+        "edit": "Edit",
+        "save": "Save",
+        "cancel": "Cancel",
+        "add": "Add",
+        "row_type": "Type",
+        "row_name": "Name",
+        "row_style": "Style",
+        "row_color": "Color",
+        "row_fit": "Fit",
+        "common_badge": "common items",
+        "catalog_explainer": "Common items can only be marked as Less Use.",
+        "picker_title": "Select {{field}}",
+        "picker_close": "Close",
+        "coming_soon_title": "Coming soon",
+        "coming_soon_body": "Anchor item recommendations will be enabled after the next backend update.",
+        "delete_title": "Delete item?",
+        "delete_body": "This action cannot be undone.",
+        "delete_confirm": "Delete",
+        "toast_item_not_found": "Item not found",
+        "toast_load_failed_title": "Unable to load item",
+        "toast_load_failed_body": "Please try again in a moment.",
+        "toast_deleted": "Item deleted",
+        "toast_delete_failed_title": "Delete failed",
+        "toast_delete_failed_body": "We could not delete this item.",
+        "toast_updated": "Item updated",
+        "toast_save_failed_title": "Save failed",
+        "toast_save_failed_body": "We could not save your changes.",
+        "toast_favorite_failed_title": "Favorite update failed",
+        "toast_usage_failed_title": "Usage update failed",
+        "toast_generic_update_failed": "We could not update this item right now.",
+        "toast_catalog_delete_blocked": "Common items can only be marked as Less Use",
+        "error_403": "You don't have permission to modify this item.",
+        "error_404": "Item not found. It may have been removed already.",
+        "error_429": "Too many requests. Please wait a moment and try again.",
+        "a11y_delete": "Delete item",
+        "a11y_favorite": "Toggle favorite",
+        "image_unavailable": "Image unavailable"
       }
     }
   }

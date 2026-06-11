@@ -13,21 +13,27 @@
  * Flow:
  *   - Validate email format locally (inline regex; no util module
  *     existed prior to this batch — see open Qs).
- *   - Call `useEmailPrecheckMutation`. Backend returns:
- *       * 'google' / 'apple' → navigate `EmailGoogleNotice` (batch C/D).
+ *   - AU-313: a Gmail-domain address (gmail.com / googlemail.com) is steered
+ *     straight to `EmailGoogleNotice` (the Google sign-in path that mirrors
+ *     the Apple flow) BEFORE the precheck call — Gmail accounts authenticate
+ *     via Google OAuth, not a password, and the precheck is enumeration-safe
+ *     so it can't tell us "google" for an anonymous caller anyway.
+ *   - Otherwise call `useEmailPrecheckMutation`. Backend returns:
+ *       * 'google' / 'apple' → navigate `EmailGoogleNotice`.
  *       * 'password' → existing password account → navigate `SignIn`
  *                       (the user logs in). We HONOR the precheck result
  *                       here regardless of how the screen was entered, so
  *                       returning users always reach Sign-In.
- *       * 'none' (admin only — anonymous sees 'password' for enum
- *         safety, so this branch is effectively unreachable) → fall
- *         through to PasswordCreation (signup).
+ *       * 'none' → AU-314: email is NOT registered. In 'signin' mode we
+ *         inform the user (inline "no account" copy) and bounce them back to
+ *         the Welcome/login screen. In 'signup' mode this is the happy path
+ *         → fall through to PasswordCreation.
  *   - 429 RATE_LIMITED → error_rate_limited copy.
  *   - NETWORK_ERROR → toast.
  *
- * `mode` param distinguishes signup vs signin entry — when 'signin',
- * tapping submit always lands on SignIn regardless of precheck (the
- * precheck call here is a UX assist for OAuth-only accounts).
+ * `mode` param distinguishes signup vs signin entry. Both modes run the
+ * precheck so we can (a) route OAuth-linked emails and (b) catch the
+ * unregistered-email case (AU-314) before dropping the user on a dead end.
  */
 import React, { useCallback, useState } from 'react';
 import {
@@ -41,13 +47,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import {
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
 import { theme } from '../../theme/theme';
 import { useEmailPrecheckMutation } from '../../hooks/auth/useAuthMutations';
+import { isGoogleEmail } from '../../utils/email-provider';
 import type { AuthStackParamList } from '../../types/navigation';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'EmailInput'>;
@@ -56,7 +67,11 @@ type Route = RouteProp<AuthStackParamList, 'EmailInput'>;
 // Lightweight RFC-5322 subset — KISS, enough for UI gate; backend re-validates.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const ChevronLeftGlyph = ({ color = theme.colors.uacTextBase }: { color?: string }) => (
+const ChevronLeftGlyph = ({
+  color = theme.colors.uacTextBase,
+}: {
+  color?: string;
+}) => (
   <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
     <Path
       d="M15 6 9 12l6 6"
@@ -68,7 +83,11 @@ const ChevronLeftGlyph = ({ color = theme.colors.uacTextBase }: { color?: string
   </Svg>
 );
 
-const ChevronRightGlyph = ({ color = theme.colors.uacTextPrimaryBase }: { color?: string }) => (
+const ChevronRightGlyph = ({
+  color = theme.colors.uacTextPrimaryBase,
+}: {
+  color?: string;
+}) => (
   <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
     <Path
       d="M9 6l6 6-6 6"
@@ -93,10 +112,13 @@ export const EmailInputScreen = () => {
 
   const isValid = EMAIL_RE.test(email.trim());
 
-  const handleChange = useCallback((text: string) => {
-    setEmail(text);
-    if (error) setError(null); // Clear inline error on edit (spec 08 behavior).
-  }, [error]);
+  const handleChange = useCallback(
+    (text: string) => {
+      setEmail(text);
+      if (error) setError(null); // Clear inline error on edit (spec 08 behavior).
+    },
+    [error],
+  );
 
   const handleSubmit = useCallback(() => {
     const trimmed = email.trim();
@@ -109,33 +131,55 @@ export const EmailInputScreen = () => {
       return;
     }
 
-    // Signin mode short-circuits straight to SignIn — precheck is a
-    // UX hint, not a gate.
-    if (mode === 'signin') {
-      navigation.navigate('SignIn', { email: trimmed });
+    // AU-313: Gmail addresses go straight to the Google sign-in path
+    // (mirrors the Apple flow). Decided client-side on the domain — the
+    // precheck is enumeration-safe and won't report "google" to an
+    // anonymous caller, so this is the only reliable Gmail signal we have.
+    if (isGoogleEmail(trimmed)) {
+      navigation.navigate('EmailGoogleNotice', { email: trimmed });
       return;
     }
 
     precheck.mutate(
       { email: trimmed },
       {
-        onSuccess: (result) => {
+        onSuccess: result => {
           if (result.provider === 'google' || result.provider === 'apple') {
             navigation.navigate('EmailGoogleNotice', { email: trimmed });
             return;
           }
+          // AU-314: 'none' → the email is NOT registered.
+          if (result.provider === 'none') {
+            if (mode === 'signin') {
+              // The user expected to log in but there's no account. Inform via
+              // a Toast (the inline error would die with this unmounting
+              // screen) and bounce back to the Welcome/login screen so they
+              // can pick a sign-up path or try a different email.
+              Toast.show({
+                type: 'info',
+                text1: t('uac.email_input.error_no_account'),
+                position: 'bottom',
+                visibilityTime: 4000,
+              });
+              navigation.navigate('Welcome');
+              return;
+            }
+            // Signup happy path: brand-new email → create a password.
+            navigation.navigate('PasswordCreation', { email: trimmed });
+            return;
+          }
           // `provider:'password'` means the email already has a
           // password-based account → route to SignIn so the user logs in.
-          // Anything else (`'none'` — new email, admin-only visibility) →
-          // PasswordCreation for signup. Honor the precheck result rather
-          // than assuming signup (AU bugfix: existing users could not log in).
+          // Honor the precheck result rather than assuming signup
+          // (AU bugfix: existing users could not log in).
           if (result.provider === 'password') {
             navigation.navigate('SignIn', { email: trimmed });
             return;
           }
+          // Defensive fallback for any unexpected provider value.
           navigation.navigate('PasswordCreation', { email: trimmed });
         },
-        onError: (err) => {
+        onError: err => {
           if (err.code === 'RATE_LIMITED') {
             setError(t('uac.email_input.error_rate_limited'));
             return;
@@ -187,12 +231,7 @@ export const EmailInputScreen = () => {
           </Text>
 
           <View style={styles.formRow}>
-            <View
-              style={[
-                styles.fieldWrap,
-                hasError && styles.fieldWrapError,
-              ]}
-            >
+            <View style={[styles.fieldWrap, hasError && styles.fieldWrapError]}>
               <TextInput
                 testID="email-input-field"
                 value={email}
@@ -221,7 +260,11 @@ export const EmailInputScreen = () => {
               ]}
             >
               <ChevronRightGlyph
-                color={isValid ? theme.colors.uacTextPrimaryBase : theme.colors.uacTextSubtle200}
+                color={
+                  isValid
+                    ? theme.colors.uacTextPrimaryBase
+                    : theme.colors.uacTextSubtle200
+                }
               />
             </Pressable>
           </View>

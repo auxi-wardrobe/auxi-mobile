@@ -1,0 +1,68 @@
+# auxi/maestro/flows/wardrobe/item-detail-open.yaml
+# Item detail (AU-311) — open journey.
+#
+# Figma: 0nXXMAR4Arf1ZfjtQvtBh0 node 2852:7175 "Item detail | Edit detail",
+#   read-mode frame 2852:14557 "detail".
+# Screen: src/screens/ItemDetailScreen.tsx
+#
+# Scope: Home → sidebar → Wardrobe → first tile → ItemDetail renders in READ
+#   mode with the Figma read-mode bottom bar (Mix-with-this pill + Change row).
+#
+# Out of scope: visual fidelity (qa-ui Compare mode), per-item id assertions
+#   (wardrobe tile ids are backend-dynamic — we tap by index, see note below),
+#   the "Less used"/Trash/favorite behaviors (covered by future toggle flows).
+#
+# NAV TESTID GAPS flagged to mobile-dev (see audit report §Testability):
+#   - WardrobeScreen has no stable screen-root testID → we wait on the first
+#     tile instead.
+#   - Wardrobe tiles use a backend-dynamic testID `wardrobe-item-<id>`, so we
+#     match the prefix with a regex + `index: 0` to tap "the first tile". A
+#     stable `wardrobe-item-first` or list-root testID would make this crisper.
+#   - ItemDetailScreen has no screen-root testID → we assert `item-detail-mix-btn`
+#     (read-mode bottom bar) as the screen-ready signal.
+
+appId: com.auxi2026.app
+name: wardrobe-item-detail-open
+tags:
+  - wardrobe
+  - item-detail
+  - regression
+env:
+  HOME_TIMEOUT_MS: 30000
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  WARDROBE_TIMEOUT_MS: 30000
+---
+- runFlow: ../_shared/ensure-home.yaml
+
+# --- 1. Open the sidebar and navigate to Wardrobe ---
+- tapOn:
+    id: home-menu-button
+- tapOn:
+    id: sidebar-menu-wardrobe
+
+# --- 2. Wait for the wardrobe grid, then open the first item ---
+# Tile testID is `wardrobe-item-<backend-id>` (dynamic). Match the prefix and
+# take the first match. extendedWaitUntil absorbs the wardrobe fetch latency.
+- extendedWaitUntil:
+    visible:
+      id: "wardrobe-item-.*"
+      index: 0
+    timeout: ${WARDROBE_TIMEOUT_MS}
+- tapOn:
+    id: "wardrobe-item-.*"
+    index: 0
+
+# --- 3. Item detail renders in READ mode (Figma "detail" frame) ---
+# Read-mode bottom bar = Mix-with-this pill + [Trash][Less used] / [Change].
+# Asserting the Mix pill + Change confirms we landed in read mode, not edit.
+- assertVisible:
+    id: item-detail-mix-btn
+- assertVisible:
+    id: item-detail-change-btn
+- assertVisible:
+    id: item-detail-back-btn
+# Cancel/Save belong to edit mode only — must NOT be present in read mode.
+- assertNotVisible:
+    id: item-detail-save-btn
+- assertNotVisible:
+    id: item-detail-cancel-btn

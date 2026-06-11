@@ -1,0 +1,78 @@
+# auxi/maestro/flows/auth/au313-gmail-google-route.yaml
+# AU-313: a Gmail-domain address entered on the email step routes straight to
+# the EmailGoogleNotice (Google sign-in) screen — mirroring the Apple/Google
+# OAuth flow — BEFORE any precheck call. Decided client-side on the domain
+# (isGoogleEmail: gmail.com / googlemail.com), since the precheck is
+# enumeration-safe and can't report "google" to an anonymous caller.
+#
+# This is a PURE-CLIENT branch: no test account or backend seed required —
+# the gmail-domain check short-circuits before the network call. Works on a
+# fresh sim against any backend.
+#
+# Scope: stops at the EmailGoogleNotice screen and verifies the notice +
+# Continue-with-Google CTA render. Does NOT tap "Continue with Google" — that
+# drives the native Google SDK sheet, which Maestro cannot drive headlessly
+# (OAuth sheet is out-of-process). Spinner/OAuth assertions are intentionally
+# omitted; covered by manual / qa-mobile exploratory once a build exists.
+#
+# Run: maestro test maestro/flows/auth/au313-gmail-google-route.yaml \
+#        -e QA_GMAIL=qa-gmail-au313@gmail.com
+
+appId: com.auxi2026.app
+name: au313-gmail-google-route
+tags:
+  - au-313
+  - auth
+  - uac
+  - oauth
+env:
+  QA_GMAIL: qa-gmail-au313@gmail.com
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- extendedWaitUntil:
+    visible:
+      id: welcome-cta-email
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
+- tapOn:
+    id: welcome-cta-email
+
+- extendedWaitUntil:
+    visible:
+      id: email-input-field
+    timeout: 5000
+- tapOn:
+    id: email-input-field
+- inputText: ${QA_GMAIL}
+
+# Gmail domain → client-side route to EmailGoogleNotice (no precheck call).
+- tapOn:
+    id: email-submit-button
+
+# Parity with the Apple/Google flow: the Google-notice screen is reached and
+# the Continue-with-Google CTA is present and hittable.
+- extendedWaitUntil:
+    visible:
+      id: email-google-notice-screen
+    timeout: 10000
+- assertVisible:
+    id: email-google-notice-headline
+- assertVisible:
+    id: email-google-notice-body
+- assertVisible:
+    id: email-google-notice-continue
+
+# Sanity: we did NOT fall through to the password-entry step.
+- assertNotVisible:
+    id: password-input-field
+
+# Back returns to the email step (no dead end).
+- tapOn:
+    id: email-google-notice-back
+- extendedWaitUntil:
+    visible:
+      id: email-input-field
+    timeout: 5000

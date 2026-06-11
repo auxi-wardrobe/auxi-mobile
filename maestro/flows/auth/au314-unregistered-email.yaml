@@ -1,0 +1,112 @@
+# auxi/maestro/flows/auth/au314-unregistered-email.yaml
+# AU-314: an unregistered (non-gmail) email entered in SIGN-IN mode should
+# surface a clear "no account" message and bounce the user back to Welcome.
+#
+# ============================ KNOWN LIMITATION =============================
+# This flow CANNOT exercise the intended "no account -> Welcome" toast path
+# against the current backend + entry points. Two hard constraints:
+#
+#  1. ANONYMOUS PRECHECK IS ENUMERATION-SAFE. /api/auth/email-precheck returns
+#     provider:"password" to every anonymous caller regardless of whether the
+#     email exists (auth.ts:476-478). The 'none' branch in EmailInputScreen
+#     (the toast + navigate('Welcome')) only fires for AUTHENTICATED callers
+#     (admin/staff). For a normal unauthenticated user, an unregistered email
+#     therefore routes to SignIn, where the login attempt returns
+#     INVALID_CREDENTIALS and renders the inline `signin-error`.
+#
+#  2. NO SIGN-IN ENTRY POINT. The only Welcome -> EmailInput navigation passes
+#     `mode:'signup'` (WelcomeScreen.tsx:137). There is no `mode:'signin'`
+#     call site anywhere in the app, so the `mode === 'signin'` guard that
+#     gates the AU-314 toast is currently unreachable from the UI.
+#
+# => Treat the toast/Welcome-bounce as EXPECTED-CURRENT-BEHAVIOR-DEFERRED,
+#    pending a backend decision (authenticated precheck / dedicated signin
+#    entry). This flow asserts the ACTUAL current behavior: an unregistered
+#    email falls through to SignIn's INVALID_CREDENTIALS inline error. When
+#    the backend/entry-point lands, swap the tail block for the toast +
+#    `welcome-cta-email` re-appearance assertion (sketched at the bottom).
+# ==========================================================================
+#
+# Run: maestro test maestro/flows/auth/au314-unregistered-email.yaml \
+#        -e QA_UNREG_EMAIL=qa-nobody-au314@example.com \
+#        -e QA_DUMMY_PASSWORD=Wrong1234
+
+appId: com.auxi2026.app
+name: au314-unregistered-email
+tags:
+  - au-314
+  - auth
+  - uac
+  - edge-case
+  - known-limitation
+env:
+  QA_UNREG_EMAIL: qa-nobody-au314@example.com
+  QA_DUMMY_PASSWORD: Wrong1234
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- extendedWaitUntil:
+    visible:
+      id: welcome-cta-email
+    timeout: ${LOGIN_SCREEN_TIMEOUT_MS}
+- tapOn:
+    id: welcome-cta-email
+
+- extendedWaitUntil:
+    visible:
+      id: email-input-field
+    timeout: 5000
+- tapOn:
+    id: email-input-field
+- inputText: ${QA_UNREG_EMAIL}
+- tapOn:
+    id: email-submit-button
+
+# CURRENT BEHAVIOR (anonymous): precheck returns "password" -> route to SignIn.
+# (When the AU-314 'none' path becomes reachable, this screen would instead be
+#  Welcome with an info toast — see deferred block below.)
+- extendedWaitUntil:
+    visible:
+      id: signin-password-input
+    timeout: 10000
+- assertVisible:
+    id: signin-email-readonly
+- assertVisible:
+    text: ${QA_UNREG_EMAIL}
+
+# Attempting to log in with any password fails -> INVALID_CREDENTIALS inline.
+- tapOn:
+    id: signin-password-input
+- inputText: ${QA_DUMMY_PASSWORD}
+- tapOn:
+    id: signin-submit
+
+- extendedWaitUntil:
+    visible:
+      id: signin-error
+    timeout: 10000
+# The user is NOT silently dropped: a clear error is shown and they remain on
+# a screen with a "Forgot your password?" affordance (no dead end).
+- assertVisible:
+    id: signin-forgot-link
+
+# -------------------------------------------------------------------------
+# DEFERRED — enable once /api/auth/email-precheck returns "none" to the
+# relevant caller AND a `mode:'signin'` EmailInput entry exists. Replace the
+# SignIn block above with:
+#
+#   - extendedWaitUntil:
+#       visible:
+#         text: "No account found for this email. Please sign in or create one."
+#       timeout: 6000
+#   - extendedWaitUntil:
+#       visible:
+#         id: welcome-cta-email
+#       timeout: 6000
+#
+# (Toast copy = uac.email_input.error_no_account; prefer a testID on the Toast
+#  over a text: match if mobile-dev can add one — text: is i18n-fragile.)
+# -------------------------------------------------------------------------

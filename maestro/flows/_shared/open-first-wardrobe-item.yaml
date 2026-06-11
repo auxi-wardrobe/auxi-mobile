@@ -1,0 +1,34 @@
+# auxi/maestro/flows/_shared/open-first-wardrobe-item.yaml
+# Reusable sub-flow: from a cold launch, land on the ItemDetail screen of the
+# FIRST wardrobe tile, in READ mode.
+#
+# Used by the item-detail edit/save/cancel flows so each one starts from a
+# known state without duplicating the Home → sidebar → Wardrobe → tile nav.
+#
+# After this returns, `item-detail-mix-btn` (read-mode bottom bar) is visible.
+#
+# Selector note: wardrobe tiles use a backend-dynamic testID
+# `wardrobe-item-<id>`. We match the prefix + `index: 0` to tap "the first
+# tile" deterministically without knowing the id. (Flagged to mobile-dev:
+# a stable list-root or `wardrobe-item-first` testID would be cleaner.)
+
+appId: com.auxi2026.app
+---
+- runFlow: ./ensure-home.yaml
+
+- tapOn:
+    id: home-menu-button
+- tapOn:
+    id: sidebar-menu-wardrobe
+
+- extendedWaitUntil:
+    visible:
+      id: "wardrobe-item-.*"
+      index: 0
+    timeout: ${WARDROBE_TIMEOUT_MS}
+- tapOn:
+    id: "wardrobe-item-.*"
+    index: 0
+
+- assertVisible:
+    id: item-detail-mix-btn

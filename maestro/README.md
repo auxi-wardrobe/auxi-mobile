@@ -68,8 +68,15 @@ Exit code: 0 = pass, non-zero = fail.
 |---|---|---|
 | `_shared/login.yaml` | _shared | Cold login (clearKeychain + type credentials). Used by `auth/login.yaml`. |
 | `_shared/ensure-home.yaml` | _shared | Conditional login — reuses Keychain if present, falls into `login.yaml` only when the Login screen is visible. Used by every post-login flow. |
+| `_shared/open-first-wardrobe-item.yaml` | _shared | Lands on ItemDetail (read mode) of the first wardrobe tile: ensure-home → `home-menu-button` → `sidebar-menu-wardrobe` → first `wardrobe-item-*` tile. Used by the `wardrobe/item-detail-*` flows. |
 | `auth/login.yaml` | auth, regression | Login persists across relaunch |
+| `auth/au313-gmail-google-route.yaml` | au-313, auth, uac, oauth | Gmail-domain email on the email step routes to EmailGoogleNotice (Google sign-in), mirroring the Apple flow. Pure-client branch — no backend seed. Stops before the native Google SDK sheet (Maestro can't drive OAuth headlessly). |
+| `auth/au314-unregistered-email.yaml` | au-314, auth, uac, edge-case, known-limitation | Unregistered email behavior. **Asserts current-behavior**: anonymous precheck is enumeration-safe (always `password`) so the email falls through to SignIn -> INVALID_CREDENTIALS inline error. The intended "no account" toast + Welcome bounce is DEFERRED (needs authenticated precheck + a `mode:'signin'` entry point — neither exists yet). Deferred assertion block sketched inline. |
+| `auth/au315-forgot-gmail-notice.yaml` | au-315, auth, uac | Forgot-password with a Gmail address shows inline "reset in Gmail" guidance (`forgot-request-gmail-notice`) and does NOT advance to check-mail (the no-op AU-315 fixed). Reaches the request screen via SignIn->forgot-link (needs verified `qa-signin@auxi.app` seed), then overwrites the email field with a gmail address (field is editable; no gmail account needed). |
 | `home/swipe.yaml` | home, regression | Vertical sheet swipe + index advance + Show another / This works / Edit context buttons |
+| `wardrobe/item-detail-open.yaml` | wardrobe, item-detail, regression | AU-311. Open journey: Home → sidebar → Wardrobe → first tile → ItemDetail renders in READ mode (Mix pill + Change present; Save/Cancel absent). |
+| `wardrobe/item-detail-edit-save.yaml` | wardrobe, item-detail, regression | AU-311. Enter edit mode (bottom bar → [Cancel][Save]), change the enumerated Fit attr via picker, Save → service PATCH → returns to read-mode bar. Asserts the state transition, not a backend value. Needs a NON-catalog seed item (Edit/Change hidden for common/USR_* items). |
+| `wardrobe/item-detail-edit-cancel.yaml` | wardrobe, item-detail, regression | AU-311. Enter edit mode, stage a Fit draft change, Cancel → discards draft + exits to read-mode bar with NO PATCH. Pure client-state op. |
 | `onboarding/v05.yaml` | onboarding, v05, regression | V05 onboarding journey: WardrobeDirection -> FitPreference -> StylePicker -> POST /api/v05/onboarding/generate -> Home stack swap. Requires `is_first_login=true` test account; ~60s runtime to absorb slow generate endpoint. |
 | `onboarding/onboarding-v2.yaml` | onboarding, v2, regression | Onboarding V2 redesign happy path: Welcome -> LocationPermission (skip) -> Step1 Wardrobe -> Step2 Fit -> Step3 Styles (max-2 ranked picks + pin badges) -> Loading (real /generate) -> Completed -> Outro -> Home stack swap. **DEBUG build only** (V2 stack gated on `__DEV__`). Requires `is_first_login=true` test account (or replay mode); prod-mirror backend on :5001. ~60s runtime. |
 
@@ -129,15 +136,23 @@ Naming convention (mirrored in `mobile-dev` agent rules):
 
 Open testID gaps (filed with mobile-dev):
 
-- `HomeScreen.tsx:1085` — the header `TopIconButton` that opens the
-  Sidebar (and is the only path Home -> Settings) has NO testID. Blocks
-  any Maestro flow that needs to reach Settings from Home — including the
-  `onboarding/onboarding-v2.yaml` replay-mode setup variant (B). Proposed:
-  `home-menu-button`. The default onboarding-v2 path avoids this by
-  cold-logging-in a fresh first-login account.
+- `WardrobeScreen.tsx` — no stable screen-root testID and the grid tiles
+  use a backend-dynamic `wardrobe-item-<id>` testID. The
+  `wardrobe/item-detail-*` flows tap "the first tile" via a regex testID
+  (`wardrobe-item-.*`) + `index: 0`, which works but is implicit.
+  Proposed: a `wardrobe-grid-root` (or `wardrobe-screen-root`) container
+  testID for a clean ready-signal, and optionally `wardrobe-item-first`
+  on the lead tile so the flows don't lean on regex+index.
+- `ItemDetailScreen.tsx` — no screen-root testID. The
+  `wardrobe/item-detail-*` flows use `item-detail-mix-btn` (read-mode bar)
+  as the screen-ready signal, which is fine but couples the readiness check
+  to a specific button. Proposed: `item-detail-screen-root`.
 
-Resolved (now have testIDs on `feat/onboarding-v2-redesign`):
+Resolved (now have testIDs):
 
+- `HomeScreen.tsx:1371` — the header `TopIconButton` that opens the Sidebar
+  now has `testID="home-menu-button"`. (This README previously listed it as
+  open; the `wardrobe/item-detail-*` flows depend on it and it is present.)
 - `AppWelcomeScreen.tsx` — "Get started" CTA → `onboarding-welcome-cta`.
 - `LocationPermissionScreen.tsx` — `onboarding-location-allow` /
   `onboarding-location-skip`. (`onboarding/v05.yaml` still uses the

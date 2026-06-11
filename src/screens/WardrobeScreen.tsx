@@ -239,11 +239,19 @@ export const WardrobeScreen = () => {
     }, 250);
   };
 
-  const renderGridTile = (item: WardrobeItem) => {
+  const renderGridTile = (item: WardrobeItem, index: number) => {
     const imageUrl = resolveItemImage({
       image_png: item.image_png ?? null,
       image_url: item.image_url ?? '',
     });
+
+    // qa-ui: the first tile gets a stable `wardrobe-item-first` testID so
+    // Maestro flows can deterministically open the first item without relying
+    // on the implicit `wardrobe-item-.*` prefix + index:0 match. Subsequent
+    // tiles keep the backend-dynamic `wardrobe-item-<id>` testID (both match
+    // the `wardrobe-item-.*` prefix, so existing flows still work).
+    const tileTestID =
+      index === 0 ? 'wardrobe-item-first' : `wardrobe-item-${item.id}`;
 
     return (
       <TouchableOpacity
@@ -251,7 +259,7 @@ export const WardrobeScreen = () => {
         style={styles.tile}
         activeOpacity={0.88}
         onPress={() => handleItemPress(item)}
-        testID={`wardrobe-item-${item.id}`}
+        testID={tileTestID}
         accessibilityLabel={item.name || 'Wardrobe item'}
       >
         {imageUrl ? (
@@ -333,7 +341,9 @@ export const WardrobeScreen = () => {
         {loading ? (
           renderLoadingGrid()
         ) : hasItems ? (
-          <View style={styles.grid}>{items.map(renderGridTile)}</View>
+          <View testID="wardrobe-grid-root" style={styles.grid}>
+            {items.map(renderGridTile)}
+          </View>
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>

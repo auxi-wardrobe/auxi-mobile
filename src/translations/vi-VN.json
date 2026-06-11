@@ -97,6 +97,7 @@
         "submit_a11y": "[VI] Continue",
         "error_invalid": "[VI] Please enter a valid email adress",
         "error_required": "[VI] Email is required",
+        "error_no_account": "[VI] No account found for this email. Please sign in or create one.",
         "error_rate_limited": "[VI] Too many attempts. Please try again later."
       },
       "password_creation": {
@@ -147,6 +148,7 @@
       "forgot_request": {
         "section_heading": "[VI] Reset your password",
         "body": "[VI] We'll send a password reseting to your email",
+        "gmail_notice": "[VI] This email uses Google. Reset your password in the Gmail app or your Google account settings.",
         "email_label": "[VI] Your email",
         "submit_cta": "[VI] Send reset password",
         "error_rate_limited": "[VI] Too many requests. Please try again later.",
@@ -181,6 +183,52 @@
         "error_token_expired": "[VI] This verification link has expired. Resend a new one.",
         "error_token_consumed": "[VI] Your email is already verified.",
         "error_generic": "[VI] We couldn't verify right now. Try again in a moment."
+      }
+    },
+    "wardrobe": {
+      "itemDetail": {
+        "mix_with_this": "Phối với món này",
+        "less_used": "Ít dùng",
+        "change": "Đổi",
+        "more": "Xem thêm",
+        "less": "Thu gọn",
+        "edit": "Sửa",
+        "save": "Lưu",
+        "cancel": "Hủy",
+        "add": "Thêm",
+        "row_type": "Loại",
+        "row_name": "Tên",
+        "row_style": "Phong cách",
+        "row_color": "Màu",
+        "row_fit": "Dáng",
+        "common_badge": "món chung",
+        "catalog_explainer": "Món chung chỉ có thể đánh dấu Ít dùng.",
+        "picker_title": "Chọn {{field}}",
+        "picker_close": "Đóng",
+        "coming_soon_title": "Sắp ra mắt",
+        "coming_soon_body": "Gợi ý theo món sẽ được bật sau bản cập nhật backend tới.",
+        "delete_title": "Xóa món này?",
+        "delete_body": "Hành động này không thể hoàn tác.",
+        "delete_confirm": "Xóa",
+        "toast_item_not_found": "Không tìm thấy món",
+        "toast_load_failed_title": "Không tải được món",
+        "toast_load_failed_body": "Vui lòng thử lại sau giây lát.",
+        "toast_deleted": "Đã xóa món",
+        "toast_delete_failed_title": "Xóa thất bại",
+        "toast_delete_failed_body": "Không thể xóa món này.",
+        "toast_updated": "Đã cập nhật món",
+        "toast_save_failed_title": "Lưu thất bại",
+        "toast_save_failed_body": "Không thể lưu thay đổi của bạn.",
+        "toast_favorite_failed_title": "Cập nhật yêu thích thất bại",
+        "toast_usage_failed_title": "Cập nhật mức dùng thất bại",
+        "toast_generic_update_failed": "Hiện chưa thể cập nhật món này.",
+        "toast_catalog_delete_blocked": "Món chung chỉ có thể đánh dấu Ít dùng",
+        "error_403": "Bạn không có quyền sửa món này.",
+        "error_404": "Không tìm thấy món. Có thể đã bị xóa.",
+        "error_429": "Quá nhiều yêu cầu. Vui lòng đợi và thử lại.",
+        "a11y_delete": "Xóa món",
+        "a11y_favorite": "Bật/tắt yêu thích",
+        "image_unavailable": "Không có ảnh"
       }
     }
   }

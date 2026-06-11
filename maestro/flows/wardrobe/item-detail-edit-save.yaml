@@ -1,0 +1,79 @@
+# auxi/maestro/flows/wardrobe/item-detail-edit-save.yaml
+# Item detail (AU-311) — enter edit mode → change a field → Save persists.
+#
+# Figma: 0nXXMAR4Arf1ZfjtQvtBh0 node 2852:7175, edit frames 2852:14647
+#   "detail - save" / 2852:16316 "detail item - more - edit".
+# Screen: src/screens/ItemDetailScreen.tsx (handleSaveEdits →
+#   wardrobeService.updateWardrobeItemAttributes).
+#
+# Behavior under test (the ticket's hard ask): in EDIT mode the bottom bar
+# shifts from the read-mode row to [Cancel] [Save]. Save persists via the
+# service and exits edit mode (back to the read-mode bar) on success.
+#
+# Determinism notes:
+#   - We change the "Fit" attribute because it is enumerated (picker) and its
+#     options (Slim/Regular/Oversize) are static labels — no randomized data.
+#   - Option testIDs are `item-detail-option-<Label>`; row testIDs are
+#     `item-detail-row-<field>`. The "More" expander reveals the Fit row.
+#   - We do NOT assert the persisted value via a backend round-trip (that's a
+#     product-data assertion). We assert the STATE TRANSITION: edit bar appears,
+#     Save dismisses it, and we return to the read-mode bar (item-detail-mix-btn).
+#   - Save fires a real PATCH; SAVE_TIMEOUT_MS sizes the round-trip (no LLM).
+#
+# Precondition: the seeded QA item must be a NON-catalog (editable) item — the
+# Edit link + Change button are hidden for catalog (common / USR_*) items.
+# If the first tile is a catalog item, this flow's `item-detail-change-btn` tap
+# will fail fast (correct signal: see audit report §Open questions Q for seed).
+
+appId: com.auxi2026.app
+name: wardrobe-item-detail-edit-save
+tags:
+  - wardrobe
+  - item-detail
+  - regression
+env:
+  HOME_TIMEOUT_MS: 30000
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  WARDROBE_TIMEOUT_MS: 30000
+  SAVE_TIMEOUT_MS: 30000
+---
+- runFlow: ../_shared/open-first-wardrobe-item.yaml
+
+# --- 1. Enter edit mode ---
+# Read-mode "Change" (or the "Edit" link) both call setIsEditing(true).
+- tapOn:
+    id: item-detail-change-btn
+# Edit-mode bottom bar = [Cancel] [Save]; read-mode bar must be gone.
+- assertVisible:
+    id: item-detail-save-btn
+- assertVisible:
+    id: item-detail-cancel-btn
+- assertNotVisible:
+    id: item-detail-mix-btn
+
+# --- 2. Reveal + change the Fit attribute (enumerated, static labels) ---
+- tapOn:
+    id: item-detail-more-btn
+- tapOn:
+    id: item-detail-row-fit
+# Picker opens; pick a deterministic, static option.
+- assertVisible:
+    id: item-detail-option-Oversize
+- tapOn:
+    id: item-detail-option-Oversize
+# Picker dismisses on select (handleSelectOption → setPickerField(null)).
+- assertNotVisible:
+    id: item-detail-option-Oversize
+
+# --- 3. Save persists and exits edit mode ---
+- tapOn:
+    id: item-detail-save-btn
+# On success: setIsEditing(false) → read-mode bar returns, edit bar gone.
+- extendedWaitUntil:
+    visible:
+      id: item-detail-mix-btn
+    timeout: ${SAVE_TIMEOUT_MS}
+- assertNotVisible:
+    id: item-detail-save-btn
+- assertNotVisible:
+    id: item-detail-cancel-btn

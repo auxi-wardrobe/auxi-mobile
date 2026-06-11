@@ -16,19 +16,21 @@
  *   - SignIn — if /api/login returns OAUTH_ACCOUNT for a google account,
  *     SignInScreen reroutes here.
  *
- * CTA wiring:
- *   The "Continue with Google" button calls `useGoogleSignInMutation`
- *   with an `id_token`. Today there is NO Google Sign-In SDK wired in
- *   `auxi/` (no `@react-native-google-signin/google-signin` package in
- *   package.json), so the CTA surfaces a "not yet available" toast and
- *   logs a TODO. The screen UI is built to spec; the SDK plumbing is a
- *   follow-up (open question in batch C report).
+ * CTA wiring (AU-313):
+ *   The "Continue with Google" button drives the LIVE Google OAuth flow —
+ *   the same path the Welcome screen uses for its Google CTA:
+ *     Google SDK sheet → id_token → POST /api/auth/google
+ *       → AuthContext.refreshUser → AppNavigator swaps to the AppStack.
+ *   The Google Sign-In SDK is wired in `auxi/`
+ *   (`@react-native-google-signin/google-signin` + `services/oauth/*`), so
+ *   this screen no longer surfaces a "not yet wired" placeholder toast.
  *
- * Error handling for the mutation (when SDK lands):
- *   - 409 EMAIL_LINKED_TO_PASSWORD / EMAIL_LINKED_TO_OTHER_PROVIDER →
- *     error toast with the conflict copy (the user is on this screen
- *     specifically because of provider=google, so a 409 here means the
- *     backend state changed under us — surface it loudly).
+ * Error handling for the mutation:
+ *   - User cancels the SDK sheet → silent return (no toast).
+ *   - 409 EMAIL_LINKED_TO_PASSWORD → bounce to SignIn with the email
+ *     prefilled (the account actually has a password — let them log in).
+ *   - 409 EMAIL_LINKED_TO_OTHER_PROVIDER → info toast naming the provider.
+ *   - OAuth not yet provisioned on this build → info toast (no crash).
  *   - other errors → generic toast.
  *
  * `testID` discipline (Maestro):
@@ -37,8 +39,14 @@
  *   - email-google-notice-body
  *   - email-google-notice-continue
  */
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
@@ -46,42 +54,95 @@ import Toast from 'react-native-toast-message';
 import { theme } from '../../theme/theme';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import { useGoogleSignInMutation } from '../../hooks/auth/useAuthMutations';
+import { useAuth } from '../../context/AuthContext';
+import { googleSignInRequest } from '../../services/oauth/googleSignIn';
+import { isOAuthCancelled } from '../../services/oauth/oauthErrors';
+import { isOAuthConfigured } from '../../services/oauth/oauthConfig';
+import {
+  isOAuthConflictError,
+  type AuthErrorEnvelope,
+} from '../../services/authTypes';
 import type { AuthStackParamList } from '../../types/navigation';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'EmailGoogleNotice'>;
 
-export const EmailGoogleNoticeScreen: React.FC<Props> = ({ navigation }) => {
+export const EmailGoogleNoticeScreen: React.FC<Props> = ({
+  navigation,
+  route,
+}) => {
   const { t } = useTranslation();
+  const { email } = route.params;
 
+  const { refreshUser } = useAuth();
   const googleMutation = useGoogleSignInMutation();
-  const submitting = googleMutation.isPending;
+  // Single busy flag spans the WHOLE flow (SDK sheet → backend → refreshUser),
+  // not just the mutation — mirrors the Welcome screen so there's no
+  // spinner-less gap after the Google sheet dismisses.
+  const [submitting, setSubmitting] = useState(false);
 
-  const onContinuePress = () => {
-    // TODO(au-242-followup): wire @react-native-google-signin/google-signin
-    // here, pull the id_token, and call
-    //   googleMutation.mutate({ id_token })
-    // For now we surface a toast so QA / dev can see the wiring intent
-    // without crashing on a missing SDK.
-    Toast.show({
-      type: 'info',
-      text1: t('uac.email_google_notice.google_cta'),
-      text2:
-        'Google sign-in SDK not yet wired — see batch C report follow-up.',
-      position: 'bottom',
-      visibilityTime: 3500,
-    });
-
-    if (__DEV__) {
-      console.warn(
-        '[EmailGoogleNoticeScreen] Google SDK missing — see batch C report.',
-      );
+  /**
+   * Translate a backend AuthErrorEnvelope into the appropriate UX action.
+   * Mirrors WelcomeScreen.handleAuthError — kept inline rather than shared
+   * to keep this batch's diff contained.
+   */
+  const handleAuthError = (err: AuthErrorEnvelope) => {
+    if (isOAuthConflictError(err)) {
+      if (err.code === 'EMAIL_LINKED_TO_PASSWORD') {
+        const linkedEmail =
+          typeof err.detail?.email === 'string'
+            ? (err.detail.email as string)
+            : email;
+        navigation.navigate('SignIn', { email: linkedEmail });
+        return;
+      }
+      // EMAIL_LINKED_TO_OTHER_PROVIDER
+      Toast.show({
+        type: 'info',
+        text1: t('uac.welcome.oauth_conflict_other_provider', {
+          provider: err.detail.provider,
+        }),
+      });
+      return;
     }
-    // When the SDK is wired, replace the toast above with:
-    //   googleMutation.mutate({ id_token }, {
-    //     onError: (err) => {
-    //       if (isOAuthConflictError(err)) { ... } else { ... }
-    //     },
-    //   });
+    Toast.show({
+      type: 'error',
+      text1: t('uac.welcome.oauth_generic_error'),
+    });
+  };
+
+  const onContinuePress = async () => {
+    if (submitting) return;
+    if (!isOAuthConfigured()) {
+      // Build hasn't received the OAuth client IDs / plist yet — surface a
+      // toast instead of crashing at the native SDK boundary.
+      Toast.show({
+        type: 'info',
+        text1: t('uac.welcome.oauth_not_configured'),
+      });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { idToken } = await googleSignInRequest();
+      await googleMutation.mutateAsync({ id_token: idToken });
+      // Tokens persisted by `signInWithGoogle`; pull the user so AuthContext
+      // flips AppNavigator over to the AppStack.
+      await refreshUser();
+    } catch (err) {
+      if (isOAuthCancelled(err)) return;
+      if (err && typeof err === 'object' && 'code' in err && 'status' in err) {
+        handleAuthError(err as AuthErrorEnvelope);
+        return;
+      }
+      Toast.show({
+        type: 'error',
+        text1: t('uac.welcome.oauth_generic_error'),
+      });
+    } finally {
+      // On success the navigator unmounts this screen, so this is a harmless
+      // no-op there; on cancel / error it clears the spinner.
+      setSubmitting(false);
+    }
   };
 
   const onBackPress = () => {
@@ -106,10 +167,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({ navigation }) => {
 
       <View style={styles.body}>
         <View style={styles.textBlock}>
-          <Text
-            style={styles.headline}
-            testID="email-google-notice-headline"
-          >
+          <Text style={styles.headline} testID="email-google-notice-headline">
             {t('uac.email_google_notice.headline')}
           </Text>
           <Text style={styles.bodyText} testID="email-google-notice-body">
@@ -130,13 +188,22 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({ navigation }) => {
             pressed && !submitting && styles.ctaButtonPressed,
           ]}
         >
-          <Text style={styles.ctaLabel}>
-            {t('uac.email_google_notice.google_cta')}
-          </Text>
-          {/* Google G mark — placeholder square pending brand asset. */}
-          <View style={styles.ctaIconSlot} accessible={false}>
-            <View style={styles.ctaIconGlyph} />
-          </View>
+          {submitting ? (
+            <ActivityIndicator
+              testID="email-google-notice-continue-spinner"
+              color={theme.colors.uacTextBase}
+            />
+          ) : (
+            <>
+              <Text style={styles.ctaLabel}>
+                {t('uac.email_google_notice.google_cta')}
+              </Text>
+              {/* Google G mark — placeholder square pending brand asset. */}
+              <View style={styles.ctaIconSlot} accessible={false}>
+                <View style={styles.ctaIconGlyph} />
+              </View>
+            </>
+          )}
         </Pressable>
       </View>
     </View>
