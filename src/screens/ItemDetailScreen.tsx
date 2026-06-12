@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -249,7 +248,6 @@ export const ItemDetailScreen = () => {
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [pickerField, setPickerField] = useState<EditableField | null>(null);
-  const [draftName, setDraftName] = useState('');
   const [draftCategory, setDraftCategory] = useState('Top');
   const [draftColor, setDraftColor] = useState('Blue');
   const [draftFit, setDraftFit] = useState('Regular');
@@ -263,7 +261,6 @@ export const ItemDetailScreen = () => {
   } | null>(null);
 
   const syncDraftsFromItem = (nextItem: WardrobeItem) => {
-    setDraftName(nextItem.name?.trim() || '');
     setDraftCategory(normalizeCategoryLabel(nextItem.category));
     setDraftColor(normalizeColorLabel(nextItem));
     setDraftFit(getItemFitLabel(nextItem));
@@ -405,8 +402,7 @@ export const ItemDetailScreen = () => {
   const getPickerFieldLabel = (field: EditableField): string => {
     switch (field) {
       case 'category':
-        // Figma labels this row "Lable" (typo); we ship the correct "Label".
-        return t('wardrobe.itemDetail.row_label');
+        return t('wardrobe.itemDetail.row_type');
       case 'color':
         return t('wardrobe.itemDetail.row_color');
       case 'fit':
@@ -417,6 +413,14 @@ export const ItemDetailScreen = () => {
         return '';
     }
   };
+
+  // DISPLAY-ONLY: localize a canonical option value (e.g. 'Top', 'Black') for
+  // rendering. The raw value still drives selection, lookup (toApiCategory /
+  // findColorHex / toApiFormality), comparison, and persistence — never mutate
+  // it. `EditableField` maps 1:1 to the `wardrobe.options.<group>` namespace.
+  // defaultValue falls back to the canonical English if a key is missing.
+  const getOptionDisplayLabel = (field: EditableField, value: string): string =>
+    t(`wardrobe.options.${field}.${value}`, { defaultValue: value });
 
   const handleSelectOption = (option: string) => {
     if (!pickerField) {
@@ -574,7 +578,6 @@ export const ItemDetailScreen = () => {
       return;
     }
 
-    const currentName = item.name?.trim() || '';
     const currentColor = normalizeColorLabel(item);
     const currentStyle = normalizeFormalityLabel(
       item.formality_level as string | undefined,
@@ -583,13 +586,7 @@ export const ItemDetailScreen = () => {
     const currentFitTags = getItemStyleTags(item);
     const nextFitTags = replaceFitTag(currentFitTags, draftFit);
 
-    const trimmedName = draftName.trim();
-
     const payload: WardrobeAttributeUpdate = {};
-
-    if (trimmedName && trimmedName !== currentName) {
-      payload.name = trimmedName;
-    }
 
     if (draftCategory !== currentCategory) {
       payload.category = toApiCategory(draftCategory);
@@ -626,9 +623,6 @@ export const ItemDetailScreen = () => {
         ...updatedItem,
       };
 
-      if (payload.name) {
-        mergedItem.name = payload.name;
-      }
       if (payload.category) {
         mergedItem.category = payload.category;
       }
@@ -674,11 +668,7 @@ export const ItemDetailScreen = () => {
     }
   };
 
-  // Editable enum rows (Color, Style, Label, Fit): tap opens the picker; an
-  // active edit pencil signals editability. `rowKey` drives the testID/divider
-  // identity, `field` drives the picker + draft mapping (Label → category).
   const renderDetailRow = (
-    rowKey: string,
     label: string,
     value: string,
     field: EditableField,
@@ -688,10 +678,12 @@ export const ItemDetailScreen = () => {
     const showColor = field === 'color';
     const colorHex =
       showColor && item ? normalizeColorHex(item, draftColor) : null;
+    // Display-only: `value` stays the canonical draft for logic/persistence.
+    const displayValue = getOptionDisplayLabel(field, value);
 
     return (
       <TouchableOpacity
-        testID={`item-detail-row-${rowKey}`}
+        testID={`item-detail-row-${field}`}
         activeOpacity={0.85}
         disabled={!canEdit}
         onPress={() => setPickerField(field)}
@@ -707,7 +699,7 @@ export const ItemDetailScreen = () => {
                   style={[styles.colorDot, { backgroundColor: colorHex }]}
                 />
               ) : null}
-              <Text style={styles.rowValue}>{value}</Text>
+              <Text style={styles.rowValue}>{displayValue}</Text>
               {canEdit ? (
                 <Icons.Edit
                   width={18}
@@ -721,78 +713,6 @@ export const ItemDetailScreen = () => {
       </TouchableOpacity>
     );
   };
-
-  // Name row: free-text editor. The enum picker only supports enumerations, so
-  // Name gets an inline TextInput (the one backed field the picker can't edit).
-  const renderNameRow = () => {
-    const canEdit = isEditing && !isCatalogItem;
-
-    return (
-      <View testID="item-detail-row-name">
-        <DividerRow
-          label={t('wardrobe.itemDetail.row_name')}
-          labelStyle={styles.rowLabel}
-          rightNode={
-            <View style={styles.rowRight}>
-              {canEdit ? (
-                <TextInput
-                  testID="item-detail-name-input"
-                  style={styles.nameInput}
-                  value={draftName}
-                  onChangeText={setDraftName}
-                  placeholder={t('wardrobe.itemDetail.name_edit_placeholder')}
-                  placeholderTextColor={theme.colors.figmaTextMuted}
-                  returnKeyType="done"
-                  maxLength={80}
-                />
-              ) : (
-                <Text style={styles.rowValue}>
-                  {item?.name?.trim() ||
-                    t('wardrobe.itemDetail.value_unset')}
-                </Text>
-              )}
-              {canEdit ? (
-                <Icons.Edit
-                  width={18}
-                  height={18}
-                  color={theme.colors.figmaTextDark}
-                />
-              ) : null}
-            </View>
-          }
-        />
-      </View>
-    );
-  };
-
-  // Read-only rows (Energy, Material, Occasion, Purchase Date): the backend
-  // can't persist these, so they render the design's row + value with NO
-  // pencil and NO tap target — a clear "not editable" signal (decision:
-  // omit the pencil entirely rather than grey it out; reads cleaner). Never
-  // opens a picker, never pretends to save.
-  const renderReadOnlyRow = (
-    rowKey: string,
-    label: string,
-    value: string | null | undefined,
-    hideDivider?: boolean,
-  ) => (
-    <View testID={`item-detail-row-${rowKey}`}>
-      <DividerRow
-        label={label}
-        hideDivider={hideDivider}
-        labelStyle={styles.rowLabel}
-        rightNode={
-          <View style={styles.rowRight}>
-            <Text style={styles.rowValue}>
-              {value && value.trim()
-                ? value
-                : t('wardrobe.itemDetail.value_unset')}
-            </Text>
-          </View>
-        }
-      />
-    </View>
-  );
 
   if (loading) {
     return (
@@ -810,19 +730,6 @@ export const ItemDetailScreen = () => {
   // items pushed from Home may carry no name → degrade to the category label.
   const titleText = item.name?.trim() || normalizeCategoryLabel(item.category);
   const dateText = formatItemDate(item.created_at);
-
-  // Read-only edit-mode values (no update-contract field — display only):
-  //   Occasion ← WardrobeItem.occasion[] (read model), joined for display.
-  //   Purchase Date ← created_at, reusing the dd/mm/yyyy formatter.
-  // Energy + Material have no source at all → null → "—" placeholder.
-  const occasionText =
-    Array.isArray(item.occasion) && item.occasion.length > 0
-      ? item.occasion
-          .filter(value => typeof value === 'string' && value.trim())
-          .map(value => toTitleCase(String(value)))
-          .join(', ')
-      : null;
-  const purchaseDateText = formatItemDate(item.created_at);
 
   return (
     <View testID="item-detail-screen-root" style={styles.container}>
@@ -892,63 +799,42 @@ export const ItemDetailScreen = () => {
         }}
       >
         {isEditing ? (
-          // EDIT MODE (Figma 3508:8356): the full 9-row attribute list + bottom
-          // [Cancel] [Save]. Row order matches the design 1:1: Name, Color,
-          // Style, Energy, Label, Fit, Material, Occasion, Purchase Date.
-          //   Editable (backed): Name, Color, Style, Label(category), Fit.
-          //   Read-only (no update-contract field): Energy, Material, Occasion,
-          //   Purchase Date — rendered with NO pencil, NO tap, NO fake save.
-          // Figma spells row 5 "Lable" (typo); we ship the correct "Label".
+          // EDIT MODE (Figma 3508:8356): editable attribute list + bottom
+          // [Cancel] [Save]. Name stays read-only (free-text edit needs a
+          // text-input picker; the option picker only supports enumerations
+          // — tracked in extraction note §New backend fields).
           <>
-            <ScrollView
-              style={styles.detailsScroll}
-              contentContainerStyle={styles.details}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {renderNameRow()}
+            <View style={styles.details}>
+              {item.name ? (
+                <DividerRow
+                  label={t('wardrobe.itemDetail.row_name')}
+                  value={item.name}
+                  labelStyle={styles.rowLabel}
+                  valueStyle={styles.rowValue}
+                />
+              ) : null}
               {renderDetailRow(
-                'color',
+                t('wardrobe.itemDetail.row_type'),
+                draftCategory,
+                'category',
+              )}
+              {renderDetailRow(
+                t('wardrobe.itemDetail.row_style'),
+                draftStyle,
+                'style',
+              )}
+              {renderDetailRow(
                 t('wardrobe.itemDetail.row_color'),
                 draftColor,
                 'color',
               )}
               {renderDetailRow(
-                'style',
-                t('wardrobe.itemDetail.row_style'),
-                draftStyle,
-                'style',
-              )}
-              {renderReadOnlyRow('energy', t('wardrobe.itemDetail.row_energy'), null)}
-              {renderDetailRow(
-                'label',
-                t('wardrobe.itemDetail.row_label'),
-                draftCategory,
-                'category',
-              )}
-              {renderDetailRow(
-                'fit',
                 t('wardrobe.itemDetail.row_fit'),
                 draftFit,
                 'fit',
-              )}
-              {renderReadOnlyRow(
-                'material',
-                t('wardrobe.itemDetail.row_material'),
-                null,
-              )}
-              {renderReadOnlyRow(
-                'occasion',
-                t('wardrobe.itemDetail.row_occasion'),
-                occasionText,
-              )}
-              {renderReadOnlyRow(
-                'purchase-date',
-                t('wardrobe.itemDetail.row_purchase_date'),
-                purchaseDateText,
                 true,
               )}
-            </ScrollView>
+            </View>
 
             <View style={styles.actionBlock}>
               <View style={styles.editActionRow}>
@@ -967,15 +853,6 @@ export const ItemDetailScreen = () => {
                   onPress={handleSaveEdits}
                   loading={saving}
                   disabled={saving}
-                  trailing={
-                    saving ? undefined : (
-                      <Icons.Send
-                        width={18}
-                        height={20}
-                        color={theme.colors.white}
-                      />
-                    )
-                  }
                   style={styles.editSaveButton}
                 />
               </View>
@@ -1153,7 +1030,11 @@ export const ItemDetailScreen = () => {
                             ]}
                           />
                         ) : null}
-                        <Text style={styles.optionText}>{option}</Text>
+                        <Text style={styles.optionText}>
+                          {pickerField
+                            ? getOptionDisplayLabel(pickerField, option)
+                            : option}
+                        </Text>
                       </View>
                       {isSelected ? (
                         <Icons.ChevronRight
@@ -1288,12 +1169,6 @@ const styles = StyleSheet.create({
   ctaPillText: {
     color: theme.colors.uacTextBase,
   },
-  // Edit list scrolls so the full 9-row set never pushes the [Cancel][Save]
-  // bar off short screens. flexShrink lets the bar keep its space.
-  detailsScroll: {
-    flexGrow: 0,
-    flexShrink: 1,
-  },
   details: {
     gap: 8,
   },
@@ -1301,17 +1176,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  // Free-text Name editor: right-aligned to mirror the read value's position,
-  // matching the row's label↔value layout. flexShrink so long names wrap into
-  // the available right column instead of overflowing.
-  nameInput: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaItemDetailRowText,
-    flexShrink: 1,
-    minWidth: 120,
-    textAlign: 'right',
-    paddingVertical: 0,
   },
   rowLabel: {
     ...theme.typography.aliases.interBodySm,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import IconSwipe from '../../assets/images/icon_swipe.svg';
 import IconRemix from '../../assets/images/icon_remix.svg';
@@ -46,6 +47,7 @@ export const OutfitActionRow: React.FC<Props> = ({
   showAnotherDisabled = false,
   testID,
 }) => {
+  const { t } = useTranslation();
   const count = Math.max(1, dotCount);
   // Clamp the active dot into the dot window so the pager always shows a valid
   // highlighted dot.
@@ -58,13 +60,13 @@ export const OutfitActionRow: React.FC<Props> = ({
       <TouchableOpacity
         testID={`home-remix-${activeIndex}`}
         accessibilityRole="button"
-        accessibilityLabel="Remix this outfit"
+        accessibilityLabel={t('outfitActions.a11y_remix')}
         activeOpacity={0.82}
         onPress={onRemix}
         style={styles.sideSlot}
       >
         <Text style={styles.remixText} numberOfLines={1}>
-          Remix
+          {t('outfitActions.remix')}
         </Text>
         <IconRemix width={16} height={16} color={theme.colors.uacTextBase} />
       </TouchableOpacity>
@@ -72,7 +74,10 @@ export const OutfitActionRow: React.FC<Props> = ({
       <View
         style={styles.dots}
         accessibilityRole="adjustable"
-        accessibilityLabel={`Option ${activeDot + 1} of ${count}`}
+        accessibilityLabel={t('outfitActions.a11y_option_of', {
+          index: activeDot + 1,
+          count,
+        })}
       >
         {Array.from({ length: count }).map((_, index) => (
           <View
@@ -94,7 +99,7 @@ export const OutfitActionRow: React.FC<Props> = ({
             : 'home-show-another'
         }
         accessibilityRole="button"
-        accessibilityLabel="Show another outfit"
+        accessibilityLabel={t('outfitActions.a11y_show_another')}
         accessibilityState={{ disabled: showAnotherDisabled }}
         activeOpacity={0.82}
         disabled={showAnotherDisabled}
@@ -102,7 +107,7 @@ export const OutfitActionRow: React.FC<Props> = ({
         style={[styles.showAnother, showAnotherDisabled && styles.disabled]}
       >
         <Text style={styles.showAnotherText} numberOfLines={1}>
-          Show another
+          {t('outfitActions.show_another')}
         </Text>
         <IconSwipe width={24} height={24} color={theme.colors.uacTextBase} />
       </TouchableOpacity>

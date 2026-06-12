@@ -119,6 +119,9 @@ export type AppStackParamList = {
   // wardrobeService.getWardrobeItem(id) lookup misses (see
   // figma-extraction-item-detail.md Q7). Keep it serializable.
   ItemDetail: { itemId: string; fallbackItem?: ItemDetailFallbackItem };
+  // __DEV__-only in-app Design System reference / style-guide catalog.
+  // Reached from the Settings "Version" row in dev builds; not shipped to prod.
+  DesignSystem: undefined;
   // "See this on me" / Self visualization virtual try-on (Workstream 5,
   // Figma node 2852:22266). A 3-step conversational capture flow
   // (selfie → full-body → body-shape) that uploads a body photo and renders

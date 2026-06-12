@@ -26,6 +26,7 @@ import { SeeThisOnMeScreen } from '../screens/see-this-on-me/SeeThisOnMeScreen';
 import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
 import { OutfitCanvasScreen } from '../screens/OutfitCanvasScreen';
+import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -110,6 +111,14 @@ export const AppNavigator = () => {
                 name="OutfitCanvas"
                 component={OutfitCanvasScreen}
                 options={{ gestureEnabled: false }}
+              />
+              {/* __DEV__-only Design System reference screen. Registering it
+                  unconditionally is harmless — the only entry point (Settings
+                  "Version" row) is itself __DEV__-gated, so prod users can't
+                  reach it. */}
+              <Stack.Screen
+                name="DesignSystem"
+                component={DesignSystemScreen}
               />
             </>
           )

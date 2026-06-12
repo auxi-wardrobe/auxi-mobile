@@ -4,10 +4,12 @@ import { theme } from '../../theme/theme';
 
 // Shared toggle colors for every Settings Switch (Daily Time + Dark Mode).
 // Byte-identical prop set extracted to keep the two switches in lockstep.
+// Active track is the Auxi Design System teal (figmaSwitchOn / ds.color.teal),
+// split from the radio's confirm-green per `Auxi Design System.html`.
 export const TOGGLE_COLORS = {
   trackColor: {
     false: theme.colors.figmaToggleOffTrack,
-    true: theme.colors.figmaToggleOn,
+    true: theme.colors.figmaSwitchOn,
   },
   thumbColor: theme.colors.white,
   ios_backgroundColor: theme.colors.figmaToggleOffTrack,

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import {
   launchCamera,
@@ -87,6 +88,7 @@ export const WardrobeScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const isFocused = useIsFocused();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,14 +112,14 @@ export const WardrobeScreen = () => {
       console.error('Error fetching wardrobe items', error);
       Toast.show({
         type: 'error',
-        text1: 'Unable to load wardrobe',
-        text2: 'Please try again in a moment.',
+        text1: t('common.load_wardrobe_failed_title'),
+        text2: t('common.try_again_moment'),
         position: 'bottom',
       });
     } finally {
       setLoading(false);
     }
-  }, [selectedTab]);
+  }, [selectedTab, t]);
 
   useEffect(() => {
     if (isFocused) {
@@ -155,8 +157,8 @@ export const WardrobeScreen = () => {
     track('add_item_method_selected', { method: 'import_web' });
     Toast.show({
       type: 'info',
-      text1: 'Coming soon',
-      text2: 'Importing from a web link will be available shortly.',
+      text1: t('common.coming_soon'),
+      text2: t('wardrobe.list.coming_soon_body'),
       position: 'bottom',
     });
   };
@@ -180,7 +182,10 @@ export const WardrobeScreen = () => {
       }
 
       if (result.errorCode) {
-        Alert.alert('Error', result.errorMessage || 'Failed to pick image');
+        Alert.alert(
+          t('common.error_title'),
+          result.errorMessage || t('common.pick_image_failed'),
+        );
         return;
       }
 
@@ -203,7 +208,7 @@ export const WardrobeScreen = () => {
         track('add_item_upload_succeeded', { source: type });
         Toast.show({
           type: 'success',
-          text1: 'Added to your wardrobe',
+          text1: t('wardrobe.list.added_title'),
           position: 'bottom',
         });
 
@@ -213,8 +218,8 @@ export const WardrobeScreen = () => {
         track('add_item_upload_failed', { source: type });
         Toast.show({
           type: 'error',
-          text1: 'Upload failed',
-          text2: 'We could not save that item.',
+          text1: t('wardrobe.list.upload_failed_title'),
+          text2: t('wardrobe.list.upload_failed_body'),
           position: 'bottom',
         });
       } finally {
@@ -228,14 +233,21 @@ export const WardrobeScreen = () => {
     track('add_item_method_selected', { method: 'take_photo' });
     setAddSheetVisible(false);
     setTimeout(() => {
-      Alert.alert('Add a photo', 'Use your camera or pick from your library.', [
-        { text: 'Take a photo', onPress: () => handleImageSelection('camera') },
-        {
-          text: 'Choose from library',
-          onPress: () => handleImageSelection('gallery'),
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+      Alert.alert(
+        t('wardrobe.list.add_photo_title'),
+        t('wardrobe.list.add_photo_body'),
+        [
+          {
+            text: t('common.take_photo'),
+            onPress: () => handleImageSelection('camera'),
+          },
+          {
+            text: t('common.choose_from_library'),
+            onPress: () => handleImageSelection('gallery'),
+          },
+          { text: t('common.cancel'), style: 'cancel' },
+        ],
+      );
     }, 250);
   };
 
@@ -260,7 +272,7 @@ export const WardrobeScreen = () => {
         activeOpacity={0.88}
         onPress={() => handleItemPress(item)}
         testID={tileTestID}
-        accessibilityLabel={item.name || 'Wardrobe item'}
+        accessibilityLabel={item.name || t('wardrobe.list.a11y_item_fallback')}
       >
         {imageUrl ? (
           <Image
@@ -270,7 +282,7 @@ export const WardrobeScreen = () => {
           />
         ) : (
           <View style={styles.tileFallback}>
-            <Text style={styles.tileFallbackText}>No image</Text>
+            <Text style={styles.tileFallbackText}>{t('common.no_image')}</Text>
           </View>
         )}
 
@@ -278,7 +290,7 @@ export const WardrobeScreen = () => {
           <View style={styles.tileBadgeWrap}>
             <View style={styles.tileBadge}>
               <Text numberOfLines={1} style={styles.tileBadgeText}>
-                common
+                {t('common.badge_common')}
               </Text>
             </View>
           </View>
@@ -302,7 +314,7 @@ export const WardrobeScreen = () => {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       <Header
-        title="Wardrobe"
+        title={t('wardrobe.list.title')}
         titleTextStyle={styles.headerTitle}
         leftIconStyle={styles.headerIconButton}
         onBack={() => setIsSidebarOpen(true)}
@@ -313,7 +325,7 @@ export const WardrobeScreen = () => {
             style={[styles.plusButton, styles.headerIconButton]}
             activeOpacity={0.85}
             testID="wardrobe-add-btn"
-            accessibilityLabel="Add item"
+            accessibilityLabel={t('common.a11y_add_item')}
           >
             {uploading ? (
               <ActivityIndicator
@@ -348,22 +360,24 @@ export const WardrobeScreen = () => {
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>
               {selectedTab === 'All'
-                ? 'Add your first item'
-                : 'No items in this category yet'}
+                ? t('wardrobe.list.empty_first_title')
+                : t('wardrobe.list.empty_filtered_title')}
             </Text>
             <Text style={styles.emptySubtitle}>
               {selectedTab === 'All'
-                ? 'Add a photo or browse the database to start your wardrobe.'
-                : 'Try another filter or add a new item to this section.'}
+                ? t('wardrobe.list.empty_first_body')
+                : t('wardrobe.list.empty_filtered_body')}
             </Text>
             <TouchableOpacity
               style={styles.emptyCta}
               activeOpacity={0.85}
               onPress={() => openAddSheet('empty_state')}
               testID="wardrobe-empty-add-btn"
-              accessibilityLabel="Add item"
+              accessibilityLabel={t('common.a11y_add_item')}
             >
-              <Text style={styles.emptyCtaText}>Add an item</Text>
+              <Text style={styles.emptyCtaText}>
+                {t('wardrobe.list.add_an_item')}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -381,9 +395,11 @@ export const WardrobeScreen = () => {
           <View style={styles.sheetOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <BottomSheetSurface style={styles.addSheet}>
-                <Text style={styles.addSheetTitle}>Add item</Text>
+                <Text style={styles.addSheetTitle}>
+                  {t('wardrobe.list.add_item_sheet_title')}
+                </Text>
                 <Text style={styles.addSheetSubtitle}>
-                  Choose how you'd like to add it
+                  {t('wardrobe.list.add_item_sheet_subtitle')}
                 </Text>
 
                 <AddMethodRow
@@ -394,8 +410,8 @@ export const WardrobeScreen = () => {
                       color={theme.colors.uacBackgroundBase}
                     />
                   }
-                  title="Search the database"
-                  description="Fastest way to add an item"
+                  title={t('wardrobe.list.method_search_title')}
+                  description={t('wardrobe.list.method_search_desc')}
                   onPress={handleSearchDatabase}
                   testID="wardrobe-add-search"
                 />
@@ -407,8 +423,8 @@ export const WardrobeScreen = () => {
                       color={theme.colors.uacBackgroundBase}
                     />
                   }
-                  title="Take a photo"
-                  description="Use your camera or library"
+                  title={t('common.take_photo')}
+                  description={t('wardrobe.list.method_photo_desc')}
                   onPress={handleTakePhoto}
                   testID="wardrobe-add-photo"
                 />
@@ -420,8 +436,8 @@ export const WardrobeScreen = () => {
                       color={theme.colors.uacBackgroundBase}
                     />
                   }
-                  title="Import from web"
-                  description="Paste a product link to save an item"
+                  title={t('wardrobe.list.method_web_title')}
+                  description={t('wardrobe.list.method_web_desc')}
                   onPress={handleImportFromWeb}
                   testID="wardrobe-add-import"
                   isLast
@@ -446,11 +462,17 @@ export const WardrobeScreen = () => {
           </View>
           <View style={styles.preparingPanel}>
             <ActivityIndicator size="small" color={theme.colors.figmaAction} />
-            <Text style={styles.preparingTitle}>Preparing your item…</Text>
-            <Text style={styles.preparingStep}>
-              • Removing the background and identifying details…
+            <Text style={styles.preparingTitle}>
+              {t('wardrobe.list.preparing_title')}
             </Text>
-            <Text style={styles.preparingStep}>• Auto tagging your items…</Text>
+            <Text style={styles.preparingStep}>
+              {'• '}
+              {t('wardrobe.list.preparing_step1')}
+            </Text>
+            <Text style={styles.preparingStep}>
+              {'• '}
+              {t('wardrobe.list.preparing_step2')}
+            </Text>
           </View>
         </View>
       </Modal>

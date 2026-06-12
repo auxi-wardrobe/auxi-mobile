@@ -381,6 +381,18 @@ const CONTEXT_CHIP_SETS: ContextChipOption[][] = [
   ],
 ];
 
+// i18n display keys for chip labels (defaultNS `boilerplate`). The chip `id`
+// stays the canonical lookup/selection key; these resolve display copy only.
+// Note: two ids deviate from the `chip_<id>` shape (bolder_choice/simpler_look).
+const CONTEXT_CHIP_LABEL_KEYS: Record<ContextChipId, string> = {
+  more_relaxed: 'home.chip_more_relaxed',
+  different_vibe: 'home.chip_different_vibe',
+  more_polished: 'home.chip_more_polished',
+  more_casual: 'home.chip_more_casual',
+  bolder_choice: 'home.chip_bolder',
+  simpler_look: 'home.chip_simpler',
+};
+
 export const HomeScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -840,6 +852,10 @@ export const HomeScreen = () => {
   }, []);
 
   const loading = isStartPending && listOutfits.length === 0;
+  // Canonical (English) chip set — `label` is consumed by the backend engine
+  // prompt verbatim (see handleSubmitContext). Keep raw, do NOT localize here.
+  // A display-only localized copy (`displayContextChipOptions`) is derived
+  // below, after the `t` instance is available.
   const activeContextChipOptions =
     CONTEXT_CHIP_SETS[contextSuggestionSetIndex] ?? CONTEXT_CHIP_SETS[0];
   const trimmedCustomContextText = customContextText.trim();
@@ -1015,6 +1031,19 @@ export const HomeScreen = () => {
   // lives in useMoodFeedback — this screen is wiring only. The header heart
   // (handleHeartTapActive above) keeps the legacy immediate-save path.
   const { t } = useTranslation();
+  // Display-only copy of the active chip set: same ids, labels resolved via
+  // t() for the modal UI. Selection + API payload still flow through the
+  // canonical `activeContextChipOptions` (see handleSubmitContext).
+  const displayContextChipOptions = useMemo<ContextChipOption[]>(
+    () =>
+      activeContextChipOptions.map(option => ({
+        ...option,
+        label: t(CONTEXT_CHIP_LABEL_KEYS[option.id], {
+          defaultValue: option.label,
+        }),
+      })),
+    [activeContextChipOptions, t],
+  );
   const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
 
   // Reuses the pre-existing snackbarTimeoutRef (declared with the other
@@ -1033,7 +1062,9 @@ export const HomeScreen = () => {
       // Same post-save semantics as the legacy path: the CTA flips to
       // "Saved to favourite" via saveStateByHash.
       setSaveStateByHash(current => ({ ...current, [outfitHash]: 'saved' }));
-      showMoodBanner(t(updated ? 'mood.moodUpdatedBanner' : 'mood.savedBanner'));
+      showMoodBanner(
+        t(updated ? 'mood.moodUpdatedBanner' : 'mood.savedBanner'),
+      );
     },
     [showMoodBanner, t],
   );
@@ -1469,7 +1500,7 @@ export const HomeScreen = () => {
       <View style={styles.header}>
         <TopIconButton
           testID="home-menu-button"
-          accessibilityLabel="Open menu"
+          accessibilityLabel={t('home.a11y_open_menu')}
           onPress={handleLeadingAction}
           icon={<IconHomeMenu width={24} height={24} />}
         />
@@ -1485,8 +1516,8 @@ export const HomeScreen = () => {
           accessibilityRole="button"
           accessibilityLabel={
             activeSaveState === 'saved'
-              ? 'Saved to favourites'
-              : 'Favourite this look'
+              ? t('home.a11y_saved_fav')
+              : t('home.a11y_fav_this')
           }
           activeOpacity={0.82}
           style={[
@@ -1562,9 +1593,14 @@ export const HomeScreen = () => {
         >
           <IconHomePin width={24} height={24} />
           <Text style={styles.pinHeaderLabelText} numberOfLines={1}>
-            {`Pinned: ${pinnedItem.category || pinnedItem.color || 'item'}`}
+            {t('home.pinned_label', {
+              label:
+                pinnedItem.category ||
+                pinnedItem.color ||
+                t('home.pinned_item_fallback'),
+            })}
           </Text>
-          <Text style={styles.pinHeaderLabelClear}>Clear</Text>
+          <Text style={styles.pinHeaderLabelClear}>{t('home.clear')}</Text>
         </TouchableOpacity>
       ) : null}
 
@@ -1576,7 +1612,7 @@ export const HomeScreen = () => {
       {hasCycled && !isWardrobeGap && optionSets.length > 0 ? (
         <View style={styles.cycledHint} testID="home-cycled-hint">
           <Text style={styles.cycledHintText} numberOfLines={1}>
-            Đã xem hết — gợi ý lặp lại
+            {t('home.seen_all_hint')}
           </Text>
         </View>
       ) : null}
@@ -1687,7 +1723,7 @@ export const HomeScreen = () => {
 
       <ContextChipsModal
         visible={isContextModalOpen}
-        chipOptions={activeContextChipOptions}
+        chipOptions={displayContextChipOptions}
         selectedChipId={selectedContextChipId}
         isEditing={isEditingContext}
         customContextText={customContextText}
@@ -1962,6 +1998,7 @@ const OptionSheet = React.memo(
     homeView: HomeView;
     onCollageDragActiveChange: (active: boolean) => void;
   }) => {
+    const { t } = useTranslation();
     const items = outfit.items;
     const layout = pickLayout(items);
     const itemCount = items.length;
@@ -2011,7 +2048,9 @@ const OptionSheet = React.memo(
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
             accessibilityRole="button"
-            accessibilityLabel={isPinned ? 'Unpin item' : 'Pin item'}
+            accessibilityLabel={
+              isPinned ? t('home.a11y_unpin_item') : t('home.a11y_pin_item')
+            }
           >
             <IconHomePin width={24} height={24} />
           </TouchableOpacity>
@@ -2193,7 +2232,11 @@ const OptionSheet = React.memo(
               heart icon, height 56, label "Wear this" (border/primary/bold_600). */}
             <PillButton
               testID={`home-this-works-${cellKey}`}
-              title={saveState === 'saved' ? 'Saved to favourite' : 'Wear this'}
+              title={
+                saveState === 'saved'
+                  ? t('home.saved_to_favourite')
+                  : t('home.wear_this')
+              }
               variant="outline"
               onPress={onConfirm}
               disabled={saveState === 'saved'}
@@ -2205,7 +2248,7 @@ const OptionSheet = React.memo(
 
             {saveState === 'error' ? (
               <Text style={styles.saveErrorText}>
-                {'Couldn\'t save this look. Tap "Wear this" to retry.'}
+                {t('home.save_failed_retry')}
               </Text>
             ) : null}
 
@@ -2232,24 +2275,25 @@ OptionSheet.displayName = 'OptionSheet';
 // fails and the user is left without any outfit to display. A simple
 // Retry restarts the same mutation; deeper diagnosis lives in console
 // logs (onError) and Sentry.
-const HomeErrorState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
-  <View style={styles.errorState} testID="home-error-state">
-    <Text style={styles.errorStateTitle}>Couldn't load your outfits</Text>
-    <Text style={styles.errorStateBody}>
-      Check your connection and try again.
-    </Text>
-    <TouchableOpacity
-      testID="home-error-retry"
-      onPress={onRetry}
-      style={styles.errorStateRetry}
-      activeOpacity={0.82}
-      accessibilityRole="button"
-      accessibilityLabel="Retry loading outfits"
-    >
-      <Text style={styles.errorStateRetryLabel}>Try again</Text>
-    </TouchableOpacity>
-  </View>
-);
+const HomeErrorState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.errorState} testID="home-error-state">
+      <Text style={styles.errorStateTitle}>{t('home.error_load_title')}</Text>
+      <Text style={styles.errorStateBody}>{t('home.error_load_body')}</Text>
+      <TouchableOpacity
+        testID="home-error-retry"
+        onPress={onRetry}
+        style={styles.errorStateRetry}
+        activeOpacity={0.82}
+        accessibilityRole="button"
+        accessibilityLabel={t('home.a11y_retry_load')}
+      >
+        <Text style={styles.errorStateRetryLabel}>{t('common.retry')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 // Fix D (2026-05-27): terminal dead-end when the wardrobe is genuinely too
 // small to compose any outfit (backend `wardrobe_gap`). Reuses the error-state
@@ -2257,57 +2301,67 @@ const HomeErrorState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
 // rebuild affordance (adding items is the only real fix; backend owns the rest).
 const HomeWardrobeGapState: React.FC<{ onAddItems: () => void }> = ({
   onAddItems,
-}) => (
-  <View style={styles.errorState} testID="home-wardrobe-gap-state">
-    <Text style={styles.errorStateTitle}>Tủ đồ chưa đủ để tạo thêm gợi ý</Text>
-    <Text style={styles.errorStateBody}>
-      Thêm vài món vào tủ để Auxi gợi ý nhiều hơn.
-    </Text>
-    <TouchableOpacity
-      testID="home-wardrobe-gap-add-items"
-      onPress={onAddItems}
-      style={styles.errorStateRetry}
-      activeOpacity={0.82}
-      accessibilityRole="button"
-      accessibilityLabel="Thêm món vào tủ đồ"
-    >
-      <Text style={styles.errorStateRetryLabel}>Thêm vào tủ đồ</Text>
-    </TouchableOpacity>
-  </View>
-);
-
-const HomeLoadingState = () => (
-  <View style={styles.optionSheet}>
-    <View style={styles.loadingCards}>
-      {[0, 1].map(row => (
-        <View key={`loading-row-${row}`} style={styles.cardRow}>
-          {[0, 1].map(column => (
-            <View
-              key={`loading-card-${row}-${column}`}
-              style={styles.cardShellFixed}
-            >
-              <View style={[styles.card, styles.loadingCard]} />
-            </View>
-          ))}
-        </View>
-      ))}
+}) => {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.errorState} testID="home-wardrobe-gap-state">
+      <Text style={styles.errorStateTitle}>{t('home.wardrobe_gap_title')}</Text>
+      <Text style={styles.errorStateBody}>{t('home.wardrobe_gap_body')}</Text>
+      <TouchableOpacity
+        testID="home-wardrobe-gap-add-items"
+        onPress={onAddItems}
+        style={styles.errorStateRetry}
+        activeOpacity={0.82}
+        accessibilityRole="button"
+        accessibilityLabel={t('home.a11y_add_to_wardrobe')}
+      >
+        <Text style={styles.errorStateRetryLabel}>
+          {t('home.add_to_wardrobe')}
+        </Text>
+      </TouchableOpacity>
     </View>
+  );
+};
 
-    <View style={styles.loadingFooter}>
+const HomeLoadingState = () => {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.optionSheet}>
+      <View style={styles.loadingCards}>
+        {[0, 1].map(row => (
+          <View key={`loading-row-${row}`} style={styles.cardRow}>
+            {[0, 1].map(column => (
+              <View
+                key={`loading-card-${row}-${column}`}
+                style={styles.cardShellFixed}
+              >
+                <View style={[styles.card, styles.loadingCard]} />
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.loadingFooter}>
+        <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+        <Text style={styles.loadingFooterText}>{t('home.building_next')}</Text>
+      </View>
+    </View>
+  );
+};
+
+const LoadingMoreIndicator = () => {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.loadingMoreIndicator}>
       <ActivityIndicator size="small" color={theme.colors.figmaAction} />
-      <Text style={styles.loadingFooterText}>Building your next looks</Text>
+      <Text style={styles.loadingMoreText}>{t('home.loading_more')}</Text>
     </View>
-  </View>
-);
-
-const LoadingMoreIndicator = () => (
-  <View style={styles.loadingMoreIndicator}>
-    <ActivityIndicator size="small" color={theme.colors.figmaAction} />
-    <Text style={styles.loadingMoreText}>Loading more options...</Text>
-  </View>
-);
+  );
+};
 
 const GarmentPreview = ({ item }: { item: Item }) => {
+  const { t } = useTranslation();
   const imageUrl = resolveItemImage(item);
 
   return (
@@ -2322,7 +2376,7 @@ const GarmentPreview = ({ item }: { item: Item }) => {
         <View style={styles.cardFallback} />
       )}
       <View style={styles.cardTag}>
-        <Text style={styles.cardTagText}>common</Text>
+        <Text style={styles.cardTagText}>{t('common.badge_common')}</Text>
       </View>
     </>
   );

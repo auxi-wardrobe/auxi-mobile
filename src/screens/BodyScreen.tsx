@@ -17,6 +17,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 import {
   PillButton,
   TopIconButton,
@@ -74,15 +75,16 @@ const formatPhotoTimestamp = (createdAt?: string): string | null => {
   const date = new Date(createdAt);
   if (Number.isNaN(date.getTime())) return null;
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(date.getHours())}:${pad(date.getMinutes())} - ${date.getDate()} ${
-    MONTHS[date.getMonth()]
-  }, ${date.getFullYear()}`;
+  return `${pad(date.getHours())}:${pad(
+    date.getMinutes(),
+  )} - ${date.getDate()} ${MONTHS[date.getMonth()]}, ${date.getFullYear()}`;
 };
 
 export const BodyScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<ScreenRoute>();
   const { checkAuth } = useAuth();
+  const { t } = useTranslation();
 
   // Derive mode once + narrow the discriminated union. The union guarantees
   // `outfit` is present when mode === 'tryOn' and `bodyId` only on 'photoDetail',
@@ -151,8 +153,8 @@ export const BodyScreen = () => {
           // existing grid placeholder behavior).
           Toast.show({
             type: 'error',
-            text1: 'My body',
-            text2: 'Could not load your body photo. Please try again.',
+            text1: t('body.toast_load_failed_title'),
+            text2: t('body.toast_load_failed_body'),
             position: 'bottom',
             visibilityTime: 4000,
           });
@@ -161,7 +163,7 @@ export const BodyScreen = () => {
         setLoading(false);
       }
     },
-    [checkAuth, isPhotoDetailMode],
+    [checkAuth, isPhotoDetailMode, t],
   );
 
   useEffect(() => {
@@ -179,14 +181,14 @@ export const BodyScreen = () => {
   const previewImageUrl = generatedTryOnUrl
     ? resolveImageUrl(generatedTryOnUrl)
     : selectedBody
-      ? resolveImageUrl(selectedBody.image_url)
-      : null;
+    ? resolveImageUrl(selectedBody.image_url)
+    : null;
 
   const handleDelete = (id: string) => {
-    Alert.alert('Delete body photo?', 'This action cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('body.delete_title'), t('common.action_cannot_undo'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
@@ -212,7 +214,7 @@ export const BodyScreen = () => {
             if (getErrorStatus(error) === 401) {
               await checkAuth();
             } else {
-              Alert.alert('Error', 'Failed to delete body');
+              Alert.alert(t('common.error_title'), t('body.delete_failed'));
             }
           }
         },
@@ -239,7 +241,10 @@ export const BodyScreen = () => {
       }
 
       if (result.errorCode) {
-        Alert.alert('Error', result.errorMessage || 'Failed to pick image');
+        Alert.alert(
+          t('common.error_title'),
+          result.errorMessage || t('common.pick_image_failed'),
+        );
         return;
       }
 
@@ -258,7 +263,7 @@ export const BodyScreen = () => {
         if (getErrorStatus(error) === 401) {
           await checkAuth();
         } else {
-          Alert.alert('Error', 'Failed to upload body');
+          Alert.alert(t('common.error_title'), t('body.upload_failed'));
         }
       } finally {
         setUploading(false);
@@ -296,7 +301,7 @@ export const BodyScreen = () => {
     } catch (error) {
       console.error('Try-on generation error', error);
       track('try_on_failed', { outfit_hash: tryOnOutfit.outfitHash });
-      setTryOnError('Could not generate your try-on image. Please try again.');
+      setTryOnError(t('body.tryon_failed'));
     } finally {
       setIsGenerating(false);
     }
@@ -388,9 +393,7 @@ export const BodyScreen = () => {
           ) : (
             <View style={[styles.detailImage, styles.detailImagePlaceholder]}>
               <Text style={styles.detailPlaceholderText}>
-                {loading
-                  ? 'Loading…'
-                  : 'No body photo yet. Tap Retake to add one.'}
+                {loading ? t('common.loading') : t('body.no_photo_hint')}
               </Text>
             </View>
           )}
@@ -407,12 +410,12 @@ export const BodyScreen = () => {
         <View style={styles.detailPanel}>
           <View style={styles.detailCopy}>
             {photoTimestamp ? (
-              <Text style={styles.detailText}>{`Time: ${photoTimestamp}`}</Text>
+              <Text style={styles.detailText}>
+                {t('body.time_label', { time: photoTimestamp })}
+              </Text>
             ) : null}
-            <Text style={styles.detailText}>
-              This photo helps show how outfits look on you
-            </Text>
-            <Text style={styles.detailText}>🔒 Your photo stays private.</Text>
+            <Text style={styles.detailText}>{t('body.photo_helps')}</Text>
+            <Text style={styles.detailText}>{t('body.privacy_note')}</Text>
           </View>
 
           <View style={styles.detailActions}>
@@ -430,7 +433,7 @@ export const BodyScreen = () => {
                 }
               }}
             >
-              <Text style={styles.detailDeleteLabel}>Delete</Text>
+              <Text style={styles.detailDeleteLabel}>{t('common.delete')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -449,7 +452,7 @@ export const BodyScreen = () => {
                   color={theme.colors.uacTextBase}
                 />
               ) : (
-                <Text style={styles.detailRetakeLabel}>Retake</Text>
+                <Text style={styles.detailRetakeLabel}>{t('body.retake')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -465,14 +468,16 @@ export const BodyScreen = () => {
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback>
                 <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Retake body photo</Text>
+                  <Text style={styles.modalTitle}>{t('body.retake_body')}</Text>
 
                   <TouchableOpacity
                     testID="body-detail-retake-camera"
                     style={styles.modalAction}
                     onPress={() => handleImageSelection('camera')}
                   >
-                    <Text style={styles.modalActionText}>Take a photo</Text>
+                    <Text style={styles.modalActionText}>
+                      {t('common.take_photo')}
+                    </Text>
                   </TouchableOpacity>
 
                   <View style={styles.modalDivider} />
@@ -483,7 +488,7 @@ export const BodyScreen = () => {
                     onPress={() => handleImageSelection('gallery')}
                   >
                     <Text style={styles.modalActionText}>
-                      Upload from gallery
+                      {t('common.upload_gallery')}
                     </Text>
                   </TouchableOpacity>
 
@@ -494,7 +499,9 @@ export const BodyScreen = () => {
                     style={styles.modalCancel}
                     onPress={() => setModalVisible(false)}
                   >
-                    <Text style={styles.modalCancelText}>Cancel</Text>
+                    <Text style={styles.modalCancelText}>
+                      {t('common.cancel')}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </TouchableWithoutFeedback>
@@ -512,7 +519,9 @@ export const BodyScreen = () => {
           onPress={() => navigation.goBack()}
           icon={<Icons.ChevronLeft width={20} height={20} />}
         />
-        <Text style={styles.title}>{isTryOnMode ? 'Try on' : 'My body'}</Text>
+        <Text style={styles.title}>
+          {isTryOnMode ? t('body.tryon_tab') : t('body.mybody_tab')}
+        </Text>
         <View style={styles.topBarSpacer} />
       </View>
 
@@ -529,14 +538,16 @@ export const BodyScreen = () => {
               ) : (
                 <View style={styles.previewPlaceholder}>
                   <Text style={styles.previewPlaceholderText}>
-                    Upload a full-body photo to generate your try-on image.
+                    {t('body.upload_to_generate')}
                   </Text>
                 </View>
               )}
             </View>
 
             <View style={styles.summaryBlock}>
-              <Text style={styles.summaryTitle}>Selected outfit</Text>
+              <Text style={styles.summaryTitle}>
+                {t('body.selected_outfit')}
+              </Text>
               <View style={styles.outfitPreviewRow}>
                 {tryOnOutfit.itemImageUrls
                   .slice(0, 4)
@@ -560,12 +571,14 @@ export const BodyScreen = () => {
               ) : null}
             </View>
 
-            <Text style={styles.sectionTitle}>Choose a body photo</Text>
+            <Text style={styles.sectionTitle}>
+              {t('body.choose_body_photo')}
+            </Text>
             {renderBodyGrid()}
 
             {items.length > 0 ? (
               <PillButton
-                title="Upload another photo"
+                title={t('body.upload_another')}
                 variant="text"
                 onPress={() => setModalVisible(true)}
                 style={styles.inlineAction}
@@ -575,8 +588,8 @@ export const BodyScreen = () => {
 
             <Text style={styles.helperText}>
               {items.length === 0
-                ? 'Use a clear, full-body photo so the try-on result can match your proportions.'
-                : 'Tap a photo to use it for this look. Long press any photo to remove it.'}
+                ? t('body.helper_clear_fullbody')
+                : t('body.helper_tap_to_use')}
             </Text>
 
             {tryOnError ? (
@@ -586,26 +599,23 @@ export const BodyScreen = () => {
         ) : (
           <>
             <View style={styles.manageHero}>
-              <Text style={styles.manageHeroTitle}>Body photos for try-on</Text>
+              <Text style={styles.manageHeroTitle}>
+                {t('body.section_title')}
+              </Text>
               <Text style={styles.manageHeroText}>
-                Upload clear, full-body photos once so future try-on results
-                line up with your proportions.
+                {t('body.section_body')}
               </Text>
             </View>
 
-            <Text style={styles.sectionTitle}>Your body photos</Text>
+            <Text style={styles.sectionTitle}>{t('body.your_photos')}</Text>
             {renderBodyGrid()}
 
             {items.length > 0 ? (
               <Text style={styles.helperText}>
-                Tap a photo to make it the default preview. Long press any photo
-                to delete it.
+                {t('body.helper_tap_default')}
               </Text>
             ) : (
-              <Text style={styles.helperText}>
-                No body photos yet. Upload your first one to unlock outfit
-                try-on.
-              </Text>
+              <Text style={styles.helperText}>{t('body.empty_photos')}</Text>
             )}
           </>
         )}
@@ -615,14 +625,18 @@ export const BodyScreen = () => {
         {isTryOnMode ? (
           items.length === 0 ? (
             <PillButton
-              title="Upload my photo"
+              title={t('body.upload_my_photo')}
               variant="outline"
               onPress={() => setModalVisible(true)}
               loading={uploading}
             />
           ) : (
             <PillButton
-              title={generatedTryOnUrl ? 'Generate again' : 'Generate my look'}
+              title={
+                generatedTryOnUrl
+                  ? t('body.generate_again')
+                  : t('body.generate_my_look')
+              }
               variant="filled"
               onPress={handleGenerateTryOn}
               disabled={!selectedBodyId}
@@ -631,7 +645,7 @@ export const BodyScreen = () => {
           )
         ) : (
           <PillButton
-            title="Upload body photo"
+            title={t('body.upload_body_photo')}
             variant="outline"
             onPress={() => setModalVisible(true)}
             loading={uploading}
@@ -649,13 +663,17 @@ export const BodyScreen = () => {
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
               <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Upload body photo</Text>
+                <Text style={styles.modalTitle}>
+                  {t('body.upload_body_photo')}
+                </Text>
 
                 <TouchableOpacity
                   style={styles.modalAction}
                   onPress={() => handleImageSelection('camera')}
                 >
-                  <Text style={styles.modalActionText}>Take a photo</Text>
+                  <Text style={styles.modalActionText}>
+                    {t('common.take_photo')}
+                  </Text>
                 </TouchableOpacity>
 
                 <View style={styles.modalDivider} />
@@ -665,7 +683,7 @@ export const BodyScreen = () => {
                   onPress={() => handleImageSelection('gallery')}
                 >
                   <Text style={styles.modalActionText}>
-                    Upload from gallery
+                    {t('common.upload_gallery')}
                   </Text>
                 </TouchableOpacity>
 
@@ -675,7 +693,9 @@ export const BodyScreen = () => {
                   style={styles.modalCancel}
                   onPress={() => setModalVisible(false)}
                 >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
+                  <Text style={styles.modalCancelText}>
+                    {t('common.cancel')}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>

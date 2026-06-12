@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
 import {
@@ -96,6 +97,7 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const { t } = useTranslation();
   const slideX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const [selectedTab, setSelectedTab] = useState<PickerFilterTab>('All');
   const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
@@ -164,11 +166,13 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
           <TouchableOpacity
             onPress={onClose}
             style={pickerStyles.backBtn}
-            accessibilityLabel="Close picker"
+            accessibilityLabel={t('outfitCanvas.a11y_close_picker')}
           >
             <IconChevronLeft width={24} height={24} />
           </TouchableOpacity>
-          <Text style={pickerStyles.title}>Add to Canvas</Text>
+          <Text style={pickerStyles.title}>
+            {t('outfitCanvas.add_to_canvas')}
+          </Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -186,7 +190,9 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
             {loading ? (
               <ActivityIndicator style={{ marginTop: 40 }} />
             ) : wardrobeItems.length === 0 ? (
-              <Text style={pickerStyles.empty}>No items found</Text>
+              <Text style={pickerStyles.empty}>
+                {t('outfitCanvas.no_items_found')}
+              </Text>
             ) : (
               <View style={pickerStyles.grid}>
                 {wardrobeItems.map(item => {
@@ -211,7 +217,7 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
                       ) : (
                         <View style={pickerStyles.tileFallback}>
                           <Text style={pickerStyles.tileFallbackText}>
-                            No image
+                            {t('common.no_image')}
                           </Text>
                         </View>
                       )}
@@ -236,10 +242,8 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
           >
             <Text style={pickerStyles.confirmBtnLabel}>
               {selectedIds.length > 0
-                ? `Add ${selectedIds.length} item${
-                    selectedIds.length > 1 ? 's' : ''
-                  }`
-                : 'Add to Canvas'}
+                ? t('outfitCanvas.add_count', { count: selectedIds.length })
+                : t('outfitCanvas.add_to_canvas')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -255,20 +259,23 @@ const TagChip = ({
 }: {
   label: string;
   onRemove: () => void;
-}) => (
-  <View style={styles.tagChip}>
-    <Text style={styles.tagChipLabel}>{label}</Text>
-    <Pressable
-      testID={`canvas-tag-remove-${label}`}
-      onPress={onRemove}
-      hitSlop={8}
-      style={styles.tagChipRemove}
-      accessibilityLabel={`Remove tag ${label}`}
-    >
-      <Text style={styles.tagChipX}>×</Text>
-    </Pressable>
-  </View>
-);
+}) => {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.tagChip}>
+      <Text style={styles.tagChipLabel}>{label}</Text>
+      <Pressable
+        testID={`canvas-tag-remove-${label}`}
+        onPress={onRemove}
+        hitSlop={8}
+        style={styles.tagChipRemove}
+        accessibilityLabel={t('outfitCanvas.a11y_remove_tag', { label })}
+      >
+        <Text style={styles.tagChipX}>×</Text>
+      </Pressable>
+    </View>
+  );
+};
 
 // --- Toolbar button ---
 const ToolbarBtn = ({
@@ -302,6 +309,7 @@ const ToolbarBtn = ({
 // --- Main screen ---
 export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<RouteProp<AppStackParamList, 'OutfitCanvas'>>();
+  const { t } = useTranslation();
   // Seed from the real outfit passed by Home's Remix button; fall back to mock
   // items only when opened without params (deep-link / dev). Staggered so the
   // pieces don't stack exactly on top of each other.
@@ -473,7 +481,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
 
   // Tag actions
   const handleRemoveTag = useCallback((tag: string) => {
-    setTags(prev => prev.filter(t => t !== tag));
+    setTags(prev => prev.filter(existing => existing !== tag));
   }, []);
 
   const handleConfirmTag = useCallback(() => {
@@ -500,7 +508,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           <Pressable
             testID="canvas-header-back"
             onPress={() => navigation.goBack()}
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('common.a11y_go_back')}
             style={styles.headerIconBtn}
           >
             <IconChevronLeft width={24} height={24} />
@@ -511,7 +519,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               testID="canvas-header-redo"
               onPress={handleRedo}
               disabled={!canRedo}
-              accessibilityLabel="Redo"
+              accessibilityLabel={t('outfitCanvas.a11y_redo')}
               style={[
                 styles.headerIconBtn,
                 !canRedo && styles.headerIconBtnDisabled,
@@ -523,7 +531,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               testID="canvas-header-undo"
               onPress={handleUndo}
               disabled={!canUndo}
-              accessibilityLabel="Undo"
+              accessibilityLabel={t('outfitCanvas.a11y_undo')}
               style={[
                 styles.headerIconBtn,
                 !canUndo && styles.headerIconBtnDisabled,
@@ -560,7 +568,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               <ToolbarBtn
                 testID="canvas-tool-add"
                 onPress={handleAddItem}
-                accessibilityLabel="Add item"
+                accessibilityLabel={t('common.a11y_add_item')}
               >
                 <IconCanvasAdd width={18} height={18} />
               </ToolbarBtn>
@@ -568,7 +576,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 testID="canvas-tool-layer-up"
                 onPress={handleLayerUp}
                 disabled={actionDisabled}
-                accessibilityLabel="Bring forward"
+                accessibilityLabel={t('outfitCanvas.a11y_bring_forward')}
               >
                 <IconCanvasLayerUp width={32} height={31} />
               </ToolbarBtn>
@@ -576,7 +584,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 testID="canvas-tool-layer-down"
                 onPress={handleLayerDown}
                 disabled={actionDisabled}
-                accessibilityLabel="Send backward"
+                accessibilityLabel={t('outfitCanvas.a11y_send_backward')}
               >
                 <IconCanvasLayerDown width={32} height={31} />
               </ToolbarBtn>
@@ -584,7 +592,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 testID="canvas-tool-duplicate"
                 onPress={handleDuplicate}
                 disabled={actionDisabled}
-                accessibilityLabel="Duplicate item"
+                accessibilityLabel={t('outfitCanvas.a11y_duplicate')}
               >
                 <IconCanvasDuplicate width={32} height={31} />
               </ToolbarBtn>
@@ -594,7 +602,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                   /* TODO: navigate to item picker */
                 }}
                 disabled={actionDisabled}
-                accessibilityLabel="Swap item"
+                accessibilityLabel={t('outfitCanvas.a11y_swap')}
               >
                 <IconCanvasSwap width={32} height={31} />
               </ToolbarBtn>
@@ -602,7 +610,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 testID="canvas-tool-delete"
                 onPress={handleDelete}
                 disabled={actionDisabled}
-                accessibilityLabel="Delete item"
+                accessibilityLabel={t('outfitCanvas.a11y_delete_item')}
               >
                 <IconCanvasDelete width={18} height={18} />
               </ToolbarBtn>
@@ -632,15 +640,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                     onBlur={handleConfirmTag}
                     autoFocus
                     returnKeyType="done"
-                    placeholder="Tag name"
+                    placeholder={t('outfitCanvas.tag_placeholder')}
                     style={styles.tagInput}
-                    accessibilityLabel="Tag name input"
+                    accessibilityLabel={t('outfitCanvas.a11y_tag_input')}
                   />
                 ) : (
                   <Pressable
                     testID="canvas-tag-add"
                     onPress={() => setAddingTag(true)}
-                    accessibilityLabel="Add tag"
+                    accessibilityLabel={t('outfitCanvas.a11y_add_tag')}
                     style={styles.tagAddBtn}
                   >
                     <IconCanvasAdd width={12} height={12} />
@@ -654,13 +662,13 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               <Pressable
                 testID="canvas-save"
                 onPress={handleSave}
-                accessibilityLabel="Save outfit"
+                accessibilityLabel={t('outfitCanvas.a11y_save_outfit')}
                 style={({ pressed }) => [
                   styles.saveBtn,
                   pressed && styles.saveBtnPressed,
                 ]}
               >
-                <Text style={styles.saveBtnLabel}>Save</Text>
+                <Text style={styles.saveBtnLabel}>{t('common.save')}</Text>
               </Pressable>
             </View>
           </View>

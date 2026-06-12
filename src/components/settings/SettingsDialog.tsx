@@ -7,6 +7,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 
 type PrimaryVariant = 'default' | 'danger';
@@ -44,15 +45,25 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   primaryTestID,
   children,
 }) => {
+  const { t } = useTranslation();
   const isDanger = primaryVariant === 'danger';
 
   return (
-    <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
+    <Modal
+      transparent
+      animationType="fade"
+      visible={visible}
+      onRequestClose={onClose}
+    >
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.modalOverlay}>
           <TouchableWithoutFeedback>
             <View style={styles.modalCard}>
-              <Text style={isDanger ? styles.deleteModalTitle : styles.modalTitle}>{title}</Text>
+              <Text
+                style={isDanger ? styles.deleteModalTitle : styles.modalTitle}
+              >
+                {title}
+              </Text>
               {body ? <Text style={styles.modalBody}>{body}</Text> : null}
 
               {children}
@@ -69,7 +80,9 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   ]}
                   onPress={onClose}
                 >
-                  <Text style={styles.modalTextActionLabel}>Cancel</Text>
+                  <Text style={styles.modalTextActionLabel}>
+                    {t('common.cancel')}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -78,12 +91,16 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   disabled={isBusy}
                   style={[
                     styles.modalAction,
-                    isDanger ? styles.modalDangerAction : styles.modalPrimaryAction,
+                    isDanger
+                      ? styles.modalDangerAction
+                      : styles.modalPrimaryAction,
                     isBusy && styles.disabledAction,
                   ]}
                   onPress={onPrimary}
                 >
-                  <Text style={styles.modalPrimaryActionLabel}>{primaryLabel}</Text>
+                  <Text style={styles.modalPrimaryActionLabel}>
+                    {primaryLabel}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
