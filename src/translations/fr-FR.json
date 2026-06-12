@@ -373,6 +373,7 @@
       "pinned_item_fallback": "article",
       "clear": "Effacer",
       "seen_all_hint": "Vous avez tout vu — les suggestions se répètent",
+      "skip_label": "Passer",
       "saved_to_favourite": "Enregistré dans les favoris",
       "wear_this": "Porter ceci",
       "save_failed_retry": "Impossible d'enregistrer cette tenue. Appuyez sur « Porter ceci » pour réessayer.",
