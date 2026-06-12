@@ -223,7 +223,14 @@
         "error_404": "Không tìm thấy món. Có thể đã bị xóa.",
         "error_429": "Quá nhiều yêu cầu. Vui lòng đợi và thử lại.",
         "a11y_delete": "Xóa món",
-        "image_unavailable": "Không có ảnh"
+        "image_unavailable": "Không có ảnh",
+        "row_energy": "Năng lượng",
+        "row_label": "Nhãn",
+        "row_material": "Chất liệu",
+        "row_occasion": "Dịp",
+        "row_purchase_date": "Ngày mua",
+        "value_unset": "—",
+        "name_edit_placeholder": "Nhập tên"
       },
       "list": {
         "coming_soon_body": "Nhập từ liên kết web sẽ sớm khả dụng.",
@@ -502,6 +509,58 @@
     "contextChips": {
       "a11y_shuffle": "Xáo trộn gợi ý",
       "placeholder": "Cho chúng tôi biết bạn muốn thay đổi gì"
+    },
+    "favourite": {
+      "title": "Yêu thích",
+      "back": "Quay lại",
+      "empty_body": "Nhấn nút \"Mặc bộ này\" để thêm trang phục",
+      "empty_a11y": "Chưa có trang phục nào được lưu",
+      "common_badge": "phổ biến",
+      "self_visualization": "Tự hình dung",
+      "remove_a11y": "Xóa trang phục này khỏi mục yêu thích",
+      "remove_title": "Xóa khỏi mục yêu thích",
+      "remove_body": "Bạn có chắc muốn xóa trang phục này khỏi danh sách yêu thích không",
+      "remove_confirm": "Có",
+      "remove_cancel": "Hủy",
+      "load_error": "Không thể tải mục yêu thích. Vui lòng thử lại."
+    },
+    "seeThisOnMe": {
+      "title": "Tự hình dung",
+      "takePhoto": "Chụp ảnh",
+      "chooseFromLibrary": "Chọn từ thư viện",
+      "choosePhotoSource": "Thêm ảnh",
+      "cancel": "Hủy",
+      "skipStep": "Bỏ qua bước này",
+      "retake": "Chụp lại",
+      "useThisPhoto": "Dùng ảnh này",
+      "backToHome": "Về trang chủ",
+      "optIn": "Dùng ảnh này cho các bản xem trước trang phục sau này",
+      "privacy": "Ảnh của bạn luôn được giữ riêng tư",
+      "generating": "Đang tạo diện mạo của bạn…",
+      "error": "Không thể tạo diện mạo của bạn. Vui lòng thử lại.",
+      "retry": "Thử lại",
+      "errors": {
+        "noPerson": "Vui lòng tải lên ảnh của chính bạn thấy rõ toàn thân, để chúng tôi có thể hiển thị trang phục lên người bạn.",
+        "upload": "Chúng tôi không thể kiểm tra ảnh đó. Vui lòng kiểm tra kết nối và thử lại.",
+        "generate": "Chúng tôi không thể tạo diện mạo của bạn. Vui lòng thử lại."
+      },
+      "step1": {
+        "prompt": "1/3 - Bắt đầu bằng một ảnh selfie. Không cần hoàn hảo, bạn có thể thay đổi sau."
+      },
+      "step2": {
+        "prompt": "2/3 - Thêm ảnh toàn thân. Không bắt buộc, nhưng giúp Macgie hiểu rõ tỉ lệ và phong cách của bạn hơn."
+      },
+      "step3": {
+        "prompt": "3/3 - Chọn dáng người giống bạn nhất. Nhấn để mở rộng",
+        "expandedTitle": "Chọn dáng người giống bạn nhất."
+      },
+      "shapes": {
+        "pear": "Quả lê",
+        "hourglass": "Đồng hồ cát",
+        "rectangle": "Chữ nhật",
+        "triangle": "Tam giác",
+        "oval": "Bầu dục"
+      }
     }
   }
 }

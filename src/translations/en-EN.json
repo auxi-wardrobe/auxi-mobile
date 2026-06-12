@@ -223,7 +223,14 @@
         "error_404": "Item not found. It may have been removed already.",
         "error_429": "Too many requests. Please wait a moment and try again.",
         "a11y_delete": "Delete item",
-        "image_unavailable": "Image unavailable"
+        "image_unavailable": "Image unavailable",
+        "row_energy": "Energy",
+        "row_label": "Label",
+        "row_material": "Material",
+        "row_occasion": "Occasion",
+        "row_purchase_date": "Purchase Date",
+        "value_unset": "—",
+        "name_edit_placeholder": "Enter a name"
       },
       "list": {
         "coming_soon_body": "Importing from a web link will be available shortly.",
@@ -503,6 +510,58 @@
     "contextChips": {
       "a11y_shuffle": "Shuffle suggestions",
       "placeholder": "Tell us what you'd like to change"
+    },
+    "favourite": {
+      "title": "Favourite",
+      "back": "Back",
+      "empty_body": "Tap \"Wear this\" button to add an outfit",
+      "empty_a11y": "No saved outfits yet",
+      "common_badge": "common",
+      "self_visualization": "Self visualization",
+      "remove_a11y": "Remove this outfit from favourites",
+      "remove_title": "Remove from your favourite",
+      "remove_body": "Are you sure to remove this outfit from your favourite list",
+      "remove_confirm": "Yes",
+      "remove_cancel": "Cancel",
+      "load_error": "We couldn't load your favourites. Please try again."
+    },
+    "seeThisOnMe": {
+      "title": "Self visualization",
+      "takePhoto": "Take photo",
+      "chooseFromLibrary": "Choose from library",
+      "choosePhotoSource": "Add a photo",
+      "cancel": "Cancel",
+      "skipStep": "Skip this step",
+      "retake": "Retake",
+      "useThisPhoto": "Use this photo",
+      "backToHome": "Back to home",
+      "optIn": "Use this photo for future outfit previews",
+      "privacy": "Your photos are always kept private",
+      "generating": "Creating your look…",
+      "error": "We couldn't create your look. Please try again.",
+      "retry": "Try again",
+      "errors": {
+        "noPerson": "Please upload a photo of yourself showing your body, so we can show the outfit on you.",
+        "upload": "We couldn't check that photo. Please check your connection and try again.",
+        "generate": "We couldn't create your look. Please try again."
+      },
+      "step1": {
+        "prompt": "1/3 - Start with a selfie photo. No need to be perfect, you can change it later."
+      },
+      "step2": {
+        "prompt": "2/3 - Add a full-body photo. Optional, but it helps Macgie understand proportions and styling better."
+      },
+      "step3": {
+        "prompt": "3/3 - Choose the shape that feels most like you. Tap to expand",
+        "expandedTitle": "Choose the shape that feels most like you."
+      },
+      "shapes": {
+        "pear": "Pear",
+        "hourglass": "Hourglass",
+        "rectangle": "Rectangle",
+        "triangle": "Triangle",
+        "oval": "Oval"
+      }
     }
   }
 }

@@ -285,11 +285,18 @@ export const BodyScreen = () => {
         has_body_photo: !!selectedBodyId,
       });
       const response = await tryOnService.generateTryOn({
-        outfit_hash: tryOnOutfit.outfitHash,
-        item_ids: tryOnOutfit.itemIds,
         body_id: selectedBodyId,
+        wardrobe_item_ids: tryOnOutfit.itemIds,
+        gemini_opt_in: true,
       });
-      setGeneratedTryOnUrl(response.image_url);
+      // Prefer the S3 composite URL; fall back to an inline base64 PNG when
+      // S3 is unavailable (backend returns `composite_png` in that case).
+      const tryOnUrl =
+        response.composite_url ??
+        (response.composite_png
+          ? `data:image/png;base64,${response.composite_png}`
+          : null);
+      setGeneratedTryOnUrl(tryOnUrl);
       track('try_on_completed', { outfit_hash: tryOnOutfit.outfitHash });
     } catch (error) {
       console.error('Try-on generation error', error);

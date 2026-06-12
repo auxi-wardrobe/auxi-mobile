@@ -21,6 +21,8 @@ import { theme } from '../theme/theme';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
 import { BodyScreen } from '../screens/BodyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { FavouriteScreen } from '../screens/FavouriteScreen';
+import { SeeThisOnMeScreen } from '../screens/see-this-on-me/SeeThisOnMeScreen';
 import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
 import { OutfitCanvasScreen } from '../screens/OutfitCanvasScreen';
@@ -96,7 +98,13 @@ export const AppNavigator = () => {
               <Stack.Screen name="Home" component={HomeScreen} />
               <Stack.Screen name="Settings" component={SettingsScreen} />
               <Stack.Screen name="Wardrobe" component={WardrobeScreen} />
+              <Stack.Screen name="Favourite" component={FavouriteScreen} />
               <Stack.Screen name="Body" component={BodyScreen} />
+              <Stack.Screen
+                name="SeeThisOnMe"
+                component={SeeThisOnMeScreen}
+                options={{ gestureEnabled: false }}
+              />
               <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
               <Stack.Screen name="Database" component={DatabaseScreen} />
               <Stack.Screen

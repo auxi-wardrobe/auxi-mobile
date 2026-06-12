@@ -41,6 +41,7 @@ export const theme = {
     figmaRed: '#CC4C3E',
     figmaIconSurface: '#E3E3EC',
     figmaDestructive: '#bb251a', // red for Cancel/delete actions — aliased by uacTextDangerBase below
+    figmaAiSparkle: '#822be6', // purple AI-sparkle accent — self-visualization icon (Figma 472:2030, purple→magenta gradient median)
     figmaOnboardingBackground: '#f7f7f8', // onboarding screens bg (differs from app figmaBackground #f2efec)
     // Onboarding redesign (node 2849:8331) — 3 genuinely-new colors.
     // Source: plans/260526-1443-onboarding-figma-extraction/figma-extraction-onboarding.md §4.1

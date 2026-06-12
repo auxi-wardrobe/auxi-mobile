@@ -37,6 +37,9 @@ import IconEdit from '../images/icon_edit.svg';
 import IconMinusCircle from '../images/icon_minus_circle.svg';
 import IconChange from '../images/icon_change.svg';
 import IconRemix from '../images/icon_remix.svg';
+import IconFaceId from '../images/icon_face_id.svg';
+import IconBodyOutline from '../images/icon_body_outline.svg';
+import IconSparkle from '../images/icon_sparkle.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -78,6 +81,9 @@ export const Icons = {
   MinusCircle: IconMinusCircle,
   Change: IconChange,
   Remix: IconRemix,
+  FaceId: IconFaceId,
+  BodyOutline: IconBodyOutline,
+  Sparkle: IconSparkle,
 };
 
 export {
