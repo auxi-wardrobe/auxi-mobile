@@ -141,8 +141,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             label="My Favourite"
             Icon={Icons.Heart}
             testID="sidebar-menu-favourite"
-            // TODO(sidebar): no Favourite route yet
-            onPress={() => {}}
+            isActive={currentRouteName === 'Favourite'}
+            onPress={() => {
+              navigation.navigate('Favourite');
+              onClose();
+            }}
           />
           <MenuItem
             label="Feedback"
