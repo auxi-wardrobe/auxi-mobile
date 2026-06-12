@@ -35,7 +35,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "23"
+          # 22 (LTS) matches local dev and satisfies devDeps' engines
+          # (eslint-plugin-jest rejects the odd/non-LTS node 23). Pinning 23
+          # broke `yarn install --frozen-lockfile` once the Xcode step was
+          # un-blocked — AU-326.
+          node-version: "22"
           cache: yarn
 
       - name: Select latest available Xcode
