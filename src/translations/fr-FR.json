@@ -132,6 +132,8 @@
         "rectangle": "Rectangle",
         "triangle": "Triangle",
         "oval": "Ovale"
+      }
+    },
     "wardrobe": {
       "itemDetail": {
         "build_around_this": "Composer autour",
