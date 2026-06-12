@@ -3,7 +3,7 @@
 // docs/MOTION_SYSTEM.md. Built on PanResponder + Animated (no new dep),
 // mirroring OutfitCanvasSurface. The card follows the finger live; on release
 // it either commits (flies off) or springs back (critically damped, no bounce).
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Dimensions,
@@ -58,26 +58,49 @@ export function OutfitSwipeDeck<T>({
   const active = items[activeIndex];
   const peek = items[activeIndex + 1];
 
+  // Latest props for the gesture closures (the PanResponder is created once).
+  // Reading these from refs keeps `commit`/the responder stable across card
+  // advances (no mid-gesture responder teardown) and means `commit` always
+  // resolves the CURRENT active item, not a stale one captured at create time.
+  const itemsRef = useRef(items);
+  const activeIndexRef = useRef(activeIndex);
+  const onLikeRef = useRef(onLike);
+  const onSkipRef = useRef(onSkip);
+  useEffect(() => {
+    itemsRef.current = items;
+    activeIndexRef.current = activeIndex;
+    onLikeRef.current = onLike;
+    onSkipRef.current = onSkip;
+  });
+  // True while a commit fling is in flight — drops a second rapid swipe so it
+  // cannot double-save / double-advance the same card.
+  const committingRef = useRef(false);
+
   const commit = useCallback(
     (dir: 1 | -1) => {
-      const item = items[activeIndex];
+      if (committingRef.current) {
+        return;
+      }
+      committingRef.current = true;
+      const item = itemsRef.current[activeIndexRef.current];
       Animated.timing(pan, {
         toValue: { x: dir * SCREEN_W * 1.4, y: 0 },
         duration: motion.duration.normal,
         easing: motion.easing.exit,
         useNativeDriver: true,
       }).start(() => {
-        // Advance first (remounts the next card keyed differently), then reset
-        // the shared pan for the promoted card — avoids a centre-flash frame.
-        if (dir === 1) {
-          onLike(item);
-        } else {
-          onSkip(item);
-        }
+        // Reset the shared pan BEFORE advancing so the promoted card mounts at
+        // centre (not at the flung offset) — avoids a one-frame centre-flash.
         pan.setValue({ x: 0, y: 0 });
+        committingRef.current = false;
+        if (dir === 1) {
+          onLikeRef.current(item);
+        } else {
+          onSkipRef.current(item);
+        }
       });
     },
-    [activeIndex, items, onLike, onSkip, pan],
+    [pan],
   );
 
   const cancel = useCallback(() => {
@@ -96,6 +119,7 @@ export function OutfitSwipeDeck<T>({
         onMoveShouldSetPanResponder: (_, g) =>
           swipeEnabled &&
           !reduced &&
+          !committingRef.current &&
           Math.abs(g.dx) > Math.abs(g.dy) &&
           Math.abs(g.dx) > 6,
         onPanResponderMove: (_, g) => pan.setValue({ x: g.dx, y: 0 }),

@@ -2226,7 +2226,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.uacTextBase,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000000',
+    shadowColor: theme.colors.uacTextBase,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
