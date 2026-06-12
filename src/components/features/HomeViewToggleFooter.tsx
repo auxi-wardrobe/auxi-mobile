@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import IconGrid from '../../assets/images/icon_grid.svg';
 import IconGridAlt from '../../assets/images/icon_grid_alt.svg';
@@ -38,6 +39,7 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
   onSelectView,
   testID,
 }) => {
+  const { t } = useTranslation();
   return (
     <View testID={testID} style={styles.bar}>
       {/* Decorative layers MUST NOT capture touches — without pointerEvents
@@ -56,7 +58,7 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
               : 'home-footer-tab-grid'
           }
           accessibilityRole="button"
-          accessibilityLabel="Grid view"
+          accessibilityLabel={t('outfitActions.a11y_grid_view')}
           accessibilityState={{ selected: activeView === 'grid' }}
           activeOpacity={0.82}
           onPress={() => onSelectView?.('grid')}
@@ -73,7 +75,7 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
               : 'home-footer-tab-collage'
           }
           accessibilityRole="button"
-          accessibilityLabel="Collage view"
+          accessibilityLabel={t('outfitActions.a11y_collage_view')}
           accessibilityState={{ selected: activeView === 'collage' }}
           activeOpacity={0.82}
           onPress={() => onSelectView?.('collage')}

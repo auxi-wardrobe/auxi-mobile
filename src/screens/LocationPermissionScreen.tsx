@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import {
   PillButton,
   TopIconButton,
@@ -24,6 +25,7 @@ type Navigation = NativeStackNavigationProp<
 
 export const LocationPermissionScreen = () => {
   const navigation = useNavigation<Navigation>();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
 
   // Both location-permission outcomes funnel into the first wardrobe-direction
@@ -40,15 +42,18 @@ export const LocationPermissionScreen = () => {
         goToOnboarding();
       } else {
         Alert.alert(
-          'Permission Denied',
-          'We need location permission to suggest outfits based on local weather. Please enable it in settings.',
+          t('locationPermission.denied_title'),
+          t('locationPermission.denied_body'),
           [
             {
-              text: 'Continue without location',
+              text: t('locationPermission.continue_without'),
               style: 'cancel',
               onPress: goToOnboarding,
             },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            {
+              text: t('locationPermission.open_settings'),
+              onPress: () => Linking.openSettings(),
+            },
           ],
         );
       }
@@ -69,13 +74,11 @@ export const LocationPermissionScreen = () => {
         />
 
         <View style={styles.mainBlock}>
-          <Text style={styles.title}>
-            To suggest an outfit that works today, I need your local weather.
-          </Text>
+          <Text style={styles.title}>{t('locationPermission.intro')}</Text>
 
           <View style={styles.actions}>
             <PillButton
-              title="Allow weather access"
+              title={t('locationPermission.allow_access')}
               variant="outline"
               loading={loading}
               onPress={handleEnableLocation}
@@ -83,7 +86,7 @@ export const LocationPermissionScreen = () => {
             />
             {/* TODO: not in Figma — needs product decision */}
             <PillButton
-              title="Not now"
+              title={t('locationPermission.not_now')}
               variant="text"
               onPress={goToOnboarding}
               style={styles.notNowButton}

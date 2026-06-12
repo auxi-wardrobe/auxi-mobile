@@ -61,7 +61,8 @@ export const theme = {
     figmaDividerOnDark: 'rgba(242, 239, 236, 0.1)',
     // Settings redesign (node 2850:15840) — 5-frame redesign tokens.
     // Source: plans/260526-0019-settings-redesign/figma-extraction-settings.md
-    figmaToggleOn: '#039855', // fixed/success/base — switch + radio ON (green)
+    figmaToggleOn: '#039855', // fixed/success/base — radio ON (green); see ds.color.green
+    figmaSwitchOn: '#16a085', // DS --teal: canonical switch-active. Split from radio green per Auxi Design System (auxi-ds.css .uiswitch[aria-checked=true])
     figmaToggleOffTrack: '#e4e7ec', // background/neutral/subtle_200 — switch OFF track (Q2 resolved)
     figmaButtonDark: '#121212', // background/neutral/bold_400 — primary dialog button bg (Update)
     figmaListDivider: '#eee6df', // border/primary/subtle_300 — settings list hairline divider
@@ -307,6 +308,84 @@ export const theme = {
     uacButtonText: 12,
     uacTextField: 8,
     uacRadioPill: 100,
+  },
+  /**
+   * ── Auxi Design System — canonical token layer ──────────────────────────
+   * Mirrors `Auxi Design System.html` / `auxi-ds.css`, extracted from Auxi.fig.
+   * The `figma*` / `uac*` tokens above are the historical per-feature aliases;
+   * each canonical token notes its alias. New code and the in-app Design System
+   * screen read from `theme.ds`. This layer is ADDITIVE — it does not alter the
+   * tokens existing screens already consume.
+   */
+  ds: {
+    color: {
+      // Ink & neutrals
+      ink: '#1d1f23', // primary text / primary button (alias: uacBackgroundBase, uacBorderBase, uacTextBase)
+      black: '#070707', // control fills / radio dot (alias: figmaTextDark)
+      slate: '#272a32', // deep slate (alias: figmaText, figmaButton)
+      onVariant: '#49454f', // MD3 on-surface-variant (alias: uacOnSurfaceVariant, figmaTextMuted)
+      warm700: '#5b5550', // warm gray stroke (alias: figmaChipBg)
+      warm500: '#9e968e', // warm muted text (alias: figmaOnboardingStepLabel)
+      gray500: '#717171', // neutral gray
+      // Surfaces (warm paper)
+      white: '#ffffff',
+      surface: '#fcfcfd', // dialog / sheet surface (alias: uacBackgroundNeutralSubtlest)
+      surface2: '#f7f7f8', // subtle surface (alias: figmaOnboardingBackground)
+      cream: '#f2efec', // primary warm surface / cards (alias: figmaBackground, figmaCardSurface)
+      warm100: '#eee6df', // divider / warm hairline (alias: figmaCaptionPillBg, figmaListDivider)
+      tan: '#e0d2c4', // warm accent surface (alias: figmaInsightPillBg)
+      tanStroke: '#c6bcb1', // tan stroke (alias: figmaDotInactive)
+      placeholder: '#d9d9d9', // image placeholder fill
+      cool100: '#e3e3ec', // cool surface (alias: figmaIconSurface)
+      // Functional accents
+      teal: '#16a085', // switch active / success — DS canonical switch-ON (alias: figmaSwitchOn)
+      green: '#039855', // radio / confirm green (alias: figmaToggleOn)
+      danger: '#bb251a', // destructive, applied (alias: uacTextDangerBase, figmaDestructive)
+      red: '#ff0000', // destructive, raw — flagged off-system in DS; avoid in new code
+    },
+    radius: {
+      xs: 2, // checkbox
+      sm: 12, // text button (alias: uacButtonText, figmaTile)
+      md: 16, // primary button / dialog (alias: uacButtonCta, uacPanel)
+      lg: 17, // secondary button
+      xl: 18, // sheet (alias: uacScreen)
+      full: 100, // pill / round (alias: uacRadioPill)
+    },
+    line: 'rgba(29,31,35,0.10)',
+    line2: 'rgba(29,31,35,0.06)',
+    hairline: '#eee6df',
+    // RN approximations of the DS web box-shadows (--sh-card / --sh-dialog / --sh-sheet).
+    shadow: {
+      card: {
+        shadowColor: '#1d1f23',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        elevation: 4,
+      },
+      dialog: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 40,
+        elevation: 12,
+      },
+      sheet: {
+        shadowColor: '#1d2646',
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 40,
+        elevation: 16,
+      },
+    },
+    // Type-family ROLES (DS names). RN renders with bundled faces; mono
+    // (JetBrains Mono) is NOT bundled, so the screen falls back to platform mono.
+    font: {
+      display: 'Poppins', // headings / display
+      ui: 'Roboto', // primary UI
+      uiAlt: 'Inter', // alternate UI / body
+      mono: 'JetBrains Mono', // labels / code (not bundled — falls back)
+    },
   },
 };
 

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 
 interface CategoryTabsProps {
@@ -26,6 +27,7 @@ export const CategoryTabs = ({
   onSelectCategory,
   wrap = false,
 }: CategoryTabsProps) => {
+  const { t } = useTranslation();
   const chips = categories.map(category => {
     const isSelected = selectedCategory === category;
     return (
@@ -35,11 +37,11 @@ export const CategoryTabs = ({
         style={[styles.tab, isSelected && styles.selectedTab]}
         onPress={() => onSelectCategory(category)}
         testID={`category-tab-${category}`}
-        accessibilityLabel={`Filter ${category}`}
+        accessibilityLabel={t('common.a11y_filter', { category })}
         accessibilityState={{ selected: isSelected }}
       >
         <Text style={[styles.tabText, isSelected && styles.selectedTabText]}>
-          {category}
+          {t(`common.categoryFilters.${category}`, { defaultValue: category })}
         </Text>
       </TouchableOpacity>
     );

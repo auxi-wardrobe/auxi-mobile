@@ -88,3 +88,12 @@ ios/vendor/bundle/
 ios/sentry.properties
 android/sentry.properties
 .sentryclirc
+
+# QA / Figma screenshot + capture artifacts (dev byproducts, not source)
+plans/**/*.png
+plans/**/*.jpg
+plans/**/*.jpeg
+plans/**/*.gif
+plans/**/*.webp
+plans/**/*.mp4
+plans/**/*.mov

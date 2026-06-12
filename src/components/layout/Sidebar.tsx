@@ -11,6 +11,7 @@ import {
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../../assets/icons';
@@ -28,6 +29,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { logout } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -80,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <Animated.View
           style={[styles.backdrop, { opacity: fadeAnim }]}
           testID="sidebar-backdrop"
-          accessibilityLabel="Close menu"
+          accessibilityLabel={t('sidebar.a11y_close_menu')}
         />
       </TouchableWithoutFeedback>
 
@@ -99,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 ? 'sidebar-pill-see-outfits-active'
                 : 'sidebar-pill-see-outfits'
             }
-            accessibilityLabel="See my outfits"
+            accessibilityLabel={t('sidebar.a11y_see_outfits')}
             onPress={() => {
               navigation.navigate('Home');
               onClose();
@@ -120,7 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 !isHomeActive && styles.pillTextInactive,
               ]}
             >
-              See my outfits
+              {t('sidebar.see_outfits')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -128,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         {/* Bottom group — menu rows (anchored to bottom via space-between) */}
         <View style={styles.bottomGroup}>
           <MenuItem
-            label="Wardrobe"
+            label={t('sidebar.wardrobe')}
             Icon={Icons.Wardrobe}
             testID="sidebar-menu-wardrobe"
             isActive={currentRouteName === 'Wardrobe'}
@@ -138,21 +140,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             }}
           />
           <MenuItem
-            label="My Favourite"
+            label={t('sidebar.favourite')}
             Icon={Icons.Heart}
             testID="sidebar-menu-favourite"
             // TODO(sidebar): no Favourite route yet
             onPress={() => {}}
           />
           <MenuItem
-            label="Feedback"
+            label={t('sidebar.feedback')}
             Icon={Icons.Feedback}
             testID="sidebar-menu-feedback"
             // TODO(sidebar): no Feedback route yet
             onPress={() => {}}
           />
           <MenuItem
-            label="Setting"
+            label={t('sidebar.setting')}
             Icon={Icons.Setting}
             testID="sidebar-menu-setting"
             isActive={currentRouteName === 'Settings'}
@@ -162,14 +164,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             }}
           />
           <MenuItem
-            label="My account"
+            label={t('sidebar.account')}
             Icon={Icons.User}
             testID="sidebar-menu-account"
             // TODO(sidebar): no My account route yet
             onPress={() => {}}
           />
           <MenuItem
-            label="Outfit Canvas"
+            label={t('sidebar.outfit_canvas')}
             Icon={Icons.Setting}
             testID="sidebar-menu-outfit-canvas"
             onPress={() => {
@@ -178,7 +180,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             }}
           />
           <MenuItem
-            label="Log out"
+            label={t('sidebar.logout')}
             Icon={Icons.Logout}
             testID="sidebar-menu-logout"
             onPress={() => {

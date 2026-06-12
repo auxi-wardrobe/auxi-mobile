@@ -1,16 +1,16 @@
-
-import { 
-  StyleSheet, 
-  TouchableOpacity, 
-  Text, 
-  ScrollView, 
-  View, 
-  Dimensions, 
-  Image 
+import {
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  ScrollView,
+  View,
+  Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -31,10 +31,17 @@ const HORIZONTAL_PADDING = 24;
 const GRID_GAP = 4;
 const WARDROBE_COLUMNS = 4;
 
-const TILE_WIDTH = (screenWidth) / WARDROBE_COLUMNS;
+const TILE_WIDTH = screenWidth / WARDROBE_COLUMNS;
 const TILE_HEIGHT = TILE_WIDTH * (4 / 3);
 
-const FILTER_TABS = ['All', 'Tops', 'Bottoms', 'Shoes', 'One-piece', 'AC'] as const;
+const FILTER_TABS = [
+  'All',
+  'Tops',
+  'Bottoms',
+  'Shoes',
+  'One-piece',
+  'AC',
+] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
 
 const resolveFilterQuery = (selectedTab: FilterTab): string | undefined => {
@@ -55,10 +62,14 @@ const resolveFilterQuery = (selectedTab: FilterTab): string | undefined => {
   }
 };
 
-type ScreenNavigation = NativeStackNavigationProp<AppStackParamList, 'Wardrobe'>;
+type ScreenNavigation = NativeStackNavigationProp<
+  AppStackParamList,
+  'Wardrobe'
+>;
 
 export const DatabaseScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -77,14 +88,14 @@ export const DatabaseScreen = () => {
       console.error('Error fetching wardrobe items', error);
       Toast.show({
         type: 'error',
-        text1: 'Unable to load wardrobe',
-        text2: 'Please try again in a moment.',
+        text1: t('common.load_wardrobe_failed_title'),
+        text2: t('common.try_again_moment'),
         position: 'bottom',
       });
     } finally {
       setLoading(false);
     }
-  }, [selectedTab]);
+  }, [selectedTab, t]);
 
   useEffect(() => {
     if (isFocused) {
@@ -121,8 +132,12 @@ export const DatabaseScreen = () => {
       <TouchableOpacity
         key={item.id}
         style={[
-          styles.tile, 
-          selectedItems.includes(item.id) && { borderWidth: 4, borderRadius: 12, borderColor: '#5B5550' }
+          styles.tile,
+          selectedItems.includes(item.id) && {
+            borderWidth: 4,
+            borderRadius: 12,
+            borderColor: '#5B5550',
+          },
         ]}
         activeOpacity={0.88}
         onPress={() => handleItemPress(item.id)}
@@ -136,14 +151,15 @@ export const DatabaseScreen = () => {
             />
           ) : (
             <View style={styles.tileFallback}>
-              <Text style={styles.tileFallbackText}>No image</Text>
+              <Text style={styles.tileFallbackText}>
+                {t('common.no_image')}
+              </Text>
             </View>
           )}
         </View>
       </TouchableOpacity>
     );
   };
-  
 
   const hasItems = items.length > 0;
 
@@ -151,14 +167,14 @@ export const DatabaseScreen = () => {
     <SafeAreaView style={styles.container}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <Header
-        title="Database"
+        title={t('wardrobe.database.title')}
         titleTextStyle={styles.headerTitle}
         onBack={() => setIsSidebarOpen(true)}
-        rightComponent={(
+        rightComponent={
           <TouchableOpacity>
             <Text> </Text>
           </TouchableOpacity>
-        )}
+        }
       />
 
       <View style={{ paddingHorizontal: 16, flex: 1 }}>
@@ -169,24 +185,22 @@ export const DatabaseScreen = () => {
           <CategoryTabs
             categories={[...FILTER_TABS]}
             selectedCategory={selectedTab}
-            onSelectCategory={(category) => setSelectedTab(category as FilterTab)}
+            onSelectCategory={category => setSelectedTab(category as FilterTab)}
           />
           {loading ? (
             renderLoadingGrid()
           ) : hasItems ? (
-            <View style={styles.grid}>
-              {items.map(renderGridTile)}
-            </View>
+            <View style={styles.grid}>{items.map(renderGridTile)}</View>
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>
-                No items to select yet
+                {t('wardrobe.database.empty')}
               </Text>
             </View>
           )}
         </ScrollView>
         <PillButton
-          title="Add Item"
+          title={t('wardrobe.database.add_item')}
           onPress={handleAddItems}
           disabled={selectedItems.length === 0}
         />
@@ -297,14 +311,14 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
   },
   emptyCta: {
-  marginTop: 18,
-  minHeight: 44,
-  borderRadius: 22,
-  borderWidth: 1,
-  borderColor: theme.colors.figmaAction,
-  paddingHorizontal: 18,
-  alignItems: 'center',
-  justifyContent: 'center',
+    marginTop: 18,
+    minHeight: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: theme.colors.figmaAction,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyCtaText: {
     ...theme.typography.aliases.archivoBody,

@@ -118,6 +118,9 @@ export type AppStackParamList = {
   // wardrobeService.getWardrobeItem(id) lookup misses (see
   // figma-extraction-item-detail.md Q7). Keep it serializable.
   ItemDetail: { itemId: string; fallbackItem?: ItemDetailFallbackItem };
+  // __DEV__-only in-app Design System reference / style-guide catalog.
+  // Reached from the Settings "Version" row in dev builds; not shipped to prod.
+  DesignSystem: undefined;
   Database: undefined;
   OutfitCanvas:
     | {

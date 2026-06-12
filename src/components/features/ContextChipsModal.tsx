@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { Input } from '../atoms/Input';
@@ -63,6 +64,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
   onCancel,
   onConfirm,
 }) => {
+  const { t } = useTranslation();
   const [shouldRender, setShouldRender] = useState(visible);
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 
@@ -125,7 +127,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
           ]}
         >
           <View style={styles.chipRow}>
-            {chipOptions.map((chip) => {
+            {chipOptions.map(chip => {
               const selected = chip.id === selectedChipId;
 
               return (
@@ -137,7 +139,12 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
                   disabled={isSubmitting}
                   onPress={() => onSelectChip(chip.id)}
                 >
-                  <Text style={[styles.chipText, selected && styles.selectedChipText]}>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      selected && styles.selectedChipText,
+                    ]}
+                  >
                     {chip.label}
                   </Text>
                 </TouchableOpacity>
@@ -146,7 +153,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
 
             <TouchableOpacity
               testID="context-chips-shuffle"
-              accessibilityLabel="Shuffle suggestions"
+              accessibilityLabel={t('contextChips.a11y_shuffle')}
               accessibilityRole="button"
               activeOpacity={0.82}
               style={[styles.chip, styles.shuffleChip]}
@@ -163,7 +170,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
               disabled={isSubmitting}
               onPress={onEdit}
             >
-              <Text style={styles.chipText}>Edit</Text>
+              <Text style={styles.chipText}>{t('common.edit')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -172,7 +179,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
               testID="context-chips-custom-input"
               value={customContextText}
               onChangeText={onChangeText}
-              placeholder="Tell us what you'd like to change"
+              placeholder={t('contextChips.placeholder')}
               autoFocus
               editable={!isSubmitting}
               returnKeyType="done"
@@ -188,7 +195,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
               disabled={isSubmitting}
               onPress={onCancel}
             >
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -210,7 +217,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
                     confirmDisabled && styles.confirmTextDisabled,
                   ]}
                 >
-                  OK
+                  {t('common.ok')}
                 </Text>
               )}
             </TouchableOpacity>

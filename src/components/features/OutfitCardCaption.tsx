@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import IconIdea from '../../assets/images/icon_idea.svg';
 
@@ -10,9 +11,8 @@ import IconIdea from '../../assets/images/icon_idea.svg';
 //
 // `caption` is the V05 `reasoning_human` text, threaded from the /build and
 // /try_another responses (HomeScreen buildViaV05 → normalizeOutfits). The
-// constant below is only a defensive fallback for the rare case the field is
-// absent (empty/fallback batch or a legacy cached payload).
-const DEFAULT_CAPTION = 'Clean. Ready for today';
+// t('outfitActions.default_caption') fallback below covers the rare case the
+// field is absent (empty/fallback batch or a legacy cached payload).
 
 type Props = {
   caption?: string | null;
@@ -20,7 +20,8 @@ type Props = {
 };
 
 export const OutfitCardCaption: React.FC<Props> = ({ caption, testID }) => {
-  const text = caption?.trim() || DEFAULT_CAPTION;
+  const { t } = useTranslation();
+  const text = caption?.trim() || t('outfitActions.default_caption');
 
   return (
     <View testID={testID} style={styles.row}>
@@ -32,7 +33,7 @@ export const OutfitCardCaption: React.FC<Props> = ({ caption, testID }) => {
       <View
         style={styles.insightPill}
         accessibilityRole="image"
-        accessibilityLabel="Why this outfit"
+        accessibilityLabel={t('outfitActions.a11y_why_outfit')}
       >
         <IconIdea width={24} height={24} color={theme.colors.uacTextBase} />
       </View>

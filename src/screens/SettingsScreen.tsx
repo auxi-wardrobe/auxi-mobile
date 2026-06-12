@@ -15,6 +15,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useAuth } from '../context/AuthContext';
 import { Sidebar } from '../components/layout/Sidebar';
 import {
@@ -64,54 +66,62 @@ const DEFAULT_SETTINGS: ResolvedSettingsState = {
   styleDirection: 'stay_balanced',
 };
 
-const DIRECTION_OPTIONS: Array<{
-  key: UserStyleDirection;
-  label: string;
-  description: string;
-}> = [
+// Display label/description resolved at render time from t() (built via
+// buildDirectionOptions / buildFrequencyOptions inside the component) so they
+// can't live as module-scope literals. Canonical `key` identifiers used by
+// logic are preserved verbatim below.
+const buildDirectionOptions = (
+  t: TFunction,
+): Array<{ key: UserStyleDirection; label: string; description: string }> => [
   {
     key: 'stay_balanced',
-    label: 'Stay Balanced',
-    description: 'Keep learning from my daily choices. No specific bias.',
+    label: t('settings.direction_balanced_label'),
+    description: t('settings.direction_balanced_desc'),
   },
   {
     key: 'more_relaxed',
-    label: 'More Relaxed',
-    description: 'Softer looks and easier layers.',
+    label: t('settings.direction_relaxed_label'),
+    description: t('settings.direction_relaxed_desc'),
   },
   {
     key: 'more_polished',
-    label: 'More Polished',
-    description: 'Sharper lines and structured pieces.',
+    label: t('settings.direction_polished_label'),
+    description: t('settings.direction_polished_desc'),
   },
 ];
 
-const FREQUENCY_OPTIONS: Array<{
+const buildFrequencyOptions = (
+  t: TFunction,
+): Array<{
   key: DailyNotificationFrequency;
   label: string;
   description?: string;
-}> = [
+}> => [
   {
     key: 'weekdays',
-    label: 'Weekdays',
-    description: 'Mon, Tue, Wed, Thu, Fri',
+    label: t('settings.frequency_weekdays_label'),
+    description: t('settings.frequency_weekdays_desc'),
   },
   {
     key: 'everydays',
-    label: 'Everydays',
+    label: t('settings.frequency_everyday_label'),
   },
 ];
 
-const directionLabelMap: Record<UserStyleDirection, string> = {
-  stay_balanced: 'Stay Balanced',
-  more_relaxed: 'More Relaxed',
-  more_polished: 'More Polished',
-};
+const buildDirectionLabelMap = (
+  t: TFunction,
+): Record<UserStyleDirection, string> => ({
+  stay_balanced: t('settings.direction_balanced_label'),
+  more_relaxed: t('settings.direction_relaxed_label'),
+  more_polished: t('settings.direction_polished_label'),
+});
 
-const frequencyLabelMap: Record<DailyNotificationFrequency, string> = {
-  weekdays: 'Weekdays',
-  everydays: 'Everydays',
-};
+const buildFrequencyLabelMap = (
+  t: TFunction,
+): Record<DailyNotificationFrequency, string> => ({
+  weekdays: t('settings.frequency_weekdays_label'),
+  everydays: t('settings.frequency_everyday_label'),
+});
 
 // Exported for unit tests — pure metadata → resolved-settings mapper with
 // per-field fallback to DEFAULT_SETTINGS.
@@ -166,6 +176,7 @@ const showSettingsError = (title: string, message: string) => {
 };
 
 export const SettingsScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<Navigation>();
   const {
     checkAuth,
@@ -235,8 +246,8 @@ export const SettingsScreen = () => {
           syncFromUser(refreshedUser);
         }
       } catch (error) {
-        const message = getErrorMessage(error, 'Failed to load settings');
-        showSettingsError('Settings', message);
+        const message = getErrorMessage(error, t('settings.error_load'));
+        showSettingsError(t('settings.toast_title'), message);
         if (getErrorStatus(error) === 401) {
           await checkAuth();
         }
@@ -251,7 +262,7 @@ export const SettingsScreen = () => {
         clearTimeout(reminderSaveTimeoutRef.current);
       }
     };
-  }, [checkAuth, refreshUser, syncFromUser]);
+  }, [checkAuth, refreshUser, syncFromUser, t]);
 
   const persistUserMetadata = useCallback(
     async (patch: UserMetadata, fallbackMessage: string) => {
@@ -261,24 +272,29 @@ export const SettingsScreen = () => {
         return updatedUser;
       } catch (error) {
         const message = getErrorMessage(error, fallbackMessage);
-        showSettingsError('Settings', message);
+        showSettingsError(t('settings.toast_title'), message);
         if (getErrorStatus(error) === 401) {
           await checkAuth();
         }
         throw error;
       }
     },
-    [checkAuth, syncFromUser, updateCurrentUser],
+    [checkAuth, syncFromUser, t, updateCurrentUser],
   );
+
+  const directionOptions = useMemo(() => buildDirectionOptions(t), [t]);
+  const frequencyOptions = useMemo(() => buildFrequencyOptions(t), [t]);
+  const directionLabelMap = useMemo(() => buildDirectionLabelMap(t), [t]);
+  const frequencyLabelMap = useMemo(() => buildFrequencyLabelMap(t), [t]);
 
   const currentDirectionLabel = useMemo(
     () => directionLabelMap[settings.styleDirection],
-    [settings.styleDirection],
+    [directionLabelMap, settings.styleDirection],
   );
 
   const currentFrequencyLabel = useMemo(
     () => frequencyLabelMap[settings.dailyNotification.frequency],
-    [settings.dailyNotification.frequency],
+    [frequencyLabelMap, settings.dailyNotification.frequency],
   );
 
   const openDirectionModal = () => {
@@ -332,7 +348,7 @@ export const SettingsScreen = () => {
             enabled,
           },
         },
-        'Failed to update daily time',
+        t('settings.error_update_time'),
       ).catch(() => {
         setSettings(current => ({
           ...current,
@@ -353,7 +369,10 @@ export const SettingsScreen = () => {
     const persist = enabled ? grantAnalyticsConsent : revokeAnalyticsConsent;
     persist().catch(() => {
       setAnalyticsConsent(previousValue);
-      showSettingsError('Settings', 'Failed to update analytics preference');
+      showSettingsError(
+        t('settings.toast_title'),
+        t('settings.error_update_analytics'),
+      );
     });
   };
 
@@ -366,7 +385,7 @@ export const SettingsScreen = () => {
         {
           style_direction: pendingDisplayDirection,
         },
-        'Failed to update style direction',
+        t('settings.error_update_direction'),
       );
       setActiveModal('none');
     } catch {
@@ -396,7 +415,7 @@ export const SettingsScreen = () => {
             frequency: pendingFrequency,
           },
         },
-        'Failed to update daily time',
+        t('settings.error_update_time'),
       );
       setActiveModal('none');
     } catch {
@@ -419,8 +438,8 @@ export const SettingsScreen = () => {
         setActiveModal('none');
       }
     } catch (error) {
-      const message = getErrorMessage(error, 'Failed to reset preferences');
-      showSettingsError('Settings', message);
+      const message = getErrorMessage(error, t('settings.error_reset'));
+      showSettingsError(t('settings.toast_title'), message);
       if (getErrorStatus(error) === 401) {
         await checkAuth();
       }
@@ -442,7 +461,7 @@ export const SettingsScreen = () => {
             onPress={() => setIsSidebarOpen(true)}
           />
           <View pointerEvents="none" style={styles.titleWrap}>
-            <Text style={styles.title}>Settings</Text>
+            <Text style={styles.title}>{t('settings.title')}</Text>
           </View>
           <View style={styles.headerSpacer} />
         </View>
@@ -451,10 +470,10 @@ export const SettingsScreen = () => {
           {/* Daily Time block */}
           <View style={styles.group}>
             <View style={styles.rowHeader}>
-              <Text style={styles.rowLabel}>Daily Time</Text>
+              <Text style={styles.rowLabel}>{t('settings.daily_time')}</Text>
               <SettingsSwitch
                 testID="settings-daily-toggle"
-                accessibilityLabel="Toggle daily reminder"
+                accessibilityLabel={t('settings.a11y_toggle_reminder')}
                 value={settings.dailyNotification.enabled}
                 onValueChange={handleReminderToggle}
               />
@@ -462,7 +481,7 @@ export const SettingsScreen = () => {
 
             <TouchableOpacity
               testID="settings-time-row"
-              accessibilityLabel="Change daily time"
+              accessibilityLabel={t('settings.a11y_change_time')}
               activeOpacity={0.82}
               style={styles.timeRow}
               onPress={openChangeTimeModal}
@@ -488,7 +507,7 @@ export const SettingsScreen = () => {
             style={styles.singleRow}
             onPress={openDirectionModal}
           >
-            <Text style={styles.rowLabel}>Style Direction</Text>
+            <Text style={styles.rowLabel}>{t('settings.style_direction')}</Text>
             <Text style={styles.rowValue}>{currentDirectionLabel}</Text>
           </TouchableOpacity>
 
@@ -496,7 +515,7 @@ export const SettingsScreen = () => {
 
           {/* Privacy control group */}
           <View style={styles.sectionLabelWrap}>
-            <Text style={styles.rowLabel}>Privacy control</Text>
+            <Text style={styles.rowLabel}>{t('settings.privacy_control')}</Text>
           </View>
 
           <Divider />
@@ -505,10 +524,10 @@ export const SettingsScreen = () => {
               grant/revoke — until granted, the Mixpanel SDK stays inert and
               every track() call no-ops (see services/analytics.ts). */}
           <View style={styles.rowHeader}>
-            <Text style={styles.rowLabel}>Share usage analytics</Text>
+            <Text style={styles.rowLabel}>{t('settings.share_analytics')}</Text>
             <SettingsSwitch
               testID="settings-analytics-consent-toggle"
-              accessibilityLabel="Toggle sharing usage analytics"
+              accessibilityLabel={t('settings.a11y_toggle_analytics')}
               value={analyticsConsent}
               onValueChange={handleAnalyticsConsentToggle}
             />
@@ -523,7 +542,9 @@ export const SettingsScreen = () => {
             // TODO(settings): "Your information" screen not built yet — shipped as no-op per CEO scope; wire route when the screen exists.
             onPress={() => {}}
           >
-            <Text style={styles.rowLabel}>Your information</Text>
+            <Text style={styles.rowLabel}>
+              {t('settings.your_information')}
+            </Text>
             <Icons.ArrowRight
               width={24}
               height={24}
@@ -539,7 +560,9 @@ export const SettingsScreen = () => {
             style={styles.singleRow}
             onPress={() => navigation.navigate('Body', { mode: 'photoDetail' })}
           >
-            <Text style={styles.rowLabel}>Manage body photo</Text>
+            <Text style={styles.rowLabel}>
+              {t('settings.manage_body_photo')}
+            </Text>
             <Icons.ArrowRight
               width={24}
               height={24}
@@ -556,7 +579,7 @@ export const SettingsScreen = () => {
             onPress={() => setActiveModal('deleteConfirm')}
           >
             {/* Main-list "Delete data" row is NEUTRAL (qa-ui C2) — not red. */}
-            <Text style={styles.rowLabel}>Delete data</Text>
+            <Text style={styles.rowLabel}>{t('settings.delete_data')}</Text>
             <Icons.Delete
               width={24}
               height={24}
@@ -566,20 +589,38 @@ export const SettingsScreen = () => {
 
           <Divider />
 
-          {/* Version row */}
-          <View style={styles.versionRow}>
-            <Text style={styles.rowLabel}>Version {APP_VERSION}</Text>
-          </View>
+          {/* Version row. In __DEV__ builds it doubles as a hidden entry to the
+              in-app Design System reference (tap to open). Appearance is
+              unchanged; the TouchableOpacity wrapper is dev-only so prod users
+              get the inert View. */}
+          {__DEV__ ? (
+            <TouchableOpacity
+              style={styles.versionRow}
+              testID="settings-version-devmenu"
+              accessibilityLabel="Open Design System reference"
+              onPress={() => navigation.navigate('DesignSystem')}
+            >
+              <Text style={styles.rowLabel}>
+                {t('settings.version', { version: APP_VERSION })}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.versionRow}>
+              <Text style={styles.rowLabel}>
+                {t('settings.version', { version: APP_VERSION })}
+              </Text>
+            </View>
+          )}
 
           <Divider />
 
           {/* Dark Mode: non-functional stub — disabled + dimmed so users don't
               expect a theme change until theming infra lands. */}
           <View style={[styles.rowHeader, styles.disabledRow]}>
-            <Text style={styles.rowLabel}>Dark Mode</Text>
+            <Text style={styles.rowLabel}>{t('settings.dark_mode')}</Text>
             <SettingsSwitch
               testID="settings-dark-mode-toggle"
-              accessibilityLabel="Toggle dark mode"
+              accessibilityLabel={t('settings.a11y_toggle_dark')}
               value={darkModeStub}
               disabled
             />
@@ -594,16 +635,16 @@ export const SettingsScreen = () => {
         visible={activeModal === 'direction'}
         onClose={closeDirectionModal}
         isBusy={isSavingDirection}
-        title="Adjust your direction"
-        body="This shifts your upcoming suggestions."
-        primaryLabel="Update"
+        title={t('settings.dialog_direction_title')}
+        body={t('settings.dialog_direction_body')}
+        primaryLabel={t('settings.update')}
         primaryVariant="default"
         onPrimary={applyDirection}
         cancelTestID="settings-direction-cancel"
         primaryTestID="settings-direction-update"
       >
         <RadioOptionList
-          options={DIRECTION_OPTIONS}
+          options={directionOptions}
           selected={pendingDisplayDirection}
           onSelect={setPendingDisplayDirection}
           testIDPrefix="settings-direction-option"
@@ -615,8 +656,8 @@ export const SettingsScreen = () => {
         visible={activeModal === 'changeTime'}
         onClose={closeChangeTimeModal}
         isBusy={isSavingTime}
-        title="Daily Time"
-        primaryLabel="Update"
+        title={t('settings.dialog_time_title')}
+        primaryLabel={t('settings.update')}
         primaryVariant="default"
         onPrimary={applyChangeTime}
         cancelTestID="settings-time-cancel"
@@ -645,7 +686,7 @@ export const SettingsScreen = () => {
         </View>
 
         <RadioOptionList
-          options={FREQUENCY_OPTIONS}
+          options={frequencyOptions}
           selected={pendingFrequency}
           onSelect={setPendingFrequency}
           testIDPrefix="settings-time-freq"
@@ -657,8 +698,8 @@ export const SettingsScreen = () => {
         visible={activeModal === 'deleteConfirm'}
         onClose={closeDeleteModal}
         isBusy={isResettingPreferences}
-        title="Delete Data"
-        body="Auxi will revert to day one. This cannot be undone."
+        title={t('settings.dialog_delete_title')}
+        body={t('settings.dialog_delete_body')}
         primaryLabel="Delete"
         primaryVariant="danger"
         onPrimary={handleResetPreferences}
