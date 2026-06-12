@@ -46,7 +46,8 @@ const VARIANT_CONFIG: Record<
 > = {
   horizontal: {
     storageKey: COACHMARK_STORAGE_KEYS.horizontal,
-    lines: ['Swipe left or right to explore different outfit options.'],
+    // Tinder deck: right = save, left = skip (replaces the old two-axis copy).
+    lines: ['Swipe right to save, swipe left to skip.'],
   },
   vertical: {
     storageKey: COACHMARK_STORAGE_KEYS.vertical,

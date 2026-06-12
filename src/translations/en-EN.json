@@ -373,6 +373,7 @@
       "pinned_item_fallback": "item",
       "clear": "Clear",
       "seen_all_hint": "You've seen them all — suggestions will repeat",
+      "skip_label": "Skip",
       "saved_to_favourite": "Saved to favourite",
       "wear_this": "Wear this",
       "save_failed_retry": "Couldn’t save this look. Tap \"Wear this\" to retry.",
