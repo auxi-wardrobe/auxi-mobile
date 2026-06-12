@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { Item } from '../types/item';
 
 // AU-318: deterministic per-request timeout so the mood feedback flow can
 // distinguish a timed-out save ("Connection timed out…") from a generic
@@ -32,6 +33,63 @@ export interface SaveFavouriteResponse {
   updated: boolean;
 }
 
+/**
+ * One garment inside a saved favourite. Backend `WardrobeItem.to_dict()`
+ * shape — reuses the app `Item` fields where they overlap (`image_url`,
+ * `image_png`, `category`) and adds the backend-only `is_common_item`
+ * boolean. We keep this as its own type (rather than the RN `Item`) because
+ * the favourites payload speaks the backend's `is_common_item` flag, not the
+ * client's `isSystem` alias — the screen maps one to the other when it reuses
+ * the Home tile renderer.
+ */
+export interface FavouriteItem
+  extends Pick<Item, 'id' | 'image_url' | 'image_png' | 'name' | 'category'> {
+  is_common_item?: boolean;
+  // Pass-through for any other backend item fields the tile doesn't read.
+  [key: string]: unknown;
+}
+
+/** Context blob the backend stores alongside the outfit (occasion, hash, …). */
+export interface FavouriteContext {
+  outfit_hash?: string;
+  occasion?: string;
+  reasoning_human?: string;
+  [key: string]: unknown;
+}
+
+/** A single saved outfit returned by `GET /favorites`. */
+export interface Favourite {
+  id: string;
+  user_id: string;
+  outfit_items: FavouriteItem[];
+  outfit_context: FavouriteContext | null;
+  outfit_thumbnail_url: string | null;
+  created_at: string;
+  updated_at: string;
+  /**
+   * Optional bold outfit title shown above the mood pill (Figma `3539:22165`,
+   * e.g. "Bring some warmth."). Backend-added (parallel work); absent on older
+   * responses — the card omits the title line when null/missing.
+   */
+  title?: string | null;
+  /**
+   * Saved mood ids (mood-chip vocab from `components/features/mood-chips.ts`,
+   * e.g. `["confident"]`). The card renders the FIRST entry as a filled
+   * vibe-tag pill (Figma `3539:22327`). Absent on older responses — omit the
+   * pill then.
+   */
+  mood_tags?: string[];
+}
+
+/** Paginated envelope returned by `GET /favorites`. */
+export interface FavoriteListResponse {
+  count: number;
+  total: number;
+  favorites: Favourite[];
+}
+
+export type FavouriteSort = 'recent' | 'oldest';
+
 export const favouriteService = {
   saveFavourite: async (
     payload: SaveFavouritePayload,
@@ -43,6 +101,38 @@ export const favouriteService = {
       return response.data;
     } catch (error) {
       console.error('saveFavourite error', error);
+      throw error;
+    }
+  },
+
+  /**
+   * List saved outfits. `GET /favorites?limit&offset&sort`. The backend
+   * exposes both `/favorites` (canonical) and `/favourites` (alias); we use
+   * the canonical American spelling to match `API_DOCUMENTATION.md`.
+   */
+  listFavourites: async (
+    limit = 20,
+    offset = 0,
+    sort: FavouriteSort = 'recent',
+  ): Promise<FavoriteListResponse> => {
+    try {
+      const response = await apiClient.get('/favorites', {
+        params: { limit, offset, sort },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('listFavourites error', error);
+      throw error;
+    }
+  },
+
+  /** Remove a saved outfit. `DELETE /favorites/{id}` → `{ message }`. */
+  removeFavourite: async (id: string): Promise<{ message: string }> => {
+    try {
+      const response = await apiClient.delete(`/favorites/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('removeFavourite error', error);
       throw error;
     }
   },

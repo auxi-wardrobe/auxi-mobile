@@ -68,6 +68,7 @@ export type AppStackParamList = {
   Home: undefined;
   Settings: undefined;
   Wardrobe: undefined;
+  Favourite: undefined;
   // Discriminated union on `mode` so call sites are type-checked:
   //  - tryOn MUST carry an `outfit` (removes the old `outfit!` assertion in BodyScreen)
   //  - photoDetail (Settings redesign Frame 5) opens the single body-photo
@@ -118,6 +119,12 @@ export type AppStackParamList = {
   // wardrobeService.getWardrobeItem(id) lookup misses (see
   // figma-extraction-item-detail.md Q7). Keep it serializable.
   ItemDetail: { itemId: string; fallbackItem?: ItemDetailFallbackItem };
+  // "See this on me" / Self visualization virtual try-on (Workstream 5,
+  // Figma node 2852:22266). A 3-step conversational capture flow
+  // (selfie → full-body → body-shape) that uploads a body photo and renders
+  // the saved outfit onto it via POST /api/tryon/highres. `outfit` carries the
+  // serializable TryOnOutfitContext the flow needs (hash, item ids/urls, note).
+  SeeThisOnMe: { outfit: TryOnOutfitContext };
   Database: undefined;
   OutfitCanvas:
     | {

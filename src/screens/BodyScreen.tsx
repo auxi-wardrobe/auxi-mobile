@@ -17,7 +17,10 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import Toast from 'react-native-toast-message';
-import { PillButton, TopIconButton } from '../components/primitives/FigmaPrimitives';
+import {
+  PillButton,
+  TopIconButton,
+} from '../components/primitives/FigmaPrimitives';
 import { useAuth } from '../context/AuthContext';
 import { bodyService, BodyItem } from '../services/bodyService';
 import { tryOnService } from '../services/tryOnService';
@@ -52,7 +55,20 @@ const assertNever = (value: never): never => {
 };
 
 // Format BodyItem.created_at → "HH:MM - DD MMM, YYYY" (e.g. "12:23 - 12 Feb, 2026").
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 const formatPhotoTimestamp = (createdAt?: string): string | null => {
   if (!createdAt) return null;
   const date = new Date(createdAt);
@@ -81,7 +97,8 @@ export const BodyScreen = () => {
       tryOnOutfit = params && params.mode === 'tryOn' ? params.outfit : null;
       break;
     case 'photoDetail':
-      detailBodyId = params && params.mode === 'photoDetail' ? params.bodyId : undefined;
+      detailBodyId =
+        params && params.mode === 'photoDetail' ? params.bodyId : undefined;
       break;
     case 'manage':
       break;
@@ -96,7 +113,9 @@ export const BodyScreen = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedTryOnUrl, setGeneratedTryOnUrl] = useState<string | null>(null);
+  const [generatedTryOnUrl, setGeneratedTryOnUrl] = useState<string | null>(
+    null,
+  );
   const [tryOnError, setTryOnError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [largeImageModalVisible, setLargeImageModalVisible] = useState(false);
@@ -108,12 +127,15 @@ export const BodyScreen = () => {
         setLoading(true);
         const data = await bodyService.getBodies();
         setItems(data);
-        setSelectedBodyId((currentSelected) => {
-          if (preferredId && data.some((item) => item.id === preferredId)) {
+        setSelectedBodyId(currentSelected => {
+          if (preferredId && data.some(item => item.id === preferredId)) {
             return preferredId;
           }
 
-          if (currentSelected && data.some((item) => item.id === currentSelected)) {
+          if (
+            currentSelected &&
+            data.some(item => item.id === currentSelected)
+          ) {
             return currentSelected;
           }
 
@@ -150,7 +172,7 @@ export const BodyScreen = () => {
   }, [fetchItems, detailBodyId]);
 
   const selectedBody = useMemo(
-    () => items.find((item) => item.id === selectedBodyId) || null,
+    () => items.find(item => item.id === selectedBodyId) || null,
     [items, selectedBodyId],
   );
 
@@ -182,7 +204,8 @@ export const BodyScreen = () => {
               return;
             }
 
-            const fallbackId = selectedBodyId === id ? undefined : selectedBodyId || undefined;
+            const fallbackId =
+              selectedBodyId === id ? undefined : selectedBodyId || undefined;
             await fetchItems(fallbackId);
           } catch (error) {
             console.error('Error deleting body', error);
@@ -257,11 +280,18 @@ export const BodyScreen = () => {
         has_body_photo: !!selectedBodyId,
       });
       const response = await tryOnService.generateTryOn({
-        outfit_hash: tryOnOutfit.outfitHash,
-        item_ids: tryOnOutfit.itemIds,
         body_id: selectedBodyId,
+        wardrobe_item_ids: tryOnOutfit.itemIds,
+        gemini_opt_in: true,
       });
-      setGeneratedTryOnUrl(response.image_url);
+      // Prefer the S3 composite URL; fall back to an inline base64 PNG when
+      // S3 is unavailable (backend returns `composite_png` in that case).
+      const tryOnUrl =
+        response.composite_url ??
+        (response.composite_png
+          ? `data:image/png;base64,${response.composite_png}`
+          : null);
+      setGeneratedTryOnUrl(tryOnUrl);
       track('try_on_completed', { outfit_hash: tryOnOutfit.outfitHash });
     } catch (error) {
       console.error('Try-on generation error', error);
@@ -276,8 +306,11 @@ export const BodyScreen = () => {
     if (loading) {
       return (
         <View style={styles.imageRow}>
-          {[0, 1, 2].map((index) => (
-            <View key={`loading-${index}`} style={[styles.imageCard, styles.placeholderCard]} />
+          {[0, 1, 2].map(index => (
+            <View
+              key={`loading-${index}`}
+              style={[styles.imageCard, styles.placeholderCard]}
+            />
           ))}
         </View>
       );
@@ -286,8 +319,11 @@ export const BodyScreen = () => {
     if (items.length === 0) {
       return (
         <View style={styles.imageRow}>
-          {[0, 1, 2].map((index) => (
-            <View key={`placeholder-${index}`} style={[styles.imageCard, styles.placeholderCard]} />
+          {[0, 1, 2].map(index => (
+            <View
+              key={`placeholder-${index}`}
+              style={[styles.imageCard, styles.placeholderCard]}
+            />
           ))}
         </View>
       );
@@ -295,7 +331,7 @@ export const BodyScreen = () => {
 
     return (
       <View style={styles.imageRow}>
-        {items.slice(0, 3).map((item) => {
+        {items.slice(0, 3).map(item => {
           const imageUri = resolveImageUrl(item.image_url);
           const isSelected = item.id === selectedBodyId;
 
@@ -319,7 +355,11 @@ export const BodyScreen = () => {
                 isTryOnMode && isSelected && styles.imageCardSelected,
               ]}
             >
-              <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
+              <Image
+                source={{ uri: imageUri }}
+                style={styles.previewImage}
+                resizeMode="cover"
+              />
             </TouchableOpacity>
           );
         })}
@@ -331,7 +371,9 @@ export const BodyScreen = () => {
   // Single photo: full 3:4 image + metadata caption + Delete (red, left) / Retake (right).
   // Reuses existing handleDelete + handleImageSelection (Retake = re-capture/upload).
   if (isPhotoDetailMode) {
-    const detailImageUrl = selectedBody ? resolveImageUrl(selectedBody.image_url) : null;
+    const detailImageUrl = selectedBody
+      ? resolveImageUrl(selectedBody.image_url)
+      : null;
     const photoTimestamp = formatPhotoTimestamp(selectedBody?.created_at);
 
     return (
@@ -346,7 +388,9 @@ export const BodyScreen = () => {
           ) : (
             <View style={[styles.detailImage, styles.detailImagePlaceholder]}>
               <Text style={styles.detailPlaceholderText}>
-                {loading ? 'Loading…' : 'No body photo yet. Tap Retake to add one.'}
+                {loading
+                  ? 'Loading…'
+                  : 'No body photo yet. Tap Retake to add one.'}
               </Text>
             </View>
           )}
@@ -376,7 +420,10 @@ export const BodyScreen = () => {
               testID="body-detail-delete"
               activeOpacity={0.82}
               disabled={!selectedBody}
-              style={[styles.detailActionButton, !selectedBody && styles.detailActionDisabled]}
+              style={[
+                styles.detailActionButton,
+                !selectedBody && styles.detailActionDisabled,
+              ]}
               onPress={() => {
                 if (selectedBody) {
                   handleDelete(selectedBody.id);
@@ -390,11 +437,17 @@ export const BodyScreen = () => {
               testID="body-detail-retake"
               activeOpacity={0.82}
               disabled={uploading}
-              style={[styles.detailActionButton, uploading && styles.detailActionDisabled]}
+              style={[
+                styles.detailActionButton,
+                uploading && styles.detailActionDisabled,
+              ]}
               onPress={() => setModalVisible(true)}
             >
               {uploading ? (
-                <ActivityIndicator size="small" color={theme.colors.uacTextBase} />
+                <ActivityIndicator
+                  size="small"
+                  color={theme.colors.uacTextBase}
+                />
               ) : (
                 <Text style={styles.detailRetakeLabel}>Retake</Text>
               )}
@@ -429,7 +482,9 @@ export const BodyScreen = () => {
                     style={styles.modalAction}
                     onPress={() => handleImageSelection('gallery')}
                   >
-                    <Text style={styles.modalActionText}>Upload from gallery</Text>
+                    <Text style={styles.modalActionText}>
+                      Upload from gallery
+                    </Text>
                   </TouchableOpacity>
 
                   <View style={styles.modalDivider} />
@@ -483,18 +538,25 @@ export const BodyScreen = () => {
             <View style={styles.summaryBlock}>
               <Text style={styles.summaryTitle}>Selected outfit</Text>
               <View style={styles.outfitPreviewRow}>
-                {tryOnOutfit.itemImageUrls.slice(0, 4).map((imageUrl, index) => (
-                  <View key={`outfit-preview-${index}`} style={styles.outfitPreviewCard}>
-                    <Image
-                      source={{ uri: resolveImageUrl(imageUrl) }}
-                      style={styles.outfitPreviewImage}
-                      resizeMode="contain"
-                    />
-                  </View>
-                ))}
+                {tryOnOutfit.itemImageUrls
+                  .slice(0, 4)
+                  .map((imageUrl, index) => (
+                    <View
+                      key={`outfit-preview-${index}`}
+                      style={styles.outfitPreviewCard}
+                    >
+                      <Image
+                        source={{ uri: resolveImageUrl(imageUrl) }}
+                        style={styles.outfitPreviewImage}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  ))}
               </View>
               {tryOnOutfit.stylingNote ? (
-                <Text style={styles.summaryText}>{tryOnOutfit.stylingNote}</Text>
+                <Text style={styles.summaryText}>
+                  {tryOnOutfit.stylingNote}
+                </Text>
               ) : null}
             </View>
 
@@ -517,15 +579,17 @@ export const BodyScreen = () => {
                 : 'Tap a photo to use it for this look. Long press any photo to remove it.'}
             </Text>
 
-            {tryOnError ? <Text style={styles.errorText}>{tryOnError}</Text> : null}
+            {tryOnError ? (
+              <Text style={styles.errorText}>{tryOnError}</Text>
+            ) : null}
           </>
         ) : (
           <>
             <View style={styles.manageHero}>
               <Text style={styles.manageHeroTitle}>Body photos for try-on</Text>
               <Text style={styles.manageHeroText}>
-                Upload clear, full-body photos once so future try-on results line up with
-                your proportions.
+                Upload clear, full-body photos once so future try-on results
+                line up with your proportions.
               </Text>
             </View>
 
@@ -534,11 +598,13 @@ export const BodyScreen = () => {
 
             {items.length > 0 ? (
               <Text style={styles.helperText}>
-                Tap a photo to make it the default preview. Long press any photo to delete it.
+                Tap a photo to make it the default preview. Long press any photo
+                to delete it.
               </Text>
             ) : (
               <Text style={styles.helperText}>
-                No body photos yet. Upload your first one to unlock outfit try-on.
+                No body photos yet. Upload your first one to unlock outfit
+                try-on.
               </Text>
             )}
           </>
@@ -598,7 +664,9 @@ export const BodyScreen = () => {
                   style={styles.modalAction}
                   onPress={() => handleImageSelection('gallery')}
                 >
-                  <Text style={styles.modalActionText}>Upload from gallery</Text>
+                  <Text style={styles.modalActionText}>
+                    Upload from gallery
+                  </Text>
                 </TouchableOpacity>
 
                 <View style={styles.modalDivider} />
@@ -621,7 +689,9 @@ export const BodyScreen = () => {
         visible={largeImageModalVisible}
         onRequestClose={() => setLargeImageModalVisible(false)}
       >
-        <TouchableWithoutFeedback onPress={() => setLargeImageModalVisible(false)}>
+        <TouchableWithoutFeedback
+          onPress={() => setLargeImageModalVisible(false)}
+        >
           <View style={styles.largeImageModalOverlay}>
             <TouchableWithoutFeedback>
               <View style={styles.largeImageContainer}>
