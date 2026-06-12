@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../types/navigation';
 import { Sidebar } from '../components/layout/Sidebar';
@@ -35,6 +36,11 @@ import {
   LEGACY_COACHMARK_STORAGE_KEY,
   SwipeCoachMark,
 } from '../components/features/SwipeCoachMark';
+import { MoodFeedbackSheet } from '../components/features/MoodFeedbackSheet';
+import {
+  MoodFeedbackOutfitRef,
+  useMoodFeedback,
+} from '../hooks/use-mood-feedback';
 import {
   PillButton,
   TopIconButton,
@@ -192,6 +198,16 @@ type OutfitSheetWithGrid = OutfitSheet & {
 };
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+// AU-318: payload the "Wear this" CTA hands to useMoodFeedback. Carries the
+// original sheet so the policy-gated direct-save branch can reuse the legacy
+// handler unchanged.
+type WearThisPayload = MoodFeedbackOutfitRef & {
+  outfit: OutfitSheet | OutfitSheetWithGrid;
+};
+
+// AU-318: success banner auto-dismiss window (~3s per ticket).
+const MOOD_BANNER_DURATION_MS = 3000;
 
 // V05 fetch input (260526): the mutation variables shared by `buildViaV05`
 // and the `requestRecommendation` guard. Naming the type (instead of
@@ -992,6 +1008,65 @@ export const HomeScreen = () => {
     handleHeartTapForOutfit(activeOutfit);
   }, [activeOutfit, handleHeartTapForOutfit]);
 
+  // ── AU-318 mood feedback flow ────────────────────────────────────────────
+  // "Wear this" no longer saves immediately: the policy-gated mood sheet
+  // opens first, and Done saves outfit + mood_tags atomically. All flow state
+  // (policy cache, modal lock, pending outfit, state machine, analytics)
+  // lives in useMoodFeedback — this screen is wiring only. The header heart
+  // (handleHeartTapActive above) keeps the legacy immediate-save path.
+  const { t } = useTranslation();
+  const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
+
+  // Reuses the pre-existing snackbarTimeoutRef (declared with the other
+  // refs; cleared on unmount by the effect at the top of the component).
+  const showMoodBanner = useCallback((text: string) => {
+    clearTimeoutRef(snackbarTimeoutRef);
+    setMoodBannerText(text);
+    snackbarTimeoutRef.current = setTimeout(() => {
+      setMoodBannerText(null);
+      snackbarTimeoutRef.current = null;
+    }, MOOD_BANNER_DURATION_MS);
+  }, []);
+
+  const handleMoodSaveSuccess = useCallback(
+    (outfitHash: string, updated: boolean) => {
+      // Same post-save semantics as the legacy path: the CTA flips to
+      // "Saved to favourite" via saveStateByHash.
+      setSaveStateByHash(current => ({ ...current, [outfitHash]: 'saved' }));
+      showMoodBanner(t(updated ? 'mood.moodUpdatedBanner' : 'mood.savedBanner'));
+    },
+    [showMoodBanner, t],
+  );
+
+  const { onWearThisPress, sheetProps: moodSheetProps } =
+    useMoodFeedback<WearThisPayload>({
+      saveDirectly: pending => handleHeartTapForOutfit(pending.outfit),
+      onSaveSuccess: handleMoodSaveSuccess,
+    });
+
+  // AU-318: the OptionSheet "Wear this" CTA routes here instead of straight
+  // into the save. Zero changes to swipe/prefetch paths.
+  const handleWearThisForOutfit = useCallback(
+    (outfit: OutfitSheetWithGrid | OutfitSheet | undefined) => {
+      if (!outfit) {
+        return;
+      }
+      // Parity with the legacy handler: an explicit positive action resets
+      // the unfavorited-swipe counter.
+      unfavoritedSwipeCountRef.current = 0;
+      onWearThisPress({
+        outfitHash: outfit.outfitHash,
+        itemIds: (outfit.items || []).map(item => item.id).filter(Boolean),
+        // The build request sends the selected mode as `user.occasion`
+        // (see buildViaV05) — thread the same value so contextual chip sets
+        // light up if/when real occasions flow through it.
+        occasion: selectedModeRef.current,
+        outfit,
+      });
+    },
+    [onWearThisPress],
+  );
+
   // PHASE B (AU-222): tap-or-long-press a tile's pin badge to toggle pin.
   // Only one pin at a time — pinning a new item swaps out the prior one.
   // Tapping the currently-pinned item unpins it.
@@ -1583,7 +1658,9 @@ export const HomeScreen = () => {
               isLastSet={set.setIndex >= sets.length - 1}
               onItemPress={handleOpenItemDetail}
               onTogglePin={handleToggleItemPin}
-              onHeartTap={handleHeartTapForOutfit}
+              // AU-318: "Wear this" CTA → mood feedback flow (policy-gated
+              // sheet). The header heart keeps the legacy direct save.
+              onHeartTap={handleWearThisForOutfit}
               onEditContext={handleOpenContextEditModal}
               onShowAnother={handleShowAnother}
               onRemix={handleRemix}
@@ -1643,6 +1720,27 @@ export const HomeScreen = () => {
         onResolved={handleVerticalCoachResolved}
         onDismissed={handleVerticalCoachDismissed}
       />
+
+      {/* AU-318: policy-gated mood feedback sheet — opened by the "Wear this"
+          CTA in place of the old immediate save. The OptionSheet is an inline
+          pager cell (not a modal), so no close-sequencing is needed before
+          opening this; the ContextChipsModal can never be open at the same
+          time (the CTA is unreachable behind it). */}
+      <MoodFeedbackSheet {...moodSheetProps} />
+
+      {/* AU-318: auto-dismissing save-success banner. No house snackbar
+          exists (success today = CTA label flip), so this is the minimal
+          inline toast — theme tokens only, non-interactive. */}
+      {moodBannerText ? (
+        <View
+          testID="mood-feedback-banner"
+          accessibilityRole="alert"
+          pointerEvents="none"
+          style={styles.moodBanner}
+        >
+          <Text style={styles.moodBannerText}>{moodBannerText}</Text>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -2628,5 +2726,22 @@ const styles = StyleSheet.create({
   cycledHintText: {
     ...theme.typography.aliases.manropeCaption,
     color: theme.colors.figmaTextSecondary,
+  },
+  // AU-318: save-success toast — floats above the view-toggle footer,
+  // inverted surface (dark pill, light text) so it reads over any grid.
+  moodBanner: {
+    position: 'absolute',
+    left: theme.spacing.m,
+    right: theme.spacing.m,
+    bottom: HOME_VIEW_TOGGLE_FOOTER_HEIGHT + theme.spacing.l,
+    paddingVertical: theme.spacing.s,
+    paddingHorizontal: theme.spacing.m,
+    borderRadius: 12,
+    backgroundColor: theme.colors.figmaAction,
+  },
+  moodBannerText: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaSurface,
+    textAlign: 'center',
   },
 });

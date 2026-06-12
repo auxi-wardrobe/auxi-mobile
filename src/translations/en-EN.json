@@ -232,6 +232,32 @@
         "a11y_delete": "Delete item",
         "image_unavailable": "Image unavailable"
       }
+    },
+    "mood": {
+      "title": "How did this outfit feel?",
+      "subtitle": "This helps us understand your style and mood better.",
+      "done": "Done",
+      "dismiss": "Dismiss mood feedback",
+      "feelsLikeMe": "Feels like me",
+      "confident": "Confident",
+      "relaxed": "Relaxed",
+      "polished": "Polished",
+      "comfortable": "Comfortable",
+      "sharp": "Sharp",
+      "effortless": "Effortless",
+      "elevated": "Elevated",
+      "professional": "Professional",
+      "prepared": "Prepared",
+      "easy": "Easy",
+      "attractive": "Attractive",
+      "expressive": "Expressive",
+      "functional": "Functional",
+      "lightweight": "Lightweight",
+      "notQuiteMe": "Not quite me",
+      "errorGeneric": "Unable to save your feedback. Please try again.",
+      "errorTimeout": "Connection timed out. Please try again.",
+      "savedBanner": "This look is now saved to your favorites.",
+      "moodUpdatedBanner": "Mood updated for this saved look."
     }
   }
 }

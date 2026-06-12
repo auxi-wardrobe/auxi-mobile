@@ -1,0 +1,174 @@
+# auxi/maestro/flows/home/mood-feedback.yaml
+# AU-318 — "Wear this" Mood Feedback: happy path + dismiss path.
+#
+# Linear: AU-318
+# Spec: plans/260611-2004-au318-wear-this-mood-feedback/linear-au318-ticket.md
+#       (Mood Feedback Modal + Primary/Secondary flow scenarios)
+# Plan: plans/260611-2004-au318-wear-this-mood-feedback/phase-03 + phase-04
+#
+# Scope:
+#   1. Happy path — tap "Wear this" on outfit 0-0 -> MoodFeedbackSheet opens
+#      -> Done starts disabled -> select "Confident" chip -> Done enables
+#      -> tap Done -> sheet closes -> success banner appears -> CTA flips
+#      to its saved (disabled) state.
+#   2. Dismiss path — advance to outfit 0-1 (horizontal axis, same set;
+#      outfits arrive in batches of 3 per AU-303 so no extra LLM call)
+#      -> reopen sheet -> Done is disabled again (fresh selections per
+#      ticket re-open scenario) -> tap backdrop -> sheet closes, no banner.
+#
+# Out of scope (deferred to separate flows / not expressible in Maestro):
+#   - Swipe-down-on-sheet dismiss          -> gesture on the sheet itself
+#     would race the chip grid taps; backdrop tap covers the same onDismiss
+#   - Policy-gated direct save (should_prompt=false) -> needs seeded mature
+#     profile; backend-state dependent, non-deterministic for regression
+#   - Submit error / timeout path          -> requires killing the backend
+#   - Dedup "Mood updated for this saved look." banner -> requires an
+#     outfit already in favorites from a PRIOR session (in-session the CTA
+#     is disabled once saved)
+#   - Analytics event assertions           -> outside Maestro scope
+#
+# NOTE on chip choice: HomeScreen threads the recommendation MODE
+# (safe/power/creative) into the sheet's `occasion` prop. None of those
+# match a CONTEXT_CHIP_SETS key, so the sheet renders DEFAULT_CHIP_SET,
+# which includes `confident`. If real occasions ever flow through,
+# `mood-chip-confident` stays safe: `confident` is also in the work,
+# weekend, and social sets (only `travel` lacks it).
+#
+# KNOWN RISK — E-10 (docs/qa-findings/2026-05-06-maestro-e2e-edge-cases.md):
+#   MoodFeedbackSheet uses RN <Modal>, which on iOS renders into a separate
+#   UIWindow that Maestro's hierarchy traversal could not reach as of the
+#   last run against ContextChipsModal (same scaffolding). This flow is
+#   authored per the AU-318 spec ANYWAY — the testIDs are correct, and once
+#   E-10 is resolved (in-window <View> overlay, or Maestro iOS UIWindow
+#   support) it should pass without edits. If qa-mobile sees the sheet
+#   visually open but `mood-feedback-sheet` unreachable, treat the failure
+#   as blocked on E-10, NOT as a product bug.
+
+appId: com.auxi2026.app
+name: home-mood-feedback
+tags:
+  - home
+  - mood-feedback
+  - au-318
+  - regression
+# Env defaults. Maestro substitutes these unless overridden by `-e` on the
+# CLI. QA_EMAIL / QA_PASSWORD are intentionally NOT baked in — pass via -e
+# (see maestro/config.yaml + README). Timing rationale: E-7/E-9 in
+# docs/qa-findings/2026-05-06-maestro-e2e-edge-cases.md.
+env:
+  HOME_TIMEOUT_MS: 30000
+  RECOMMENDATION_TIMEOUT_MS: 180000
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  SHEET_OPEN_TIMEOUT_MS: 10000     # local state + 300ms slide-up; policy is
+                                   # pre-fetched on mount, but a cold cache
+                                   # adds one /v05/mood-feedback/policy RTT
+  SHEET_DISMISS_TIMEOUT_MS: 5000   # 220ms slide-down + unmount
+  FAVOURITE_TIMEOUT_MS: 30000      # POST /favorites round-trip (no LLM)
+---
+# --- 0. Boot to Home (reuses keychain on subsequent runs) ---
+- runFlow: ../_shared/ensure-home.yaml
+
+# --- 1. Wait for the first outfit to land ---
+# /recommendation/start can take 30s+ on a cold LLM call. Cell testIDs are
+# `<base>-<setIndex>-<outfitIndexInSet>` (AU-303 two-axis cellKey); the
+# first fully-rendered cell is always 0-0.
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-0-0
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
+- assertVisible:
+    id: home-this-works-0-0
+
+# === HAPPY PATH ==============================================================
+
+# --- 2. Tap "Wear this" -> mood sheet opens, nothing saved yet ---
+- tapOn:
+    id: home-this-works-0-0
+- extendedWaitUntil:
+    visible:
+      id: mood-feedback-sheet
+    timeout: ${SHEET_OPEN_TIMEOUT_MS}
+- waitForAnimationToEnd
+
+# Done CTA must start DISABLED (ticket: disabled until >=1 chip selected).
+- assertVisible:
+    id: mood-feedback-done
+    enabled: false
+
+# --- 3. Select the "Confident" chip -> Done enables ---
+- assertVisible:
+    id: mood-chip-confident
+- tapOn:
+    id: mood-chip-confident
+- assertVisible:
+    id: mood-feedback-done
+    enabled: true
+
+# --- 4. Submit -> sheet closes, success banner shows ---
+# saveFavourite POST + close animation. The banner auto-dismisses after
+# ~3s, so we wait on the banner FIRST (extendedWaitUntil polls through the
+# POST latency), then confirm the sheet is gone.
+- tapOn:
+    id: mood-feedback-done
+- extendedWaitUntil:
+    visible:
+      id: mood-feedback-banner
+    timeout: ${FAVOURITE_TIMEOUT_MS}
+- extendedWaitUntil:
+    notVisible:
+      id: mood-feedback-sheet
+    timeout: ${SHEET_DISMISS_TIMEOUT_MS}
+
+# --- 5. CTA flipped to saved state (label "Saved to favourite", disabled) ---
+# State check, not copy check: same testID, enabled flips false.
+- assertVisible:
+    id: home-this-works-0-0
+    enabled: false
+
+# === DISMISS PATH ============================================================
+
+# --- 6. Advance to the next outfit in the set (horizontal axis) ---
+# Outfit 0-0 is now saved (CTA disabled), so reopen on 0-1. Outfits within
+# a set come from the same batch — no LLM call, but allow the prefetch
+# window anyway.
+- swipe:
+    direction: LEFT
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-0-1
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
+- extendedWaitUntil:
+    visible:
+      id: home-this-works-0-1
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
+
+# --- 7. Reopen the sheet -> fresh state (Done disabled again) ---
+# Ticket re-open scenario: previous selections must NOT persist.
+- tapOn:
+    id: home-this-works-0-1
+- extendedWaitUntil:
+    visible:
+      id: mood-feedback-sheet
+    timeout: ${SHEET_OPEN_TIMEOUT_MS}
+- waitForAnimationToEnd
+- assertVisible:
+    id: mood-feedback-done
+    enabled: false
+
+# --- 8. Backdrop tap -> sheet dismisses, outfit NOT saved ---
+- tapOn:
+    id: mood-feedback-backdrop
+- extendedWaitUntil:
+    notVisible:
+      id: mood-feedback-sheet
+    timeout: ${SHEET_DISMISS_TIMEOUT_MS}
+
+# No banner after a dismissal (ticket: no success feedback on skip)...
+- assertNotVisible:
+    id: mood-feedback-banner
+
+# ...and the CTA on 0-1 is still tappable — the outfit was not saved.
+- assertVisible:
+    id: home-this-works-0-1
+    enabled: true

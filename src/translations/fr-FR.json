@@ -56,6 +56,32 @@
         "passwords_mismatch": "Les mots de passe ne correspondent pas"
       }
     },
+    "mood": {
+      "title": "Comment vous êtes-vous senti dans cette tenue ?",
+      "subtitle": "Cela nous aide à mieux comprendre votre style et votre humeur.",
+      "done": "Terminé",
+      "dismiss": "Fermer le retour d'humeur",
+      "feelsLikeMe": "Fidèle à moi",
+      "confident": "Confiant",
+      "relaxed": "Détendu",
+      "polished": "Soigné",
+      "comfortable": "À l'aise",
+      "sharp": "Chic",
+      "effortless": "Sans effort",
+      "elevated": "Raffiné",
+      "professional": "Professionnel",
+      "prepared": "Prêt",
+      "easy": "Simple",
+      "attractive": "Séduisant",
+      "expressive": "Expressif",
+      "functional": "Fonctionnel",
+      "lightweight": "Léger",
+      "notQuiteMe": "Pas tout à fait moi",
+      "errorGeneric": "Impossible d'enregistrer votre retour. Veuillez réessayer.",
+      "errorTimeout": "La connexion a expiré. Veuillez réessayer.",
+      "savedBanner": "Cette tenue est maintenant enregistrée dans vos favoris.",
+      "moodUpdatedBanner": "Humeur mise à jour pour cette tenue enregistrée."
+    },
     "wardrobe": {
       "itemDetail": {
         "build_around_this": "Composer autour",
