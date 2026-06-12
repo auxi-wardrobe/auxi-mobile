@@ -38,8 +38,20 @@ jobs:
           node-version: "23"
           cache: yarn
 
-      - name: Select Xcode 26
-        run: sudo xcode-select -s /Applications/Xcode_26.app
+      - name: Select latest available Xcode
+        # Pin-by-version (Xcode_26.app) broke when the macos runner image
+        # stopped shipping that exact version — the gate went silently red on
+        # every branch (AU-326). Select the highest Xcode actually present so
+        # this survives runner image bumps.
+        run: |
+          XCODE_PATH="$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$XCODE_PATH" ]; then
+            echo "No /Applications/Xcode*.app found on runner" >&2
+            exit 1
+          fi
+          echo "Selecting $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH"
+          xcodebuild -version
 
       - name: Cache CocoaPods
         uses: actions/cache@v4
