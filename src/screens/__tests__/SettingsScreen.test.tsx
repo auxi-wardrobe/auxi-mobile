@@ -266,9 +266,10 @@ describe('applyChangeTime', () => {
       n => typeof n.type === 'string' && n.children?.[0] === 'AM',
     );
     expect(period.length).toBeGreaterThan(0);
-    // error toast surfaced
+    // error toast surfaced. SettingsScreen is i18n-wired; without an i18next
+    // instance in tests, t(key) returns the bare key, so assert on the key.
     expect(mockedToastShow).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error', text1: 'Settings' }),
+      expect.objectContaining({ type: 'error', text1: 'settings.toast_title' }),
     );
 
     await flushPromises();
@@ -416,10 +417,14 @@ describe('handleResetPreferences', () => {
 
     expect(resetUserPreferences).toHaveBeenCalledTimes(1);
     expect(isDialogOpen(root, 'settings-delete-confirm')).toBe(false); // modal closed
-    // synced: style direction row now reflects reset value
+    // synced: style direction row now reflects reset value. i18n-wired —
+    // t(key) returns the bare key in tests, so the rendered value is the
+    // direction label key, not the English string.
     const directionRow = oneByTestID(root, 'settings-style-direction-row');
     const hasRelaxed = directionRow.findAll(
-      n => typeof n.type === 'string' && n.children?.[0] === 'More Relaxed',
+      n =>
+        typeof n.type === 'string' &&
+        n.children?.[0] === 'settings.direction_relaxed_label',
     );
     expect(hasRelaxed.length).toBeGreaterThan(0);
   });
@@ -462,8 +467,9 @@ describe('handleResetPreferences', () => {
     press(oneByTestID(root, 'settings-delete-confirm'));
     await flushPromises();
 
+    // i18n-wired: t(key) returns the bare key in tests (no i18next instance).
     expect(mockedToastShow).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error', text1: 'Settings' }),
+      expect.objectContaining({ type: 'error', text1: 'settings.toast_title' }),
     );
     // button re-enabled (isResettingPreferences back to false)
     expect(oneByTestID(root, 'settings-delete-confirm').props.disabled).toBe(
