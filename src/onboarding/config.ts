@@ -130,8 +130,8 @@ export interface WelcomeCopy {
 }
 
 export const WELCOME_COPY: WelcomeCopy = {
-  title: 'Welcome to\nauxi',
-  subtitle: 'Get outfit suggestions\nthat work for your day.',
+  title: 'Welcome to\nMacgie',
+  subtitle: 'Get dressed with more clarity,\nless pressure.',
   ctaLabel: 'Get started — takes 1 min',
 };
 
