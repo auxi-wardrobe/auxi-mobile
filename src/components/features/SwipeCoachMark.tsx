@@ -169,11 +169,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Dim tier — scrim behind the dialog (see docs/Z_INDEX_LAYERING.md §1).
   scrim: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: theme.zIndex.dim,
     backgroundColor: theme.colors.figmaOverlayScrim, // #262421 @ 70%
   },
+  // Modal tier — dialog sits above the dim scrim.
   dialog: {
+    zIndex: theme.zIndex.modal,
     width: 366,
     maxWidth: '90%',
     backgroundColor: theme.colors.white,

@@ -23,7 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../types/navigation';
-import { Sidebar } from '../components/layout/Sidebar';
+import { useSidebar } from '../context/SidebarContext';
 import {
   ContextChipId,
   ContextChipOption,
@@ -47,6 +47,7 @@ import IconHomeHeartOutline from '../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../assets/images/icon_home_heart_filled.svg';
 import IconHomePin from '../assets/images/icon_home_pin.svg';
 import { theme } from '../theme/theme';
+import { MacgieLoader } from '../components/macgie';
 import { Item } from '../types/item';
 import {
   DEFAULT_RECOMMENDATION_MODE,
@@ -88,12 +89,11 @@ const CARD_ASPECT = 0.75; // Figma 3:4 (width / height) — the CEO's tracked me
 // GRID_AREA derivation below stays arithmetically honest.
 // - OPTION_SHEET_VPAD: optionSheet paddingTop(12) + paddingBottom(24).
 // - OPTION_ACTIONS_HEIGHT: true non-grid CONTENT inside the sheet —
-//   caption pill 40 + 3×12 inter-block gaps (flex-start + gap:12, A2) +
-//   action row 32 + CTA 56 = 164. (A3 2026-05-25: was 200, which silently
-//   folded the 36pt of padding into this constant and double-counted with
-//   the gap rhythm; padding is now its own term so the grid area is exact.)
+//   caption pill 40 + 2×12 inter-block gaps (flex-start + gap:12) + action
+//   row 32 = 96. The "Wear this" CTA (56) moved OUT of the card to the sticky
+//   footer, so it's reserved via WEAR_THIS_FOOTER_HEIGHT below (not here).
 const OPTION_SHEET_VPAD = 36;
-const OPTION_ACTIONS_HEIGHT = 164;
+const OPTION_ACTIONS_HEIGHT = 96;
 
 // Widest a tile can be if it filled the content frame edge-to-edge (the old
 // full-bleed width). Used only to size the *ideal* (uncapped) sheet height on
@@ -120,12 +120,16 @@ const APPROX_TOP_SAFE = 59; // status bar / notch (iPhone 16)
 // original viewport math omitted it, leaving each sheet ~98px too tall — the
 // bottom "Wear this" CTA fell behind the footer line and rendered clipped.
 // Subtract the footer height so the full sheet (incl. CTA) fits above it.
+// The "Wear this" CTA is now a sticky footer above the toggle (moved out of the
+// card), so reserve its height too — card + CTA footer + toggle must all fit.
+const WEAR_THIS_FOOTER_HEIGHT = 72; // PillButton 56 + 8/8 vertical padding
 const AVAILABLE_VIEWPORT =
   screenHeight -
   APPROX_TOP_SAFE -
   APPROX_BOTTOM_SAFE -
   APPROX_TOP_CHROME -
-  HOME_VIEW_TOGGLE_FOOTER_HEIGHT;
+  HOME_VIEW_TOGGLE_FOOTER_HEIGHT -
+  WEAR_THIS_FOOTER_HEIGHT;
 // Ideal (uncapped) sheet height: 2 rows of full-bleed-width 3:4 tiles + the
 // non-grid chrome + padding. On large screens this wins; on iPhone-class it's
 // capped by AVAILABLE_VIEWPORT.
@@ -386,7 +390,7 @@ const CONTEXT_CHIP_LABEL_KEYS: Record<ContextChipId, string> = {
 export const HomeScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { open: openSidebar } = useSidebar();
   // AU-253 / collage-play: Home view mode toggled by the bottom footer bar.
   // 'grid' = adaptive image grid (default); 'collage' = drag-to-play canvas.
   const [homeView, setHomeView] = useState<HomeView>('grid');
@@ -1255,7 +1259,7 @@ export const HomeScreen = () => {
   };
 
   const handleLeadingAction = () => {
-    setIsSidebarOpen(true);
+    openSidebar();
   };
 
   // CEO re-enabled the Home "Remix" button (overrides AU-253 omission). It
@@ -1297,8 +1301,6 @@ export const HomeScreen = () => {
 
   return (
     <SafeAreaView testID="home-screen-root" style={styles.container}>
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
       <View style={styles.header}>
         <TopIconButton
           testID="home-menu-button"
@@ -1462,7 +1464,6 @@ export const HomeScreen = () => {
               <OptionSheet
                 cellKey={outfit.outfitHash}
                 outfit={outfit}
-                saveState={saveStateByHash[outfit.outfitHash] ?? 'idle'}
                 pinnedItemId={pinnedItemId}
                 reveal={
                   role === 'peek'
@@ -1473,7 +1474,6 @@ export const HomeScreen = () => {
                 }
                 onItemPress={handleOpenItemDetail}
                 onTogglePin={handleToggleItemPin}
-                onConfirm={() => handleWearThisForOutfit(outfit)}
                 onEditContext={handleOpenContextEditModal}
                 onRemix={handleRemix}
                 homeView={homeView}
@@ -1509,6 +1509,36 @@ export const HomeScreen = () => {
           />
         </View>
       )}
+
+      {/* Sticky "Wear this" CTA — belongs to the footer (acts on the ACTIVE
+          outfit), not inside the swipeable card. Routes through the mood
+          feedback flow exactly like the old per-card CTA. */}
+      {optionSets.length > 0 ? (
+        <View style={styles.wearThisFooter}>
+          <PillButton
+            testID="home-wear-this"
+            title={
+              activeSaveState === 'saved'
+                ? t('home.saved_to_favourite')
+                : t('home.wear_this')
+            }
+            variant="outline"
+            onPress={() =>
+              activeOutfit && handleWearThisForOutfit(activeOutfit)
+            }
+            disabled={!activeOutfit || activeSaveState === 'saved'}
+            loading={activeSaveState === 'saving'}
+            trailing={<IconHomeHeartOutline width={24} height={24} />}
+            style={styles.primaryActionFull}
+            textStyle={styles.primaryActionLabel}
+          />
+          {activeSaveState === 'error' ? (
+            <Text style={styles.saveErrorText}>
+              {t('home.save_failed_retry')}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
 
       {/* AU-253: Home grid-view toggle bar (Figma footer 2464:17348). Tab 1
           = current grid view (active). Tab 2 = alternate view (not yet built
@@ -1662,12 +1692,10 @@ const OptionSheet = React.memo(
   ({
     cellKey,
     outfit,
-    saveState,
     pinnedItemId,
     reveal,
     onItemPress,
     onTogglePin,
-    onConfirm,
     onEditContext,
     onRemix,
     homeView,
@@ -1676,14 +1704,12 @@ const OptionSheet = React.memo(
     // testID namespace = the outfit hash so Maestro can address a card.
     cellKey: string;
     outfit: OutfitSheetWithGrid;
-    saveState: SaveState;
     pinnedItemId: string | null;
     // Item-assembly entrance: 'full' (first/Daily-Reveal card), 'light'
     // (subsequent cards), or 'none' (peek card / no animation).
     reveal: OutfitReveal;
     onItemPress: (item: Item) => void;
     onTogglePin: (item: Item) => void;
-    onConfirm: () => void;
     onEditContext: () => void;
     onRemix: () => void;
     homeView: HomeView;
@@ -1942,49 +1968,13 @@ const OptionSheet = React.memo(
 
           {/* Action row — [Remix | swipe glyph]. Dots + "Show another" removed
             with the move to the Tinder deck (swipe handles browse/skip). */}
+          {/* "Wear this" CTA lives in the sticky footer now (see HomeScreen
+              render) — it acts on the ACTIVE outfit and must not ride inside the
+              swipeable card. */}
           <OutfitActionRow
             testID={`home-action-row-${cellKey}`}
             onRemix={onRemix}
           />
-
-          {/* Bottom action cluster — primary CTA + Edit context affordance. */}
-          <View style={styles.actionCluster}>
-            {/* Figma primary CTA: Secondary/outline, borderRadius 16, trailing
-              heart icon, height 56, label "Wear this" (border/primary/bold_600). */}
-            <PillButton
-              testID={`home-this-works-${cellKey}`}
-              title={
-                saveState === 'saved'
-                  ? t('home.saved_to_favourite')
-                  : t('home.wear_this')
-              }
-              variant="outline"
-              onPress={onConfirm}
-              disabled={saveState === 'saved'}
-              loading={saveState === 'saving'}
-              trailing={<IconHomeHeartOutline width={24} height={24} />}
-              style={styles.primaryActionFull}
-              textStyle={styles.primaryActionLabel}
-            />
-
-            {saveState === 'error' ? (
-              <Text style={styles.saveErrorText}>
-                {t('home.save_failed_retry')}
-              </Text>
-            ) : null}
-
-            {/* Edit context entry point (AU-252 refine flow). Not in the Figma
-              Home grid frame, but it is the only way to reach the refine modal
-              from this screen and the swipe-nudge flow depends on it. Kept. */}
-            {/* <PillButton
-              testID={`home-edit-context-${cellKey}`}
-              title="Edit context +"
-              variant="text"
-              onPress={onEditContext}
-              style={styles.secondaryAction}
-              textStyle={styles.secondaryActionText}
-            /> */}
-          </View>
         </View>
       </View>
     );
@@ -2064,7 +2054,7 @@ const HomeLoadingState = () => {
       </View>
 
       <View style={styles.loadingFooter}>
-        <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+        <MacgieLoader variant="inline" size={28} testID="home-loading-macgie" />
         <Text style={styles.loadingFooterText}>{t('home.building_next')}</Text>
       </View>
     </View>
@@ -2086,8 +2076,10 @@ const GarmentPreview = ({ item }: { item: Item }) => {
       ) : (
         <View style={styles.cardFallback} />
       )}
-      <View style={styles.cardTag}>
-        <Text style={styles.cardTagText}>{t('common.badge_common')}</Text>
+      <View style={styles.cardTag} pointerEvents="none">
+        <View style={styles.cardTagPill}>
+          <Text style={styles.cardTagText}>{t('common.badge_common')}</Text>
+        </View>
       </View>
     </>
   );
@@ -2208,8 +2200,11 @@ const styles = StyleSheet.create({
   },
   // AU-303: outer vertical pager row — one SET. Snap height matches the set
   // pager's snapToInterval so each vertical page lands on one set.
-  // Tinder deck wrapper — mirrors the old scroll content's top inset.
+  // Tinder deck wrapper. flex:1 so the deck absorbs any leftover viewport —
+  // the sticky CTA + toggle footer then sit flush at the bottom (no dead space
+  // below the toggle when the approximated sheet height under-fills).
   deckWrap: {
+    flex: 1,
     paddingTop: 4,
   },
   // Like/Skip cue badge shown during a drag (calm, premium — not a Tinder
@@ -2217,7 +2212,9 @@ const styles = StyleSheet.create({
   deckCue: {
     position: 'absolute',
     top: 16,
-    zIndex: 2,
+    // Content tier — drag cue floats above the swipe-deck cards (same stacking
+    // context; cards render after the cue). See docs/Z_INDEX_LAYERING.md §1.
+    zIndex: theme.zIndex.content,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
@@ -2394,15 +2391,21 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: theme.colors.figmaBackground,
   },
+  // Figma 3438:22534 — "common" badge is a floating, fully-rounded dark pill
+  // centered 8px above the card's bottom edge (NOT a tab glued to the edge).
+  // Wrapper spans the card width so the pill self-centers regardless of label
+  // length (e.g. vi "món chung" is wider than en "common").
   cardTag: {
     position: 'absolute',
-    left: '50%',
-    bottom: 0,
-    marginLeft: -28.5,
-    width: 57,
+    left: 0,
+    right: 0,
+    bottom: 8,
+    alignItems: 'center',
+  },
+  cardTagPill: {
     height: 19,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    paddingHorizontal: 12, // Figma px-[12px], py-[0px]
+    borderRadius: 8,
     backgroundColor: theme.colors.figmaCardTag, // color/neutral/black/Alpha300
     alignItems: 'center',
     justifyContent: 'center',
@@ -2412,6 +2415,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 12,
     color: theme.colors.white,
+    textAlign: 'center',
   },
   actionCluster: {
     gap: 12, // Figma dimension/12
@@ -2419,6 +2423,13 @@ const styles = StyleSheet.create({
   },
   primaryAction: {
     alignSelf: 'stretch',
+  },
+  // Sticky "Wear this" footer wrapper — the CTA acts on the active outfit and
+  // sits above the grid/collage toggle (moved out of each swipeable card).
+  wearThisFooter: {
+    paddingHorizontal: SHEET_PADDING,
+    paddingTop: theme.spacing.uacDimension8,
+    paddingBottom: theme.spacing.uacDimension8,
   },
   // #2 fix (2026-05-13): Figma spec borderRadius=16 (not pill/100), outline variant.
   primaryActionFull: {
@@ -2528,6 +2539,9 @@ const styles = StyleSheet.create({
   // inverted surface (dark pill, light text) so it reads over any grid.
   moodBanner: {
     position: 'absolute',
+    // Toast tier — must paint above the grid + view-toggle footer regardless of
+    // render order (see docs/Z_INDEX_LAYERING.md §1, §4).
+    zIndex: theme.zIndex.toast,
     left: theme.spacing.m,
     right: theme.spacing.m,
     bottom: HOME_VIEW_TOGGLE_FOOTER_HEIGHT + theme.spacing.l,

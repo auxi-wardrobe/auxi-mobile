@@ -1,17 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
+import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
 import {
@@ -82,7 +77,7 @@ export const FavouriteScreen: React.FC = () => {
     if (isLoading) {
       return (
         <View style={styles.centerFill} testID="favourite-loading">
-          <ActivityIndicator size="large" color={theme.colors.figmaAction} />
+          <MacgieLoader />
         </View>
       );
     }

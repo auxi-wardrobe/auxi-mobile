@@ -18,6 +18,7 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
+import { motion } from '../theme/motion';
 import {
   CanvasItemData,
   OutfitCanvasSurface,
@@ -107,7 +108,8 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
   useEffect(() => {
     Animated.timing(slideX, {
       toValue: visible ? 0 : SCREEN_WIDTH,
-      duration: 280,
+      duration: motion.duration.medium,
+      easing: motion.easing.standard,
       useNativeDriver: true,
     }).start();
     if (!visible) {

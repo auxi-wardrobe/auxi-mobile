@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
   Dimensions,
   Image,
-  Platform,
   ScrollView,
 } from 'react-native';
 import { theme } from '../../theme/theme';
+import { motion } from '../../theme/motion';
 import { Item } from '../../types/item';
 import { resolveItemImage } from '../../utils/url';
 
@@ -34,13 +34,15 @@ export const ItemDetailBottomSheet: React.FC<ItemDetailBottomSheetProps> = ({
     if (visible) {
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 300,
+        duration: motion.duration.medium,
+        easing: motion.easing.enter,
         useNativeDriver: true,
       }).start();
     } else {
       Animated.timing(slideAnim, {
         toValue: SCREEN_HEIGHT,
-        duration: 300,
+        duration: motion.duration.normal,
+        easing: motion.easing.exit,
         useNativeDriver: true,
       }).start();
     }
@@ -49,7 +51,8 @@ export const ItemDetailBottomSheet: React.FC<ItemDetailBottomSheetProps> = ({
   const handleClose = () => {
     Animated.timing(slideAnim, {
       toValue: SCREEN_HEIGHT,
-      duration: 300,
+      duration: motion.duration.normal,
+      easing: motion.easing.exit,
       useNativeDriver: true,
     }).start(() => {
       onClose();
@@ -154,6 +157,7 @@ export const ItemDetailBottomSheet: React.FC<ItemDetailBottomSheetProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // Dim tier — RN <Modal> host carries the scrim (see docs/Z_INDEX_LAYERING.md §1).
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -161,24 +165,18 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: theme.zIndex.dim, // dim/dismiss layer, below the sheet
   },
   sheet: {
+    zIndex: theme.zIndex.modal, // Modal tier — above the dim layer
     backgroundColor: theme.colors.background,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     height: '90%', // Occupies most of the screen
     paddingBottom: 40,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 5,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
+    // Modal/sheet tier shadow — elevation 16 (was 5, below content's elevation:6).
+    // Canonical DS sheet shadow keeps Android stacking consistent (rule §4).
+    ...theme.ds.shadow.sheet,
   },
   header: {
     flexDirection: 'row',

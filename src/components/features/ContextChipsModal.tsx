@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
+import { motion } from '../../theme/motion';
 import { Input } from '../atoms/Input';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -78,7 +79,8 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
       slideAnim.setValue(screenHeight);
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 280,
+        duration: motion.duration.medium,
+        easing: motion.easing.enter,
         useNativeDriver: true,
       }).start();
       return;
@@ -90,7 +92,8 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
 
     Animated.timing(slideAnim, {
       toValue: screenHeight,
-      duration: 220,
+      duration: motion.duration.normal,
+      easing: motion.easing.exit,
       useNativeDriver: true,
     }).start(() => {
       setShouldRender(false);
@@ -229,6 +232,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // Dim tier — RN <Modal> host carries the scrim (see docs/Z_INDEX_LAYERING.md §1).
   overlay: {
     flex: 1,
     alignItems: 'center',
@@ -236,6 +240,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   card: {
+    // Modal tier — content sits above the dim/dismiss layer.
+    zIndex: theme.zIndex.modal,
     width: MODAL_WIDTH,
     marginBottom: 8,
     borderRadius: 16,
