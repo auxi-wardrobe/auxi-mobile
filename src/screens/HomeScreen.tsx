@@ -7,13 +7,10 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
-  FlatList,
   Image,
   Keyboard,
-  ListRenderItemInfo,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -26,7 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../types/navigation';
-import { Sidebar } from '../components/layout/Sidebar';
+import { useSidebar } from '../context/SidebarContext';
 import {
   ContextChipId,
   ContextChipOption,
@@ -50,6 +47,7 @@ import IconHomeHeartOutline from '../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../assets/images/icon_home_heart_filled.svg';
 import IconHomePin from '../assets/images/icon_home_pin.svg';
 import { theme } from '../theme/theme';
+import { MacgieLoader } from '../components/macgie';
 import { Item } from '../types/item';
 import {
   DEFAULT_RECOMMENDATION_MODE,
@@ -68,6 +66,8 @@ import { weatherService } from '../services/weatherService';
 import { WeatherWidget } from '../components/features/WeatherWidget';
 import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
 import { OutfitActionRow } from '../components/features/OutfitActionRow';
+import { OutfitSwipeDeck } from '../components/features/OutfitSwipeDeck';
+import { motion } from '../theme/motion';
 import {
   HomeView,
   HomeViewToggleFooter,
@@ -76,12 +76,7 @@ import {
 import { CollageSheetCanvas } from '../components/features/CollageSheetCanvas';
 import { COLLAGE_ASPECT } from '../components/features/collage-seed-layout';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  groupOutfitsIntoSets,
-  OUTFITS_PER_SET,
-  OutfitSet,
-  toFlatIndex,
-} from '../utils/groupOutfitsIntoSets';
+import { OUTFITS_PER_SET } from '../utils/groupOutfitsIntoSets';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -94,12 +89,11 @@ const CARD_ASPECT = 0.75; // Figma 3:4 (width / height) — the CEO's tracked me
 // GRID_AREA derivation below stays arithmetically honest.
 // - OPTION_SHEET_VPAD: optionSheet paddingTop(12) + paddingBottom(24).
 // - OPTION_ACTIONS_HEIGHT: true non-grid CONTENT inside the sheet —
-//   caption pill 40 + 3×12 inter-block gaps (flex-start + gap:12, A2) +
-//   action row 32 + CTA 56 = 164. (A3 2026-05-25: was 200, which silently
-//   folded the 36pt of padding into this constant and double-counted with
-//   the gap rhythm; padding is now its own term so the grid area is exact.)
+//   caption pill 40 + 2×12 inter-block gaps (flex-start + gap:12) + action
+//   row 32 = 96. The "Wear this" CTA (56) moved OUT of the card to the sticky
+//   footer, so it's reserved via WEAR_THIS_FOOTER_HEIGHT below (not here).
 const OPTION_SHEET_VPAD = 36;
-const OPTION_ACTIONS_HEIGHT = 164;
+const OPTION_ACTIONS_HEIGHT = 96;
 
 // Widest a tile can be if it filled the content frame edge-to-edge (the old
 // full-bleed width). Used only to size the *ideal* (uncapped) sheet height on
@@ -126,12 +120,16 @@ const APPROX_TOP_SAFE = 59; // status bar / notch (iPhone 16)
 // original viewport math omitted it, leaving each sheet ~98px too tall — the
 // bottom "Wear this" CTA fell behind the footer line and rendered clipped.
 // Subtract the footer height so the full sheet (incl. CTA) fits above it.
+// The "Wear this" CTA is now a sticky footer above the toggle (moved out of the
+// card), so reserve its height too — card + CTA footer + toggle must all fit.
+const WEAR_THIS_FOOTER_HEIGHT = 72; // PillButton 56 + 8/8 vertical padding
 const AVAILABLE_VIEWPORT =
   screenHeight -
   APPROX_TOP_SAFE -
   APPROX_BOTTOM_SAFE -
   APPROX_TOP_CHROME -
-  HOME_VIEW_TOGGLE_FOOTER_HEIGHT;
+  HOME_VIEW_TOGGLE_FOOTER_HEIGHT -
+  WEAR_THIS_FOOTER_HEIGHT;
 // Ideal (uncapped) sheet height: 2 rows of full-bleed-width 3:4 tiles + the
 // non-grid chrome + padding. On large screens this wins; on iPhone-class it's
 // capped by AVAILABLE_VIEWPORT.
@@ -142,7 +140,6 @@ const COMPUTED_SHEET_HEIGHT = Math.round(
     OPTION_SHEET_VPAD,
 );
 const OPTION_SHEET_HEIGHT = Math.min(COMPUTED_SHEET_HEIGHT, AVAILABLE_VIEWPORT);
-const OPTION_SHEET_SNAP_INTERVAL = OPTION_SHEET_HEIGHT + SHEET_GAP;
 
 // AU-253 (2026-05-25, Direction 1 — CEO-approved): lock tiles to true 3:4.
 // INVERT the old logic — derive HEIGHT from the grid area the sheet can afford
@@ -272,9 +269,6 @@ const buildGridOutfitSheetWithPin = (
   };
 };
 
-const getSheetIndexFromOffset = (offsetY: number) =>
-  Math.max(0, Math.round(offsetY / OPTION_SHEET_SNAP_INTERVAL));
-
 // Normalize the API payload into a uniform `OutfitSheet[]` regardless of
 // whether the backend returns `{ outfits: Outfit[] }` (per the typed
 // contract in recommendationService.ts) or an `Item[][]` shape (what the
@@ -399,7 +393,7 @@ const CONTEXT_CHIP_LABEL_KEYS: Record<ContextChipId, string> = {
 export const HomeScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { open: openSidebar } = useSidebar();
   // AU-253 / collage-play: Home view mode toggled by the bottom footer bar.
   // 'grid' = adaptive image grid (default); 'collage' = drag-to-play canvas.
   const [homeView, setHomeView] = useState<HomeView>('grid');
@@ -416,11 +410,10 @@ export const HomeScreen = () => {
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [listOutfits, setListOutfits] = useState<OutfitSheet[]>([]);
-  // AU-303 two-axis position. `setIndex` = vertical (which set of 3), `outfitIndex`
-  // = horizontal (which of the set's 3 outfits, 0..2). Legacy flat index is
-  // derived = setIndex*3 + outfitIndex for favorite/caption/hash code.
-  const [setIndex, setSetIndex] = useState(0);
-  const [outfitIndex, setOutfitIndex] = useState(0);
+  // Tinder deck: a single active card index into the flat `optionSets`. The
+  // deck only advances forward (like/skip); `outfitHash` keys save state so it
+  // is position-independent. (Replaces the AU-303 two-axis setIndex/outfitIndex.)
+  const [activeIndex, setActiveIndex] = useState(0);
   const [saveStateByHash, setSaveStateByHash] = useState<
     Record<string, SaveState>
   >({});
@@ -451,29 +444,6 @@ export const HomeScreen = () => {
   // Unfavorited-swipe counter is per-session, never rendered, so we keep it
   // in a ref instead of state to avoid useless re-renders on every swipe.
   const unfavoritedSwipeCountRef = useRef(0);
-  // AU-303: which (setIndex,outfitIndex) outfits the user has already browsed
-  // this session. Prevents the unfavorited-swipe counter from double-counting a
-  // back-swipe onto an already-seen outfit. Keyed by flat index.
-  const seenOutfitKeysRef = useRef<Set<number>>(new Set());
-  // AU-303: once the user has viewed all 3 outfits of set 0, arm the VERTICAL
-  // guidance overlay. State (not just ref) because it gates a rendered overlay;
-  // mirrored into a ref so the browse handler reads the latest value without a
-  // stale closure.
-  const [verticalCoachArmed, setVerticalCoachArmed] = useState(false);
-  const verticalCoachArmedRef = useRef(false);
-  // AU-303 sequencing refs. `resolved` = the overlay finished its one-time-flag
-  // AsyncStorage read; `willShow` = that read said it should display (flag unset).
-  // Together they let openContextModalSequenced decide whether to defer the
-  // recurring context modal behind the guidance overlay.
-  const verticalCoachResolvedRef = useRef(false);
-  const verticalCoachWillShowRef = useRef(false);
-  // AU-303: when the vertical guidance overlay wins priority on the 3rd browse,
-  // we suppress the context modal that one time and re-evaluate after the
-  // overlay is dismissed (sequencing — they must never collide).
-  const contextModalDeferredRef = useRef(false);
-
-  // AU-303: vertical pager (sets) ref — programmatic scroll for "Show another".
-  const setPagerRef = useRef<FlatList<OutfitSet<OutfitSheetWithGrid>>>(null);
   // Mirror state into refs so async handlers (mutation onSuccess, momentum
   // scroll end) read the current values without forcing handler recreation.
   const listOutfitsRef = useRef<OutfitSheet[]>([]);
@@ -516,12 +486,9 @@ export const HomeScreen = () => {
   const selectedModeRef = useRef<RecommendationMode>(
     DEFAULT_RECOMMENDATION_MODE,
   );
-  // Bug 3 fix: read the previous active position from refs instead of inside
-  // a setState updater (updaters must be pure; StrictMode invokes them
-  // twice which double-incremented the unfavorited-swipe counter).
-  // AU-303: two coordinates now — setIndex (vertical) + outfitIndex (horizontal).
-  const setIndexRef = useRef(0);
-  const outfitIndexRef = useRef(0);
+  // Bug 3 fix: read the previous active position from a ref instead of inside a
+  // setState updater (updaters must be pure; StrictMode invokes them twice).
+  const activeIndexRef = useRef(0);
   // PHASE D (AU-252): mirror styleFeedback so prefetch + show-another reads
   // the latest value without recreating callbacks on every submit. Sticky
   // for the session — cleared only when the user re-submits the modal
@@ -547,18 +514,15 @@ export const HomeScreen = () => {
   }, [listOutfits]);
 
   useEffect(() => {
-    setIndexRef.current = setIndex;
-  }, [setIndex]);
+    activeIndexRef.current = activeIndex;
+  }, [activeIndex]);
 
-  useEffect(() => {
-    outfitIndexRef.current = outfitIndex;
-  }, [outfitIndex]);
-
-  // AU-303: retire the old single-overlay coachmark key on mount so existing
-  // users (who already dismissed `swipe-home`) see the corrected two-axis
-  // first-time flow once. Fire-and-forget; failure just means no migration.
+  // Retire superseded coach-mark keys on mount so existing users see the
+  // corrected single left/right deck overlay once: the old single-overlay
+  // `swipe-home` and the now-removed vertical `swipe-set`. Fire-and-forget.
   useEffect(() => {
     AsyncStorage.removeItem(LEGACY_COACHMARK_STORAGE_KEY).catch(() => {});
+    AsyncStorage.removeItem('@auxi/coachmark/swipe-set').catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -738,20 +702,11 @@ export const HomeScreen = () => {
         const incoming = normalizeOutfits(data, 0);
         addedCount = incoming.length;
         setListOutfits(incoming);
-        // AU-303: cold start resets BOTH axes to (0,0) and clears the
-        // per-session "seen" set so the counter + vertical coachmark restart.
-        // The vertical coach re-arms on this fresh set's full browse (it still
-        // only DISPLAYS if its AsyncStorage flag is unset — see SwipeCoachMark).
-        setSetIndex(0);
-        setOutfitIndex(0);
-        setIndexRef.current = 0;
-        outfitIndexRef.current = 0;
-        seenOutfitKeysRef.current = new Set([0]);
-        verticalCoachArmedRef.current = false;
-        verticalCoachResolvedRef.current = false;
-        verticalCoachWillShowRef.current = false;
-        contextModalDeferredRef.current = false;
-        setVerticalCoachArmed(false);
+        // Cold start resets the deck to the first card and clears the
+        // per-session unfavourited-skip counter (fresh session = clean slate).
+        setActiveIndex(0);
+        activeIndexRef.current = 0;
+        unfavoritedSwipeCountRef.current = 0;
         // Fresh session/context → the pool may have outfits again. Clear the
         // sustainability flags too — a new build is a clean slate (the gap
         // CTA / cycled hint should not bleed across a refine/mode reset).
@@ -889,20 +844,11 @@ export const HomeScreen = () => {
     [listOutfits, pinnedItem],
   );
 
-  // AU-303: derived two-axis view. `listOutfits` stays the single source of
-  // truth; `sets` is a memoized grouping (chunks of 3). Re-derives on append.
-  const sets = useMemo<OutfitSet<OutfitSheetWithGrid>[]>(
-    () => groupOutfitsIntoSets(optionSets, OUTFITS_PER_SET),
-    [optionSets],
-  );
-
-  // Clamp the active position into the available data (prefetch append /
-  // partial last set can shrink bounds momentarily).
-  const activeSet = sets[setIndex];
-  const activeSetLength = activeSet?.outfits.length ?? 0;
-  const clampedOutfitIndex =
-    activeSetLength > 0 ? Math.min(outfitIndex, activeSetLength - 1) : 0;
-  const activeOutfit = activeSet?.outfits[clampedOutfitIndex];
+  // Tinder deck: clamp the active index into the available data (prefetch
+  // append / a depleted pool can momentarily shrink bounds).
+  const clampedActiveIndex =
+    optionSets.length > 0 ? Math.min(activeIndex, optionSets.length - 1) : 0;
+  const activeOutfit = optionSets[clampedActiveIndex];
   const activeOutfitHash = activeOutfit?.outfitHash;
   const activeSaveState: SaveState = activeOutfitHash
     ? saveStateByHash[activeOutfitHash] ?? 'idle'
@@ -930,13 +876,10 @@ export const HomeScreen = () => {
       if (poolDepletedRef.current) {
         return;
       }
-      // AU-303: lookahead is measured against the FLAT active position
-      // (setIndex*3 + outfitIndex). Keeping ≥1 set (TARGET_AHEAD=3) buffered
-      // ahead means the next vertical swipe always has a full set ready.
-      const activeFlat = toFlatIndex(
-        setIndexRef.current,
-        outfitIndexRef.current,
-      );
+      // Lookahead is measured against the active deck index. Keeping
+      // TARGET_AHEAD outfits buffered ahead means the next swipe always has a
+      // card ready.
+      const activeFlat = activeIndexRef.current;
       const ahead = total - 1 - activeFlat;
       if (!force && ahead >= TARGET_AHEAD) {
         return;
@@ -1167,157 +1110,56 @@ export const HomeScreen = () => {
     });
   }, []);
 
-  // AU-303 sequencing helper. The vertical guidance overlay (overlay 2) and the
-  // recurring context modal can both want to fire on the 3rd unfavorited browse.
-  // Overlay 2 has priority: if it is armed and either hasn't finished its
-  // one-time-flag check yet OR is going to show, we DEFER the context modal and
-  // flush it when the overlay is dismissed (or immediately if the overlay turns
-  // out to be already-seen — see handleVerticalCoachResolved). Otherwise the
-  // context modal opens normally.
-  const openContextModalSequenced = useCallback(() => {
-    const armed = verticalCoachArmedRef.current;
-    const resolvedNotShown =
-      verticalCoachResolvedRef.current && !verticalCoachWillShowRef.current;
-    if (armed && !resolvedNotShown) {
-      contextModalDeferredRef.current = true;
-      return;
+  // Tinder deck: advance to the next card. End of deck keeps the last card on
+  // screen (re-likeable) per spec §2.5, and nudges a prefetch.
+  const advanceDeck = useCallback(() => {
+    const next = activeIndexRef.current + 1;
+    if (next < listOutfitsRef.current.length) {
+      activeIndexRef.current = next;
+      setActiveIndex(next);
     }
-    setIsContextModalOpen(true);
-    track('refine_modal_opened', { source: 'unfavorited_swipe' });
-  }, []);
+    ensureBuffer();
+  }, [ensureBuffer]);
 
-  // AU-303: arm the VERTICAL guidance overlay once all 3 outfits of set 0 have
-  // been browsed (CEO Q2: fires after viewing all 3 outfits of the first set).
-  // Sets the ref synchronously (so the same-tick browse sees it armed) and the
-  // state (to render the overlay).
-  const maybeArmVerticalCoach = useCallback(() => {
-    if (verticalCoachArmedRef.current) {
-      return;
-    }
-    const set0Length = listOutfitsRef.current.slice(0, OUTFITS_PER_SET).length;
-    const seen = seenOutfitKeysRef.current;
-    const allSeen = [0, 1, 2]
-      .slice(0, set0Length)
-      .every(flat => seen.has(flat));
-    if (set0Length > 0 && allSeen) {
-      verticalCoachArmedRef.current = true;
-      setVerticalCoachArmed(true);
-    }
-  }, []);
+  // Tinder deck — like (swipe right / header heart / a11y action): quick-save
+  // the active outfit (the header-heart path already flips saveStateByHash,
+  // tracks `outfit_favorited`, and resets the unfavourited-skip counter), then
+  // advance to the next card.
+  const handleLike = useCallback(
+    (outfit: OutfitSheetWithGrid) => {
+      handleHeartTapForOutfit(outfit);
+      advanceDeck();
+    },
+    [handleHeartTapForOutfit, advanceDeck],
+  );
 
-  // AU-303: a "browse" = landing on a (setIndex, outfitIndex) on EITHER axis.
-  // Re-anchors the unfavorited-swipe counter to two-axis browse events, with a
-  // per-session "seen" set so a back-swipe onto an already-seen outfit doesn't
-  // double-count. Order matters: (1) check/mark seen, (2) arm the vertical
-  // overlay if set 0 is now complete (so the 3rd-browse sequencing sees it
-  // armed), (3) count + sequence the context modal. Pure ref reads + plain
-  // setState (StrictMode-safe, like the old helper).
-  const recordBrowse = useCallback(
-    (
-      nextSet: number,
-      nextOutfit: number,
-      prevSet: number,
-      prevOutfit: number,
-    ) => {
-      const nextFlat = toFlatIndex(nextSet, nextOutfit);
-      const prevFlat = toFlatIndex(prevSet, prevOutfit);
-
-      const alreadySeen = seenOutfitKeysRef.current.has(nextFlat);
-      seenOutfitKeysRef.current.add(nextFlat);
-
-      // Arm overlay 2 BEFORE counting so a 3rd-browse that also completes set 0
-      // defers the context modal behind the guidance overlay.
-      maybeArmVerticalCoach();
-
-      // Only a move to a NOT-yet-seen outfit counts (forward exploration on
-      // either axis). Back-swipes onto seen outfits are ignored.
-      if (!alreadySeen && nextFlat !== prevFlat) {
-        const fromOutfit = listOutfitsRef.current[prevFlat];
-        const fromHash = fromOutfit?.outfitHash;
-        const fromState = fromHash
-          ? saveStateByHashRef.current[fromHash] ?? 'idle'
-          : 'idle';
-        const wasFavorited = fromState === 'saved' || fromState === 'saving';
-
-        console.info('home.swipe.miss', {
-          from: { set: prevSet, outfit: prevOutfit },
-          to: { set: nextSet, outfit: nextOutfit },
-        });
-        // TODO(analytics): replace console.info with the real telemetry hook.
-
-        if (!wasFavorited) {
-          const nextCount = unfavoritedSwipeCountRef.current + 1;
-          if (nextCount >= UNFAVORITED_SWIPE_THRESHOLD) {
-            unfavoritedSwipeCountRef.current = 0;
-            openContextModalSequenced();
-          } else {
-            unfavoritedSwipeCountRef.current = nextCount;
-          }
+  // Tinder deck — skip (swipe left / a11y action): advance without saving. A
+  // skip off an unfavourited outfit counts toward the refine nudge (3rd skip →
+  // ContextChipsModal). The counter resets on any positive action (like / Wear
+  // this / refine submit).
+  const handleSkip = useCallback(
+    (outfit: OutfitSheetWithGrid) => {
+      const fromHash = outfit?.outfitHash;
+      const fromState = fromHash
+        ? saveStateByHashRef.current[fromHash] ?? 'idle'
+        : 'idle';
+      const wasFavorited = fromState === 'saved' || fromState === 'saving';
+      console.info('home.swipe.miss', { from: activeIndexRef.current });
+      // TODO(analytics): replace console.info with the real telemetry hook.
+      if (!wasFavorited) {
+        const nextCount = unfavoritedSwipeCountRef.current + 1;
+        if (nextCount >= UNFAVORITED_SWIPE_THRESHOLD) {
+          unfavoritedSwipeCountRef.current = 0;
+          setIsContextModalOpen(true);
+          track('refine_modal_opened', { source: 'unfavorited_swipe' });
+        } else {
+          unfavoritedSwipeCountRef.current = nextCount;
         }
       }
-
-      ensureBuffer();
+      advanceDeck();
     },
-    [ensureBuffer, openContextModalSequenced, maybeArmVerticalCoach],
+    [advanceDeck],
   );
-
-  // AU-303: horizontal (within-set) page change. Updates outfitIndex, marks the
-  // new outfit seen + (if set 0 now complete) arms the vertical overlay BEFORE
-  // recording the browse, so the 3rd-browse sequencing sees the armed state.
-  const handleOutfitChange = useCallback(
-    (nextOutfit: number) => {
-      const prevSet = setIndexRef.current;
-      const prevOutfit = outfitIndexRef.current;
-      if (nextOutfit === prevOutfit) {
-        return;
-      }
-      outfitIndexRef.current = nextOutfit;
-      setOutfitIndex(nextOutfit);
-      recordBrowse(prevSet, nextOutfit, prevSet, prevOutfit);
-    },
-    [recordBrowse],
-  );
-
-  // AU-303: vertical (set) page change. Resets outfitIndex to 0 (a fresh set
-  // starts at its first outfit) and records the browse.
-  const handleSetChange = useCallback(
-    (nextSet: number) => {
-      const prevSet = setIndexRef.current;
-      const prevOutfit = outfitIndexRef.current;
-      if (nextSet === prevSet) {
-        return;
-      }
-      setIndexRef.current = nextSet;
-      outfitIndexRef.current = 0;
-      setSetIndex(nextSet);
-      setOutfitIndex(0);
-      recordBrowse(nextSet, 0, prevSet, prevOutfit);
-    },
-    [recordBrowse],
-  );
-
-  // AU-303: the vertical overlay finished its one-time-flag check. Record
-  // whether it will show; if it WON'T (already seen) and a context modal was
-  // deferred behind it, flush that modal now so it isn't stranded.
-  const handleVerticalCoachResolved = useCallback((shown: boolean) => {
-    verticalCoachResolvedRef.current = true;
-    verticalCoachWillShowRef.current = shown;
-    if (!shown && contextModalDeferredRef.current) {
-      contextModalDeferredRef.current = false;
-      setIsContextModalOpen(true);
-      track('refine_modal_opened', { source: 'unfavorited_swipe' });
-    }
-  }, []);
-
-  // AU-303: after the vertical guidance overlay is dismissed, fire any context
-  // modal that was deferred for sequencing (so the two never collide).
-  const handleVerticalCoachDismissed = useCallback(() => {
-    if (contextModalDeferredRef.current) {
-      contextModalDeferredRef.current = false;
-      setIsContextModalOpen(true);
-      track('refine_modal_opened', { source: 'unfavorited_swipe' });
-    }
-  }, []);
 
   const handleOpenContextEditModal = useCallback(() => {
     Keyboard.dismiss();
@@ -1423,41 +1265,14 @@ export const HomeScreen = () => {
   };
 
   const handleLeadingAction = () => {
-    setIsSidebarOpen(true);
+    openSidebar();
   };
-
-  // AU-303: "Show another" (Figma swipe-up glyph) programmatically advances to
-  // the next SET — the vertical axis. At the tail it tops up the buffer via the
-  // prefetch trigger so the user can keep rotating. Mirrors the vertical swipe.
-  const totalSetsRef = useRef(0);
-  useEffect(() => {
-    totalSetsRef.current = Math.ceil(listOutfits.length / OUTFITS_PER_SET);
-  }, [listOutfits.length]);
-
-  const handleShowAnother = useCallback(() => {
-    const totalSets = totalSetsRef.current;
-    if (totalSets === 0) {
-      return;
-    }
-    const nextSet = setIndexRef.current + 1;
-    // At the edge there is no further set yet — nudge a prefetch so the next
-    // set becomes available, but don't scroll past the end.
-    if (nextSet >= totalSets) {
-      ensureBuffer();
-      return;
-    }
-    setPagerRef.current?.scrollToIndex({ index: nextSet, animated: true });
-    handleSetChange(nextSet);
-  }, [ensureBuffer, handleSetChange]);
 
   // CEO re-enabled the Home "Remix" button (overrides AU-253 omission). It
   // opens the Outfit Canvas (AU-285 Remix editor), seeded with the CURRENT
   // outfit's real items so the editor no longer shows mock jeans.
   const handleRemix = useCallback(() => {
-    const current =
-      listOutfitsRef.current[
-        toFlatIndex(setIndexRef.current, outfitIndexRef.current)
-      ];
+    const current = listOutfitsRef.current[activeIndexRef.current];
     const items = (current?.items ?? [])
       .filter((it): it is Item => !!it)
       .map(it => ({
@@ -1490,19 +1305,8 @@ export const HomeScreen = () => {
     [navigation],
   );
 
-  // AU-303: outer vertical pager momentum-end → resolve which SET the viewport
-  // landed on (offset / set height) and commit it.
-  const handleSetMomentumEnd = (
-    event: NativeSyntheticEvent<NativeScrollEvent>,
-  ) => {
-    const nextSet = getSheetIndexFromOffset(event.nativeEvent.contentOffset.y);
-    handleSetChange(nextSet);
-  };
-
   return (
     <SafeAreaView testID="home-screen-root" style={styles.container}>
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
       <View style={styles.header}>
         <TopIconButton
           testID="home-menu-button"
@@ -1630,19 +1434,15 @@ export const HomeScreen = () => {
         >
           <HomeLoadingState />
         </ScrollView>
-      ) : sets.length === 0 && isWardrobeGap ? (
-        // Fix D (2026-05-27): genuine wardrobe gap with nothing to show —
-        // a terminal dead-end the user CAN act on. Surface a CTA to add
-        // items instead of the old silent freeze. No auto-rebuild (backend
-        // owns sustainability). Distinct from `startError` (thrown errors).
+      ) : optionSets.length === 0 && isWardrobeGap ? (
+        // Genuine wardrobe gap with nothing to show — a terminal dead-end the
+        // user CAN act on: a CTA to add items (backend owns sustainability).
         <HomeWardrobeGapState
           onAddItems={() => navigation.navigate('Wardrobe')}
         />
-      ) : sets.length === 0 && startError ? (
-        // Error UI fix (2026-05-22): give the user a way out of a
-        // failed cold-start fetch. Without this, an API timeout or
-        // 5xx left the screen blank and the only recovery was to
-        // force-quit the app.
+      ) : optionSets.length === 0 && startError ? (
+        // Recoverable cold-start failure — Retry restarts the mutation so a
+        // timeout / 5xx never leaves the screen blank.
         <HomeErrorState
           onRetry={() => {
             resetStartMutation();
@@ -1653,70 +1453,98 @@ export const HomeScreen = () => {
           }}
         />
       ) : (
-        // AU-303 TWO-AXIS PAGER. Outer vertical FlatList pages between SETS;
-        // each row is a horizontal FlatList of the set's (1..3) outfits, each
-        // cell the existing OptionSheet shell. No new dependency — RN-native
-        // paging on both axes (Option A in phase-03). `directionalLockEnabled`
-        // commits a diagonal drag to one axis so the two pagers don't fight.
-        <FlatList
-          ref={setPagerRef}
-          testID="home-set-pager"
-          data={sets}
-          keyExtractor={set =>
-            `set-${set.outfits[0]?.outfitHash ?? set.setIndex}`
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          // Per-SET snap (matches the pre-AU-303 ScrollView snap). NOT
-          // `pagingEnabled` — that would snap to full viewport height, but a set
-          // row is OPTION_SHEET_HEIGHT + SHEET_GAP, shorter than the screen.
-          snapToAlignment="start"
-          snapToInterval={OPTION_SHEET_SNAP_INTERVAL}
-          decelerationRate="fast"
-          directionalLockEnabled
-          // Freeze vertical paging while a collage item is being dragged.
-          scrollEnabled={!collageDragActive}
-          onMomentumScrollEnd={handleSetMomentumEnd}
-          // Fixed-height rows (set stride = sheet height + gap) → constant-time
-          // layout so "Show another" scrollToIndex(nextSet) lands precisely.
-          getItemLayout={(_, index) => ({
-            length: OPTION_SHEET_SNAP_INTERVAL,
-            offset: OPTION_SHEET_SNAP_INTERVAL * index,
-            index,
-          })}
-          removeClippedSubviews
-          renderItem={({
-            item: set,
-          }: ListRenderItemInfo<OutfitSet<OutfitSheetWithGrid>>) => (
-            <OutfitSetRow
-              set={set}
-              activeOutfitIndex={
-                set.setIndex === setIndex ? clampedOutfitIndex : 0
-              }
-              pinnedItemId={pinnedItemId}
-              saveStateByHash={saveStateByHash}
-              collageDragActive={collageDragActive}
-              homeView={homeView}
-              isLastSet={set.setIndex >= sets.length - 1}
-              onItemPress={handleOpenItemDetail}
-              onTogglePin={handleToggleItemPin}
-              // AU-318: "Wear this" CTA → mood feedback flow (policy-gated
-              // sheet). The header heart keeps the legacy direct save.
-              onHeartTap={handleWearThisForOutfit}
-              onEditContext={handleOpenContextEditModal}
-              onShowAnother={handleShowAnother}
-              onRemix={handleRemix}
-              onOutfitChange={handleOutfitChange}
-              onCollageDragActiveChange={setCollageDragActive}
-            />
-          )}
-          ListFooterComponent={
-            isStartPending && listOutfits.length > 0 ? (
-              <LoadingMoreIndicator />
-            ) : null
-          }
-        />
+        // Tinder-style swipe deck (replaces the AU-303 two-axis pager). One
+        // active card follows the finger; right = like, left = skip. See
+        // docs/superpowers/specs/2026-06-12-home-tinder-swipe-design.md.
+        <View style={styles.deckWrap}>
+          <OutfitSwipeDeck
+            testID="home-swipe-deck"
+            items={optionSets}
+            activeIndex={clampedActiveIndex}
+            cardHeight={OPTION_SHEET_HEIGHT}
+            swipeEnabled={!collageDragActive}
+            keyOf={outfit => outfit.outfitHash}
+            onLike={handleLike}
+            onSkip={handleSkip}
+            renderCard={(outfit, role) => (
+              <OptionSheet
+                cellKey={outfit.outfitHash}
+                outfit={outfit}
+                pinnedItemId={pinnedItemId}
+                reveal={
+                  role === 'peek'
+                    ? 'none'
+                    : clampedActiveIndex === 0
+                    ? 'full'
+                    : 'light'
+                }
+                onItemPress={handleOpenItemDetail}
+                onTogglePin={handleToggleItemPin}
+                onEditContext={handleOpenContextEditModal}
+                onRemix={handleRemix}
+                homeView={homeView}
+                onCollageDragActiveChange={setCollageDragActive}
+              />
+            )}
+            renderCue={(likeOpacity, skipOpacity) => (
+              <>
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.deckCue,
+                    styles.deckCueLike,
+                    { opacity: likeOpacity },
+                  ]}
+                >
+                  <IconHomeHeartFilled width={28} height={28} />
+                </Animated.View>
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.deckCue,
+                    styles.deckCueSkip,
+                    { opacity: skipOpacity },
+                  ]}
+                >
+                  <Text style={styles.deckCueSkipText}>
+                    {t('home.skip_label')}
+                  </Text>
+                </Animated.View>
+              </>
+            )}
+          />
+        </View>
       )}
+
+      {/* Sticky "Wear this" CTA — belongs to the footer (acts on the ACTIVE
+          outfit), not inside the swipeable card. Routes through the mood
+          feedback flow exactly like the old per-card CTA. */}
+      {optionSets.length > 0 ? (
+        <View style={styles.wearThisFooter}>
+          <PillButton
+            testID="home-wear-this"
+            title={
+              activeSaveState === 'saved'
+                ? t('home.saved_to_favourite')
+                : t('home.wear_this')
+            }
+            variant="outline"
+            onPress={() =>
+              activeOutfit && handleWearThisForOutfit(activeOutfit)
+            }
+            disabled={!activeOutfit || activeSaveState === 'saved'}
+            loading={activeSaveState === 'saving'}
+            trailing={<IconHomeHeartOutline width={24} height={24} />}
+            style={styles.primaryActionFull}
+            textStyle={styles.primaryActionLabel}
+          />
+          {activeSaveState === 'error' ? (
+            <Text style={styles.saveErrorText}>
+              {t('home.save_failed_retry')}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
 
       {/* AU-253: Home grid-view toggle bar (Figma footer 2464:17348). Tab 1
           = current grid view (active). Tab 2 = alternate view (not yet built
@@ -1749,19 +1577,10 @@ export const HomeScreen = () => {
         onConfirm={handleSubmitContext}
       />
 
-      {/* AU-303 guidance overlay 1 — HORIZONTAL (Figma "first time" 3140:9395).
-          Fires the first time Home shows outfits. */}
-      <SwipeCoachMark variant="horizontal" enabled={sets.length > 0} />
-
-      {/* AU-303 guidance overlay 2 — VERTICAL (Figma "after see 1 set"
-          3140:9763). Armed only after the user has viewed all 3 outfits of set
-          0 (CEO Q2). Sequenced ahead of the context modal on the 3rd browse. */}
-      <SwipeCoachMark
-        variant="vertical"
-        enabled={verticalCoachArmed}
-        onResolved={handleVerticalCoachResolved}
-        onDismissed={handleVerticalCoachDismissed}
-      />
+      {/* First-time guidance — single overlay for the left/right deck.
+          "Swipe right to save, swipe left to skip." Dismissed by "Got it"
+          only. Fires the first time Home shows outfits. */}
+      <SwipeCoachMark variant="horizontal" enabled={optionSets.length > 0} />
 
       {/* AU-318: policy-gated mood feedback sheet — opened by the "Wear this"
           CTA in place of the old immediate save. The OptionSheet is an inline
@@ -1873,136 +1692,36 @@ const computeHeroRowHeight = (restCount: number): number => {
   return Math.floor((available - (rows - 1) * GRID_GAP) / rows);
 };
 
-// AU-303: one SET row = a horizontal pager of the set's 1..3 outfits. Each cell
-// is an OptionSheet. This is the INNER (horizontal) axis of the two-axis pager;
-// the outer vertical FlatList in HomeScreen pages between these rows.
-// directionalLockEnabled keeps a diagonal drag on the horizontal axis so it
-// doesn't fight the outer vertical pager.
-const OutfitSetRow = React.memo(
-  ({
-    set,
-    activeOutfitIndex,
-    pinnedItemId,
-    saveStateByHash,
-    collageDragActive,
-    homeView,
-    isLastSet,
-    onItemPress,
-    onTogglePin,
-    onHeartTap,
-    onEditContext,
-    onShowAnother,
-    onRemix,
-    onOutfitChange,
-    onCollageDragActiveChange,
-  }: {
-    set: OutfitSet<OutfitSheetWithGrid>;
-    activeOutfitIndex: number;
-    pinnedItemId: string | null;
-    saveStateByHash: Record<string, SaveState>;
-    collageDragActive: boolean;
-    homeView: HomeView;
-    isLastSet: boolean;
-    onItemPress: (item: Item) => void;
-    onTogglePin: (item: Item) => void;
-    onHeartTap: (outfit: OutfitSheetWithGrid) => void;
-    onEditContext: () => void;
-    onShowAnother: () => void;
-    onRemix: () => void;
-    onOutfitChange: (outfitIndex: number) => void;
-    onCollageDragActiveChange: (active: boolean) => void;
-  }) => {
-    const setLength = set.outfits.length;
-
-    const handleHorizontalMomentumEnd = (
-      event: NativeSyntheticEvent<NativeScrollEvent>,
-    ) => {
-      const nextOutfit = Math.max(
-        0,
-        Math.round(event.nativeEvent.contentOffset.x / screenWidth),
-      );
-      onOutfitChange(nextOutfit);
-    };
-
-    return (
-      <View style={styles.setRow}>
-        <FlatList
-          testID={`home-outfit-pager-${set.setIndex}`}
-          data={set.outfits}
-          horizontal
-          pagingEnabled
-          directionalLockEnabled
-          showsHorizontalScrollIndicator={false}
-          // Freeze horizontal paging while a collage item is being dragged.
-          scrollEnabled={!collageDragActive}
-          onMomentumScrollEnd={handleHorizontalMomentumEnd}
-          keyExtractor={outfit => outfit.outfitHash}
-          renderItem={({
-            item: outfit,
-            index: outfitIndexInSet,
-          }: ListRenderItemInfo<OutfitSheetWithGrid>) => (
-            <OptionSheet
-              cellKey={`${set.setIndex}-${outfitIndexInSet}`}
-              outfitIndexInSet={activeOutfitIndex}
-              setLength={setLength}
-              outfit={outfit}
-              saveState={saveStateByHash[outfit.outfitHash] ?? 'idle'}
-              pinnedItemId={pinnedItemId}
-              showAnotherDisabled={isLastSet}
-              onItemPress={onItemPress}
-              onTogglePin={onTogglePin}
-              onConfirm={() => onHeartTap(outfit)}
-              onEditContext={onEditContext}
-              onShowAnother={onShowAnother}
-              onRemix={onRemix}
-              homeView={homeView}
-              onCollageDragActiveChange={onCollageDragActiveChange}
-            />
-          )}
-        />
-      </View>
-    );
-  },
-);
-OutfitSetRow.displayName = 'OutfitSetRow';
+type OutfitReveal = 'full' | 'light' | 'none';
 
 const OptionSheet = React.memo(
   ({
     cellKey,
-    outfitIndexInSet,
-    setLength,
     outfit,
-    saveState,
     pinnedItemId,
-    showAnotherDisabled,
+    reveal,
     onItemPress,
     onTogglePin,
-    onConfirm,
     // parked: only consumed by the commented-out "Edit context +" button
-    // (AU-252 refine flow, line ~2262). Aliased with `_` so lint passes while
-    // the prop stays in the contract for when the button is re-enabled.
+    // (AU-252 refine flow). The card CTA (onConfirm) and dots/"Show another"
+    // (onShowAnother) were removed when "Wear this" moved to the sticky footer
+    // and the Tinder deck replaced the dots. Aliased with `_` so lint passes
+    // while the prop stays in the contract for when the button is re-enabled.
     onEditContext: _onEditContext,
-    onShowAnother,
     onRemix,
     homeView,
     onCollageDragActiveChange,
   }: {
-    // AU-303: testID namespace = `<setIndex>-<outfitIndexInSet>` so Maestro can
-    // address a specific cell on either axis.
+    // testID namespace = the outfit hash so Maestro can address a card.
     cellKey: string;
-    // Which of the set's 1..3 outfits this cell is (0..2) — drives the dots.
-    outfitIndexInSet: number;
-    // How many outfits are in this set (1..3) — dot count.
-    setLength: number;
     outfit: OutfitSheetWithGrid;
-    saveState: SaveState;
     pinnedItemId: string | null;
-    showAnotherDisabled: boolean;
+    // Item-assembly entrance: 'full' (first/Daily-Reveal card), 'light'
+    // (subsequent cards), or 'none' (peek card / no animation).
+    reveal: OutfitReveal;
     onItemPress: (item: Item) => void;
     onTogglePin: (item: Item) => void;
-    onConfirm: () => void;
     onEditContext: () => void;
-    onShowAnother: () => void;
     onRemix: () => void;
     homeView: HomeView;
     onCollageDragActiveChange: (active: boolean) => void;
@@ -2011,6 +1730,38 @@ const OptionSheet = React.memo(
     const items = outfit.items;
     const layout = pickLayout(items);
     const itemCount = items.length;
+
+    // Outfit-assembly entrance (docs/MOTION_SYSTEM.md Pattern 05/06): the grid
+    // fades + rises on mount. 'full' = signature reveal duration, 'light' = fast,
+    // 'none' = instant (peek card). Interruptible by construction — a new card
+    // remounts; an outgoing card unmounts mid-animation.
+    const revealAnim = useRef(
+      new Animated.Value(reveal === 'none' ? 1 : 0),
+    ).current;
+    useEffect(() => {
+      if (reveal === 'none') {
+        revealAnim.setValue(1);
+        return;
+      }
+      Animated.timing(revealAnim, {
+        toValue: 1,
+        duration:
+          reveal === 'full' ? motion.duration.reveal : motion.duration.fast,
+        easing: motion.easing.enter,
+        useNativeDriver: true,
+      }).start();
+    }, [reveal, revealAnim]);
+    const revealStyle = {
+      opacity: revealAnim,
+      transform: [
+        {
+          translateY: revealAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [motion.distance.sm, 0],
+          }),
+        },
+      ],
+    };
 
     const renderTile = (
       item: Item | null,
@@ -2208,7 +1959,10 @@ const OptionSheet = React.memo(
             // so freezing on collageDragActive is no longer needed here.
             scrollEnabled={false}
           >
-            <View testID={`home-outfit-grid-${itemCount}`}>
+            <Animated.View
+              testID={`home-outfit-grid-${itemCount}`}
+              style={revealStyle}
+            >
               {homeView === 'collage' ? (
                 <CollageSheetCanvas
                   testID={`home-collage-${cellKey}`}
@@ -2220,59 +1974,18 @@ const OptionSheet = React.memo(
               ) : (
                 renderLayout()
               )}
-            </View>
+            </Animated.View>
           </ScrollView>
 
-          {/* Pager/action row (Figma Frame 2105) — [Remix | • • • | "Show
-            another"]. AU-303: dots track the outfitIndex within the active set
-            (1..3); "Show another" advances to the next SET (vertical axis). */}
+          {/* Action row — [Remix | swipe glyph]. Dots + "Show another" removed
+            with the move to the Tinder deck (swipe handles browse/skip). */}
+          {/* "Wear this" CTA lives in the sticky footer now (see HomeScreen
+              render) — it acts on the ACTIVE outfit and must not ride inside the
+              swipeable card. */}
           <OutfitActionRow
             testID={`home-action-row-${cellKey}`}
-            activeIndex={outfitIndexInSet}
-            dotCount={setLength}
             onRemix={onRemix}
-            onShowAnother={onShowAnother}
-            showAnotherDisabled={showAnotherDisabled}
           />
-
-          {/* Bottom action cluster — primary CTA + Edit context affordance. */}
-          <View style={styles.actionCluster}>
-            {/* Figma primary CTA: Secondary/outline, borderRadius 16, trailing
-              heart icon, height 56, label "Wear this" (border/primary/bold_600). */}
-            <PillButton
-              testID={`home-this-works-${cellKey}`}
-              title={
-                saveState === 'saved'
-                  ? t('home.saved_to_favourite')
-                  : t('home.wear_this')
-              }
-              variant="outline"
-              onPress={onConfirm}
-              disabled={saveState === 'saved'}
-              loading={saveState === 'saving'}
-              trailing={<IconHomeHeartOutline width={24} height={24} />}
-              style={styles.primaryActionFull}
-              textStyle={styles.primaryActionLabel}
-            />
-
-            {saveState === 'error' ? (
-              <Text style={styles.saveErrorText}>
-                {t('home.save_failed_retry')}
-              </Text>
-            ) : null}
-
-            {/* Edit context entry point (AU-252 refine flow). Not in the Figma
-              Home grid frame, but it is the only way to reach the refine modal
-              from this screen and the swipe-nudge flow depends on it. Kept. */}
-            {/* <PillButton
-              testID={`home-edit-context-${cellKey}`}
-              title="Edit context +"
-              variant="text"
-              onPress={onEditContext}
-              style={styles.secondaryAction}
-              textStyle={styles.secondaryActionText}
-            /> */}
-          </View>
         </View>
       </View>
     );
@@ -2352,19 +2065,9 @@ const HomeLoadingState = () => {
       </View>
 
       <View style={styles.loadingFooter}>
-        <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+        <MacgieLoader variant="inline" size={28} testID="home-loading-macgie" />
         <Text style={styles.loadingFooterText}>{t('home.building_next')}</Text>
       </View>
-    </View>
-  );
-};
-
-const LoadingMoreIndicator = () => {
-  const { t } = useTranslation();
-  return (
-    <View style={styles.loadingMoreIndicator}>
-      <ActivityIndicator size="small" color={theme.colors.figmaAction} />
-      <Text style={styles.loadingMoreText}>{t('home.loading_more')}</Text>
     </View>
   );
 };
@@ -2384,8 +2087,10 @@ const GarmentPreview = ({ item }: { item: Item }) => {
       ) : (
         <View style={styles.cardFallback} />
       )}
-      <View style={styles.cardTag}>
-        <Text style={styles.cardTagText}>{t('common.badge_common')}</Text>
+      <View style={styles.cardTag} pointerEvents="none">
+        <View style={styles.cardTagPill}>
+          <Text style={styles.cardTagText}>{t('common.badge_common')}</Text>
+        </View>
       </View>
     </>
   );
@@ -2506,9 +2211,46 @@ const styles = StyleSheet.create({
   },
   // AU-303: outer vertical pager row — one SET. Snap height matches the set
   // pager's snapToInterval so each vertical page lands on one set.
-  setRow: {
-    width: screenWidth,
-    height: OPTION_SHEET_HEIGHT,
+  // Tinder deck wrapper. flex:1 so the deck absorbs any leftover viewport —
+  // the sticky CTA + toggle footer then sit flush at the bottom (no dead space
+  // below the toggle when the approximated sheet height under-fills).
+  deckWrap: {
+    flex: 1,
+    paddingTop: 4,
+  },
+  // Like/Skip cue badge shown during a drag (calm, premium — not a Tinder
+  // stamp). Opacity is driven by the live drag distance (OutfitSwipeDeck).
+  deckCue: {
+    position: 'absolute',
+    top: 16,
+    // Content tier — drag cue floats above the swipe-deck cards (same stacking
+    // context; cards render after the cue). See docs/Z_INDEX_LAYERING.md §1.
+    zIndex: theme.zIndex.content,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: theme.colors.white,
+    borderWidth: 1.5,
+    borderColor: theme.colors.uacTextBase,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: theme.colors.uacTextBase,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  deckCueLike: {
+    right: 24,
+  },
+  deckCueSkip: {
+    left: 24,
+  },
+  deckCueSkipText: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   // AU-303: horizontal pager cell — one OUTFIT. Fixed screen width so the inner
   // FlatList pages exactly one outfit per swipe. The white optionSheet fills the
@@ -2660,15 +2402,21 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: theme.colors.figmaBackground,
   },
+  // Figma 3438:22534 — "common" badge is a floating, fully-rounded dark pill
+  // centered 8px above the card's bottom edge (NOT a tab glued to the edge).
+  // Wrapper spans the card width so the pill self-centers regardless of label
+  // length (e.g. vi "món chung" is wider than en "common").
   cardTag: {
     position: 'absolute',
-    left: '50%',
-    bottom: 0,
-    marginLeft: -28.5,
-    width: 57,
+    left: 0,
+    right: 0,
+    bottom: 8,
+    alignItems: 'center',
+  },
+  cardTagPill: {
     height: 19,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    paddingHorizontal: 12, // Figma px-[12px], py-[0px]
+    borderRadius: 8,
     backgroundColor: theme.colors.figmaCardTag, // color/neutral/black/Alpha300
     alignItems: 'center',
     justifyContent: 'center',
@@ -2678,6 +2426,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 12,
     color: theme.colors.white,
+    textAlign: 'center',
   },
   actionCluster: {
     gap: 12, // Figma dimension/12
@@ -2685,6 +2434,13 @@ const styles = StyleSheet.create({
   },
   primaryAction: {
     alignSelf: 'stretch',
+  },
+  // Sticky "Wear this" footer wrapper — the CTA acts on the active outfit and
+  // sits above the grid/collage toggle (moved out of each swipeable card).
+  wearThisFooter: {
+    paddingHorizontal: SHEET_PADDING,
+    paddingTop: theme.spacing.uacDimension8,
+    paddingBottom: theme.spacing.uacDimension8,
   },
   // #2 fix (2026-05-13): Figma spec borderRadius=16 (not pill/100), outline variant.
   primaryActionFull: {
@@ -2794,6 +2550,9 @@ const styles = StyleSheet.create({
   // inverted surface (dark pill, light text) so it reads over any grid.
   moodBanner: {
     position: 'absolute',
+    // Toast tier — must paint above the grid + view-toggle footer regardless of
+    // render order (see docs/Z_INDEX_LAYERING.md §1, §4).
+    zIndex: theme.zIndex.toast,
     left: theme.spacing.m,
     right: theme.spacing.m,
     bottom: HOME_VIEW_TOGGLE_FOOTER_HEIGHT + theme.spacing.l,

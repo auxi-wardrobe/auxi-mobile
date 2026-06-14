@@ -1,8 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import {
-  NavigationContainer,
-  type NavigationContainerRef,
-} from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './navigationRef';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -16,8 +14,9 @@ import { OnboardingLoadingScreen } from '../onboarding/v2/OnboardingLoadingScree
 import { OnboardingCompletedScreen } from '../onboarding/v2/OnboardingCompletedScreen';
 import { OnboardingOutroScreen } from '../onboarding/v2/OnboardingOutroScreen';
 import { useAuth } from '../context/AuthContext';
-import { ActivityIndicator, View, StyleSheet } from 'react-native'; // Import View and StyleSheet
+import { View, StyleSheet } from 'react-native';
 import { theme } from '../theme/theme';
+import { MacgieLoader } from '../components/macgie';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
 import { BodyScreen } from '../screens/BodyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
@@ -32,15 +31,11 @@ import { registerDeepLinkListeners } from '../services/deepLinkHandler';
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export const AppNavigator = () => {
-  // Ref to the NavigationContainer so deepLinkHandler can navigate
-  // imperatively in response to Linking events.
-  const navRef = useRef<NavigationContainerRef<AppStackParamList> | null>(null);
-
   useEffect(() => {
-    // Register Linking listeners for the verify-email and
-    // reset-password deep links. The handler uses the same
-    // AppStackParamList shape exposed here.
-    const unregister = registerDeepLinkListeners(() => navRef.current);
+    // Register Linking listeners for the verify-email and reset-password deep
+    // links, driving them through the shared navigationRef (also used by the
+    // root-level push-drawer menu, which renders outside the container).
+    const unregister = registerDeepLinkListeners(() => navigationRef.current);
     return unregister;
   }, []);
   const { user, isLoading } = useAuth();
@@ -48,13 +43,13 @@ export const AppNavigator = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <MacgieLoader testID="app-boot-macgie" />
       </View>
     );
   }
 
   return (
-    <NavigationContainer ref={navRef}>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           user.is_first_login ? (

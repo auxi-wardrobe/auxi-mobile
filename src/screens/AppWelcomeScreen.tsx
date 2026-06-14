@@ -1,9 +1,10 @@
 import React from 'react';
-import { Image, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
+import { MacgieLogo } from '../components/macgie';
 import { theme } from '../theme/theme';
 import { WELCOME_COPY } from '../onboarding/config';
 import { AppStackParamList } from '../types/navigation';
@@ -18,11 +19,7 @@ export const AppWelcomeScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.centerContent}>
-          <Image
-            source={require('../assets/images/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <MacgieLogo size={120} style={styles.logo} />
 
           <View style={styles.textContainer}>
             <Text style={styles.title}>{WELCOME_COPY.title}</Text>
@@ -62,9 +59,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   logo: {
-    width: 119,
-    height: 119,
-    marginBottom: 72,
+    marginBottom: theme.spacing.l,
   },
   textContainer: {
     alignItems: 'center',
@@ -78,7 +73,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
