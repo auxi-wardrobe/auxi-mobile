@@ -323,6 +323,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           zIndex: i + 1,
           width: ITEM_DEFAULT_SIZE,
           height: ITEM_DEFAULT_SIZE,
+          scale: 1,
+          rotation: 0,
         }))
       : INITIAL_MOCK_ITEMS,
   ).current;
@@ -381,6 +383,28 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     [pushHistory],
   );
 
+  const handleScaleChange = useCallback(
+    (id: string, scale: number) => {
+      setItems(prev => {
+        const next = prev.map(it => (it.id === id ? { ...it, scale } : it));
+        pushHistory(next);
+        return next;
+      });
+    },
+    [pushHistory],
+  );
+
+  const handleRotationChange = useCallback(
+    (id: string, rotation: number) => {
+      setItems(prev => {
+        const next = prev.map(it => (it.id === id ? { ...it, rotation } : it));
+        pushHistory(next);
+        return next;
+      });
+    },
+    [pushHistory],
+  );
+
   const handleLayerUp = useCallback(() => {
     if (!selectedId) {
       return;
@@ -428,6 +452,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         x: source.x + 20,
         y: source.y + 20,
         zIndex: maxZ + 1,
+        scale: source.scale || 1,
+        rotation: source.rotation || 0,
       };
       const next = [...prev, copy];
       pushHistory(next);
@@ -469,6 +495,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             zIndex: ++maxZ,
             width: ITEM_DEFAULT_SIZE,
             height: ITEM_DEFAULT_SIZE,
+            scale: 1,
+            rotation: 0,
           };
         });
         const next = [...prev, ...newItems];
@@ -559,8 +587,11 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               selectedId={selectedId}
               onSelect={handleSelect}
               onPositionChange={handlePositionChange}
+              onScaleChange={handleScaleChange}
+              onRotationChange={handleRotationChange}
               showGrid
               itemTestIDPrefix="canvas-item"
+              enablePinchZoom
             />
 
             {/* Toolbar */}
@@ -897,8 +928,6 @@ const pickerStyles = StyleSheet.create({
     backgroundColor: '#E8EBF0',
   },
   tileSelected: {
-    borderWidth: 3,
-    borderColor: '#5B5550',
     borderRadius: 12,
   },
   tileImage: {

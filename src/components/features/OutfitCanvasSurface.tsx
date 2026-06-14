@@ -7,6 +7,10 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+} from 'react-native-gesture-handler';
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { theme } from '../../theme/theme';
 
@@ -27,6 +31,8 @@ export type CanvasItemData = {
   zIndex: number;
   width: number;
   height: number;
+  scale?: number;
+  rotation?: number;
 };
 
 // --- Grid background (graph-paper) ---
@@ -92,9 +98,12 @@ interface DraggableItemProps {
   dragActivation: DragActivation;
   onSelect?: (id: string) => void;
   onPositionChange: (id: string, x: number, y: number) => void;
+  onScaleChange?: (id: string, scale: number) => void;
+  onRotationChange?: (id: string, rotation: number) => void;
   // Fired true when a drag is armed/active, false when it ends. Lets the parent
   // disable its ScrollView so a native scroll can't steal the in-progress drag.
   onDragActiveChange?: (active: boolean) => void;
+  enablePinchZoom?: boolean;
 }
 
 const DraggableItem: React.FC<DraggableItemProps> = ({
@@ -104,7 +113,10 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   dragActivation,
   onSelect,
   onPositionChange,
+  onScaleChange,
+  onRotationChange,
   onDragActiveChange,
+  enablePinchZoom = false,
 }) => {
   const dragOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   // 0 → 1 "lifted" cue (scale up) while an armed drag is in progress.
@@ -115,6 +127,13 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   // item captures the gesture (drag) or falls through to the ScrollView (swipe).
   const armed = useRef(dragActivation === 'immediate');
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Pinch zoom and rotation state
+  const scale = useRef(new Animated.Value(item.scale || 1)).current;
+  const rotation = useRef(new Animated.Value(item.rotation || 0)).current;
+  const baseScale = useRef(item.scale || 1);
+  const baseRotation = useRef(item.rotation || 0);
+  
   // Keep latest props fresh inside the PanResponder closure (created once).
   const propsRef = useRef({
     item,
@@ -122,6 +141,8 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
     onPositionChange,
     dragActivation,
     onDragActiveChange,
+    onScaleChange,
+    onRotationChange,
   });
   propsRef.current = {
     item,
@@ -129,12 +150,23 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
     onPositionChange,
     dragActivation,
     onDragActiveChange,
+    onScaleChange,
+    onRotationChange,
   };
 
   // Reset offset only after the committed position has propagated via state.
   useEffect(() => {
     dragOffset.setValue({ x: 0, y: 0 });
   }, [item.x, item.y, dragOffset]);
+
+  // Reset scale and rotation when item props change
+  useEffect(() => {
+    scale.setValue(item.scale || 1);
+    rotation.setValue(item.rotation || 0);
+    baseScale.current = item.scale || 1;
+    baseRotation.current = item.rotation || 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.scale, item.rotation]);
 
   const clearTimer = () => {
     if (longPressTimer.current) {
@@ -151,6 +183,45 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       tension: 120,
     }).start();
   };
+
+  // Pinch gesture using new Gesture API
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      baseScale.current = item.scale || 1;
+    })
+    .onUpdate((event) => {
+      const newScale = baseScale.current * event.scale;
+      const clampedScale = Math.max(0.5, Math.min(3, newScale));
+      scale.setValue(clampedScale);
+    })
+    .onEnd((event) => {
+      const newScale = baseScale.current * event.scale;
+      const clampedScale = Math.max(0.5, Math.min(3, newScale));
+      scale.setValue(clampedScale);
+      baseScale.current = clampedScale;
+      propsRef.current.onScaleChange?.(item.id, clampedScale);
+    });
+
+  // Rotation gesture using new Gesture API
+  const rotationGesture = Gesture.Rotation()
+    .onStart(() => {
+      baseRotation.current = item.rotation || 0;
+    })
+    .onUpdate((event) => {
+      // Multiply by 4 to increase rotation sensitivity
+      const newRotation = baseRotation.current + (event.rotation * 50);
+      rotation.setValue(newRotation);
+    })
+    .onEnd((event) => {
+      // Multiply by 4 to increase rotation sensitivity
+      const newRotation = baseRotation.current + (event.rotation * 50);
+      rotation.setValue(newRotation);
+      baseRotation.current = newRotation;
+      propsRef.current.onRotationChange?.(item.id, newRotation);
+    });
+
+  // Combine pinch and rotation gestures to work simultaneously
+  const combinedGesture = Gesture.Simultaneous(pinchGesture, rotationGesture);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -240,7 +311,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   // Cleanup the hold timer if the item unmounts mid-press.
   useEffect(() => clearTimer, []);
 
-  return (
+  const renderItem = () => (
     <Animated.View
       testID={`${testIDPrefix}-${item.id}`}
       style={[
@@ -254,10 +325,26 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
           transform: [
             ...dragOffset.getTranslateTransform(),
             {
-              scale: lift.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1.06],
-              }),
+              scale: enablePinchZoom
+                ? Animated.multiply(
+                    scale,
+                    lift.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.06],
+                    })
+                  )
+                : lift.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.06],
+                  }),
+            },
+            {
+              rotate: enablePinchZoom
+                ? rotation.interpolate({
+                    inputRange: [0, 360],
+                    outputRange: ['0deg', '360deg'],
+                  })
+                : '0deg',
             },
           ],
         },
@@ -272,6 +359,16 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       />
     </Animated.View>
   );
+
+  if (enablePinchZoom) {
+    return (
+      <GestureDetector gesture={combinedGesture}>
+        {renderItem()}
+      </GestureDetector>
+    );
+  }
+
+  return renderItem();
 };
 
 type SurfaceProps = {
@@ -281,6 +378,8 @@ type SurfaceProps = {
   onPositionChange: (id: string, x: number, y: number) => void;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  onScaleChange?: (id: string, scale: number) => void;
+  onRotationChange?: (id: string, rotation: number) => void;
   // Editor shows the graph-paper grid; collage-play uses a plain cream tile.
   showGrid?: boolean;
   // 'canvas-item' (editor) | 'home-collage-item' (collage-play).
@@ -290,6 +389,7 @@ type SurfaceProps = {
   // Notifies the parent when a drag is armed/active so it can freeze its scroll.
   onDragActiveChange?: (active: boolean) => void;
   testID?: string;
+  enablePinchZoom?: boolean;
 };
 
 export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
@@ -299,11 +399,14 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
   onPositionChange,
   selectedId = null,
   onSelect,
+  onScaleChange,
+  onRotationChange,
   showGrid = false,
   itemTestIDPrefix = 'canvas-item',
   dragActivation = 'immediate',
   onDragActiveChange,
   testID,
+  enablePinchZoom = false,
 }) => {
   const sortedItems = [...items].sort((a, b) => a.zIndex - b.zIndex);
   return (
@@ -322,7 +425,10 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
           dragActivation={dragActivation}
           onSelect={onSelect}
           onPositionChange={onPositionChange}
+          onScaleChange={onScaleChange}
+          onRotationChange={onRotationChange}
           onDragActiveChange={onDragActiveChange}
+          enablePinchZoom={enablePinchZoom}
         />
       ))}
     </View>
@@ -342,9 +448,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   selectedItem: {
-    borderWidth: 2,
-    borderColor: theme.colors.uacBorderBase,
-    borderStyle: 'dashed',
     borderRadius: 4,
   },
 });

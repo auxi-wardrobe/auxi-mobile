@@ -286,6 +286,12 @@ export const WardrobeScreen = () => {
           </View>
         )}
 
+        {item.is_preparing ? (
+          <View style={styles.tilePreparingOverlay}>
+            <Text style={styles.tilePreparingText}>Preparing this item</Text>
+          </View>
+        ) : null}
+
         {isCommonItem(item) ? (
           <View style={styles.tileBadgeWrap}>
             <View style={styles.tileBadge}>
@@ -581,6 +587,22 @@ const styles = StyleSheet.create({
   tileBadgeText: {
     ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.white,
+  },
+  tilePreparingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  tilePreparingText: {
+    ...theme.typography.aliases.interCaptionXxs,
+    color: theme.colors.figmaTextPrimary,
+    textAlign: 'center',
   },
   tileSkeleton: {
     width: TILE_WIDTH,

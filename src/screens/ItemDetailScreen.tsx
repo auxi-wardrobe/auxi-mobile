@@ -730,6 +730,7 @@ export const ItemDetailScreen = () => {
   // items pushed from Home may carry no name → degrade to the category label.
   const titleText = item.name?.trim() || normalizeCategoryLabel(item.category);
   const dateText = formatItemDate(item.created_at);
+  const isPreparing = item.is_preparing === true;
 
   return (
     <View testID="item-detail-screen-root" style={styles.container}>
@@ -863,14 +864,23 @@ export const ItemDetailScreen = () => {
           // outlined "Build around this" CTA, [trash][Less use] … [Edit].
           <>
             <View style={styles.titleBlock}>
-              <Text testID="item-detail-title" style={styles.titleText}>
-                {titleText}
-              </Text>
-              {dateText ? (
-                <Text testID="item-detail-date" style={styles.dateText}>
-                  {t('wardrobe.itemDetail.date_label', { date: dateText })}
-                </Text>
-              ) : null}
+              {isPreparing ? (
+                <>
+                  <View style={styles.skeletonTitle} />
+                  <View style={styles.skeletonDate} />
+                </>
+              ) : (
+                <>
+                  <Text testID="item-detail-title" style={styles.titleText}>
+                    {titleText}
+                  </Text>
+                  {dateText ? (
+                    <Text testID="item-detail-date" style={styles.dateText}>
+                      {t('wardrobe.itemDetail.date_label', { date: dateText })}
+                    </Text>
+                  ) : null}
+                </>
+              )}
             </View>
 
             <View style={styles.buttonGroup}>
@@ -897,6 +907,7 @@ export const ItemDetailScreen = () => {
                     t('wardrobe.itemDetail.coming_soon_body'),
                   );
                 }}
+                disabled={isPreparing}
               />
 
               <View style={styles.bottomRow}>
@@ -909,7 +920,7 @@ export const ItemDetailScreen = () => {
                       accessibilityLabel={t('wardrobe.itemDetail.a11y_delete')}
                       onPress={handleDelete}
                       style={styles.iconOnlyButton}
-                      disabled={saving}
+                      disabled={saving || isPreparing}
                     >
                       <Icons.Trash
                         width={24}
@@ -933,7 +944,7 @@ export const ItemDetailScreen = () => {
                     onPress={() => {
                       handleToggleUsageFrequency();
                     }}
-                    disabled={saving}
+                    disabled={saving || isPreparing}
                   >
                     <Text
                       style={[
@@ -959,7 +970,7 @@ export const ItemDetailScreen = () => {
                   testID="item-detail-change-btn"
                   style={styles.secondaryAction}
                   onPress={() => setIsEditing(true)}
-                  disabled={saving || isCatalogItem}
+                  disabled={saving || isCatalogItem || isPreparing}
                 >
                   <Text
                     style={[
@@ -1308,5 +1319,19 @@ const styles = StyleSheet.create({
   optionText: {
     ...theme.typography.aliases.interBodyMd,
     color: theme.colors.figmaItemDetailRowText,
+  },
+  skeletonTitle: {
+    width: '100%',
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: theme.colors.figmaDetailSurface,
+    alignSelf: 'center',
+  },
+  skeletonDate: {
+    width: '60%',
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: theme.colors.figmaDetailSurface,
+    alignSelf: 'center',
   },
 });
