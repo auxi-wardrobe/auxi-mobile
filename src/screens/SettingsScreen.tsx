@@ -18,7 +18,7 @@ import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useAuth } from '../context/AuthContext';
-import { Sidebar } from '../components/layout/Sidebar';
+import { useSidebar } from '../context/SidebarContext';
 import {
   BottomSheetSurface,
   TopIconButton,
@@ -185,7 +185,7 @@ export const SettingsScreen = () => {
     updateCurrentUser,
     user,
   } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { open: openSidebar } = useSidebar();
   const [settings, setSettings] =
     useState<ResolvedSettingsState>(DEFAULT_SETTINGS);
   const [pendingDisplayDirection, setPendingDisplayDirection] =
@@ -450,15 +450,13 @@ export const SettingsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
       <BottomSheetSurface style={styles.sheet}>
         {/* Header — hamburger-left + centered title only (no right icon, qa-ui C1). */}
         <View style={styles.header}>
           <TopIconButton
             testID="settings-menu-button"
             icon={<Icons.Menu width={24} height={24} />}
-            onPress={() => setIsSidebarOpen(true)}
+            onPress={openSidebar}
           />
           <View pointerEvents="none" style={styles.titleWrap}>
             <Text style={styles.title}>{t('settings.title')}</Text>

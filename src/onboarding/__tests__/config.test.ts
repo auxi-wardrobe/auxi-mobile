@@ -153,8 +153,10 @@ describe('config — D3/D4 copy hygiene (no placeholders/typos)', () => {
     STYLE_OPTIONS,
   });
 
-  it('has no "MACGIE" placeholder (D3)', () => {
-    expect(allCopy).not.toMatch(/MACGIE/i);
+  it('has no all-caps "MACGIE" placeholder (D3) — brand name "Macgie" allowed', () => {
+    // Case-sensitive: the all-caps Figma placeholder stays forbidden, but the
+    // proper-cased brand name (e.g. "Welcome to Macgie") is intentional copy.
+    expect(allCopy).not.toMatch(/MACGIE/);
   });
 
   it('has no "Minmal" typo and includes the corrected "Minimal" (D4)', () => {

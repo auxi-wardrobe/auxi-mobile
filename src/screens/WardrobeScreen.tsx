@@ -13,6 +13,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { MacgieLoader } from '../components/macgie';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -24,8 +25,8 @@ import {
 } from 'react-native-image-picker';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { Header } from '../components/layout/Header';
-import { Sidebar } from '../components/layout/Sidebar';
 import { BottomSheetSurface } from '../components/primitives/FigmaPrimitives';
+import { useSidebar } from '../context/SidebarContext';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
@@ -89,6 +90,7 @@ export const WardrobeScreen = () => {
   const isFocused = useIsFocused();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { open: openSidebar } = useSidebar();
 
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +98,6 @@ export const WardrobeScreen = () => {
   const [uploadingPhotoUri, setUploadingPhotoUri] = useState<string | null>(
     null,
   );
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
   const [addSheetVisible, setAddSheetVisible] = useState(false);
 
@@ -317,13 +318,11 @@ export const WardrobeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
       <Header
         title={t('wardrobe.list.title')}
         titleTextStyle={styles.headerTitle}
         leftIconStyle={styles.headerIconButton}
-        onBack={() => setIsSidebarOpen(true)}
+        onBack={openSidebar}
         rightComponent={
           <TouchableOpacity
             onPress={() => openAddSheet('header')}
@@ -467,7 +466,11 @@ export const WardrobeScreen = () => {
             ) : null}
           </View>
           <View style={styles.preparingPanel}>
-            <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+            <MacgieLoader
+              variant="inline"
+              size={40}
+              testID="wardrobe-preparing-macgie"
+            />
             <Text style={styles.preparingTitle}>
               {t('wardrobe.list.preparing_title')}
             </Text>

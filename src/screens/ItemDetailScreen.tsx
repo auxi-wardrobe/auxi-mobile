@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Modal,
@@ -21,6 +20,7 @@ import {
   PillButton,
   TopIconButton,
 } from '../components/primitives/FigmaPrimitives';
+import { MacgieLoader } from '../components/macgie';
 import { Icons } from '../assets/icons';
 import {
   getItemFitLabel,
@@ -717,7 +717,7 @@ export const ItemDetailScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.figmaAction} />
+        <MacgieLoader testID="item-detail-loading" />
       </View>
     );
   }

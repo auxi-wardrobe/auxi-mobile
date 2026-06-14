@@ -11,15 +11,16 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
+import { motion } from '../../theme/motion';
 import { PillButton } from '../primitives/FigmaPrimitives';
 import { MoodChipGrid } from './MoodChipGrid';
 import { getMoodChipsForOccasion } from './mood-chips';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const SHEET_WIDTH = Math.min(screenWidth - 16, 414);
-const OPEN_DURATION_MS = 300;
-const CLOSE_DURATION_MS = 220;
-const SNAP_BACK_DURATION_MS = 160;
+const OPEN_DURATION_MS = motion.duration.medium;
+const CLOSE_DURATION_MS = motion.duration.normal;
+const SNAP_BACK_DURATION_MS = motion.duration.fast;
 const SWIPE_DISMISS_DISTANCE = 90;
 const SWIPE_DISMISS_VELOCITY = 0.8;
 
@@ -79,6 +80,7 @@ export const MoodFeedbackSheet: React.FC<MoodFeedbackSheetProps> = ({
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: OPEN_DURATION_MS,
+        easing: motion.easing.enter,
         useNativeDriver: true,
       }).start();
       return;
@@ -91,6 +93,7 @@ export const MoodFeedbackSheet: React.FC<MoodFeedbackSheetProps> = ({
     Animated.timing(slideAnim, {
       toValue: screenHeight,
       duration: CLOSE_DURATION_MS,
+      easing: motion.easing.exit,
       useNativeDriver: true,
     }).start(() => {
       setShouldRender(false);
@@ -101,6 +104,7 @@ export const MoodFeedbackSheet: React.FC<MoodFeedbackSheetProps> = ({
     Animated.timing(slideAnim, {
       toValue: 0,
       duration: SNAP_BACK_DURATION_MS,
+      easing: motion.easing.enter,
       useNativeDriver: true,
     }).start();
   };
@@ -198,6 +202,7 @@ export const MoodFeedbackSheet: React.FC<MoodFeedbackSheetProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // Dim tier — RN <Modal> host carries the scrim (see docs/Z_INDEX_LAYERING.md §1).
   overlay: {
     flex: 1,
     alignItems: 'center',
@@ -205,6 +210,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaOverlayScrim,
   },
   sheet: {
+    // Modal tier — sheet sits above the dim/dismiss layer.
+    zIndex: theme.zIndex.modal,
     width: SHEET_WIDTH,
     marginBottom: theme.spacing.s,
     borderRadius: 16,

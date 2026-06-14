@@ -12,6 +12,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { SidebarProvider } from './src/context/SidebarContext';
+import { RootDrawer } from './src/components/layout/RootDrawer';
 import Toast from 'react-native-toast-message';
 import { initI18n } from './src/i18n/init';
 import { theme } from './src/theme/theme';
@@ -72,7 +74,11 @@ function App() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <AppNavigator />
+            <SidebarProvider>
+              <RootDrawer>
+                <AppNavigator />
+              </RootDrawer>
+            </SidebarProvider>
           </AuthProvider>
           <Toast />
         </QueryClientProvider>

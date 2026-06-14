@@ -15,7 +15,7 @@ import Toast from 'react-native-toast-message';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Header } from '../components/layout/Header';
-import { Sidebar } from '../components/layout/Sidebar';
+import { useSidebar } from '../context/SidebarContext';
 import { theme } from '../theme/theme';
 
 import { CategoryTabs } from '../components/features/CategoryTabs';
@@ -70,9 +70,9 @@ type ScreenNavigation = NativeStackNavigationProp<
 export const DatabaseScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const { t } = useTranslation();
+  const { open: openSidebar } = useSidebar();
 
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
   const [items, setItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -165,11 +165,10 @@ export const DatabaseScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <Header
         title={t('wardrobe.database.title')}
         titleTextStyle={styles.headerTitle}
-        onBack={() => setIsSidebarOpen(true)}
+        onBack={openSidebar}
         rightComponent={
           <TouchableOpacity>
             <Text> </Text>

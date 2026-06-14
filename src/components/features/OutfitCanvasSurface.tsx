@@ -13,6 +13,7 @@ import {
 } from 'react-native-gesture-handler';
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { theme } from '../../theme/theme';
+import { motion } from '../../theme/motion';
 
 // Shared drag-drop canvas surface. Extracted from OutfitCanvasScreen so both
 // the full Remix editor (with toolbar/undo/tags, owned by the screen) and the
@@ -179,8 +180,8 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
     Animated.spring(lift, {
       toValue: on ? 1 : 0,
       useNativeDriver: true,
-      friction: 7,
-      tension: 120,
+      stiffness: motion.spring.soft.stiffness,
+      damping: motion.spring.soft.damping,
     }).start();
   };
 

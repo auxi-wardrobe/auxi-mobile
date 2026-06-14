@@ -43,9 +43,7 @@ jest.mock('../../services/v05Api', () => ({
 
 jest.mock('../../services/weatherService', () => ({
   weatherService: {
-    getWeather: jest
-      .fn()
-      .mockResolvedValue({ temp_c: 22, icon_code: '01d' }),
+    getWeather: jest.fn().mockResolvedValue({ temp_c: 22, icon_code: '01d' }),
   },
 }));
 
@@ -59,8 +57,10 @@ jest.mock('../../services/analytics', () => ({
 
 // Cuts the utils/url → apiClient → react-native-keychain import chain.
 jest.mock('../../utils/url', () => ({
-  resolveItemImage: (item?: { image_png?: string | null; image_url?: string }) =>
-    item?.image_png || item?.image_url || null,
+  resolveItemImage: (item?: {
+    image_png?: string | null;
+    image_url?: string;
+  }) => item?.image_png || item?.image_url || null,
   getImageUrl: (url?: string | null) => url ?? undefined,
 }));
 
@@ -183,7 +183,7 @@ describe('HomeScreen item tap (AU-312)', () => {
     const r = await renderHome();
     const root = r.root;
 
-    const tiles = byTestID(root, 'home-tile-0-0-0');
+    const tiles = byTestID(root, 'home-tile-hash-0001-0');
     expect(tiles.length).toBeGreaterThan(0);
 
     act(() => {
@@ -213,7 +213,7 @@ describe('HomeScreen item tap (AU-312)', () => {
     const root = r.root;
 
     act(() => {
-      byTestID(root, 'home-tile-0-0-0')[0].props.onPress();
+      byTestID(root, 'home-tile-hash-0001-0')[0].props.onPress();
     });
 
     // Every RN Modal in the tree (pickers, dialogs) must stay closed; the
