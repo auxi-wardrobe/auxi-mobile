@@ -11,6 +11,12 @@ export const theme = {
     border: '#E0E0E0', // Light Gray Border
     white: '#FFFFFF',
     transparent: 'transparent',
+    // Macgie mascot (loading character) — source: figma.site idle-loop loader.
+    // Black cat-head silhouette with shaded white eyes + black pupils.
+    macgieBody: '#000000', // head fill
+    macgieEyeLight: '#D6D6D6', // eye-white gradient start (shaded edge)
+    macgieEyeWhite: '#FFFFFF', // eye-white gradient end
+    macgiePupil: '#000000', // pupil fill
     // Figma aliases for route-screen parity
     figmaBackground: '#f2efec', // background/primary/subtle_50
     figmaCardSurface: '#f2efec', // background/primary/subtle_50 — clothing tile bg
@@ -309,6 +315,22 @@ export const theme = {
     uacButtonText: 12,
     uacTextField: 8,
     uacRadioPill: 100,
+  },
+  /**
+   * Stacking order (z-index) — canonical six-tier model.
+   * Source: Figma `z-index` frame (node 3230:35022). Rule: docs/Z_INDEX_LAYERING.md.
+   * Bottom → top. Gaps are intentional so future sub-layers never force a
+   * renumber. RN note: `zIndex` only orders siblings in the same stacking
+   * context — render Dim/Modal/Toast at a root overlay host, and keep Android
+   * `elevation` consistent with the tier order. Never hardcode a raw zIndex.
+   */
+  zIndex: {
+    base: 0, // tier 0 — background, canvas, scroll content
+    content: 1, // tier 1 — cards, buttons, chips, bubble chats
+    sticky: 100, // tier 2 — header, footer/tab bar, floating CTA
+    dim: 1000, // tier 3 — scrim that blocks interaction
+    modal: 1100, // tier 4 — popup, bottom sheet, dialog
+    toast: 1200, // tier 5 — toast, snackbar, global loading
   },
   /**
    * ── Auxi Design System — canonical token layer ──────────────────────────

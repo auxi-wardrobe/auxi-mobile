@@ -13,6 +13,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { MacgieLoader } from '../components/macgie';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -461,7 +462,11 @@ export const WardrobeScreen = () => {
             ) : null}
           </View>
           <View style={styles.preparingPanel}>
-            <ActivityIndicator size="small" color={theme.colors.figmaAction} />
+            <MacgieLoader
+              variant="inline"
+              size={40}
+              testID="wardrobe-preparing-macgie"
+            />
             <Text style={styles.preparingTitle}>
               {t('wardrobe.list.preparing_title')}
             </Text>

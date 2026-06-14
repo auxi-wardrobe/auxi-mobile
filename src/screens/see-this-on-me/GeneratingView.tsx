@@ -3,10 +3,11 @@
  * ~10-20s; on failure this shows the error copy + a retry action.
  */
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { theme } from '../../theme/theme';
+import { MacgieLoader } from '../../components/macgie';
 
 interface GeneratingViewProps {
   errored: boolean;
@@ -33,10 +34,7 @@ export const GeneratingView: React.FC<GeneratingViewProps> = ({
           />
         </>
       ) : (
-        <>
-          <ActivityIndicator size="large" color={theme.colors.figmaAction} />
-          <Text style={styles.loadingText}>{t('seeThisOnMe.generating')}</Text>
-        </>
+        <MacgieLoader label={t('seeThisOnMe.generating')} />
       )}
     </View>
   );
@@ -49,11 +47,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.l,
     gap: theme.spacing.m,
-  },
-  loadingText: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
   },
   errorText: {
     ...theme.typography.aliases.interBodySm,
