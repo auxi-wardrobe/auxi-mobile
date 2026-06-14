@@ -351,6 +351,9 @@ const clearTimeoutRef = (
 // "Safe Choice / Power Choice / Creative Choice"). No dedicated visual frame
 // exists in Figma yet — copy/order/intent only. Refine when the designer
 // supplies icons + final positioning.
+// parked: the mode-selector JSX that consumes this is commented out (see line
+// ~1549), awaiting designer icons/positioning per AU-221. Retained intentionally.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const RECOMMENDATION_MODE_OPTIONS: ReadonlyArray<{
   id: RecommendationMode;
   label: string;
@@ -1065,6 +1068,9 @@ export const HomeScreen = () => {
   // tap that reaches the lookahead window) via `selectedModeRef`. This
   // mirrors the Phase B pin-change behaviour and avoids a jarring reset
   // mid-swipe.
+  // parked: wired to the commented-out mode selector (line ~1549), AU-221.
+  // Kept intentionally.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSelectMode = useCallback((next: RecommendationMode) => {
     setSelectedMode(current => {
       if (current === next) {
@@ -1696,7 +1702,12 @@ const OptionSheet = React.memo(
     reveal,
     onItemPress,
     onTogglePin,
-    onEditContext,
+    // parked: only consumed by the commented-out "Edit context +" button
+    // (AU-252 refine flow). The card CTA (onConfirm) and dots/"Show another"
+    // (onShowAnother) were removed when "Wear this" moved to the sticky footer
+    // and the Tinder deck replaced the dots. Aliased with `_` so lint passes
+    // while the prop stays in the contract for when the button is re-enabled.
+    onEditContext: _onEditContext,
     onRemix,
     homeView,
     onCollageDragActiveChange,
