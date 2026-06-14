@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
+import { motion } from '../../theme/motion';
 import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../../assets/icons';
 import { AppStackParamList } from '../../types/navigation';
@@ -50,12 +51,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 0,
-          duration: 300,
+          duration: motion.duration.medium,
+          easing: motion.easing.enter,
           useNativeDriver: true,
         }),
         Animated.timing(fadeAnim, {
           toValue: 0.5,
-          duration: 300,
+          duration: motion.duration.medium,
+          easing: motion.easing.enter,
           useNativeDriver: true,
         }),
       ]).start();
@@ -63,12 +66,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: -SIDEBAR_WIDTH,
-          duration: 250,
+          duration: motion.duration.normal,
+          easing: motion.easing.exit,
           useNativeDriver: true,
         }),
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 250,
+          duration: motion.duration.normal,
+          easing: motion.easing.exit,
           useNativeDriver: true,
         }),
       ]).start();
@@ -232,13 +237,15 @@ const MenuItem = ({
 );
 
 const styles = StyleSheet.create({
+  // In-tree drawer overlay host (not an RN <Modal>). Modal tier lifts the whole
+  // drawer above screen content + sticky UI (see docs/Z_INDEX_LAYERING.md §1, §4).
   container: {
     position: 'absolute',
     top: 0,
     left: 0,
     width: width,
     height: height,
-    zIndex: 1000,
+    zIndex: theme.zIndex.modal,
   },
   backdrop: {
     position: 'absolute',
@@ -246,9 +253,11 @@ const styles = StyleSheet.create({
     left: 0,
     width: width,
     height: height,
+    zIndex: theme.zIndex.dim, // Dim tier — scrim behind the drawer panel
     backgroundColor: theme.colors.primary,
   },
   sidebar: {
+    zIndex: theme.zIndex.modal, // Modal tier — drawer panel above the dim scrim
     width: SIDEBAR_WIDTH,
     height: '100%',
     backgroundColor: theme.colors.uacBackgroundBase,
