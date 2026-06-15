@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,6 +11,7 @@ import {
   GestureResponderEvent,
 } from 'react-native';
 import { theme } from '../../theme/theme';
+import { motion, useReducedMotion } from '../../theme/motion';
 
 type PillVariant = 'filled' | 'outline' | 'soft' | 'text' | 'danger';
 
@@ -89,6 +91,8 @@ export const DividerRow: React.FC<DividerRowProps> = ({
   </View>
 );
 
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
 export const PillButton: React.FC<PillButtonProps> = ({
   title,
   onPress,
@@ -102,12 +106,72 @@ export const PillButton: React.FC<PillButtonProps> = ({
   testID,
 }) => {
   const isText = variant === 'text';
+  const reduced = useReducedMotion();
+
+  // Macgie Motion (AU-348): a press micro-interaction (scale.press) plus a
+  // smooth cross-fade into the loading state, both driven by
+  // src/theme/motion.ts tokens — no hardcoded timings. The loader overlays the
+  // content (which stays laid out at opacity 0), so the button never changes
+  // width while loading. Under OS "Reduce Motion" the transitions are instant.
+  const pressScale = useRef(new Animated.Value(1)).current;
+  const loadingAnim = useRef(new Animated.Value(loading ? 1 : 0)).current;
+
+  const animatePress = useCallback(
+    (to: number) => {
+      if (reduced) {
+        return;
+      }
+      Animated.timing(pressScale, {
+        toValue: to,
+        duration: motion.duration.instant,
+        easing: motion.easing.standard,
+        useNativeDriver: true,
+      }).start();
+    },
+    [pressScale, reduced],
+  );
+
+  useEffect(() => {
+    if (reduced) {
+      loadingAnim.setValue(loading ? 1 : 0);
+      return;
+    }
+    Animated.timing(loadingAnim, {
+      toValue: loading ? 1 : 0,
+      duration: motion.duration.fast,
+      easing: motion.easing.standard,
+      useNativeDriver: true,
+    }).start();
+  }, [loading, loadingAnim, reduced]);
+
+  // Hoisted dynamic styles — transforms/opacity must stay dynamic Animated
+  // values; hoisting keeps them out of JSX (react-native/no-inline-styles).
+  const pressStyle = { transform: [{ scale: pressScale }] };
+  const contentStyle = {
+    opacity: loadingAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1, 0],
+    }),
+  };
+  const loaderStyle = {
+    opacity: loadingAnim,
+    transform: [
+      {
+        scale: loadingAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.8, 1],
+        }),
+      },
+    ],
+  };
 
   return (
-    <TouchableOpacity
+    <AnimatedTouchable
       testID={testID}
       activeOpacity={0.85}
       onPress={onPress}
+      onPressIn={() => animatePress(motion.scale.press)}
+      onPressOut={() => animatePress(1)}
       disabled={disabled || loading}
       style={[
         styles.pillBase,
@@ -117,34 +181,42 @@ export const PillButton: React.FC<PillButtonProps> = ({
         variant === 'soft' && styles.softButton,
         variant === 'danger' && styles.dangerButton,
         (disabled || loading) && styles.disabled,
+        pressStyle,
         style,
       ]}
     >
+      <Animated.View style={[styles.pillContent, contentStyle]}>
+        {leading}
+        <Text
+          style={[
+            styles.pillText,
+            variant === 'filled' && styles.filledText,
+            variant === 'danger' && styles.dangerText,
+            variant === 'text' && styles.textOnly,
+            textStyle,
+          ]}
+        >
+          {title}
+        </Text>
+        {trailing}
+      </Animated.View>
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={
-            variant === 'filled' ? theme.colors.white : theme.colors.figmaAction
-          }
-        />
-      ) : (
-        <>
-          {leading}
-          <Text
-            style={[
-              styles.pillText,
-              variant === 'filled' && styles.filledText,
-              variant === 'danger' && styles.dangerText,
-              variant === 'text' && styles.textOnly,
-              textStyle,
-            ]}
-          >
-            {title}
-          </Text>
-          {trailing}
-        </>
-      )}
-    </TouchableOpacity>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.loaderOverlay, loaderStyle]}
+        >
+          <ActivityIndicator
+            testID={testID ? `${testID}-loading` : undefined}
+            size="small"
+            color={
+              variant === 'filled'
+                ? theme.colors.white
+                : theme.colors.figmaAction
+            }
+          />
+        </Animated.View>
+      ) : null}
+    </AnimatedTouchable>
   );
 };
 
@@ -156,6 +228,17 @@ export const BottomSheetSurface: React.FC<BottomSheetSurfaceProps> = ({
 const styles = StyleSheet.create({
   disabled: {
     opacity: 0.45,
+  },
+  pillContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   topIconButton: {
     width: 45,
