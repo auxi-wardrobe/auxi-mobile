@@ -393,6 +393,24 @@
       "your_piece_badge": "Your Piece",
       "a11y_your_piece": "Your piece — a recently added item"
     },
+    "pin": {
+      "modal_title": "Keep this item",
+      "replace_title": "Replace pinned item?",
+      "modal_subtitle": "We'll keep this piece and remix the rest.",
+      "generating_header": "Generating",
+      "skeleton_loading": "Loading outfit",
+      "build_cta": "Build around this",
+      "cancel_cta": "Cancel",
+      "unpinned_toast": "Item unpinned",
+      "fallback_message": "We couldn't fully match this item, but here's the closest fit.",
+      "error_message": "Something went wrong building this look. Try again?",
+      "network_error": "Couldn't reach the server. Check your connection and retry.",
+      "item_unavailable": "This item is no longer available.",
+      "tooltip_unpin": "Touch to unpin",
+      "guest_blocker": "Sign in to pin items and build around them.",
+      "guest_signin_cta": "Sign in",
+      "a11y_pinned_badge": "Pinned item, double-tap to unpin"
+    },
     "body": {
       "toast_load_failed_title": "My body",
       "toast_load_failed_body": "Could not load your body photo. Please try again.",

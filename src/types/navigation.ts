@@ -65,7 +65,11 @@ export interface V05OnboardingSelection {
 
 export type AppStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
-  Home: undefined;
+  // AU-307 phase 05 — ItemDetail "Build around this" navigates Home with
+  // `pinFromDetail` set to the item id. HomeScreen consumes it on mount via
+  // `CONFIRM_PIN_FROM_DETAIL` (skipping the confirm modal), then clears
+  // the param so re-focus / re-render does not refire the auto-pin.
+  Home: { pinFromDetail?: string } | undefined;
   Settings: undefined;
   Wardrobe: undefined;
   Favourite: undefined;

@@ -207,6 +207,11 @@ export interface BuildRecommendationInput {
   exclude_ids?: string[];
   count?: number;
   seed?: number;
+  // AU-307 phase 04 — BE PR #104 (unmerged at FE land): when set, the
+  // generated outfit must include this wardrobe item id. BE owns the
+  // ownership/SYSTEM-source validation; 410 / 422 errors map to
+  // PINNED_ITEM_GONE on the reducer.
+  pinned_item_id?: string;
 }
 
 /**
@@ -339,6 +344,13 @@ export interface BuildRecommendationResponse {
    * "Try Another" CTA accordingly.
    */
   tier_pools_partial?: boolean;
+  /**
+   * AU-307 phase 04 (BE PR #104) — true when the BE relaxed the
+   * pinned-item compatibility constraints to compose this outfit.
+   * Drives `GENERATE_FALLBACK` in the FE reducer instead of
+   * `GENERATE_SUCCESS`.
+   */
+  low_confidence?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -461,10 +473,12 @@ export const generateStarterWardrobe = async (
  */
 export const buildRecommendation = async (
   input: BuildRecommendationInput,
+  options?: { signal?: AbortSignal },
 ): Promise<BuildRecommendationResponse> => {
   const response = await apiClient.post<BuildRecommendationResponse>(
     '/v05/recommendation/build',
     input,
+    options?.signal ? { signal: options.signal } : undefined,
   );
   return response.data;
 };
@@ -509,10 +523,12 @@ export const submitFeedback = async (
  */
 export const tryAnother = async (
   input: TryAnotherInput,
+  options?: { signal?: AbortSignal },
 ): Promise<TryAnotherResponse> => {
   const response = await apiClient.post<TryAnotherResponse>(
     '/v05/recommendation/try_another',
     input,
+    options?.signal ? { signal: options.signal } : undefined,
   );
   return response.data;
 };
@@ -558,6 +574,20 @@ export interface RecommendV05Result {
   outfits: V05Outfit[];
   cycled?: boolean;
   wardrobeGap?: boolean;
+  /**
+   * AU-307 phase 04 — propagated from /build's `low_confidence`. True when
+   * the BE relaxed pinned-item compatibility constraints. Drives
+   * GENERATE_FALLBACK instead of GENERATE_SUCCESS in the FE reducer.
+   * Only emitted on the /build path (the /try_another contract has no
+   * low_confidence flag — variation calls re-use the pre-locked session).
+   */
+  lowConfidence?: boolean;
+  /**
+   * Server-issued session id, surfaced so the FE can detect "do we have a
+   * session?" to choose /build vs /try_another. Mirrors the cached
+   * v05SessionId at module scope.
+   */
+  sessionId?: string | null;
 }
 
 /**
@@ -604,17 +634,28 @@ const errCode = (error: unknown): string | undefined =>
  */
 const buildAndStore = async (
   params: RecommendV05Params,
+  options?: { signal?: AbortSignal },
 ): Promise<RecommendV05Result> => {
-  const data = await buildRecommendation({
-    weather: params.weather,
-    user: params.user,
-    intent: params.intent,
-    count: params.count ?? 3,
-  });
+  const data = await buildRecommendation(
+    {
+      weather: params.weather,
+      user: params.user,
+      intent: params.intent,
+      count: params.count ?? 3,
+      ...(params.pinned_item_id
+        ? { pinned_item_id: params.pinned_item_id }
+        : {}),
+    },
+    options,
+  );
   v05SessionId = data.session_id ?? null;
   const defaultIdx = data.suggested_default ?? 0;
   v05LastOutfitHash = data.outfits[defaultIdx]?.outfit_hash ?? null;
-  return { outfits: data.outfits };
+  return {
+    outfits: data.outfits,
+    lowConfidence: data.low_confidence === true,
+    sessionId: data.session_id ?? null,
+  };
 };
 
 /**
@@ -640,10 +681,11 @@ const buildAndStore = async (
  */
 export const recommendV05 = async (
   params: RecommendV05Params,
+  options?: { signal?: AbortSignal },
 ): Promise<RecommendV05Result> => {
   // Cold start / post-reset → /build.
   if (!v05SessionId) {
-    return buildAndStore(params);
+    return buildAndStore(params, options);
   }
 
   const tryAnotherInput: TryAnotherInput = {
@@ -656,7 +698,7 @@ export const recommendV05 = async (
 
   for (let attempt = 0; attempt < RETRY_LOCKED_MAX_ATTEMPTS; attempt++) {
     try {
-      const data = await tryAnother(tryAnotherInput);
+      const data = await tryAnother(tryAnotherInput, options);
       // `cycled` re-serves a real outfit (uniques exhausted, controlled
       // re-serve) — pass it through with the outfit so HomeScreen can show a
       // subtle hint. A GENUINE `wardrobe_gap` is the honest dead-end (no
@@ -673,6 +715,7 @@ export const recommendV05 = async (
         outfits: data.outfit ? [data.outfit] : [],
         cycled,
         wardrobeGap: data.wardrobe_gap === true,
+        sessionId: data.session_id ?? v05SessionId,
       };
     } catch (error: unknown) {
       const status = errStatus(error);
@@ -685,7 +728,7 @@ export const recommendV05 = async (
         (status === 422 && code === 'stale_hash')
       ) {
         resetV05Session();
-        return buildAndStore(params);
+        return buildAndStore(params, options);
       }
 
       // 429 session_locked → benign race against a previous tap still in
