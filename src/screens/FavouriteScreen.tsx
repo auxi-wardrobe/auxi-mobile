@@ -1,11 +1,18 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  LayoutChangeEvent,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
+import { useReducedMotion } from '../theme/motion';
 import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
@@ -20,6 +27,7 @@ import { FavouriteEmptyState } from './favourite/EmptyState';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
 import { RemoveFavouriteDialog } from './favourite/RemoveFavouriteDialog';
 import { groupFavouritesByDate } from './favourite/group-by-date';
+import { computeSnapOffsets } from './favourite/snap-offsets';
 
 const FAVOURITES_QUERY_KEY = ['favourites'] as const;
 
@@ -29,6 +37,7 @@ export const FavouriteScreen: React.FC = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const queryClient = useQueryClient();
+  const reduced = useReducedMotion();
 
   const [view, setView] = useState<HomeView>('grid');
   const [pendingRemovalId, setPendingRemovalId] = useState<string | null>(null);
@@ -49,6 +58,55 @@ export const FavouriteScreen: React.FC = () => {
 
   const favourites = useMemo(() => data?.favorites ?? [], [data?.favorites]);
   const groups = useMemo(() => groupFavouritesByDate(favourites), [favourites]);
+
+  // AU-347: snap the Favourite list to one outfit at a time so users review
+  // saved outfits individually (reduces cognitive load). We measure each date
+  // group's Y within the scroll content and each card's Y within its group via
+  // onLayout; computeSnapOffsets sums them into ScrollView.snapToOffsets, so a
+  // vertical swipe settles on the nearest outfit instead of free-scrolling.
+  const groupYRef = useRef<Record<string, number>>({});
+  const cardYRef = useRef<Record<string, number>>({});
+  const [snapOffsets, setSnapOffsets] = useState<number[]>([]);
+
+  const snapGroups = useMemo(
+    () =>
+      groups.map(group => ({
+        dayKey: group.dayKey,
+        ids: group.favourites.map(fav => fav.id),
+      })),
+    [groups],
+  );
+
+  const recomputeSnap = useCallback(() => {
+    setSnapOffsets(prev => {
+      const next = computeSnapOffsets(
+        snapGroups,
+        groupYRef.current,
+        cardYRef.current,
+      );
+      // onLayout can fire repeatedly; skip the state update when unchanged.
+      if (prev.length === next.length && prev.every((v, i) => v === next[i])) {
+        return prev;
+      }
+      return next;
+    });
+  }, [snapGroups]);
+
+  const handleGroupLayout = useCallback(
+    (dayKey: string) => (e: LayoutChangeEvent) => {
+      groupYRef.current[dayKey] = e.nativeEvent.layout.y;
+      recomputeSnap();
+    },
+    [recomputeSnap],
+  );
+
+  const handleCardLayout = useCallback(
+    (id: string) => (e: LayoutChangeEvent) => {
+      cardYRef.current[id] = e.nativeEvent.layout.y;
+      recomputeSnap();
+    },
+    [recomputeSnap],
+  );
 
   const handleSelfVisualization = (favourite: Favourite) => {
     // Build the serializable TryOnOutfitContext the "See this on me" flow needs
@@ -99,18 +157,34 @@ export const FavouriteScreen: React.FC = () => {
         testID="favourite-list"
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        // AU-347: snap to one outfit at a time. Disabled under Reduce Motion
+        // (avoid forced large travel) and until offsets have been measured.
+        snapToOffsets={
+          reduced || snapOffsets.length === 0 ? undefined : snapOffsets
+        }
+        disableIntervalMomentum
+        decelerationRate="fast"
       >
         {groups.map(group => (
-          <View key={group.dayKey} style={styles.dateGroup}>
+          <View
+            key={group.dayKey}
+            style={styles.dateGroup}
+            onLayout={handleGroupLayout(group.dayKey)}
+          >
             <Text style={styles.dateLabel}>{group.label}</Text>
             {group.favourites.map(favourite => (
-              <FavouriteOutfitCard
+              <View
                 key={favourite.id}
-                favourite={favourite}
-                view={view}
-                onRemove={setPendingRemovalId}
-                onSelfVisualization={handleSelfVisualization}
-              />
+                testID={`favourite-snap-${favourite.id}`}
+                onLayout={handleCardLayout(favourite.id)}
+              >
+                <FavouriteOutfitCard
+                  favourite={favourite}
+                  view={view}
+                  onRemove={setPendingRemovalId}
+                  onSelfVisualization={handleSelfVisualization}
+                />
+              </View>
             ))}
           </View>
         ))}
