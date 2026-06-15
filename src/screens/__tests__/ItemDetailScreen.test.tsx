@@ -328,6 +328,34 @@ describe('fallbackItem route param', () => {
 });
 
 // =============================================================================
+// AU-351 — "Waiting for the right occasion" status line
+// =============================================================================
+describe('exploration waiting status (AU-351)', () => {
+  it('shows item-detail-waiting-status when exploration_waiting is true', async () => {
+    mockGetWardrobeItem.mockResolvedValue({
+      ...USER_ITEM,
+      exploration_waiting: true,
+    });
+
+    const r = await renderScreen();
+    const root = r.root;
+
+    const status = oneByTestID(root, 'item-detail-waiting-status');
+    expect(status.props.children).toBe('Waiting for the right occasion');
+  });
+
+  it('hides the status line when exploration_waiting is false/absent', async () => {
+    mockGetWardrobeItem.mockResolvedValue({
+      ...USER_ITEM,
+      exploration_waiting: false,
+    });
+
+    const r = await renderScreen();
+    expect(byTestID(r.root, 'item-detail-waiting-status').length).toBe(0);
+  });
+});
+
+// =============================================================================
 // 4. edit-mode entry via the bottom Edit button
 // =============================================================================
 describe('edit mode', () => {

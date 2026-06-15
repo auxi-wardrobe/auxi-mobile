@@ -731,6 +731,11 @@ export const ItemDetailScreen = () => {
   const titleText = item.name?.trim() || normalizeCategoryLabel(item.category);
   const dateText = formatItemDate(item.created_at);
   const isPreparing = item.is_preparing === true;
+  // AU-351: backend exploration signal — the item is queued, waiting for a
+  // suitable occasion to be recommended. Single status line for now; the
+  // per-reason breakdown (weather/occasion/compatibility) is a documented
+  // future enhancement.
+  const isWaiting = item.exploration_waiting === true;
 
   return (
     <View testID="item-detail-screen-root" style={styles.container}>
@@ -877,6 +882,17 @@ export const ItemDetailScreen = () => {
                   {dateText ? (
                     <Text testID="item-detail-date" style={styles.dateText}>
                       {t('wardrobe.itemDetail.date_label', { date: dateText })}
+                    </Text>
+                  ) : null}
+                  {/* AU-351: single "Waiting for the right occasion" status
+                      line when the backend flags the item as exploration-
+                      waiting. Per-reason breakdown deferred. */}
+                  {isWaiting ? (
+                    <Text
+                      testID="item-detail-waiting-status"
+                      style={styles.waitingStatus}
+                    >
+                      {t('wardrobe.itemDetail.waiting_status')}
                     </Text>
                   ) : null}
                 </>
@@ -1161,6 +1177,13 @@ const styles = StyleSheet.create({
   dateText: {
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.uacTextBase,
+  },
+  // AU-351: "Waiting for the right occasion" status — muted secondary text,
+  // centred to match the title block. Token-styled (no hex).
+  waitingStatus: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
   },
   // Figma "button group": column, gap 12, pt 16 (pb handled inline with the
   // safe-area inset).

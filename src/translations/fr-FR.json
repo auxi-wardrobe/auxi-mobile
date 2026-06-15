@@ -188,6 +188,7 @@
     "wardrobe": {
       "itemDetail": {
         "build_around_this": "Composer autour de cet article",
+        "waiting_status": "En attente du bon moment",
         "less_used": "Moins utilisé",
         "date_label": "Date : {{date}}",
         "edit": "Modifier",
@@ -262,6 +263,7 @@
         "empty": "Aucun article à sélectionner",
         "add_item": "Ajouter"
       },
+      "new_badge": "Nouveau",
       "options": {
         "category": {
           "Top": "Haut",

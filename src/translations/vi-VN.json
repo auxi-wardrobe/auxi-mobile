@@ -188,6 +188,7 @@
     "wardrobe": {
       "itemDetail": {
         "build_around_this": "Phối quanh món này",
+        "waiting_status": "Đang chờ dịp phù hợp",
         "less_used": "Ít dùng",
         "date_label": "Ngày: {{date}}",
         "edit": "Sửa",
@@ -262,6 +263,7 @@
         "empty": "Chưa có món nào để chọn",
         "add_item": "Thêm món"
       },
+      "new_badge": "Mới",
       "options": {
         "category": {
           "Top": "Áo",
