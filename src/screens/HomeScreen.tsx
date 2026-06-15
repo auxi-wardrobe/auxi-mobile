@@ -82,7 +82,18 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GRID_GAP = 4;
 const SHEET_GAP = 4;
-const SHEET_PADDING = 16; // Figma Frame 2009 x=16 → 16px inset
+// Figma grid container horizontal inset (`dimension/12`) → 12px. Content width
+// = 414 − 2×12 = 390 on the 414 frame. (Was 16; corrected per home-grid extraction.)
+const SHEET_PADDING = 12;
+// Figma grid container vertical inset (py = 8). The optionSheet's own
+// paddingTop (12) / paddingBottom (24) carries the caption + CTA chrome and
+// feeds the snap-paging height math, so the 8px grid py is applied on the grid
+// wrap itself (gridWrapVPad) rather than re-tuning the sheet chrome.
+const SHEET_PADDING_V = 8;
+// Fixed small-card slot (Figma 127.3×169.733, 3:4). Used by the 2-item drop
+// card and the narrow 3rd column of 5/6/>6 bottom rows.
+const SMALL_CARD_WIDTH = 127.3;
+const SMALL_CARD_HEIGHT = 169.733;
 const CARD_ASPECT = 0.75; // Figma 3:4 (width / height) — the CEO's tracked metric
 
 // optionSheet vertical chrome that is NOT the grid. Kept explicit so the
@@ -161,7 +172,11 @@ const GRID_AREA_H =
 // total grid height ≤ GRID_AREA_H for any item count → nothing clips, no
 // scroll needed (preserves the collage drag-to-play C4 fix).
 const GRID_CONTENT_PAD = 16;
-const GRID_FIT_H = GRID_AREA_H - GRID_CONTENT_PAD;
+// Also net out the gridWrap vertical inset (SHEET_PADDING_V top+bottom, added for
+// the Figma 8px grid py). Without it the extra 16px overflows GRID_AREA_H and the
+// dormant (scrollEnabled=false) gridScroll hard-clips the bottom row on smaller
+// devices — the same C4 auto-fit regression this math exists to prevent.
+const GRID_FIT_H = GRID_AREA_H - GRID_CONTENT_PAD - SHEET_PADDING_V * 2;
 const CARD_HEIGHT = Math.floor((GRID_FIT_H - GRID_GAP) / 2);
 const CARD_WIDTH = Math.round(CARD_HEIGHT * CARD_ASPECT);
 
@@ -1619,6 +1634,15 @@ export const HomeScreen = () => {
 //     2850:9542 shows all 9 items for the >6 case.
 type GridLayout =
   | {
+      // Figma 2-item rule (3230:35901): item0 spans the full content width
+      // (390 @ aspect 3:4); item1 is a fixed 127.3×169.733 small card that
+      // drops to the next row, CENTERED under item0 (qa-ui C1 correction —
+      // inner column items-center/justify-center, NOT left-aligned).
+      kind: 'fullPlusSmall';
+      full: Item;
+      small: Item | null;
+    }
+  | {
       kind: 'twoRowOneLarge';
       row1: [Item | null, Item | null];
       row2Large: Item | null;
@@ -1643,11 +1667,13 @@ const pickLayout = (items: Item[]): GridLayout | null => {
 
   if (count === 0) return null;
 
+  // 1–2 items: item0 full-width, item1 (if present) a fixed small card on the
+  // next row, centered (Figma 2-item variant + qa-ui C1).
   if (count <= 2) {
     return {
-      kind: 'twoRowOneLarge',
-      row1: [filled[0] ?? null, filled[1] ?? null],
-      row2Large: null,
+      kind: 'fullPlusSmall',
+      full: filled[0],
+      small: filled[1] ?? null,
     };
   }
   if (count === 3) {
@@ -1812,7 +1838,7 @@ const OptionSheet = React.memo(
               isPinned ? t('home.a11y_unpin_item') : t('home.a11y_pin_item')
             }
           >
-            <IconHomePin width={24} height={24} />
+            <IconHomePin width={17} height={17} />
           </TouchableOpacity>
         </TouchableOpacity>
       );
@@ -1823,36 +1849,54 @@ const OptionSheet = React.memo(
         return null;
       }
 
+      if (layout.kind === 'fullPlusSmall') {
+        // 2 items (Figma 3230:35901): item0 full content width (390 @ 3:4);
+        // item1 a fixed 127.3×169.733 small card on the next row, CENTERED
+        // under it (qa-ui C1 — inner column items-center/justify-center).
+        // count 1 renders just the full tile (small omitted).
+        return (
+          <View style={[styles.gridWrap, styles.gridWrapCenter]}>
+            {renderTile(layout.full, 0, styles.cardFull)}
+            {layout.small
+              ? renderTile(layout.small, 1, styles.cardFixedSmall)
+              : null}
+          </View>
+        );
+      }
+
       if (layout.kind === 'twoRowOneLarge') {
-        // 3 items: row1 of 2 equal cards (flex-1 each), row2 with single card
-        // taking ~50% width (matches Figma 189×252 / 414px-content frame).
-        // C1: count 1/2 reuses this layout with placeholder cells.
+        // 3 items (Figma 3227:18826): 2×2 grid, both cols flex-1 (~193 @ 3:4).
+        // Row2 = lone 3rd tile (left) + opacity-0 placeholder (right) so the
+        // 3rd item stays LEFT-aligned, not centred (Figma items-start rule).
         // C4: card height defaults to CARD_HEIGHT (sized for exactly 2 rows
         // in the available grid area) — no aspect-ratio override.
         return (
-          <View style={styles.gridWrap}>
+          <View style={[styles.gridWrap, styles.gridWrapStart]}>
             <View style={styles.cardRow}>
-              <View style={styles.cardShellFixed}>
+              <View style={styles.cardShell}>
                 {renderTile(layout.row1[0], 0)}
               </View>
-              <View style={styles.cardShellFixed}>
+              <View style={styles.cardShell}>
                 {renderTile(layout.row1[1], 1)}
               </View>
             </View>
-            {/* AU-253: row2 single tile is centred (no flex spacer) — the
-                centred cardRow places it under the gap between row1's tiles. */}
             <View style={styles.cardRow}>
-              <View style={styles.cardShellFixed}>
+              <View style={styles.cardShell}>
                 {renderTile(layout.row2Large, 2)}
               </View>
+              {/* opacity-0 placeholder holds the right column so the lone 3rd
+                  tile stays left-aligned (non-interactive, no testID). */}
+              <View style={[styles.cardShell, styles.cardCellHidden]} />
             </View>
           </View>
         );
       }
 
       if (layout.kind === 'twoByTwo') {
+        // 4 items (Figma swipe-card default page): static 2×2 grid, every tile
+        // flex-1 (~193 @ 3:4). NOT a carousel — pure grid.
         return (
-          <View style={styles.gridWrap}>
+          <View style={[styles.gridWrap, styles.gridWrapStart]}>
             {layout.rows.map((row, rowIndex) => (
               <View
                 key={`row-${outfit.outfitHash}-${rowIndex}`}
@@ -1861,7 +1905,7 @@ const OptionSheet = React.memo(
                 {row.map((item, itemIndex) => (
                   <View
                     key={`shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
-                    style={styles.cardShellFixed}
+                    style={styles.cardShell}
                   >
                     {renderTile(item, rowIndex * 2 + itemIndex)}
                   </View>
@@ -1872,21 +1916,29 @@ const OptionSheet = React.memo(
         );
       }
 
-      // heroStackPlusRows (5/6/7+ items)
-      // Row 1: hero (flex 2) + right column of 2 stacked cards (flex 1).
-      // Subsequent rows: up to 3 flex cards each.
+      // heroStackPlusRows (5/6/>6 items) — Figma 3227:18976 / 19147 / 19318.
+      // Row 1: hero (258.5×343.5, ~flex 2) + right column of 2 stacked small
+      //   cards (127.3×169.733, ~flex 1).
+      // Subsequent rows: ALWAYS 3 cells = [flex-1][flex-1][fixed-127]. The
+      //   narrow 3rd cell is the intended 2-wide+1-narrow asymmetry (NOT 3
+      //   equal columns). A missing 3rd item renders as an opacity-0
+      //   placeholder (e.g. the 5-item case → 2 visible, left-aligned).
+      // >6: rows repeat for every additional 3 items; the grid scrolls.
       // C4: row height computed dynamically so total grid fits available
       // sheet space — prevents inner gridScroll from activating.
       const heroRowHeight = computeHeroRowHeight(layout.rest.length);
       const heroRowStyle = { height: heroRowHeight };
       const heroStackCellHeight = Math.floor((heroRowHeight - GRID_GAP) / 2);
       const heroStackCellStyle = { height: heroStackCellHeight };
-      const restRows: Item[][] = [];
+      // Pad rest into rows of exactly 3 (null = opacity-0 placeholder cell).
+      const restRows: (Item | null)[][] = [];
       for (let i = 0; i < layout.rest.length; i += 3) {
-        restRows.push(layout.rest.slice(i, i + 3));
+        const slice: (Item | null)[] = layout.rest.slice(i, i + 3);
+        while (slice.length < 3) slice.push(null);
+        restRows.push(slice);
       }
       return (
-        <View style={styles.gridWrap}>
+        <View style={[styles.gridWrap, styles.gridWrapStart]}>
           <View style={[styles.heroRow, { height: heroRowHeight }]}>
             <View style={styles.heroCol}>
               {renderTile(layout.hero, 0, heroRowStyle)}
@@ -1905,25 +1957,35 @@ const OptionSheet = React.memo(
               key={`rest-row-${outfit.outfitHash}-${rowIndex}`}
               style={styles.cardRow}
             >
-              {row.map((item, itemIndex) => (
-                <View
-                  key={`rest-shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
-                  style={styles.cardShell}
-                >
-                  {renderTile(item, 3 + rowIndex * 3 + itemIndex, heroRowStyle)}
-                </View>
-              ))}
-              {/* Pad trailing partial rows with transparent spacers so cards
-                don't stretch to fill the row width — keeps every card the
-                same width across rows. */}
-              {row.length < 3
-                ? Array.from({ length: 3 - row.length }).map((_, padIdx) => (
+              {row.map((item, itemIndex) => {
+                // Cols 0/1 flex-1; col 2 is the fixed narrow 127.3 cell.
+                const isNarrow = itemIndex === 2;
+                const cellStyle = isNarrow
+                  ? styles.cardShellNarrow
+                  : styles.cardShell;
+                // A missing 3rd cell is a non-interactive opacity-0
+                // placeholder (no testID) so cols 0/1 stay left-aligned.
+                if (!item) {
+                  return (
                     <View
-                      key={`rest-pad-${outfit.outfitHash}-${rowIndex}-${padIdx}`}
-                      style={styles.cardShell}
+                      key={`rest-pad-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
+                      style={[cellStyle, styles.cardCellHidden]}
                     />
-                  ))
-                : null}
+                  );
+                }
+                return (
+                  <View
+                    key={`rest-shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
+                    style={cellStyle}
+                  >
+                    {renderTile(
+                      item,
+                      3 + rowIndex * 3 + itemIndex,
+                      isNarrow ? styles.cardFixedSmall : heroRowStyle,
+                    )}
+                  </View>
+                );
+              })}
             </View>
           ))}
         </View>
@@ -2105,13 +2167,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    paddingTop: 8,
-    paddingBottom: 10,
+    // Figma header content bar: 12px padding all sides (3227:19826).
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   heartButton: {
-    width: 45,
-    height: 45,
+    width: 44,
+    height: 44,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2281,6 +2344,20 @@ const styles = StyleSheet.create({
   },
   gridWrap: {
     gap: GRID_GAP,
+    // Figma grid container vertical inset (py = 8). Horizontal inset is the
+    // optionSheet's SHEET_PADDING (12); this adds the matching 8px top/bottom.
+    paddingVertical: SHEET_PADDING_V,
+  },
+  // 2-item (fullPlusSmall): column with the small drop-card CENTERED under the
+  // full card (qa-ui C1 — items-center/justify-center, not left-aligned).
+  gridWrapCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // 3 / 4 / 5 / 6 / >6: rows are left-aligned; lone tiles hold their column via
+  // opacity-0 placeholder cells, so the visible tiles stay LEFT (items-start).
+  gridWrapStart: {
+    alignItems: 'stretch',
   },
   // AU-253 (2026-05-25): was `flex:1`, which over-claimed the leftover sheet
   // height and (with space-between) produced the ~36pt void. Now content-sized
@@ -2319,6 +2396,30 @@ const styles = StyleSheet.create({
   cardShellFixed: {
     flexGrow: 0,
     width: CARD_WIDTH,
+  },
+  // 5/6/>6 bottom-row narrow 3rd column: holds the fixed-127 tile (or its
+  // opacity-0 placeholder). flexGrow:0 so cols 0/1 (flex-1) keep the width.
+  cardShellNarrow: {
+    flexGrow: 0,
+    width: SMALL_CARD_WIDTH,
+  },
+  // 2-item full card: spans the full content width at true 3:4. Overrides the
+  // default `card` fixed height so the aspect ratio drives the height.
+  cardFull: {
+    width: '100%',
+    height: undefined,
+    aspectRatio: CARD_ASPECT,
+  },
+  // Fixed small card (Figma 127.3×169.733, 3:4) — 2-item drop card + the narrow
+  // 3rd column of 5/6/>6 bottom rows. Overrides the default `card` height.
+  cardFixedSmall: {
+    width: SMALL_CARD_WIDTH,
+    height: SMALL_CARD_HEIGHT,
+  },
+  // Non-interactive opacity-0 placeholder cell that holds a grid column so the
+  // visible tiles stay left-aligned (3-item R2C2, 5-item bottom R3 3rd cell).
+  cardCellHidden: {
+    opacity: 0,
   },
   card: {
     height: CARD_HEIGHT,
@@ -2367,18 +2468,19 @@ const styles = StyleSheet.create({
   pinBadge: {
     position: 'absolute',
     top: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.colors.figmaSurface,
+    right: 9,
+    width: 34,
+    height: 34,
+    borderRadius: theme.borderRadius.m,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)', // background/overlay/light/30
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 2,
-    elevation: 2,
+    // Figma 3399:18455 — drop-shadow 4/4, blur 5.3, #070707 @ 5%.
+    shadowColor: 'rgba(7, 7, 7, 0.05)',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 5.3,
+    elevation: 3,
   },
   pinBadgeActive: {
     backgroundColor: theme.colors.figmaAction,

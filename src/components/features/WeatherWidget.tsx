@@ -35,7 +35,7 @@ export const WeatherWidget: React.FC<Props> = ({ tempC, iconCode }) => {
 
   return (
     <View style={styles.container}>
-      <WeatherIcon code={iconCode} size={34} />
+      <WeatherIcon code={iconCode} size={35} />
       <View style={styles.textColumn}>
         <Text style={styles.temp} numberOfLines={1}>
           {tempC}
@@ -53,25 +53,21 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
   },
   textColumn: {
     alignItems: 'flex-start',
   },
   temp: {
-    ...theme.typography.aliases.poppinsButton,
-    fontSize: 16,
-    lineHeight: 20,
-    color: theme.colors.figmaText,
+    ...theme.typography.aliases.interSemiboldXs,
+    color: theme.colors.uacTextBase,
   },
   tempUnit: {
-    fontSize: 10,
-    lineHeight: 20,
+    fontSize: 8,
+    lineHeight: 16,
   },
   day: {
-    ...theme.typography.aliases.poppinsBody,
-    fontSize: 12,
-    lineHeight: 16,
-    color: theme.colors.figmaTextSecondary,
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextSubtle100,
   },
 });
