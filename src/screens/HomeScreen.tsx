@@ -172,7 +172,11 @@ const GRID_AREA_H =
 // total grid height ≤ GRID_AREA_H for any item count → nothing clips, no
 // scroll needed (preserves the collage drag-to-play C4 fix).
 const GRID_CONTENT_PAD = 16;
-const GRID_FIT_H = GRID_AREA_H - GRID_CONTENT_PAD;
+// Also net out the gridWrap vertical inset (SHEET_PADDING_V top+bottom, added for
+// the Figma 8px grid py). Without it the extra 16px overflows GRID_AREA_H and the
+// dormant (scrollEnabled=false) gridScroll hard-clips the bottom row on smaller
+// devices — the same C4 auto-fit regression this math exists to prevent.
+const GRID_FIT_H = GRID_AREA_H - GRID_CONTENT_PAD - SHEET_PADDING_V * 2;
 const CARD_HEIGHT = Math.floor((GRID_FIT_H - GRID_GAP) / 2);
 const CARD_WIDTH = Math.round(CARD_HEIGHT * CARD_ASPECT);
 
