@@ -293,6 +293,21 @@ export const WardrobeScreen = () => {
           </View>
         ) : null}
 
+        {/* AU-351: "New" exploration badge — top-left overlay so it never
+            collides with the bottom-centre common badge or the centred
+            preparing overlay. */}
+        {item.is_exploration_item ? (
+          <View
+            style={styles.tileNewBadge}
+            testID={`wardrobe-item-new-${item.id}`}
+            accessibilityLabel={t('wardrobe.new_badge')}
+          >
+            <Text numberOfLines={1} style={styles.tileNewBadgeText}>
+              {t('wardrobe.new_badge')}
+            </Text>
+          </View>
+        ) : null}
+
         {isCommonItem(item) ? (
           <View style={styles.tileBadgeWrap}>
             <View style={styles.tileBadge}>
@@ -578,6 +593,23 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 8,
     alignItems: 'center',
+  },
+  // AU-351: "New" exploration pill — top-left, token-styled (accent fill so it
+  // reads distinctly from the bottom common badge), no hex literals.
+  tileNewBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    paddingHorizontal: theme.spacing.uacDimension8,
+    paddingVertical: 3,
+    borderRadius: theme.borderRadius.round,
+    backgroundColor: theme.colors.figmaAction,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tileNewBadgeText: {
+    ...theme.typography.aliases.interCaptionXxs,
+    color: theme.colors.white,
   },
   tileBadge: {
     paddingHorizontal: 12,

@@ -49,6 +49,14 @@ export interface WardrobeItem {
   is_favorited?: boolean;
   usage_frequency?: UsageFrequency;
   updated_at?: string;
+  // AU-351 (backend stacked PRs #101 + #103): outfit-exploration signals.
+  // OPTIONAL — default undefined/false on the client so the app compiles and
+  // renders correctly before the backend fields ship.
+  // `is_exploration_item` → wardrobe tile shows a "New" badge.
+  // `exploration_waiting` → item detail shows a "Waiting for the right
+  //   occasion" status line.
+  is_exploration_item?: boolean;
+  exploration_waiting?: boolean;
   [key: string]: unknown;
 }
 
