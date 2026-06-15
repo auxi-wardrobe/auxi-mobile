@@ -1,0 +1,63 @@
+# auxi/tests/maestro/pin-build-around.yml
+# AU-307 — Pin Item & Build Around Outfit — top-level Maestro orchestrator.
+#
+# Linear: AU-307
+# Spec:   plans/260615-2146-au-307-pin-build-around/spec.md (§7 UX, §8 Maestro
+#         coverage default = primary + replace + error retry)
+# Phase:  plans/260615-2146-au-307-pin-build-around/phase-07-tests-and-qa.md
+# Branch: duc2820/au-307-uac-pin-item-build-around-outfit
+#
+# This file COMPOSES the three sub-flows in `tests/maestro/au-307/`. They are
+# intentionally split into per-scenario files (vs. one ~150-step monolith)
+# because:
+#   - Each can be run in isolation during dev:
+#       maestro test tests/maestro/au-307/primary-pin.yaml
+#   - The orchestrator stitches them in the canonical order documented in
+#     phase-07. The order matters for `replace-pin` which depends on
+#     `primary-pin`'s end state (one tile already pinned).
+#   - `error-retry` requires a backend force-error precondition; it can be
+#     skipped from the full suite by running only the first two sub-flows
+#     when no error injection is available (see README).
+#
+# How to run (full suite):
+#   ./scripts/qa-boot.sh              # umbrella root — boots BE + sim + app
+#   maestro test tests/maestro/pin-build-around.yml \
+#     -e QA_EMAIL=qa-test@auxi.app \
+#     -e QA_PASSWORD='QaTest!2026'
+#
+# How to run (skipping error-retry when BE force-error flag unavailable):
+#   maestro test tests/maestro/au-307/primary-pin.yaml \
+#     -e QA_EMAIL=... -e QA_PASSWORD=...
+#   maestro test tests/maestro/au-307/replace-pin.yaml \
+#     -e QA_EMAIL=... -e QA_PASSWORD=...
+#
+# See `tests/maestro/au-307/README.md` for preconditions, env-flag status,
+# and known testID gaps.
+
+appId: com.auxi2026.app
+name: au-307-pin-build-around
+tags:
+  - home
+  - pin
+  - au-307
+  - regression
+env:
+  HOME_TIMEOUT_MS: 30000
+  LOGIN_SCREEN_TIMEOUT_MS: 10000
+  RECOMMENDATION_TIMEOUT_MS: 180000
+  MODAL_TIMEOUT_MS: 5000
+  MODAL_DISMISS_TIMEOUT_MS: 5000
+  PIN_GENERATE_TIMEOUT_MS: 90000
+  PIN_ERROR_TIMEOUT_MS: 35000
+---
+# --- Sub-flow A: PRIMARY pin (cold Home → pin → generate → success) ---
+- runFlow: ./au-307/primary-pin.yaml
+
+# --- Sub-flow B: REPLACE pin (carries the pinned state from A → pin a
+#     different tile → replace modal → generate → success) ---
+- runFlow: ./au-307/replace-pin.yaml
+
+# --- Sub-flow C: ERROR + RETRY (fresh cold start → forced BE error → Retry).
+#     Requires backend force-error mode. If your BE doesn't support it yet,
+#     comment this line out and file the gap with backend-dev. ---
+- runFlow: ./au-307/error-retry.yaml
