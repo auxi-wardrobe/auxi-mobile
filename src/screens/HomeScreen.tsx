@@ -648,6 +648,9 @@ export const HomeScreen = () => {
         color: it.color_code ?? '',
         style: it.style_tags?.[0],
         isSystem: it.source === 'common_essential',
+        // AU-351: carry the backend exploration flag so renderTile can show
+        // the "Your Piece" badge on newly-uploaded items.
+        isExploration: it.is_exploration_item ?? false,
       });
 
       return {
@@ -1820,6 +1823,20 @@ const OptionSheet = React.memo(
           delayLongPress={500}
         >
           <GarmentPreview item={item} />
+          {item.isExploration ? (
+            // AU-351: "Your Piece" badge for newly-uploaded items in the active
+            // exploration window. Top-left so it never collides with the
+            // top-right pin badge overlay. Non-interactive text pill.
+            <View
+              testID={`home-tile-yourpiece-${cellKey}-${flatTileIndex}`}
+              style={styles.yourPieceBadge}
+              accessibilityLabel={t('home.a11y_your_piece')}
+            >
+              <Text style={styles.yourPieceBadgeText}>
+                {t('home.your_piece_badge')}
+              </Text>
+            </View>
+          ) : null}
           <TouchableOpacity
             testID={
               isPinned
@@ -2484,6 +2501,23 @@ const styles = StyleSheet.create({
   },
   pinBadgeActive: {
     backgroundColor: theme.colors.figmaAction,
+  },
+  // AU-351: "Your Piece" exploration badge — small text pill in the TOP-LEFT
+  // of each tile (opposite corner from the top-right pin badge so they never
+  // overlap). Dark translucent surface + light text mirrors the caption-tag
+  // treatment. All values from theme tokens (no hex literals).
+  yourPieceBadge: {
+    position: 'absolute',
+    top: theme.spacing.s,
+    left: theme.spacing.s,
+    paddingHorizontal: theme.spacing.s,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.round,
+    backgroundColor: theme.colors.figmaCardTag,
+  },
+  yourPieceBadgeText: {
+    ...theme.typography.aliases.interSemiboldXs,
+    color: theme.colors.uacTextPrimaryBase,
   },
   loadingCard: {
     backgroundColor: theme.colors.figmaCardSurface,

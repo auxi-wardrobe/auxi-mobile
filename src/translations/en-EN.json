@@ -387,7 +387,9 @@
       "building_next": "Building your next looks",
       "loading_more": "Loading more options...",
       "a11y_pin_item": "Pin item",
-      "a11y_unpin_item": "Unpin item"
+      "a11y_unpin_item": "Unpin item",
+      "your_piece_badge": "Your Piece",
+      "a11y_your_piece": "Your piece — a recently added item"
     },
     "body": {
       "toast_load_failed_title": "My body",

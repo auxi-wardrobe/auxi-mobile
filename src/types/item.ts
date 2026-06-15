@@ -10,6 +10,7 @@ export interface Item {
   season?: string; // e.g., 'Summer', 'Winter'
   isSystem: boolean; // true for "Standard Items", false for "User Items"
   userId?: string; // owner ID if isSystem is false
+  isExploration?: boolean; // AU-351: newly-uploaded item in the active exploration window; renders the "Your Piece" badge. Defaults false.
 }
 
 export const CATEGORIES = [

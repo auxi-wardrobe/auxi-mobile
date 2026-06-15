@@ -387,7 +387,9 @@
       "building_next": "Đang tạo bộ đồ tiếp theo",
       "loading_more": "Đang tải thêm lựa chọn...",
       "a11y_pin_item": "Ghim món",
-      "a11y_unpin_item": "Bỏ ghim món"
+      "a11y_unpin_item": "Bỏ ghim món",
+      "your_piece_badge": "Món của bạn",
+      "a11y_your_piece": "Món của bạn — một món vừa được thêm"
     },
     "body": {
       "toast_load_failed_title": "Cơ thể của tôi",
