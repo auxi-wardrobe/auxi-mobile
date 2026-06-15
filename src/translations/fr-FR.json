@@ -389,7 +389,9 @@
       "building_next": "Création de vos prochaines tenues",
       "loading_more": "Chargement d'autres options...",
       "a11y_pin_item": "Épingler l'article",
-      "a11y_unpin_item": "Désépingler l'article"
+      "a11y_unpin_item": "Désépingler l'article",
+      "your_piece_badge": "Votre pièce",
+      "a11y_your_piece": "Votre pièce — un article ajouté récemment"
     },
     "body": {
       "toast_load_failed_title": "Mon corps",

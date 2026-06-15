@@ -225,3 +225,42 @@ describe('HomeScreen item tap (AU-312)', () => {
     expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 });
+
+// =============================================================================
+// AU-351: "Your Piece" exploration badge on outfit tiles
+// =============================================================================
+describe('HomeScreen "Your Piece" badge (AU-351)', () => {
+  // Build a one-outfit V05 response whose single item carries the given
+  // exploration flag. Mirrors V05_RESPONSE; only `is_exploration_item` varies.
+  const responseWithExploration = (isExploration: boolean) => ({
+    ...V05_RESPONSE,
+    outfits: [
+      {
+        ...V05_RESPONSE.outfits[0],
+        items: [
+          {
+            ...V05_RESPONSE.outfits[0].items[0],
+            is_exploration_item: isExploration,
+          },
+        ],
+      },
+    ],
+  });
+
+  it('renders the badge when is_exploration_item is true', async () => {
+    mockedRecommendV05.mockResolvedValue(responseWithExploration(true));
+    const r = await renderHome();
+
+    const badges = byTestID(r.root, 'home-tile-yourpiece-hash-0001-0');
+    expect(badges.length).toBeGreaterThan(0);
+  });
+
+  it('omits the badge when is_exploration_item is false', async () => {
+    mockedRecommendV05.mockResolvedValue(responseWithExploration(false));
+    const r = await renderHome();
+
+    // tile still renders, but no "Your Piece" overlay
+    expect(byTestID(r.root, 'home-tile-hash-0001-0').length).toBeGreaterThan(0);
+    expect(byTestID(r.root, 'home-tile-yourpiece-hash-0001-0').length).toBe(0);
+  });
+});

@@ -230,6 +230,9 @@ export interface V05OutfitItem {
   style_tags: string[];
   formality_level?: string | null;
   source?: 'user' | 'common_essential';
+  // AU-351 (backend PR #101): true for newly-uploaded items inside the active
+  // exploration window. Surfaced on outfit tiles as the "Your Piece" badge.
+  is_exploration_item?: boolean;
 }
 
 /**
