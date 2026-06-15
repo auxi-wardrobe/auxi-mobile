@@ -15,11 +15,16 @@ import { BodyShapeCarousel } from './BodyShapeCarousel';
 interface StepBodyShapeProps {
   selectedShape: BodyShapeId | null;
   onSelectShape: (shape: BodyShapeId) => void;
+  // AU-346 (1.1): reusable-profile opt-in, surfaced inside the carousel modal.
+  optIn: boolean;
+  onToggleOptIn: () => void;
 }
 
 export const StepBodyShape: React.FC<StepBodyShapeProps> = ({
   selectedShape,
   onSelectShape,
+  optIn,
+  onToggleOptIn,
 }) => {
   const { t } = useTranslation();
   const [expandedShape, setExpandedShape] = useState<BodyShapeId | null>(null);
@@ -50,6 +55,8 @@ export const StepBodyShape: React.FC<StepBodyShapeProps> = ({
       <BodyShapeCarousel
         visible={expandedShape !== null}
         initialShape={expandedShape}
+        optIn={optIn}
+        onToggleOptIn={onToggleOptIn}
         onRetake={() => setExpandedShape(null)}
         onUse={shape => {
           setExpandedShape(null);

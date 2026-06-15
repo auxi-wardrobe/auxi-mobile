@@ -10,12 +10,13 @@
  * captured-photo thumbnail on screen while the next step's bubble + actions
  * appear below (matches the cumulative Figma frames).
  */
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Asset } from 'react-native-image-picker';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { ImageSource, useImagePicker } from '../../hooks/use-image-picker';
 import {
   bodyService,
@@ -26,6 +27,8 @@ import { track } from '../../services/analytics';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { AppStackParamList } from '../../types/navigation';
+import { MacgieLoader } from '../../components/macgie/MacgieLoader';
+import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import {
   StomHeader,
   PromptBubble,
@@ -40,6 +43,10 @@ import { StepBodyShape } from './StepBodyShape';
 import { OutfitPreview } from './OutfitPreview';
 import { GeneratingView } from './GeneratingView';
 import { BodyShapeId } from './body-shapes';
+import { decideEntryMode } from './profile-entry';
+
+// TanStack key for the active reusable self-visualization profile (AU-346).
+const ACTIVE_PROFILE_QUERY_KEY = ['body', 'active'] as const;
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'SeeThisOnMe'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'SeeThisOnMe'>;
@@ -88,9 +95,17 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // required; the full body is optional.
   const [selfieBodyId, setSelfieBodyId] = useState<string | null>(null);
   const [fullBodyId, setFullBodyId] = useState<string | null>(null);
+  // The uploaded full-body record's server image_url, captured at pick time so
+  // it can be persisted onto the reusable profile (AU-346) without re-fetching.
+  const [fullBodyUrl, setFullBodyUrl] = useState<string | null>(null);
   const [selectedShape, setSelectedShape] = useState<BodyShapeId | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
-  const [optIn, setOptIn] = useState(false);
+  // AU-346: opt-in to save/keep the reusable profile is ON by default now.
+  const [optIn, setOptIn] = useState(true);
+  // AU-346: when the user taps "Retake photos" on the reuse path we suppress
+  // the saved profile and run the normal capture flow (the saved profile is
+  // untouched on the server until a new one is saved).
+  const [forceCapture, setForceCapture] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errored, setErrored] = useState(false);
   // Friendly inline error shown on the active photo step. Set when the backend
@@ -167,6 +182,49 @@ export const SeeThisOnMeScreen: React.FC = () => {
     [outfit.itemIds, outfit.outfitHash],
   );
 
+  // AU-346 reuse: fetch the user's active reusable profile on mount. While this
+  // resolves the screen shows the shared MacgieLoader; once known it either
+  // drives the reuse path (profile present) or the capture flow (none).
+  const { data: activeProfile, isLoading: profileLoading } = useQuery({
+    queryKey: ACTIVE_PROFILE_QUERY_KEY,
+    queryFn: () => bodyService.getActiveProfile(),
+  });
+
+  // True only when a saved profile exists AND the user hasn't asked to retake.
+  const reuseMode =
+    !forceCapture && decideEntryMode(activeProfile) === 'reuse';
+
+  // AU-346: with a reusable profile (and no explicit retake), skip capture and
+  // render the CURRENT outfit straight away with the stored body + shape. Guard
+  // so it fires once per arrival on the reuse path, not on every render.
+  const reuseFiredRef = useRef(false);
+  useEffect(() => {
+    if (reuseMode && activeProfile?.id && !reuseFiredRef.current) {
+      reuseFiredRef.current = true;
+      runGenerate(activeProfile.id, activeProfile.body_shape ?? null);
+    }
+  }, [reuseMode, activeProfile, runGenerate]);
+
+  // "Retake photos" on the reuse path: drop reuse and start the normal capture
+  // flow from the selfie step. The saved server profile is left intact until a
+  // new capture is saved (opt-in at the shape step overwrites it).
+  const restartCapture = useCallback(() => {
+    reuseFiredRef.current = false;
+    setForceCapture(true);
+    setSelfie(null);
+    setFullBody(null);
+    setSelfieBodyId(null);
+    setFullBodyId(null);
+    setFullBodyUrl(null);
+    setSelectedShape(null);
+    setResultUrl(null);
+    setErrored(false);
+    setPhotoError(null);
+    setOptIn(true);
+    setStep('selfie');
+    track('try_on_profile_retake', { outfit_hash: outfit.outfitHash });
+  }, [outfit.outfitHash]);
+
   // Validate a just-picked photo immediately by uploading it. On success, hand
   // the created `body_id` to `onValid` (which stores it + advances). On a
   // body-photo rejection (any 422), show the friendly inline message telling
@@ -183,12 +241,12 @@ export const SeeThisOnMeScreen: React.FC = () => {
     async (
       asset: Asset,
       clearAsset: () => void,
-      onValid: (bodyId: string) => void,
+      onValid: (body: { id: string; image_url?: string }) => void,
     ) => {
       setPhotoError(null);
       try {
         const body = await bodyService.uploadBody(asset);
-        onValid(body.id);
+        onValid(body);
       } catch (error) {
         clearAsset();
         if (error instanceof BodyPhotoNotPersonError) {
@@ -265,6 +323,24 @@ export const SeeThisOnMeScreen: React.FC = () => {
     [pickImage],
   );
 
+  // The body record to (re)generate from: the captured one, or — on the reuse
+  // path where nothing was captured — the saved profile (AU-346).
+  const activeGenerationBodyId =
+    generationBodyId ?? (reuseMode ? activeProfile?.id ?? null : null);
+  const activeShape = selectedShape ?? activeProfile?.body_shape ?? null;
+
+  // ── Loading the reusable profile ──────────────────────────────────────────
+  // Decide reuse-vs-capture only once the active profile is known. The shared
+  // MacgieLoader covers the round-trip so the capture flow never flashes first.
+  if (profileLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
+        <MacgieLoader testID="stom-profile-loading" />
+      </SafeAreaView>
+    );
+  }
+
   // ── Generating / error state ──────────────────────────────────────────────
   if (step === 'generating') {
     return (
@@ -273,8 +349,8 @@ export const SeeThisOnMeScreen: React.FC = () => {
         <GeneratingView
           errored={errored}
           onRetry={() => {
-            if (generationBodyId) {
-              runGenerate(generationBodyId, selectedShape);
+            if (activeGenerationBodyId) {
+              runGenerate(activeGenerationBodyId, activeShape);
             }
           }}
         />
@@ -287,14 +363,21 @@ export const SeeThisOnMeScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.container}>
         <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
-        <OutfitPreview
-          imageUri={resultUrl}
-          optIn={optIn}
-          // TODO(see-this-on-me): persist the opt-in once a body-preview
-          // preference endpoint exists. Local-only for v1.
-          onToggleOptIn={() => setOptIn(v => !v)}
-          onBackHome={goHome}
-        />
+        {/* TODO(AU-346): add the "View visualization" download/share bottom
+            sheet for the generated per-outfit image — deferred follow-up;
+            reuse-to-generate covers the core profile value for this PR. */}
+        <OutfitPreview imageUri={resultUrl} onBackHome={goHome} />
+        {/* Reuse path: let the user discard the saved profile and recapture. */}
+        {reuseMode ? (
+          <View style={styles.retakeProfileRow}>
+            <PillButton
+              testID="stom-retake-profile"
+              title={t('seeThisOnMe.retakeProfile')}
+              variant="text"
+              onPress={restartCapture}
+            />
+          </View>
+        ) : null}
       </SafeAreaView>
     );
   }
@@ -331,8 +414,8 @@ export const SeeThisOnMeScreen: React.FC = () => {
                     setSelfie(null);
                     setSelfieBodyId(null);
                   },
-                  bodyId => {
-                    setSelfieBodyId(bodyId);
+                  body => {
+                    setSelfieBodyId(body.id);
                     track('try_on_step_completed', { step: 'selfie' });
                     setStep('fullBody');
                   },
@@ -353,9 +436,11 @@ export const SeeThisOnMeScreen: React.FC = () => {
                   () => {
                     setFullBody(null);
                     setFullBodyId(null);
+                    setFullBodyUrl(null);
                   },
-                  bodyId => {
-                    setFullBodyId(bodyId);
+                  body => {
+                    setFullBodyId(body.id);
+                    setFullBodyUrl(body.image_url ?? null);
                     track('try_on_step_completed', { step: 'fullBody' });
                     setStep('bodyShape');
                   },
@@ -375,9 +460,26 @@ export const SeeThisOnMeScreen: React.FC = () => {
         return (
           <StepBodyShape
             selectedShape={selectedShape}
+            optIn={optIn}
+            onToggleOptIn={() => setOptIn(v => !v)}
             onSelectShape={shape => {
               setSelectedShape(shape);
               track('try_on_step_completed', { step: 'bodyShape' });
+              // AU-346: when opted in, save this capture as the user's reusable
+              // primary profile (shape + full-body reference) so future outfits
+              // skip capture. Best-effort — a save failure must NOT block the
+              // render, so it's fire-and-forget with a logged catch.
+              if (optIn && selfieBodyId) {
+                bodyService
+                  .updateBody(selfieBodyId, {
+                    body_shape: shape,
+                    is_primary: true,
+                    ...(fullBodyUrl ? { full_body_url: fullBodyUrl } : {}),
+                  })
+                  .catch(err =>
+                    console.warn('AU-346 profile save failed', err),
+                  );
+              }
               // Reuse the body record uploaded + validated at pick time — never
               // re-upload. Full-body preferred, else the required selfie.
               if (generationBodyId) {
@@ -447,5 +549,10 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: theme.spacing.uacDimension12,
     paddingBottom: theme.spacing.m,
+  },
+  retakeProfileRow: {
+    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingBottom: theme.spacing.m,
+    alignItems: 'center',
   },
 });

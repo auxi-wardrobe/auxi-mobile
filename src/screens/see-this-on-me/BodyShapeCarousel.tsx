@@ -15,10 +15,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
+import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { BODY_SHAPE_OPTIONS, BodyShapeId } from './body-shapes';
 
@@ -27,6 +29,11 @@ const { width: screenWidth } = Dimensions.get('window');
 interface BodyShapeCarouselProps {
   visible: boolean;
   initialShape: BodyShapeId | null;
+  // AU-346 (1.1): the "save this as my reusable profile" opt-in lives here now
+  // (default checked). When checked at "Use this photo", the screen persists the
+  // shape + photos as the user's primary profile so future outfits skip capture.
+  optIn: boolean;
+  onToggleOptIn: () => void;
   onRetake: () => void;
   onUse: (shape: BodyShapeId) => void;
 }
@@ -34,6 +41,8 @@ interface BodyShapeCarouselProps {
 export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
   visible,
   initialShape,
+  optIn,
+  onToggleOptIn,
   onRetake,
   onUse,
 }) => {
@@ -100,6 +109,23 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
               />
             ))}
           </View>
+
+          <TouchableOpacity
+            testID="stom-optin"
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: optIn }}
+            accessibilityLabel={t('seeThisOnMe.optIn')}
+            activeOpacity={0.8}
+            style={styles.optInRow}
+            onPress={onToggleOptIn}
+          >
+            <View style={[styles.checkbox, optIn && styles.checkboxChecked]}>
+              {optIn ? (
+                <Icons.Plus width={14} height={14} color={theme.colors.white} />
+              ) : null}
+            </View>
+            <Text style={styles.optInLabel}>{t('seeThisOnMe.optIn')}</Text>
+          </TouchableOpacity>
 
           <View style={styles.actions}>
             <PillButton
@@ -178,6 +204,31 @@ const styles = StyleSheet.create({
   },
   dotInactive: {
     backgroundColor: theme.colors.figmaDotInactive,
+  },
+  optInRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: theme.spacing.m,
+    gap: theme.spacing.s,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: theme.borderRadius.s,
+    borderWidth: 1.5,
+    borderColor: theme.colors.uacTextBase,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: theme.colors.figmaAction,
+    borderColor: theme.colors.figmaAction,
+  },
+  optInLabel: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.figmaOnboardingStepLabel,
+    flexShrink: 1,
   },
   actions: {
     flexDirection: 'row',

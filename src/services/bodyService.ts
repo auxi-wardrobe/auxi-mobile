@@ -17,12 +17,29 @@ import { apiClient } from './apiClient';
 // level (lifted by the app.py exception handler) or nested under `detail`
 // (FastAPI's raw envelope), so we check both positions for the `message`.
 
+/** Body shapes the backend recognises for the reusable self-visualization profile. */
+export type BodyShape = 'pear' | 'hourglass' | 'rectangle';
+
 export interface BodyItem {
   id: string;
   user_id: string;
   image_url: string;
   created_at?: string;
+  // AU-346 reusable self-visualization profile fields. Optional so legacy
+  // body records (and the existing BodyScreen list) keep working unchanged.
+  body_shape?: BodyShape | null;
+  photo_type?: string;
+  full_body_url?: string | null;
+  is_primary?: boolean;
 }
+
+/**
+ * A reusable self-visualization profile. Structurally identical to a body
+ * record — the "active profile" is just the user's primary body record carrying
+ * the shape + full-body reference so future outfits can be rendered without
+ * re-capturing photos (AU-346).
+ */
+export type BodyProfile = BodyItem;
 
 /**
  * Thrown by `uploadBody` when the backend rejects the uploaded photo as not a
@@ -91,17 +108,63 @@ export const bodyService = {
     }
   },
 
-  uploadBody: async (file: any): Promise<BodyItem> => {
+  // AU-346: the user's active reusable self-visualization profile (their
+  // primary body record + shape + full-body reference). `GET /api/body/active`
+  // returns `{ profile: Body | null }`; we tolerate a missing/legacy envelope
+  // by coercing anything non-profile-shaped to null so a first-time user (no
+  // profile yet) cleanly falls through to the capture flow.
+  getActiveProfile: async (): Promise<BodyProfile | null> => {
+    try {
+      const response = await apiClient.get('/body/active');
+      return response.data?.profile ?? null;
+    } catch (error) {
+      console.error('Error fetching active body profile', error);
+      throw error;
+    }
+  },
+
+  // AU-346: patch an existing body record into a reusable profile — set its
+  // shape, attach the full-body reference, and/or mark it primary. Backend
+  // `PATCH /api/body/{id}` returns `{ body: Body }`.
+  updateBody: async (
+    id: string,
+    patch: { body_shape?: string; full_body_url?: string; is_primary?: boolean },
+  ): Promise<BodyProfile> => {
+    try {
+      const response = await apiClient.patch(`/body/${id}`, patch);
+      return response.data.body ?? response.data;
+    } catch (error) {
+      console.error('Error updating body', error);
+      throw error;
+    }
+  },
+
+  uploadBody: async (
+    file: any,
+    opts?: { body_shape?: string; photo_type?: string; is_primary?: boolean },
+  ): Promise<BodyItem> => {
     try {
       // `POST /api/body` accepts the multipart file directly — no separate
       // `/upload/file` step. The route reads the `file` form field, validates
-      // it, and creates the body record in one call.
+      // it, and creates the body record in one call. When provided, the AU-346
+      // profile fields ride along as multipart fields so the record is created
+      // already tagged (shape / photo_type / primary) — call sites that omit
+      // `opts` are unaffected.
       const formData = new FormData();
       formData.append('file', {
         uri: file.uri,
         type: file.type || 'image/jpeg',
         name: file.fileName || 'upload.jpg',
       } as any);
+      if (opts?.body_shape) {
+        formData.append('body_shape', opts.body_shape);
+      }
+      if (opts?.photo_type) {
+        formData.append('photo_type', opts.photo_type);
+      }
+      if (opts?.is_primary !== undefined) {
+        formData.append('is_primary', String(opts.is_primary));
+      }
 
       const response = await apiClient.post('/body', formData, {
         headers: {
