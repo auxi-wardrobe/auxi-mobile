@@ -261,6 +261,12 @@ export const theme = {
         fontSize: 12,
         lineHeight: 16,
       },
+      // Home header weather temperature — Figma 3227:19834 (Inter SemiBold 12/16).
+      interSemiboldXs: {
+        fontFamily: 'Inter-SemiBold',
+        fontSize: 12,
+        lineHeight: 16,
+      },
       // Onboarding redesign (node 2849:8331) — Text-xxs caption pill label.
       // Figma Text-xxs = Inter Regular 10/12. No existing 10/12 Inter alias.
       // Source: figma-extraction-onboarding.md §4.2

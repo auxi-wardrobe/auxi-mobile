@@ -5,7 +5,7 @@ import { theme } from '../../theme/theme';
 import IconGrid from '../../assets/images/icon_grid.svg';
 import IconGridAlt from '../../assets/images/icon_grid_alt.svg';
 
-// Home | Grid View — bottom view-toggle bar (Figma footer 2464:17348, 414×98).
+// Home | Grid View — bottom view-toggle bar (Figma footer 2464:17348, 414×84).
 // A translucent bar with a rounded active-tab pill behind two tabs:
 //  - Tab 1 (grid, active): the current grid view.
 //  - Tab 2 (alt view): toggles to an alternate layout.
@@ -15,16 +15,17 @@ import IconGridAlt from '../../assets/images/icon_grid_alt.svg';
 // exists. Tab 2 is rendered faithfully but is a no-op until the alternate
 // view ships. Confirm target view with CEO/tech-lead before wiring.
 //
-// NOTE(Q5): Figma uses backdrop blur (3.25px). `@react-native-community/blur`
-// is NOT installed, so we approximate with a translucent white surface
-// (opacity 0.85) per the extraction artifact's documented fallback.
+// NOTE(Q5): Figma uses backdrop blur (8px, canonical note 3227:26929).
+// `@react-native-community/blur` is NOT installed (CEO chose no native dep),
+// so we approximate with the shared #fff @ 90% surface token
+// (figmaItemDetailHeaderBg) per the extraction artifact's documented fallback.
 
-// Fixed bar height (Figma footer 2464:17348 = 414×98). Exported so the
+// Fixed bar height (Figma footer 2464:17348 = 414×84). Exported so the
 // HomeScreen snap-paging math can reserve this space when computing sheet
 // height — the footer is a sibling rendered below the outfit ScrollView, so
 // the available viewport must subtract it or the bottom "Wear this" CTA is
 // clipped behind the footer line.
-export const HOME_VIEW_TOGGLE_FOOTER_HEIGHT = 98;
+export const HOME_VIEW_TOGGLE_FOOTER_HEIGHT = 84;
 
 export type HomeView = 'grid' | 'collage';
 
@@ -103,38 +104,44 @@ const styles = StyleSheet.create({
   },
   translucentSurface: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.figmaSurface,
-    opacity: 0.85,
+    // Figma footer bg: background/neutral/subtlest @ 90% (canonical note
+    // 3227:26929). Opacity-only fallback — no blur dependency in the app.
+    backgroundColor: theme.colors.figmaItemDetailHeaderBg,
   },
   tabCluster: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.m,
+    gap: theme.spacing.uacDimension12,
     height: 56,
-    width: 149,
+    width: 108,
   },
-  // Static cream capsule behind both tabs — Figma 2464:17314 (158×56, radius 14).
-  // Centered in the bar (same centre as the 149w cluster); does not move.
+  // Static cream capsule behind both tabs — Figma 2464:17314 (116×56, radius 14).
+  // Centered in the bar (same centre as the 108w cluster); does not move.
   activeCapsule: {
     position: 'absolute',
-    width: 158,
+    width: 116,
     height: 56,
     borderRadius: 14,
-    backgroundColor: theme.colors.figmaFooterActivePill,
+    backgroundColor: theme.colors.figmaInsightPillBg,
   },
   tab: {
-    width: 66,
+    width: 48,
     height: 48,
-    borderRadius: 13,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
-  // White inner cell over the active tab — Figma 2464:17303 (66×48, radius 13).
+  // White inner cell over the active tab — Figma 2464:17303 (48×48, radius 11),
+  // with the nav-button drop shadow (0 1 1 rgba(0,0,0,0.15)).
   activeCell: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 13,
+    borderRadius: 11,
     backgroundColor: theme.colors.figmaSurface,
+    shadowColor: 'rgba(0, 0, 0, 0.15)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 1,
+    elevation: 1,
   },
 });
