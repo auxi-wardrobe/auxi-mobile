@@ -112,7 +112,6 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `wardrobe_item_added` | Database clone complete | `DatabaseScreen.tsx:138` | `item_id`, `source` (`database`), `method` (`search_database`), `category?` |
 | `wardrobe_item_edited` | ItemDetail save with diff | `ItemDetailScreen.tsx:678` | `item_id`, `fields_changed` (`category`/`color`/`style`/`fit`) |
 | `wardrobe_item_deleted` | ItemDetail delete confirm | `ItemDetailScreen.tsx:548` | `item_id`, `category?` |
-| `wardrobe_search_initiated` | Database search submit | `DatabaseScreen.tsx:130` | `source` (`database`) |
 | `wardrobe_search_result_selected` | Database result tap → add | `DatabaseScreen.tsx:118` | `item_id`, `source` (`database`) |
 | `wardrobe_photo_captured` | Camera capture for take-photo flow | `WardrobeScreen.tsx:204` | `source` (`add_item`) |
 | `add_item_opened` (pre-existing) | Add-item entry | `WardrobeScreen.tsx:147` | `source` |
@@ -190,6 +189,12 @@ These hooks were spec'd but cannot fire today — the UI surface, control, or AP
 - `wardrobe_url_import_failed`
 
 `handleImportFromWeb` in `WardrobeScreen.tsx:158-165` is a "coming soon" Toast — no service, no submit form. Wire on the real handler once import lands.
+
+### 6.3.b Wardrobe — search submit step not built
+
+- `wardrobe_search_initiated`
+
+`DatabaseScreen` today is a grid-browse-and-pick UI with no search box; the "Add" button is a basket-commit step, not a search submit. Event removed from §5 to avoid skewing the search funnel. Wire on a real search-query dispatcher when search lands.
 
 ### 6.4 Favourite + try-on outcomes — UI not built
 

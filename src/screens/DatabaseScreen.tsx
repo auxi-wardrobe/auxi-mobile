@@ -125,7 +125,9 @@ export const DatabaseScreen = () => {
   };
 
   const handleAddItems = async () => {
-    track('wardrobe_search_initiated', { source: 'database' });
+    // Note: `wardrobe_search_initiated` is NOT fired here — DatabaseScreen has
+    // no search-submit step today (grid-browse-and-pick UI). Event moved to
+    // tracking-plan §6 as gap; wire when a real search box ships.
     await wardrobeService.cloneCommonItems(selectedItems);
     // Best-effort: emit a wardrobe_item_added per successfully cloned id. The
     // service returns void so we use the user-selected ids (one event per id);
@@ -147,7 +149,7 @@ export const DatabaseScreen = () => {
   };
 
   const renderGridTile = (item: WardrobeItem) => {
-    const imageUrl = getImageUrl(item.image_url);
+    const imageUrl = getImageUrl(item.image_png ?? item.image_url);
 
     return (
       <TouchableOpacity

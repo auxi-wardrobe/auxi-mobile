@@ -1304,10 +1304,12 @@ export const HomeScreen = () => {
     // re-open after another N swipes regardless of submit.
     unfavoritedSwipeCountRef.current = 0;
 
+    // Privacy: custom text is free-form and can contain PII (names, emails,
+    // addresses). Only send `value` for the chip-id path; custom-mode is
+    // segmented by `mode: 'custom'` alone.
     track('refine_submitted', {
       mode: chipLabel ? 'chip' : 'custom',
-      // Truncate custom text so PII / long input doesn't bloat events.
-      value: payload.slice(0, 100),
+      ...(chipLabel ? { value: payload } : {}),
     });
 
     // Analytics §3.3 #22 — the next deck settle after a refine submit reports

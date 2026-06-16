@@ -84,6 +84,7 @@ export const AppNavigator = () => {
   return (
     <NavigationContainer
       ref={navigationRef}
+      onReady={handleNavStateChange}
       onStateChange={handleNavStateChange}
     >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
