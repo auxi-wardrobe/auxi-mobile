@@ -397,6 +397,17 @@ export const theme = {
         shadowRadius: 16,
         elevation: 4,
       },
+      // Soft floating drop-shadow for the Home header icon buttons (menu +
+      // favorite) — matches the baked card shadow on Figma 2849:11987
+      // (Rectangle105): a light, diffuse shadow offset mostly downward.
+      // Smaller than `card` because the surface is a 44px pill, not a full card.
+      floatingButton: {
+        shadowColor: '#1d1f23',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        elevation: 4,
+      },
       dialog: {
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: -4 },
