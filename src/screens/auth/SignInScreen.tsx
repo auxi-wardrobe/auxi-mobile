@@ -55,6 +55,7 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import { useLoginMutation } from '../../hooks/auth/useAuthMutations';
+import { track } from '../../services/analytics';
 import {
   isEmailNotVerifiedError,
   isOAuthAccountError,
@@ -74,7 +75,7 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   const [inlineError, setInlineError] = useState<string | null>(null);
 
   const loginMutation = useLoginMutation();
-  const { refreshUser } = useAuth();
+  const { refreshUser, markSignInCompletion } = useAuth();
   const submitting = loginMutation.isPending;
   const canSubmit = password.length > 0 && !submitting;
 
@@ -124,13 +125,24 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   const onSubmit = () => {
     if (!canSubmit) return;
     setInlineError(null);
+    track('sign_in_started', { method: 'email' });
     loginMutation.mutate(
       { email, password },
       {
-        onError: err => handleError(err),
+        onError: err => {
+          track('sign_in_failed', {
+            method: 'email',
+            error_reason: (err.code || 'unknown').toLowerCase(),
+          });
+          handleError(err);
+        },
         onSuccess: () => {
           // Tokens persisted by loginWithPassword; trigger AuthContext to
           // re-fetch the user so AppNavigator switches to the AppStack.
+          // Flag the upcoming identity transition so the identity
+          // effect emits `sign_in_completed` (method=email) AFTER
+          // identify() resolves.
+          markSignInCompletion('email');
           void refreshUser();
         },
       },

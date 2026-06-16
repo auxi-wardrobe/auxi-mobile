@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -8,12 +8,27 @@ import { MacgieLogo } from '../components/macgie';
 import { theme } from '../theme/theme';
 import { WELCOME_COPY } from '../onboarding/config';
 import { AppStackParamList } from '../types/navigation';
+import { track } from '../services/analytics';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Welcome'>;
 
 export const AppWelcomeScreen = () => {
   const navigation = useNavigation<Navigation>();
   const { isLoading } = useAuth();
+
+  useFocusEffect(
+    useCallback(() => {
+      track('onboarding_step_viewed', {
+        step_name: 'welcome',
+        step_index: 1,
+      });
+    }, []),
+  );
+
+  const handleContinue = () => {
+    track('welcome_continued');
+    navigation.navigate('LocationPermission');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -31,7 +46,7 @@ export const AppWelcomeScreen = () => {
           title={WELCOME_COPY.ctaLabel}
           variant="filled"
           loading={isLoading}
-          onPress={() => navigation.navigate('LocationPermission')}
+          onPress={handleContinue}
           style={styles.cta}
           testID="onboarding-welcome-cta"
         />

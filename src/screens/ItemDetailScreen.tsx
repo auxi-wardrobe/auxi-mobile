@@ -34,6 +34,7 @@ import {
 import { theme } from '../theme/theme';
 import { AppStackParamList } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
+import { track } from '../services/analytics';
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
@@ -268,6 +269,19 @@ export const ItemDetailScreen = () => {
       normalizeFormalityLabel(nextItem.formality_level as string | undefined),
     );
   };
+
+  useEffect(() => {
+    // §3.7 #52: Fire once per mount. Source is derived from the navigation
+    // payload: a fallbackItem only ever rides along with Home pushes (V05
+    // recommendation injections), so its presence is the discriminator
+    // between the Wardrobe-grid path and the Home-card path. database_search
+    // path doesn't currently push ItemDetail directly.
+    track('item_detail_opened', {
+      item_id: itemId,
+      source: fallbackItem ? 'home' : 'wardrobe',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -536,6 +550,13 @@ export const ItemDetailScreen = () => {
             try {
               setSaving(true);
               await wardrobeService.deleteWardrobeItem(item.id);
+              const deletedProps: Record<string, unknown> = {
+                item_id: item.id,
+              };
+              if (item.category) {
+                deletedProps.category = item.category;
+              }
+              track('wardrobe_item_deleted', deletedProps);
               Toast.show({
                 type: 'success',
                 text1: t('wardrobe.itemDetail.toast_deleted'),
@@ -645,6 +666,27 @@ export const ItemDetailScreen = () => {
       setItem(mergedItem);
       syncDraftsFromItem(mergedItem);
       setIsEditing(false);
+
+      // §3.4 #30: collapse API payload keys to user-facing field names so
+      // analytics sees the human concept (color/fit) instead of the storage
+      // shape (dominant_color/style_tags).
+      const fieldsChanged: string[] = [];
+      if (payload.category) {
+        fieldsChanged.push('category');
+      }
+      if (payload.dominant_color || payload.colors || payload.color_hex) {
+        fieldsChanged.push('color');
+      }
+      if (payload.formality_level) {
+        fieldsChanged.push('style');
+      }
+      if (payload.style_tags) {
+        fieldsChanged.push('fit');
+      }
+      track('wardrobe_item_edited', {
+        item_id: item.id,
+        fields_changed: fieldsChanged,
+      });
 
       Toast.show({
         type: 'success',

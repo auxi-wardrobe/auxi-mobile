@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './navigationRef';
+import { track } from '../services/analytics';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -40,6 +41,38 @@ export const AppNavigator = () => {
   }, []);
   const { user, isLoading } = useAuth();
 
+  // Analytics §3.8 #56 — screen_viewed. Single global listener on
+  // NavigationContainer.onStateChange resolves the current route name from the
+  // shared navigationRef and fires once per route NAME change. Param-only
+  // updates are skipped (same name → no event), `OnboardingLoading` is skipped
+  // as a transient (~2s), and identical consecutive screen_name within 500ms
+  // is debounced defensively.
+  const lastRouteRef = useRef<string | undefined>(undefined);
+  const lastFireRef = useRef<number>(0);
+  const handleNavStateChange = () => {
+    const current = navigationRef.current?.getCurrentRoute()?.name;
+    if (!current) {
+      return;
+    }
+    if (current === 'OnboardingLoading') {
+      return;
+    }
+    if (current === lastRouteRef.current) {
+      return;
+    }
+    const now = Date.now();
+    if (now - lastFireRef.current < 500) {
+      return;
+    }
+    lastFireRef.current = now;
+    const previous = lastRouteRef.current;
+    lastRouteRef.current = current;
+    track('screen_viewed', {
+      screen_name: current,
+      ...(previous ? { previous_screen_name: previous } : {}),
+    });
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -49,7 +82,10 @@ export const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer
+      ref={navigationRef}
+      onStateChange={handleNavStateChange}
+    >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           user.is_first_login ? (

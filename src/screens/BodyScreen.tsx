@@ -197,6 +197,7 @@ export const BodyScreen = () => {
             }
 
             await bodyService.deleteBody(id);
+            track('body_photo_deleted', { slot: 'full_body' });
 
             // photoDetail shows a single photo — after deleting it there's
             // nothing left to show, so return rather than strand the user on
@@ -252,9 +253,19 @@ export const BodyScreen = () => {
         return;
       }
 
+      // Snapshot before the upload so we can classify add-vs-replace.
+      // §3.7 #53/#54: first photo set in slot vs replacement. BodyScreen
+      // manages the full_body reference slot — selfie/body_shape live on the
+      // STOM capture flow.
+      const wasEmpty = items.length === 0;
+      const isRetake = isPhotoDetailMode;
       try {
         setUploading(true);
         const uploadedItem = await bodyService.uploadBody(result.assets[0]);
+        track(
+          wasEmpty && !isRetake ? 'body_photo_added' : 'body_photo_replaced',
+          { slot: 'full_body' },
+        );
         setGeneratedTryOnUrl(null);
         setTryOnError(null);
         await fetchItems(uploadedItem.id);

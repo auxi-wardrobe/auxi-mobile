@@ -191,8 +191,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
   });
 
   // True only when a saved profile exists AND the user hasn't asked to retake.
-  const reuseMode =
-    !forceCapture && decideEntryMode(activeProfile) === 'reuse';
+  const reuseMode = !forceCapture && decideEntryMode(activeProfile) === 'reuse';
 
   // AU-346: with a reusable profile (and no explicit retake), skip capture and
   // render the CURRENT outfit straight away with the stored body + shape. Guard
@@ -223,6 +222,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
     setOptIn(true);
     setStep('selfie');
     track('try_on_profile_retake', { outfit_hash: outfit.outfitHash });
+    // §3.5 #42: outcome-screen retake is the user discarding the generated
+    // image to redo capture; fires only when triggered from the preview UI.
+    track('try_on_outcome_retaken', { outfit_hash: outfit.outfitHash });
   }, [outfit.outfitHash]);
 
   // Validate a just-picked photo immediately by uploading it. On success, hand

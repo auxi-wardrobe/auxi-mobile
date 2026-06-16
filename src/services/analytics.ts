@@ -148,6 +148,32 @@ export const track = (event: string, props: TrackProps = {}): void => {
 };
 
 /**
+ * Per-session dedup for `outfit_recommendation_viewed`. Prefetch / re-mount
+ * means the same outfit can settle multiple times in one session; we only want
+ * to count the first view per `outfit_hash`. Set lives module-level so dedup
+ * spans component re-mounts but resets on app restart (per-session semantics).
+ *
+ * See spec.md §3.3 ★ and the tracking-plan §6 deferral that this resolves.
+ */
+const seenRecommendations = new Set<string>();
+
+/**
+ * Fire `outfit_recommendation_viewed` at most once per `outfit_hash` per
+ * session. Use this from HomeScreen / OutfitSwipeDeck — never call
+ * `track('outfit_recommendation_viewed', ...)` directly.
+ */
+export const trackRecommendationViewedOnce = (
+  outfitHash: string,
+  props: TrackProps = {},
+): void => {
+  if (!outfitHash || seenRecommendations.has(outfitHash)) {
+    return;
+  }
+  seenRecommendations.add(outfitHash);
+  track('outfit_recommendation_viewed', { outfit_hash: outfitHash, ...props });
+};
+
+/**
  * Link events to a known user. Call after authentication. Uses the database
  * primary key as distinct_id (never email). Profile attributes go to
  * People, not event properties.

@@ -17,6 +17,7 @@ import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { Input } from '../atoms/Input';
+import { track } from '../../services/analytics';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const MODAL_WIDTH = Math.min(screenWidth - 16, 414);
@@ -140,7 +141,23 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
                   activeOpacity={0.82}
                   style={[styles.chip, selected && styles.selectedChip]}
                   disabled={isSubmitting}
-                  onPress={() => onSelectChip(chip.id)}
+                  onPress={() => {
+                    // Analytics §3.3 #27/#28 — refine_chip_selected /
+                    // refine_chip_deselected. Tapping the currently selected
+                    // chip deselects it (parent toggles); tapping a different
+                    // chip selects it. We emit the event from the parent's
+                    // perspective BEFORE the toggle is applied.
+                    track(
+                      selected
+                        ? 'refine_chip_deselected'
+                        : 'refine_chip_selected',
+                      {
+                        chip_type: 'style_feedback',
+                        value: chip.id,
+                      },
+                    );
+                    onSelectChip(chip.id);
+                  }}
                 >
                   <Text
                     style={[

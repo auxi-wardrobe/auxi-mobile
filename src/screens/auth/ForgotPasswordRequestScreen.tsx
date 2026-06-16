@@ -45,6 +45,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useForgotPasswordMutation } from '../../hooks/auth/useAuthMutations';
 import { isGoogleEmail } from '../../utils/email-provider';
+import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 import { theme } from '../../theme/theme';
 
@@ -88,6 +89,7 @@ export const ForgotPasswordRequestScreen: React.FC = () => {
       return;
     }
 
+    track('forgot_password_requested');
     mutation.mutate(
       { email: trimmed },
       {

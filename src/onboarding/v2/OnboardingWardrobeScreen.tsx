@@ -10,7 +10,7 @@
  * is not yet supplied by the CEO → tiles render on the `figmaCardSurface`
  * placeholder bg (plan risk note), wire art in when delivered.
  */
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStepHeader } from './OnboardingStepHeader';
 import {
@@ -30,6 +30,7 @@ import { theme } from '../../theme/theme';
 import type { WardrobeDirection } from '../../services/v05Api';
 import { STEP_COPY, WARDROBE_OPTIONS, wardrobeTileArt } from '../config';
 import { AppStackParamList } from '../../types/navigation';
+import { track } from '../../services/analytics';
 
 type Navigation = NativeStackNavigationProp<
   AppStackParamList,
@@ -40,6 +41,20 @@ export const OnboardingWardrobeScreen = () => {
   const navigation = useNavigation<Navigation>();
   const [selected, setSelected] = useState<WardrobeDirection | null>(null);
   const copy = STEP_COPY.step1;
+
+  useFocusEffect(
+    useCallback(() => {
+      track('onboarding_step_viewed', {
+        step_name: 'wardrobe_direction',
+        step_index: 3,
+      });
+    }, []),
+  );
+
+  const handleSelect = (direction: WardrobeDirection) => {
+    setSelected(direction);
+    track('wardrobe_direction_selected', { direction });
+  };
 
   const handleContinue = () => {
     if (!selected) return;
@@ -65,7 +80,7 @@ export const OnboardingWardrobeScreen = () => {
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
         activeOpacity={0.85}
-        onPress={() => setSelected(option.value)}
+        onPress={() => handleSelect(option.value)}
         style={solo ? styles.tileSolo : styles.tileFlex}
       >
         <OnboardingSelectionCard

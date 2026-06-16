@@ -32,7 +32,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { track } from '../../services/analytics';
@@ -144,6 +149,15 @@ export const OnboardingLoadingScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<ScreenRoute>();
   const { selection } = route.params;
+
+  useFocusEffect(
+    useCallback(() => {
+      track('onboarding_step_viewed', {
+        step_name: 'loading',
+        step_index: 6,
+      });
+    }, []),
+  );
 
   const generateMutation = useMutation<
     GenerateStarterWardrobeResponse,

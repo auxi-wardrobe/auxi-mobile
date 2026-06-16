@@ -48,6 +48,7 @@ import { appleSignInRequest } from '../../services/oauth/appleSignIn';
 import { googleSignInRequest } from '../../services/oauth/googleSignIn';
 import { isOAuthCancelled } from '../../services/oauth/oauthErrors';
 import { isOAuthConfigured } from '../../services/oauth/oauthConfig';
+import { track } from '../../services/analytics';
 import {
   isOAuthConflictError,
   type AuthErrorEnvelope,
@@ -118,7 +119,7 @@ const CaretDownGlyph = () => (
 export const WelcomeScreen = () => {
   const navigation = useNavigation<Navigation>();
   const { t } = useTranslation();
-  const { refreshUser } = useAuth();
+  const { refreshUser, markOAuthSignIn } = useAuth();
   const googleMutation = useGoogleSignInMutation();
   const appleMutation = useAppleSignInMutation();
 
@@ -172,6 +173,7 @@ export const WelcomeScreen = () => {
 
   const onPressGoogle = async () => {
     if (isBusy) return;
+    track('oauth_sign_in_started', { provider: 'google' });
     if (!isOAuthConfigured()) {
       Toast.show({
         type: 'info',
@@ -186,6 +188,7 @@ export const WelcomeScreen = () => {
       // Tokens have already been persisted by `signInWithGoogle`. Pull
       // the user record so AuthContext flips AppNavigator over to the
       // AppStack — no manual reset() needed.
+      markOAuthSignIn('google');
       await refreshUser();
     } catch (err) {
       if (isOAuthCancelled(err)) return;
@@ -208,6 +211,7 @@ export const WelcomeScreen = () => {
 
   const onPressApple = async () => {
     if (isBusy) return;
+    track('oauth_sign_in_started', { provider: 'apple' });
     if (!isOAuthConfigured()) {
       // OAuth config is currently shared between Google + Apple — until
       // anh confirms Apple Sign-In is provisioned, we surface the same
@@ -222,6 +226,7 @@ export const WelcomeScreen = () => {
     try {
       const { identityToken, name } = await appleSignInRequest();
       await appleMutation.mutateAsync({ identity_token: identityToken, name });
+      markOAuthSignIn('apple');
       await refreshUser();
     } catch (err) {
       if (isOAuthCancelled(err)) return;

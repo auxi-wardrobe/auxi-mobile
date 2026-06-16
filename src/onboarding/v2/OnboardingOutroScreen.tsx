@@ -14,9 +14,9 @@
  * Copy comes from `onboarding/config`. The `selection` route param feeds the
  * activation analytics event.
  */
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { track } from '../../services/analytics';
 import {
@@ -35,6 +35,15 @@ export const OnboardingOutroScreen = () => {
   const { selection } = route.params;
   const { completeOnboarding } = useAuth();
   const [isFinishing, setIsFinishing] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      track('onboarding_step_viewed', {
+        step_name: 'outro',
+        step_index: 8,
+      });
+    }, []),
+  );
 
   const handleSeeOutfit = async () => {
     if (isFinishing) return;

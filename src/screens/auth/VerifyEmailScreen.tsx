@@ -42,6 +42,7 @@ import Svg, { Path } from 'react-native-svg';
 import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useResendVerificationMutation } from '../../hooks/auth/useAuthMutations';
+import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 
 type Route = RouteProp<AuthStackParamList, 'VerifyEmail'>;
@@ -88,7 +89,10 @@ export const VerifyEmailScreen = () => {
   const spinStyle = {
     transform: [
       {
-        rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }),
+        rotate: spin.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['0deg', '360deg'],
+        }),
       },
     ],
   };
@@ -97,7 +101,7 @@ export const VerifyEmailScreen = () => {
   useEffect(() => {
     if (cooldown <= 0) return;
     const id = setInterval(() => {
-      setCooldown((s) => Math.max(0, s - 1));
+      setCooldown(s => Math.max(0, s - 1));
     }, 1000);
     return () => clearInterval(id);
   }, [cooldown]);
@@ -124,6 +128,7 @@ export const VerifyEmailScreen = () => {
 
   const onResend = useCallback(() => {
     if (cooldown > 0 || resend.isPending || !email) return;
+    track('email_verification_resent');
     resend.mutate(
       { email },
       {
@@ -157,7 +162,9 @@ export const VerifyEmailScreen = () => {
   const resendDisabled = cooldown > 0 || resend.isPending;
   const resendLabel =
     cooldown > 0
-      ? t('uac.verify_email.resend_cta_cooldown', { seconds: String(cooldown).padStart(2, '0') })
+      ? t('uac.verify_email.resend_cta_cooldown', {
+          seconds: String(cooldown).padStart(2, '0'),
+        })
       : t('uac.verify_email.resend_cta');
 
   return (
@@ -171,7 +178,9 @@ export const VerifyEmailScreen = () => {
           onPress={onLogout}
           style={({ pressed }) => [styles.logoutBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.logoutText}>{t('uac.verify_email.logout_cta')}</Text>
+          <Text style={styles.logoutText}>
+            {t('uac.verify_email.logout_cta')}
+          </Text>
         </Pressable>
       </View>
 
@@ -215,7 +224,9 @@ export const VerifyEmailScreen = () => {
           </Pressable>
           <Pressable
             testID={
-              resendDisabled ? 'verify-resend-button-cooldown' : 'verify-resend-button'
+              resendDisabled
+                ? 'verify-resend-button-cooldown'
+                : 'verify-resend-button'
             }
             accessibilityRole="button"
             accessibilityLabel={resendLabel}
