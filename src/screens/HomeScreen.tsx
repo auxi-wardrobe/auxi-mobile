@@ -18,8 +18,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useMutation } from '@tanstack/react-query';
-import { useNavigation } from '@react-navigation/native';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import {
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../types/navigation';
@@ -60,6 +64,7 @@ import {
   V05OutfitItem,
 } from '../services/v05Api';
 import { favouriteService } from '../services/favouriteService';
+import { wardrobeService } from '../services/wardrobeService';
 import { track, trackRecommendationViewedOnce } from '../services/analytics';
 import { resolveItemImage } from '../utils/url';
 import { weatherService } from '../services/weatherService';
@@ -77,6 +82,17 @@ import { CollageSheetCanvas } from '../components/features/CollageSheetCanvas';
 import { COLLAGE_ASPECT } from '../components/features/collage-seed-layout';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OUTFITS_PER_SET } from '../utils/groupOutfitsIntoSets';
+import { usePinReducer } from '../hooks/usePinReducer';
+import { PinConfirmModal } from '../components/features/PinConfirmModal';
+import { SkeletonTile } from '../components/features/SkeletonTile';
+import {
+  PinGenerationError,
+  type PinErrorKind,
+} from '../components/features/PinGenerationError';
+import { PinFallbackNotice } from '../components/features/PinFallbackNotice';
+import { PinnedItemUnavailableNotice } from '../components/features/PinnedItemUnavailableNotice';
+import { PinnedItemTooltip } from '../components/features/PinnedItemTooltip';
+import { snapshotOutfit } from '../utils/snapshotOutfit';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -239,6 +255,32 @@ type BuildViaV05Input = {
   // `variables`) to drop stale-session results. See `fetchGenerationRef`.
   __gen?: number;
 };
+
+// V05Outfit → legacy Outfit shape mapper. Hoisted to module scope so both
+// buildViaV05 (mutation path) and the AU-307 phase 04 generation effect
+// (single-shot pin-driven /build) can share it without duplicating the
+// category-family lookup or the field renames.
+const FAMILY_TO_CATEGORY: Record<string, string> = {
+  TOP: 'Top',
+  BOTTOM: 'Bottom',
+  OUTER: 'Outerwear',
+  FOOTWEAR: 'Shoes',
+  FULL_BODY: 'Dress',
+  ACCESSORY: 'Accessory',
+};
+const mapV05Item = (it: V05OutfitItem): Item => ({
+  id: it.id,
+  image_url: it.image_url ?? '',
+  image_png: it.image_png ?? null,
+  name: it.name ?? null,
+  category: it.category_family
+    ? FAMILY_TO_CATEGORY[it.category_family] ?? it.category_family
+    : 'Top',
+  color: it.color_code ?? '',
+  style: it.style_tags?.[0],
+  isSystem: it.source === 'common_essential',
+  isExploration: it.is_exploration_item ?? false,
+});
 
 // H2 fix (2026-05-05 QA sweep): previously hardcoded `Math.max(4, items.length)`
 // which forced a 4-tile grid even when the backend returned 3 items, leaving
@@ -408,6 +450,10 @@ const CONTEXT_CHIP_LABEL_KEYS: Record<ContextChipId, string> = {
 export const HomeScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  // AU-307 phase 05 — ItemDetail "Build around this" navigates Home with
+  // `pinFromDetail` set; the mount effect below consumes it once and clears
+  // it via `navigation.setParams` to prevent re-fire on focus/re-render.
+  const route = useRoute<RouteProp<AppStackParamList, 'Home'>>();
   const { open: openSidebar } = useSidebar();
   // AU-253 / collage-play: Home view mode toggled by the bottom footer bar.
   // 'grid' = adaptive image grid (default); 'collage' = drag-to-play canvas.
@@ -432,9 +478,48 @@ export const HomeScreen = () => {
   const [saveStateByHash, setSaveStateByHash] = useState<
     Record<string, SaveState>
   >({});
-  // PHASE B (AU-222): pin state lives at HomeScreen level, default null,
-  // session-only (cleared on unmount, see effect below). One pin at a time.
-  const [pinnedItemId, setPinnedItemId] = useState<string | null>(null);
+  // AU-307: pin state lives in a reducer (state machine per spec §5).
+  // Replaces the prior `useState<string|null>(null)` for `pinnedItemId`.
+  // The reducer is the single dispatcher for pin/build-around events; backward
+  // -compat `pinnedItemId` read below preserves existing consumers
+  // (useMemo, refs, OptionSheet prop) without touching their bodies.
+  const [pinState, pinDispatch] = usePinReducer(null);
+  const pinnedItemId = pinState.pinnedItemId;
+  // AU-307 phase 04 — last classified error kind (used to switch the
+  // inline message between generic vs. network copy). Kept outside the
+  // reducer to keep state-machine pure; the reducer only tracks lifecycle
+  // (`outfit === 'error'`), the FE picks the copy by this hint.
+  const [pinErrorKind, setPinErrorKind] = useState<PinErrorKind>('generic');
+  // AU-307 phase 05 — ephemeral "This item is no longer available." banner.
+  // Set to a timestamp (ms) when PINNED_ITEM_GONE fires (BE 410 OR wardrobe
+  // sync watcher); auto-clears ~5s later via a setTimeout in an effect below.
+  // null = banner hidden.
+  const [pinnedItemGoneAt, setPinnedItemGoneAt] = useState<number | null>(null);
+  // AU-307 phase 06 — "Touch to unpin" tooltip nudge. Session-scoped: shown
+  // for the first 3 pin actions per app lifecycle; `useRef` (not state) so
+  // incrementing does not re-render, and module-level lifetime resets only
+  // on cold start (spec §8 — no AsyncStorage persistence).
+  const pinTooltipCountRef = useRef(0);
+  const [pinTooltipVisible, setPinTooltipVisible] = useState(false);
+  // Latest cached V05 session id — surfaced from recommendV05 so the
+  // phase 04 generation effect can choose `/try_another` (when set) vs
+  // `/build` (cold start). Mirrors v05Api.ts's module-scope cache.
+  const v05SessionRef = useRef<string | null>(null);
+  // Phase 04 — AbortController for the in-flight pin generation. Lives in
+  // a ref so the cleanup function (effect re-run / unmount) can abort it
+  // without re-binding on every render.
+  const pinAbortRef = useRef<AbortController | null>(null);
+  // No-op setter retained as a compatibility shim for the unmount cleanup
+  // path (the reducer's initial state already has pinnedItemId=null on a
+  // fresh mount; explicit clear on unmount is moot but harmless).
+  const setPinnedItemId = useCallback(
+    (next: string | null) => {
+      if (next === null) {
+        pinDispatch({ type: 'UNPIN' });
+      }
+    },
+    [pinDispatch],
+  );
   // PHASE C (AU-221): selected recommendation mode. Per-session (does NOT
   // persist across cold starts — the spec explicitly defers persistence
   // until the designer says otherwise). Defaults to `'safe'`.
@@ -659,38 +744,9 @@ export const HomeScreen = () => {
         current_outfit_hash: input.current_outfit_hash,
       });
 
-      // Map V05Outfit -> legacy Outfit shape. normalizeOutfits picks up
-      // `outfit_hash` directly; `items` get shape-coerced for tile rendering.
-      const FAMILY_TO_CATEGORY: Record<string, string> = {
-        TOP: 'Top',
-        BOTTOM: 'Bottom',
-        OUTER: 'Outerwear',
-        FOOTWEAR: 'Shoes',
-        FULL_BODY: 'Dress',
-        ACCESSORY: 'Accessory',
-      };
-      const mapItem = (it: V05OutfitItem): Item => ({
-        id: it.id,
-        image_url: it.image_url ?? '',
-        image_png: it.image_png ?? null,
-        // AU-312 review fix: carry the backend display name so the
-        // ItemDetail fallback payload can render a real title instead of
-        // degrading to the category label.
-        name: it.name ?? null,
-        category: it.category_family
-          ? FAMILY_TO_CATEGORY[it.category_family] ?? it.category_family
-          : 'Top',
-        color: it.color_code ?? '',
-        style: it.style_tags?.[0],
-        isSystem: it.source === 'common_essential',
-        // AU-351: carry the backend exploration flag so renderTile can show
-        // the "Your Piece" badge on newly-uploaded items.
-        isExploration: it.is_exploration_item ?? false,
-      });
-
       return {
         outfits: v05.outfits.map(o => ({
-          items: o.items.map(mapItem),
+          items: o.items.map(mapV05Item),
           outfit_hash: o.outfit_hash,
           // V05 `reasoning_human` (engine §6.4 template or LLM-3 override) is
           // the per-outfit caption copy — same field on /build and
@@ -862,6 +918,239 @@ export const HomeScreen = () => {
     };
   }, []);
 
+  // ── AU-307 phase 04 ──────────────────────────────────────────────────────
+  // Generation effect: watch `pinState.outfit === 'generating'` and fire the
+  // pin-driven `/build` (or `/try_another`) request with AbortController +
+  // 30s timeout. The reducer is pure (phase 03) — the snapshot is captured
+  // HERE (GENERATE_START dispatch with the current active outfit) so a
+  // GENERATE_ERROR can restore it. Endpoint choice keys off the V05 service's
+  // cached session id (mirrored via v05SessionRef): present → /try_another,
+  // absent → /build.
+  useEffect(() => {
+    if (pinState.outfit !== 'generating') {
+      return;
+    }
+    const controller = new AbortController();
+    pinAbortRef.current = controller;
+
+    // Snapshot the active sheet so an error restores it. Cast through
+    // `unknown` because OutfitSheet (Home's local shape, with `outfitHash`)
+    // and the reducer's `Outfit` (legacy shape with `outfit_hash`) only
+    // overlap on `items` — but the reducer never inspects fields, just
+    // round-trips the value.
+    const activeSheet = listOutfitsRef.current[activeIndexRef.current];
+    if (activeSheet) {
+      const snapshot = snapshotOutfit(
+        activeSheet as unknown as Outfit,
+      );
+      pinDispatch({ type: 'GENERATE_START', snapshot });
+    }
+
+    // 30s client-side cap (spec §9 "Loading infinite").
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 30000);
+
+    // Endpoint picked by recommendV05 internally — but we set up call shape
+    // for both paths (build vs try_another). The session ref drives which
+    // path will fire; pinned_item_id flows on both.
+    const currentHash = activeSheet?.outfitHash;
+    const params = {
+      weather: { temp_c: weather.tempC, is_rainy: false },
+      user: { gender: 'U' as const, occasion: selectedModeRef.current },
+      count: 3,
+      mode: selectedModeRef.current,
+      pinned_item_id: pinState.pinnedItemId ?? undefined,
+      style_feedback: styleFeedbackRef.current ?? undefined,
+      current_outfit_hash: currentHash,
+    };
+
+    recommendV05(params, { signal: controller.signal })
+      .then(result => {
+        // Drop the result if a newer generation has superseded us.
+        if (pinAbortRef.current !== controller) {
+          return;
+        }
+        v05SessionRef.current = result.sessionId ?? v05SessionRef.current;
+        // Map V05 result → legacy Outfit shape for the displayed list (same
+        // path buildViaV05 uses; we just inline the surface that matters).
+        if (result.outfits.length > 0) {
+          // Reuse the buildViaV05 normaliser indirectly by funneling the new
+          // batch through the existing setListOutfits replace pattern — the
+          // simplest path that keeps OutfitSheet/Outfit drift out of phase 04.
+          // We treat the pin result as a fresh cold-start so the grid swaps to
+          // the new outfit cleanly. Other prefetch state stays untouched.
+          // NOTE: we intentionally do NOT call `valenGetRecommendation`
+          // mutation here — that would re-issue a duplicate network call.
+          isFirstLoadRef.current = true;
+          // listOutfits replacement requires legacy normaliser; lift items
+          // into the OutfitSheet shape so the grid can render them.
+          const mapped: OutfitSheet[] = result.outfits.map(o => ({
+            items: o.items.map(mapV05Item),
+            outfitHash: o.outfit_hash,
+            caption: o.reasoning_human,
+          }));
+          setListOutfits(mapped);
+          setActiveIndex(0);
+          activeIndexRef.current = 0;
+        }
+        pinDispatch({
+          type: result.lowConfidence ? 'GENERATE_FALLBACK' : 'GENERATE_SUCCESS',
+        });
+      })
+      .catch(error => {
+        if (pinAbortRef.current !== controller) {
+          return;
+        }
+        const status = (error as { response?: { status?: number } })?.response
+          ?.status;
+        if (status === 401) {
+          pinDispatch({ type: 'AUTH_BLOCK' });
+        } else if (status === 410) {
+          setPinErrorKind('item_unavailable');
+          // AU-307 phase 05 — also surface the ephemeral "no longer
+          // available" banner (5s auto-dismiss); the reducer transition
+          // alone doesn't render a message, so we set the timestamp here.
+          setPinnedItemGoneAt(Date.now());
+          pinDispatch({ type: 'PINNED_ITEM_GONE' });
+        } else if (status === 422) {
+          // For pinned_item_must_be_user_owned the FE hides the pin badge on
+          // SYSTEM tiles (phase 05), so this is defensive only — treat as
+          // pinned-gone so the user is unstuck.
+          setPinErrorKind('item_unavailable');
+          // AU-307 phase 05 — also surface the ephemeral "no longer
+          // available" banner (5s auto-dismiss); the reducer transition
+          // alone doesn't render a message, so we set the timestamp here.
+          setPinnedItemGoneAt(Date.now());
+          pinDispatch({ type: 'PINNED_ITEM_GONE' });
+        } else {
+          // axios abort / network failure surface here too.
+          const code = (error as { code?: string })?.code;
+          const isNetwork =
+            code === 'ERR_NETWORK' ||
+            code === 'ERR_CANCELED' ||
+            code === 'ECONNABORTED';
+          setPinErrorKind(isNetwork ? 'network' : 'generic');
+          pinDispatch({ type: 'GENERATE_ERROR' });
+        }
+      })
+      .finally(() => {
+        if (pinAbortRef.current === controller) {
+          pinAbortRef.current = null;
+        }
+        clearTimeout(timeoutId);
+      });
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+    // Intentionally narrow deps: only the lifecycle transition into
+    // 'generating' should fire this. The pinnedItemId is captured by ref at
+    // call time so a unpin-mid-generation doesn't refire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinState.outfit]);
+
+  // AU-307 phase 05 — ItemDetail entry effect. Consumes `pinFromDetail`
+  // once and clears it via `setParams` so re-focus / re-render does NOT
+  // refire the auto-pin. Uses CONFIRM_PIN_FROM_DETAIL to bypass the modal
+  // (the user already expressed intent on the detail screen). Re-pinning
+  // the same id is a no-op; replacing an existing pin is allowed (UAC
+  // accepts the overwrite — intent expressed downstream).
+  useEffect(() => {
+    const pinFromDetail = route.params?.pinFromDetail;
+    if (!pinFromDetail) {
+      return;
+    }
+    if (pinState.pinnedItemId !== pinFromDetail) {
+      pinDispatch({
+        type: 'CONFIRM_PIN_FROM_DETAIL',
+        itemId: pinFromDetail,
+      });
+    }
+    // Always clear the param even when we no-op'd (idempotent + prevents
+    // re-fire on next focus). `setParams` of `undefined` is the documented
+    // way to drop a param.
+    navigation.setParams({ pinFromDetail: undefined });
+  }, [
+    route.params?.pinFromDetail,
+    navigation,
+    pinDispatch,
+    pinState.pinnedItemId,
+  ]);
+
+  // AU-307 phase 05 — wardrobe sync watcher. If the pinned item is no
+  // longer in the user's wardrobe (deleted/archived elsewhere), dispatch
+  // PINNED_ITEM_GONE so the grid clears its pin state and shows the
+  // ephemeral "no longer available" banner below the grid. Covers the UAC
+  // "pinned item unavailable" scenario WITHOUT requiring a network call —
+  // BE 410 path (phase 04) is the second line of defense.
+  // SYSTEM common-essential items are not in the wardrobe list either, so
+  // we skip the watcher when the pinned id corresponds to a SYSTEM tile
+  // (FE hides the pin badge anyway — defense-in-depth).
+  const { data: wardrobeItemsData } = useQuery({
+    queryKey: ['home-wardrobe-items'],
+    queryFn: () => wardrobeService.getWardrobeItems(),
+    // Light cadence — this is a sanity check for pin staleness, not the
+    // primary wardrobe surface. The full Wardrobe screen has its own fetch.
+    staleTime: 30_000,
+  });
+  useEffect(() => {
+    if (!pinState.pinnedItemId) {
+      return;
+    }
+    if (!wardrobeItemsData) {
+      return;
+    }
+    const stillExists = wardrobeItemsData.some(
+      i => i.id === pinState.pinnedItemId,
+    );
+    if (!stillExists) {
+      pinDispatch({ type: 'PINNED_ITEM_GONE' });
+      setPinnedItemGoneAt(Date.now());
+    }
+  }, [wardrobeItemsData, pinState.pinnedItemId, pinDispatch]);
+
+  // AU-307 phase 05 — auto-dismiss the "item unavailable" banner ~5s after
+  // it appears. Re-arms each time `pinnedItemGoneAt` flips to a new ts.
+  useEffect(() => {
+    if (pinnedItemGoneAt === null) {
+      return;
+    }
+    const handle = setTimeout(() => {
+      setPinnedItemGoneAt(null);
+    }, 5000);
+    return () => clearTimeout(handle);
+  }, [pinnedItemGoneAt]);
+
+  // AU-307 phase 06 — show the "Touch to unpin" tooltip whenever a new
+  // pin is set, but only for the first 3 pin actions of the session.
+  // When the pin clears, hide any existing tooltip immediately. The
+  // tooltip component itself owns its 3-second auto-dismiss timer.
+  useEffect(() => {
+    if (pinState.pinnedItemId) {
+      if (pinTooltipCountRef.current < 3) {
+        pinTooltipCountRef.current += 1;
+        setPinTooltipVisible(true);
+      }
+    } else {
+      setPinTooltipVisible(false);
+    }
+  }, [pinState.pinnedItemId]);
+
+  // AU-307 phase 05 — AUTH_BLOCK handler. The phase 04 generation effect
+  // routes 401 → `AUTH_BLOCK`, which sets `outfit='auth_required'`. We
+  // surface this as an inline banner with a Sign-in CTA. Keeping it
+  // inline (vs. an auto-pushed modal) avoids stealing focus while a guest
+  // is browsing; the CTA is explicit.
+  // Banner JSX lives in the render tree below — this effect is currently
+  // a no-op placeholder for future telemetry / global auth-wall handoff.
+  useEffect(() => {
+    if (pinState.outfit === 'auth_required') {
+      console.info('home.pin.auth_required');
+    }
+  }, [pinState.outfit]);
+
   const loading = isStartPending && listOutfits.length === 0;
   // Canonical (English) chip set — `label` is consumed by the backend engine
   // prompt verbatim (see handleSubmitContext). Keep raw, do NOT localize here.
@@ -888,6 +1177,31 @@ export const HomeScreen = () => {
     }
     return null;
   }, [listOutfits, pinnedItemId]);
+
+  // AU-307: derive the modal's preview image from whichever pending/replace
+  // candidate is currently in play. We search all listed outfits the same way
+  // pinnedItem does, so the lookup survives scroll position.
+  const pinDialogItem = useMemo<Item | null>(() => {
+    const targetId =
+      pinState.pendingPinnedItemId ?? pinState.pinReplaceCandidate;
+    if (!targetId) {
+      return null;
+    }
+    for (const outfit of listOutfits) {
+      const found = outfit.items.find(item => item?.id === targetId);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }, [
+    listOutfits,
+    pinState.pendingPinnedItemId,
+    pinState.pinReplaceCandidate,
+  ]);
+  const pinDialogImageUrl = pinDialogItem
+    ? resolveItemImage(pinDialogItem) ?? null
+    : null;
 
   const optionSets = useMemo<OutfitSheetWithGrid[]>(
     () =>
@@ -1097,24 +1411,23 @@ export const HomeScreen = () => {
     [onWearThisPress],
   );
 
-  // PHASE B (AU-222): tap-or-long-press a tile's pin badge to toggle pin.
-  // Only one pin at a time — pinning a new item swaps out the prior one.
-  // Tapping the currently-pinned item unpins it.
-  const handleToggleItemPin = useCallback((item: Item) => {
-    if (!item?.id) {
-      return;
-    }
-    setPinnedItemId(current => {
-      if (current === item.id) {
-        console.info('home.pin.clear', { itemId: item.id });
-        // TODO(analytics): replace console.info with the real telemetry hook.
-        return null;
+  // AU-307: tap-or-long-press a tile's pin badge → PIN_TAP dispatch.
+  // The reducer routes to: open confirm modal (no pin), UNPIN (same id), or
+  // open replace modal (different id pinned). See spec §5.
+  // TODO(phase-04): trigger /try_another or /build with pinned_item_id after
+  // CONFIRM_PIN/CONFIRM_REPLACE (currently the reducer flips outfit='generating'
+  // but no network call is fired yet).
+  const handleToggleItemPin = useCallback(
+    (item: Item) => {
+      if (!item?.id) {
+        return;
       }
-      console.info('home.pin.set', { itemId: item.id });
+      pinDispatch({ type: 'PIN_TAP', itemId: item.id });
+      console.info('home.pin.tap', { itemId: item.id });
       // TODO(analytics): replace console.info with the real telemetry hook.
-      return item.id;
-    });
-  }, []);
+    },
+    [pinDispatch],
+  );
 
   // PHASE C (AU-221): mode selection. Per-session, default `'safe'`. Does
   // NOT auto-refetch — picked up by the next prefetch (or "Show another"
@@ -1160,15 +1473,13 @@ export const HomeScreen = () => {
   }, []);
 
   const handleClearPin = useCallback(() => {
-    setPinnedItemId(current => {
-      if (!current) {
-        return current;
-      }
-      console.info('home.pin.clear', { itemId: current });
-      // TODO(analytics): replace console.info with the real telemetry hook.
-      return null;
-    });
-  }, []);
+    if (!pinnedItemId) {
+      return;
+    }
+    console.info('home.pin.clear', { itemId: pinnedItemId });
+    // TODO(analytics): replace console.info with the real telemetry hook.
+    pinDispatch({ type: 'UNPIN' });
+  }, [pinnedItemId, pinDispatch]);
 
   // Tinder deck: advance to the next card. End of deck keeps the last card on
   // screen (re-likeable) per spec §2.5, and nudges a prefetch.
@@ -1358,6 +1669,11 @@ export const HomeScreen = () => {
   // opens the Outfit Canvas (AU-285 Remix editor), seeded with the CURRENT
   // outfit's real items so the editor no longer shows mock jeans.
   const handleRemix = useCallback(() => {
+    // AU-307 phase 04 — block remix while a pin-driven generation is in
+    // flight; reentry would push a stale outfit into the canvas editor.
+    if (pinState.outfit === 'generating') {
+      return;
+    }
     const current = listOutfitsRef.current[activeIndexRef.current];
     const items = (current?.items ?? [])
       .filter((it): it is Item => !!it)
@@ -1366,7 +1682,7 @@ export const HomeScreen = () => {
         imageUrl: resolveItemImage(it) || it.image_url,
       }));
     navigation.navigate('OutfitCanvas', items.length ? { items } : undefined);
-  }, [navigation]);
+  }, [navigation, pinState.outfit]);
 
   // AU-312: item tap PUSHES the full ItemDetail screen (Back header) instead
   // of opening the old ItemDetailBottomSheet modal — the designer rejected
@@ -1527,6 +1843,21 @@ export const HomeScreen = () => {
         </View>
       ) : null}
 
+      {/* AU-307 phase 04 — "Generating" status text. Renders just above the
+          deck whenever the pin-driven /build (or /try_another) is in flight.
+          Minimal copy + theme tokens; no Macgie reuse (the Generating UI is
+          the skeleton tiles themselves — the header is a status hint). */}
+      {pinState.outfit === 'generating' ? (
+        <View
+          style={styles.pinGeneratingHeader}
+          testID="home-pin-generating-header"
+        >
+          <Text style={styles.pinGeneratingHeaderText} numberOfLines={1}>
+            {t('pin.generating_header')}
+          </Text>
+        </View>
+      ) : null}
+
       {loading ? (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -1584,6 +1915,12 @@ export const HomeScreen = () => {
                 onRemix={handleRemix}
                 homeView={homeView}
                 onCollageDragActiveChange={setCollageDragActive}
+                // AU-307 phase 04 — show skeletons in non-pinned slots only for
+                // the active card (peek/back cards continue rendering their
+                // own data so swipe affordance stays visible).
+                isGenerating={
+                  role !== 'peek' && pinState.outfit === 'generating'
+                }
               />
             )}
             renderCue={(likeOpacity, skipOpacity) => (
@@ -1616,6 +1953,76 @@ export const HomeScreen = () => {
         </View>
       )}
 
+      {/* AU-307 phase 04 — inline error or fallback banner below the deck
+          but above the sticky "Wear this" footer. They are mutually
+          exclusive (reducer's outfit lifecycle), so render at most one. */}
+      {pinState.outfit === 'error' ? (
+        <View style={styles.pinInlineBanner}>
+          <PinGenerationError
+            kind={pinErrorKind}
+            onRetry={() => {
+              setPinErrorKind('generic');
+              pinDispatch({ type: 'RETRY' });
+            }}
+          />
+        </View>
+      ) : pinState.outfit === 'fallback' ? (
+        <View style={styles.pinInlineBanner}>
+          <PinFallbackNotice />
+        </View>
+      ) : pinState.outfit === 'auth_required' ? (
+        // AU-307 phase 05 — guest blocker. Inline banner with explicit
+        // Sign-in CTA → auth stack EmailInput (signin mode). Inline (vs
+        // modal) so a guest can dismiss naturally by interacting elsewhere.
+        <View testID="pin-guest-banner" style={styles.pinInlineBanner}>
+          <View style={styles.pinGuestBox} accessibilityRole="alert">
+            <Text style={styles.pinGuestText} numberOfLines={3}>
+              {t('pin.guest_blocker')}
+            </Text>
+            <TouchableOpacity
+              testID="pin-guest-signin-cta"
+              accessibilityRole="button"
+              accessibilityLabel={t('pin.guest_blocker')}
+              activeOpacity={0.7}
+              onPress={() => {
+                navigation.navigate('Auth', {
+                  screen: 'EmailInput',
+                  params: { mode: 'signin' },
+                });
+              }}
+              style={styles.pinGuestCta}
+            >
+              <Text style={styles.pinGuestCtaText}>
+                {t('pin.guest_signin_cta')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
+
+      {/* AU-307 phase 05 — ephemeral "no longer available" banner; shown
+          for ~5s after the wardrobe sync watcher OR BE 410 dispatches
+          PINNED_ITEM_GONE. Rendered alongside (not in place of) the
+          outfit-state banners above so it can co-occur with idle / error
+          / fallback states without flicker. */}
+      {pinnedItemGoneAt !== null ? (
+        <View style={styles.pinInlineBanner}>
+          <PinnedItemUnavailableNotice />
+        </View>
+      ) : null}
+
+      {/* AU-307 phase 06 — "Touch to unpin" nudge tooltip. Anchored to the
+          inline-banner band so it shows beneath the grid but above the
+          sticky footer; `pointerEvents="box-none"` on its host so taps
+          still reach any sibling. Session-capped at 3 actions; component
+          owns its own 3-second auto-dismiss timer. */}
+      <View pointerEvents="box-none" style={styles.pinInlineBanner}>
+        <PinnedItemTooltip
+          visible={pinTooltipVisible}
+          onDismiss={() => setPinTooltipVisible(false)}
+        />
+      </View>
+
       {/* Sticky "Wear this" CTA — belongs to the footer (acts on the ACTIVE
           outfit), not inside the swipeable card. Routes through the mood
           feedback flow exactly like the old per-card CTA. */}
@@ -1632,7 +2039,13 @@ export const HomeScreen = () => {
             onPress={() =>
               activeOutfit && handleWearThisForOutfit(activeOutfit)
             }
-            disabled={!activeOutfit || activeSaveState === 'saved'}
+            // AU-307 phase 04 — disable during pin-driven generation so a
+            // user can't wear-save an outfit that's about to swap underneath.
+            disabled={
+              !activeOutfit ||
+              activeSaveState === 'saved' ||
+              pinState.outfit === 'generating'
+            }
             loading={activeSaveState === 'saving'}
             trailing={<IconHomeHeartOutline width={24} height={24} />}
             style={styles.primaryActionFull}
@@ -1675,6 +2088,25 @@ export const HomeScreen = () => {
           closeContextModal();
         }}
         onConfirm={handleSubmitContext}
+      />
+
+      {/* AU-307: pin confirm / replace modal. Variant flips off pinState.modal.
+          onConfirm dispatches CONFIRM_PIN or CONFIRM_REPLACE; reducer flips
+          outfit='generating'. Phase 04 wires the network fire on that state. */}
+      <PinConfirmModal
+        visible={pinState.modal !== 'closed'}
+        variant={pinState.modal === 'replace' ? 'replace' : 'confirm'}
+        itemImageUrl={pinDialogImageUrl}
+        itemLabel={pinDialogItem?.name ?? undefined}
+        onConfirm={() =>
+          pinDispatch({
+            type:
+              pinState.modal === 'replace'
+                ? 'CONFIRM_REPLACE'
+                : 'CONFIRM_PIN',
+          })
+        }
+        onCancel={() => pinDispatch({ type: 'CANCEL_MODAL' })}
       />
 
       {/* First-time guidance — single overlay for the left/right deck.
@@ -1822,6 +2254,7 @@ const OptionSheet = React.memo(
     onRemix,
     homeView,
     onCollageDragActiveChange,
+    isGenerating = false,
   }: {
     // testID namespace = the outfit hash so Maestro can address a card.
     cellKey: string;
@@ -1836,6 +2269,10 @@ const OptionSheet = React.memo(
     onRemix: () => void;
     homeView: HomeView;
     onCollageDragActiveChange: (active: boolean) => void;
+    // AU-307 phase 04 — true while pinState.outfit === 'generating'. Causes
+    // every NON-pinned tile to render as <SkeletonTile> so the user sees
+    // the request progressing without losing the pinned slot's position.
+    isGenerating?: boolean;
   }) => {
     const { t } = useTranslation();
     const items = outfit.items;
@@ -1891,6 +2328,21 @@ const OptionSheet = React.memo(
         );
       }
       const isPinned = item.id === pinnedItemId;
+      // AU-307 phase 04 — skeleton swap for every non-pinned slot during
+      // generation. Pinned slot stays rendered as its real tile so the
+      // user retains visual anchor on what they pinned.
+      if (isGenerating && !isPinned) {
+        return (
+          <View
+            key={`card-skel-${outfit.outfitHash}-${flatTileIndex}`}
+            style={[styles.card, style]}
+          >
+            <SkeletonTile
+              testID={`home-tile-skeleton-${cellKey}-${flatTileIndex}`}
+            />
+          </View>
+        );
+      }
       return (
         <TouchableOpacity
           key={`card-${outfit.outfitHash}-${flatTileIndex}`}
@@ -1919,26 +2371,37 @@ const OptionSheet = React.memo(
               </Text>
             </View>
           ) : null}
-          <TouchableOpacity
-            testID={
-              isPinned
-                ? `home-tile-pin-${cellKey}-${flatTileIndex}-set`
-                : `home-tile-pin-${cellKey}-${flatTileIndex}`
-            }
-            activeOpacity={0.7}
-            onPress={e => {
-              e.stopPropagation();
-              onTogglePin(item);
-            }}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
-            accessibilityRole="button"
-            accessibilityLabel={
-              isPinned ? t('home.a11y_unpin_item') : t('home.a11y_pin_item')
-            }
-          >
-            <IconHomePin width={17} height={17} />
-          </TouchableOpacity>
+          {/* AU-307 phase 05 — hide pin badge on SYSTEM common-essential
+              tiles. `Item.isSystem` is set from the V05 `source` field
+              (`mapV05Item`: `it.source === 'common_essential'`). UX +
+              defense-in-depth: BE rejects pin requests for SYSTEM items
+              with 422 anyway (spec §6 source check), but we never render
+              the affordance so the user can't tap it. */}
+          {!item.isSystem ? (
+            <TouchableOpacity
+              testID={
+                isPinned
+                  ? `home-tile-pin-${cellKey}-${flatTileIndex}-set`
+                  : `home-tile-pin-${cellKey}-${flatTileIndex}`
+              }
+              activeOpacity={0.7}
+              onPress={e => {
+                e.stopPropagation();
+                onTogglePin(item);
+              }}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isPinned
+                  ? t('pin.a11y_pinned_badge')
+                  : t('home.a11y_pin_item')
+              }
+              accessibilityState={{ selected: isPinned }}
+            >
+              <IconHomePin width={17} height={17} />
+            </TouchableOpacity>
+          ) : null}
         </TouchableOpacity>
       );
     };
@@ -2763,6 +3226,54 @@ const styles = StyleSheet.create({
   cycledHintText: {
     ...theme.typography.aliases.manropeCaption,
     color: theme.colors.figmaTextSecondary,
+  },
+  // AU-307 phase 04 — "Generating" status hint, mirrors cycledHint geometry
+  // so the user perceives it as part of the same status-pill family.
+  pinGeneratingHeader: {
+    marginHorizontal: SHEET_PADDING,
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: theme.colors.figmaCaptionPillBg,
+    alignSelf: 'center',
+  },
+  pinGeneratingHeaderText: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaTextPrimary,
+  },
+  // AU-307 phase 04 — inline error / fallback banner placement above the
+  // sticky Wear-this footer.
+  pinInlineBanner: {
+    marginHorizontal: SHEET_PADDING,
+    marginBottom: 8,
+  },
+  // AU-307 phase 05 — guest auth blocker. Inline pill with explanatory
+  // copy + a small filled CTA on the right. Tokenised; no literal hex.
+  pinGuestBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.m,
+    paddingVertical: theme.spacing.s,
+    backgroundColor: theme.colors.figmaCaptionPillBg,
+    borderRadius: 12,
+    gap: theme.spacing.s,
+  },
+  pinGuestText: {
+    ...theme.typography.aliases.interBodySm,
+    color: theme.colors.figmaTextPrimary,
+    flexShrink: 1,
+  },
+  pinGuestCta: {
+    paddingHorizontal: theme.spacing.m,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: 999,
+    backgroundColor: theme.colors.figmaAction,
+  },
+  pinGuestCtaText: {
+    ...theme.typography.aliases.interBodySm,
+    color: theme.colors.white,
   },
   // AU-318: save-success toast — floats above the view-toggle footer,
   // inverted surface (dark pill, light text) so it reads over any grid.

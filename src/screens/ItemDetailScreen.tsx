@@ -942,31 +942,33 @@ export const ItemDetailScreen = () => {
             </View>
 
             <View style={styles.buttonGroup}>
-              {/* Copy renamed "Mix with this" → "Build around this" (design
-                  update); same coming-soon behaviour until the pin+recommend
-                  wiring lands (qa-ui safe default #6). testID preserved so
+              {/* AU-307 phase 05 — "Build around this" navigates Home with
+                  `pinFromDetail` set to the item id. HomeScreen's mount
+                  effect dispatches CONFIRM_PIN_FROM_DETAIL (skips modal),
+                  then clears the param. SYSTEM common-essential items hide
+                  the CTA entirely (spec §9 IDOR / SYSTEM-item defense-in-
+                  depth; BE rejects 422 as backup). testID preserved so
                   existing Maestro flows keep resolving. */}
-              <PillButton
-                testID="item-detail-mix-btn"
-                variant="outline"
-                title={t('wardrobe.itemDetail.build_around_this')}
-                trailing={
-                  <Icons.Remix
-                    width={24}
-                    height={24}
-                    color={theme.colors.uacTextBase}
-                  />
-                }
-                style={styles.ctaPill}
-                textStyle={styles.ctaPillText}
-                onPress={() => {
-                  Alert.alert(
-                    t('wardrobe.itemDetail.coming_soon_title'),
-                    t('wardrobe.itemDetail.coming_soon_body'),
-                  );
-                }}
-                disabled={isPreparing}
-              />
+              {!isCommonSystemItem ? (
+                <PillButton
+                  testID="item-detail-mix-btn"
+                  variant="outline"
+                  title={t('wardrobe.itemDetail.build_around_this')}
+                  trailing={
+                    <Icons.Remix
+                      width={24}
+                      height={24}
+                      color={theme.colors.uacTextBase}
+                    />
+                  }
+                  style={styles.ctaPill}
+                  textStyle={styles.ctaPillText}
+                  onPress={() => {
+                    navigation.navigate('Home', { pinFromDetail: itemId });
+                  }}
+                  disabled={isPreparing}
+                />
+              ) : null}
 
               <View style={styles.bottomRow}>
                 <View style={styles.leftRow}>
