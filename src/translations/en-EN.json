@@ -459,7 +459,11 @@
       "update": "Update",
       "dialog_time_title": "Daily Time",
       "dialog_delete_title": "Delete Data",
-      "dialog_delete_body": "Auxi will revert to day one. This cannot be undone."
+      "dialog_delete_body": "Auxi will revert to day one. This cannot be undone.",
+      "language": "Language",
+      "a11y_change_language": "Change language",
+      "dialog_language_title": "Choose language",
+      "error_update_language": "Failed to change language"
     },
     "outfitCanvas": {
       "a11y_close_picker": "Close picker",

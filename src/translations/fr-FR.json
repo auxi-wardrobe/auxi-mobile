@@ -459,7 +459,11 @@
       "update": "Mettre à jour",
       "dialog_time_title": "Heure quotidienne",
       "dialog_delete_title": "Supprimer les données",
-      "dialog_delete_body": "Auxi reviendra au premier jour. Action irréversible."
+      "dialog_delete_body": "Auxi reviendra au premier jour. Action irréversible.",
+      "language": "Langue",
+      "a11y_change_language": "Changer la langue",
+      "dialog_language_title": "Choisir la langue",
+      "error_update_language": "Échec du changement de langue"
     },
     "outfitCanvas": {
       "a11y_close_picker": "Fermer le sélecteur",
