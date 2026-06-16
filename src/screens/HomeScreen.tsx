@@ -940,9 +940,7 @@ export const HomeScreen = () => {
     // round-trips the value.
     const activeSheet = listOutfitsRef.current[activeIndexRef.current];
     if (activeSheet) {
-      const snapshot = snapshotOutfit(
-        activeSheet as unknown as Outfit,
-      );
+      const snapshot = snapshotOutfit(activeSheet as unknown as Outfit);
       pinDispatch({ type: 'GENERATE_START', snapshot });
     }
 
@@ -1194,11 +1192,7 @@ export const HomeScreen = () => {
       }
     }
     return null;
-  }, [
-    listOutfits,
-    pinState.pendingPinnedItemId,
-    pinState.pinReplaceCandidate,
-  ]);
+  }, [listOutfits, pinState.pendingPinnedItemId, pinState.pinReplaceCandidate]);
   const pinDialogImageUrl = pinDialogItem
     ? resolveItemImage(pinDialogItem) ?? null
     : null;
@@ -1729,6 +1723,7 @@ export const HomeScreen = () => {
           accessibilityLabel={t('home.a11y_open_menu')}
           onPress={handleLeadingAction}
           icon={<IconHomeMenu width={24} height={24} />}
+          style={styles.headerIconButton}
         />
 
         <WeatherWidget tempC={weather.tempC} iconCode={weather.iconCode} />
@@ -1747,7 +1742,7 @@ export const HomeScreen = () => {
           }
           activeOpacity={0.82}
           style={[
-            styles.heartButton,
+            styles.headerIconButton,
             activeSaveState === 'saved' && styles.heartButtonSaved,
             activeSaveState === 'error' && styles.heartButtonError,
           ]}
@@ -2101,9 +2096,7 @@ export const HomeScreen = () => {
         onConfirm={() =>
           pinDispatch({
             type:
-              pinState.modal === 'replace'
-                ? 'CONFIRM_REPLACE'
-                : 'CONFIRM_PIN',
+              pinState.modal === 'replace' ? 'CONFIRM_REPLACE' : 'CONFIRM_PIN',
           })
         }
         onCancel={() => pinDispatch({ type: 'CANCEL_MODAL' })}
@@ -2393,9 +2386,7 @@ const OptionSheet = React.memo(
               style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
               accessibilityRole="button"
               accessibilityLabel={
-                isPinned
-                  ? t('pin.a11y_pinned_badge')
-                  : t('home.a11y_pin_item')
+                isPinned ? t('pin.a11y_pinned_badge') : t('home.a11y_pin_item')
               }
               accessibilityState={{ selected: isPinned }}
             >
@@ -2723,7 +2714,13 @@ const GarmentPreview = ({ item }: { item: Item }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.figmaBackground,
+    // Figma "Home for option 3/3" (2849:11960) frame background is white
+    // (#ffffff / background/neutral/subtlest), NOT the warm cream
+    // figmaBackground (#f2efec). The cream base made the header read as a
+    // dirty greige band against the white content sheet + white floating
+    // buttons; white unifies the status bar, header, content, and footer
+    // gutters into one clean surface per the design.
+    backgroundColor: theme.colors.figmaSurface,
   },
   header: {
     flexDirection: 'row',
@@ -2734,13 +2731,19 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 12,
   },
-  heartButton: {
+  // Floating header icon buttons (menu + favorite) — Figma 2849:11987:
+  // 44×44 white rounded card (border-radius/xl = 12) with a soft drop shadow.
+  // Shared by BOTH the menu (left) and the heart/favorite (right) so they read
+  // as a matched pair. White surface (background/neutral/subtlest) — NOT the
+  // cool-gray figmaIconSurface the shared TopIconButton defaults to.
+  headerIconButton: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: theme.borderRadius.figmaTile,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.white,
+    backgroundColor: theme.colors.figmaSurface,
+    ...theme.ds.shadow.floatingButton,
   },
   heartButtonSaved: {
     borderWidth: 1.5,
@@ -2886,7 +2889,12 @@ const styles = StyleSheet.create({
   },
   optionSheet: {
     height: OPTION_SHEET_HEIGHT,
-    borderRadius: 16,
+    // Figma "Home for option 3/3" (2849:11960): the outfit body is FLAT and
+    // continuous with the header — it is NOT a lifted card. Previously this
+    // sheet had borderRadius:16 + an upward drop-shadow (offset 0,-4 / blur 20)
+    // which, on the white screen, rendered as a rounded card with a grey halo
+    // detaching the body from the header. Both removed so the body reads as one
+    // seamless white surface per the design.
     backgroundColor: theme.colors.white,
     paddingTop: 12,
     paddingHorizontal: SHEET_PADDING,
@@ -2898,11 +2906,6 @@ const styles = StyleSheet.create({
     // there is no slack to dump → void eliminated by construction.
     justifyContent: 'flex-start',
     gap: 12,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 6,
   },
   gridWrap: {
     gap: GRID_GAP,
