@@ -24,6 +24,7 @@ import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { AppStackParamList } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
+import { track } from '../services/analytics';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -115,18 +116,40 @@ export const DatabaseScreen = () => {
     if (selectedItems.includes(itemId)) {
       setSelectedItems(prev => prev.filter(id => id !== itemId));
     } else {
+      track('wardrobe_search_result_selected', {
+        item_id: itemId,
+        source: 'database',
+      });
       setSelectedItems(prev => [...prev, itemId]);
     }
   };
 
   const handleAddItems = async () => {
-    // console.log('Add items', selectedItems);
+    // Note: `wardrobe_search_initiated` is NOT fired here — DatabaseScreen has
+    // no search-submit step today (grid-browse-and-pick UI). Event moved to
+    // tracking-plan §6 as gap; wire when a real search box ships.
     await wardrobeService.cloneCommonItems(selectedItems);
+    // Best-effort: emit a wardrobe_item_added per successfully cloned id. The
+    // service returns void so we use the user-selected ids (one event per id);
+    // category is omitted because the local list shape from getCommonItems
+    // doesn't carry a guaranteed category field on every result.
+    selectedItems.forEach(id => {
+      const matched = items.find(it => it.id === id);
+      const props: Record<string, unknown> = {
+        item_id: id,
+        source: 'database',
+        method: 'search_database',
+      };
+      if (matched?.category) {
+        props.category = matched.category;
+      }
+      track('wardrobe_item_added', props);
+    });
     navigation.navigate('Wardrobe');
   };
 
   const renderGridTile = (item: WardrobeItem) => {
-    const imageUrl = getImageUrl(item.image_url);
+    const imageUrl = getImageUrl(item.image_png ?? item.image_url);
 
     return (
       <TouchableOpacity

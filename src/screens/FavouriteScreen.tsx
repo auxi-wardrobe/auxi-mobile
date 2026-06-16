@@ -109,6 +109,7 @@ export const FavouriteScreen: React.FC = () => {
   );
 
   const handleSelfVisualization = (favourite: Favourite) => {
+    track('favourite_try_on_tapped', { favorite_id: favourite.id });
     // Build the serializable TryOnOutfitContext the "See this on me" flow needs
     // from the saved favourite: outfit hash, the garment ids + their image urls,
     // and the human-readable styling note.

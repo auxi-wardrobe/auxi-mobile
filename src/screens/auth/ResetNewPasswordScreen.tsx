@@ -45,6 +45,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 
 import { useResetPasswordMutation } from '../../hooks/auth/useAuthMutations';
+import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 import { theme } from '../../theme/theme';
 import { PasswordCriteriaChecklist } from '../../components/auth/PasswordCriteriaChecklist';
@@ -93,6 +94,7 @@ export const ResetNewPasswordScreen: React.FC = () => {
       { token, new_password: password },
       {
         onSuccess: () => {
+          track('password_reset_completed');
           navigation.navigate('Verified', { source: 'reset' });
         },
         onError: err => {

@@ -36,9 +36,15 @@ import {
   View,
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStepHeader } from './OnboardingStepHeader';
+import { track } from '../../services/analytics';
 import {
   OnboardingSelectionCard,
   OnboardingSelectionFigure,
@@ -70,11 +76,24 @@ export const OnboardingStylesScreen = () => {
   // ranked = ordered selection; index 0 has rank 1 (highest weight).
   const [ranked, setRanked] = useState<StyleTag[]>([]);
 
+  useFocusEffect(
+    useCallback(() => {
+      track('onboarding_step_viewed', {
+        step_name: 'styles',
+        step_index: 5,
+      });
+    }, []),
+  );
+
   const togglePick = useCallback((tag: StyleTag) => {
     setRanked(prev => {
       const idx = prev.indexOf(tag);
-      if (idx >= 0) return prev.filter(t => t !== tag);
+      if (idx >= 0) {
+        track('style_deselected', { style_name: tag });
+        return prev.filter(t => t !== tag);
+      }
       if (prev.length >= MAX_STYLE_PICKS) return prev;
+      track('style_selected', { style_name: tag });
       return [...prev, tag];
     });
   }, []);

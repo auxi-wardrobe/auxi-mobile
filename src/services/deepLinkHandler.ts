@@ -34,6 +34,7 @@ import { Linking } from 'react-native';
 import type { NavigationContainerRef } from '@react-navigation/native';
 
 import { verifyEmail as verifyEmailCall } from './auth';
+import { track } from './analytics';
 import type { AppStackParamList } from '../types/navigation';
 
 const SUPPORTED_HOSTS = new Set(['auxi.app']);
@@ -60,13 +61,18 @@ const SUPPORTED_SLUGS: ReadonlySet<DeepLinkKind> = new Set([
  * Returns `{ scheme, host, path, query }` or `null` if the input
  * doesn't match `<scheme>://<host>/<path>?<query>`.
  */
-const splitUrl = (raw: string): {
+const splitUrl = (
+  raw: string,
+): {
   scheme: string;
   host: string;
   path: string;
   query: string;
 } | null => {
-  const m = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]*)([^?#]*)(?:\?([^#]*))?(?:#.*)?$/i.exec(raw);
+  const m =
+    /^([a-z][a-z0-9+.-]*):\/\/([^/?#]*)([^?#]*)(?:\?([^#]*))?(?:#.*)?$/i.exec(
+      raw,
+    );
   if (!m) return null;
   return {
     scheme: m[1].toLowerCase(),
@@ -108,15 +114,17 @@ export const parseDeepLink = (
   if (!parts) return null;
 
   const isCustomScheme = parts.scheme === 'auxi';
-  const isUniversalLink = parts.scheme === 'https' && SUPPORTED_HOSTS.has(parts.host);
+  const isUniversalLink =
+    parts.scheme === 'https' && SUPPORTED_HOSTS.has(parts.host);
   if (!isCustomScheme && !isUniversalLink) return null;
 
   // Custom-scheme URLs may parse the slug as the host
   // (`auxi://verify-email`) or as the pathname (`auxi:///verify-email`).
   // Try the host first, fall back to the leading path segment.
-  let pathSlug = isCustomScheme && parts.host
-    ? parts.host
-    : parts.path.replace(/^\/+/, '').split('/')[0] ?? '';
+  let pathSlug =
+    isCustomScheme && parts.host
+      ? parts.host
+      : parts.path.replace(/^\/+/, '').split('/')[0] ?? '';
   pathSlug = pathSlug.toLowerCase();
 
   if (!SUPPORTED_SLUGS.has(pathSlug as DeepLinkKind)) return null;
@@ -174,6 +182,10 @@ export const dispatchDeepLink = async (
     });
     try {
       await verifyEmailCall({ token: link.token });
+      // Email-signup funnel terminus: the user clicked the magic link
+      // and the backend confirmed verification. Pair with
+      // `sign_up_started` / `sign_up_submitted` to measure activation.
+      track('sign_up_completed', { method: 'email' });
     } catch (err) {
       // Verified screen will read this error via mutation state in
       // a future batch; for foundation we surface it on console.
@@ -201,11 +213,11 @@ export const registerDeepLinkListeners = (
   // Cold-start: check the URL that opened the app, if any.
   Linking.getInitialURL()
     .then(handle)
-    .catch((err) => console.warn('[deepLinkHandler] getInitialURL failed', err));
+    .catch(err => console.warn('[deepLinkHandler] getInitialURL failed', err));
 
   // Warm-start: subscribe to subsequent links.
-  const sub = Linking.addEventListener('url', (event) => {
-    handle(event.url).catch((err) =>
+  const sub = Linking.addEventListener('url', event => {
+    handle(event.url).catch(err =>
       console.warn('[deepLinkHandler] warm-start dispatch failed', err),
     );
   });

@@ -13,6 +13,14 @@ import { registerSessionExpiredListener } from '../services/apiClient';
 import { identifyUser, resetAnalytics, track } from '../services/analytics';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
 
+/**
+ * The auth method that produced the current/upcoming session. Used as a
+ * tracking-only signal so the identity effect can tag `sign_in_completed`
+ * / `oauth_sign_in_completed` / `sign_up_completed` with the real path
+ * the user took. Not persisted; cleared after the event fires.
+ */
+export type AuthMethod = 'email' | 'google' | 'apple';
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -39,6 +47,21 @@ interface AuthContextType {
   completeOnboarding: (data?: Partial<User>) => Promise<void>;
   /** Explicit setter so screens can pre-seed without going through register. */
   setPendingVerifyEmail: (email: string | null) => void;
+  /**
+   * Flag the upcoming identity transition as an OAuth sign-in. The
+   * identity effect reads this on the next `user` change and emits
+   * `oauth_sign_in_completed` + a `method`-tagged `sign_in_completed`
+   * instead of the email-default. Cleared after firing.
+   */
+  markOAuthSignIn: (provider: 'google' | 'apple') => void;
+  /**
+   * Flag the upcoming identity transition as a fresh sign-in from a
+   * screen that drives the login mutation directly (e.g. SignInScreen,
+   * which uses `useLoginMutation` + `refreshUser` rather than
+   * AuthContext.login). The identity effect emits `sign_in_completed`
+   * with the supplied `method`. Cleared after firing.
+   */
+  markSignInCompletion: (method: AuthMethod) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -136,6 +159,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // AFTER identify() lands (correct attribution) and only for explicit
   // logins — not cold-start restores.
   const justLoggedInRef = useRef(false);
+  // Method that produced the upcoming identity transition. Defaults
+  // to 'email' (the password path) when login() runs; OAuth screens
+  // override via markOAuthSignIn(). Read once by the identity effect.
+  const pendingAuthMethodRef = useRef<AuthMethod>('email');
+
+  const markOAuthSignIn = useCallback((provider: 'google' | 'apple') => {
+    justLoggedInRef.current = true;
+    pendingAuthMethodRef.current = provider;
+  }, []);
+  const markSignInCompletion = useCallback((method: AuthMethod) => {
+    justLoggedInRef.current = true;
+    pendingAuthMethodRef.current = method;
+  }, []);
+
   // Analytics identity. identify() when a user is present (login,
   // cold-start restore, post-verify); reset() when they leave (logout /
   // session expiry). The ref guard means we only fire on real identity
@@ -185,7 +222,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       identifyUser(distinctId, profile, superProps);
       if (justLoggedInRef.current) {
         justLoggedInRef.current = false;
-        track('sign_in_completed', { method: 'email' });
+        const method = pendingAuthMethodRef.current;
+        // OAuth completion is its own event so the funnel can pair it
+        // with `oauth_sign_in_started`. The base `sign_in_completed`
+        // still fires (with the real method) so existing dashboards
+        // keep working.
+        if (method === 'google' || method === 'apple') {
+          track('oauth_sign_in_completed', { provider: method });
+        }
+        track('sign_in_completed', { method });
+        // Reset to default for the next transition (cold-start
+        // restores remain silent because justLoggedInRef stays false).
+        pendingAuthMethodRef.current = 'email';
       }
     } else if (analyticsIdRef.current !== null) {
       analyticsIdRef.current = null;
@@ -278,6 +326,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         checkAuth,
         completeOnboarding,
         setPendingVerifyEmail,
+        markOAuthSignIn,
+        markSignInCompletion,
       }}
     >
       {children}

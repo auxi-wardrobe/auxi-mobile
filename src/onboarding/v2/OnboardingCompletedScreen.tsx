@@ -11,9 +11,14 @@
  * `completeOnboarding()` — that is deferred to the Outro "See my outfit" tap.
  * All copy/tokens from `onboarding/config` + theme (cream bg = figmaCaptionPillBg).
  */
-import React from 'react';
+import React, { useCallback } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { SelectedChips } from './SelectedChips';
@@ -24,6 +29,7 @@ import {
   selectionChipLabels,
 } from '../config';
 import { AppStackParamList } from '../../types/navigation';
+import { track } from '../../services/analytics';
 
 type Navigation = NativeStackNavigationProp<
   AppStackParamList,
@@ -36,6 +42,15 @@ export const OnboardingCompletedScreen = () => {
   const route = useRoute<ScreenRoute>();
   const { selection } = route.params;
   const chips = selectionChipLabels(selection);
+
+  useFocusEffect(
+    useCallback(() => {
+      track('onboarding_step_viewed', {
+        step_name: 'completed',
+        step_index: 7,
+      });
+    }, []),
+  );
 
   return (
     <SafeAreaView style={styles.container} testID="onboarding-completed-screen">

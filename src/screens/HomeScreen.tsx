@@ -65,7 +65,7 @@ import {
 } from '../services/v05Api';
 import { favouriteService } from '../services/favouriteService';
 import { wardrobeService } from '../services/wardrobeService';
-import { track } from '../services/analytics';
+import { track, trackRecommendationViewedOnce } from '../services/analytics';
 import { resolveItemImage } from '../utils/url';
 import { weatherService } from '../services/weatherService';
 import { WeatherWidget } from '../components/features/WeatherWidget';
@@ -594,6 +594,10 @@ export const HomeScreen = () => {
   // for the session — cleared only when the user re-submits the modal
   // with a different chip / text. Same lifecycle as pinnedItemIdRef.
   const styleFeedbackRef = useRef<string | null>(null);
+  // Analytics: `outfit_recommendation_viewed.source`. Flipped to 'refine' when
+  // a refine submit repopulates the deck; the next settle fires with 'refine'
+  // and the ref then flips back to 'feed' so subsequent advances are 'feed'.
+  const recommendationSourceRef = useRef<'feed' | 'refine'>('feed');
 
   // #1 fix (2026-05-13): weather widget replaces "Auxi" header text per Figma spec.
   const [weather, setWeather] = useState<{ tempC: number; iconCode: string }>({
@@ -616,6 +620,37 @@ export const HomeScreen = () => {
   useEffect(() => {
     activeIndexRef.current = activeIndex;
   }, [activeIndex]);
+
+  // Analytics §3.3 #22 — outfit_recommendation_viewed (★).
+  // Fires when the active outfit hash changes AND the refine modal is closed.
+  // The dedup Set in `trackRecommendationViewedOnce` collapses prefetch over-count
+  // and re-mounts of the same outfit (per-session). `position` is 1-based.
+  useEffect(() => {
+    if (isContextModalOpen) {
+      return;
+    }
+    const total = listOutfitsRef.current.length;
+    if (total === 0) {
+      return;
+    }
+    const clamped =
+      activeIndex >= total ? total - 1 : activeIndex < 0 ? 0 : activeIndex;
+    const settled = listOutfitsRef.current[clamped];
+    const hash = settled?.outfitHash;
+    if (!hash) {
+      return;
+    }
+    const source = recommendationSourceRef.current;
+    // First settle after a refine submit is reported as 'refine'; subsequent
+    // advances flip back to 'feed' (default).
+    if (source === 'refine') {
+      recommendationSourceRef.current = 'feed';
+    }
+    trackRecommendationViewedOnce(hash, {
+      position: clamped + 1,
+      source,
+    });
+  }, [activeIndex, listOutfits, isContextModalOpen]);
 
   // Retire superseded coach-mark keys on mount so existing users see the
   // corrected single left/right deck overlay once: the old single-overlay
@@ -1409,6 +1444,13 @@ export const HomeScreen = () => {
       }
       console.info('home.mode.change', { from: current, to: next });
       // TODO(analytics): replace console.info with the real telemetry hook.
+      // Analytics §3.3 #26 — context_chip_changed. Mode is the live home-level
+      // contextual chip outside the refine modal (currently parked UI, kept
+      // wired so the event fires when the mode-selector is re-enabled).
+      track('context_chip_changed', {
+        chip_type: 'mode',
+        value: next,
+      });
       // V05 try_another (260525): `mode` is a no-op on `/try_another` in the
       // MVP engine, so a mode change can only take effect on a fresh
       // `/build`. Reset the session here (lazy) — the next prefetch / "Show
@@ -1456,6 +1498,15 @@ export const HomeScreen = () => {
   // advance to the next card.
   const handleLike = useCallback(
     (outfit: OutfitSheetWithGrid) => {
+      // Analytics §3.3 #23 — outfit_swiped. Right-swipe always advances forward;
+      // the deck has no "previous" direction, so `direction` is always 'next'.
+      if (outfit?.outfitHash) {
+        track('outfit_swiped', {
+          outfit_hash: outfit.outfitHash,
+          direction: 'next',
+          method: 'gesture',
+        });
+      }
       handleHeartTapForOutfit(outfit);
       advanceDeck();
     },
@@ -1475,6 +1526,16 @@ export const HomeScreen = () => {
       const wasFavorited = fromState === 'saved' || fromState === 'saving';
       console.info('home.swipe.miss', { from: activeIndexRef.current });
       // TODO(analytics): replace console.info with the real telemetry hook.
+      // Analytics §3.3 #23 — outfit_swiped. Left-swipe advances forward too
+      // (the deck is forward-only); `direction: 'next'` matches the deck's
+      // semantics (no "previous" card to return to).
+      if (fromHash) {
+        track('outfit_swiped', {
+          outfit_hash: fromHash,
+          direction: 'next',
+          method: 'gesture',
+        });
+      }
       if (!wasFavorited) {
         const nextCount = unfavoritedSwipeCountRef.current + 1;
         if (nextCount >= UNFAVORITED_SWIPE_THRESHOLD) {
@@ -1554,11 +1615,18 @@ export const HomeScreen = () => {
     // re-open after another N swipes regardless of submit.
     unfavoritedSwipeCountRef.current = 0;
 
+    // Privacy: custom text is free-form and can contain PII (names, emails,
+    // addresses). Only send `value` for the chip-id path; custom-mode is
+    // segmented by `mode: 'custom'` alone.
     track('refine_submitted', {
       mode: chipLabel ? 'chip' : 'custom',
-      // Truncate custom text so PII / long input doesn't bloat events.
-      value: payload.slice(0, 100),
+      ...(chipLabel ? { value: payload } : {}),
     });
+
+    // Analytics §3.3 #22 — the next deck settle after a refine submit reports
+    // `source: 'refine'`. Flag is consumed once by the settle effect, then
+    // resets to 'feed' for subsequent advances.
+    recommendationSourceRef.current = 'refine';
 
     closeContextModal();
 
@@ -1624,6 +1692,20 @@ export const HomeScreen = () => {
   // with a "not found" toast (extraction note Q7).
   const handleOpenItemDetail = useCallback(
     (item: Item) => {
+      // Analytics §3.3 #24 — outfit_card_tapped. Item tile within the active
+      // outfit card is the only tap-to-detail surface; position is the tile's
+      // index within the active sheet (1-based).
+      const activeSheet = listOutfitsRef.current[activeIndexRef.current];
+      const activeHash = activeSheet?.outfitHash;
+      if (activeHash) {
+        const pos = (activeSheet?.items ?? []).findIndex(
+          candidate => candidate?.id === item.id,
+        );
+        track('outfit_card_tapped', {
+          outfit_hash: activeHash,
+          ...(pos >= 0 ? { position: pos + 1 } : {}),
+        });
+      }
       navigation.navigate('ItemDetail', {
         itemId: item.id,
         fallbackItem: {

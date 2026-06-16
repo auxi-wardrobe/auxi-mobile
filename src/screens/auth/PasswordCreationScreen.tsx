@@ -48,6 +48,7 @@ import Svg, { Path } from 'react-native-svg';
 import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useRegisterMutation } from '../../hooks/auth/useAuthMutations';
+import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 import { PasswordCriteriaChecklist } from '../../components/auth/PasswordCriteriaChecklist';
 import { validatePassword } from '../../utils/password-rules';
@@ -143,6 +144,7 @@ export const PasswordCreationScreen = () => {
 
   const handleSubmit = useCallback(() => {
     if (!allMet || register.isPending) return;
+    track('sign_up_submitted', { method: 'email' });
     register.mutate(
       { email, password },
       {
@@ -154,6 +156,10 @@ export const PasswordCreationScreen = () => {
           navigation.navigate('VerifyEmail', { email });
         },
         onError: err => {
+          track('sign_up_failed', {
+            method: 'email',
+            error_reason: (err.code || 'unknown').toLowerCase(),
+          });
           switch (err.code) {
             case 'EMAIL_ALREADY_EXISTS':
               navigation.navigate('SignIn', { email });

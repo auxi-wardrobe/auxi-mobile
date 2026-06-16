@@ -12,7 +12,7 @@
  *
  * Tile artwork not yet supplied → `figmaCardSurface` placeholder (plan risk note).
  */
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -20,7 +20,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStepHeader } from './OnboardingStepHeader';
 import {
@@ -32,6 +37,7 @@ import { theme } from '../../theme/theme';
 import type { FitPreference } from '../../services/v05Api';
 import { FIT_OPTIONS, STEP_COPY, fitTileArt } from '../config';
 import { AppStackParamList } from '../../types/navigation';
+import { track } from '../../services/analytics';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'OnboardingFit'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'OnboardingFit'>;
@@ -44,6 +50,20 @@ export const OnboardingFitScreen = () => {
   // is what threads downstream (D2).
   const [selected, setSelected] = useState<FitPreference | null>(null);
   const copy = STEP_COPY.step2;
+
+  useFocusEffect(
+    useCallback(() => {
+      track('onboarding_step_viewed', {
+        step_name: 'fit_preference',
+        step_index: 4,
+      });
+    }, []),
+  );
+
+  const handleSelect = (fit: FitPreference) => {
+    setSelected(fit);
+    track('fit_preference_selected', { fit });
+  };
 
   const handleContinue = () => {
     if (!selected) return;
@@ -74,7 +94,7 @@ export const OnboardingFitScreen = () => {
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
         activeOpacity={0.85}
-        onPress={() => setSelected(option.wireValue)}
+        onPress={() => handleSelect(option.wireValue)}
         style={solo ? styles.tileSolo : styles.tileFlex}
       >
         <OnboardingSelectionCard

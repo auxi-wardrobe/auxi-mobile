@@ -58,6 +58,7 @@ import { useAuth } from '../../context/AuthContext';
 import { googleSignInRequest } from '../../services/oauth/googleSignIn';
 import { isOAuthCancelled } from '../../services/oauth/oauthErrors';
 import { isOAuthConfigured } from '../../services/oauth/oauthConfig';
+import { track } from '../../services/analytics';
 import {
   isOAuthConflictError,
   type AuthErrorEnvelope,
@@ -73,7 +74,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
   const { t } = useTranslation();
   const { email } = route.params;
 
-  const { refreshUser } = useAuth();
+  const { refreshUser, markOAuthSignIn } = useAuth();
   const googleMutation = useGoogleSignInMutation();
   // Single busy flag spans the WHOLE flow (SDK sheet → backend → refreshUser),
   // not just the mutation — mirrors the Welcome screen so there's no
@@ -112,6 +113,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
 
   const onContinuePress = async () => {
     if (submitting) return;
+    track('oauth_sign_in_started', { provider: 'google' });
     if (!isOAuthConfigured()) {
       // Build hasn't received the OAuth client IDs / plist yet — surface a
       // toast instead of crashing at the native SDK boundary.
@@ -127,6 +129,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
       await googleMutation.mutateAsync({ id_token: idToken });
       // Tokens persisted by `signInWithGoogle`; pull the user so AuthContext
       // flips AppNavigator over to the AppStack.
+      markOAuthSignIn('google');
       await refreshUser();
     } catch (err) {
       if (isOAuthCancelled(err)) return;

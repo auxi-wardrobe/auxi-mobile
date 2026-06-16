@@ -40,6 +40,7 @@ import {
   grantAnalyticsConsent,
   hasAnalyticsConsent,
   revokeAnalyticsConsent,
+  track,
 } from '../services/analytics';
 import { setLanguage as setI18nLanguage } from '../i18n/init';
 import type { Language } from '../translations';
@@ -373,6 +374,7 @@ export const SettingsScreen = () => {
     setIsSavingLanguage(true);
     try {
       await setI18nLanguage(pendingLanguage);
+      track('settings_language_changed', { locale: pendingLanguage });
       setActiveModal('none');
     } catch {
       showSettingsError(
@@ -386,6 +388,8 @@ export const SettingsScreen = () => {
 
   const handleReminderToggle = (enabled: boolean) => {
     const previousValue = settings.dailyNotification.enabled;
+
+    track('notifications_toggle_changed', { enabled });
 
     setSettings(current => ({
       ...current,
@@ -424,14 +428,25 @@ export const SettingsScreen = () => {
   const handleAnalyticsConsentToggle = (enabled: boolean) => {
     const previousValue = analyticsConsent;
     setAnalyticsConsent(enabled);
+    // Order matters: pre-consent track() is a no-op. Fire BEFORE revoke (event
+    // lands while consent still active), AFTER grant (event lands with consent).
+    if (!enabled) {
+      track('analytics_consent_changed', { granted: false });
+    }
     const persist = enabled ? grantAnalyticsConsent : revokeAnalyticsConsent;
-    persist().catch(() => {
-      setAnalyticsConsent(previousValue);
-      showSettingsError(
-        t('settings.toast_title'),
-        t('settings.error_update_analytics'),
-      );
-    });
+    persist()
+      .then(() => {
+        if (enabled) {
+          track('analytics_consent_changed', { granted: true });
+        }
+      })
+      .catch(() => {
+        setAnalyticsConsent(previousValue);
+        showSettingsError(
+          t('settings.toast_title'),
+          t('settings.error_update_analytics'),
+        );
+      });
   };
 
   const applyDirection = async () => {
@@ -445,6 +460,9 @@ export const SettingsScreen = () => {
         },
         t('settings.error_update_direction'),
       );
+      track('style_direction_changed', {
+        direction: pendingDisplayDirection,
+      });
       setActiveModal('none');
     } catch {
       // persistUserMetadata already surfaced the error toast (and handled 401);

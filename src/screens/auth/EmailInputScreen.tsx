@@ -59,6 +59,7 @@ import Svg, { Path } from 'react-native-svg';
 import { theme } from '../../theme/theme';
 import { useEmailPrecheckMutation } from '../../hooks/auth/useAuthMutations';
 import { isGoogleEmail } from '../../utils/email-provider';
+import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'EmailInput'>;
@@ -148,7 +149,9 @@ export const EmailInputScreen = () => {
             navigation.navigate('EmailGoogleNotice', { email: trimmed });
             return;
           }
-          // AU-314: 'none' → the email is NOT registered.
+          // AU-314: 'none' → the email is NOT registered. In signup
+          // mode this is the moment the user commits to creating a
+          // brand-new account → emit `sign_up_started`.
           if (result.provider === 'none') {
             if (mode === 'signin') {
               // The user expected to log in but there's no account. Inform via
@@ -165,6 +168,7 @@ export const EmailInputScreen = () => {
               return;
             }
             // Signup happy path: brand-new email → create a password.
+            track('sign_up_started', { method: 'email' });
             navigation.navigate('PasswordCreation', { email: trimmed });
             return;
           }

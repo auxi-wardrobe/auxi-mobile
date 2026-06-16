@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Alert,
   Linking,
@@ -7,7 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import {
@@ -17,6 +17,7 @@ import {
 import { theme } from '../theme/theme';
 import { requestLocationPermission } from '../utils/location';
 import { AppStackParamList } from '../types/navigation';
+import { track } from '../services/analytics';
 
 type Navigation = NativeStackNavigationProp<
   AppStackParamList,
@@ -34,13 +35,25 @@ export const LocationPermissionScreen = () => {
   // spec contract requiring an explicit direction pick. AU-249.
   const goToOnboarding = () => navigation.navigate('OnboardingWardrobe');
 
+  useFocusEffect(
+    useCallback(() => {
+      track('onboarding_step_viewed', {
+        step_name: 'location_permission',
+        step_index: 2,
+      });
+    }, []),
+  );
+
   const handleEnableLocation = async () => {
     setLoading(true);
+    track('location_permission_requested');
     try {
       const hasPermission = await requestLocationPermission();
       if (hasPermission) {
+        track('location_permission_granted');
         goToOnboarding();
       } else {
+        track('location_permission_denied', { permission_status: 'denied' });
         Alert.alert(
           t('locationPermission.denied_title'),
           t('locationPermission.denied_body'),

@@ -28,6 +28,7 @@ import {
   getCurrentLanguage,
   setLanguage as setI18nLanguage,
 } from '../../i18n/init';
+import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 import type { Language } from '../../translations';
 import { theme } from '../../theme/theme';
@@ -40,7 +41,9 @@ type Navigation = NativeStackNavigationProp<
 interface LanguageOption {
   code: Language;
   flag: string;
-  labelKey: 'uac.language_settings.english' | 'uac.language_settings.vietnamese';
+  labelKey:
+    | 'uac.language_settings.english'
+    | 'uac.language_settings.vietnamese';
   testID: string;
 }
 
@@ -68,28 +71,30 @@ export const LanguageSettingsScreen: React.FC = () => {
   // i18n's `languageChanged` event also fires and re-renders consumers,
   // but local state guarantees the radio updates even before the event
   // round-trips.
-  const [selected, setSelected] = useState<Language>(() =>
-    (i18n.language as Language) || getCurrentLanguage(),
+  const [selected, setSelected] = useState<Language>(
+    () => (i18n.language as Language) || getCurrentLanguage(),
   );
 
   const handleSelect = (code: Language) => {
     if (code === selected) return; // idempotent — already selected
     setSelected(code);
+    // Auth-tier locale switch — the screen lives in the auth stack so
+    // every selection here is by definition pre-auth. Locale value is
+    // already in the lowercase-hyphen shape Mixpanel expects
+    // (`en-EN`, `vi-VN`); pass through verbatim.
+    track('auth_language_changed', { locale: code });
     // Fire-and-forget: `setLanguage` resolves asynchronously, but the
     // i18next event loop notifies subscribed consumers as soon as the
     // internal `changeLanguage` resolves. AsyncStorage persistence
     // happens in init.ts's `languageChanged` handler.
-    setI18nLanguage(code).catch((err) => {
+    setI18nLanguage(code).catch(err => {
       // Best-effort — keep the radio in sync even if persistence
       // fails; init.ts already logs the underlying error.
       console.warn('[LanguageSettings] setLanguage failed', err);
     });
   };
 
-  const title = useMemo(
-    () => t('uac.language_settings.title') as string,
-    [t],
-  );
+  const title = useMemo(() => t('uac.language_settings.title') as string, [t]);
 
   return (
     <View style={styles.screen}>
@@ -113,7 +118,7 @@ export const LanguageSettingsScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
-        {OPTIONS.map((opt) => {
+        {OPTIONS.map(opt => {
           const isSelected = opt.code === selected;
           return (
             <View key={opt.code}>

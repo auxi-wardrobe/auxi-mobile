@@ -199,14 +199,28 @@ export const WardrobeScreen = () => {
         setUploadingPhotoUri(asset.uri ?? null);
         setUploading(true);
         track('add_item_upload_started', { source: type });
+        if (type === 'camera') {
+          track('wardrobe_photo_captured', { source: 'add_item' });
+        }
 
-        await wardrobeService.uploadWardrobeItem(
+        const createdItem = await wardrobeService.uploadWardrobeItem(
           asset,
           user!,
           resolveFilterQuery(selectedTab),
         );
 
         track('add_item_upload_succeeded', { source: type });
+        const addedProps: Record<string, unknown> = {
+          source: type,
+          method: 'take_photo',
+        };
+        if (createdItem?.id) {
+          addedProps.item_id = createdItem.id;
+        }
+        if (createdItem?.category) {
+          addedProps.category = createdItem.category;
+        }
+        track('wardrobe_item_added', addedProps);
         Toast.show({
           type: 'success',
           text1: t('wardrobe.list.added_title'),
