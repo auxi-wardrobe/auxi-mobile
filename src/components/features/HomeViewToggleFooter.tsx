@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { BlurView } from '@react-native-community/blur';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import IconGrid from '../../assets/images/icon_grid.svg';
@@ -15,10 +16,14 @@ import IconGridAlt from '../../assets/images/icon_grid_alt.svg';
 // exists. Tab 2 is rendered faithfully but is a no-op until the alternate
 // view ships. Confirm target view with CEO/tech-lead before wiring.
 //
-// NOTE(Q5): Figma uses backdrop blur (8px, canonical note 3227:26929).
-// `@react-native-community/blur` is NOT installed (CEO chose no native dep),
-// so we approximate with the shared #fff @ 90% surface token
-// (figmaItemDetailHeaderBg) per the extraction artifact's documented fallback.
+// Backdrop blur (Figma footer slab 3227:13480 = 430×100 oversized, backdrop
+// 7.5px on background/neutral/subtlest @ 80%). Implemented via
+// `@react-native-community/blur`'s native UIVisualEffectView on iOS /
+// RenderEffect on Android. `blurAmount` is integer in the lib, so we round
+// 7.5 → 8 (visually indistinguishable). The white@80% tint is layered as
+// a sibling fill (BlurView itself has transparent bg). `reducedTransparency`
+// fallback uses the existing opacity-only token so accessibility users still
+// see a legible bar.
 
 // Fixed bar height (Figma footer 2464:17348 = 414×84). Exported so the
 // HomeScreen snap-paging math can reserve this space when computing sheet
@@ -46,6 +51,13 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
       {/* Decorative layers MUST NOT capture touches — without pointerEvents
           "none" the absolute-fill surface intercepts taps before they reach
           the tab TouchableOpacity, making the toggle a silent no-op. */}
+      <BlurView
+        style={styles.blurSlab}
+        blurType="light"
+        blurAmount={8}
+        reducedTransparencyFallbackColor={theme.colors.figmaItemDetailHeaderBg}
+        pointerEvents="none"
+      />
       <View style={styles.translucentSurface} pointerEvents="none" />
       {/* Static cream capsule (Figma 2464:17314) sits behind BOTH tabs —
           158w × 56h, radius 14. It does NOT slide; only the white inner cell
@@ -102,11 +114,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
   },
+  // Oversized backdrop-blur slab (Figma 3227:13480: 430×100, centred). Bar
+  // wrapper clips overflow:hidden so the extra width/height keeps the blur
+  // sharp at the bar edges without bleeding outside.
+  blurSlab: {
+    position: 'absolute',
+    width: 430,
+    height: 100,
+    top: -8,
+    left: '50%',
+    marginLeft: -215,
+  },
+  // White@80% tint over the blur (Figma slab fill = #ffffff at opacity 0.80).
   translucentSurface: {
     ...StyleSheet.absoluteFillObject,
-    // Figma footer bg: background/neutral/subtlest @ 90% (canonical note
-    // 3227:26929). Opacity-only fallback — no blur dependency in the app.
-    backgroundColor: theme.colors.figmaItemDetailHeaderBg,
+    backgroundColor: theme.colors.figmaBlurTintWhite80,
   },
   tabCluster: {
     flexDirection: 'row',

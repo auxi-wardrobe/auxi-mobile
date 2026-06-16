@@ -21,10 +21,10 @@
  * deferred-completion contract is unchanged — `completeOnboarding()` still
  * runs only at the Outro CTA, never here.
  *
- * Sticky bar: Figma uses backdrop-blur 2 over a translucent white surface; no
- * BlurView dependency is present, so we use the low-fi solid translucent
- * fallback (`figmaOnboardingStickyBarBg` = rgba(255,255,255,0.6)) — flag for
- * qa-ui Pass 2/3.
+ * Sticky bar: real backdrop blur via `@react-native-community/blur` (BlurView
+ * + white@80% tint = `figmaBlurTintWhite80`). Matches Figma slab spec
+ * (3227:13480) and the home footer treatment. `reducedTransparency` fallback
+ * uses the legacy opacity-only token so a11y users still see a legible bar.
  */
 import React, { useCallback, useState } from 'react';
 import {
@@ -35,6 +35,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { BlurView } from '@react-native-community/blur';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStepHeader } from './OnboardingStepHeader';
@@ -162,6 +163,16 @@ export const OnboardingStylesScreen = () => {
         </ScrollView>
       </View>
       <View style={styles.stickyBar}>
+        <BlurView
+          style={styles.stickyBlur}
+          blurType="light"
+          blurAmount={8}
+          reducedTransparencyFallbackColor={
+            theme.colors.figmaOnboardingStickyBarBg
+          }
+          pointerEvents="none"
+        />
+        <View style={styles.stickyTint} pointerEvents="none" />
         <PillButton
           title={`(${ranked.length}/${MAX_STYLE_PICKS}) Next`}
           variant="outline"
@@ -204,7 +215,9 @@ const styles = StyleSheet.create({
   gridRow: { flexDirection: 'row', gap: theme.spacing.xs },
   tileFlex: { flex: 1 },
   tileSolo: { width: '50%' },
-  // Sticky translucent bar anchored to the bottom (backdrop-blur fallback).
+  // Sticky bar anchored to the bottom — BlurView + white@80% tint inside.
+  // No backgroundColor on the wrapper itself; the blur slab + tint fill the
+  // space so the actual content behind the bar blurs through.
   stickyBar: {
     position: 'absolute',
     left: 0,
@@ -213,7 +226,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.m,
     paddingTop: theme.spacing.l,
     paddingBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.figmaOnboardingStickyBarBg,
+    overflow: 'hidden',
+  },
+  stickyBlur: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  stickyTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: theme.colors.figmaBlurTintWhite80,
   },
   stickyCta: {
     alignSelf: 'center',

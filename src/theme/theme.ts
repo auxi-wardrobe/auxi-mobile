@@ -104,7 +104,12 @@ export const theme = {
     // AU-312 item-detail pushed screen (Figma node 2852:14557). Source:
     // plans/260611-1424-linear-autopilot-eval/figma-extraction-item-detail.md
     figmaOverlayDark10: 'rgba(130, 113, 55, 0.1)', // background/overlay/dark/10 (#8271371a) — back-button drop-shadow tint
-    figmaItemDetailHeaderBg: 'rgba(255, 255, 255, 0.9)', // header bar: background/neutral/subtlest @90%; approximates Figma backdrop-blur 7.5 without a blur dependency (qa-ui safe default #5)
+    figmaItemDetailHeaderBg: 'rgba(255, 255, 255, 0.9)', // header bar: background/neutral/subtlest @90% — used as reducedTransparency fallback for accessibility users; layered over BlurView when transparency is on
+    // Backdrop-blur tint over @react-native-community/blur (Figma slab fill =
+    // background/neutral/subtlest @ 80%, node 3227:13480). Paired with
+    // BlurView blurType="light" blurAmount=8 to render the real Gaussian
+    // backdrop the CEO flagged. Used by HomeViewToggleFooter + OnboardingStyles.
+    figmaBlurTintWhite80: 'rgba(255, 255, 255, 0.8)',
   },
   spacing: {
     xs: 4,
