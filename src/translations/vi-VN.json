@@ -393,6 +393,24 @@
       "your_piece_badge": "Món của bạn",
       "a11y_your_piece": "Món của bạn — một món vừa được thêm"
     },
+    "pin": {
+      "modal_title": "Giữ món đồ này",
+      "replace_title": "Thay món đã ghim?",
+      "modal_subtitle": "Mình sẽ giữ món này và phối lại phần còn lại.",
+      "generating_header": "Đang phối",
+      "skeleton_loading": "Đang tải bộ đồ",
+      "build_cta": "Phối quanh món này",
+      "cancel_cta": "Hủy",
+      "unpinned_toast": "Đã bỏ ghim",
+      "fallback_message": "Chưa khớp hoàn hảo, đây là phương án gần nhất.",
+      "error_message": "Không phối được outfit. Thử lại nhé.",
+      "network_error": "Mất kết nối. Kiểm tra mạng và thử lại.",
+      "item_unavailable": "Món này không còn nữa.",
+      "tooltip_unpin": "Chạm để bỏ ghim",
+      "guest_blocker": "Đăng nhập để ghim món và phối quanh chúng.",
+      "guest_signin_cta": "Đăng nhập",
+      "a11y_pinned_badge": "Đã ghim, chạm đúp để bỏ ghim"
+    },
     "body": {
       "toast_load_failed_title": "Cơ thể của tôi",
       "toast_load_failed_body": "Không thể tải ảnh cơ thể của bạn. Vui lòng thử lại.",
