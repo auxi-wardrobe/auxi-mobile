@@ -119,7 +119,7 @@ export const FavouriteScreen: React.FC = () => {
         outfitHash: favourite.outfit_context?.outfit_hash ?? favourite.id,
         itemIds: items.map(item => item.id),
         itemImageUrls: items
-          .map(item => item.image_url)
+          .map(item => item.image_png ?? item.image_url)
           .filter((url): url is string => !!url),
         stylingNote: favourite.outfit_context?.reasoning_human ?? '',
       },

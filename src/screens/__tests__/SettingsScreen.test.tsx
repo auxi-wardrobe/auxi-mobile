@@ -33,7 +33,10 @@ const mockedToastShow = (Toast as unknown as { show: jest.Mock }).show;
 // failed updateCurrentUser is swallowed by the handler's `.catch`.
 type RejectionEmitter = {
   on(event: 'unhandledRejection', listener: (...args: unknown[]) => void): void;
-  off(event: 'unhandledRejection', listener: (...args: unknown[]) => void): void;
+  off(
+    event: 'unhandledRejection',
+    listener: (...args: unknown[]) => void,
+  ): void;
 };
 const proc = (globalThis as unknown as { process: RejectionEmitter }).process;
 
@@ -206,18 +209,16 @@ describe('resolveSettings', () => {
 // =============================================================================
 describe('applyChangeTime', () => {
   it('success: server values sync + dialog closes', async () => {
-    const updateCurrentUser = jest
-      .fn()
-      .mockResolvedValue(
-        makeUser({
-          daily_notification: {
-            enabled: true,
-            time: '06:15',
-            period: 'PM',
-            frequency: 'everydays',
-          },
-        }),
-      );
+    const updateCurrentUser = jest.fn().mockResolvedValue(
+      makeUser({
+        daily_notification: {
+          enabled: true,
+          time: '06:15',
+          period: 'PM',
+          frequency: 'everydays',
+        },
+      }),
+    );
     mockedUseAuth.mockReturnValue(buildAuth({ updateCurrentUser }));
 
     const r = await renderScreen();
