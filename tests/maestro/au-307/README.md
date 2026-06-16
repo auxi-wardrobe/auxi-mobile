@@ -60,10 +60,11 @@ Every assertion targets a stable `testID`. No text matching, no coords.
 |---|---|---|
 | `home-swipe-deck` | `HomeScreen.tsx:1810` | A, B, C |
 | `home-pin-generating-header` | `HomeScreen.tsx:1771` | A, B, C |
-| `home-tile-pin-.*-0` (regex) | `HomeScreen.tsx:2300-2304` (unpinned suffix) | A, C |
-| `home-tile-pin-.*-1` (regex) | same — flatTileIndex 1, unpinned | B |
-| `home-tile-pin-.*-set` (regex) | same — pinned-state suffix | A, B |
-| `home-tile-skeleton-.*` (regex) | `HomeScreen.tsx:2259` | A, B |
+| `home-tile-pin-outfit-0-slot-0` | `HomeScreen.tsx:~2399` (unpinned, active card slot 0) | A, C |
+| `home-tile-pin-outfit-0-slot-1` | same — active card slot 1, unpinned | B |
+| `home-tile-pin-outfit-0-slot-0-set` | `HomeScreen.tsx:~2398` (pinned-state suffix, slot 0) | A, B (precondition) |
+| `home-tile-pin-outfit-0-slot-[01]-set` (regex) | same — accepts either slot for post-replace assert | B |
+| `home-tile-skeleton-outfit-0-slot-0` | `HomeScreen.tsx:~2352` | A, B |
 | `pin-confirm-modal-root` | `PinConfirmModal.tsx:120` | A, B, C |
 | `pin-confirm-modal-title` | `PinConfirmModal.tsx:143` | A, B |
 | `pin-confirm-modal-image` | `PinConfirmModal.tsx:129` | A, B |
@@ -82,16 +83,22 @@ flows when the BE/UX surfaces are reachable deterministically):
 - `pin-guest-banner` / `pin-guest-signin-cta` — guest auth wall, requires signed-out state
 - `item-detail-mix-btn` — ItemDetail → Home auto-pin flow (worth a separate `au-307-item-detail-build-around.yaml` once the basic 3 are green)
 
-## Why regex testIDs (`home-tile-pin-.*-0`)
+## Slot-indexed testIDs (post-BUG-3 fix)
 
-Per-tile testIDs are keyed by the dynamic `outfit.outfitHash`, so a literal
-match isn't possible without coupling the flow to a specific outfit. Regex
-+ `index: 0` is the established convention (see `maestro/flows/wardrobe/
-item-detail-open.yaml` and `_shared/open-first-wardrobe-item.yaml`).
+Per-tile testIDs are now slot-indexed by deck position rather than
+outfit hash: `home-tile-pin-outfit-<deckPos>-slot-<slotIdx>`. Deck
+position is `0` for the active (front) card and `1` for the peek
+card behind it. Slot index is the flat tile index within one outfit
+(0..N).
 
-The stable selector that would let us drop the regex is a `data-testid`
-keyed by slot rather than hash — e.g. `home-tile-pin-slot-0`. Flagged below
-as a testID gap.
+Why: the previous `home-tile-pin-<outfitHash>-<slotIdx>` testID + the
+`home-tile-pin-.*-N` regex selector + `index: 0` qualifier proved
+collision-prone — qa-mobile pass 2 reported a tap landing on the
+view-toggle band because the regex matched an offscreen tile from a
+peek card. Exact slot-indexed ids let Maestro drop the regex and
+hit the right element every time. Deck-position keying also
+survives outfit-hash churn from generation, which the hash-keyed
+testID didn't.
 
 ## Open questions / gaps to coordinate
 
@@ -116,27 +123,23 @@ Until decided, `error-retry.yaml` will FAIL on
 `extendedWaitUntil visible: pin-generation-error` against a healthy BE.
 That's intentional — loud failure beats silent skip.
 
-### 2. testID stabilisation (proposed for mobile-dev)
+### 2. testID stabilisation (RESOLVED — AU-307 BUG-3 followup)
 
-Same pattern as `wardrobe/item-detail-open.yaml` README note. Proposed
-additions to `HomeScreen.tsx`:
-
-- `home-tile-pin-slot-0`, `home-tile-pin-slot-1` (slot-indexed, hash-free
-  alias) on each pin badge. Today's hash-keyed testID stays for
-  outfit-identity assertions; the slot alias gives Maestro a crisp anchor.
-- Equivalent slot alias on `home-tile-skeleton-slot-0` etc.
-
-If/when added, the flows here can drop the `.*` regex + `index: 0`
-combo and read like the rest of the suite.
+Landed in `duc2820/au-307-followup-pin-slot-testid`. All per-tile
+testIDs in HomeScreen now follow the slot-indexed pattern documented
+above (`home-tile-pin-outfit-<deckPos>-slot-<slotIdx>`,
+`home-tile-skeleton-outfit-...`, `home-tile-yourpiece-outfit-...`,
+`home-tile-outfit-...`). Maestro flows in this directory updated to
+use exact ids instead of `home-tile-pin-.*-N` regex.
 
 ### 3. Sub-flow ordering coupling
 
 `replace-pin.yaml` deliberately fails fast when run standalone (asserts
-`home-tile-pin-.*-set` precondition). That keeps the orchestrator file
-deterministic AND avoids a duplicate "pin tile 0" preamble in the sub-flow.
-If a future contributor wants `replace-pin.yaml` to be standalone-runnable,
-add a precondition guard that calls `primary-pin.yaml` first — don't
-duplicate the assertions.
+`home-tile-pin-outfit-0-slot-0-set` precondition). That keeps the
+orchestrator file deterministic AND avoids a duplicate "pin tile 0"
+preamble in the sub-flow. If a future contributor wants
+`replace-pin.yaml` to be standalone-runnable, add a precondition guard
+that calls `primary-pin.yaml` first — don't duplicate the assertions.
 
 ### 4. 14 UAC scenarios — not all 14 covered here
 

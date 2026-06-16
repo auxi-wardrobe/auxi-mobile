@@ -48,12 +48,11 @@ env:
     timeout: ${RECOMMENDATION_TIMEOUT_MS}
 
 # --- 1. Tap pin badge on the first tile ---
+# AU-307 BUG-3: slot-indexed exact id (active deck card = outfit-0).
 - assertVisible:
-    id: "home-tile-pin-.*-0"
-    index: 0
+    id: "home-tile-pin-outfit-0-slot-0"
 - tapOn:
-    id: "home-tile-pin-.*-0"
-    index: 0
+    id: "home-tile-pin-outfit-0-slot-0"
 
 # --- 2. Confirm modal opens; confirm "Build around this" ---
 - extendedWaitUntil:

@@ -6,9 +6,12 @@
 # (different itemId, pinnedItemId !== null). Confirming swaps the pinned id
 # and fires generation again.
 #
-# Selector strategy: target the second tile via `home-tile-pin-.*-1` (regex
-# matches dynamic outfitHash, suffix `-1` = flatTileIndex 1). The first tile
-# (index 0) is already pinned (carries `-set` suffix from primary-pin.yaml).
+# Selector strategy (AU-307 BUG-3 followup): target the second tile via the
+# exact slot-indexed id `home-tile-pin-outfit-0-slot-1` (active deck card,
+# second tile). Slot 0 is already pinned (carries `-set` suffix from
+# primary-pin.yaml) so the new pin target is slot 1. Exact ids replaced
+# the previous `home-tile-pin-.*-1` regex which was mis-resolving to the
+# view-toggle band (BUG-3, qa-mobile pass 2).
 #
 # This file is designed to run AFTER primary-pin.yaml in the orchestrator —
 # it intentionally does NOT call ensure-home (state is reused) but DOES
@@ -28,22 +31,21 @@ env:
   MODAL_DISMISS_TIMEOUT_MS: 5000
   PIN_GENERATE_TIMEOUT_MS: 90000
 ---
-# --- 0. Precondition: tile 0 is pinned (from primary-pin.yaml) ---
+# --- 0. Precondition: slot-0 of the active card is pinned (from primary-pin.yaml) ---
 # If this fails, the orchestrator skipped primary-pin or the previous
 # generation failed silently. Fail fast.
 - assertVisible:
-    id: "home-tile-pin-.*-set"
+    id: "home-tile-pin-outfit-0-slot-0-set"
 - assertVisible:
     id: home-swipe-deck
 
-# --- 1. Tap a DIFFERENT tile's pin badge (index 1, still unpinned) ---
-# Suffix is plain `-1` (no `-set`) — second tile is not yet pinned.
+# --- 1. Tap a DIFFERENT tile's pin badge (slot 1, still unpinned) ---
+# Suffix is plain (no `-set`) — second tile is not yet pinned. Exact id
+# means we never collide with the peek card's `outfit-1-*` ids.
 - assertVisible:
-    id: "home-tile-pin-.*-1"
-    index: 0
+    id: "home-tile-pin-outfit-0-slot-1"
 - tapOn:
-    id: "home-tile-pin-.*-1"
-    index: 0
+    id: "home-tile-pin-outfit-0-slot-1"
 
 # --- 2. Replace modal opens (variant = replace) ---
 # Same modal root + CTAs; the variant prop flips title to
@@ -78,26 +80,31 @@ env:
 # --- 5. Generating again (same UI contract as primary) ---
 - assertVisible:
     id: home-pin-generating-header
+# Skeleton in slot-0 of the active card is enough to assert "any skeleton
+# visible" — the non-pinned slots (including slot-0 here, since the pin
+# now lives in slot-1) render skeletons during generation.
 - assertVisible:
-    id: "home-tile-skeleton-.*"
-    index: 0
+    id: "home-tile-skeleton-outfit-0-slot-0"
 
 # --- 6. Generation completes ---
 - extendedWaitUntil:
     notVisible:
-      id: "home-tile-skeleton-.*"
+      id: "home-tile-skeleton-outfit-0-slot-0"
     timeout: ${PIN_GENERATE_TIMEOUT_MS}
 - assertNotVisible:
     id: home-pin-generating-header
 
-# --- 7. A pinned tile is still present (which slot now carries it is
-#       determined by the BE response shape — could be original index 1 or
-#       wherever the engine seated the new pinned item). We only assert
-#       SOME pinned badge exists + deck survived + no error banner. ---
+# --- 7. A pinned tile is still present after replace. The BE response
+#       reshuffles which slot carries the new pinned item — could be slot 0
+#       or slot 1 of the active card. Assert both candidates so the flow
+#       passes regardless of seat position. ---
 - assertVisible:
     id: home-swipe-deck
+# Maestro `id` is a regex anchor match — this matches either
+# `home-tile-pin-outfit-0-slot-0-set` or `home-tile-pin-outfit-0-slot-1-set`
+# without matching peek-card (`outfit-1`) ids.
 - assertVisible:
-    id: "home-tile-pin-.*-set"
+    id: "home-tile-pin-outfit-0-slot-[01]-set"
 - assertNotVisible:
     id: pin-generation-error
 - assertNotVisible:

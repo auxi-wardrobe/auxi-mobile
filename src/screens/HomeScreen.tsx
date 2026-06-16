@@ -1900,6 +1900,12 @@ export const HomeScreen = () => {
             renderCard={(outfit, role) => (
               <OptionSheet
                 cellKey={outfit.outfitHash}
+                // AU-307 BUG-3: deck-position index for slot-stable testIDs.
+                // OutfitSwipeDeck renders at most 2 cards: active (front) and
+                // peek (behind). Maestro can address tiles deterministically
+                // via `home-tile-pin-outfit-0-slot-N` regardless of which
+                // outfit hash currently sits in the active slot.
+                outfitIndex={role === 'peek' ? 1 : 0}
                 outfit={outfit}
                 pinnedItemId={pinnedItemId}
                 reveal={
@@ -2240,6 +2246,7 @@ type OutfitReveal = 'full' | 'light' | 'none';
 const OptionSheet = React.memo(
   ({
     cellKey,
+    outfitIndex,
     outfit,
     pinnedItemId,
     reveal,
@@ -2258,6 +2265,9 @@ const OptionSheet = React.memo(
   }: {
     // testID namespace = the outfit hash so Maestro can address a card.
     cellKey: string;
+    // AU-307 BUG-3: deck-position index (0 = active card, 1 = peek). Used
+    // for slot-stable tile testIDs that survive outfit-hash churn.
+    outfitIndex: number;
     outfit: OutfitSheetWithGrid;
     pinnedItemId: string | null;
     // Item-assembly entrance: 'full' (first/Daily-Reveal card), 'light'
@@ -2338,7 +2348,8 @@ const OptionSheet = React.memo(
             style={[styles.card, style]}
           >
             <SkeletonTile
-              testID={`home-tile-skeleton-${cellKey}-${flatTileIndex}`}
+              // AU-307 BUG-3: slot-indexed testID, deck-position-stable for Maestro.
+              testID={`home-tile-skeleton-outfit-${outfitIndex}-slot-${flatTileIndex}`}
             />
           </View>
         );
@@ -2346,8 +2357,9 @@ const OptionSheet = React.memo(
       return (
         <TouchableOpacity
           key={`card-${outfit.outfitHash}-${flatTileIndex}`}
-          testID={`home-tile-${cellKey}-${flatTileIndex}`}
-          accessibilityLabel={`home-tile-${cellKey}-${flatTileIndex}`}
+          // AU-307 BUG-3: slot-indexed testID, deck-position-stable for Maestro.
+          testID={`home-tile-outfit-${outfitIndex}-slot-${flatTileIndex}`}
+          accessibilityLabel={`home-tile-outfit-${outfitIndex}-slot-${flatTileIndex}`}
           activeOpacity={0.86}
           style={[styles.card, style, isPinned && styles.cardPinned]}
           onPress={() => onItemPress(item)}
@@ -2362,7 +2374,8 @@ const OptionSheet = React.memo(
             // exploration window. Top-left so it never collides with the
             // top-right pin badge overlay. Non-interactive text pill.
             <View
-              testID={`home-tile-yourpiece-${cellKey}-${flatTileIndex}`}
+              // AU-307 BUG-3: slot-indexed testID, deck-position-stable for Maestro.
+              testID={`home-tile-yourpiece-outfit-${outfitIndex}-slot-${flatTileIndex}`}
               style={styles.yourPieceBadge}
               accessibilityLabel={t('home.a11y_your_piece')}
             >
@@ -2379,10 +2392,11 @@ const OptionSheet = React.memo(
               the affordance so the user can't tap it. */}
           {!item.isSystem ? (
             <TouchableOpacity
+              // AU-307 BUG-3: slot-indexed testID, deck-position-stable for Maestro.
               testID={
                 isPinned
-                  ? `home-tile-pin-${cellKey}-${flatTileIndex}-set`
-                  : `home-tile-pin-${cellKey}-${flatTileIndex}`
+                  ? `home-tile-pin-outfit-${outfitIndex}-slot-${flatTileIndex}-set`
+                  : `home-tile-pin-outfit-${outfitIndex}-slot-${flatTileIndex}`
               }
               activeOpacity={0.7}
               onPress={e => {

@@ -5,11 +5,11 @@
 # "Keep this item", waits for /try_another (or /build) to fire, and asserts
 # the pinned tile + skeleton + Generating header are wired correctly.
 #
-# Selector note: per-tile testIDs are keyed by the dynamic `outfit.outfitHash`
-# (e.g. `home-tile-pin-abc123-0`), so we use regex `home-tile-pin-.*-0`
-# + `index: 0` to mean "the first tile's pin badge". Same convention as
-# wardrobe/item-detail-open.yaml — flagged to mobile-dev as a testID
-# stabilization opportunity in the QA report.
+# Selector note (AU-307 BUG-3 followup): per-tile testIDs are now slot-indexed
+# by deck position (active = outfit-0, peek = outfit-1) and slot index
+# (`home-tile-pin-outfit-0-slot-N`). Exact-id selectors replace the previous
+# `home-tile-pin-.*-N` regex + `index: 0` pattern, which was hitting wrong
+# elements when the deck rendered a peek card with matching ids.
 #
 # Assertions stay deterministic — no temperature/copy/count assertions.
 
@@ -35,14 +35,13 @@ env:
     timeout: ${RECOMMENDATION_TIMEOUT_MS}
 
 # --- 1. Tap the first tile's pin badge (unpinned state) ---
-# Unpinned suffix: `home-tile-pin-<outfitHash>-0` (no `-set`). Regex matches
-# the dynamic outfitHash. index: 0 disambiguates if multiple cards stack.
+# Active deck card = outfit-0; first tile in the layout = slot-0.
+# Exact id — no regex, no index qualifier needed (the peek card carries
+# outfit-1 ids, so there is no collision).
 - assertVisible:
-    id: "home-tile-pin-.*-0"
-    index: 0
+    id: "home-tile-pin-outfit-0-slot-0"
 - tapOn:
-    id: "home-tile-pin-.*-0"
-    index: 0
+    id: "home-tile-pin-outfit-0-slot-0"
 
 # --- 2. Confirm modal opens (variant = confirm) ---
 - extendedWaitUntil:
@@ -75,29 +74,29 @@ env:
 # non-pinned slots of the active card (peek/back cards keep their data).
 - assertVisible:
     id: home-pin-generating-header
+# Skeleton in slot-0 is enough to assert "any skeleton visible" on the
+# active card. Other non-pinned slots also render skeletons but we don't
+# need to enumerate them.
 - assertVisible:
-    id: "home-tile-skeleton-.*"
-    index: 0
+    id: "home-tile-skeleton-outfit-0-slot-0"
 
 # --- 6. Generation completes — skeleton AND header gone ---
 # extendedWaitUntil polls notVisible; absorbs LLM round-trip without
 # coupling to outfit copy. Once outfit==='idle', both UI elements unmount.
 - extendedWaitUntil:
     notVisible:
-      id: "home-tile-skeleton-.*"
+      id: "home-tile-skeleton-outfit-0-slot-0"
     timeout: ${PIN_GENERATE_TIMEOUT_MS}
 - assertNotVisible:
     id: home-pin-generating-header
 
 # --- 7. Pinned tile still in the deck (set suffix proves pin survived) ---
-# After GENERATE_SUCCESS, the pinned item retains its position and its pin
-# badge now carries the `-set` suffix. We assert the deck still renders
-# (no error / fallback inline banner displaced it) AND a pinned badge is
-# visible somewhere on the active card.
+# After GENERATE_SUCCESS, the pinned item retains its position in slot-0
+# of the active card and its pin badge now carries the `-set` suffix.
 - assertVisible:
     id: home-swipe-deck
 - assertVisible:
-    id: "home-tile-pin-.*-set"
+    id: "home-tile-pin-outfit-0-slot-0-set"
 - assertNotVisible:
     id: pin-generation-error
 - assertNotVisible:

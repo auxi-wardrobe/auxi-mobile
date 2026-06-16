@@ -251,7 +251,8 @@ describe('HomeScreen "Your Piece" badge (AU-351)', () => {
     mockedRecommendV05.mockResolvedValue(responseWithExploration(true));
     const r = await renderHome();
 
-    const badges = byTestID(r.root, 'home-tile-yourpiece-hash-0001-0');
+    // AU-307 BUG-3: testID now slot-indexed (outfit 0 = active, slot 0 = first tile).
+    const badges = byTestID(r.root, 'home-tile-yourpiece-outfit-0-slot-0');
     expect(badges.length).toBeGreaterThan(0);
   });
 
@@ -260,7 +261,12 @@ describe('HomeScreen "Your Piece" badge (AU-351)', () => {
     const r = await renderHome();
 
     // tile still renders, but no "Your Piece" overlay
-    expect(byTestID(r.root, 'home-tile-hash-0001-0').length).toBeGreaterThan(0);
-    expect(byTestID(r.root, 'home-tile-yourpiece-hash-0001-0').length).toBe(0);
+    // AU-307 BUG-3: testID now slot-indexed (outfit 0 = active, slot 0 = first tile).
+    expect(
+      byTestID(r.root, 'home-tile-outfit-0-slot-0').length,
+    ).toBeGreaterThan(0);
+    expect(byTestID(r.root, 'home-tile-yourpiece-outfit-0-slot-0').length).toBe(
+      0,
+    );
   });
 });
