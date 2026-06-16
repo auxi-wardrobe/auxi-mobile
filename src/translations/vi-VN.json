@@ -459,7 +459,11 @@
       "update": "Cập nhật",
       "dialog_time_title": "Giờ nhắc hằng ngày",
       "dialog_delete_title": "Xóa dữ liệu",
-      "dialog_delete_body": "Auxi sẽ trở về như ngày đầu. Không thể hoàn tác."
+      "dialog_delete_body": "Auxi sẽ trở về như ngày đầu. Không thể hoàn tác.",
+      "language": "Ngôn ngữ",
+      "a11y_change_language": "Đổi ngôn ngữ",
+      "dialog_language_title": "Chọn ngôn ngữ",
+      "error_update_language": "Không thể đổi ngôn ngữ"
     },
     "outfitCanvas": {
       "a11y_close_picker": "Đóng bộ chọn",

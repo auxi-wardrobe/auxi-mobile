@@ -41,9 +41,30 @@ import {
   hasAnalyticsConsent,
   revokeAnalyticsConsent,
 } from '../services/analytics';
+import { setLanguage as setI18nLanguage } from '../i18n/init';
+import type { Language } from '../translations';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Settings'>;
-type ActiveModal = 'none' | 'direction' | 'changeTime' | 'deleteConfirm';
+type ActiveModal =
+  | 'none'
+  | 'direction'
+  | 'changeTime'
+  | 'deleteConfirm'
+  | 'language';
+
+// Native-name labels — render in their own script regardless of active locale
+// (standard pattern for language pickers).
+const LANGUAGE_OPTIONS: Array<{ key: Language; label: string }> = [
+  { key: 'en-EN', label: 'English' },
+  { key: 'vi-VN', label: 'Tiếng Việt' },
+  { key: 'fr-FR', label: 'Français' },
+];
+
+const LANGUAGE_LABEL_MAP: Record<Language, string> = {
+  'en-EN': 'English',
+  'vi-VN': 'Tiếng Việt',
+  'fr-FR': 'Français',
+};
 
 type ResolvedSettingsState = {
   dailyNotification: {
@@ -176,7 +197,7 @@ const showSettingsError = (title: string, message: string) => {
 };
 
 export const SettingsScreen = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<Navigation>();
   const {
     checkAuth,
@@ -201,6 +222,12 @@ export const SettingsScreen = () => {
   const [isSavingDirection, setIsSavingDirection] = useState(false);
   const [isSavingTime, setIsSavingTime] = useState(false);
   const [isResettingPreferences, setIsResettingPreferences] = useState(false);
+  // Language picker mirrors the direction modal: pending value tracks the
+  // radio selection until the user taps Update, then setLanguage commits.
+  const currentLanguage = (i18n.language as Language) || 'en-EN';
+  const [pendingLanguage, setPendingLanguage] =
+    useState<Language>(currentLanguage);
+  const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   // Dark Mode: visual-only stub shipped disabled — no theming infra wired yet.
   const [darkModeStub] = useState(false);
   // Analytics consent (EU/CA opt-in). Mirrors the persisted decision in the
@@ -324,6 +351,37 @@ export const SettingsScreen = () => {
   const closeDeleteModal = () => {
     if (isResettingPreferences) return;
     setActiveModal('none');
+  };
+
+  const openLanguageModal = () => {
+    setPendingLanguage(currentLanguage);
+    setActiveModal('language');
+  };
+
+  const closeLanguageModal = () => {
+    if (isSavingLanguage) return;
+    setPendingLanguage(currentLanguage);
+    setActiveModal('none');
+  };
+
+  const applyLanguage = async () => {
+    if (isSavingLanguage) return;
+    if (pendingLanguage === currentLanguage) {
+      setActiveModal('none');
+      return;
+    }
+    setIsSavingLanguage(true);
+    try {
+      await setI18nLanguage(pendingLanguage);
+      setActiveModal('none');
+    } catch {
+      showSettingsError(
+        t('settings.toast_title'),
+        t('settings.error_update_language'),
+      );
+    } finally {
+      setIsSavingLanguage(false);
+    }
   };
 
   const handleReminderToggle = (enabled: boolean) => {
@@ -507,6 +565,22 @@ export const SettingsScreen = () => {
           >
             <Text style={styles.rowLabel}>{t('settings.style_direction')}</Text>
             <Text style={styles.rowValue}>{currentDirectionLabel}</Text>
+          </TouchableOpacity>
+
+          <Divider />
+
+          {/* Language row */}
+          <TouchableOpacity
+            testID="settings-language-row"
+            accessibilityLabel={t('settings.a11y_change_language')}
+            activeOpacity={0.82}
+            style={styles.singleRow}
+            onPress={openLanguageModal}
+          >
+            <Text style={styles.rowLabel}>{t('settings.language')}</Text>
+            <Text style={styles.rowValue}>
+              {LANGUAGE_LABEL_MAP[currentLanguage]}
+            </Text>
           </TouchableOpacity>
 
           <Divider />
@@ -704,6 +778,26 @@ export const SettingsScreen = () => {
         cancelTestID="settings-delete-cancel"
         primaryTestID="settings-delete-confirm"
       />
+
+      {/* Language picker dialog */}
+      <SettingsDialog
+        visible={activeModal === 'language'}
+        onClose={closeLanguageModal}
+        isBusy={isSavingLanguage}
+        title={t('settings.dialog_language_title')}
+        primaryLabel={t('settings.update')}
+        primaryVariant="default"
+        onPrimary={applyLanguage}
+        cancelTestID="settings-language-cancel"
+        primaryTestID="settings-language-update"
+      >
+        <RadioOptionList
+          options={LANGUAGE_OPTIONS}
+          selected={pendingLanguage}
+          onSelect={setPendingLanguage}
+          testIDPrefix="settings-language-option"
+        />
+      </SettingsDialog>
     </SafeAreaView>
   );
 };
