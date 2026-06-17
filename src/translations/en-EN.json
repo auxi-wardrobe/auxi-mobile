@@ -553,6 +553,23 @@
       "remove_cancel": "Cancel",
       "load_error": "We couldn't load your favourites. Please try again."
     },
+    "feedback": {
+      "title": "Feedback",
+      "subtitle": "Tell us what's working and what isn't. Your notes go straight to the team.",
+      "a11y_open_menu": "Open menu",
+      "category_bug": "Bug",
+      "category_idea": "Idea",
+      "category_general": "General",
+      "category_praise": "Praise",
+      "message_label": "Your message",
+      "message_placeholder": "Share the details…",
+      "rating_label": "Rate your experience (optional)",
+      "a11y_rate_stars": "Rate {{count}} out of 5 stars",
+      "submit": "Send feedback",
+      "success": "Thanks! Your feedback was sent.",
+      "error_generic": "We couldn't send your feedback. Please try again.",
+      "error_rate_limit": "You've sent a lot of feedback just now. Please try again in a minute."
+    },
     "seeThisOnMe": {
       "title": "Self visualization",
       "takePhoto": "Take photo",

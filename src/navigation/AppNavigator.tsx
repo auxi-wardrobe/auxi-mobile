@@ -22,6 +22,7 @@ import { WardrobeScreen } from '../screens/WardrobeScreen';
 import { BodyScreen } from '../screens/BodyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { FavouriteScreen } from '../screens/FavouriteScreen';
+import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { SeeThisOnMeScreen } from '../screens/see-this-on-me/SeeThisOnMeScreen';
 import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
@@ -131,6 +132,7 @@ export const AppNavigator = () => {
               <Stack.Screen name="Settings" component={SettingsScreen} />
               <Stack.Screen name="Wardrobe" component={WardrobeScreen} />
               <Stack.Screen name="Favourite" component={FavouriteScreen} />
+              <Stack.Screen name="Feedback" component={FeedbackScreen} />
               <Stack.Screen name="Body" component={BodyScreen} />
               <Stack.Screen
                 name="SeeThisOnMe"
