@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -85,6 +85,17 @@ const isCommonItem = (item: WardrobeItem): boolean =>
   item.user_id === null ||
   item.user_id === undefined;
 
+// AU-361: items are uploaded then processed (bg-removal + auto-tagging) in the
+// background. `is_preparing` flips true→false when processing finishes and the
+// item becomes ready to use. The grid renders a "preparing" overlay while true.
+const isPreparing = (item: WardrobeItem): boolean => item.is_preparing === true;
+
+// While any item is still preparing we poll the wardrobe so the ready
+// transition can actually be observed (the screen otherwise only refetches on
+// focus). Kept light: a single refetch every few seconds, stopped once nothing
+// is preparing.
+const PREPARING_POLL_MS = 4000;
+
 export const WardrobeScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const isFocused = useIsFocused();
@@ -101,26 +112,87 @@ export const WardrobeScreen = () => {
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
   const [addSheetVisible, setAddSheetVisible] = useState(false);
 
-  const fetchItems = useCallback(async () => {
-    try {
-      setLoading(true);
-      const category = resolveFilterQuery(selectedTab);
-      const data = category
-        ? await wardrobeService.filterWardrobeItems({ category })
-        : await wardrobeService.getWardrobeItems();
-      setItems(data);
-    } catch (error) {
-      console.error('Error fetching wardrobe items', error);
-      Toast.show({
-        type: 'error',
-        text1: t('common.load_wardrobe_failed_title'),
-        text2: t('common.try_again_moment'),
-        position: 'bottom',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedTab, t]);
+  // AU-361: item-ready toast. `preparingIdsRef` holds IDs that were still
+  // preparing on the previous fetch; `readyToastedIdsRef` dedups so an item
+  // only ever fires one "ready" toast per session even across refetches/polls.
+  const preparingIdsRef = useRef<Set<string>>(new Set());
+  const readyToastedIdsRef = useRef<Set<string>>(new Set());
+
+  // AU-361: detect preparing→ready transitions and surface the toast once per
+  // item. Compares this fetch against the prior fetch's preparing set.
+  const reconcileReadyItems = useCallback(
+    (data: WardrobeItem[]) => {
+      const prevPreparing = preparingIdsRef.current;
+      const nextPreparing = new Set<string>();
+
+      for (const item of data) {
+        if (!item.id) {
+          continue;
+        }
+        if (isPreparing(item)) {
+          nextPreparing.add(item.id);
+          continue;
+        }
+        // Item is ready now. Toast only if it was preparing last fetch and
+        // hasn't been toasted yet (dedup across polls/refocus).
+        if (
+          prevPreparing.has(item.id) &&
+          !readyToastedIdsRef.current.has(item.id)
+        ) {
+          readyToastedIdsRef.current.add(item.id);
+          // Custom M3 snackbar type (Figma node 3915:30077) — see
+          // src/components/feedback/toastConfig.tsx. Visual only; the
+          // transition-detection / dedup / analytics logic is unchanged.
+          Toast.show({
+            type: 'successSnackbar',
+            text1: t('wardrobe.list.item_ready_title'),
+            position: 'bottom',
+          });
+          const readyProps: Record<string, unknown> = {};
+          if (item.category) {
+            readyProps.item_category = item.category;
+          }
+          track('item_ready_toast_shown', readyProps);
+        }
+      }
+
+      preparingIdsRef.current = nextPreparing;
+    },
+    [t],
+  );
+
+  // `silent` skips the skeleton spinner — used by the AU-361 background poll so
+  // it doesn't flash the loading grid on every tick.
+  const fetchItems = useCallback(
+    async (options?: { silent?: boolean }) => {
+      try {
+        if (!options?.silent) {
+          setLoading(true);
+        }
+        const category = resolveFilterQuery(selectedTab);
+        const data = category
+          ? await wardrobeService.filterWardrobeItems({ category })
+          : await wardrobeService.getWardrobeItems();
+        setItems(data);
+        reconcileReadyItems(data);
+      } catch (error) {
+        console.error('Error fetching wardrobe items', error);
+        if (!options?.silent) {
+          Toast.show({
+            type: 'error',
+            text1: t('common.load_wardrobe_failed_title'),
+            text2: t('common.try_again_moment'),
+            position: 'bottom',
+          });
+        }
+      } finally {
+        if (!options?.silent) {
+          setLoading(false);
+        }
+      }
+    },
+    [selectedTab, t, reconcileReadyItems],
+  );
 
   useEffect(() => {
     if (isFocused) {
@@ -129,6 +201,20 @@ export const WardrobeScreen = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchItems, isFocused]);
+
+  // AU-361: while focused AND any item is still preparing, poll the wardrobe so
+  // the preparing→ready transition is observed and the toast fires. Stops as
+  // soon as nothing is preparing or the screen loses focus.
+  const hasPreparingItems = items.some(isPreparing);
+  useEffect(() => {
+    if (!isFocused || !hasPreparingItems) {
+      return;
+    }
+    const interval = setInterval(() => {
+      fetchItems({ silent: true });
+    }, PREPARING_POLL_MS);
+    return () => clearInterval(interval);
+  }, [isFocused, hasPreparingItems, fetchItems]);
 
   const handleSelectTab = (category: FilterTab) => {
     setSelectedTab(category);

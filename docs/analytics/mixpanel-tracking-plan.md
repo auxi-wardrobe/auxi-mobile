@@ -55,7 +55,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
-| `sign_up_started` | EmailInputScreen "Continue" for new-user path | `EmailInputScreen.tsx:171` | `method` |
+| `sign_up_started` | EmailInputScreen "Continue" in signup mode (any non-OAuth precheck result) | `EmailInputScreen.tsx:175` | `method` |
 | `sign_up_submitted` | PasswordCreationScreen submit → `register()` | `PasswordCreationScreen.tsx:147` | `method` |
 | `sign_up_failed` | `register()` rejects | `PasswordCreationScreen.tsx:159` | `method`, `error_reason` |
 | `sign_up_completed` | verify-email API resolves | `services/deepLinkHandler.ts:181` | `method` |
@@ -110,6 +110,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `item_detail_opened` | ItemDetailScreen mount | `ItemDetailScreen.tsx:280` | `item_id`, `source` |
 | `wardrobe_item_added` | Take-photo upload complete | `WardrobeScreen.tsx:218` | `source`, `method` (`take_photo`), `item_id?`, `category?` |
 | `wardrobe_item_added` | Database clone complete | `DatabaseScreen.tsx:138` | `item_id`, `source` (`database`), `method` (`search_database`), `category?` |
+| `item_ready_toast_shown` (AU-361) | Uploaded item finishes background processing (`is_preparing` true→false) and the "Your item is ready" toast fires | `WardrobeScreen.tsx:149` | `item_category?` |
 | `wardrobe_item_edited` | ItemDetail save with diff | `ItemDetailScreen.tsx:678` | `item_id`, `fields_changed` (`category`/`color`/`style`/`fit`) |
 | `wardrobe_item_deleted` | ItemDetail delete confirm | `ItemDetailScreen.tsx:548` | `item_id`, `category?` |
 | `wardrobe_search_result_selected` | Database result tap → add | `DatabaseScreen.tsx:118` | `item_id`, `source` (`database`) |
@@ -129,6 +130,10 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `try_on_failed` (pre-existing) | Try-on errored | `BodyScreen.tsx:303`, `SeeThisOnMeScreen.tsx:175, 254, 262` | `outfit_hash`, `error_reason?` |
 | `try_on_step_completed` (pre-existing) | Step done (selfie/fullBody/bodyShape/pose) | `SeeThisOnMeScreen.tsx:419, 444, 467, 451` | `step` |
 | `try_on_profile_retake` (pre-existing) | Profile retake | `SeeThisOnMeScreen.tsx:225` | `outfit_hash` |
+| `body_photo_reuse_confirmed` (AU-354 pt.3) | On re-entry with a saved reusable profile, user confirms the persisted body photo on the reuse-confirm screen → proceeds to render (no re-capture) | `SeeThisOnMeScreen.tsx:267` | `outfit_hash` |
+| `body_photo_retake_selected` (AU-354 pt.3) | On the reuse-confirm screen, user chooses to retake instead of reusing the persisted photo → drops to the normal capture flow (fires BEFORE any render, so distinct from `try_on_outcome_retaken`) | `SeeThisOnMeScreen.tsx:308` | `outfit_hash` |
+| `body_shape_generation_backgrounded` (AU-358) | User leaves the AI body-shape generating screen via the quit affordance WITHOUT cancelling the render (the out-of-React store keeps the request alive; the in-app completion toast fires when it finishes) | `SeeThisOnMeScreen.tsx:418` | `outfit_hash` |
+| `body_shape_generation_completed_notified` (AU-358) | The in-app completion notification (toast) was shown to a user who had backgrounded the generation, when the render finished | `try-on-completion-notice.ts:50` | `result` (`success`/`error`) |
 
 ### 5.6 Body screen
 
@@ -162,6 +167,14 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 - `track(event, props?)` — primary entry. No-op until consent granted.
 - `trackRecommendationViewedOnce(outfitHash, props?)` — module-level `Set<outfit_hash>` dedups per session. Resets on app restart. Used only for `outfit_recommendation_viewed`.
 - `identifyUser` / `resetAnalytics` / `init*` / `*Consent` — unchanged.
+
+### 5.11 Outfit Canvas (Remix editor)
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `canvas_item_layer_reordered` | Selected canvas item moved one layer via the toolbar (AU-360 fix — z-index swap with adjacent item). Fires only on an actual move, not at the front/back edge. | `OutfitCanvasScreen.tsx:448` (`moveLayer`) | `direction` (`forward`/`backward`) |
+
+> Gap: other canvas toolbar actions (add / duplicate / swap / delete / tag add-remove / save) are not yet instrumented — local-only editor state, no persistence wired. Track when the Save→backend persist step lands (`handleSave` is a TODO `goBack()` today). Logged in §6.6.
 
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
@@ -206,6 +219,10 @@ These hooks were spec'd but cannot fire today — the UI surface, control, or AP
 
 `body_photo_added/replaced/deleted` only fire for `slot: 'full_body'` today. `selfie` and `body_shape` slots live in the SeeThisOnMe step screens (`StepSelfie`, `StepBodyShape`) with a different lifecycle (flow-state, not persisted slots editable independently). When those flows gain replace/delete affordances, mirror the same event names with the matching `slot` value.
 
+### 6.6 Outfit Canvas — non-reorder toolbar actions not yet instrumented
+
+Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvasScreen` toolbar handlers (`handleAddItem`, `handleDuplicate`, `handleDelete`, swap-TODO, tag add/remove, undo/redo) and `handleSave` are local-only editor state with no persistence — the canvas never reaches the backend (`handleSave` is a TODO that just `goBack()`s). Wire `canvas_outfit_saved` (with `item_count`, `tag_count`) and the per-action events when the Save→persist endpoint lands. Re-wire condition: a real canvas-persist mutation exists.
+
 ## 7. Consent (EU/CA) — mechanism DONE, UI PENDING ⚠️
 
 `src/services/analytics.ts` exposes:
@@ -242,7 +259,8 @@ These hooks were spec'd but cannot fire today — the UI surface, control, or AP
 - **Onboarding step funnel:** `welcome_continued` → `location_permission_granted`/`_denied` → `wardrobe_direction_selected` → `fit_preference_selected` → `style_selected` → `onboarding_generated` → `onboarding_completed`
 - **Recommendation engagement (value-moment rate):** `outfit_recommendation_viewed` → `outfit_favorited`
 - **Try-on funnel:** `try_on_started` → `try_on_step_completed` ×N → `try_on_completed` → `try_on_outcome_retaken` *(extend to `_saved`/`_shared` when UI ships)*
-- **Wardrobe-grow funnel (take-photo):** `add_item_opened` → `add_item_method_selected` (`take_photo`) → `add_item_upload_started` → `add_item_upload_succeeded` → `wardrobe_item_added`
+- **Reuse-on-return funnel (AU-354 pt.3):** on re-entry with a saved reusable body profile, `body_photo_reuse_confirmed` → `try_on_started` → `try_on_completed` measures returning-user conversion; `body_photo_retake_selected` is the drop-to-recapture branch (denominator: arrivals on the reuse-confirm screen).
+- **Wardrobe-grow funnel (take-photo):** `add_item_opened` → `add_item_method_selected` (`take_photo`) → `add_item_upload_started` → `add_item_upload_succeeded` → `wardrobe_item_added` → `item_ready_toast_shown` (AU-361: background processing completed — tail of the take-photo funnel)
 - **Wardrobe-grow funnel (database):** `wardrobe_search_initiated` → `wardrobe_search_result_selected` → `wardrobe_item_added`
 - **Refine-engagement funnel:** `refine_modal_opened` → `refine_chip_selected` ×N → `refine_submitted` (vs `refine_cancelled`)
 - **Retention insight:** `screen_viewed` per `screen_name` over time — identifies dead screens

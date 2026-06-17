@@ -40,6 +40,7 @@ import IconRemix from '../images/icon_remix.svg';
 import IconFaceId from '../images/icon_face_id.svg';
 import IconBodyOutline from '../images/icon_body_outline.svg';
 import IconSparkle from '../images/icon_sparkle.svg';
+import IconCheckCircle from '../images/icon_check_circle.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -84,6 +85,7 @@ export const Icons = {
   FaceId: IconFaceId,
   BodyOutline: IconBodyOutline,
   Sparkle: IconSparkle,
+  CheckCircle: IconCheckCircle,
 };
 
 export {

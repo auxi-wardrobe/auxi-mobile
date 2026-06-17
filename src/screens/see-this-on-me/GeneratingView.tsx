@@ -12,11 +12,16 @@ import { MacgieLoader } from '../../components/macgie';
 interface GeneratingViewProps {
   errored: boolean;
   onRetry: () => void;
+  // AU-358: leave the loading screen while the render keeps going in the
+  // background; the user is notified in-app when it completes. Omitted in the
+  // errored state (nothing to background — they retry or go back instead).
+  onQuit?: () => void;
 }
 
 export const GeneratingView: React.FC<GeneratingViewProps> = ({
   errored,
   onRetry,
+  onQuit,
 }) => {
   const { t } = useTranslation();
 
@@ -34,7 +39,21 @@ export const GeneratingView: React.FC<GeneratingViewProps> = ({
           />
         </>
       ) : (
-        <MacgieLoader label={t('seeThisOnMe.generating')} />
+        <>
+          <MacgieLoader label={t('seeThisOnMe.generating')} />
+          {onQuit ? (
+            <View style={styles.quitBlock}>
+              <Text style={styles.quitHint}>{t('seeThisOnMe.quit.hint')}</Text>
+              <PillButton
+                testID="stom-quit-generating"
+                accessibilityLabel={t('seeThisOnMe.quit.cta')}
+                title={t('seeThisOnMe.quit.cta')}
+                variant="text"
+                onPress={onQuit}
+              />
+            </View>
+          ) : null}
+        </>
       )}
     </View>
   );
@@ -55,5 +74,15 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     minWidth: 160,
+  },
+  quitBlock: {
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  quitHint: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.figmaOnboardingStepLabel,
+    textAlign: 'center',
+    paddingHorizontal: theme.spacing.l,
   },
 });

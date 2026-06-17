@@ -110,6 +110,12 @@ export const theme = {
     // BlurView blurType="light" blurAmount=8 to render the real Gaussian
     // backdrop the CEO flagged. Used by HomeViewToggleFooter + OnboardingStyles.
     figmaBlurTintWhite80: 'rgba(255, 255, 255, 0.8)',
+    // AU-361 "item ready" M3 snackbar (Figma node 3915:30077). Teal/mint
+    // success surface. Source:
+    // plans/260617-1743-au-361-item-ready-toast/figma-extraction-item-ready-toast.md §Snackbar visual spec
+    figmaSnackbarSuccessBg: '#4cf4d3', // color/success/200 — snackbar surface
+    // Glyph + text reuse existing tokens: icon = figmaTextDark (#070707,
+    // icon/primary/bold_700), text = uacTextBase (#1d1f23, text/neutral/base).
   },
   spacing: {
     xs: 4,

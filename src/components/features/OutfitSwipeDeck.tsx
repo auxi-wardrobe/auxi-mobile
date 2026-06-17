@@ -18,6 +18,7 @@ import {
   isCommit,
   useReducedMotion,
 } from '../../theme/motion';
+import { theme } from '../../theme/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -204,6 +205,7 @@ export function OutfitSwipeDeck<T>({
         }}
         style={[
           styles.cardBase,
+          styles.activeCard,
           cardStyle,
           { transform: [{ translateX: pan.x }, { rotate }] },
         ]}
@@ -219,4 +221,17 @@ export function OutfitSwipeDeck<T>({
 const styles = StyleSheet.create({
   stack: { width: '100%', position: 'relative' },
   cardBase: { position: 'absolute', top: 0, left: 0, right: 0 },
+  // AU-359: during a hold/swipe the active card carries a live translateX +
+  // rotate (±6°). Without self-clipping, the rotation exposes a hairline of the
+  // peek card's cream tile surface (figmaCardSurface) at the screen edge and a
+  // ragged corner seam where iOS can't anti-alias a child tile's overflow mask
+  // mid-transform. Clipping the moving card to its own bounds and backing it
+  // with the white app surface makes the rotated corners read as white-on-white
+  // (matching the screen) and masks the peek card beneath — clean photo edge.
+  // Applied to the ACTIVE card only; the peek card must stay unclipped so its
+  // scale-up affordance still reads behind the active card.
+  activeCard: {
+    overflow: 'hidden',
+    backgroundColor: theme.colors.figmaSurface,
+  },
 });

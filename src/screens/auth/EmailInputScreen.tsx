@@ -18,22 +18,27 @@
  *     the Apple flow) BEFORE the precheck call — Gmail accounts authenticate
  *     via Google OAuth, not a password, and the precheck is enumeration-safe
  *     so it can't tell us "google" for an anonymous caller anyway.
- *   - Otherwise call `useEmailPrecheckMutation`. Backend returns:
- *       * 'google' / 'apple' → navigate `EmailGoogleNotice`.
- *       * 'password' → existing password account → navigate `SignIn`
- *                       (the user logs in). We HONOR the precheck result
- *                       here regardless of how the screen was entered, so
- *                       returning users always reach Sign-In.
- *       * 'none' → AU-314: email is NOT registered. In 'signin' mode we
- *         inform the user (inline "no account" copy) and bounce them back to
- *         the Welcome/login screen. In 'signup' mode this is the happy path
- *         → fall through to PasswordCreation.
+ *   - Otherwise call `useEmailPrecheckMutation`. The precheck is
+ *     enumeration-safe: ANONYMOUS callers (every public caller on this
+ *     screen) ALWAYS get `provider: 'password'` regardless of real linkage —
+ *     only authenticated admin/self lookups see the true value. So routing
+ *     branches on `mode`, NOT on the provider value (except the OAuth hint):
+ *       * 'google' / 'apple' → navigate `EmailGoogleNotice` (OAuth path).
+ *       * signup mode, any other provider → happy path → `PasswordCreation`.
+ *         The genuinely-already-registered case is detected server-side at
+ *         register time (409 EMAIL_ALREADY_EXISTS → routed to SignIn there),
+ *         the only enumeration-safe place to catch it.
+ *       * signin mode, 'none' → inform via Toast + bounce to Welcome.
+ *       * signin mode, otherwise → `SignIn` (returning user logs in).
  *   - 429 RATE_LIMITED → error_rate_limited copy.
  *   - NETWORK_ERROR → toast.
  *
+ * AU-356 fix: previously a 'password' precheck result unconditionally routed
+ * to `SignIn`, which (because of enumeration safety) blocked EVERY new signup
+ * email — e.g. viettran@macgie.com — from ever reaching the password step.
+ *
  * `mode` param distinguishes signup vs signin entry. Both modes run the
- * precheck so we can (a) route OAuth-linked emails and (b) catch the
- * unregistered-email case (AU-314) before dropping the user on a dead end.
+ * precheck so we can route OAuth-linked emails to the Google/Apple path.
  */
 import React, { useCallback, useState } from 'react';
 import {
@@ -149,39 +154,48 @@ export const EmailInputScreen = () => {
             navigation.navigate('EmailGoogleNotice', { email: trimmed });
             return;
           }
-          // AU-314: 'none' → the email is NOT registered. In signup
-          // mode this is the moment the user commits to creating a
-          // brand-new account → emit `sign_up_started`.
-          if (result.provider === 'none') {
-            if (mode === 'signin') {
-              // The user expected to log in but there's no account. Inform via
-              // a Toast (the inline error would die with this unmounting
-              // screen) and bounce back to the Welcome/login screen so they
-              // can pick a sign-up path or try a different email.
-              Toast.show({
-                type: 'info',
-                text1: t('uac.email_input.error_no_account'),
-                position: 'bottom',
-                visibilityTime: 4000,
-              });
-              navigation.navigate('Welcome');
-              return;
-            }
-            // Signup happy path: brand-new email → create a password.
+
+          // AU-356: the precheck is enumeration-safe — an ANONYMOUS caller
+          // (every public sign-up / sign-in here) ALWAYS receives
+          // `provider: 'password'` regardless of whether the email actually
+          // exists. Only authenticated admin/self lookups ever see the real
+          // `'none' | 'google' | 'apple'`. So in signup mode we must NOT treat
+          // `'password'` as "account exists, go log in" — that wrongly bounced
+          // brand-new users (e.g. viettran@macgie.com) to SignIn and blocked
+          // them from reaching the password-creation step. The genuine
+          // already-registered case is caught server-side at register time
+          // (409 EMAIL_ALREADY_EXISTS → PasswordCreationScreen routes to
+          // SignIn), which is the only enumeration-safe place to detect it.
+          //
+          // Routing therefore branches on `mode`, not on the (unreliable for
+          // anonymous callers) provider value:
+          if (mode === 'signup') {
+            // Signup happy path: any non-OAuth result → create a password.
+            // This is the moment the user commits to a new account.
             track('sign_up_started', { method: 'email' });
             navigation.navigate('PasswordCreation', { email: trimmed });
             return;
           }
-          // `provider:'password'` means the email already has a
-          // password-based account → route to SignIn so the user logs in.
-          // Honor the precheck result rather than assuming signup
-          // (AU bugfix: existing users could not log in).
-          if (result.provider === 'password') {
-            navigation.navigate('SignIn', { email: trimmed });
+
+          // signin mode below.
+          // `'none'` is only reachable for authenticated callers, but handle
+          // it defensively: the user expected to log in and there's no
+          // account. Inform via a Toast (an inline error would die with this
+          // unmounting screen) and bounce back to Welcome so they can pick a
+          // sign-up path or try a different email.
+          if (result.provider === 'none') {
+            Toast.show({
+              type: 'info',
+              text1: t('uac.email_input.error_no_account'),
+              position: 'bottom',
+              visibilityTime: 4000,
+            });
+            navigation.navigate('Welcome');
             return;
           }
-          // Defensive fallback for any unexpected provider value.
-          navigation.navigate('PasswordCreation', { email: trimmed });
+          // signin + `'password'` (or any other value) → existing
+          // password-based account → route to SignIn so the user logs in.
+          navigation.navigate('SignIn', { email: trimmed });
         },
         onError: err => {
           if (err.code === 'RATE_LIMITED') {
