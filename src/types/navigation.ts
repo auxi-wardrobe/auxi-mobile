@@ -73,6 +73,8 @@ export type AppStackParamList = {
   Settings: undefined;
   Wardrobe: undefined;
   Favourite: undefined;
+  // In-app feedback form → POST /api/feedback. Reached from the sidebar menu.
+  Feedback: undefined;
   // Discriminated union on `mode` so call sites are type-checked:
   //  - tryOn MUST carry an `outfit` (removes the old `outfit!` assertion in BodyScreen)
   //  - photoDetail (Settings redesign Frame 5) opens the single body-photo

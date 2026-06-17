@@ -101,7 +101,8 @@ export const SidebarMenu: React.FC = () => {
           label={t('sidebar.feedback')}
           Icon={Icons.Feedback}
           testID="sidebar-menu-feedback"
-          onPress={close}
+          isActive={routeName === 'Feedback'}
+          onPress={() => go('Feedback', close)}
         />
         <MenuItem
           label={t('sidebar.setting')}

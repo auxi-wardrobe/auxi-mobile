@@ -553,6 +553,23 @@
       "remove_cancel": "Annuler",
       "load_error": "Impossible de charger vos favoris. Veuillez réessayer."
     },
+    "feedback": {
+      "title": "Commentaires",
+      "subtitle": "Dites-nous ce qui fonctionne et ce qui ne va pas. Vos remarques arrivent directement à l'équipe.",
+      "a11y_open_menu": "Ouvrir le menu",
+      "category_bug": "Bogue",
+      "category_idea": "Idée",
+      "category_general": "Général",
+      "category_praise": "Compliment",
+      "message_label": "Votre message",
+      "message_placeholder": "Donnez-nous des détails…",
+      "rating_label": "Évaluez votre expérience (facultatif)",
+      "a11y_rate_stars": "Attribuer {{count}} étoiles sur 5",
+      "submit": "Envoyer",
+      "success": "Merci ! Votre commentaire a été envoyé.",
+      "error_generic": "Impossible d'envoyer votre commentaire. Veuillez réessayer.",
+      "error_rate_limit": "Vous avez envoyé beaucoup de commentaires à l'instant. Veuillez réessayer dans une minute."
+    },
     "seeThisOnMe": {
       "title": "Auto-visualisation",
       "takePhoto": "Prendre une photo",

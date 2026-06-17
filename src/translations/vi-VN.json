@@ -552,6 +552,23 @@
       "remove_cancel": "Hủy",
       "load_error": "Không thể tải mục yêu thích. Vui lòng thử lại."
     },
+    "feedback": {
+      "title": "Phản hồi",
+      "subtitle": "Hãy cho chúng tôi biết điều gì đang hiệu quả và điều gì chưa. Ghi chú của bạn sẽ được gửi thẳng đến đội ngũ.",
+      "a11y_open_menu": "Mở menu",
+      "category_bug": "Lỗi",
+      "category_idea": "Ý tưởng",
+      "category_general": "Chung",
+      "category_praise": "Khen ngợi",
+      "message_label": "Nội dung của bạn",
+      "message_placeholder": "Chia sẻ chi tiết…",
+      "rating_label": "Đánh giá trải nghiệm của bạn (không bắt buộc)",
+      "a11y_rate_stars": "Đánh giá {{count}} trên 5 sao",
+      "submit": "Gửi phản hồi",
+      "success": "Cảm ơn bạn! Phản hồi đã được gửi.",
+      "error_generic": "Không thể gửi phản hồi của bạn. Vui lòng thử lại.",
+      "error_rate_limit": "Bạn vừa gửi khá nhiều phản hồi. Vui lòng thử lại sau một phút."
+    },
     "seeThisOnMe": {
       "title": "Tự hình dung",
       "takePhoto": "Chụp ảnh",

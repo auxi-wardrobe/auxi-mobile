@@ -176,6 +176,15 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 > Gap: other canvas toolbar actions (add / duplicate / swap / delete / tag add-remove / save) are not yet instrumented — local-only editor state, no persistence wired. Track when the Save→backend persist step lands (`handleSave` is a TODO `goBack()` today). Logged in §6.6.
 
+### 5.12 App Feedback
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `feedback_submitted` | `POST /api/feedback` succeeds (201) | `FeedbackScreen.tsx:88` (mutation `onSuccess`) | `category` (`bug`/`idea`/`general`/`praise`), `rating?` (1–5, omitted when unset) |
+| `feedback_submit_failed` | `POST /api/feedback` rejects | `FeedbackScreen.tsx:101` (mutation `onError`) | `error_code` — sanitized snake_case (`rate_limited` 429 / `validation_error` 422 / `auth_error` 401 / `network_error` no-status / `server_error` other) |
+
+> PII: the free-text `message` is NEVER tracked — only `category` + optional `rating` leave the device. `platform` rides the global super-property. `screen_viewed` for `Feedback` fires from the global nav listener (§5.9), not double-tracked here.
+
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
 These hooks were spec'd but cannot fire today — the UI surface, control, or API doesn't exist yet. **No code shipped for these** (we don't fake events). Re-evaluate when the underlying surface lands.
@@ -265,5 +274,6 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 - **Refine-engagement funnel:** `refine_modal_opened` → `refine_chip_selected` ×N → `refine_submitted` (vs `refine_cancelled`)
 - **Retention insight:** `screen_viewed` per `screen_name` over time — identifies dead screens
 - **Mood-feedback funnel:** `wear_this_clicked` → `mood_feedback_opened` → `mood_feedback_submitted` (vs `mood_feedback_skipped`)
+- **App-feedback submission funnel:** `screen_viewed` (`screen_name = Feedback`) → `feedback_submitted` (vs `feedback_submit_failed`, broken down by `error_code`) — measures completion rate of the feedback form and surfaces rate-limit / validation friction.
 
 Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`. Super properties (`platform`, `app_environment`) are available globally.
