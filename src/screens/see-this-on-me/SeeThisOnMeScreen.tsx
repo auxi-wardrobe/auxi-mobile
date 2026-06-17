@@ -22,7 +22,6 @@ import {
   bodyService,
   BodyPhotoNotPersonError,
 } from '../../services/bodyService';
-import { tryOnService } from '../../services/tryOnService';
 import { track } from '../../services/analytics';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
@@ -40,10 +39,14 @@ import {
 import { StepSelfie } from './StepSelfie';
 import { StepFullBody } from './StepFullBody';
 import { StepBodyShape } from './StepBodyShape';
+import { StepReuseConfirm } from './StepReuseConfirm';
 import { OutfitPreview } from './OutfitPreview';
 import { GeneratingView } from './GeneratingView';
 import { BodyShapeId } from './body-shapes';
 import { decideEntryMode } from './profile-entry';
+import { tryOnGenerationStore } from './try-on-generation-store';
+import { useTryOnGeneration } from './use-try-on-generation';
+import { setTryOnBackgroundCompleteHandler } from './try-on-background-notify';
 
 // TanStack key for the active reusable self-visualization profile (AU-346).
 const ACTIVE_PROFILE_QUERY_KEY = ['body', 'active'] as const;
@@ -106,6 +109,10 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // the saved profile and run the normal capture flow (the saved profile is
   // untouched on the server until a new one is saved).
   const [forceCapture, setForceCapture] = useState(false);
+  // AU-354 pt.3: on the reuse path, the user must first CONFIRM the persisted
+  // photo (or retake) before we render. False until they tap Confirm — until
+  // then the reuse-confirm screen is shown instead of auto-generating.
+  const [reuseConfirmed, setReuseConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errored, setErrored] = useState(false);
   // Friendly inline error shown on the active photo step. Set when the backend
@@ -126,6 +133,11 @@ export const SeeThisOnMeScreen: React.FC = () => {
 
   const goHome = useCallback(() => navigation.navigate('Home'), [navigation]);
 
+  // Subscribe to the background-safe generation store (AU-358). The render runs
+  // OUTSIDE this component so it survives the user quitting the loading screen;
+  // we read its status/result here and mirror it onto local step/result state.
+  const generation = useTryOnGeneration();
+
   const handleBack = useCallback(() => {
     const idx = stepOrder.indexOf(step as CaptureStep);
     if (idx > 0) {
@@ -136,51 +148,96 @@ export const SeeThisOnMeScreen: React.FC = () => {
   }, [navigation, step]);
 
   // Generate the try-on from the already-uploaded body record. Photos were
-  // uploaded + validated at pick time, so this never re-uploads — it just calls
-  // the high-res render with the stored `body_id` (full-body preferred) and the
-  // outfit's item ids + chosen body shape.
+  // uploaded + validated at pick time, so this never re-uploads — it hands the
+  // stored `body_id` (full-body preferred) + outfit + chosen shape to the
+  // background store, which runs the high-res render outside React (so it keeps
+  // going if the user quits the loading screen — AU-358).
   const runGenerate = useCallback(
-    async (bodyId: string, shape: BodyShapeId | null) => {
+    (bodyId: string, shape: BodyShapeId | null) => {
       setStep('generating');
       setErrored(false);
-      try {
-        track('try_on_started', {
-          outfit_hash: outfit.outfitHash,
-          item_count: outfit.itemIds.length,
-        });
-        const res = await tryOnService.generateTryOn({
-          body_id: bodyId,
-          wardrobe_item_ids: outfit.itemIds,
-          gemini_opt_in: true,
-          prompt_params: shape ? { body_shape: shape } : undefined,
-        });
-        const url =
-          res.composite_url ??
-          (res.composite_png
-            ? `data:image/png;base64,${res.composite_png}`
-            : null);
-        if (!url) {
-          throw new Error('no_composite');
-        }
-        setResultUrl(url);
+      track('try_on_started', {
+        outfit_hash: outfit.outfitHash,
+        item_count: outfit.itemIds.length,
+      });
+      tryOnGenerationStore.start({ outfit, bodyId, shape });
+    },
+    [outfit],
+  );
+
+  // Mirror background-store transitions onto local step/result state + fire the
+  // success/failure analytics exactly once per resolution. `generation.outfit`
+  // is matched so a stale result from a previous outfit can't leak in. This is
+  // the single owner of `try_on_completed` / `try_on_failed` now that the
+  // request lives in the store.
+  const resolvedHashRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (generation.outfit?.outfitHash !== outfit.outfitHash) return;
+    const key = `${generation.status}:${generation.resultUrl ?? ''}`;
+    if (generation.status === 'success' && generation.resultUrl) {
+      if (resolvedHashRef.current !== key) {
+        resolvedHashRef.current = key;
         track('try_on_completed', {
           outfit_hash: outfit.outfitHash,
-          provider: res.provider,
+          provider: generation.provider ?? undefined,
         });
-        setStep('preview');
-      } catch {
-        // Validation already happened at pick time, so any failure here is a
-        // generate-side problem (render error / network). Show the generic
-        // retry state.
+      }
+      setResultUrl(generation.resultUrl);
+      setErrored(false);
+      setStep('preview');
+    } else if (generation.status === 'error') {
+      if (resolvedHashRef.current !== key) {
+        resolvedHashRef.current = key;
         track('try_on_failed', {
           outfit_hash: outfit.outfitHash,
           error_kind: 'generate',
         });
-        setErrored(true);
       }
-    },
-    [outfit.itemIds, outfit.outfitHash],
-  );
+      setErrored(true);
+      setStep('generating');
+    }
+  }, [
+    generation.status,
+    generation.resultUrl,
+    generation.provider,
+    generation.outfit,
+    outfit.outfitHash,
+  ]);
+
+  // AU-358 mount lifecycle: register the in-app completion notifier (idempotent)
+  // and tell the store the loading screen is now mounted (so a completion shows
+  // inline, not as a Toast). On unmount we flag it backgrounded — if a render is
+  // still in flight, finishing it will fire the in-app completion Toast.
+  // If the user returns to a generation that already finished/started in the
+  // background (e.g. via the completion Toast), REHYDRATE from the store rather
+  // than kicking off a fresh render. `rehydratedRef` blocks the AU-346 reuse
+  // auto-fire below from double-generating in that case.
+  const rehydratedRef = useRef(false);
+  useEffect(() => {
+    setTryOnBackgroundCompleteHandler();
+    tryOnGenerationStore.setBackgrounded(false);
+    const existing = tryOnGenerationStore.getState();
+    if (
+      existing.outfit?.outfitHash === outfit.outfitHash &&
+      existing.status !== 'idle'
+    ) {
+      rehydratedRef.current = true;
+      if (existing.status === 'success' && existing.resultUrl) {
+        setResultUrl(existing.resultUrl);
+        setStep('preview');
+      } else {
+        // generating or error → land on the generating screen; the resolution
+        // effect mirrors the final state + analytics.
+        setErrored(existing.status === 'error');
+        setStep('generating');
+      }
+    }
+    return () => {
+      tryOnGenerationStore.setBackgrounded(true);
+    };
+    // Mount-only: outfit is stable for a given screen instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // AU-346 reuse: fetch the user's active reusable profile on mount. While this
   // resolves the screen shows the shared MacgieLoader; once known it either
@@ -193,23 +250,35 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // True only when a saved profile exists AND the user hasn't asked to retake.
   const reuseMode = !forceCapture && decideEntryMode(activeProfile) === 'reuse';
 
-  // AU-346: with a reusable profile (and no explicit retake), skip capture and
-  // render the CURRENT outfit straight away with the stored body + shape. Guard
-  // so it fires once per arrival on the reuse path, not on every render.
+  // AU-354 pt.3: the persisted body photo to show on the reuse-confirm screen.
+  // Full-body reference is preferred (it's what drives the render), falling back
+  // to the selfie/primary image. Null only for a malformed profile with neither.
+  const reusePhotoUri =
+    activeProfile?.full_body_url ?? activeProfile?.image_url ?? null;
+
+  // AU-354 pt.3: CONFIRM the reused profile — the user has seen their persisted
+  // photo and wants to proceed. Only now do we render the current outfit with
+  // the stored body + shape (no re-capture, no re-upload). Guarded by
+  // `reuseConfirmed` state so it can't double-fire.
   const reuseFiredRef = useRef(false);
-  useEffect(() => {
-    if (reuseMode && activeProfile?.id && !reuseFiredRef.current) {
-      reuseFiredRef.current = true;
-      runGenerate(activeProfile.id, activeProfile.body_shape ?? null);
-    }
-  }, [reuseMode, activeProfile, runGenerate]);
+  const handleReuseConfirm = useCallback(() => {
+    if (!activeProfile?.id || reuseFiredRef.current) return;
+    reuseFiredRef.current = true;
+    setReuseConfirmed(true);
+    track('body_photo_reuse_confirmed', { outfit_hash: outfit.outfitHash });
+    runGenerate(activeProfile.id, activeProfile.body_shape ?? null);
+  }, [activeProfile, outfit.outfitHash, runGenerate]);
 
   // "Retake photos" on the reuse path: drop reuse and start the normal capture
   // flow from the selfie step. The saved server profile is left intact until a
   // new capture is saved (opt-in at the shape step overwrites it).
   const restartCapture = useCallback(() => {
     reuseFiredRef.current = false;
+    rehydratedRef.current = false;
+    // Drop any background render result so re-capture starts clean (AU-358).
+    tryOnGenerationStore.reset();
     setForceCapture(true);
+    setReuseConfirmed(false);
     setSelfie(null);
     setFullBody(null);
     setSelfieBodyId(null);
@@ -222,10 +291,24 @@ export const SeeThisOnMeScreen: React.FC = () => {
     setOptIn(true);
     setStep('selfie');
     track('try_on_profile_retake', { outfit_hash: outfit.outfitHash });
-    // §3.5 #42: outcome-screen retake is the user discarding the generated
-    // image to redo capture; fires only when triggered from the preview UI.
-    track('try_on_outcome_retaken', { outfit_hash: outfit.outfitHash });
-  }, [outfit.outfitHash]);
+    // §3.5 #42: outcome-screen retake is the user discarding the GENERATED
+    // image to redo capture — so it only fires when a result actually exists
+    // (preview UI). The reuse-confirm retake (AU-354 pt.3) happens before any
+    // render, so `resultUrl` is null there and this is correctly skipped.
+    if (resultUrl) {
+      track('try_on_outcome_retaken', { outfit_hash: outfit.outfitHash });
+    }
+  }, [outfit.outfitHash, resultUrl]);
+
+  // AU-354 pt.3: RETAKE from the reuse-confirm screen — the user saw their
+  // persisted photo and chose to recapture BEFORE any render. Distinct from the
+  // preview-screen retake (`try_on_outcome_retaken`): there's no generated image
+  // to discard here, so we fire the reuse-specific event then run the normal
+  // capture flow. `restartCapture` resets reuse state + the background store.
+  const handleReuseRetake = useCallback(() => {
+    track('body_photo_retake_selected', { outfit_hash: outfit.outfitHash });
+    restartCapture();
+  }, [outfit.outfitHash, restartCapture]);
 
   // Validate a just-picked photo immediately by uploading it. On success, hand
   // the created `body_id` to `onValid` (which stores it + advances). On a
@@ -325,6 +408,19 @@ export const SeeThisOnMeScreen: React.FC = () => {
     [pickImage],
   );
 
+  // AU-358 "quit loading": leave the loading screen WITHOUT cancelling the
+  // render. The store keeps the request alive (it lives outside React); flagging
+  // it backgrounded means the in-app completion Toast fires when it finishes so
+  // the user can return + view/pick their result. Only meaningful while still
+  // generating — once it's a success/error there's nothing to background.
+  const handleQuitGeneration = useCallback(() => {
+    tryOnGenerationStore.setBackgrounded(true);
+    track('body_shape_generation_backgrounded', {
+      outfit_hash: outfit.outfitHash,
+    });
+    goHome();
+  }, [goHome, outfit.outfitHash]);
+
   // The body record to (re)generate from: the captured one, or — on the reuse
   // path where nothing was captured — the saved profile (AU-346).
   const activeGenerationBodyId =
@@ -347,7 +443,12 @@ export const SeeThisOnMeScreen: React.FC = () => {
   if (step === 'generating') {
     return (
       <SafeAreaView style={styles.container}>
-        <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
+        {/* AU-358: the header back during generation = quit-to-background, not a
+            plain goBack — so leaving keeps the render alive + notifies on done. */}
+        <StomHeader
+          title={t('seeThisOnMe.title')}
+          onBack={errored ? handleBack : handleQuitGeneration}
+        />
         <GeneratingView
           errored={errored}
           onRetry={() => {
@@ -355,6 +456,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
               runGenerate(activeGenerationBodyId, activeShape);
             }
           }}
+          // While generating (not errored), offer an explicit "leave + we'll
+          // tell you when it's ready" affordance (AU-358 quit loading).
+          onQuit={errored ? undefined : handleQuitGeneration}
         />
       </SafeAreaView>
     );
@@ -380,6 +484,31 @@ export const SeeThisOnMeScreen: React.FC = () => {
             />
           </View>
         ) : null}
+      </SafeAreaView>
+    );
+  }
+
+  // ── Reuse-confirm re-entry (AU-354 pt.3) ─────────────────────────────────
+  // On the reuse path, before any render, show the user the body photo they
+  // previously selected with CONFIRM / RETAKE — instead of redoing capture or
+  // silently regenerating (Viet's UAC). Skipped when we rehydrated an in-flight
+  // background generation (AU-358), once confirmed, or if the saved profile is
+  // malformed with no usable photo (falls through to normal capture).
+  if (
+    reuseMode &&
+    !reuseConfirmed &&
+    !rehydratedRef.current &&
+    reusePhotoUri &&
+    step === 'selfie'
+  ) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
+        <StepReuseConfirm
+          photoUri={reusePhotoUri}
+          onConfirm={handleReuseConfirm}
+          onRetake={handleReuseRetake}
+        />
       </SafeAreaView>
     );
   }
