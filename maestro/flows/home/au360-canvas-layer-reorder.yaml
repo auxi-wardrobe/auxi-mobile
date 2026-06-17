@@ -1,0 +1,98 @@
+# auxi/maestro/flows/home/au360-canvas-layer-reorder.yaml
+# AU-360: bring-forward / send-backward on the Outfit Canvas must visibly
+# re-stack the selected item. The pre-fix bug nudged a single item's z-index by
+# ±1, which collided with the neighbour's z (a tie) and rendered no visible move.
+# FIX (OutfitCanvasScreen.tsx moveLayer ~411-451): SWAP z-index with the adjacent
+# neighbour in stacking order, guaranteeing a distinct, visible re-stack. Fires
+# `canvas_item_layer_reordered {direction}` only on an actual move (no event at
+# the front/back edge). The surface (OutfitCanvasSurface) binds `zIndex:
+# item.zIndex` per item and sorts ascending, so the swap is honored on screen.
+#
+# ============================ TESTABILITY GAP =============================
+# This flow can reach the canvas and assert the reorder CONTROLS exist + are
+# tappable, but it CANNOT deterministically verify the VISIBLE re-stack:
+#
+#   1. Canvas items carry a DYNAMIC testID `canvas-item-${item.id}` (item.id is
+#      a backend/runtime id), so there is no stable selector to tap a specific
+#      item and put it in the `selectedId` state that enables the toolbar.
+#   2. `OutfitCanvasSurface` is rendered WITHOUT a `testID` in
+#      OutfitCanvasScreen.tsx (~603), so there's no stable "surface" anchor.
+#
+# => Filed a testID-backfill request with mobile-dev (see flow report). When
+#    stable indexed item testIDs land (e.g. `canvas-item-0`, `canvas-item-1`
+#    + selected-state suffix), extend the DEFERRED block below to: tap item 0
+#    -> assert toolbar enabled -> tap layer-up -> assert the swapped stacking
+#    (e.g. item-0 now reports selected/raised). Until then this asserts the
+#    fix's controls are present + reachable, and the analytics is wired in code.
+# ==========================================================================
+#
+# Run: maestro test maestro/flows/home/au360-canvas-layer-reorder.yaml \
+#        -e QA_EMAIL=qa-test@auxi.app -e QA_PASSWORD='QaTest!2026'
+
+appId: com.auxi2026.app
+name: au360-canvas-layer-reorder
+tags:
+  - au-360
+  - home
+  - canvas
+  - regression
+  - known-limitation
+env:
+  QA_EMAIL: ""
+  QA_PASSWORD: ""
+  HOME_TIMEOUT_MS: 90000
+  RECOMMENDATION_TIMEOUT_MS: 90000
+---
+- runFlow: ../_shared/ensure-home.yaml
+
+# Need an outfit on Home before Remix can seed the canvas with its items.
+- extendedWaitUntil:
+    visible:
+      id: home-outfit-sheet-0
+    timeout: ${RECOMMENDATION_TIMEOUT_MS}
+
+# Open the Outfit Canvas (Remix editor) seeded with the active outfit's items.
+- tapOn:
+    id: home-remix
+- waitForAnimationToEnd
+
+# AU-360 ASSERTION (controls present): the reorder toolbar exists on the canvas.
+# Both directions are distinct, testID'd controls (the fix's surface).
+- extendedWaitUntil:
+    visible:
+      id: canvas-tool-layer-up
+    timeout: 10000
+- assertVisible:
+    id: canvas-tool-layer-down
+# Other canvas toolbar affordances render alongside (sanity that we're on the
+# real editor, not a degraded fallback).
+- assertVisible:
+    id: canvas-tool-duplicate
+- assertVisible:
+    id: canvas-tool-delete
+# The reorder controls are tappable (no-op without a selection, but must not
+# crash / must remain on the canvas — backdrop is the stable canvas anchor).
+- tapOn:
+    id: canvas-tool-layer-up
+- tapOn:
+    id: canvas-tool-layer-down
+- assertVisible:
+    id: canvas-backdrop
+
+# -------------------------------------------------------------------------
+# DEFERRED — enable once canvas items expose stable indexed testIDs
+# (e.g. `canvas-item-0` + a `-selected` state suffix). Replace the tap-without
+# -selection block above with a real select -> reorder -> assert-swap:
+#
+#   - tapOn:
+#       id: canvas-item-0
+#   - assertVisible:
+#       id: canvas-item-0-selected
+#   - tapOn:
+#       id: canvas-tool-layer-up
+#   - waitForAnimationToEnd
+#   # Assert the swapped stacking is observable (e.g. the previously-top item
+#   # is now reported below, or item-0 reads a raised/selected-on-top state).
+#   - assertVisible:
+#       id: canvas-item-0-selected
+# -------------------------------------------------------------------------

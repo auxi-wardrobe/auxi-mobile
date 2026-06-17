@@ -26,6 +26,7 @@ import {
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { getImageUrl } from '../utils/url';
+import { track } from '../services/analytics';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconCanvasUndo from '../assets/images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../assets/images/canvas-icons/redo.svg';
@@ -407,36 +408,51 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     [pushHistory],
   );
 
-  const handleLayerUp = useCallback(() => {
-    if (!selectedId) {
-      return;
-    }
-    setItems(prev => {
-      const maxZ = Math.max(...prev.map(it => it.zIndex));
-      const next = prev.map(it =>
-        it.id === selectedId
-          ? { ...it, zIndex: Math.min(it.zIndex + 1, maxZ + 1) }
-          : it,
-      );
+  // Move the selected item one layer in `direction` by SWAPPING its z-index with
+  // the immediate neighbour in stacking order. Nudging a single item's z by ±1
+  // (the old behaviour) produced ties — two items sharing a z-index don't
+  // reorder deterministically, so the move was invisible. Swapping guarantees a
+  // distinct, visible re-stack and keeps z-indices a stable permutation.
+  const moveLayer = useCallback(
+    (direction: 'forward' | 'backward') => {
+      if (!selectedId) {
+        return;
+      }
+      // Ascending z = bottom→top render order.
+      const ordered = [...items].sort((a, b) => a.zIndex - b.zIndex);
+      const idx = ordered.findIndex(it => it.id === selectedId);
+      if (idx === -1) {
+        return;
+      }
+      // 'forward' = toward the top (higher z) = next item up; 'backward' =
+      // toward the bottom (lower z) = previous item.
+      const neighbourIdx = direction === 'forward' ? idx + 1 : idx - 1;
+      if (neighbourIdx < 0 || neighbourIdx >= ordered.length) {
+        // Already at the front/back edge — nothing to swap with, no event.
+        return;
+      }
+      const selZ = ordered[idx].zIndex;
+      const neighbourId = ordered[neighbourIdx].id;
+      const neighbourZ = ordered[neighbourIdx].zIndex;
+      const next = items.map(it => {
+        if (it.id === selectedId) {
+          return { ...it, zIndex: neighbourZ };
+        }
+        if (it.id === neighbourId) {
+          return { ...it, zIndex: selZ };
+        }
+        return it;
+      });
+      setItems(next);
       pushHistory(next);
-      return next;
-    });
-  }, [selectedId, pushHistory]);
+      track('canvas_item_layer_reordered', { direction });
+    },
+    [selectedId, items, pushHistory],
+  );
 
-  const handleLayerDown = useCallback(() => {
-    if (!selectedId) {
-      return;
-    }
-    setItems(prev => {
-      const next = prev.map(it =>
-        it.id === selectedId
-          ? { ...it, zIndex: Math.max(it.zIndex - 1, 1) }
-          : it,
-      );
-      pushHistory(next);
-      return next;
-    });
-  }, [selectedId, pushHistory]);
+  const handleLayerUp = useCallback(() => moveLayer('forward'), [moveLayer]);
+
+  const handleLayerDown = useCallback(() => moveLayer('backward'), [moveLayer]);
 
   const handleDuplicate = useCallback(() => {
     if (!selectedId) {
