@@ -46,6 +46,7 @@ interface PillButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   testID?: string;
+  accessibilityLabel?: string;
 }
 
 interface BottomSheetSurfaceProps {
@@ -104,6 +105,7 @@ export const PillButton: React.FC<PillButtonProps> = ({
   style,
   textStyle,
   testID,
+  accessibilityLabel,
 }) => {
   const isText = variant === 'text';
   const reduced = useReducedMotion();
@@ -168,6 +170,7 @@ export const PillButton: React.FC<PillButtonProps> = ({
   return (
     <AnimatedTouchable
       testID={testID}
+      accessibilityLabel={accessibilityLabel}
       activeOpacity={0.85}
       onPress={onPress}
       onPressIn={() => animatePress(motion.scale.press)}

@@ -73,6 +73,8 @@ Exit code: 0 = pass, non-zero = fail.
 | `auth/au313-gmail-google-route.yaml` | au-313, auth, uac, oauth | Gmail-domain email on the email step routes to EmailGoogleNotice (Google sign-in), mirroring the Apple flow. Pure-client branch — no backend seed. Stops before the native Google SDK sheet (Maestro can't drive OAuth headlessly). |
 | `auth/au314-unregistered-email.yaml` | au-314, auth, uac, edge-case, known-limitation | Unregistered email behavior. **Asserts current-behavior**: anonymous precheck is enumeration-safe (always `password`) so the email falls through to SignIn -> INVALID_CREDENTIALS inline error. The intended "no account" toast + Welcome bounce is DEFERRED (needs authenticated precheck + a `mode:'signin'` entry point — neither exists yet). Deferred assertion block sketched inline. |
 | `auth/au315-forgot-gmail-notice.yaml` | au-315, auth, uac | Forgot-password with a Gmail address shows inline "reset in Gmail" guidance (`forgot-request-gmail-notice`) and does NOT advance to check-mail (the no-op AU-315 fixed). Reaches the request screen via SignIn->forgot-link (needs verified `qa-signin@auxi.app` seed), then overwrites the email field with a gmail address (field is editable; no gmail account needed). |
+| `auth/au356-signup-reaches-password.yaml` | au-356, auth, uac, regression | AU-356. SIGN-UP mode + a valid fresh email must advance to PasswordCreation (`password-input-field`), NOT bounce to SignIn. Asserts the FIXED happy path (pre-fix: enumeration-safe precheck `password` was wrongly routed to SignIn, blocking every new signup). Negative guard: `assertNotVisible: signin-password-input`. Use a UNIQUE email per run (`-e QA_NEW_EMAIL=qa-au356-$(date +%s)@example.com`). Stops pre-register. |
+| `home/au360-canvas-layer-reorder.yaml` | au-360, home, canvas, regression, known-limitation | AU-360. Reaches the Outfit Canvas via `home-remix` and asserts the bring-forward/send-backward controls (`canvas-tool-layer-up`/`-down`) exist + are tappable without crashing. **KNOWN LIMITATION**: the visible re-stack is NOT asserted — canvas items use dynamic `canvas-item-${item.id}` testIDs with no stable index selector to drive a selection, and the surface has no `testID`. Deferred select->reorder->assert-swap block sketched inline; needs the testID backfill below. |
 | `home/swipe.yaml` | home, regression | Vertical sheet swipe + index advance + Show another / This works / Edit context buttons |
 | `home/mood-feedback.yaml` | home, mood-feedback, au-318, regression | AU-318. "Wear this" -> MoodFeedbackSheet happy path (Done disabled -> chip select -> Done -> success banner -> CTA flips saved/disabled) + backdrop-dismiss path on the next outfit (fresh sheet, Done disabled again, no banner, CTA still enabled). Subject to E-10 (RN <Modal> UIWindow reachability) — same caveat as the refine modal. |
 | `wardrobe/item-detail-open.yaml` | wardrobe, item-detail, regression | AU-311. Open journey: Home → sidebar → Wardrobe → first tile → ItemDetail renders in READ mode (Mix pill + Change present; Save/Cancel absent). |
@@ -136,6 +138,15 @@ Naming convention (mirrored in `mobile-dev` agent rules):
 - `wardrobe-tab-tops`, `wardrobe-item-tile-{id}`
 
 Open testID gaps (filed with mobile-dev):
+
+- `OutfitCanvasScreen.tsx` / `OutfitCanvasSurface.tsx` (AU-360) — canvas
+  items carry a backend-dynamic `canvas-item-<id>` testID and the surface
+  is rendered with no `testID`, so `home/au360-canvas-layer-reorder.yaml`
+  can assert the reorder CONTROLS but cannot select a specific item to
+  verify the visible z-swap. Proposed: stable indexed item testIDs
+  `canvas-item-0`, `canvas-item-1`, ... with a `-selected` state suffix
+  (flip the suffix, keep the base always-defined), plus a
+  `canvas-surface-root` container testID for a clean ready-signal.
 
 - `WardrobeScreen.tsx` — no stable screen-root testID and the grid tiles
   use a backend-dynamic `wardrobe-item-<id>` testID. The
