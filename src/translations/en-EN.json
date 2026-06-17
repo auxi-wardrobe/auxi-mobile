@@ -236,6 +236,7 @@
       "list": {
         "coming_soon_body": "Importing from a web link will be available shortly.",
         "added_title": "Added to your wardrobe",
+        "item_ready_title": "Your item is ready",
         "upload_failed_title": "Upload failed",
         "upload_failed_body": "We could not save that item.",
         "add_photo_title": "Add a photo",
@@ -583,12 +584,27 @@
         "prompt": "3/3 - Choose the shape that feels most like you. Tap to expand",
         "expandedTitle": "Choose the shape that feels most like you."
       },
+      "reuseConfirm": {
+        "prompt": "Here's the body photo you saved. Use it again, or retake your photos.",
+        "confirm": "Use this photo",
+        "retake": "Retake photos"
+      },
       "shapes": {
         "pear": "Pear",
         "hourglass": "Hourglass",
         "rectangle": "Rectangle",
         "triangle": "Triangle",
         "oval": "Oval"
+      },
+      "quit": {
+        "hint": "This can take a moment. You can leave — we’ll let you know the second it’s ready.",
+        "cta": "Leave — notify me when ready"
+      },
+      "notify": {
+        "readyTitle": "Your look is ready",
+        "readyBody": "Tap to view your visualization.",
+        "failedTitle": "We couldn’t create your look",
+        "failedBody": "Tap to go back and try again."
       }
     }
   }

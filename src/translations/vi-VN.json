@@ -236,6 +236,7 @@
       "list": {
         "coming_soon_body": "Nhập từ liên kết web sẽ sớm khả dụng.",
         "added_title": "Đã thêm vào tủ đồ",
+        "item_ready_title": "Món của bạn đã sẵn sàng",
         "upload_failed_title": "Tải lên thất bại",
         "upload_failed_body": "Chúng tôi không thể lưu món đó.",
         "add_photo_title": "Thêm ảnh",
@@ -582,12 +583,27 @@
         "prompt": "3/3 - Chọn dáng người giống bạn nhất. Nhấn để mở rộng",
         "expandedTitle": "Chọn dáng người giống bạn nhất."
       },
+      "reuseConfirm": {
+        "prompt": "Đây là ảnh cơ thể bạn đã lưu. Dùng lại ảnh này, hoặc chụp lại.",
+        "confirm": "Dùng ảnh này",
+        "retake": "Chụp lại ảnh"
+      },
       "shapes": {
         "pear": "Quả lê",
         "hourglass": "Đồng hồ cát",
         "rectangle": "Chữ nhật",
         "triangle": "Tam giác",
         "oval": "Bầu dục"
+      },
+      "quit": {
+        "hint": "Việc này có thể mất một lát. Bạn có thể rời đi — chúng tôi sẽ báo ngay khi xong.",
+        "cta": "Rời đi — báo cho tôi khi xong"
+      },
+      "notify": {
+        "readyTitle": "Diện mạo của bạn đã sẵn sàng",
+        "readyBody": "Chạm để xem hình ảnh của bạn.",
+        "failedTitle": "Chúng tôi không thể tạo diện mạo",
+        "failedBody": "Chạm để quay lại và thử lại."
       }
     }
   }
