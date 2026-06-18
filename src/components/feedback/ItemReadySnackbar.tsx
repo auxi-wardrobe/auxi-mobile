@@ -1,36 +1,33 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import type {
-  ToastConfig,
-  ToastConfigParams,
-} from 'react-native-toast-message';
 import { theme } from '../../theme/theme';
 import IconCheckCircle from '../../assets/images/icon_check_circle.svg';
 
 /**
- * Custom `react-native-toast-message` config.
- *
- * Adds the `successSnackbar` type — an M3-style success snackbar matching the
- * Figma "Your item is ready" design (node 3915:30077). Teal/mint surface,
- * check-circle glyph, 4px radius, M3 Elevation Light/3 drop shadow.
+ * M3-style "Your item is ready" success snackbar (Figma node 3915:30077).
+ * Teal/mint surface, check-circle glyph, 4px radius, M3 Elevation Light/3.
  *
  * Source spec:
  *   plans/260617-1743-au-361-item-ready-toast/figma-extraction-item-ready-toast.md
  *
- * Only this NEW type is added — the global `success` / `error` / `info`
- * presets that the other toasts use are intentionally left untouched.
- *
- * NOTE (AU-361 hotfix): this file + the `<Toast config={toastConfig} />` wiring
- * in App.tsx were omitted from PR #87, so `successSnackbar` was registered
- * nowhere and the "item ready" snackbar silently no-op'd. Restored here.
+ * AU-361: extracted from the now-deleted `toastConfig.tsx`. The library's
+ * custom-config render path never mounted the snackbar; WardrobeScreen now
+ * renders this presentational component directly as a self-controlled overlay.
+ * Styling, testID and a11y are preserved verbatim from the original.
  */
-const SuccessSnackbar = ({ text1 }: ToastConfigParams<unknown>) => (
+interface ItemReadySnackbarProps {
+  message: string;
+}
+
+export const ItemReadySnackbar: React.FC<ItemReadySnackbarProps> = ({
+  message,
+}) => (
   <View
     style={styles.snackbar}
     testID="wardrobe-item-ready-snackbar"
     accessible
     accessibilityRole="alert"
-    accessibilityLabel={text1}
+    accessibilityLabel={message}
   >
     {/* 24px container, 16px glyph — matches Figma icon sizing. */}
     <View style={styles.iconContainer}>
@@ -41,14 +38,10 @@ const SuccessSnackbar = ({ text1 }: ToastConfigParams<unknown>) => (
       />
     </View>
     <Text style={styles.label} numberOfLines={2}>
-      {text1}
+      {message}
     </Text>
   </View>
 );
-
-export const toastConfig: ToastConfig = {
-  successSnackbar: props => <SuccessSnackbar {...props} />,
-};
 
 const styles = StyleSheet.create({
   snackbar: {

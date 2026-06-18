@@ -15,7 +15,6 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { SidebarProvider } from './src/context/SidebarContext';
 import { RootDrawer } from './src/components/layout/RootDrawer';
 import Toast from 'react-native-toast-message';
-import { toastConfig } from './src/components/feedback/toastConfig';
 import { initI18n } from './src/i18n/init';
 import { theme } from './src/theme/theme';
 import { configureGoogleSignIn } from './src/services/oauth/googleSignIn';
@@ -81,7 +80,7 @@ function App() {
               </RootDrawer>
             </SidebarProvider>
           </AuthProvider>
-          <Toast config={toastConfig} />
+          <Toast />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
