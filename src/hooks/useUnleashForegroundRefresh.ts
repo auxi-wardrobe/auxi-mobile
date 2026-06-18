@@ -7,7 +7,7 @@
 
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
-import { useUnleashClient } from '@unleash/proxy-client-react';
+import { useUnleashClient } from '@unleash/unleash-react-native-sdk';
 
 export const useUnleashForegroundRefresh = (): void => {
   const client = useUnleashClient();

@@ -1,13 +1,13 @@
 // src/hooks/useFeatureFlag.ts
 //
-// Typed wrappers over the @unleash/proxy-client-react hooks so call sites use
-// the `FLAGS` constants (never raw flag strings) and gate UI on readiness.
+// Typed wrappers over the @unleash/unleash-react-native-sdk hooks so call sites
+// use the `FLAGS` constants (never raw flag strings) and gate UI on readiness.
 
 import {
   useFlag,
   useVariant,
   useFlagsStatus,
-} from '@unleash/proxy-client-react';
+} from '@unleash/unleash-react-native-sdk';
 import type { FlagName } from '../services/feature-flags';
 
 export const useFeatureFlag = (name: FlagName): boolean => useFlag(name);

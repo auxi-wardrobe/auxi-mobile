@@ -1,17 +1,19 @@
 // src/services/feature-flags.ts
 //
-// Feature-flag seam — backed by Unleash (unleash-proxy-client).
+// Feature-flag seam — backed by Unleash (@unleash/unleash-react-native-sdk).
 // Single integration point: components use the `useFeatureFlag` hook; AuthContext
 // calls identifyFlagUser / resetFlagUser. Nothing else imports the SDK.
 
-import { UnleashClient } from 'unleash-proxy-client';
+import {
+  UnleashClient,
+  defaultStorageProvider as AsyncStorageProvider,
+} from '@unleash/unleash-react-native-sdk';
 import {
   UNLEASH_URL,
   UNLEASH_CLIENT_KEY,
   UNLEASH_APP_NAME,
   UNLEASH_REFRESH_INTERVAL,
 } from '../config/unleash';
-import { asyncStorageProvider } from './unleash-storage';
 
 // Flag names as literal constants — no magic strings at call sites (same rule
 // as analytics event names). Add every new flag here.
@@ -27,7 +29,7 @@ export const unleashClient = new UnleashClient({
   clientKey: UNLEASH_CLIENT_KEY,
   appName: UNLEASH_APP_NAME,
   refreshInterval: UNLEASH_REFRESH_INTERVAL,
-  storageProvider: asyncStorageProvider,
+  storageProvider: new AsyncStorageProvider(),
 });
 
 if (__DEV__) {
