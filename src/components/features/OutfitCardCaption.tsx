@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import IconIdea from '../../assets/images/icon_idea.svg';
@@ -17,11 +17,32 @@ import IconIdea from '../../assets/images/icon_idea.svg';
 type Props = {
   caption?: string | null;
   testID?: string;
+  /**
+   * AU-362: when provided, the idea/lightbulb pill becomes the temperature
+   * override trigger (tap → open the "Outfit Temperature" sheet). When absent
+   * (e.g. Favourites), the pill stays a non-interactive insight indicator.
+   */
+  onPressInsight?: () => void;
+  /** AU-362: highlights the lightbulb pill while an override is active. */
+  insightActive?: boolean;
 };
 
-export const OutfitCardCaption: React.FC<Props> = ({ caption, testID }) => {
+export const OutfitCardCaption: React.FC<Props> = ({
+  caption,
+  testID,
+  onPressInsight,
+  insightActive,
+}) => {
   const { t } = useTranslation();
   const text = caption?.trim() || t('outfitActions.default_caption');
+
+  const glyph = (
+    <IconIdea
+      width={24}
+      height={24}
+      color={insightActive ? theme.colors.white : theme.colors.uacTextBase}
+    />
+  );
 
   return (
     <View testID={testID} style={styles.row}>
@@ -30,13 +51,31 @@ export const OutfitCardCaption: React.FC<Props> = ({ caption, testID }) => {
           {text}
         </Text>
       </View>
-      <View
-        style={styles.insightPill}
-        accessibilityRole="image"
-        accessibilityLabel={t('outfitActions.a11y_why_outfit')}
-      >
-        <IconIdea width={24} height={24} color={theme.colors.uacTextBase} />
-      </View>
+      {onPressInsight ? (
+        <TouchableOpacity
+          testID={
+            insightActive ? 'home-temp-trigger-active' : 'home-temp-trigger'
+          }
+          accessibilityRole="button"
+          accessibilityLabel={t(
+            insightActive ? 'home.a11y_temp_active' : 'home.a11y_temp_idle',
+          )}
+          accessibilityState={{ selected: !!insightActive }}
+          activeOpacity={0.82}
+          style={[styles.insightPill, insightActive && styles.insightPillActive]}
+          onPress={onPressInsight}
+        >
+          {glyph}
+        </TouchableOpacity>
+      ) : (
+        <View
+          style={styles.insightPill}
+          accessibilityRole="image"
+          accessibilityLabel={t('outfitActions.a11y_why_outfit')}
+        >
+          {glyph}
+        </View>
+      )}
     </View>
   );
 };
@@ -72,5 +111,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaInsightPillBg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // AU-362: active/highlighted lightbulb pill when a temperature override is on
+  // (Figma `degree selected` — darker fill, light glyph).
+  insightPillActive: {
+    backgroundColor: theme.colors.figmaChipBg,
   },
 });
