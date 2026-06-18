@@ -1718,8 +1718,15 @@ export const HomeScreen = () => {
   return (
     <SafeAreaView testID="home-screen-root" style={styles.container}>
       <View style={styles.header}>
+        {/* Menu/hamburger — the ONLY path to the side drawer (Wardrobe +
+            Favourites). Role MUST be explicit: the SVG-only icon child means
+            no text node enters the iOS a11y tree, so without role="button" the
+            button is invisible to VoiceOver AND unreachable by Maestro /
+            mobile-mcp. testID (machine selector) and accessibilityLabel (human
+            VoiceOver text) intentionally differ in value per auxi convention. */}
         <TopIconButton
           testID="home-menu-button"
+          accessibilityRole="button"
           accessibilityLabel={t('home.a11y_open_menu')}
           onPress={handleLeadingAction}
           icon={<IconHomeMenu width={24} height={24} />}
