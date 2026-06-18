@@ -101,6 +101,14 @@ export const useTemperatureOverride = (): UseTemperatureOverride => {
   }, []);
 
   const apply = useCallback((key: TemperatureBucketKey) => {
+    // Sync the refs SYNCHRONOUSLY here, not only via the effect above (which
+    // runs post-commit): the Home Apply handler fires the recommendation
+    // request immediately after this call, and the build/prefetch closures
+    // read these refs — so a ref that lags one render would send the PRE-apply
+    // temp while the header already shows the new bucket (the "header/request
+    // mismatch" high-risk). Mirrors the refine-submit "set state + ref" pattern.
+    activeBucketKeyRef.current = key;
+    overrideTempCRef.current = repTempCFor(key);
     setActiveBucketKey(key);
     if (isOverrideBucket(key)) {
       AsyncStorage.setItem(
