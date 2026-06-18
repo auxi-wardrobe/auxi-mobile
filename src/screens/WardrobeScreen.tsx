@@ -25,6 +25,7 @@ import {
 } from 'react-native-image-picker';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { Header } from '../components/layout/Header';
+import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { BottomSheetSurface } from '../components/primitives/FigmaPrimitives';
 import { useSidebar } from '../context/SidebarContext';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
@@ -96,6 +97,10 @@ const isPreparing = (item: WardrobeItem): boolean => item.is_preparing === true;
 // is preparing.
 const PREPARING_POLL_MS = 4000;
 
+// AU-361: how long the self-controlled "item ready" snackbar stays on screen
+// before auto-hiding.
+const READY_SNACKBAR_MS = 4000;
+
 export const WardrobeScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const isFocused = useIsFocused();
@@ -112,11 +117,42 @@ export const WardrobeScreen = () => {
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
   const [addSheetVisible, setAddSheetVisible] = useState(false);
 
-  // AU-361: item-ready toast. `preparingIdsRef` holds IDs that were still
+  // AU-361: item-ready snackbar. `preparingIdsRef` holds IDs that were still
   // preparing on the previous fetch; `readyToastedIdsRef` dedups so an item
-  // only ever fires one "ready" toast per session even across refetches/polls.
+  // only ever fires one "ready" snackbar per session even across
+  // refetches/polls.
   const preparingIdsRef = useRef<Set<string>>(new Set());
   const readyToastedIdsRef = useRef<Set<string>>(new Set());
+
+  // AU-361: self-controlled in-screen snackbar state. The library's
+  // custom-config render path never mounted the snackbar, so we render it
+  // ourselves as an absolute overlay (see ItemReadySnackbar). `snackbarTimerRef`
+  // holds the auto-hide timeout so it can be cleared on re-trigger / unmount.
+  const [readySnackbarVisible, setReadySnackbarVisible] = useState(false);
+  const [readySnackbarMessage, setReadySnackbarMessage] = useState('');
+  const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showReadySnackbar = useCallback((message: string) => {
+    if (snackbarTimerRef.current) {
+      clearTimeout(snackbarTimerRef.current);
+    }
+    setReadySnackbarMessage(message);
+    setReadySnackbarVisible(true);
+    snackbarTimerRef.current = setTimeout(() => {
+      setReadySnackbarVisible(false);
+      snackbarTimerRef.current = null;
+    }, READY_SNACKBAR_MS);
+  }, []);
+
+  // Clear any pending auto-hide timer on unmount.
+  useEffect(
+    () => () => {
+      if (snackbarTimerRef.current) {
+        clearTimeout(snackbarTimerRef.current);
+      }
+    },
+    [],
+  );
 
   // AU-361: detect preparing→ready transitions and surface the toast once per
   // item. Compares this fetch against the prior fetch's preparing set.
@@ -140,14 +176,11 @@ export const WardrobeScreen = () => {
           !readyToastedIdsRef.current.has(item.id)
         ) {
           readyToastedIdsRef.current.add(item.id);
-          // Custom M3 snackbar type (Figma node 3915:30077) — see
-          // src/components/feedback/toastConfig.tsx. Visual only; the
+          // Self-controlled M3 snackbar (Figma node 3915:30077) — see
+          // ItemReadySnackbar. The library's custom-config render path never
+          // mounted, so we drive an in-screen overlay instead. Visual only; the
           // transition-detection / dedup / analytics logic is unchanged.
-          Toast.show({
-            type: 'successSnackbar',
-            text1: t('wardrobe.list.item_ready_title'),
-            position: 'bottom',
-          });
+          showReadySnackbar(t('wardrobe.list.item_ready_title'));
           const readyProps: Record<string, unknown> = {};
           if (item.category) {
             readyProps.item_category = item.category;
@@ -158,7 +191,7 @@ export const WardrobeScreen = () => {
 
       preparingIdsRef.current = nextPreparing;
     },
-    [t],
+    [t, showReadySnackbar],
   );
 
   // `silent` skips the skeleton spinner — used by the AU-361 background poll so
@@ -600,6 +633,19 @@ export const WardrobeScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* AU-361: self-controlled "item ready" snackbar overlay. Sits above the
+          grid near the bottom (Figma node 3915:30077). Informational only, so
+          pointerEvents="none" keeps touches passing through to the grid. */}
+      {readySnackbarVisible ? (
+        <View
+          style={styles.readySnackbarOverlay}
+          pointerEvents="none"
+          testID="wardrobe-item-ready-snackbar-overlay"
+        >
+          <ItemReadySnackbar message={readySnackbarMessage} />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -640,6 +686,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
+  },
+  // AU-361: bottom-anchored, centred overlay for the item-ready snackbar.
+  // High zIndex/elevation so it floats above the grid; the inner snackbar
+  // carries its own width + styling.
+  readySnackbarOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 24,
+    alignItems: 'center',
+    zIndex: 1000,
+    elevation: 1000,
   },
   headerTitle: {
     ...theme.typography.aliases.interSemiboldSm,
