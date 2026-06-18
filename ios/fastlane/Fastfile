@@ -89,6 +89,11 @@ platform :ios do
 
     write_release_metadata(new_build, marketing_version, tag)
 
+    # Zero-touch auto-chain: create the GitHub Release + fire the Slack
+    # notification on upload success. Fire-and-forget (the script always exits 0)
+    # — never fail a build that's already on Apple's servers.
+    post_testflight_release
+
     UI.success("Uploaded #{tag} → TestFlight. Push with: git push --follow-tags")
   end
 
@@ -112,4 +117,16 @@ def write_release_metadata(build_number, marketing_version, tag)
     # not expose it; auxi-launch-notify can read it from App Store Connect API.
   end
   UI.message("Wrote release-metadata.env to #{ARCHIVE_DIR}/")
+end
+
+# Zero-touch announce: create the GitHub Release + fire the Slack notification
+# via scripts/post-testflight-release.sh. Wrapped so any failure is non-fatal —
+# the build is already uploaded; announcements must never break the lane.
+def post_testflight_release
+  root   = `git rev-parse --show-toplevel`.strip
+  script = File.join(root, "scripts", "post-testflight-release.sh")
+  return UI.message("Auto-chain skipped — #{script} not found") unless File.exist?(script)
+  sh("bash", script)
+rescue => e
+  UI.error("Auto-chain (release+slack) failed (non-fatal): #{e.message}")
 end
