@@ -29,10 +29,15 @@ import { DatabaseScreen } from '../screens/DatabaseScreen';
 import { OutfitCanvasScreen } from '../screens/OutfitCanvasScreen';
 import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
+import { useUnleashForegroundRefresh } from '../hooks/useUnleashForegroundRefresh';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export const AppNavigator = () => {
+  // Force a flag re-fetch on app foreground (in addition to interval polling).
+  // Mounted once here — AppNavigator renders under FlagProvider (see App.tsx).
+  useUnleashForegroundRefresh();
+
   useEffect(() => {
     // Register Linking listeners for the verify-email and reset-password deep
     // links, driving them through the shared navigationRef (also used by the
