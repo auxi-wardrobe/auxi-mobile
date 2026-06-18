@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
+  AccessibilityRole,
   Animated,
   StyleSheet,
   Text,
@@ -23,6 +24,11 @@ interface TopIconButtonProps {
   disabled?: boolean;
   testID?: string;
   accessibilityLabel?: string;
+  // Icon-only header buttons render an SVG child with no text node, so without
+  // an explicit role they never enter the iOS accessibility tree — VoiceOver
+  // can't announce/activate them and Maestro/mobile-mcp can't tap them.
+  // Defaults to 'button' since every TopIconButton is, by definition, a button.
+  accessibilityRole?: AccessibilityRole;
 }
 
 interface DividerRowProps {
@@ -62,10 +68,13 @@ export const TopIconButton: React.FC<TopIconButtonProps> = ({
   disabled,
   testID,
   accessibilityLabel,
+  accessibilityRole = 'button',
 }) => (
   <TouchableOpacity
     testID={testID}
+    accessibilityRole={accessibilityRole}
     accessibilityLabel={accessibilityLabel}
+    accessibilityState={{ disabled: !!disabled }}
     activeOpacity={0.82}
     onPress={onPress}
     disabled={disabled}
