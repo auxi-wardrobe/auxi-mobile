@@ -11,6 +11,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
+import { FlagProvider } from '@unleash/unleash-react-native-sdk';
+import { unleashClient } from './src/services/feature-flags';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { SidebarProvider } from './src/context/SidebarContext';
 import { RootDrawer } from './src/components/layout/RootDrawer';
@@ -74,11 +76,13 @@ function App() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <SidebarProvider>
-              <RootDrawer>
-                <AppNavigator />
-              </RootDrawer>
-            </SidebarProvider>
+            <FlagProvider unleashClient={unleashClient}>
+              <SidebarProvider>
+                <RootDrawer>
+                  <AppNavigator />
+                </RootDrawer>
+              </SidebarProvider>
+            </FlagProvider>
           </AuthProvider>
           <Toast />
         </QueryClientProvider>
