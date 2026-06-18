@@ -392,7 +392,21 @@
       "a11y_pin_item": "Épingler l'article",
       "a11y_unpin_item": "Désépingler l'article",
       "your_piece_badge": "Votre pièce",
-      "a11y_your_piece": "Votre pièce — un article ajouté récemment"
+      "a11y_your_piece": "Votre pièce — un article ajouté récemment",
+      "temp_sheet_title": "Température des tenues",
+      "temp_sheet_subtitle": "Nous ajusterons les recommandations de tenues selon votre température préférée.",
+      "temp_use_current": "Météo actuelle ({{temp}}°C)",
+      "temp_28_40": "28–40°C",
+      "temp_10_25": "10 - 25°C",
+      "temp_0_7": "0 - 7°C",
+      "temp_-10_0": "-10 - 0°C",
+      "temp_apply_cta": "Appliquer",
+      "temp_cancel_cta": "Annuler",
+      "temp_error_recommend": "Impossible de mettre à jour les recommandations. Veuillez réessayer.",
+      "temp_error_offline": "Pas de connexion Internet. Veuillez réessayer.",
+      "temp_override_a11y": "Réglage de température actif : {{range}}. Touchez pour modifier.",
+      "a11y_temp_idle": "Ajuster la température des tenues",
+      "a11y_temp_active": "Réglage de température actif. Touchez pour modifier."
     },
     "pin": {
       "modal_title": "Garder cet article",

@@ -392,7 +392,21 @@
       "a11y_pin_item": "Ghim món",
       "a11y_unpin_item": "Bỏ ghim món",
       "your_piece_badge": "Món của bạn",
-      "a11y_your_piece": "Món của bạn — một món vừa được thêm"
+      "a11y_your_piece": "Món của bạn — một món vừa được thêm",
+      "temp_sheet_title": "Nhiệt độ trang phục",
+      "temp_sheet_subtitle": "Chúng tôi sẽ điều chỉnh gợi ý trang phục theo nhiệt độ bạn chọn.",
+      "temp_use_current": "Dùng thời tiết hiện tại ({{temp}}°C)",
+      "temp_28_40": "28–40°C",
+      "temp_10_25": "10 - 25°C",
+      "temp_0_7": "0 - 7°C",
+      "temp_-10_0": "-10 - 0°C",
+      "temp_apply_cta": "Áp dụng",
+      "temp_cancel_cta": "Hủy",
+      "temp_error_recommend": "Không thể cập nhật gợi ý trang phục. Vui lòng thử lại.",
+      "temp_error_offline": "Không có kết nối Internet. Vui lòng thử lại.",
+      "temp_override_a11y": "Đang ghi đè nhiệt độ trang phục: {{range}}. Chạm để thay đổi.",
+      "a11y_temp_idle": "Điều chỉnh nhiệt độ trang phục",
+      "a11y_temp_active": "Đang ghi đè nhiệt độ trang phục. Chạm để thay đổi."
     },
     "pin": {
       "modal_title": "Giữ món đồ này",

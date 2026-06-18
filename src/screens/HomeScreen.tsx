@@ -65,11 +65,32 @@ import {
 } from '../services/v05Api';
 import { favouriteService } from '../services/favouriteService';
 import { wardrobeService } from '../services/wardrobeService';
-import { track, trackRecommendationViewedOnce } from '../services/analytics';
+import {
+  track,
+  trackRecommendationViewedOnce,
+  trackTemperatureModalOpened,
+  trackTemperatureOptionSelected,
+  trackTemperatureApplyClicked,
+  trackTemperatureOverrideActive,
+  trackTemperatureOverrideRemoved,
+  trackRecommendationGeneratedByTemperatureOnce,
+} from '../services/analytics';
 import { resolveItemImage } from '../utils/url';
 import { weatherService } from '../services/weatherService';
 import { WeatherWidget } from '../components/features/WeatherWidget';
 import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
+import {
+  TemperatureOverrideSheet,
+  type TemperatureSheetErrorKey,
+} from '../components/features/TemperatureOverrideSheet';
+import { TemperatureOverrideIndicator } from '../components/features/TemperatureOverrideIndicator';
+import { useTemperatureOverride } from '../hooks/useTemperatureOverride';
+import {
+  bucketLabel,
+  isOverrideBucket,
+  repTempCFor,
+  type TemperatureBucketKey,
+} from '../config/temperature-buckets';
 import { OutfitActionRow } from '../components/features/OutfitActionRow';
 import { OutfitSwipeDeck } from '../components/features/OutfitSwipeDeck';
 import { motion } from '../theme/motion';
@@ -254,6 +275,10 @@ type BuildViaV05Input = {
   // NOT sent over the wire — consumed only in `onSuccess` (via mutation
   // `variables`) to drop stale-session results. See `fetchGenerationRef`.
   __gen?: number;
+  // AU-362: id of the temperature Apply that triggered this build (if any).
+  // NOT sent over the wire — consumed in onSuccess/onError to resolve the
+  // sheet's applying/error state ONLY for the latest Apply (stale guard).
+  __tempApplyId?: number;
 };
 
 // V05Outfit → legacy Outfit shape mapper. Hoisted to module scope so both
@@ -613,6 +638,38 @@ export const HomeScreen = () => {
       .catch(() => {});
   }, []);
 
+  // AU-362 — Outfit Temperature override. The hook is the SINGLE source of
+  // truth: the header (weather vs indicator) and the request layer both read
+  // `overrideTempCRef`, so the displayed mode can never disagree with the temp
+  // actually sent to the backend.
+  const {
+    activeBucketKey,
+    overrideTempCRef,
+    isOverrideActive,
+    apply: applyTemperatureBucket,
+  } = useTemperatureOverride();
+  const [isTempSheetOpen, setIsTempSheetOpen] = useState(false);
+  const [isApplyingTemp, setIsApplyingTemp] = useState(false);
+  const [tempErrorKey, setTempErrorKey] =
+    useState<TemperatureSheetErrorKey | null>(null);
+  // Concurrency guard: each Apply bumps this id; a build's onSuccess/onError is
+  // ignored if a newer Apply has superseded it (high-risk stale-overwrite race).
+  const tempApplyIdRef = useRef(0);
+  // Context of the in-flight Apply (set on tap, consumed in onSuccess) — lets
+  // the override-active/removed events fire on a SUCCESSFUL build, per spec.
+  // `previousBucket` is the bucket active BEFORE this Apply (for the
+  // override-removed event's `previous_bucket`).
+  const pendingTempApplyRef = useRef<{
+    key: TemperatureBucketKey;
+    previousBucket: TemperatureBucketKey;
+  } | null>(null);
+  // Mirror the active bucket so the build onSuccess (which fires later) can tag
+  // the temperature-generated analytics event with the bucket in effect.
+  const activeBucketForAnalyticsRef = useRef<TemperatureBucketKey>('weather');
+  useEffect(() => {
+    activeBucketForAnalyticsRef.current = activeBucketKey;
+  }, [activeBucketKey]);
+
   useEffect(() => {
     listOutfitsRef.current = listOutfits;
   }, [listOutfits]);
@@ -734,7 +791,13 @@ export const HomeScreen = () => {
       // `/try_another`. RecommendationMode and V05RecommendationMode share
       // the same string union ('safe'|'power'|'creative').
       const v05 = await recommendV05({
-        weather: { temp_c: weather.tempC, is_rainy: false },
+        // AU-362: send the active temperature override's rep temp when one is
+        // set, else the live weather. Read the ref so an override applied after
+        // this callback was memoised is still honoured (no dep churn).
+        weather: {
+          temp_c: overrideTempCRef.current ?? weather.tempC,
+          is_rainy: false,
+        },
         user: { gender: 'U', occasion },
         intent: { mood: mood as never },
         count: 3,
@@ -761,7 +824,8 @@ export const HomeScreen = () => {
         wardrobeGap: v05.wardrobeGap,
       };
     },
-    [weather.tempC],
+    // overrideTempCRef is a stable ref; included to satisfy exhaustive-deps.
+    [weather.tempC, overrideTempCRef],
   );
 
   const {
@@ -790,6 +854,30 @@ export const HomeScreen = () => {
         return;
       }
 
+      // AU-362: resolve the temperature Apply that triggered this build — but
+      // ONLY if it's still the latest (a newer Apply bumps `tempApplyIdRef`,
+      // so a stale Apply's response can never clear the spinner / overwrite the
+      // newer state). Same-outfit returns keep the outfit, no error.
+      const tempApplyId = variables?.__tempApplyId;
+      const isLatestTempApply =
+        tempApplyId != null && tempApplyId === tempApplyIdRef.current;
+      if (isLatestTempApply) {
+        setIsApplyingTemp(false);
+        setTempErrorKey(null);
+        setIsTempSheetOpen(false);
+        // Spec: override-active / override-removed fire on a SUCCESSFUL build.
+        const ctx = pendingTempApplyRef.current;
+        if (ctx) {
+          if (isOverrideBucket(ctx.key)) {
+            trackTemperatureOverrideActive(ctx.key, repTempCFor(ctx.key) ?? 0);
+          } else if (isOverrideBucket(ctx.previousBucket)) {
+            // Switched back to `weather` while an override was active.
+            trackTemperatureOverrideRemoved(ctx.previousBucket);
+          }
+          pendingTempApplyRef.current = null;
+        }
+      }
+
       // Sustainability flags (2026-05-27). `data` is typed `unknown` (the
       // mutation erases buildViaV05's return type); read the two optional
       // flags off it without disturbing normalizeOutfits.
@@ -803,6 +891,10 @@ export const HomeScreen = () => {
       // 0 means an empty/depleted pool (or an all-duplicate batch) — used below
       // to STOP the chain instead of spam-retrying (the A2 fix).
       let addedCount = 0;
+      // AU-362: hash of the outfit that will be shown after this resolve (read
+      // from the incoming batch, not the still-stale list ref) — used to dedup
+      // the temperature-generated analytics event.
+      let settledHash: string | undefined;
       // First load (cold start) → replace. Subsequent loads (prefetch) →
       // append so the user's scroll position isn't yanked back to 0.
       if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
@@ -810,6 +902,7 @@ export const HomeScreen = () => {
         isColdStart = true;
         const incoming = normalizeOutfits(data, 0);
         addedCount = incoming.length;
+        settledHash = incoming[0]?.outfitHash;
         setListOutfits(incoming);
         // Cold start resets the deck to the first card and clears the
         // per-session unfavourited-skip counter (fresh session = clean slate).
@@ -842,6 +935,9 @@ export const HomeScreen = () => {
         if (deduped.length > 0) {
           setListOutfits(current => [...current, ...deduped]);
         }
+        // Appended batch: the visible card is unchanged (still the active one);
+        // dedup off the currently-active hash.
+        settledHash = listOutfitsRef.current[activeIndexRef.current]?.outfitHash;
       }
 
       // Eager + chained prefetch (Change 2) — but ONLY when this resolve added
@@ -864,6 +960,18 @@ export const HomeScreen = () => {
         }
         return;
       }
+      // AU-362: a build completed under an active temperature override. Fire
+      // the temperature-generated event (deduped per outfit_hash so prefetch /
+      // "Show another" re-serving the same outfit doesn't double-count).
+      const tempBucket = activeBucketForAnalyticsRef.current;
+      if (isOverrideBucket(tempBucket) && settledHash) {
+        trackRecommendationGeneratedByTemperatureOnce(
+          settledHash,
+          tempBucket,
+          addedCount,
+        );
+      }
+
       // The cold-start branch force-primes one prefetch (build returns 3 →
       // ahead=2, which `ensureBuffer` treats as full); every other resolve
       // re-checks the buffer so the next prefetch chains while the user is
@@ -873,9 +981,24 @@ export const HomeScreen = () => {
         ensureBufferRef.current(isColdStart);
       }, 0);
     },
-    onError: error => {
+    onError: (error, variables) => {
       console.error('Failed to load recommendation', error);
       inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
+
+      // AU-362: a temperature Apply build failed. Only the LATEST Apply may
+      // surface an error / re-enable Apply — a stale Apply's failure must not
+      // clobber the newer one's state (stale guard). The sheet stays open with
+      // the inline error; selection is retained (pendingKey is local to it).
+      const tempApplyId = variables?.__tempApplyId;
+      if (tempApplyId != null && tempApplyId === tempApplyIdRef.current) {
+        const code = (error as { code?: string })?.code;
+        const isOffline =
+          code === 'ERR_NETWORK' ||
+          code === 'ERR_CANCELED' ||
+          code === 'ECONNABORTED';
+        setIsApplyingTemp(false);
+        setTempErrorKey(isOffline ? 'offline' : 'recommend_failed');
+      }
     },
   });
 
@@ -954,7 +1077,11 @@ export const HomeScreen = () => {
     // path will fire; pinned_item_id flows on both.
     const currentHash = activeSheet?.outfitHash;
     const params = {
-      weather: { temp_c: weather.tempC, is_rainy: false },
+      // AU-362: honour the active temperature override on pin re-generation too.
+      weather: {
+        temp_c: overrideTempCRef.current ?? weather.tempC,
+        is_rainy: false,
+      },
       user: { gender: 'U' as const, occasion: selectedModeRef.current },
       count: 3,
       mode: selectedModeRef.current,
@@ -1655,6 +1782,73 @@ export const HomeScreen = () => {
     );
   };
 
+  // AU-362 — Outfit Temperature handlers.
+  const openTempSheet = useCallback(() => {
+    setTempErrorKey(null);
+    setIsTempSheetOpen(true);
+    trackTemperatureModalOpened(isOverrideActive);
+  }, [isOverrideActive]);
+
+  const closeTempSheet = useCallback(() => {
+    if (isApplyingTemp) {
+      return;
+    }
+    setIsTempSheetOpen(false);
+    setTempErrorKey(null);
+  }, [isApplyingTemp]);
+
+  const handleTempSelect = useCallback((key: TemperatureBucketKey) => {
+    trackTemperatureOptionSelected(key);
+  }, []);
+
+  const applyTemperature = useCallback(
+    (key: TemperatureBucketKey) => {
+      trackTemperatureApplyClicked(key);
+
+      // Edge — same option re-applied: no new request, just close.
+      if (key === activeBucketKey) {
+        setIsTempSheetOpen(false);
+        setTempErrorKey(null);
+        return;
+      }
+
+      // Capture the previous bucket BEFORE the switch (for override-removed).
+      const previousBucket = activeBucketKey;
+
+      // Activate/clear the override FIRST so the request layer (which reads
+      // `overrideTempCRef`) and the header indicator both see the new mode.
+      applyTemperatureBucket(key);
+
+      // Concurrency guard: this Apply's id. A newer Apply bumps it so this
+      // build's onSuccess/onError is ignored if superseded. Stash the context
+      // so onSuccess can fire the override-active/removed event (which the
+      // spec ties to a SUCCESSFUL build, not the tap).
+      tempApplyIdRef.current += 1;
+      const applyId = tempApplyIdRef.current;
+      pendingTempApplyRef.current = { key, previousBucket };
+      setTempErrorKey(null);
+      setIsApplyingTemp(true);
+
+      // Fresh dressing intent (new temp) → new session + cold-start rebuild,
+      // mirroring the refine-submit path. The new bucket is already live in the
+      // ref, so the forced build sends the right temp_c.
+      resetV05Session();
+      fetchGenerationRef.current += 1;
+      poolDepletedRef.current = false;
+      isFirstLoadRef.current = true;
+      requestRecommendation(
+        {
+          mode: selectedModeRef.current,
+          pinned_item_id: pinnedItemIdRef.current ?? undefined,
+          style_feedback: styleFeedbackRef.current ?? undefined,
+          __tempApplyId: applyId,
+        },
+        { force: true },
+      );
+    },
+    [activeBucketKey, applyTemperatureBucket, requestRecommendation],
+  );
+
   const handleLeadingAction = () => {
     openSidebar();
   };
@@ -1733,7 +1927,17 @@ export const HomeScreen = () => {
           style={styles.headerIconButton}
         />
 
-        <WeatherWidget tempC={weather.tempC} iconCode={weather.iconCode} />
+        {/* AU-362: header swaps weather → override indicator when a temperature
+            override is active. Both read the single-source hook so the
+            displayed mode can never disagree with the temp being sent. */}
+        {isOverrideActive ? (
+          <TemperatureOverrideIndicator
+            label={bucketLabel(t, activeBucketKey, weather.tempC)}
+            onPress={openTempSheet}
+          />
+        ) : (
+          <WeatherWidget tempC={weather.tempC} iconCode={weather.iconCode} />
+        )}
 
         <TouchableOpacity
           testID={
@@ -1923,6 +2127,10 @@ export const HomeScreen = () => {
                 isGenerating={
                   role !== 'peek' && pinState.outfit === 'generating'
                 }
+                // AU-362: lightbulb pill on this card opens the temperature
+                // sheet; highlighted while an override is active.
+                onPressInsight={openTempSheet}
+                insightActive={isOverrideActive}
               />
             )}
             renderCue={(likeOpacity, skipOpacity) => (
@@ -2121,6 +2329,18 @@ export const HomeScreen = () => {
           time (the CTA is unreachable behind it). */}
       <MoodFeedbackSheet {...moodSheetProps} />
 
+      {/* AU-362: Outfit Temperature override sheet. */}
+      <TemperatureOverrideSheet
+        visible={isTempSheetOpen}
+        activeBucketKey={activeBucketKey}
+        liveTempC={weather.tempC}
+        isApplying={isApplyingTemp}
+        errorKey={tempErrorKey}
+        onApply={applyTemperature}
+        onSelect={handleTempSelect}
+        onCancel={closeTempSheet}
+      />
+
       {/* AU-318: auto-dismissing save-success banner. No house snackbar
           exists (success today = CTA label flip), so this is the minimal
           inline toast — theme tokens only, non-interactive. */}
@@ -2255,6 +2475,8 @@ const OptionSheet = React.memo(
     homeView,
     onCollageDragActiveChange,
     isGenerating = false,
+    onPressInsight,
+    insightActive = false,
   }: {
     // testID namespace = the outfit hash so Maestro can address a card.
     cellKey: string;
@@ -2273,6 +2495,10 @@ const OptionSheet = React.memo(
     // every NON-pinned tile to render as <SkeletonTile> so the user sees
     // the request progressing without losing the pinned slot's position.
     isGenerating?: boolean;
+    // AU-362: lightbulb pill → opens the Outfit Temperature sheet; active when
+    // an override is on.
+    onPressInsight?: () => void;
+    insightActive?: boolean;
   }) => {
     const { t } = useTranslation();
     const items = outfit.items;
@@ -2563,6 +2789,8 @@ const OptionSheet = React.memo(
           <OutfitCardCaption
             testID={`home-card-caption-${cellKey}`}
             caption={outfit.caption}
+            onPressInsight={onPressInsight}
+            insightActive={insightActive}
           />
 
           <ScrollView

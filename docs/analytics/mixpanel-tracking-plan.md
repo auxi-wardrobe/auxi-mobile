@@ -185,6 +185,19 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 > PII: the free-text `message` is NEVER tracked — only `category` + optional `rating` leave the device. `platform` rides the global super-property. `screen_viewed` for `Feedback` fires from the global nav listener (§5.9), not double-tracked here.
 
+### 5.13 Outfit Temperature override (AU-362)
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `temperature_modal_opened` | Lightbulb pill tapped → "Outfit Temperature" sheet opens | `HomeScreen.tsx:1770` via `analytics.ts:181` | `override_active` (bool) |
+| `temperature_option_selected` | A temperature radio is selected in the sheet | `HomeScreen.tsx:1782` via `analytics.ts:186` | `option` (bucket key) |
+| `temperature_apply_clicked` | Apply tapped (before the build resolves) | `HomeScreen.tsx:1787` via `analytics.ts:191` | `option` (bucket key) |
+| `temperature_override_active` | Apply succeeded with a non-weather bucket → override now active | `HomeScreen.tsx:1805` via `analytics.ts:196` | `bucket` (bucket key), `rep_temp_c` (number) |
+| `temperature_override_removed` | Apply with `weather` while an override was active → override cleared | `HomeScreen.tsx:1807` via `analytics.ts:204` | `previous_bucket` (bucket key) |
+| `recommendation_generated_by_temperature` | A build completed under an active override. Dedup'd per `outfit_hash` per session (Set in `analytics.ts`, mirrors `trackRecommendationViewedOnce`) so "Show another" re-serving the same outfit doesn't double-count | `HomeScreen.tsx:949` via `analytics.ts:215` | `bucket` (bucket key), `outfit_count` (number) |
+
+> PII: bucket KEYS only (`weather` / `hot_28_40` / `mild_10_25` / `cold_0_7` / `freezing_-10_0`) — never raw user text. `rep_temp_c` / `outfit_count` are unquoted numbers. `temperature_apply_clicked` is present-tense (borderline vs the `object_verb` past-tense convention) — kept verbatim per the AU-362 ticket for funnel continuity; flag to CEO if `temperature_applied` is preferred. Bucket→temp_c mapping lives in `src/config/temperature-buckets.ts` (single source of truth).
+
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
 These hooks were spec'd but cannot fire today — the UI surface, control, or API doesn't exist yet. **No code shipped for these** (we don't fake events). Re-evaluate when the underlying surface lands.
@@ -275,5 +288,6 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 - **Retention insight:** `screen_viewed` per `screen_name` over time — identifies dead screens
 - **Mood-feedback funnel:** `wear_this_clicked` → `mood_feedback_opened` → `mood_feedback_submitted` (vs `mood_feedback_skipped`)
 - **App-feedback submission funnel:** `screen_viewed` (`screen_name = Feedback`) → `feedback_submitted` (vs `feedback_submit_failed`, broken down by `error_code`) — measures completion rate of the feedback form and surfaces rate-limit / validation friction.
+- **Temperature-override funnel (AU-362):** `temperature_modal_opened` → `temperature_apply_clicked` → `temperature_override_active` → `recommendation_generated_by_temperature` — answers the ticket's analytics goal: do users actually adopt a temperature override vs stay on live weather? Break down by `option` / `bucket` to see which ranges are used. `temperature_override_removed` is the return-to-weather branch; `temperature_option_selected` ÷ `temperature_apply_clicked` measures browse-vs-commit on the radios.
 
-Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`. Super properties (`platform`, `app_environment`) are available globally.
+Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`. Super properties (`platform`, `app_environment`) are available globally.

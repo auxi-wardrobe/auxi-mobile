@@ -392,7 +392,21 @@
       "a11y_pin_item": "Pin item",
       "a11y_unpin_item": "Unpin item",
       "your_piece_badge": "Your Piece",
-      "a11y_your_piece": "Your piece — a recently added item"
+      "a11y_your_piece": "Your piece — a recently added item",
+      "temp_sheet_title": "Outfit Temperature",
+      "temp_sheet_subtitle": "We'll adjust outfit recommendations based on your preferred temperature.",
+      "temp_use_current": "Use current weather ({{temp}}°C)",
+      "temp_28_40": "28–40°C",
+      "temp_10_25": "10 - 25°C",
+      "temp_0_7": "0 - 7°C",
+      "temp_-10_0": "-10 - 0°C",
+      "temp_apply_cta": "Apply",
+      "temp_cancel_cta": "Cancel",
+      "temp_error_recommend": "Unable to update outfit recommendations. Please try again.",
+      "temp_error_offline": "No internet connection. Please try again.",
+      "temp_override_a11y": "Outfit temperature override active: {{range}}. Tap to change.",
+      "a11y_temp_idle": "Adjust outfit temperature",
+      "a11y_temp_active": "Outfit temperature override active. Tap to change."
     },
     "pin": {
       "modal_title": "Keep this item",

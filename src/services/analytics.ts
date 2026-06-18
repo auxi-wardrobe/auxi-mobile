@@ -173,6 +173,60 @@ export const trackRecommendationViewedOnce = (
   track('outfit_recommendation_viewed', { outfit_hash: outfitHash, ...props });
 };
 
+// ── AU-362 Outfit Temperature override (6 events) ──────────────────────────
+// Literal event names (no template strings). Props use bucket keys only — no
+// PII, no raw user text. Numbers unquoted; unknown props omitted.
+
+/** Lightbulb tapped → "Outfit Temperature" sheet opens. */
+export const trackTemperatureModalOpened = (overrideActive: boolean): void => {
+  track('temperature_modal_opened', { override_active: overrideActive });
+};
+
+/** A temperature radio option is selected in the sheet. */
+export const trackTemperatureOptionSelected = (option: string): void => {
+  track('temperature_option_selected', { option });
+};
+
+/** Apply tapped (before the resulting build resolves). */
+export const trackTemperatureApplyClicked = (option: string): void => {
+  track('temperature_apply_clicked', { option });
+};
+
+/** Apply succeeded with a non-weather bucket → an override is now active. */
+export const trackTemperatureOverrideActive = (
+  bucket: string,
+  repTempC: number,
+): void => {
+  track('temperature_override_active', { bucket, rep_temp_c: repTempC });
+};
+
+/** Apply succeeded with `weather` while an override was active → override removed. */
+export const trackTemperatureOverrideRemoved = (previousBucket: string): void => {
+  track('temperature_override_removed', { previous_bucket: previousBucket });
+};
+
+/**
+ * A recommendation build completed under an active temperature override.
+ * Deduped per `outfit_hash` per session so "Show another" re-serving the same
+ * outfit (or prefetch over-count) doesn't double-emit — mirrors the
+ * `trackRecommendationViewedOnce` Set pattern.
+ */
+const seenTemperatureGenerations = new Set<string>();
+export const trackRecommendationGeneratedByTemperatureOnce = (
+  outfitHash: string,
+  bucket: string,
+  outfitCount: number,
+): void => {
+  if (!outfitHash || seenTemperatureGenerations.has(outfitHash)) {
+    return;
+  }
+  seenTemperatureGenerations.add(outfitHash);
+  track('recommendation_generated_by_temperature', {
+    bucket,
+    outfit_count: outfitCount,
+  });
+};
+
 /**
  * Link events to a known user. Call after authentication. Uses the database
  * primary key as distinct_id (never email). Profile attributes go to
