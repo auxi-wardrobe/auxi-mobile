@@ -1,0 +1,122 @@
+# auxi → TestFlight — reuses the existing Fastlane `beta` lane.
+#
+# Runs the SAME command a local Mac runs (`cd ios && bundle exec fastlane beta`)
+# but on a clean GitHub-hosted macOS runner — so you can ship to TestFlight
+# WITHOUT a local Mac. No EAS, no second pipeline: same Fastfile, same signing.
+#
+# ── Required repo secrets (Settings → Secrets and variables → Actions) ──
+#   ASC_API_KEY_ID         App Store Connect API Key ID         (e.g. ABC123XYZ)
+#   ASC_API_ISSUER         App Store Connect Issuer ID          (a UUID)
+#   ASC_API_KEY_P8_BASE64  The AuthKey_<KEYID>.p8 file, base64-encoded.
+#                          Generate on macOS with:
+#                            base64 -i AuthKey_ABC123XYZ.p8 | pbcopy
+#
+# ── Signing ──
+# The `beta` lane authenticates with the ASC API key and uses automatic /
+# cloud-managed distribution signing (`-allowProvisioningUpdates`). Apple issues
+# the distribution cert + provisioning profile at export time, so the runner
+# needs NO pre-installed certificate and NO `match` repo — same as your dev Mac.
+#   ⚠️ Risk: if your Apple account has no cloud-managed distribution certificate,
+#   the export step fails ("no profile mapping"). Fallback: import a real .p12
+#   distribution cert via `apple-actions/import-codesign-certs@v3` before the
+#   build step and store it + its password as secrets.
+#
+# Trigger: manual only. A TestFlight upload should be deliberate, and the lane
+# creates a `v<version>-build<n>` git tag each run.
+
+name: auxi → TestFlight (beta)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: testflight-beta
+  cancel-in-progress: false # never cancel an in-flight TestFlight upload
+
+permissions:
+  contents: write # to push the release tag the lane creates
+
+jobs:
+  beta:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22 (LTS) matches auxi-archive-smoke.yml — pinning 23 broke
+          # `yarn install --frozen-lockfile` (AU-326).
+          node-version: "22"
+          cache: yarn
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3.11" # ios/.ruby-version
+          bundler-cache: true
+          working-directory: ios # bundle against ios/Gemfile (has fastlane)
+
+      - name: Select latest available Xcode
+        # Same approach as the smoke workflow: pin-by-version broke when the
+        # runner image dropped that exact Xcode (AU-326). Pick the highest
+        # present so this survives runner image bumps.
+        run: |
+          XCODE_PATH="$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$XCODE_PATH" ]; then
+            echo "No /Applications/Xcode*.app found on runner" >&2
+            exit 1
+          fi
+          echo "Selecting $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH"
+          xcodebuild -version
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/.cocoapods
+          key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: pods-${{ runner.os }}-
+
+      - name: Install JS deps
+        run: yarn install --frozen-lockfile
+
+      - name: Write App Store Connect API key
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          # The lane defaults key_path to this exact location, so no extra env needed.
+          echo "$ASC_API_KEY_P8_BASE64" | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
+          echo "Wrote AuthKey_${ASC_API_KEY_ID}.p8"
+
+      - name: Build & upload to TestFlight (fastlane beta)
+        working-directory: ios
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER: ${{ secrets.ASC_API_ISSUER }}
+          # Release-scoped token enables dSYM + Hermes sourcemap upload so prod
+          # crashes symbolicate. The Xcode build phases gate on this: when the
+          # secret is unset/empty they set SENTRY_DISABLE_AUTO_UPLOAD=true and
+          # skip upload (build stays green); when present, upload runs. Coords
+          # (org/project) come from ios/sentry.properties.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          # gym can time out reading build settings on a cold runner; bump it.
+          FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: "180"
+        run: bundle exec fastlane beta
+
+      - name: Push release tag
+        if: success()
+        # The lane runs add_git_tag locally; persist it back to the repo.
+        run: git push origin --tags || echo "tag push skipped"
+
+      - name: Upload IPA artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auxi-ipa
+          path: ios/build/fastlane/
+          if-no-files-found: ignore

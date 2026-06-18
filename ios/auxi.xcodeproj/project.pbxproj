@@ -199,7 +199,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nif [[ \"$CONFIGURATION\" == \"Debug\" ]]; then\n  echo \"Skipping bundle in Debug — Metro serves JS\"\n  exit 0\nfi\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\nSENTRY_XCODE=\"../node_modules/@sentry/react-native/scripts/sentry-xcode.sh\"\n\nexport SENTRY_DISABLE_AUTO_UPLOAD=true\n\n/bin/sh -c \"\\\"$WITH_ENVIRONMENT\\\" \\\"$SENTRY_XCODE\\\" \\\"$REACT_NATIVE_XCODE\\\"\"\n";
+			shellScript = "set -e\n\nif [[ \"$CONFIGURATION\" == \"Debug\" ]]; then\n  echo \"Skipping bundle in Debug — Metro serves JS\"\n  exit 0\nfi\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\nSENTRY_XCODE=\"../node_modules/@sentry/react-native/scripts/sentry-xcode.sh\"\n\nif [ -n \"$SENTRY_AUTH_TOKEN\" ]; then export SENTRY_DISABLE_AUTO_UPLOAD=false; else export SENTRY_DISABLE_AUTO_UPLOAD=true; fi\n\n/bin/sh -c \"\\\"$WITH_ENVIRONMENT\\\" \\\"$SENTRY_XCODE\\\" \\\"$REACT_NATIVE_XCODE\\\"\"\n";
 		};
 		00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -230,7 +230,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export SENTRY_DISABLE_AUTO_UPLOAD=true\n/bin/sh `\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('@sentry/react-native/package.json')) + '/scripts/sentry-xcode-debug-files.sh'\"`\n";
+			shellScript = "if [ -n \"$SENTRY_AUTH_TOKEN\" ]; then export SENTRY_DISABLE_AUTO_UPLOAD=false; else export SENTRY_DISABLE_AUTO_UPLOAD=true; fi\n/bin/sh `\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('@sentry/react-native/package.json')) + '/scripts/sentry-xcode-debug-files.sh'\"`\n";
 		};
 		C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

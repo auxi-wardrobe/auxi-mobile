@@ -84,8 +84,9 @@ ios/vendor/bundle/
 !.yarn/sdks
 !.yarn/versions
 
-# Sentry — auth tokens live in SENTRY_AUTH_TOKEN env var, never in repo
-ios/sentry.properties
+# Sentry — auth tokens live in SENTRY_AUTH_TOKEN env var, never in repo.
+# ios/sentry.properties holds ONLY non-secret coordinates (url/org/project),
+# no auth.token, so it is committed on purpose for CI symbol upload.
 android/sentry.properties
 .sentryclirc
 
