@@ -257,7 +257,9 @@
         "method_web_desc": "Dán liên kết sản phẩm để lưu món",
         "preparing_title": "Đang chuẩn bị món của bạn…",
         "preparing_step1": "Đang xóa nền và nhận diện chi tiết…",
-        "preparing_step2": "Đang tự động gắn thẻ cho món…"
+        "preparing_step2": "Đang tự động gắn thẻ cho món…",
+        "preparing_tile": "Đang chuẩn bị món này",
+        "error_body": "Không thể tải tủ đồ của bạn. Kiểm tra kết nối và thử lại."
       },
       "database": {
         "title": "Cơ sở dữ liệu",
