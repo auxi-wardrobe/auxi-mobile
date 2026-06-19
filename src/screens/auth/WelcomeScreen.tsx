@@ -38,6 +38,7 @@ import Svg, { Path } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
 
 import { theme } from '../../theme/theme';
+import { MacgieLoader } from '../../components/macgie';
 import type { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -134,9 +135,19 @@ export const WelcomeScreen = () => {
   const isAppleAvailable = Platform.OS === 'ios';
   const isBusy = socialBusy !== null;
 
-  const onPressEmail = () =>
+  const onPressEmail = () => {
+    // Mirrors `oauth_sign_in_started` (provider CTA tap on Welcome): the
+    // third auth-entry option. `sign_up_started` still fires later, on the
+    // EmailInput "Continue" submit, so this captures the earlier intent.
+    track('email_sign_in_started', { method: 'email' });
     navigation.navigate('EmailInput', { mode: 'signup' });
-  const onPressLanguage = () => navigation.navigate('LanguageSettings');
+  };
+  const onPressLanguage = () => {
+    // Opening the auth-tier language picker. The actual locale change fires
+    // `auth_language_changed` from inside LanguageSettings.
+    track('auth_language_button_tapped');
+    navigation.navigate('LanguageSettings');
+  };
 
   /**
    * Translate a backend AuthErrorEnvelope into the appropriate UX action:
@@ -265,110 +276,129 @@ export const WelcomeScreen = () => {
       </View>
 
       <View style={styles.bodyContainer}>
-        {/* Headline replaces Figma's logo + headline duplication: ship the
-            i18n string only (logo asset deferred per spec note 1). */}
-        <View style={styles.headlineWrap}>
+        {/* Hero group — logo + heading + subtitle near the top (Figma node
+            3910:22305). Per CEO: the lively MacgieLoader animation (±4° dwelling
+            sway + pupil tracking) fills the logo slot, presented as a logo
+            (`asLogo` → image a11y "Macgie", no busy/Loading state, no caption).
+            `inline` variant keeps it content-sized (no flex stretch). */}
+        <View style={styles.heroGroup}>
+          <MacgieLoader
+            variant="inline"
+            size={126}
+            asLogo
+            testID="welcome-logo"
+          />
           <Text style={styles.headline}>{t('uac.welcome.headline')}</Text>
+          <Text style={styles.subtitle}>{t('uac.welcome.subtitle')}</Text>
         </View>
 
-        {/* Action stack — spec §3 */}
-        <View style={styles.actionStack}>
-          {/* 3a. Social sub-group (gap 12) */}
-          <View style={styles.socialGroup}>
+        {/* Bottom group — action stack + legal, pinned below the hero via the
+            container's space-between (Figma Frame 2108 / legal footer). Plain
+            layout wrapper (no style) so the two render as one bottom block. */}
+        <View>
+          {/* Action stack — pinned to the bottom (Figma Frame 2108). */}
+          <View style={styles.actionStack}>
+            {/* 3a. Social sub-group (gap 12) */}
+            <View style={styles.socialGroup}>
+              <Pressable
+                testID="welcome-cta-google"
+                accessibilityRole="button"
+                accessibilityLabel={t('uac.welcome.google_cta')}
+                accessibilityState={{
+                  disabled: isBusy,
+                  busy: socialBusy === 'google',
+                }}
+                disabled={isBusy}
+                onPress={onPressGoogle}
+                style={({ pressed }) => [
+                  styles.buttonBase,
+                  styles.buttonSecondary,
+                  (pressed || isBusy) && styles.pressed,
+                ]}
+              >
+                {socialBusy === 'google' ? (
+                  <ActivityIndicator
+                    testID="welcome-cta-google-spinner"
+                    color={theme.colors.uacTextBase}
+                  />
+                ) : (
+                  <>
+                    <Text style={styles.buttonLabelDark}>
+                      {t('uac.welcome.google_cta')}
+                    </Text>
+                    <GoogleGlyph />
+                  </>
+                )}
+              </Pressable>
+
+              {isAppleAvailable && (
+                <Pressable
+                  testID="welcome-cta-apple"
+                  accessibilityRole="button"
+                  accessibilityLabel={t('uac.welcome.apple_cta')}
+                  accessibilityState={{
+                    disabled: isBusy,
+                    busy: socialBusy === 'apple',
+                  }}
+                  disabled={isBusy}
+                  onPress={onPressApple}
+                  style={({ pressed }) => [
+                    styles.buttonBase,
+                    styles.buttonPrimary,
+                    (pressed || isBusy) && styles.pressed,
+                  ]}
+                >
+                  {socialBusy === 'apple' ? (
+                    <ActivityIndicator
+                      testID="welcome-cta-apple-spinner"
+                      color={theme.colors.uacTextPrimaryBase}
+                    />
+                  ) : (
+                    <>
+                      <Text style={styles.buttonLabelLight}>
+                        {t('uac.welcome.apple_cta')}
+                      </Text>
+                      <AppleGlyph />
+                    </>
+                  )}
+                </Pressable>
+              )}
+            </View>
+
+            {/* 3b. "or" divider — line · "or" · line (Figma Frame 2135) */}
+            <View style={styles.orDivider}>
+              <View style={styles.orDividerLine} />
+              <Text style={styles.orDividerLabel}>{t('uac.welcome.or')}</Text>
+              <View style={styles.orDividerLine} />
+            </View>
+
+            {/* 3c. Email entry */}
             <Pressable
-              testID="welcome-cta-google"
+              testID="welcome-cta-email"
               accessibilityRole="button"
-              accessibilityLabel={t('uac.welcome.google_cta')}
-              accessibilityState={{
-                disabled: isBusy,
-                busy: socialBusy === 'google',
-              }}
+              accessibilityLabel={t('uac.welcome.email_cta')}
+              accessibilityState={{ disabled: isBusy }}
               disabled={isBusy}
-              onPress={onPressGoogle}
+              onPress={onPressEmail}
               style={({ pressed }) => [
                 styles.buttonBase,
                 styles.buttonSecondary,
                 (pressed || isBusy) && styles.pressed,
               ]}
             >
-              {socialBusy === 'google' ? (
-                <ActivityIndicator
-                  testID="welcome-cta-google-spinner"
-                  color={theme.colors.uacTextBase}
-                />
-              ) : (
-                <>
-                  <Text style={styles.buttonLabelDark}>
-                    {t('uac.welcome.google_cta')}
-                  </Text>
-                  <GoogleGlyph />
-                </>
-              )}
+              <Text style={styles.buttonLabelDark}>
+                {t('uac.welcome.email_cta')}
+              </Text>
+              <EnvelopeGlyph />
             </Pressable>
-
-            {isAppleAvailable && (
-              <Pressable
-                testID="welcome-cta-apple"
-                accessibilityRole="button"
-                accessibilityLabel={t('uac.welcome.apple_cta')}
-                accessibilityState={{
-                  disabled: isBusy,
-                  busy: socialBusy === 'apple',
-                }}
-                disabled={isBusy}
-                onPress={onPressApple}
-                style={({ pressed }) => [
-                  styles.buttonBase,
-                  styles.buttonPrimary,
-                  (pressed || isBusy) && styles.pressed,
-                ]}
-              >
-                {socialBusy === 'apple' ? (
-                  <ActivityIndicator
-                    testID="welcome-cta-apple-spinner"
-                    color={theme.colors.uacTextPrimaryBase}
-                  />
-                ) : (
-                  <>
-                    <Text style={styles.buttonLabelLight}>
-                      {t('uac.welcome.apple_cta')}
-                    </Text>
-                    <AppleGlyph />
-                  </>
-                )}
-              </Pressable>
-            )}
           </View>
 
-          {/* 3b. Divider (1px, neutral border) */}
-          <View style={styles.divider} />
-
-          {/* 3c. Email entry */}
-          <Pressable
-            testID="welcome-cta-email"
-            accessibilityRole="button"
-            accessibilityLabel={t('uac.welcome.email_cta')}
-            accessibilityState={{ disabled: isBusy }}
-            disabled={isBusy}
-            onPress={onPressEmail}
-            style={({ pressed }) => [
-              styles.buttonBase,
-              styles.buttonSecondary,
-              (pressed || isBusy) && styles.pressed,
-            ]}
-          >
-            <Text style={styles.buttonLabelDark}>
-              {t('uac.welcome.email_cta')}
-            </Text>
-            <EnvelopeGlyph />
-          </Pressable>
-        </View>
-
-        {/* Legal footer — kept as single Text per spec note (no separate
+          {/* Legal footer — kept as single Text per spec note (no separate
             link nodes in Figma; PM open Q on linkifying substrings). */}
-        <Text style={styles.legalText} testID="welcome-legal-text">
-          {t('uac.welcome.legal_text')}
-        </Text>
+          <Text style={styles.legalText} testID="welcome-legal-text">
+            {t('uac.welcome.legal_text')}
+          </Text>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -403,10 +433,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: theme.spacing.uacDimension24,
   },
-  headlineWrap: {
-    flex: 1,
-    justifyContent: 'center',
+  // Logo + heading + subtitle grouped near the top (Figma group top ≈ 171/844).
+  // Top inset approximates the Figma offset below the header; gap≈7px in Figma,
+  // snapped to the nearest token (uacDimension8) — flagged for the designer gate.
+  heroGroup: {
     alignItems: 'center',
+    marginTop: theme.spacing.uacDimension24 * 2,
+    gap: theme.spacing.uacDimension8,
   },
   headline: {
     ...theme.typography.aliases.uacH1Bold,
@@ -414,11 +447,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: -0.72,
   },
+  subtitle: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
+    textAlign: 'center',
+  },
   actionStack: {
     gap: theme.spacing.uacDimension16,
   },
   socialGroup: {
-    gap: theme.spacing.uacDimension8 + 4, // 12px per spec §3a
+    gap: theme.spacing.uacDimension12, // spec §3a
   },
   buttonBase: {
     height: theme.spacing.uacButtonHeight,
@@ -445,10 +483,21 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.uacBodyMdMedium,
     color: theme.colors.uacTextPrimaryBase,
   },
-  divider: {
+  // "or" divider: line · label · line (Figma Frame 2135, M3 dividers).
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.uacDimension12,
+  },
+  orDividerLine: {
+    flex: 1,
     height: 1,
     backgroundColor: theme.colors.uacBorderBold200,
     opacity: 0.4,
+  },
+  orDividerLabel: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
   },
   legalText: {
     ...theme.typography.aliases.uacBodyXsRegular,

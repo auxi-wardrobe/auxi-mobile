@@ -63,8 +63,10 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `sign_in_started` | SignInScreen submit | `SignInScreen.tsx:128` | `method` |
 | `sign_in_completed` | identify() resolves after login | `AuthContext.tsx:233` | `method` (`email`/`google`/`apple`) |
 | `sign_in_failed` | `login()` rejects | `SignInScreen.tsx:133` | `method`, `error_reason` |
-| `oauth_sign_in_started` | OAuth button tap | `WelcomeScreen.tsx:176, 214`, `EmailGoogleNoticeScreen.tsx:116` | `provider` |
+| `oauth_sign_in_started` | OAuth button tap | `WelcomeScreen.tsx:187, 225`, `EmailGoogleNoticeScreen.tsx:116` | `provider` |
 | `oauth_sign_in_completed` | OAuth resolves → identify() | `AuthContext.tsx:231` | `provider` |
+| `email_sign_in_started` | Welcome "Continue with email" CTA tap (mirrors `oauth_sign_in_started`; the third auth-entry option). `sign_up_started` still fires later on the EmailInput "Continue" submit. | `WelcomeScreen.tsx:142` | `method` (`email`) |
+| `auth_language_button_tapped` | Welcome top-right language button tap → opens auth-tier LanguageSettings. The actual locale change fires `auth_language_changed`. | `WelcomeScreen.tsx:148` | — |
 | `forgot_password_requested` | Request submit | `ForgotPasswordRequestScreen.tsx:92` | — |
 | `password_reset_completed` | New password set | `ResetNewPasswordScreen.tsx:97` | — |
 | `auth_language_changed` | Locale pick in auth tier | `LanguageSettingsScreen.tsx:83` | `locale` (`en-EN`/`vi-VN`/`fr-FR`) |
@@ -278,6 +280,7 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 - **Activation funnel:** `sign_up_started` → `sign_up_submitted` → `sign_up_completed` → `onboarding_step_viewed` (per step) → `onboarding_completed` → first `outfit_favorited`
 - **Sign-in funnel:** `sign_in_started` → `sign_in_completed` (break down by `method`)
 - **OAuth funnel:** `oauth_sign_in_started` → `oauth_sign_in_completed` (break down by `provider`)
+- **Welcome auth-entry split:** `oauth_sign_in_started` (by `provider`) vs `email_sign_in_started` — which entry point users pick on the Welcome screen; the email branch continues `email_sign_in_started` → `sign_up_started` → `sign_up_submitted` → `sign_up_completed`.
 - **Onboarding step funnel:** `welcome_continued` → `location_permission_granted`/`_denied` → `wardrobe_direction_selected` → `fit_preference_selected` → `style_selected` → `onboarding_generated` → `onboarding_completed`
 - **Recommendation engagement (value-moment rate):** `outfit_recommendation_viewed` → `outfit_favorited`
 - **Try-on funnel:** `try_on_started` → `try_on_step_completed` ×N → `try_on_completed` → `try_on_outcome_retaken` *(extend to `_saved`/`_shared` when UI ships)*
