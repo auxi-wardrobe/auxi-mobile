@@ -204,6 +204,16 @@ export const theme = {
         lineHeight: 24,
         letterSpacing: 0,
       },
+      // Legal documents (Terms / Privacy) — Figma node 3177:6642 document
+      // title + section headings render Poppins Bold 16/24, tracking 0.15.
+      // Bold via the bundled face (RN `fontWeight` can't restyle a named
+      // custom font reliably), so this is a distinct alias from poppinsBody.
+      poppinsBodyBold: {
+        fontFamily: 'Poppins-Bold',
+        fontSize: 16,
+        lineHeight: 24,
+        letterSpacing: 0.15,
+      },
       // Settings redesign (node 2850:15840) — main-list big time value.
       // Figma heading/H2 = Poppins Bold 32/40, letter-spacing −0.64.
       poppinsTimeLg: {

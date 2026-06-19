@@ -202,6 +202,14 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 > PII: bucket KEYS only (`weather` / `hot_28_40` / `mild_10_25` / `cold_0_7` / `freezing_-10_0`) — never raw user text. `rep_temp_c` / `outfit_count` are unquoted numbers. `temperature_apply_clicked` is present-tense (borderline vs the `object_verb` past-tense convention) — kept verbatim per the AU-362 ticket for funnel continuity; flag to CEO if `temperature_applied` is preferred. Bucket→temp_c mapping lives in `src/config/temperature-buckets.ts` (single source of truth).
 
+### 5.14 Legal documents (App Store blocker B5)
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `legal_document_viewed` | Terms of Service / Privacy Policy screen opens (mount effect). Fired once per screen mount; both entry points (Welcome legal-footer links + Settings rows) route through the same screen | `LegalDocumentScreen.tsx:60` via `analytics.ts:237` | `document` (`terms_of_service` / `privacy_policy`), `source` (`welcome` / `settings`) |
+
+> PII: both props are bounded enums — no raw text, no URL, no identifiers. The screen owns the single fire site so the press handlers in `WelcomeScreen.tsx` / `SettingsScreen.tsx` only navigate (no double-count). `source` distinguishes the unauthenticated (Welcome) vs authenticated (Settings) entry for funnel segmentation.
+
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
 These hooks were spec'd but cannot fire today — the UI surface, control, or API doesn't exist yet. **No code shipped for these** (we don't fake events). Re-evaluate when the underlying surface lands.

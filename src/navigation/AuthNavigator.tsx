@@ -29,6 +29,7 @@ import { ForgotPasswordRequestScreen } from '../screens/auth/ForgotPasswordReque
 import { ForgotPasswordCheckMailScreen } from '../screens/auth/ForgotPasswordCheckMailScreen';
 import { ResetNewPasswordScreen } from '../screens/auth/ResetNewPasswordScreen';
 import { VerifiedScreen } from '../screens/auth/VerifiedScreen';
+import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
@@ -70,6 +71,8 @@ export const AuthNavigator = () => {
         component={ResetNewPasswordScreen}
       />
       <Stack.Screen name="Verified" component={VerifiedScreen} />
+      {/* Legal docs reachable pre-auth from Welcome's legal footer links. */}
+      <Stack.Screen name="LegalDocument" component={LegalDocumentScreen} />
     </Stack.Navigator>
   );
 };

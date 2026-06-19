@@ -42,6 +42,7 @@ import {
   revokeAnalyticsConsent,
   track,
 } from '../services/analytics';
+import type { LegalDocumentType } from '../content/legal';
 import { setLanguage as setI18nLanguage } from '../i18n/init';
 import type { Language } from '../translations';
 
@@ -365,6 +366,13 @@ export const SettingsScreen = () => {
     setActiveModal('none');
   };
 
+  // Open an in-app legal document (Terms / Privacy). `legal_document_viewed`
+  // (source='settings') is fired by LegalDocumentScreen's mount effect, so we
+  // only navigate here — no double-count.
+  const openLegalDocument = (documentType: LegalDocumentType) => {
+    navigation.navigate('LegalDocument', { documentType, source: 'settings' });
+  };
+
   const applyLanguage = async () => {
     if (isSavingLanguage) return;
     if (pendingLanguage === currentLanguage) {
@@ -625,15 +633,37 @@ export const SettingsScreen = () => {
 
           <Divider />
 
+          {/* Terms of Service — in-app legal doc (App Store blocker B5).
+              Replaces the former dead-end "Your information" no-op row. */}
           <TouchableOpacity
-            testID="settings-your-information-row"
+            testID="settings-terms-of-service-row"
+            accessibilityLabel={t('settings.terms_of_service')}
             activeOpacity={0.82}
             style={styles.singleRow}
-            // TODO(settings): "Your information" screen not built yet — shipped as no-op per CEO scope; wire route when the screen exists.
-            onPress={() => {}}
+            onPress={() => openLegalDocument('terms')}
           >
             <Text style={styles.rowLabel}>
-              {t('settings.your_information')}
+              {t('settings.terms_of_service')}
+            </Text>
+            <Icons.ArrowRight
+              width={24}
+              height={24}
+              color={theme.colors.uacTextBase}
+            />
+          </TouchableOpacity>
+
+          <Divider />
+
+          {/* Privacy Policy — in-app legal doc (App Store blockers B5 + B1). */}
+          <TouchableOpacity
+            testID="settings-privacy-policy-row"
+            accessibilityLabel={t('settings.privacy_policy')}
+            activeOpacity={0.82}
+            style={styles.singleRow}
+            onPress={() => openLegalDocument('privacy')}
+          >
+            <Text style={styles.rowLabel}>
+              {t('settings.privacy_policy')}
             </Text>
             <Icons.ArrowRight
               width={24}

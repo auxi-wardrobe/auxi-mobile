@@ -4,6 +4,7 @@ import type {
   StyleTag,
   WardrobeDirection,
 } from '../services/v05Api';
+import type { LegalScreenParams } from '../screens/legal/LegalDocumentScreen';
 
 /**
  * AU-242 — UAC v2 auth stack routes.
@@ -27,6 +28,9 @@ export type AuthStackParamList = {
   ForgotPasswordCheckMail: { email: string };
   ResetNewPassword: { token: string; email?: string };
   Verified: { source: UacVerifiedSource };
+  // In-app legal docs reachable pre-auth from Welcome's legal footer links.
+  // Same screen + param shape as the authenticated app stack's LegalDocument.
+  LegalDocument: LegalScreenParams;
 };
 
 /**
@@ -141,4 +145,8 @@ export type AppStackParamList = {
         items?: Array<{ id: string; imageUrl: string }>;
       }
     | undefined;
+  // In-app legal docs (Terms of Service / Privacy Policy) — App Store blocker
+  // B5. Reachable from Settings while authenticated; the auth stack registers
+  // the same route+param shape for the Welcome-screen (unauth) entry point.
+  LegalDocument: LegalScreenParams;
 };
