@@ -80,7 +80,7 @@ hardcodes a bottom pad and collides with the home indicator is a MAJOR finding.
 A bottom-pinned primary action (the common "footer") sits at z-index tier
 `sticky` (100), above scroll content, clearing the bottom safe-area. Where it
 overlays scrolling content, the house treatment is a **backdrop blur** —
-`@react-native-community/blur` `BlurView blurType="light" blurAmount={8}` under a
+`@react-native-community/blur` `BlurView blurType="light" blurAmount={4}` under a
 `figmaBlurTintWhite80` (`rgba(255,255,255,0.8)`) tint — with
 `figmaItemDetailHeaderBg` (`rgba(255,255,255,0.9)`) as the reduced-transparency
 a11y fallback. The CTA itself uses the primary-button tokens (`ds.color.ink`

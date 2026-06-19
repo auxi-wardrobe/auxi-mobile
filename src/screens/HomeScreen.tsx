@@ -3282,7 +3282,9 @@ const styles = StyleSheet.create({
   },
   card: {
     height: CARD_HEIGHT,
-    borderRadius: 12, // Figma border-radius/xl = 12
+    // Figma local var `border-radius/xl` = 12px → app token figmaTile (= ds.radius.sm = 12).
+    // NB: this is NOT ds.radius.xl (that is 18) — the Figma file's local "xl" scale differs.
+    borderRadius: theme.borderRadius.figmaTile,
     backgroundColor: theme.colors.figmaCardSurface,
     overflow: 'hidden',
     alignItems: 'center',
