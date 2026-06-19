@@ -60,6 +60,7 @@ export const theme = {
     // Source: plans/260531-1326-au-303-two-axis-swipe/figma-extraction-au303-guidance.md §8
     figmaDotInactive: '#c6bcb1', // icon/primary/subtle_300 — inactive pagination dot
     figmaOverlayScrim: 'rgba(38, 36, 33, 0.7)', // background/primary/bold_600 (#262421) @ 70% — guidance-overlay backdrop
+    dialogScrim: 'rgba(25, 27, 34, 0.3)', // ink (#191b22) @ 30% — centered dialog/modal backdrop (Settings + AI-consent dialogs)
     figmaOnboardingStickyBarBg: 'rgba(255, 255, 255, 0.6)', // color/neutral/white/Alpha200 — Step-3 sticky bar (backdrop-blur 2 in Figma)
     figmaTextDark: '#070707', // near-black for expand/collapse text buttons
     // Sidebar dark redesign (node 2852:24670) — divider hairline on the dark
@@ -203,6 +204,16 @@ export const theme = {
         fontSize: 16,
         lineHeight: 24,
         letterSpacing: 0,
+      },
+      // Legal documents (Terms / Privacy) — Figma node 3177:6642 document
+      // title + section headings render Poppins Bold 16/24, tracking 0.15.
+      // Bold via the bundled face (RN `fontWeight` can't restyle a named
+      // custom font reliably), so this is a distinct alias from poppinsBody.
+      poppinsBodyBold: {
+        fontFamily: 'Poppins-Bold',
+        fontSize: 16,
+        lineHeight: 24,
+        letterSpacing: 0.15,
       },
       // Settings redesign (node 2850:15840) — main-list big time value.
       // Figma heading/H2 = Poppins Bold 32/40, letter-spacing −0.64.

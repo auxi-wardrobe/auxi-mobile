@@ -26,6 +26,8 @@ import { useAuth } from '../context/AuthContext';
 import { bodyService, BodyItem } from '../services/bodyService';
 import { tryOnService } from '../services/tryOnService';
 import { track } from '../services/analytics';
+import { useAiConsentGate } from '../hooks/useAiConsentGate';
+import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { theme } from '../theme/theme';
 import { AppStackParamList, TryOnOutfitContext } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
@@ -85,6 +87,8 @@ export const BodyScreen = () => {
   const route = useRoute<ScreenRoute>();
   const { checkAuth } = useAuth();
   const { t } = useTranslation();
+  // B1: gate the AI photo upload behind explicit, persisted consent.
+  const aiConsentGate = useAiConsentGate();
 
   // Derive mode once + narrow the discriminated union. The union guarantees
   // `outfit` is present when mode === 'tryOn' and `bodyId` only on 'photoDetail',
@@ -282,7 +286,17 @@ export const BodyScreen = () => {
     }, 350);
   };
 
-  const handleGenerateTryOn = async () => {
+  // B1: tap → ensure AI data-sharing consent, THEN upload. The actual upload
+  // only ever runs after consent, so it always sends gemini_opt_in: true (the
+  // wire value now reflects a real, recorded decision — never a faked flag).
+  const handleGenerateTryOn = () => {
+    if (!tryOnOutfit || !selectedBodyId || isGenerating) {
+      return;
+    }
+    aiConsentGate.run(runGenerateTryOn);
+  };
+
+  const runGenerateTryOn = async () => {
     if (!tryOnOutfit || !selectedBodyId || isGenerating) {
       return;
     }
@@ -738,6 +752,9 @@ export const BodyScreen = () => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* B1: AI data-sharing consent prompt — gates the try-on photo upload. */}
+      <AiConsentDialog {...aiConsentGate.dialogProps} />
     </SafeAreaView>
   );
 };

@@ -42,6 +42,12 @@ import {
   revokeAnalyticsConsent,
   track,
 } from '../services/analytics';
+import {
+  grantAiDataSharingConsent,
+  hasAiDataSharingConsent,
+  revokeAiDataSharingConsent,
+} from '../services/aiConsent';
+import type { LegalDocumentType } from '../content/legal';
 import { setLanguage as setI18nLanguage } from '../i18n/init';
 import type { Language } from '../translations';
 
@@ -235,6 +241,9 @@ export const SettingsScreen = () => {
   // analytics seam; the Privacy-control toggle below is the production path
   // that grants/revokes it.
   const [analyticsConsent, setAnalyticsConsent] = useState(false);
+  // AI data-sharing consent (B1). Revoking here flips the persisted decision so
+  // the next try-on photo upload re-prompts (Privacy Policy §6 withdraw right).
+  const [aiDataSharingConsent, setAiDataSharingConsent] = useState(false);
   const reminderSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -251,12 +260,18 @@ export const SettingsScreen = () => {
     syncFromUser(user);
   }, [syncFromUser, user]);
 
-  // Reflect the persisted analytics-consent decision in the toggle on mount.
+  // Reflect the persisted analytics + AI-data-sharing consent decisions in
+  // their toggles on mount.
   useEffect(() => {
     let isMounted = true;
     hasAnalyticsConsent().then(granted => {
       if (isMounted) {
         setAnalyticsConsent(granted);
+      }
+    });
+    hasAiDataSharingConsent().then(granted => {
+      if (isMounted) {
+        setAiDataSharingConsent(granted);
       }
     });
     return () => {
@@ -365,6 +380,13 @@ export const SettingsScreen = () => {
     setActiveModal('none');
   };
 
+  // Open an in-app legal document (Terms / Privacy). `legal_document_viewed`
+  // (source='settings') is fired by LegalDocumentScreen's mount effect, so we
+  // only navigate here — no double-count.
+  const openLegalDocument = (documentType: LegalDocumentType) => {
+    navigation.navigate('LegalDocument', { documentType, source: 'settings' });
+  };
+
   const applyLanguage = async () => {
     if (isSavingLanguage) return;
     if (pendingLanguage === currentLanguage) {
@@ -447,6 +469,24 @@ export const SettingsScreen = () => {
           t('settings.error_update_analytics'),
         );
       });
+  };
+
+  // B1: AI data-sharing consent toggle (Privacy Policy §6 withdraw right).
+  // Optimistic flip with rollback; grant/revoke persist the decision and emit
+  // ai_consent_granted / ai_consent_revoked from the service seam.
+  const handleAiDataSharingToggle = (enabled: boolean) => {
+    const previousValue = aiDataSharingConsent;
+    setAiDataSharingConsent(enabled);
+    const persist = enabled
+      ? grantAiDataSharingConsent
+      : revokeAiDataSharingConsent;
+    persist().catch(() => {
+      setAiDataSharingConsent(previousValue);
+      showSettingsError(
+        t('settings.toast_title'),
+        t('settings.error_update_ai_sharing'),
+      );
+    });
   };
 
   const applyDirection = async () => {
@@ -625,16 +665,51 @@ export const SettingsScreen = () => {
 
           <Divider />
 
+          {/* AI data sharing (B1). When OFF, the next try-on re-prompts for
+              consent before any photo is sent to our AI providers. Privacy
+              Policy §6 withdraw right. */}
+          <View style={styles.rowHeader}>
+            <Text style={styles.rowLabel}>{t('settings.share_ai_data')}</Text>
+            <SettingsSwitch
+              testID="settings-ai-data-sharing-toggle"
+              accessibilityLabel={t('settings.a11y_toggle_ai_data')}
+              value={aiDataSharingConsent}
+              onValueChange={handleAiDataSharingToggle}
+            />
+          </View>
+
+          <Divider />
+
+          {/* Terms of Service — in-app legal doc (App Store blocker B5).
+              Replaces the former dead-end "Your information" no-op row. */}
           <TouchableOpacity
-            testID="settings-your-information-row"
+            testID="settings-terms-of-service-row"
+            accessibilityLabel={t('settings.terms_of_service')}
             activeOpacity={0.82}
             style={styles.singleRow}
-            // TODO(settings): "Your information" screen not built yet — shipped as no-op per CEO scope; wire route when the screen exists.
-            onPress={() => {}}
+            onPress={() => openLegalDocument('terms')}
           >
             <Text style={styles.rowLabel}>
-              {t('settings.your_information')}
+              {t('settings.terms_of_service')}
             </Text>
+            <Icons.ArrowRight
+              width={24}
+              height={24}
+              color={theme.colors.uacTextBase}
+            />
+          </TouchableOpacity>
+
+          <Divider />
+
+          {/* Privacy Policy — in-app legal doc (App Store blockers B5 + B1). */}
+          <TouchableOpacity
+            testID="settings-privacy-policy-row"
+            accessibilityLabel={t('settings.privacy_policy')}
+            activeOpacity={0.82}
+            style={styles.singleRow}
+            onPress={() => openLegalDocument('privacy')}
+          >
+            <Text style={styles.rowLabel}>{t('settings.privacy_policy')}</Text>
             <Icons.ArrowRight
               width={24}
               height={24}

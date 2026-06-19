@@ -28,6 +28,7 @@ import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
 import { OutfitCanvasScreen } from '../screens/OutfitCanvasScreen';
 import { DesignSystemScreen } from '../screens/DesignSystemScreen';
+import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -153,6 +154,12 @@ export const AppNavigator = () => {
               <Stack.Screen
                 name="DesignSystem"
                 component={DesignSystemScreen}
+              />
+              {/* In-app Terms / Privacy — App Store blocker B5. Reached from
+                  Settings while authenticated. */}
+              <Stack.Screen
+                name="LegalDocument"
+                component={LegalDocumentScreen}
               />
             </>
           )

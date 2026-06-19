@@ -132,6 +132,12 @@ export const tryOnGenerationStore = {
       .generateTryOn({
         body_id: input.bodyId,
         wardrobe_item_ids: input.outfit.itemIds,
+        // B1 invariant: `start` is only ever reached AFTER the caller has
+        // confirmed AI data-sharing consent via useAiConsentGate (see
+        // SeeThisOnMeScreen.runGenerate). The backend route requires
+        // gemini_opt_in === true, so the only correct value here is `true` —
+        // and it now reflects a real, recorded consent decision, not a faked
+        // flag. Never call this store method without passing the consent gate.
         gemini_opt_in: true,
         prompt_params: input.shape ? { body_shape: input.shape } : undefined,
       })

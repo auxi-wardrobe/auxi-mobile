@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
+import { track } from '../../services/analytics';
 import { navigationRef } from '../../navigation/navigationRef';
 import { AppStackParamList } from '../../types/navigation';
 import { Icons } from '../../assets/icons';
@@ -102,7 +103,10 @@ export const SidebarMenu: React.FC = () => {
           Icon={Icons.Feedback}
           testID="sidebar-menu-feedback"
           isActive={routeName === 'Feedback'}
-          onPress={() => go('Feedback', close)}
+          onPress={() => {
+            track('feedback_opened', { source: 'sidebar' });
+            go('Feedback', close);
+          }}
         />
         <MenuItem
           label={t('sidebar.setting')}
@@ -111,12 +115,9 @@ export const SidebarMenu: React.FC = () => {
           isActive={routeName === 'Settings'}
           onPress={() => go('Settings', close)}
         />
-        <MenuItem
-          label={t('sidebar.account')}
-          Icon={Icons.User}
-          testID="sidebar-menu-account"
-          onPress={close}
-        />
+        {/* "My account" row removed (App Store B3 / Guideline 2.1): no
+            account screen exists, so the row only closed the drawer — a dead
+            button. Account actions live under Settings (the row above). */}
         <MenuItem
           label={t('sidebar.outfit_canvas')}
           Icon={Icons.Setting}
