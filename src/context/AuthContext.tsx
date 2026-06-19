@@ -11,7 +11,6 @@ import { authService } from '../services/auth';
 import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { registerSessionExpiredListener } from '../services/apiClient';
 import { identifyUser, resetAnalytics, track } from '../services/analytics';
-import { identifyFlagUser, resetFlagUser } from '../services/feature-flags';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
 
 /**
@@ -221,9 +220,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         superProps.display_state = user.user_metadata.display_state;
       }
       identifyUser(distinctId, profile, superProps);
-      // Key Unleash rollouts on the same identity as analytics, so % rollouts
-      // and role/gender targeting are stable per logged-in user.
-      identifyFlagUser(user);
       if (justLoggedInRef.current) {
         justLoggedInRef.current = false;
         const method = pendingAuthMethodRef.current;
@@ -242,7 +238,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } else if (analyticsIdRef.current !== null) {
       analyticsIdRef.current = null;
       resetAnalytics();
-      resetFlagUser();
     }
   }, [user]);
 
