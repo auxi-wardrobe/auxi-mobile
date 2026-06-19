@@ -172,7 +172,7 @@ export const RemoveFavouriteDialog: React.FC<Props> = ({
               <TouchableOpacity
                 testID="favourite-remove-cancel"
                 accessibilityRole="button"
-                accessibilityLabel={t('favourite.cancel')}
+                accessibilityLabel={t('favourite.remove_cancel')}
                 activeOpacity={0.82}
                 disabled={isBusy}
                 style={[
@@ -182,7 +182,9 @@ export const RemoveFavouriteDialog: React.FC<Props> = ({
                 ]}
                 onPress={onCancel}
               >
-                <Text style={styles.cancelLabel}>{t('favourite.cancel')}</Text>
+                <Text style={styles.cancelLabel}>
+                  {t('favourite.remove_cancel')}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
