@@ -16,12 +16,11 @@ import IconGridAlt from '../../assets/images/icon_grid_alt.svg';
 // exists. Tab 2 is rendered faithfully but is a no-op until the alternate
 // view ships. Confirm target view with CEO/tech-lead before wiring.
 //
-// Backdrop blur (Figma footer slab 3227:13480 = 430×100 oversized, backdrop
-// 7.5px on background/neutral/subtlest @ 80%). Implemented via
+// Backdrop blur — current Home frame 3230:35149 → footer 3910:14047 specifies
+// `backdrop-blur-[4px]` on background/neutral/subtlest @ 80%. Implemented via
 // `@react-native-community/blur`'s native UIVisualEffectView on iOS /
-// RenderEffect on Android. `blurAmount` is integer in the lib, so we round
-// 7.5 → 8 (visually indistinguishable). The white@80% tint is layered as
-// a sibling fill (BlurView itself has transparent bg). `reducedTransparency`
+// RenderEffect on Android, so `blurAmount={4}`. The white@80% tint is layered
+// as a sibling fill (BlurView itself has transparent bg). `reducedTransparency`
 // fallback uses the existing opacity-only token so accessibility users still
 // see a legible bar.
 
@@ -54,7 +53,7 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
       <BlurView
         style={styles.blurSlab}
         blurType="light"
-        blurAmount={8}
+        blurAmount={4}
         reducedTransparencyFallbackColor={theme.colors.figmaItemDetailHeaderBg}
         pointerEvents="none"
       />
@@ -79,7 +78,17 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
         >
           {/* White active cell (Figma 2464:17303) over the selected tab. */}
           {activeView === 'grid' && <View style={styles.activeCell} />}
-          <IconGrid width={24} height={24} color={theme.colors.figmaTextDark} />
+          {/* Active tab icon = ink (#070707); inactive icon dims to the muted
+              tan token (icon/primary/subtle_300, #c6bcb1) per Figma 3914:24540. */}
+          <IconGrid
+            width={24}
+            height={24}
+            color={
+              activeView === 'grid'
+                ? theme.colors.figmaTextDark
+                : theme.ds.color.tanStroke
+            }
+          />
         </TouchableOpacity>
         <TouchableOpacity
           testID={
@@ -95,10 +104,16 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
           style={styles.tab}
         >
           {activeView === 'collage' && <View style={styles.activeCell} />}
+          {/* Active tab icon = ink (#070707); inactive icon dims to the muted
+              tan token (icon/primary/subtle_300, #c6bcb1) per Figma 3914:24540. */}
           <IconGridAlt
             width={24}
             height={24}
-            color={theme.colors.figmaTextDark}
+            color={
+              activeView === 'collage'
+                ? theme.colors.figmaTextDark
+                : theme.ds.color.tanStroke
+            }
           />
         </TouchableOpacity>
       </View>
