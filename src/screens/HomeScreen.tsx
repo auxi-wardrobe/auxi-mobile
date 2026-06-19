@@ -79,6 +79,7 @@ import { resolveItemImage } from '../utils/url';
 import { weatherService } from '../services/weatherService';
 import { WeatherWidget } from '../components/features/WeatherWidget';
 import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
+import { AiContentDisclosure } from '../components/features/AiContentDisclosure';
 import {
   TemperatureOverrideSheet,
   type TemperatureSheetErrorKey,
@@ -2163,6 +2164,20 @@ export const HomeScreen = () => {
         </View>
       )}
 
+      {/* B2: AI-generated disclosure + Report for the recommendation surface
+          (Apple 2026 AI rules). The outfit is AI-selected content; shown once
+          per screen while a recommendation is present, below the swipe deck.
+          Placed outside the height-locked OptionSheet card so it never
+          perturbs the grid layout. */}
+      {optionSets.length > 0 ? (
+        <View style={styles.aiDisclosureRow}>
+          <AiContentDisclosure
+            surface="recommendation"
+            testID="home-ai-disclosure"
+          />
+        </View>
+      ) : null}
+
       {/* AU-307 phase 04 — inline error or fallback banner below the deck
           but above the sticky "Wear this" footer. They are mutually
           exclusive (reducer's outfit lifecycle), so render at most one. */}
@@ -3121,6 +3136,11 @@ const styles = StyleSheet.create({
   // the pre-AU-303 full-bleed sheet width.
   outfitCell: {
     width: screenWidth,
+  },
+  aiDisclosureRow: {
+    paddingHorizontal: theme.spacing.uacBodyPadding,
+    paddingVertical: theme.spacing.xs,
+    alignItems: 'center',
   },
   optionSheet: {
     height: OPTION_SHEET_HEIGHT,

@@ -210,6 +210,17 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 > PII: both props are bounded enums — no raw text, no URL, no identifiers. The screen owns the single fire site so the press handlers in `WelcomeScreen.tsx` / `SettingsScreen.tsx` only navigate (no double-count). `source` distinguishes the unauthenticated (Welcome) vs authenticated (Settings) entry for funnel segmentation.
 
+### 5.15 AI data-sharing consent + AI-content disclosure (App Store blockers B1 + B2)
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `ai_consent_granted` | User accepts the AI data-sharing prompt before a try-on photo upload, OR flips the Settings "AI data sharing" toggle ON | `services/aiConsent.ts:32` (called from `useAiConsentGate.ts` Accept + `SettingsScreen.tsx` grant) | — |
+| `ai_consent_declined` | User declines the AI data-sharing prompt (tap Decline / tap-outside) | `services/aiConsent.ts:38` (called from `useAiConsentGate.ts` Decline) | — |
+| `ai_consent_revoked` | User flips the Settings "AI data sharing" toggle OFF (Privacy Policy §6 withdraw) | `services/aiConsent.ts:48` (called from `SettingsScreen.tsx` revoke) | — |
+| `ai_content_reported` | User taps "Report" on an AI-generated result (opens prefilled mailto) | `components/features/AiContentDisclosure.tsx:30` | `surface` (`tryon` / `recommendation`) |
+
+> PII: none. `ai_consent_*` carry no properties; `ai_content_reported.surface` is a bounded enum. The Report mailto subject/body are static localized strings — no ids, photos, or free text leave the device via analytics. Consent is gated server-side too: the try-on route requires `gemini_opt_in === true`, and the client only sends that after a recorded grant, so no photo is uploaded pre-consent.
+
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
 These hooks were spec'd but cannot fire today — the UI surface, control, or API doesn't exist yet. **No code shipped for these** (we don't fake events). Re-evaluate when the underlying surface lands.
