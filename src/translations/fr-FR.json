@@ -71,10 +71,12 @@
       },
       "welcome": {
         "language_button": "Français",
-        "headline": "Bienvenue sur\nAuxi",
+        "headline": "Bienvenue sur\nMacgie",
+        "subtitle": "Habillez-vous avec plus de clarté, moins de pression.",
         "google_cta": "Continuer avec Google",
         "apple_cta": "Continuer avec Apple",
         "email_cta": "Continuer avec Email",
+        "or": "ou",
         "legal_text": "En continuant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialité",
         "legal_terms_link": "Conditions d'utilisation",
         "legal_privacy_link": "Politique de confidentialité",

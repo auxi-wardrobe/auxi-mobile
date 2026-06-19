@@ -71,10 +71,12 @@
       },
       "welcome": {
         "language_button": "Tiếng Việt",
-        "headline": "Chào mừng đến với\nAuxi",
+        "headline": "Chào mừng đến với\nMacgie",
+        "subtitle": "Phối đồ rõ ràng hơn, bớt áp lực hơn.",
         "google_cta": "Tiếp tục với Google",
         "apple_cta": "Tiếp tục với Apple",
         "email_cta": "Tiếp tục với Email",
+        "or": "hoặc",
         "legal_text": "Khi tiếp tục, bạn đồng ý với Điều khoản Dịch vụ và Chính sách Bảo mật của chúng tôi",
         "legal_terms_link": "Điều khoản Dịch vụ",
         "legal_privacy_link": "Chính sách Bảo mật",

@@ -41,6 +41,13 @@ export interface MacgieLoaderProps {
   variant?: 'fullScreen' | 'inline';
   /** Override the mascot height (px). Defaults by variant. */
   size?: number;
+  /**
+   * Present the mascot as a brand *logo* rather than a loading state: image
+   * a11y ("Macgie"), no busy/"Loading" announcement. The motion is unchanged —
+   * this only swaps the accessibility semantics so the lively loader animation
+   * can sit in a logo slot (e.g. the Welcome screen) without lying to VoiceOver.
+   */
+  asLogo?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -49,6 +56,7 @@ export const MacgieLoader: React.FC<MacgieLoaderProps> = ({
   label,
   variant = 'fullScreen',
   size,
+  asLogo = false,
   style,
   testID = 'macgie-loader',
 }) => {
@@ -152,8 +160,8 @@ export const MacgieLoader: React.FC<MacgieLoaderProps> = ({
       testID={testID}
       accessible
       accessibilityRole="image"
-      accessibilityLabel={label ?? 'Loading'}
-      accessibilityState={{ busy: true }}
+      accessibilityLabel={label ?? (asLogo ? 'Macgie' : 'Loading')}
+      accessibilityState={asLogo ? undefined : { busy: true }}
     >
       <Animated.View style={faceTransformStyle}>
         <MacgieFace size={faceSize} look={reduced ? undefined : look} />
