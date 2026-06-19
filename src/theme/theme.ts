@@ -263,6 +263,14 @@ export const theme = {
         fontSize: 16,
         lineHeight: 20,
       },
+      // Favourite remove bottom-sheet title (Figma 3539:23380).
+      // Inter SemiBold 14/20 (body/sm Semibold) — one size smaller than
+      // interSemiboldSm (16/20); the sheet header reads at body/sm, not Text-md.
+      interSemiboldXsSm: {
+        fontFamily: 'Inter-SemiBold',
+        fontSize: 14,
+        lineHeight: 20,
+      },
       uacBodyMdMedium: {
         fontFamily: 'Poppins-Medium',
         fontSize: 16,

@@ -14,6 +14,10 @@ import { Favourite, FavouriteItem } from '../../services/favouriteService';
 type Props = {
   favourite: Favourite;
   view: HomeView;
+  // Per-card date label (e.g. "6 May"), rendered as the first line of the
+  // title block above the top divider (Figma `3539:22168`). The screen formats
+  // it from `created_at` so the date repeats on every saved outfit.
+  dateLabel?: string;
   onRemove: (id: string) => void;
   onSelfVisualization: (favourite: Favourite) => void;
 };
@@ -85,6 +89,7 @@ const Tile: React.FC<{ item: FavouriteItem; testIDPrefix: string }> = ({
 export const FavouriteOutfitCard: React.FC<Props> = ({
   favourite,
   view,
+  dateLabel,
   onRemove,
   onSelfVisualization,
 }) => {
@@ -94,8 +99,9 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
   const testIDPrefix = `favourite-card-${favourite.id}`;
 
   // Bold outfit title (Figma `3539:22165`) — rendered only when the backend
-  // supplies one. The date sits ABOVE the card as a per-day group header in
-  // FavouriteScreen, so it's intentionally not repeated here.
+  // supplies one. The date is the first line of THIS card's title block
+  // (Figma `3539:22168`); it repeats per saved outfit (CEO 2026-06-19),
+  // replacing the former screen-level per-day group header.
   const title = favourite.title?.trim();
   // Filled vibe-tag pill (Figma `3539:22327`) — render the FIRST saved mood id,
   // mapped to its display label. Empty/missing `mood_tags` ⇒ no pill.
@@ -114,16 +120,27 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
 
   return (
     <View style={styles.card} testID={testIDPrefix}>
-      {title || moodTagLabel ? (
+      {dateLabel || title || moodTagLabel ? (
         <View style={styles.titleBlock}>
-          {title ? (
-            <Text
-              style={styles.title}
-              numberOfLines={2}
-              testID={`${testIDPrefix}-title`}
-            >
-              {title}
+          {dateLabel ? (
+            <Text style={styles.date} testID={`${testIDPrefix}-date`}>
+              {dateLabel}
             </Text>
+          ) : null}
+          {title ? (
+            <>
+              {/* Full-width hairline above the bold title (Figma `3646:10000`). */}
+              <View style={styles.titleDivider} />
+              <Text
+                style={styles.title}
+                numberOfLines={2}
+                testID={`${testIDPrefix}-title`}
+              >
+                {title}
+              </Text>
+              {/* Full-width hairline below the bold title (Figma `3646:9997`). */}
+              <View style={styles.titleDivider} />
+            </>
           ) : null}
           {moodTagLabel ? (
             <View style={styles.moodPill} testID={`${testIDPrefix}-mood-pill`}>
@@ -205,11 +222,26 @@ const styles = StyleSheet.create({
     gap: theme.spacing.m,
   },
   // Title + vibe-tag block (Figma `3539:22168`): centred column, 4px gap,
-  // 8px vertical padding. Sits between the date group-header and the bulb row.
+  // 8px vertical padding. date → divider → title → divider → mood chip.
   titleBlock: {
     alignItems: 'center',
     gap: theme.spacing.xs,
     paddingVertical: theme.spacing.s,
+  },
+  // Per-card date — Inter Regular 12/16 (body/xs), text/neutral/base. First
+  // line of the title block, above the top divider (CEO 2026-06-19).
+  date: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
+    textAlign: 'center',
+  },
+  // Full-width 1px hairline flanking the bold title (Figma divider component
+  // `3646:10000` / `3646:9997`). `alignSelf:'stretch'` spans the centred
+  // title block to the card content width.
+  titleDivider: {
+    alignSelf: 'stretch',
+    height: 1,
+    backgroundColor: theme.colors.figmaDivider,
   },
   // Bold outfit title — Poppins SemiBold 24/32 (heading/h4), text/neutral/base.
   title: {
