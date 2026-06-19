@@ -117,6 +117,16 @@ export const theme = {
     figmaSnackbarSuccessBg: '#4cf4d3', // color/success/200 — snackbar surface
     // Glyph + text reuse existing tokens: icon = figmaTextDark (#070707,
     // icon/primary/bold_700), text = uacTextBase (#1d1f23, text/neutral/base).
+    // Home-loading shimmer (AU-364, Figma node 2850:11205 "Home - loading").
+    // The loading outfit slots use a diagonal warm→greige ramp
+    // (linear-gradient(230deg, #f2efec 26.8% → #d5ccc3 84%)). The start stop is
+    // `cream` (#f2efec, figmaCardSurface); the END stop has no prior token.
+    // Source: figma get_design_context node 2850:11215.
+    figmaSkeletonRampEnd: '#d5ccc3', // skeleton/shimmer gradient end-stop (greige)
+    // background/overlay/light/30 (#ffffff4d) — translucent white surface behind
+    // the tile pin badge. Was an inline literal in `pinBadge`; promoted to a
+    // token so the loading-state pin reuses the same value (DRY).
+    figmaOverlayLight30: 'rgba(255, 255, 255, 0.3)',
   },
   spacing: {
     xs: 4,
