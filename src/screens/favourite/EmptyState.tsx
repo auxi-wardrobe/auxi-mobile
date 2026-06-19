@@ -2,11 +2,13 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
-import IconHeartFilled from '../../assets/images/icon_home_heart_filled.svg';
+import IconHeartFilled from '../../assets/images/icon_heart_filled.svg';
 
-// Favourite | empty state (Figma `3539:23335` dimmed canvas): a centred green
-// heart glyph above the "Tap 'Wear this' button to add an outfit" caption.
-// The grid/collage footer is rendered by the screen, not here.
+// Favourite | empty state (Figma `2852:22228` → content `2852:22230`): a
+// centred neutral 24×24 filled-heart glyph above the "Tap 'Wear this' button
+// to add an outfit" caption, gap-12. The glyph is `icon/primary/bold_700`
+// (#070707 = figmaTextDark; neutral, NOT the green save-heart). The
+// grid/collage footer is rendered by the screen, not here.
 export const FavouriteEmptyState: React.FC<{ testID?: string }> = ({
   testID,
 }) => {
@@ -15,9 +17,9 @@ export const FavouriteEmptyState: React.FC<{ testID?: string }> = ({
   return (
     <View testID={testID} style={styles.container}>
       <IconHeartFilled
-        width={28}
-        height={28}
-        color={theme.colors.success}
+        width={24}
+        height={24}
+        color={theme.colors.figmaTextDark}
         accessibilityLabel={t('favourite.empty_a11y')}
       />
       <Text style={styles.caption}>{t('favourite.empty_body')}</Text>
@@ -30,12 +32,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.s,
-    paddingHorizontal: theme.spacing.l,
+    gap: theme.spacing.uacDimension12,
+    paddingHorizontal: theme.spacing.m,
   },
   caption: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
 });

@@ -42,6 +42,10 @@ export const theme = {
     figmaTextSecondary: '#616161',
     figmaTextMuted: '#49454F',
     figmaDivider: '#D1D3D8',
+    // Barely-there hairline — Figma `border/neutral/subtle_300` (#f2f4f7).
+    // Used for the favourite card's title-flanking dividers (Figma divider
+    // component `3646:10000` / `3646:9997`); lighter than figmaDivider.
+    figmaDividerSubtle: '#f2f4f7',
     figmaAction: '#272A32',
     figmaButton: '#272A32',
     figmaRed: '#CC4C3E',
@@ -261,6 +265,14 @@ export const theme = {
       interSemiboldSm: {
         fontFamily: 'Inter-SemiBold',
         fontSize: 16,
+        lineHeight: 20,
+      },
+      // Favourite remove bottom-sheet title (Figma 3539:23380).
+      // Inter SemiBold 14/20 (body/sm Semibold) — one size smaller than
+      // interSemiboldSm (16/20); the sheet header reads at body/sm, not Text-md.
+      interSemiboldXsSm: {
+        fontFamily: 'Inter-SemiBold',
+        fontSize: 14,
         lineHeight: 20,
       },
       uacBodyMdMedium: {

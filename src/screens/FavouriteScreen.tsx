@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { BlurView } from '@react-native-community/blur';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
 import { useReducedMotion } from '../theme/motion';
+import { useSidebar } from '../context/SidebarContext';
 import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
@@ -20,13 +22,16 @@ import {
   HomeView,
   HomeViewToggleFooter,
 } from '../components/features/HomeViewToggleFooter';
-import { Icons } from '../assets/icons';
+import IconHomeMenu from '../assets/images/icon_home_menu.svg';
 import { track } from '../services/analytics';
 import { Favourite, favouriteService } from '../services/favouriteService';
 import { FavouriteEmptyState } from './favourite/EmptyState';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
 import { RemoveFavouriteDialog } from './favourite/RemoveFavouriteDialog';
-import { groupFavouritesByDate } from './favourite/group-by-date';
+import {
+  formatDateLabel,
+  groupFavouritesByDate,
+} from './favourite/group-by-date';
 import { computeSnapOffsets } from './favourite/snap-offsets';
 
 const FAVOURITES_QUERY_KEY = ['favourites'] as const;
@@ -38,6 +43,7 @@ export const FavouriteScreen: React.FC = () => {
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const queryClient = useQueryClient();
   const reduced = useReducedMotion();
+  const { open: openSidebar } = useSidebar();
 
   const [view, setView] = useState<HomeView>('grid');
   const [pendingRemovalId, setPendingRemovalId] = useState<string | null>(null);
@@ -172,7 +178,8 @@ export const FavouriteScreen: React.FC = () => {
             style={styles.dateGroup}
             onLayout={handleGroupLayout(group.dayKey)}
           >
-            <Text style={styles.dateLabel}>{group.label}</Text>
+            {/* CEO 2026-06-19: the date moved INTO each card's title block and
+                repeats per outfit — the screen-level per-day header is gone. */}
             {group.favourites.map(favourite => (
               <View
                 key={favourite.id}
@@ -182,6 +189,7 @@ export const FavouriteScreen: React.FC = () => {
                 <FavouriteOutfitCard
                   favourite={favourite}
                   view={view}
+                  dateLabel={formatDateLabel(favourite.created_at)}
                   onRemove={setPendingRemovalId}
                   onSelfVisualization={handleSelfVisualization}
                 />
@@ -196,17 +204,32 @@ export const FavouriteScreen: React.FC = () => {
   return (
     <View style={styles.container} testID="favourite-screen">
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TopIconButton
-          testID="favourite-back-button"
-          accessibilityLabel={t('favourite.back')}
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-          icon={<Icons.ChevronLeft width={24} height={24} />}
+        {/* Blurred bar background (Figma header @90% white + blur-7.5),
+            same treatment as HomeViewToggleFooter. Decorative — must not
+            capture touches or it swallows the hamburger tap. */}
+        <BlurView
+          style={styles.headerBlur}
+          blurType="light"
+          blurAmount={8}
+          reducedTransparencyFallbackColor={
+            theme.colors.figmaItemDetailHeaderBg
+          }
+          pointerEvents="none"
         />
-        <Text style={styles.title}>{t('favourite.title')}</Text>
-        {/* Invisible spacer keeps the title optically centred (Figma header
-            renders a 44×44 opacity-0 trailing slot). */}
-        <View style={styles.headerSpacer} />
+        <View style={styles.headerTint} pointerEvents="none" />
+        {/* Hamburger (44×44) opens the app push-drawer — the conventional
+            entry point, same as Home. No title, no back chevron (CEO
+            2026-06-19); native-stack swipe-back still backs out of the
+            pushed screen. testID is the machine selector; accessibilityLabel
+            is the human VoiceOver string (intentionally different values). */}
+        <TopIconButton
+          testID="favourite-header-menu"
+          accessibilityRole="button"
+          accessibilityLabel={t('favourite.open_menu')}
+          onPress={openSidebar}
+          style={styles.menuButton}
+          icon={<IconHomeMenu width={24} height={24} />}
+        />
       </View>
 
       <View style={styles.body}>{renderBody()}</View>
@@ -235,23 +258,28 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingHorizontal: theme.spacing.uacDimension12,
     paddingBottom: theme.spacing.uacDimension12,
+    // Clip the oversized blur slab to the bar bounds.
+    overflow: 'hidden',
+  },
+  // Blur slab behind the header (Figma @90% white + blur-7.5). Oversized so
+  // the edges stay sharp once the bar clips overflow.
+  headerBlur: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  // @90% white tint over the blur (background/neutral/subtlest @90%).
+  headerTint: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: theme.colors.figmaItemDetailHeaderBg,
   },
-  backButton: {
+  // Hamburger footprint (44×44 Figma menu slot); transparent so the blurred
+  // bar shows through.
+  menuButton: {
+    width: 44,
+    height: 44,
     backgroundColor: theme.colors.transparent,
-  },
-  title: {
-    ...theme.typography.aliases.interMediumSm,
-    color: theme.colors.uacTextBase,
-    textAlign: 'center',
-  },
-  // Match the 45×45 TopIconButton footprint so the title stays centred.
-  headerSpacer: {
-    width: 45,
-    height: 45,
   },
   body: {
     flex: 1,
@@ -264,11 +292,6 @@ const styles = StyleSheet.create({
   },
   dateGroup: {
     gap: theme.spacing.uacDimension12,
-  },
-  dateLabel: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.uacTextBase,
-    textAlign: 'center',
   },
   centerFill: {
     flex: 1,
