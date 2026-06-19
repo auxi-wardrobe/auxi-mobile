@@ -2,17 +2,20 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   Image,
   Modal,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { MacgieLoader } from '../components/macgie';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,16 +30,18 @@ import { CategoryTabs } from '../components/features/CategoryTabs';
 import { Header } from '../components/layout/Header';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { BottomSheetSurface } from '../components/primitives/FigmaPrimitives';
+import { PressableScale } from '../components/primitives/PressableScale';
 import { useSidebar } from '../context/SidebarContext';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
+import { motion, useReducedMotion } from '../theme/motion';
 import { useAuth } from '../context/AuthContext';
 import { AppStackParamList } from '../types/navigation';
 import { resolveItemImage } from '../utils/url';
 import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // Wardrobe filter chips — design order (node 3234:17793).
 const FILTER_TABS = [
@@ -108,14 +113,66 @@ export const WardrobeScreen = () => {
   const { t } = useTranslation();
   const { open: openSidebar } = useSidebar();
 
+  const insets = useSafeAreaInsets();
+  const reducedMotion = useReducedMotion();
+
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
+  // F7: distinguish a genuine empty wardrobe from a failed load. `loadError`
+  // is set on a (non-silent) fetch failure so the screen shows a dedicated
+  // error state + Retry rather than the misleading "add your first item" copy.
+  const [loadError, setLoadError] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingPhotoUri, setUploadingPhotoUri] = useState<string | null>(
     null,
   );
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
   const [addSheetVisible, setAddSheetVisible] = useState(false);
+  // F1: drive the add-item sheet with the canonical asymmetric motion (OPEN
+  // medium/enter, CLOSE normal/exit) + reduce-motion fallback, mirroring
+  // ContextChipsModal / MoodFeedbackSheet. `addSheetMounted` keeps the Modal
+  // rendered through the close animation; `addSheetSlide` is the translateY.
+  const [addSheetMounted, setAddSheetMounted] = useState(false);
+  const addSheetSlide = useRef(new Animated.Value(screenHeight)).current;
+
+  useEffect(() => {
+    if (addSheetVisible && !addSheetMounted) {
+      setAddSheetMounted(true);
+      return;
+    }
+
+    if (addSheetVisible) {
+      if (reducedMotion) {
+        addSheetSlide.setValue(0);
+        return;
+      }
+      addSheetSlide.setValue(screenHeight);
+      Animated.timing(addSheetSlide, {
+        toValue: 0,
+        duration: motion.duration.medium,
+        easing: motion.easing.enter,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    if (!addSheetMounted) {
+      return;
+    }
+
+    if (reducedMotion) {
+      setAddSheetMounted(false);
+      return;
+    }
+    Animated.timing(addSheetSlide, {
+      toValue: screenHeight,
+      duration: motion.duration.normal,
+      easing: motion.easing.exit,
+      useNativeDriver: true,
+    }).start(() => {
+      setAddSheetMounted(false);
+    });
+  }, [addSheetVisible, addSheetMounted, addSheetSlide, reducedMotion]);
 
   // AU-361: item-ready snackbar. `preparingIdsRef` holds IDs that were still
   // preparing on the previous fetch; `readyToastedIdsRef` dedups so an item
@@ -201,6 +258,7 @@ export const WardrobeScreen = () => {
       try {
         if (!options?.silent) {
           setLoading(true);
+          setLoadError(false);
         }
         const category = resolveFilterQuery(selectedTab);
         const data = category
@@ -211,6 +269,12 @@ export const WardrobeScreen = () => {
       } catch (error) {
         console.error('Error fetching wardrobe items', error);
         if (!options?.silent) {
+          // F7: surface a dedicated, recoverable error state (icon + message +
+          // Retry) instead of falling through to the empty-wardrobe copy. The
+          // toast stays as the transient confirmation; the inline state is the
+          // journey-continuity fix.
+          setLoadError(true);
+          track('wardrobe_load_failed', { category: selectedTab });
           Toast.show({
             type: 'error',
             text1: t('common.load_wardrobe_failed_title'),
@@ -226,6 +290,11 @@ export const WardrobeScreen = () => {
     },
     [selectedTab, t, reconcileReadyItems],
   );
+
+  const handleRetryLoad = useCallback(() => {
+    track('wardrobe_load_retry_tapped', { category: selectedTab });
+    fetchItems();
+  }, [fetchItems, selectedTab]);
 
   useEffect(() => {
     if (isFocused) {
@@ -400,7 +469,7 @@ export const WardrobeScreen = () => {
       index === 0 ? 'wardrobe-item-first' : `wardrobe-item-${item.id}`;
 
     return (
-      <TouchableOpacity
+      <PressableScale
         key={item.id}
         style={styles.tile}
         activeOpacity={0.88}
@@ -422,7 +491,9 @@ export const WardrobeScreen = () => {
 
         {item.is_preparing ? (
           <View style={styles.tilePreparingOverlay}>
-            <Text style={styles.tilePreparingText}>Preparing this item</Text>
+            <Text style={styles.tilePreparingText}>
+              {t('wardrobe.list.preparing_tile')}
+            </Text>
           </View>
         ) : null}
 
@@ -450,7 +521,7 @@ export const WardrobeScreen = () => {
             </View>
           </View>
         ) : null}
-      </TouchableOpacity>
+      </PressableScale>
     );
   };
 
@@ -465,14 +536,14 @@ export const WardrobeScreen = () => {
   const hasItems = items.length > 0;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Header
         title={t('wardrobe.list.title')}
         titleTextStyle={styles.headerTitle}
         leftIconStyle={styles.headerIconButton}
         onBack={openSidebar}
         rightComponent={
-          <TouchableOpacity
+          <PressableScale
             onPress={() => openAddSheet('header')}
             disabled={uploading}
             style={[styles.plusButton, styles.headerIconButton]}
@@ -488,7 +559,7 @@ export const WardrobeScreen = () => {
             ) : (
               <Icons.Plus width={24} height={24} />
             )}
-          </TouchableOpacity>
+          </PressableScale>
         }
       />
 
@@ -505,6 +576,27 @@ export const WardrobeScreen = () => {
 
         {loading ? (
           renderLoadingGrid()
+        ) : loadError ? (
+          // F7: failed load → dedicated error state with Retry, distinct from
+          // the genuine empty-wardrobe copy below.
+          <View style={styles.errorState} testID="wardrobe-error-state">
+            <Text style={styles.errorTitle}>
+              {t('common.load_wardrobe_failed_title')}
+            </Text>
+            <Text style={styles.errorBody}>
+              {t('wardrobe.list.error_body')}
+            </Text>
+            <PressableScale
+              style={styles.errorRetry}
+              activeOpacity={0.82}
+              onPress={handleRetryLoad}
+              testID="wardrobe-error-retry"
+              accessibilityRole="button"
+              accessibilityLabel={t('common.a11y_retry_load')}
+            >
+              <Text style={styles.errorRetryLabel}>{t('common.retry')}</Text>
+            </PressableScale>
+          </View>
         ) : hasItems ? (
           <View testID="wardrobe-grid-root" style={styles.grid}>
             {items.map(renderGridTile)}
@@ -521,7 +613,7 @@ export const WardrobeScreen = () => {
                 ? t('wardrobe.list.empty_first_body')
                 : t('wardrobe.list.empty_filtered_body')}
             </Text>
-            <TouchableOpacity
+            <PressableScale
               style={styles.emptyCta}
               activeOpacity={0.85}
               onPress={() => openAddSheet('empty_state')}
@@ -531,71 +623,83 @@ export const WardrobeScreen = () => {
               <Text style={styles.emptyCtaText}>
                 {t('wardrobe.list.add_an_item')}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         )}
       </ScrollView>
 
-      {/* Add item — bottom sheet (Figma node 2852:19750) */}
+      {/* Add item — bottom sheet (Figma node 2852:19750). F1: canonical
+          asymmetric motion (OPEN medium/enter, CLOSE normal/exit) +
+          reduce-motion fallback via addSheetSlide, mirroring
+          ContextChipsModal / MoodFeedbackSheet. `animationType="none"` —
+          the slide is driven by Animated, not the platform. */}
       <Modal
         accessibilityLabel="add-item-modal"
-        visible={addSheetVisible}
+        visible={addSheetMounted}
         onRequestClose={() => setAddSheetVisible(false)}
-        animationType="slide"
+        animationType="none"
         transparent
       >
         <TouchableWithoutFeedback onPress={() => setAddSheetVisible(false)}>
           <View style={styles.sheetOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
-              <BottomSheetSurface style={styles.addSheet}>
-                <Text style={styles.addSheetTitle}>
-                  {t('wardrobe.list.add_item_sheet_title')}
-                </Text>
-                <Text style={styles.addSheetSubtitle}>
-                  {t('wardrobe.list.add_item_sheet_subtitle')}
-                </Text>
+              <Animated.View
+                style={[
+                  styles.addSheetAnim,
+                  { paddingBottom: insets.bottom },
+                  { transform: [{ translateY: addSheetSlide }] },
+                ]}
+              >
+                <BottomSheetSurface style={styles.addSheet}>
+                  <Text style={styles.addSheetTitle}>
+                    {t('wardrobe.list.add_item_sheet_title')}
+                  </Text>
+                  <Text style={styles.addSheetSubtitle}>
+                    {t('wardrobe.list.add_item_sheet_subtitle')}
+                  </Text>
 
-                <AddMethodRow
-                  icon={
-                    <Icons.Database
-                      width={24}
-                      height={24}
-                      color={theme.colors.uacBackgroundBase}
-                    />
-                  }
-                  title={t('wardrobe.list.method_search_title')}
-                  description={t('wardrobe.list.method_search_desc')}
-                  onPress={handleSearchDatabase}
-                  testID="wardrobe-add-search"
-                />
-                <AddMethodRow
-                  icon={
-                    <Icons.Camera
-                      width={24}
-                      height={24}
-                      color={theme.colors.uacBackgroundBase}
-                    />
-                  }
-                  title={t('common.take_photo')}
-                  description={t('wardrobe.list.method_photo_desc')}
-                  onPress={handleTakePhoto}
-                  testID="wardrobe-add-photo"
-                />
-                <AddMethodRow
-                  icon={
-                    <Icons.Globe
-                      width={24}
-                      height={24}
-                      color={theme.colors.uacBackgroundBase}
-                    />
-                  }
-                  title={t('wardrobe.list.method_web_title')}
-                  description={t('wardrobe.list.method_web_desc')}
-                  onPress={handleImportFromWeb}
-                  testID="wardrobe-add-import"
-                  isLast
-                />
-              </BottomSheetSurface>
+                  <AddMethodRow
+                    icon={
+                      <Icons.Database
+                        width={24}
+                        height={24}
+                        color={theme.colors.uacBackgroundBase}
+                      />
+                    }
+                    title={t('wardrobe.list.method_search_title')}
+                    description={t('wardrobe.list.method_search_desc')}
+                    onPress={handleSearchDatabase}
+                    testID="wardrobe-add-search"
+                  />
+                  <AddMethodRow
+                    icon={
+                      <Icons.Camera
+                        width={24}
+                        height={24}
+                        color={theme.colors.uacBackgroundBase}
+                      />
+                    }
+                    title={t('common.take_photo')}
+                    description={t('wardrobe.list.method_photo_desc')}
+                    onPress={handleTakePhoto}
+                    testID="wardrobe-add-photo"
+                  />
+                  <AddMethodRow
+                    icon={
+                      <Icons.Globe
+                        width={24}
+                        height={24}
+                        color={theme.colors.uacBackgroundBase}
+                      />
+                    }
+                    title={t('wardrobe.list.method_web_title')}
+                    description={t('wardrobe.list.method_web_desc')}
+                    onPress={handleImportFromWeb}
+                    testID="wardrobe-add-import"
+                    isLast
+                  />
+                </BottomSheetSurface>
+              </Animated.View>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
@@ -639,7 +743,12 @@ export const WardrobeScreen = () => {
           pointerEvents="none" keeps touches passing through to the grid. */}
       {readySnackbarVisible ? (
         <View
-          style={styles.readySnackbarOverlay}
+          style={[
+            styles.readySnackbarOverlay,
+            // F6: respect the home-indicator inset so the snackbar never sits
+            // behind it. 24 is the design gap above the safe area.
+            { bottom: insets.bottom + 24 },
+          ]}
           pointerEvents="none"
           testID="wardrobe-item-ready-snackbar-overlay"
         >
@@ -667,7 +776,7 @@ const AddMethodRow: React.FC<AddMethodRowProps> = ({
   testID,
   isLast,
 }) => (
-  <TouchableOpacity
+  <PressableScale
     style={[styles.methodRow, !isLast && styles.methodRowDivider]}
     activeOpacity={0.7}
     onPress={onPress}
@@ -679,7 +788,7 @@ const AddMethodRow: React.FC<AddMethodRowProps> = ({
       <Text style={styles.methodTitle}>{title}</Text>
       <Text style={styles.methodDescription}>{description}</Text>
     </View>
-  </TouchableOpacity>
+  </PressableScale>
 );
 
 const styles = StyleSheet.create({
@@ -694,7 +803,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 24,
+    // `bottom` is supplied inline (insets.bottom + 24) so it respects the
+    // home-indicator safe area — see F6.
     alignItems: 'center',
     zIndex: 1000,
     elevation: 1000,
@@ -773,7 +883,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 3,
     borderRadius: 9999,
-    backgroundColor: 'rgba(18, 18, 18, 0.75)',
+    // F5: reuse the existing token instead of re-inlining the rgba duplicate
+    // (figmaCardTag === rgba(18,18,18,0.75), theme.ts:23). DRY.
+    backgroundColor: theme.colors.figmaCardTag,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -833,11 +945,49 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interMediumSm,
     color: theme.colors.white,
   },
+  // F7: error state — distinct from empty, with a Retry CTA. Mirrors the
+  // HomeScreen error-state layout/tokens for cross-screen consistency.
+  errorState: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 56,
+    alignItems: 'center',
+  },
+  errorTitle: {
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.figmaTextPrimary,
+    textAlign: 'center',
+  },
+  errorBody: {
+    ...theme.typography.aliases.interBodySm,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    maxWidth: 280,
+  },
+  errorRetry: {
+    marginTop: 20,
+    height: 48,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: theme.colors.figmaText,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorRetryLabel: {
+    ...theme.typography.aliases.interMediumSm,
+    color: theme.colors.figmaText,
+  },
   // Add-item bottom sheet
   sheetOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(18, 18, 18, 0.4)',
+  },
+  // F1/F6: wraps BottomSheetSurface so the slide transform + safe-area bottom
+  // inset live outside the surface's own padding.
+  addSheetAnim: {
+    width: '100%',
   },
   addSheet: {
     borderTopLeftRadius: 24,

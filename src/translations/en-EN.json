@@ -257,7 +257,9 @@
         "method_web_desc": "Paste a product link to save an item",
         "preparing_title": "Preparing your item…",
         "preparing_step1": "Removing the background and identifying details…",
-        "preparing_step2": "Auto tagging your items…"
+        "preparing_step2": "Auto tagging your items…",
+        "preparing_tile": "Preparing this item",
+        "error_body": "We couldn't load your wardrobe. Check your connection and try again."
       },
       "database": {
         "title": "Database",

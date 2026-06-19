@@ -118,6 +118,8 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `add_item_opened` (pre-existing) | Add-item entry | `WardrobeScreen.tsx:147` | `source` |
 | `add_item_method_selected` (pre-existing) | Method pick | `WardrobeScreen.tsx:152, 158, 234` | `method` |
 | `add_item_upload_started/succeeded/failed` (pre-existing) | Upload lifecycle | `WardrobeScreen.tsx:201, 209, 219` | `source` |
+| `wardrobe_load_failed` (design-review F7) | Non-silent `fetchItems` failure → dedicated error state shown | `WardrobeScreen.tsx` (`fetchItems` catch) | `category` (selected filter tab) |
+| `wardrobe_load_retry_tapped` (design-review F7) | "Try again" tapped on the error state | `WardrobeScreen.tsx` (`handleRetryLoad`) | `category` (selected filter tab) |
 
 ### 5.5 Favourite + try-on outcomes
 
@@ -284,6 +286,7 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 - **Reuse-on-return funnel (AU-354 pt.3):** on re-entry with a saved reusable body profile, `body_photo_reuse_confirmed` → `try_on_started` → `try_on_completed` measures returning-user conversion; `body_photo_retake_selected` is the drop-to-recapture branch (denominator: arrivals on the reuse-confirm screen).
 - **Wardrobe-grow funnel (take-photo):** `add_item_opened` → `add_item_method_selected` (`take_photo`) → `add_item_upload_started` → `add_item_upload_succeeded` → `wardrobe_item_added` → `item_ready_toast_shown` (AU-361: background processing completed — tail of the take-photo funnel)
 - **Wardrobe-grow funnel (database):** `wardrobe_search_initiated` → `wardrobe_search_result_selected` → `wardrobe_item_added`
+- **Wardrobe load-error recovery (design-review F7):** `wardrobe_load_failed` → `wardrobe_load_retry_tapped` measures how often a failed wardrobe load is recovered via the error-state Retry (denominator: `wardrobe_load_failed`). A high failure rate with low retry signals a journey dead-end.
 - **Refine-engagement funnel:** `refine_modal_opened` → `refine_chip_selected` ×N → `refine_submitted` (vs `refine_cancelled`)
 - **Retention insight:** `screen_viewed` per `screen_name` over time — identifies dead screens
 - **Mood-feedback funnel:** `wear_this_clicked` → `mood_feedback_opened` → `mood_feedback_submitted` (vs `mood_feedback_skipped`)

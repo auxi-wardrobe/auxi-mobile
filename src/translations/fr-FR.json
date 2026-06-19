@@ -257,7 +257,9 @@
         "method_web_desc": "Collez un lien produit pour enregistrer un article",
         "preparing_title": "Préparation de votre article…",
         "preparing_step1": "Suppression de l'arrière-plan et identification des détails…",
-        "preparing_step2": "Étiquetage automatique de vos articles…"
+        "preparing_step2": "Étiquetage automatique de vos articles…",
+        "preparing_tile": "Préparation de cet article",
+        "error_body": "Impossible de charger votre garde-robe. Vérifiez votre connexion et réessayez."
       },
       "database": {
         "title": "Base de données",
