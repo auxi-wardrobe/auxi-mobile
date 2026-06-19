@@ -51,7 +51,6 @@ import IconHomeHeartOutline from '../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../assets/images/icon_home_heart_filled.svg';
 import IconHomePin from '../assets/images/icon_home_pin.svg';
 import { theme } from '../theme/theme';
-import { MacgieLoader } from '../components/macgie';
 import { Item } from '../types/item';
 import {
   DEFAULT_RECOMMENDATION_MODE,
@@ -107,6 +106,8 @@ import { OUTFITS_PER_SET } from '../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../hooks/usePinReducer';
 import { PinConfirmModal } from '../components/features/PinConfirmModal';
 import { SkeletonTile } from '../components/features/SkeletonTile';
+import { ShimmerSlot } from '../components/features/ShimmerSlot';
+import { GeneratingDots } from '../components/features/GeneratingDots';
 import {
   PinGenerationError,
   type PinErrorKind,
@@ -938,7 +939,8 @@ export const HomeScreen = () => {
         }
         // Appended batch: the visible card is unchanged (still the active one);
         // dedup off the currently-active hash.
-        settledHash = listOutfitsRef.current[activeIndexRef.current]?.outfitHash;
+        settledHash =
+          listOutfitsRef.current[activeIndexRef.current]?.outfitHash;
       }
 
       // Eager + chained prefetch (Change 2) — but ONLY when this resolve added
@@ -2917,28 +2919,58 @@ const HomeWardrobeGapState: React.FC<{ onAddItems: () => void }> = ({
   );
 };
 
+// AU-364 — Home-loading state (Figma node 2850:11205 "Home - loading").
+// Skeleton-first direction (CEO-confirmed in 2026-06-19 design review): NO
+// mascot here — a calm shimmer grid + a "Generating" pill, inside the real
+// Home chrome (dimmed). The mascot stays for cold boot + true modal waits.
+// The grid geometry mirrors the loaded `twoByTwo` layout (same cardRow /
+// cardShellFixed / 12-radius tiles) so the load→loaded transition doesn't jump.
 const HomeLoadingState = () => {
   const { t } = useTranslation();
   return (
     <View style={styles.optionSheet}>
+      {/* "Generating" pill — Figma node 3914:28282. warm100 bg, black 12px
+          Inter Regular, radius 8, h-32, px-12, + animated 3-dot glyph (24px). */}
+      <View style={styles.loadingPillRow}>
+        <View style={styles.loadingPill} testID="home-loading-generating-pill">
+          <Text style={styles.loadingPillText}>{t('home.generating')}</Text>
+          <GeneratingDots size={24} />
+        </View>
+      </View>
+
       <View style={styles.loadingCards}>
         {[0, 1].map(row => (
           <View key={`loading-row-${row}`} style={styles.cardRow}>
             {[0, 1].map(column => (
               <View
                 key={`loading-card-${row}-${column}`}
-                style={styles.cardShellFixed}
+                style={[styles.cardShellFixed, styles.loadingSlotShell]}
               >
-                <View style={[styles.card, styles.loadingCard]} />
+                {/* Pin affordance on the bottom row only (Figma Default state,
+                    nodes 2850:11218/11219) — matches the loaded grid's pin. */}
+                <ShimmerSlot
+                  testID={`home-loading-slot-${row}-${column}`}
+                  showPin={row === 1}
+                />
               </View>
             ))}
           </View>
         ))}
       </View>
 
-      <View style={styles.loadingFooter}>
-        <MacgieLoader variant="inline" size={28} testID="home-loading-macgie" />
-        <Text style={styles.loadingFooterText}>{t('home.building_next')}</Text>
+      {/* Dimmed Home footer chrome (Figma footer @ opacity-50). The real
+          controls preview the shape of what's coming; the shimmering grid is
+          the focal point. Non-interactive — these are placeholders during load. */}
+      <View
+        style={styles.loadingFooterChrome}
+        pointerEvents="none"
+        testID="home-loading-footer"
+      >
+        <OutfitActionRow testID="home-loading-remix-row" />
+        <View style={[styles.primaryActionFull, styles.loadingWearThis]}>
+          <Text style={styles.loadingWearThisText}>{t('home.wear_this')}</Text>
+          <IconHomeHeartOutline width={24} height={24} />
+        </View>
       </View>
     </View>
   );
@@ -3299,7 +3331,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: theme.borderRadius.m,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)', // background/overlay/light/30
+    backgroundColor: theme.colors.figmaOverlayLight30, // background/overlay/light/30
     alignItems: 'center',
     justifyContent: 'center',
     // Figma 3399:18455 — drop-shadow 4/4, blur 5.3, #070707 @ 5%.
@@ -3329,8 +3361,51 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interSemiboldXs,
     color: theme.colors.uacTextPrimaryBase,
   },
-  loadingCard: {
-    backgroundColor: theme.colors.figmaCardSurface,
+  // AU-364 Home-loading state styles (Figma node 2850:11205).
+  // "Generating" pill row — left-aligned above the grid (Figma 2850:11208).
+  loadingPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // Figma node 3914:28282 — bg warm100 (#eee6df), h-32, px-12, gap-8, radius-8.
+  loadingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s, // 8
+    height: 32,
+    maxWidth: 336,
+    paddingHorizontal: theme.spacing.uacDimension12, // 12
+    borderRadius: theme.borderRadius.m, // 8 — border-radius/md
+    backgroundColor: theme.colors.figmaCaptionPillBg, // warm100 / background/primary/subtle_200
+  },
+  // Figma node 3914:28283 — text/primary/bold_700 (#070707), Inter Regular 12/16.
+  loadingPillText: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.figmaTextDark, // #070707
+  },
+  // Loading slot shell: same fixed-3:4 footprint as a loaded tile so the grid
+  // geometry is identical to the `twoByTwo` layout (load→loaded continuity).
+  loadingSlotShell: {
+    height: CARD_HEIGHT,
+  },
+  // Dimmed footer chrome (Figma footer @ opacity-50). Non-interactive preview.
+  loadingFooterChrome: {
+    opacity: motion.opacity.subtle, // 0.6 — calm dim; grid stays the focal point
+    gap: theme.spacing.uacDimension8,
+  },
+  // "Wear this" outline CTA in its disabled/preview form (matches the loaded
+  // `primaryActionFull` shell so the CTA doesn't shift on load complete).
+  loadingWearThis: {
+    minHeight: 56,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.s,
+  },
+  loadingWearThisText: {
+    ...theme.typography.aliases.poppinsButton,
+    color: theme.colors.figmaCtaLabel,
   },
   // H2 fix (2026-05-05 QA sweep): trailing odd-row placeholder is now
   // transparent so the grid reads as "3 items, balanced layout" rather than
@@ -3411,19 +3486,6 @@ const styles = StyleSheet.create({
   },
   secondaryActionText: {
     ...theme.typography.aliases.archivoButton,
-    color: theme.colors.figmaAction,
-  },
-  loadingFooter: {
-    minHeight: 56,
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaSurfaceSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  loadingFooterText: {
-    ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaAction,
   },
   // Error UI fix (2026-05-22): cold-start fetch failure fallback.
