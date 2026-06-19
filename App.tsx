@@ -14,6 +14,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { SidebarProvider } from './src/context/SidebarContext';
 import { RootDrawer } from './src/components/layout/RootDrawer';
+import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import Toast from 'react-native-toast-message';
 import { initI18n } from './src/i18n/init';
 import { theme } from './src/theme/theme';
@@ -75,9 +76,15 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <SidebarProvider>
-              <RootDrawer>
-                <AppNavigator />
-              </RootDrawer>
+              {/* Root error boundary — placed inside the providers so the
+                  fallback has theme/i18n available, and high enough to catch
+                  an unexpected render error anywhere in the navigator tree
+                  (recoverable fallback instead of a white screen on review). */}
+              <ErrorBoundary>
+                <RootDrawer>
+                  <AppNavigator />
+                </RootDrawer>
+              </ErrorBoundary>
             </SidebarProvider>
           </AuthProvider>
           <Toast />

@@ -165,6 +165,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
 | `screen_viewed` | React Navigation `onStateChange` → route name change. `OnboardingLoading` skipped (transient). 500ms debounce on identical consecutive names. | `AppNavigator.tsx:70` (`handleNavStateChange`) | `screen_name`, `previous_screen_name?` |
+| `feedback_opened` | Sidebar "Feedback" row tapped → navigates to the `Feedback` screen (App Store B3 dead-button fix — row was previously a no-op). | `SidebarMenu.tsx:107` (live push-drawer). The unused legacy `Sidebar.tsx:164` overlay carries the same call for parity. | `source` (`sidebar`) |
 
 ### 5.10 Analytics helpers (`src/services/analytics.ts`)
 
@@ -221,6 +222,14 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 > PII: none. `ai_consent_*` carry no properties; `ai_content_reported.surface` is a bounded enum. The Report mailto subject/body are static localized strings — no ids, photos, or free text leave the device via analytics. Consent is gated server-side too: the try-on route requires `gemini_opt_in === true`, and the client only sends that after a recorded grant, so no photo is uploaded pre-consent.
 
+### 5.16 Root error boundary
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `app_error_caught` | Root `ErrorBoundary.componentDidCatch` fires — an unexpected render/lifecycle error was caught in the navigator subtree and the recoverable fallback rendered (instead of a white screen). Also reported to Sentry. | `components/common/ErrorBoundary.tsx:55` | `fatal` (boolean — always `false`; the boundary recovers) |
+
+> PII: presence-of-error signal only. The raw `error.message` / component stack are NEVER tracked (they can carry PII) — those go to Sentry, not Mixpanel. The single `fatal: false` flag distinguishes a recovered boundary catch from a hard crash (the latter is captured by Mixpanel's automatic-events crash signal + Sentry).
+
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
 These hooks were spec'd but cannot fire today — the UI surface, control, or API doesn't exist yet. **No code shipped for these** (we don't fake events). Re-evaluate when the underlying surface lands.
@@ -246,7 +255,7 @@ These hooks were spec'd but cannot fire today — the UI surface, control, or AP
 - `wardrobe_url_import_completed`
 - `wardrobe_url_import_failed`
 
-`handleImportFromWeb` in `WardrobeScreen.tsx:158-165` is a "coming soon" Toast — no service, no submit form. Wire on the real handler once import lands.
+The "Import from web" add-item option (its `handleImportFromWeb` "coming soon" Toast + `add_item_method_selected {method: 'import_web'}` event) was REMOVED from `WardrobeScreen` — App Store B3 / Guideline 2.1 (no dead/"coming soon" UI). No service, no submit form ever existed. Re-add the option and wire these events on the real handler once URL import actually lands.
 
 ### 6.3.b Wardrobe — search submit step not built
 
