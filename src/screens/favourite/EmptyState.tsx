@@ -7,7 +7,7 @@ import IconHeartFilled from '../../assets/images/icon_heart_filled.svg';
 // Favourite | empty state (Figma `2852:22228` → content `2852:22230`): a
 // centred neutral 24×24 filled-heart glyph above the "Tap 'Wear this' button
 // to add an outfit" caption, gap-12. The glyph is `icon/primary/bold_700`
-// (neutral, NOT the green save-heart) tinted to text/neutral/base. The
+// (#070707 = figmaTextDark; neutral, NOT the green save-heart). The
 // grid/collage footer is rendered by the screen, not here.
 export const FavouriteEmptyState: React.FC<{ testID?: string }> = ({
   testID,
@@ -19,7 +19,7 @@ export const FavouriteEmptyState: React.FC<{ testID?: string }> = ({
       <IconHeartFilled
         width={24}
         height={24}
-        color={theme.colors.uacTextBase}
+        color={theme.colors.figmaTextDark}
         accessibilityLabel={t('favourite.empty_a11y')}
       />
       <Text style={styles.caption}>{t('favourite.empty_body')}</Text>

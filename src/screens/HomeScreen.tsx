@@ -1437,6 +1437,10 @@ export const HomeScreen = () => {
           outfit_hash: hash,
           item_ids: items.map(item => item.id).filter(Boolean),
           source: 'home',
+          // Persist the Home message (V05 reasoning_human) so the favourite
+          // card can show it as its title hero. Backward-safe: the backend
+          // ignores `title` until its column ships.
+          ...(outfit.caption ? { title: outfit.caption } : {}),
         })
         .then(() => {
           setSaveStateByHash(current => ({ ...current, [hash]: 'saved' }));
@@ -1527,6 +1531,9 @@ export const HomeScreen = () => {
         // (see buildViaV05) — thread the same value so contextual chip sets
         // light up if/when real occasions flow through it.
         occasion: selectedModeRef.current,
+        // Persist the Home message (V05 reasoning_human) through the mood
+        // sheet save so the favourite card shows it as its title hero.
+        ...(outfit.caption ? { title: outfit.caption } : {}),
         outfit,
       });
     },

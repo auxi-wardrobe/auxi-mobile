@@ -42,6 +42,10 @@ export const theme = {
     figmaTextSecondary: '#616161',
     figmaTextMuted: '#49454F',
     figmaDivider: '#D1D3D8',
+    // Barely-there hairline — Figma `border/neutral/subtle_300` (#f2f4f7).
+    // Used for the favourite card's title-flanking dividers (Figma divider
+    // component `3646:10000` / `3646:9997`); lighter than figmaDivider.
+    figmaDividerSubtle: '#f2f4f7',
     figmaAction: '#272A32',
     figmaButton: '#272A32',
     figmaRed: '#CC4C3E',
