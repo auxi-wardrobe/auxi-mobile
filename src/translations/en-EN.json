@@ -236,7 +236,6 @@
         "name_edit_placeholder": "Enter a name"
       },
       "list": {
-        "coming_soon_body": "Importing from a web link will be available shortly.",
         "added_title": "Added to your wardrobe",
         "item_ready_title": "Your item is ready",
         "upload_failed_title": "Upload failed",
@@ -255,8 +254,6 @@
         "method_search_title": "Search the database",
         "method_search_desc": "Fastest way to add an item",
         "method_photo_desc": "Use your camera or library",
-        "method_web_title": "Import from web",
-        "method_web_desc": "Paste a product link to save an item",
         "preparing_title": "Preparing your item…",
         "preparing_step1": "Removing the background and identifying details…",
         "preparing_step2": "Auto tagging your items…",
@@ -343,7 +340,6 @@
       "choose_from_library": "Choose from library",
       "no_image": "No image",
       "badge_common": "common",
-      "coming_soon": "Coming soon",
       "action_cannot_undo": "This action cannot be undone.",
       "pick_image_failed": "Failed to pick image",
       "load_wardrobe_failed_title": "Unable to load wardrobe",
@@ -542,7 +538,6 @@
       "favourite": "My Favourite",
       "feedback": "Feedback",
       "setting": "Setting",
-      "account": "My account",
       "outfit_canvas": "Outfit Canvas",
       "logout": "Log out"
     },
@@ -564,6 +559,7 @@
     "favourite": {
       "title": "Favourite",
       "back": "Back",
+      "open_menu": "Open menu",
       "empty_body": "Tap \"Wear this\" button to add an outfit",
       "empty_a11y": "No saved outfits yet",
       "common_badge": "common",
