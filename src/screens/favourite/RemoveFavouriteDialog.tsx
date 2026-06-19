@@ -74,7 +74,7 @@ export const RemoveFavouriteDialog: React.FC<Props> = ({
     // exit is faster + eased-out.
     Animated.timing(progress, {
       toValue: visible ? 1 : 0,
-      duration: visible ? motion.duration.normal : motion.duration.fast,
+      duration: visible ? motion.duration.medium : motion.duration.normal,
       easing: visible ? motion.easing.enter : motion.easing.exit,
       useNativeDriver: true,
     }).start(({ finished }) => {
