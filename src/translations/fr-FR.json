@@ -440,7 +440,7 @@
       "no_photo_hint": "Pas encore de photo. Appuyez sur Reprendre pour en ajouter une.",
       "time_label": "Heure : {{time}}",
       "photo_helps": "Cette photo aide à voir comment les tenues vous vont",
-      "privacy_note": "🔒 Votre photo reste privée.",
+      "privacy_note": "Votre photo est envoyée de façon sécurisée à nos fournisseurs d'IA (Google, OpenAI) pour générer votre résultat. Elle n'est jamais vendue ni partagée avec des annonceurs.",
       "retake": "Reprendre",
       "retake_body": "Reprendre la photo du corps",
       "tryon_tab": "Essayer",
@@ -475,6 +475,7 @@
       "error_load": "Échec du chargement des paramètres",
       "error_update_time": "Échec de la mise à jour de l'heure quotidienne",
       "error_update_analytics": "Échec de la mise à jour des préférences d'analyse",
+      "error_update_ai_sharing": "Échec de la mise à jour du partage de données avec l'IA",
       "error_update_direction": "Échec de la mise à jour de l'orientation de style",
       "error_reset": "Échec de la réinitialisation des préférences",
       "title": "Paramètres",
@@ -485,6 +486,8 @@
       "privacy_control": "Contrôle de la confidentialité",
       "share_analytics": "Partager les analyses d'utilisation",
       "a11y_toggle_analytics": "Activer/désactiver le partage des analyses",
+      "share_ai_data": "Partage de données avec l'IA",
+      "a11y_toggle_ai_data": "Activer/désactiver le partage des photos avec les fournisseurs d'IA",
       "terms_of_service": "Conditions d'utilisation",
       "privacy_policy": "Politique de confidentialité",
       "manage_body_photo": "Gérer la photo du corps",
@@ -601,7 +604,7 @@
       "backToHome": "Retour à l'accueil",
       "optIn": "Utiliser cette photo pour les futurs aperçus de tenues",
       "retakeProfile": "Reprendre les photos",
-      "privacy": "Vos photos restent toujours privées",
+      "privacy": "Vos photos sont envoyées de façon sécurisée à nos fournisseurs d'IA (Google, OpenAI) pour générer votre résultat, et ne sont jamais vendues ni partagées avec des annonceurs.",
       "generating": "Création de votre look…",
       "error": "Impossible de créer votre look. Veuillez réessayer.",
       "retry": "Réessayer",
@@ -642,6 +645,19 @@
         "failedTitle": "Impossible de créer votre rendu",
         "failedBody": "Touchez pour revenir et réessayer."
       }
+    },
+    "aiConsent": {
+      "title": "Partager vos photos avec l'IA ?",
+      "body": "Pour créer ce résultat, vos photos sont envoyées de façon sécurisée à nos fournisseurs d'IA, Google et OpenAI. Elles servent uniquement à générer votre résultat — jamais vendues ni partagées avec des annonceurs.",
+      "privacy_link": "Lire notre politique de confidentialité",
+      "accept": "Accepter et continuer",
+      "decline": "Plus tard"
+    },
+    "aiDisclosure": {
+      "label": "Généré par IA — peut être inexact",
+      "report": "Signaler",
+      "report_subject": "Signaler du contenu généré par IA",
+      "report_body": "Je souhaite signaler un problème avec un résultat généré par IA dans l'application. Veuillez décrire ce qui n'a pas fonctionné :"
     }
   }
 }

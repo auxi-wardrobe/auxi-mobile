@@ -60,6 +60,7 @@ export const theme = {
     // Source: plans/260531-1326-au-303-two-axis-swipe/figma-extraction-au303-guidance.md §8
     figmaDotInactive: '#c6bcb1', // icon/primary/subtle_300 — inactive pagination dot
     figmaOverlayScrim: 'rgba(38, 36, 33, 0.7)', // background/primary/bold_600 (#262421) @ 70% — guidance-overlay backdrop
+    dialogScrim: 'rgba(25, 27, 34, 0.3)', // ink (#191b22) @ 30% — centered dialog/modal backdrop (Settings + AI-consent dialogs)
     figmaOnboardingStickyBarBg: 'rgba(255, 255, 255, 0.6)', // color/neutral/white/Alpha200 — Step-3 sticky bar (backdrop-blur 2 in Figma)
     figmaTextDark: '#070707', // near-black for expand/collapse text buttons
     // Sidebar dark redesign (node 2852:24670) — divider hairline on the dark

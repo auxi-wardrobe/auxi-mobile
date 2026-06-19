@@ -440,7 +440,7 @@
       "no_photo_hint": "No body photo yet. Tap Retake to add one.",
       "time_label": "Time: {{time}}",
       "photo_helps": "This photo helps show how outfits look on you",
-      "privacy_note": "🔒 Your photo stays private.",
+      "privacy_note": "Your photo is sent securely to our AI providers (Google, OpenAI) to generate your result. It is never sold or shared with advertisers.",
       "retake": "Retake",
       "retake_body": "Retake body photo",
       "tryon_tab": "Try on",
@@ -475,6 +475,7 @@
       "error_load": "Failed to load settings",
       "error_update_time": "Failed to update daily time",
       "error_update_analytics": "Failed to update analytics preference",
+      "error_update_ai_sharing": "Failed to update AI data sharing preference",
       "error_update_direction": "Failed to update style direction",
       "error_reset": "Failed to reset preferences",
       "title": "Settings",
@@ -485,6 +486,8 @@
       "privacy_control": "Privacy control",
       "share_analytics": "Share usage analytics",
       "a11y_toggle_analytics": "Toggle sharing usage analytics",
+      "share_ai_data": "AI data sharing",
+      "a11y_toggle_ai_data": "Toggle sharing photos with AI providers",
       "terms_of_service": "Terms of Service",
       "privacy_policy": "Privacy Policy",
       "manage_body_photo": "Manage body photo",
@@ -601,7 +604,7 @@
       "backToHome": "Back to home",
       "optIn": "Use this photo for future outfit previews",
       "retakeProfile": "Retake photos",
-      "privacy": "Your photos are always kept private",
+      "privacy": "Your photos are sent securely to our AI providers (Google, OpenAI) to generate your result, and are never sold or shared with advertisers.",
       "generating": "Creating your look…",
       "error": "We couldn't create your look. Please try again.",
       "retry": "Try again",
@@ -642,6 +645,19 @@
         "failedTitle": "We couldn’t create your look",
         "failedBody": "Tap to go back and try again."
       }
+    },
+    "aiConsent": {
+      "title": "Share your photos with AI?",
+      "body": "To create this result, your photos are sent securely to our AI providers, Google and OpenAI. They are used only to generate your result — never sold or shared with advertisers.",
+      "privacy_link": "Read our Privacy Policy",
+      "accept": "Accept & continue",
+      "decline": "Not now"
+    },
+    "aiDisclosure": {
+      "label": "AI-generated — may be inaccurate",
+      "report": "Report",
+      "report_subject": "Report AI-generated content",
+      "report_body": "I'd like to report an issue with an AI-generated result in the app. Please describe what went wrong:"
     }
   }
 }

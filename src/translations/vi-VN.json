@@ -440,7 +440,7 @@
       "no_photo_hint": "Chưa có ảnh cơ thể. Nhấn Chụp lại để thêm.",
       "time_label": "Thời gian: {{time}}",
       "photo_helps": "Ảnh này giúp xem trang phục trông thế nào trên bạn",
-      "privacy_note": "🔒 Ảnh của bạn được giữ riêng tư.",
+      "privacy_note": "Ảnh của bạn được gửi an toàn đến các nhà cung cấp AI (Google, OpenAI) để tạo kết quả. Ảnh không bao giờ được bán hay chia sẻ cho nhà quảng cáo.",
       "retake": "Chụp lại",
       "retake_body": "Chụp lại ảnh cơ thể",
       "tryon_tab": "Thử đồ",
@@ -475,6 +475,7 @@
       "error_load": "Không thể tải cài đặt",
       "error_update_time": "Không thể cập nhật giờ nhắc hằng ngày",
       "error_update_analytics": "Không thể cập nhật tùy chọn phân tích",
+      "error_update_ai_sharing": "Không thể cập nhật tùy chọn chia sẻ dữ liệu với AI",
       "error_update_direction": "Không thể cập nhật định hướng phong cách",
       "error_reset": "Không thể đặt lại tùy chọn",
       "title": "Cài đặt",
@@ -485,6 +486,8 @@
       "privacy_control": "Kiểm soát quyền riêng tư",
       "share_analytics": "Chia sẻ dữ liệu phân tích sử dụng",
       "a11y_toggle_analytics": "Bật/tắt chia sẻ dữ liệu phân tích",
+      "share_ai_data": "Chia sẻ dữ liệu với AI",
+      "a11y_toggle_ai_data": "Bật/tắt chia sẻ ảnh với nhà cung cấp AI",
       "terms_of_service": "Điều khoản Dịch vụ",
       "privacy_policy": "Chính sách Bảo mật",
       "manage_body_photo": "Quản lý ảnh cơ thể",
@@ -600,7 +603,7 @@
       "backToHome": "Về trang chủ",
       "optIn": "Dùng ảnh này cho các bản xem trước trang phục sau này",
       "retakeProfile": "Chụp lại ảnh",
-      "privacy": "Ảnh của bạn luôn được giữ riêng tư",
+      "privacy": "Ảnh của bạn được gửi an toàn đến các nhà cung cấp AI (Google, OpenAI) để tạo kết quả, và không bao giờ được bán hay chia sẻ cho nhà quảng cáo.",
       "generating": "Đang tạo diện mạo của bạn…",
       "error": "Không thể tạo diện mạo của bạn. Vui lòng thử lại.",
       "retry": "Thử lại",
@@ -641,6 +644,19 @@
         "failedTitle": "Chúng tôi không thể tạo diện mạo",
         "failedBody": "Chạm để quay lại và thử lại."
       }
+    },
+    "aiConsent": {
+      "title": "Chia sẻ ảnh của bạn với AI?",
+      "body": "Để tạo kết quả này, ảnh của bạn được gửi an toàn đến các nhà cung cấp AI của chúng tôi là Google và OpenAI. Ảnh chỉ dùng để tạo kết quả — không bao giờ được bán hay chia sẻ cho nhà quảng cáo.",
+      "privacy_link": "Đọc Chính sách quyền riêng tư",
+      "accept": "Đồng ý & tiếp tục",
+      "decline": "Để sau"
+    },
+    "aiDisclosure": {
+      "label": "Tạo bởi AI — có thể chưa chính xác",
+      "report": "Báo cáo",
+      "report_subject": "Báo cáo nội dung do AI tạo",
+      "report_body": "Tôi muốn báo cáo một vấn đề với kết quả do AI tạo trong ứng dụng. Vui lòng mô tả điều gì đã xảy ra:"
     }
   }
 }
