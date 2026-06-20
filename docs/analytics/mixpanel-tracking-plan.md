@@ -202,6 +202,18 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 > PII: bucket KEYS only (`weather` / `hot_28_40` / `mild_10_25` / `cold_0_7` / `freezing_-10_0`) — never raw user text. `rep_temp_c` / `outfit_count` are unquoted numbers. `temperature_apply_clicked` is present-tense (borderline vs the `object_verb` past-tense convention) — kept verbatim per the AU-362 ticket for funnel continuity; flag to CEO if `temperature_applied` is preferred. Bucket→temp_c mapping lives in `src/config/temperature-buckets.ts` (single source of truth).
 
+### 5.14 Pin an item / build-around (AU-307 Figma redesign)
+
+The pin feature (AU-307) originally shipped with NO analytics (only `console.info` placeholders). Wired during the 2026-06-20 Figma-flow rebuild. The "Don't show again" checkbox is the genuinely-new interaction the rule mandated; pin/unpin were existing actions with no prior event, so they get one now.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| **`item_pinned`** | An item becomes pinned — via the on-tile pill (confirm sheet skipped when "Don't show again" is set), or via the confirm/replace sheet "Pin & build" CTA. | `HomeScreen.tsx:1583, 1655` | `source` (`home_tile_pill` / `home_confirm_sheet` / `home_confirm_sheet_replace`), `confirm_skipped` (bool) |
+| **`item_unpinned`** | An item is unpinned — via tapping the "Tap to unpin" pill on the pinned tile, or the header "Pinned: <label>" clear affordance. | `HomeScreen.tsx:1575, 1641` | `source` (`home_tile_pill` / `home_header_label`) |
+| **`pin_dont_show_again_toggled`** | The "Don't show this popup again" checkbox in the pin-confirm sheet is toggled. Fires on every toggle (the value persists to `AsyncStorage` only on confirm). | `HomeScreen.tsx:1668` | `checked` (bool) |
+
+> PII: none. `source` values are a closed enum of UI-surface keys; `confirm_skipped` / `checked` are unquoted booleans. No item id, no garment name, no free text. Item identifiers are intentionally omitted (the funnel question is "does the pin feature get used", not "which garment").
+
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
 These hooks were spec'd but cannot fire today — the UI surface, control, or API doesn't exist yet. **No code shipped for these** (we don't fake events). Re-evaluate when the underlying surface lands.
