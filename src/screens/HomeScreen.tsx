@@ -338,16 +338,36 @@ const buildGridOutfitSheetWithPin = (
     return buildGridOutfitSheet(outfit);
   }
 
-  const alreadyContainsPinned = outfit.items.some(
+  // M1 fix (AU-307 Figma redesign): the pinned item must ALWAYS read first
+  // (Figma position 0 / top-left). Two cases produced a non-lead placement:
+  //   1. fallback path — pinned item absent from the returned sheet → splice
+  //      it into slot 0 (and drop the last item to keep the 4-tile shape).
+  //   2. backend-honoured / stalled-fallback path — pinned item present but
+  //      NOT at index 0 → the previous code returned the order untouched, so
+  //      it landed wherever the backend put it (designer saw it top-right).
+  //      Now we move it to the front so the lead position always holds.
+  const existingIndex = outfit.items.findIndex(
     item => item?.id === pinnedItem.id,
   );
 
-  if (alreadyContainsPinned) {
+  if (existingIndex === 0) {
+    // Already leading — nothing to reorder.
     return buildGridOutfitSheet(outfit);
   }
 
-  // Splice the pinned item into position 0; drop the last item to keep the
-  // 4-tile grid shape. Server-side mixing will replace this once available.
+  if (existingIndex > 0) {
+    // Present but not leading → move it to the front, preserve the rest.
+    const rest = outfit.items.filter(item => item?.id !== pinnedItem.id);
+    const reordered: Item[] = [outfit.items[existingIndex], ...rest];
+    return {
+      ...outfit,
+      items: reordered,
+      gridItems: buildGrid(reordered),
+    };
+  }
+
+  // Absent → splice into position 0; drop the last item to keep the 4-tile
+  // grid shape. Server-side mixing will replace this once available.
   const mixed: Item[] = [pinnedItem, ...outfit.items.slice(0, 3)];
   return {
     ...outfit,
@@ -2211,11 +2231,14 @@ export const HomeScreen = () => {
         </View>
       )}
 
-      {/* AU-307 phase 04 — inline error or fallback banner below the deck
-          but above the sticky "Wear this" footer. They are mutually
-          exclusive (reducer's outfit lifecycle), so render at most one. */}
+      {/* AU-307 phase 04 — error / fallback / guest banner. M5 fix: float the
+          banner above the Remix action row + sticky footer (anchored over the
+          lower-grid dead space, elevated + own surface) instead of inserting it
+          into the flex column, where it collided with the fixed-height deck and
+          clipped "Remix". `box-none` host so taps still reach the deck.
+          Mutually exclusive (reducer's outfit lifecycle) → render at most one. */}
       {pinState.outfit === 'error' ? (
-        <View style={styles.pinInlineBanner}>
+        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
           <PinGenerationError
             kind={pinErrorKind}
             onRetry={() => {
@@ -2225,14 +2248,18 @@ export const HomeScreen = () => {
           />
         </View>
       ) : pinState.outfit === 'fallback' ? (
-        <View style={styles.pinInlineBanner}>
+        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
           <PinFallbackNotice />
         </View>
       ) : pinState.outfit === 'auth_required' ? (
-        // AU-307 phase 05 — guest blocker. Inline banner with explicit
-        // Sign-in CTA → auth stack EmailInput (signin mode). Inline (vs
+        // AU-307 phase 05 — guest blocker. Floating banner with explicit
+        // Sign-in CTA → auth stack EmailInput (signin mode). Floating (vs
         // modal) so a guest can dismiss naturally by interacting elsewhere.
-        <View testID="pin-guest-banner" style={styles.pinInlineBanner}>
+        <View
+          testID="pin-guest-banner"
+          pointerEvents="box-none"
+          style={styles.pinBannerFloat}
+        >
           <View style={styles.pinGuestBox} accessibilityRole="alert">
             <Text style={styles.pinGuestText} numberOfLines={3}>
               {t('pin.guest_blocker')}
@@ -2264,7 +2291,7 @@ export const HomeScreen = () => {
           outfit-state banners above so it can co-occur with idle / error
           / fallback states without flicker. */}
       {pinnedItemGoneAt !== null ? (
-        <View style={styles.pinInlineBanner}>
+        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
           <PinnedItemUnavailableNotice />
         </View>
       ) : null}
@@ -3471,11 +3498,22 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.manropeCaption,
     color: theme.colors.figmaTextPrimary,
   },
-  // AU-307 phase 04 — inline error / fallback banner placement above the
-  // sticky Wear-this footer.
-  pinInlineBanner: {
-    marginHorizontal: SHEET_PADDING,
-    marginBottom: 8,
+  // AU-307 M5 fix — float the error / fallback / guest / unavailable banner
+  // above the deck's Remix action row AND the two stacked footers, with its own
+  // surface + shadow so it reads as a composed layered notice (not a flex-flow
+  // collision that clips "Remix"). Anchored over the lower-grid dead space.
+  pinBannerFloat: {
+    position: 'absolute',
+    left: SHEET_PADDING,
+    right: SHEET_PADDING,
+    bottom:
+      HOME_VIEW_TOGGLE_FOOTER_HEIGHT +
+      WEAR_THIS_FOOTER_HEIGHT +
+      OPTION_ACTIONS_HEIGHT +
+      theme.spacing.s,
+    zIndex: theme.zIndex.sticky,
+    borderRadius: 12,
+    ...theme.ds.shadow.card,
   },
   // AU-307 phase 05 — guest auth blocker. Inline pill with explanatory
   // copy + a small filled CTA on the right. Tokenised; no literal hex.
