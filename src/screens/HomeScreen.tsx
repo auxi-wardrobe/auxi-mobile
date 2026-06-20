@@ -554,6 +554,11 @@ export const HomeScreen = () => {
   // checkbox state, committed to storage only on confirm. Loaded once on mount.
   const pinDontShowAgainRef = useRef(false);
   const [pinDontShowAgainPending, setPinDontShowAgainPending] = useState(false);
+  // F2 fix (2026-06-20 QA): synchronous mirror of the in-sheet checkbox so the
+  // confirm handler persists the value at commit time without a stale closure.
+  // Kept in lockstep with `pinDontShowAgainPending` (reset on sheet open,
+  // flipped on toggle).
+  const pinDontShowAgainPendingRef = useRef(false);
   useEffect(() => {
     let mounted = true;
     AsyncStorage.getItem(PIN_DONT_SHOW_STORAGE_KEY)
@@ -646,6 +651,19 @@ export const HomeScreen = () => {
   // PHASE B (AU-222): mirror pinnedItemId so the prefetch trigger reads the
   // latest value without recreating callbacks on every pin/unpin tap.
   const pinnedItemIdRef = useRef<string | null>(null);
+  // F1 fix (2026-06-20 QA): stable reference to the actual Item the user
+  // pinned, captured at pin time. The `pinnedItem` memo re-derives from
+  // `listOutfits`, which resolves to null whenever a reshuffle batch omits the
+  // pinned item — that null collapses the slot-0 splice, the on-tile pill, AND
+  // the "Pinned:" header chip, stranding the user with an invisible/uncleared
+  // pin (`pinnedItemId` stays set). Caching the captured Item here lets the
+  // visual pin state survive a batch that drops it, FE-robust regardless of
+  // whether the backend echoes `pinned_item_id` back in the reshuffled set.
+  // Cleared on unpin / item-gone so a stale Item can never leak into a new pin.
+  const lastPinnedItemRef = useRef<Item | null>(null);
+  // F1: mirror of `pinDialogItem` (the resolved confirm/replace candidate) so
+  // the sheet-confirm handler can capture the actual Item at commit time.
+  const pinDialogItemRef = useRef<Item | null>(null);
   // PHASE C (AU-221): mirror selectedMode for the same reason — prefetch
   // and "Show another" callbacks should read the latest mode without
   // re-binding on every tap.
@@ -1319,13 +1337,25 @@ export const HomeScreen = () => {
   // survives even if the user has scrolled past the originating sheet.
   const pinnedItem = useMemo<Item | null>(() => {
     if (!pinnedItemId) {
+      // No pin → drop any cached Item so it can't leak into a later pin.
+      lastPinnedItemRef.current = null;
       return null;
     }
     for (const outfit of listOutfits) {
       const found = outfit.items.find(item => item?.id === pinnedItemId);
       if (found) {
+        // Cache the actual Item so the visual pin state survives a later
+        // reshuffle whose batch omits it (F1 fix).
+        lastPinnedItemRef.current = found;
         return found;
       }
+    }
+    // Batch omits the pinned item → fall back to the last-known Item captured
+    // at pin time, but only if it still matches the active pin id (guards
+    // against a stale cache after a replace). This keeps the slot-0 splice,
+    // on-tile pill, and "Pinned:" header chip rendered.
+    if (lastPinnedItemRef.current?.id === pinnedItemId) {
+      return lastPinnedItemRef.current;
     }
     return null;
   }, [listOutfits, pinnedItemId]);
@@ -1350,6 +1380,14 @@ export const HomeScreen = () => {
   const pinDialogImageUrl = pinDialogItem
     ? resolveItemImage(pinDialogItem) ?? null
     : null;
+
+  // F1: mirror the resolved confirm/replace candidate Item so the modal's
+  // confirm handler can stash it into `lastPinnedItemRef` at commit time —
+  // the reducer's CONFIRM_PIN/CONFIRM_REPLACE actions carry only ids, so this
+  // ref is how we preserve the actual Item across the impending reshuffle.
+  useEffect(() => {
+    pinDialogItemRef.current = pinDialogItem;
+  }, [pinDialogItem]);
 
   const optionSets = useMemo<OutfitSheetWithGrid[]>(
     () =>
@@ -1573,6 +1611,9 @@ export const HomeScreen = () => {
       // Tapping the pill on the already-pinned item is an unpin.
       if (pinnedItemIdRef.current === item.id) {
         track('item_unpinned', { source: 'home_tile_pill' });
+        // F1: clearing the pin must drop the cached Item so a later pin
+        // never falls back to a stale reference.
+        lastPinnedItemRef.current = null;
         pinDispatch({ type: 'PIN_TAP', itemId: item.id });
         return;
       }
@@ -1580,12 +1621,20 @@ export const HomeScreen = () => {
       // confirm sheet and build straight away (reuses the from-detail bypass
       // path: sets pinnedId + outfit='generating', no modal).
       if (pinnedItemIdRef.current === null && pinDontShowAgainRef.current) {
-        track('item_pinned', { source: 'home_tile_pill', confirm_skipped: true });
+        track('item_pinned', {
+          source: 'home_tile_pill',
+          confirm_skipped: true,
+        });
+        // F1: capture the tapped Item so the visual pin state survives a
+        // reshuffle batch that omits it.
+        lastPinnedItemRef.current = item;
         pinDispatch({ type: 'CONFIRM_PIN_FROM_DETAIL', itemId: item.id });
         return;
       }
       // Otherwise open the confirm (first pin) or replace sheet.
       setPinDontShowAgainPending(false);
+      // F2: keep the synchronous mirror in lockstep with the state reset.
+      pinDontShowAgainPendingRef.current = false;
       pinDispatch({ type: 'PIN_TAP', itemId: item.id });
     },
     [pinDispatch],
@@ -1639,6 +1688,8 @@ export const HomeScreen = () => {
       return;
     }
     track('item_unpinned', { source: 'home_header_label' });
+    // F1: drop the cached pinned Item on an explicit clear.
+    lastPinnedItemRef.current = null;
     pinDispatch({ type: 'UNPIN' });
   }, [pinnedItemId, pinDispatch]);
 
@@ -1648,16 +1699,26 @@ export const HomeScreen = () => {
   // outfit='generating').
   const handleConfirmPinFromModal = useCallback(() => {
     const isReplace = pinState.modal === 'replace';
-    if (pinDontShowAgainPending) {
+    // F2 fix (2026-06-20 QA): read the checkbox value from a ref, not the
+    // `pinDontShowAgainPending` state closure. The persist write must reflect
+    // the value AT CONFIRM TIME and run BEFORE any reset, with zero dependence
+    // on closure freshness — the QA repro showed the write never landing in
+    // AsyncStorage. The ref is written synchronously by the toggle handler.
+    if (pinDontShowAgainPendingRef.current) {
       pinDontShowAgainRef.current = true;
       AsyncStorage.setItem(PIN_DONT_SHOW_STORAGE_KEY, 'true').catch(() => {});
+    }
+    // F1: capture the actual Item being pinned so its visual state survives a
+    // reshuffle batch that omits it (reducer actions carry only ids).
+    if (pinDialogItemRef.current) {
+      lastPinnedItemRef.current = pinDialogItemRef.current;
     }
     track('item_pinned', {
       source: isReplace ? 'home_confirm_sheet_replace' : 'home_confirm_sheet',
       confirm_skipped: false,
     });
     pinDispatch({ type: isReplace ? 'CONFIRM_REPLACE' : 'CONFIRM_PIN' });
-  }, [pinState.modal, pinDontShowAgainPending, pinDispatch]);
+  }, [pinState.modal, pinDispatch]);
 
   // AU-307 Figma redesign — toggle the in-sheet "Don't show again" checkbox.
   // Persistence is deferred to confirm; toggling alone fires the analytics
@@ -1665,6 +1726,9 @@ export const HomeScreen = () => {
   const handleToggleDontShowAgain = useCallback(() => {
     setPinDontShowAgainPending(prev => {
       const next = !prev;
+      // F2: mirror into the ref synchronously so confirm reads the value at
+      // commit time without a stale-closure race.
+      pinDontShowAgainPendingRef.current = next;
       track('pin_dont_show_again_toggled', { checked: next });
       return next;
     });
