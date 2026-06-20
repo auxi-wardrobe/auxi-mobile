@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
         borderRadius: theme.borderRadius.l * 1.5,
         padding: theme.spacing.l,
-        shadowColor: '#000',
+        shadowColor: theme.ds.color.shadow,
         shadowOffset: {
             width: 0,
             height: 10,

@@ -382,6 +382,10 @@ export const theme = {
       green: '#039855', // radio / confirm green (alias: figmaToggleOn)
       danger: '#bb251a', // destructive, applied (alias: uacTextDangerBase, figmaDestructive)
       red: '#ff0000', // destructive, raw — flagged off-system in DS; avoid in new code
+      // Drop-shadow ink. iOS `shadowColor` only — pair with each surface's own
+      // offset/opacity/radius. Replaces the raw `#000000`/`#000` shadowColor
+      // literals the token-lint flagged in dialog/sheet/floating components.
+      shadow: '#000000',
     },
     radius: {
       xs: 2, // checkbox
