@@ -180,13 +180,13 @@ export const PinConfirmModal: React.FC<PinConfirmModalProps> = ({
           <TouchableOpacity
             testID="pin-confirm-modal-confirm"
             accessibilityRole="button"
-            accessibilityLabel={t('pin.build_pin_cta')}
+            accessibilityLabel={t('pin.build_cta')}
             activeOpacity={0.85}
             disabled={isPressed}
             style={[styles.confirmButton, isPressed && styles.confirmButtonDisabled]}
             onPress={handleConfirm}
           >
-            <Text style={styles.confirmText}>{t('pin.build_pin_cta')}</Text>
+            <Text style={styles.confirmText}>{t('pin.build_cta')}</Text>
             <IconHomePin
               width={20}
               height={20}
