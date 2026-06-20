@@ -151,10 +151,15 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
-| `notifications_toggle_changed` | Daily reminder switch flip | `SettingsScreen.tsx:392` | `enabled` |
-| `settings_language_changed` | Locale switch | `SettingsScreen.tsx:379` | `locale` (`en-EN`/`vi-VN`/`fr-FR`) |
-| `style_direction_changed` | Style direction save | `SettingsScreen.tsx:454` | `direction` |
-| `analytics_consent_changed` | Consent toggle (fires AFTER grant, BEFORE revoke) | `SettingsScreen.tsx:431, 438` | `granted` |
+| `notifications_toggle_changed` | Daily reminder switch flip | `SettingsScreen.tsx:418` | `enabled` |
+| `notifications_schedule_changed` | Change-time dialog Update — AM/PM (period) + Weekdays/Everydays (frequency) cadence saved (AU-316; previously an un-fired gap, see §6.1). Fires on persist success | `SettingsScreen.tsx:541` | `period` (`AM`/`PM`), `frequency` (`weekdays`/`everydays`) |
+| `notifications_reset` | "Reset to default setting" link applied — daily-notification block restored to first-run defaults (AU-316 RST-1). Fires on persist success | `SettingsScreen.tsx:617` | `period` (`AM`), `frequency` (`weekdays`) — the defaults applied |
+| `notifications_reset_undone` | Undo tapped on the post-reset snackbar — prior notification values restored (AU-316 RST-1) | `SettingsScreen.tsx:565` | `period`, `frequency` — the restored prior values |
+| `settings_language_changed` | Locale switch | `SettingsScreen.tsx:403` | `locale` (`en-EN`/`vi-VN`/`fr-FR`) |
+| `style_direction_changed` | Style direction save | `SettingsScreen.tsx:507` | `direction` |
+| `analytics_consent_changed` | Consent toggle (fires AFTER grant, BEFORE revoke) | `SettingsScreen.tsx:460, 466` | `granted` |
+
+> PII: all settings events carry bounded enums only (`period`, `frequency`, `direction`, `locale`, `granted`, `enabled`) — no raw text, no identifiers. The read-only hour value (`'06:15'`) is NOT tracked. `notifications_reset` props echo the constant defaults (so the dashboard can confirm what "default" was at fire time); `notifications_reset_undone` echoes the restored prior values for symmetry.
 
 ### 5.8 Mood feedback (pre-existing, unchanged)
 
@@ -236,7 +241,7 @@ These hooks were spec'd but cannot fire today — the UI surface, control, or AP
 
 ### 6.1 Settings — controls missing
 
-- `daily_reminder_time_changed` — no hour-picker on `SettingsScreen` (only AM/PM + frequency are interactive; the hour value `'06:15'` is read-only display per CEO Q12)
+- `daily_reminder_time_changed` — no hour-picker on `SettingsScreen` (only the AM/PM + frequency cadence is interactive — now tracked as `notifications_schedule_changed`, §5.7; the hour value `'06:15'` stays read-only display per CEO Q12, so a dedicated hour-change event remains a gap until a picker ships)
 - `confidence_level_changed` — no confidence-level control
 - `account_logged_out` — no logout button on `SettingsScreen` (likely lives in a Drawer/Sidebar component — re-locate and wire)
 - `account_deleted` — "Delete data" row resets preferences (`resetUserPreferences`), doesn't delete the account
@@ -324,4 +329,6 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 - **App-feedback submission funnel:** `screen_viewed` (`screen_name = Feedback`) → `feedback_submitted` (vs `feedback_submit_failed`, broken down by `error_code`) — measures completion rate of the feedback form and surfaces rate-limit / validation friction.
 - **Temperature-override funnel (AU-362):** `temperature_modal_opened` → `temperature_apply_clicked` → `temperature_override_active` → `recommendation_generated_by_temperature` — answers the ticket's analytics goal: do users actually adopt a temperature override vs stay on live weather? Break down by `option` / `bucket` to see which ranges are used. `temperature_override_removed` is the return-to-weather branch; `temperature_option_selected` ÷ `temperature_apply_clicked` measures browse-vs-commit on the radios.
 
-Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`. Super properties (`platform`, `app_environment`) are available globally.
+- **Notification-settings engagement (AU-316):** `notifications_toggle_changed` / `notifications_schedule_changed` / `notifications_reset` measure how users tune the daily reminder; `notifications_reset` ÷ `notifications_reset_undone` is the regret rate on the reset action (a high undo rate signals the reset is too easy to trigger or its defaults are wrong — relevant to the pending UAC 07:30 vs constant 06:15 default discrepancy). Break down `notifications_schedule_changed` by `frequency`/`period` to see preferred cadence.
+
+Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`. Super properties (`platform`, `app_environment`) are available globally.

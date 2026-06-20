@@ -398,6 +398,146 @@ describe('handleReminderToggle', () => {
 });
 
 // =============================================================================
+// 3b. handleResetNotifications (AU-316 RST-1) — reset + undo + rollback
+// =============================================================================
+describe('handleResetNotifications', () => {
+  // Start from non-default notification settings so reset (→ defaults) and undo
+  // (→ these prior values) produce distinct, assertable patches.
+  const priorMetadata: UserMetadata = {
+    daily_notification: {
+      enabled: false,
+      time: '21:00',
+      period: 'PM',
+      frequency: 'everydays',
+    },
+  };
+
+  const resetMetadata: UserMetadata = {
+    daily_notification: {
+      enabled: true,
+      time: '06:15',
+      period: 'AM',
+      frequency: 'weekdays',
+    },
+  };
+  const resetPatch = { user_metadata: resetMetadata };
+
+  const undoMetadata: UserMetadata = {
+    daily_notification: {
+      enabled: false,
+      time: '21:00',
+      period: 'PM',
+      frequency: 'everydays',
+    },
+  };
+  const undoPatch = { user_metadata: undoMetadata };
+
+  it('reset: persists DEFAULT_SETTINGS notification block + shows undo toast', async () => {
+    const user = makeUser(priorMetadata);
+    // Echo the patch back so syncFromUser keeps the optimistic value.
+    const updateCurrentUser = jest
+      .fn()
+      .mockResolvedValue(makeUser(resetPatch.user_metadata));
+    mockedUseAuth.mockReturnValue(
+      buildAuth({
+        user,
+        updateCurrentUser,
+        refreshUser: jest.fn().mockResolvedValue(user),
+      }),
+    );
+
+    const r = await renderScreen();
+    const root = r.root;
+
+    press(oneByTestID(root, 'settings-notification-reset'));
+    await flushPromises();
+
+    expect(updateCurrentUser).toHaveBeenCalledWith(resetPatch);
+    // toggle reflects the reset default (enabled = true)
+    expect(oneByTestID(root, 'settings-daily-toggle').props.value).toBe(true);
+    // undo affordance surfaced (info toast, not an error)
+    expect(mockedToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'info',
+        text1: 'settings.notification_reset_toast_title',
+        onPress: expect.any(Function),
+      }),
+    );
+  });
+
+  it('undo: restores prior values + persists the prior patch', async () => {
+    const user = makeUser(priorMetadata);
+    const updateCurrentUser = jest
+      .fn()
+      // reset call echoes defaults; undo call echoes prior values
+      .mockResolvedValueOnce(makeUser(resetPatch.user_metadata))
+      .mockResolvedValueOnce(makeUser(undoPatch.user_metadata));
+    mockedUseAuth.mockReturnValue(
+      buildAuth({
+        user,
+        updateCurrentUser,
+        refreshUser: jest.fn().mockResolvedValue(user),
+      }),
+    );
+
+    const r = await renderScreen();
+    const root = r.root;
+
+    press(oneByTestID(root, 'settings-notification-reset'));
+    await flushPromises();
+
+    // grab the onPress handed to the undo toast and invoke it
+    const undoCall = mockedToastShow.mock.calls.find(
+      c => c[0]?.text1 === 'settings.notification_reset_toast_title',
+    );
+    expect(undoCall).toBeDefined();
+    act(() => {
+      undoCall![0].onPress();
+    });
+    await flushPromises();
+
+    expect(updateCurrentUser).toHaveBeenNthCalledWith(2, undoPatch);
+    // toggle restored to the prior value (enabled = false)
+    expect(oneByTestID(root, 'settings-daily-toggle').props.value).toBe(false);
+  });
+
+  it('reject: rolls notification settings back to prior + error toast', async () => {
+    const unhandled = jest.fn();
+    proc.on('unhandledRejection', unhandled);
+
+    const user = makeUser(priorMetadata);
+    const updateCurrentUser = jest.fn().mockRejectedValue(new Error('boom'));
+    mockedUseAuth.mockReturnValue(
+      buildAuth({
+        user,
+        updateCurrentUser,
+        refreshUser: jest.fn().mockResolvedValue(user),
+      }),
+    );
+
+    const r = await renderScreen();
+    const root = r.root;
+
+    // prior value: enabled = false
+    expect(oneByTestID(root, 'settings-daily-toggle').props.value).toBe(false);
+
+    press(oneByTestID(root, 'settings-notification-reset'));
+    await flushPromises();
+
+    expect(updateCurrentUser).toHaveBeenCalledTimes(1);
+    // rolled back to prior (enabled = false), NOT the optimistic default (true)
+    expect(oneByTestID(root, 'settings-daily-toggle').props.value).toBe(false);
+    expect(mockedToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', text1: 'settings.toast_title' }),
+    );
+
+    await flushPromises();
+    proc.off('unhandledRejection', unhandled);
+    expect(unhandled).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
 // 4. handleResetPreferences branch
 // =============================================================================
 describe('handleResetPreferences', () => {

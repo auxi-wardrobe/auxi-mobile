@@ -229,6 +229,10 @@ export const SettingsScreen = () => {
   const [isSavingDirection, setIsSavingDirection] = useState(false);
   const [isSavingTime, setIsSavingTime] = useState(false);
   const [isResettingPreferences, setIsResettingPreferences] = useState(false);
+  // AU-316 RST-1: notification-scoped reset (separate from the account-wide
+  // "Delete data" reset). Disables the reset link while a persist is in flight.
+  const [isResettingNotifications, setIsResettingNotifications] =
+    useState(false);
   // Language picker mirrors the direction modal: pending value tracks the
   // radio selection until the user taps Update, then setLanguage commits.
   const currentLanguage = (i18n.language as Language) || 'en-EN';
@@ -533,6 +537,11 @@ export const SettingsScreen = () => {
         },
         t('settings.error_update_time'),
       );
+      // AU-316: the cadence/period change had no event (tracking-plan §6.1 gap).
+      track('notifications_schedule_changed', {
+        period: pendingPeriod,
+        frequency: pendingFrequency,
+      });
       setActiveModal('none');
     } catch {
       // persistUserMetadata already surfaced the error toast (and handled 401);
@@ -541,6 +550,106 @@ export const SettingsScreen = () => {
     } finally {
       setIsSavingTime(false);
     }
+  };
+
+  // AU-316 RST-1: restore the captured previous notification settings (undo
+  // path). Optimistic state update + persist, mirroring the reset path so an
+  // undo is itself resilient. Fire-and-forget from the snackbar onPress.
+  const undoNotificationReset = (
+    previous: ResolvedSettingsState['dailyNotification'],
+  ) => {
+    setSettings(current => ({
+      ...current,
+      dailyNotification: { ...previous },
+    }));
+    // Brief, calm confirmation that the undo took effect (closes the loop).
+    Toast.show({
+      type: 'info',
+      text1: t('settings.notification_reset_undone_title'),
+      position: 'bottom',
+      visibilityTime: 2500,
+    });
+    track('notifications_reset_undone', {
+      period: previous.period,
+      frequency: previous.frequency,
+    });
+    persistUserMetadata(
+      {
+        daily_notification: {
+          enabled: previous.enabled,
+          time: previous.time,
+          period: previous.period,
+          frequency: previous.frequency,
+        },
+      },
+      t('settings.error_update_notification_reset'),
+    ).catch(() => {
+      // persistUserMetadata already surfaced the error toast (+ handled 401).
+      // syncFromUser on the eventual user refresh reconciles the source of truth.
+    });
+  };
+
+  // AU-316 RST-1: notification-scoped "Reset to default setting". Restores the
+  // daily-notification block to DEFAULT_SETTINGS (single source of truth, so
+  // reset == first-run default) with an undo snackbar.
+  //
+  // DISCREPANCY (pending CEO/PM confirmation): the AU-316 UAC text says the
+  // default time is "07:30 AM", but the shipped DEFAULT_SETTINGS.time is
+  // "06:15". We reset to the constant so reset matches first-run. Do NOT change
+  // DEFAULT_SETTINGS to resolve this — that's a separate CEO/PM decision.
+  const handleResetNotifications = () => {
+    if (isResettingNotifications) return;
+
+    const previous = settings.dailyNotification;
+    const defaults = DEFAULT_SETTINGS.dailyNotification;
+
+    setIsResettingNotifications(true);
+    setSettings(current => ({
+      ...current,
+      dailyNotification: { ...defaults },
+    }));
+
+    persistUserMetadata(
+      {
+        daily_notification: {
+          enabled: defaults.enabled,
+          time: defaults.time,
+          period: defaults.period,
+          frequency: defaults.frequency,
+        },
+      },
+      t('settings.error_update_notification_reset'),
+    )
+      .then(() => {
+        track('notifications_reset', {
+          period: defaults.period,
+          frequency: defaults.frequency,
+        });
+        // Calm/lightweight confirmation with a tap-to-undo affordance. Uses the
+        // codebase-proven Toast.show + onPress pattern (the library's custom
+        // toastConfig render path is unreliable here — see AU-361 ItemReadySnackbar).
+        Toast.show({
+          type: 'info',
+          text1: t('settings.notification_reset_toast_title'),
+          text2: t('settings.notification_reset_toast_body'),
+          position: 'bottom',
+          visibilityTime: 5000,
+          onPress: () => {
+            Toast.hide();
+            undoNotificationReset(previous);
+          },
+        });
+      })
+      .catch(() => {
+        // Rollback the optimistic update (persistUserMetadata already toasted).
+        setSettings(current => ({
+          ...current,
+          dailyNotification: { ...previous },
+        }));
+      })
+      .finally(() => {
+        setIsResettingNotifications(false);
+      });
   };
 
   const handleResetPreferences = async () => {
@@ -609,6 +718,24 @@ export const SettingsScreen = () => {
                 </Text>
               </View>
               <Text style={styles.rowValue}>{currentFrequencyLabel}</Text>
+            </TouchableOpacity>
+
+            {/* AU-316 RST-1: notification-scoped reset link (distinct from the
+                account-wide "Delete data" row). Lightweight text affordance. */}
+            <TouchableOpacity
+              testID="settings-notification-reset"
+              accessibilityLabel={t('settings.a11y_notification_reset')}
+              activeOpacity={0.82}
+              disabled={isResettingNotifications}
+              style={[
+                styles.resetRow,
+                isResettingNotifications && styles.disabledRow,
+              ]}
+              onPress={handleResetNotifications}
+            >
+              <Text style={styles.resetLabel}>
+                {t('settings.notification_reset')}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -969,6 +1096,17 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.uacTextBase,
     marginLeft: 8,
+  },
+  // AU-316 RST-1: calm/lightweight reset link — muted greige, left-aligned,
+  // 44px tap target. Visually subordinate to the primary settings rows.
+  resetRow: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  resetLabel: {
+    ...theme.typography.aliases.poppinsBodySm,
+    color: theme.colors.figmaOnboardingStepLabel,
   },
   singleRow: {
     minHeight: 44,
