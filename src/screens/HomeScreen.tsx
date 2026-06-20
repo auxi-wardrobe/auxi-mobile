@@ -117,6 +117,11 @@ import { snapshotOutfit } from '../utils/snapshotOutfit';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// AU-307 Figma redesign — persisted "Don't show this popup again" preference
+// for the pin-confirm sheet. When set, a first pin skips the confirm sheet and
+// builds straight away.
+const PIN_DONT_SHOW_STORAGE_KEY = '@auxi/pin/dont_show_confirm';
+
 const GRID_GAP = 4;
 const SHEET_GAP = 4;
 // Figma grid container horizontal inset (`dimension/12`) → 12px. Content width
@@ -523,6 +528,25 @@ export const HomeScreen = () => {
   // AU-307 Figma redesign — the old off-tile "Touch to unpin" band tooltip is
   // removed (CEO decision 1): the persistent on-tile "Tap to unpin" pill is
   // now the single unpin affordance, so the session-capped nudge is redundant.
+  // AU-307 Figma redesign — persisted "Don't show this popup again" preference.
+  // The persisted flag (ref, since render never reads it) gates whether a first
+  // pin opens the confirm sheet. `pinDontShowAgainPending` is the in-sheet
+  // checkbox state, committed to storage only on confirm. Loaded once on mount.
+  const pinDontShowAgainRef = useRef(false);
+  const [pinDontShowAgainPending, setPinDontShowAgainPending] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    AsyncStorage.getItem(PIN_DONT_SHOW_STORAGE_KEY)
+      .then(value => {
+        if (mounted && value === 'true') {
+          pinDontShowAgainRef.current = true;
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
   // Latest cached V05 session id — surfaced from recommendV05 so the
   // phase 04 generation effect can choose `/try_another` (when set) vs
   // `/build` (cold start). Mirrors v05Api.ts's module-scope cache.
@@ -1526,9 +1550,23 @@ export const HomeScreen = () => {
       if (!item?.id) {
         return;
       }
+      // Tapping the pill on the already-pinned item is an unpin.
+      if (pinnedItemIdRef.current === item.id) {
+        track('item_unpinned', { source: 'home_tile_pill' });
+        pinDispatch({ type: 'PIN_TAP', itemId: item.id });
+        return;
+      }
+      // First pin (nothing pinned yet) + "Don't show again" set → skip the
+      // confirm sheet and build straight away (reuses the from-detail bypass
+      // path: sets pinnedId + outfit='generating', no modal).
+      if (pinnedItemIdRef.current === null && pinDontShowAgainRef.current) {
+        track('item_pinned', { source: 'home_tile_pill', confirm_skipped: true });
+        pinDispatch({ type: 'CONFIRM_PIN_FROM_DETAIL', itemId: item.id });
+        return;
+      }
+      // Otherwise open the confirm (first pin) or replace sheet.
+      setPinDontShowAgainPending(false);
       pinDispatch({ type: 'PIN_TAP', itemId: item.id });
-      console.info('home.pin.tap', { itemId: item.id });
-      // TODO(analytics): replace console.info with the real telemetry hook.
     },
     [pinDispatch],
   );
@@ -1580,10 +1618,37 @@ export const HomeScreen = () => {
     if (!pinnedItemId) {
       return;
     }
-    console.info('home.pin.clear', { itemId: pinnedItemId });
-    // TODO(analytics): replace console.info with the real telemetry hook.
+    track('item_unpinned', { source: 'home_header_label' });
     pinDispatch({ type: 'UNPIN' });
   }, [pinnedItemId, pinDispatch]);
+
+  // AU-307 Figma redesign — confirm sheet primary CTA ("Pin & build"). Commits
+  // the "Don't show again" checkbox to storage when checked, fires the pin
+  // event, then dispatches CONFIRM_PIN / CONFIRM_REPLACE (reducer flips
+  // outfit='generating').
+  const handleConfirmPinFromModal = useCallback(() => {
+    const isReplace = pinState.modal === 'replace';
+    if (pinDontShowAgainPending) {
+      pinDontShowAgainRef.current = true;
+      AsyncStorage.setItem(PIN_DONT_SHOW_STORAGE_KEY, 'true').catch(() => {});
+    }
+    track('item_pinned', {
+      source: isReplace ? 'home_confirm_sheet_replace' : 'home_confirm_sheet',
+      confirm_skipped: false,
+    });
+    pinDispatch({ type: isReplace ? 'CONFIRM_REPLACE' : 'CONFIRM_PIN' });
+  }, [pinState.modal, pinDontShowAgainPending, pinDispatch]);
+
+  // AU-307 Figma redesign — toggle the in-sheet "Don't show again" checkbox.
+  // Persistence is deferred to confirm; toggling alone fires the analytics
+  // event so the CEO can see how often users opt out of the confirm sheet.
+  const handleToggleDontShowAgain = useCallback(() => {
+    setPinDontShowAgainPending(prev => {
+      const next = !prev;
+      track('pin_dont_show_again_toggled', { checked: next });
+      return next;
+    });
+  }, []);
 
   // Tinder deck: advance to the next card. End of deck keeps the last card on
   // screen (re-likeable) per spec §2.5, and nudges a prefetch.
@@ -2271,20 +2336,19 @@ export const HomeScreen = () => {
         onConfirm={handleSubmitContext}
       />
 
-      {/* AU-307: pin confirm / replace modal. Variant flips off pinState.modal.
-          onConfirm dispatches CONFIRM_PIN or CONFIRM_REPLACE; reducer flips
-          outfit='generating'. Phase 04 wires the network fire on that state. */}
+      {/* AU-307 Figma redesign — pin confirm / replace sheet (full-width
+          bottom sheet, single "Pin & build" CTA, "Don't show again" checkbox).
+          onConfirm commits the checkbox + dispatches CONFIRM_PIN /
+          CONFIRM_REPLACE; reducer flips outfit='generating'. */}
       <PinConfirmModal
         visible={pinState.modal !== 'closed'}
         variant={pinState.modal === 'replace' ? 'replace' : 'confirm'}
         itemImageUrl={pinDialogImageUrl}
         itemLabel={pinDialogItem?.name ?? undefined}
-        onConfirm={() =>
-          pinDispatch({
-            type:
-              pinState.modal === 'replace' ? 'CONFIRM_REPLACE' : 'CONFIRM_PIN',
-          })
-        }
+        isCommonItem={pinDialogItem?.isSystem ?? false}
+        dontShowAgain={pinDontShowAgainPending}
+        onToggleDontShowAgain={handleToggleDontShowAgain}
+        onConfirm={handleConfirmPinFromModal}
         onCancel={() => pinDispatch({ type: 'CANCEL_MODAL' })}
       />
 
