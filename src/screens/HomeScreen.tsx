@@ -112,7 +112,7 @@ import {
 } from '../components/features/PinGenerationError';
 import { PinFallbackNotice } from '../components/features/PinFallbackNotice';
 import { PinnedItemUnavailableNotice } from '../components/features/PinnedItemUnavailableNotice';
-import { PinnedItemTooltip } from '../components/features/PinnedItemTooltip';
+import { PinTilePill } from '../components/features/PinTilePill';
 import { snapshotOutfit } from '../utils/snapshotOutfit';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -520,12 +520,9 @@ export const HomeScreen = () => {
   // sync watcher); auto-clears ~5s later via a setTimeout in an effect below.
   // null = banner hidden.
   const [pinnedItemGoneAt, setPinnedItemGoneAt] = useState<number | null>(null);
-  // AU-307 phase 06 — "Touch to unpin" tooltip nudge. Session-scoped: shown
-  // for the first 3 pin actions per app lifecycle; `useRef` (not state) so
-  // incrementing does not re-render, and module-level lifetime resets only
-  // on cold start (spec §8 — no AsyncStorage persistence).
-  const pinTooltipCountRef = useRef(0);
-  const [pinTooltipVisible, setPinTooltipVisible] = useState(false);
+  // AU-307 Figma redesign — the old off-tile "Touch to unpin" band tooltip is
+  // removed (CEO decision 1): the persistent on-tile "Tap to unpin" pill is
+  // now the single unpin affordance, so the session-capped nudge is redundant.
   // Latest cached V05 session id — surfaced from recommendV05 so the
   // phase 04 generation effect can choose `/try_another` (when set) vs
   // `/build` (cold start). Mirrors v05Api.ts's module-scope cache.
@@ -937,7 +934,8 @@ export const HomeScreen = () => {
         }
         // Appended batch: the visible card is unchanged (still the active one);
         // dedup off the currently-active hash.
-        settledHash = listOutfitsRef.current[activeIndexRef.current]?.outfitHash;
+        settledHash =
+          listOutfitsRef.current[activeIndexRef.current]?.outfitHash;
       }
 
       // Eager + chained prefetch (Change 2) — but ONLY when this resolve added
@@ -1247,21 +1245,6 @@ export const HomeScreen = () => {
     }, 5000);
     return () => clearTimeout(handle);
   }, [pinnedItemGoneAt]);
-
-  // AU-307 phase 06 — show the "Touch to unpin" tooltip whenever a new
-  // pin is set, but only for the first 3 pin actions of the session.
-  // When the pin clears, hide any existing tooltip immediately. The
-  // tooltip component itself owns its 3-second auto-dismiss timer.
-  useEffect(() => {
-    if (pinState.pinnedItemId) {
-      if (pinTooltipCountRef.current < 3) {
-        pinTooltipCountRef.current += 1;
-        setPinTooltipVisible(true);
-      }
-    } else {
-      setPinTooltipVisible(false);
-    }
-  }, [pinState.pinnedItemId]);
 
   // AU-307 phase 05 — AUTH_BLOCK handler. The phase 04 generation effect
   // routes 401 → `AUTH_BLOCK`, which sets `outfit='auth_required'`. We
@@ -2221,18 +2204,6 @@ export const HomeScreen = () => {
         </View>
       ) : null}
 
-      {/* AU-307 phase 06 — "Touch to unpin" nudge tooltip. Anchored to the
-          inline-banner band so it shows beneath the grid but above the
-          sticky footer; `pointerEvents="box-none"` on its host so taps
-          still reach any sibling. Session-capped at 3 actions; component
-          owns its own 3-second auto-dismiss timer. */}
-      <View pointerEvents="box-none" style={styles.pinInlineBanner}>
-        <PinnedItemTooltip
-          visible={pinTooltipVisible}
-          onDismiss={() => setPinTooltipVisible(false)}
-        />
-      </View>
-
       {/* Sticky "Wear this" CTA — belongs to the footer (acts on the ACTIVE
           outfit), not inside the swipeable card. Routes through the mood
           feedback flow exactly like the old per-card CTA. */}
@@ -2575,10 +2546,10 @@ const OptionSheet = React.memo(
           testID={`home-tile-${cellKey}-${flatTileIndex}`}
           accessibilityLabel={`home-tile-${cellKey}-${flatTileIndex}`}
           activeOpacity={0.86}
-          style={[styles.card, style, isPinned && styles.cardPinned]}
+          style={[styles.card, style]}
           onPress={() => onItemPress(item)}
-          // PHASE B (AU-222): long-press as a secondary affordance for pin
-          // toggle. Primary tap target is the pin badge overlay below.
+          // Long-press stays as a secondary affordance for pin toggle. Primary
+          // tap target is the on-tile PinTilePill overlay below.
           onLongPress={() => onTogglePin(item)}
           delayLongPress={500}
         >
@@ -2597,34 +2568,20 @@ const OptionSheet = React.memo(
               </Text>
             </View>
           ) : null}
-          {/* AU-307 phase 05 — hide pin badge on SYSTEM common-essential
-              tiles. `Item.isSystem` is set from the V05 `source` field
-              (`mapV05Item`: `it.source === 'common_essential'`). UX +
-              defense-in-depth: BE rejects pin requests for SYSTEM items
-              with 422 anyway (spec §6 source check), but we never render
-              the affordance so the user can't tap it. */}
+          {/* AU-307 Figma redesign — on-tile "Pin" / "Tap to unpin" pill
+              (replaces the old icon-only badge + 2px ring + off-tile band).
+              Hidden on SYSTEM common-essential tiles: `Item.isSystem` is set
+              from the V05 `source` field (`mapV05Item`:
+              `it.source === 'common_essential'`). UX + defense-in-depth — BE
+              rejects pin requests for SYSTEM items with 422 anyway (spec §6
+              source check), but we never render the affordance so the user
+              can't tap it. */}
           {!item.isSystem ? (
-            <TouchableOpacity
-              testID={
-                isPinned
-                  ? `home-tile-pin-${cellKey}-${flatTileIndex}-set`
-                  : `home-tile-pin-${cellKey}-${flatTileIndex}`
-              }
-              activeOpacity={0.7}
-              onPress={e => {
-                e.stopPropagation();
-                onTogglePin(item);
-              }}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
-              accessibilityRole="button"
-              accessibilityLabel={
-                isPinned ? t('pin.a11y_pinned_badge') : t('home.a11y_pin_item')
-              }
-              accessibilityState={{ selected: isPinned }}
-            >
-              <IconHomePin width={17} height={17} />
-            </TouchableOpacity>
+            <PinTilePill
+              isPinned={isPinned}
+              testID={`home-tile-pin-${cellKey}-${flatTileIndex}`}
+              onPress={() => onTogglePin(item)}
+            />
           ) : null}
         </TouchableOpacity>
       );
@@ -3254,36 +3211,6 @@ const styles = StyleSheet.create({
   },
   heroStackCell: {
     flex: 1,
-  },
-  // PHASE B (AU-222): pinned tile gets a 2px action-coloured ring.
-  // Figma 1711:17062 communicates pin via the badge rather than a border;
-  // the ring is a small extra cue the spec asked for explicitly.
-  cardPinned: {
-    borderWidth: 2,
-    borderColor: theme.colors.figmaAction,
-  },
-  // PHASE B (AU-222): pin badge — small rounded pill in the top-right of
-  // each tile. Inactive state mirrors the SVG's beige fill on a translucent
-  // surface; active state flips to the action colour for clear feedback.
-  pinBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 9,
-    width: 34,
-    height: 34,
-    borderRadius: theme.borderRadius.m,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)', // background/overlay/light/30
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Figma 3399:18455 — drop-shadow 4/4, blur 5.3, #070707 @ 5%.
-    shadowColor: 'rgba(7, 7, 7, 0.05)',
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 5.3,
-    elevation: 3,
-  },
-  pinBadgeActive: {
-    backgroundColor: theme.colors.figmaAction,
   },
   // AU-351: "Your Piece" exploration badge — small text pill in the TOP-LEFT
   // of each tile (opposite corner from the top-right pin badge so they never
