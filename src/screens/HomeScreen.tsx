@@ -325,11 +325,11 @@ const buildGridOutfitSheet = (outfit: OutfitSheet): OutfitSheetWithGrid => ({
   gridItems: buildGrid(outfit.items),
 });
 
-// PHASE B (AU-222): MOBILE FALLBACK — until the backend honours
-// `pinned_item_id` and reshuffles around it, we splice the pinned item into
-// position 0 of the local grid for any sheet that doesn't already contain it.
-// Tracked as a backend follow-up: "valen-get-recommendations-offical: mix
-// around `pinned_item_id`".
+// PHASE B (AU-222): MOBILE FALLBACK — the backend logs `pinned_item_id` but
+// does not yet compose around it (only /try_another filters on it), so we
+// splice the pinned item into position 0 of the local grid for any sheet that
+// doesn't already contain it. Tracked: auxi-backend#108 (compose around
+// `pinned_item_id` on /start + /next); once shipped, this splice is a no-op.
 const buildGridOutfitSheetWithPin = (
   outfit: OutfitSheet,
   pinnedItem: Item | null,
@@ -1352,8 +1352,8 @@ export const HomeScreen = () => {
     }
     // Batch omits the pinned item → fall back to the last-known Item captured
     // at pin time, but only if it still matches the active pin id (guards
-    // against a stale cache after a replace). This keeps the slot-0 splice,
-    // on-tile pill, and "Pinned:" header chip rendered.
+    // against a stale cache after a replace). This keeps the slot-0 splice and
+    // the on-tile pill rendered.
     if (lastPinnedItemRef.current?.id === pinnedItemId) {
       return lastPinnedItemRef.current;
     }
