@@ -141,11 +141,12 @@ const CARD_ASPECT = 0.75; // Figma 3:4 (width / height) — the CEO's tracked me
 // GRID_AREA derivation below stays arithmetically honest.
 // - OPTION_SHEET_VPAD: optionSheet paddingTop(12) + paddingBottom(24).
 // - OPTION_ACTIONS_HEIGHT: true non-grid CONTENT inside the sheet —
-//   caption pill 40 + 2×12 inter-block gaps (flex-start + gap:12) + action
-//   row 32 = 96. The "Wear this" CTA (56) moved OUT of the card to the sticky
-//   footer, so it's reserved via WEAR_THIS_FOOTER_HEIGHT below (not here).
+//   caption pill 40 + 2×8 inter-block gaps (flex-start + gap:8, 4px grid) +
+//   action row 32 = 88. The "Wear this" CTA (56) moved OUT of the card to the
+//   sticky footer, so it's reserved via WEAR_THIS_FOOTER_HEIGHT below (not here).
+//   Tightened from 96→88 (gap 12→8) to give the 3:4 grid more vertical room.
 const OPTION_SHEET_VPAD = 36;
-const OPTION_ACTIONS_HEIGHT = 96;
+const OPTION_ACTIONS_HEIGHT = 88;
 
 // Widest a tile can be if it filled the content frame edge-to-edge (the old
 // full-bleed width). Used only to size the *ideal* (uncapped) sheet height on
@@ -212,7 +213,7 @@ const GRID_AREA_H =
 // (CARD_HEIGHT for 2-row, computeHeroRowHeight for 5+) sizes against it, so
 // total grid height ≤ GRID_AREA_H for any item count → nothing clips, no
 // scroll needed (preserves the collage drag-to-play C4 fix).
-const GRID_CONTENT_PAD = 16;
+const GRID_CONTENT_PAD = 8;
 // Also net out the gridWrap vertical inset (SHEET_PADDING_V top+bottom, added for
 // the Figma 8px grid py). Without it the extra 16px overflows GRID_AREA_H and the
 // dormant (scrollEnabled=false) gridScroll hard-clips the bottom row on smaller
@@ -2737,20 +2738,22 @@ const OptionSheet = React.memo(
         return (
           <View style={[styles.gridWrap, styles.gridWrapStart]}>
             <View style={styles.cardRow}>
-              <View style={styles.cardShell}>
+              <View style={styles.cardShellFixed}>
                 {renderTile(layout.row1[0], 0)}
               </View>
-              <View style={styles.cardShell}>
+              <View style={styles.cardShellFixed}>
                 {renderTile(layout.row1[1], 1)}
               </View>
             </View>
             <View style={styles.cardRow}>
-              <View style={styles.cardShell}>
+              <View style={styles.cardShellFixed}>
                 {renderTile(layout.row2Large, 2)}
               </View>
               {/* opacity-0 placeholder holds the right column so the lone 3rd
-                  tile stays left-aligned (non-interactive, no testID). */}
-              <View style={[styles.cardShell, styles.cardCellHidden]} />
+                  tile stays left-aligned (non-interactive, no testID). It must
+                  match the fixed CARD_WIDTH so the visible tile lands under the
+                  top-left tile (centred pair → left of centre). */}
+              <View style={[styles.cardShellFixed, styles.cardCellHidden]} />
             </View>
           </View>
         );
@@ -2769,7 +2772,7 @@ const OptionSheet = React.memo(
                 {row.map((item, itemIndex) => (
                   <View
                     key={`shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
-                    style={styles.cardShell}
+                    style={styles.cardShellFixed}
                   >
                     {renderTile(item, rowIndex * 2 + itemIndex)}
                   </View>
@@ -3185,13 +3188,14 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: SHEET_PADDING,
     paddingBottom: 24,
-    // A2 (AU-253 2026-05-25): Figma uniform 12pt rhythm between the sheet's
+    // A2 (AU-253 2026-05-25): uniform vertical rhythm between the sheet's
     // blocks (caption · grid · action row · CTA). Was 'space-between', which
     // distributed leftover slack as a ~36pt void between the grid and the
-    // "Wear this" CTA. flex-start + gap:12 makes the stack content-sized so
-    // there is no slack to dump → void eliminated by construction.
+    // "Wear this" CTA. flex-start + gap:8 (4px grid) makes the stack
+    // content-sized so there is no slack to dump → void eliminated by
+    // construction. Tightened 12→8 so the 3:4 grid keeps more vertical room.
     justifyContent: 'flex-start',
-    gap: 12,
+    gap: 8,
   },
   gridWrap: {
     gap: GRID_GAP,
