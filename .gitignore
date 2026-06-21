@@ -58,6 +58,9 @@ yarn-error.log
 
 # QA findings screenshots — ephemeral sim/Figma captures, regenerate on demand; do not commit
 docs/qa-findings/screenshots/
+
+# Design-review screenshots — ephemeral sim/Figma captures (review evidence), not source; do not commit
+docs/design-reviews/screenshots/
 !**/fastlane/.env.default
 **/fastlane/*.p8
 **/fastlane/AuthKey_*.p8
