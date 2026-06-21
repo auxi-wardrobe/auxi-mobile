@@ -11,6 +11,7 @@ import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
+import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
 import { theme } from '../../theme/theme';
 
 interface OutfitPreviewProps {
@@ -36,6 +37,8 @@ export const OutfitPreview: React.FC<OutfitPreviewProps> = ({
       </View>
 
       <View style={styles.footer}>
+        {/* B2: AI-generated disclosure + Report (this image is AI-generated). */}
+        <AiContentDisclosure surface="tryon" testID="stom-ai-disclosure" />
         <PillButton
           testID="stom-back-home"
           title={t('seeThisOnMe.backToHome')}

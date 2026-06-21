@@ -19,6 +19,15 @@ export interface SaveFavouritePayload {
    * `mood_vocab.py`. Omitted = legacy wear-only save.
    */
   mood_tags?: string[];
+  /**
+   * The per-outfit message shown on Home (V05 `reasoning_human`). Persisted
+   * so the favourite card can render it as the centred title hero
+   * (Figma `3539:22165`). Optional + backward-safe: the backend ignores it
+   * until the `favorites.title` column ships (contract
+   * `wardrobe-backend/docs/favorites-title-mood-contract.md`). Omit when the
+   * outfit has no message rather than sending an empty string.
+   */
+  title?: string;
 }
 
 export interface SaveFavouriteResponse {

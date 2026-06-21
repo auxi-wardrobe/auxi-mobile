@@ -50,7 +50,6 @@ import IconHomeMenu from '../assets/images/icon_home_menu.svg';
 import IconHomeHeartOutline from '../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../assets/images/icon_home_heart_filled.svg';
 import { theme } from '../theme/theme';
-import { MacgieLoader } from '../components/macgie';
 import { Item } from '../types/item';
 import {
   DEFAULT_RECOMMENDATION_MODE,
@@ -78,6 +77,7 @@ import { resolveItemImage } from '../utils/url';
 import { weatherService } from '../services/weatherService';
 import { WeatherWidget } from '../components/features/WeatherWidget';
 import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
+import { AiContentDisclosure } from '../components/features/AiContentDisclosure';
 import {
   TemperatureOverrideSheet,
   type TemperatureSheetErrorKey,
@@ -105,6 +105,8 @@ import { OUTFITS_PER_SET } from '../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../hooks/usePinReducer';
 import { PinConfirmModal } from '../components/features/PinConfirmModal';
 import { SkeletonTile } from '../components/features/SkeletonTile';
+import { ShimmerSlot } from '../components/features/ShimmerSlot';
+import { GeneratingDots } from '../components/features/GeneratingDots';
 import {
   PinGenerationError,
   type PinErrorKind,
@@ -1501,6 +1503,10 @@ export const HomeScreen = () => {
           outfit_hash: hash,
           item_ids: items.map(item => item.id).filter(Boolean),
           source: 'home',
+          // Persist the Home message (V05 reasoning_human) so the favourite
+          // card can show it as its title hero. Backward-safe: the backend
+          // ignores `title` until its column ships.
+          ...(outfit.caption ? { title: outfit.caption } : {}),
         })
         .then(() => {
           setSaveStateByHash(current => ({ ...current, [hash]: 'saved' }));
@@ -1591,6 +1597,9 @@ export const HomeScreen = () => {
         // (see buildViaV05) — thread the same value so contextual chip sets
         // light up if/when real occasions flow through it.
         occasion: selectedModeRef.current,
+        // Persist the Home message (V05 reasoning_human) through the mood
+        // sheet save so the favourite card shows it as its title hero.
+        ...(outfit.caption ? { title: outfit.caption } : {}),
         outfit,
       });
     },
@@ -2261,6 +2270,20 @@ export const HomeScreen = () => {
           />
         </View>
       )}
+
+      {/* B2: AI-generated disclosure + Report for the recommendation surface
+          (Apple 2026 AI rules). The outfit is AI-selected content; shown once
+          per screen while a recommendation is present, below the swipe deck.
+          Placed outside the height-locked OptionSheet card so it never
+          perturbs the grid layout. */}
+      {optionSets.length > 0 ? (
+        <View style={styles.aiDisclosureRow}>
+          <AiContentDisclosure
+            surface="recommendation"
+            testID="home-ai-disclosure"
+          />
+        </View>
+      ) : null}
 
       {/* AU-307 phase 04 — error / fallback / guest banner. M5 fix: float the
           banner above the Remix action row + sticky footer (anchored over the
@@ -2976,28 +2999,58 @@ const HomeWardrobeGapState: React.FC<{ onAddItems: () => void }> = ({
   );
 };
 
+// AU-364 — Home-loading state (Figma node 2850:11205 "Home - loading").
+// Skeleton-first direction (CEO-confirmed in 2026-06-19 design review): NO
+// mascot here — a calm shimmer grid + a "Generating" pill, inside the real
+// Home chrome (dimmed). The mascot stays for cold boot + true modal waits.
+// The grid geometry mirrors the loaded `twoByTwo` layout (same cardRow /
+// cardShellFixed / 12-radius tiles) so the load→loaded transition doesn't jump.
 const HomeLoadingState = () => {
   const { t } = useTranslation();
   return (
     <View style={styles.optionSheet}>
+      {/* "Generating" pill — Figma node 3914:28282. warm100 bg, black 12px
+          Inter Regular, radius 8, h-32, px-12, + animated 3-dot glyph (24px). */}
+      <View style={styles.loadingPillRow}>
+        <View style={styles.loadingPill} testID="home-loading-generating-pill">
+          <Text style={styles.loadingPillText}>{t('home.generating')}</Text>
+          <GeneratingDots size={24} />
+        </View>
+      </View>
+
       <View style={styles.loadingCards}>
         {[0, 1].map(row => (
           <View key={`loading-row-${row}`} style={styles.cardRow}>
             {[0, 1].map(column => (
               <View
                 key={`loading-card-${row}-${column}`}
-                style={styles.cardShellFixed}
+                style={[styles.cardShellFixed, styles.loadingSlotShell]}
               >
-                <View style={[styles.card, styles.loadingCard]} />
+                {/* Pin affordance on the bottom row only (Figma Default state,
+                    nodes 2850:11218/11219) — matches the loaded grid's pin. */}
+                <ShimmerSlot
+                  testID={`home-loading-slot-${row}-${column}`}
+                  showPin={row === 1}
+                />
               </View>
             ))}
           </View>
         ))}
       </View>
 
-      <View style={styles.loadingFooter}>
-        <MacgieLoader variant="inline" size={28} testID="home-loading-macgie" />
-        <Text style={styles.loadingFooterText}>{t('home.building_next')}</Text>
+      {/* Dimmed Home footer chrome (Figma footer @ opacity-50). The real
+          controls preview the shape of what's coming; the shimmering grid is
+          the focal point. Non-interactive — these are placeholders during load. */}
+      <View
+        style={styles.loadingFooterChrome}
+        pointerEvents="none"
+        testID="home-loading-footer"
+      >
+        <OutfitActionRow testID="home-loading-remix-row" />
+        <View style={[styles.primaryActionFull, styles.loadingWearThis]}>
+          <Text style={styles.loadingWearThisText}>{t('home.wear_this')}</Text>
+          <IconHomeHeartOutline width={24} height={24} />
+        </View>
       </View>
     </View>
   );
@@ -3176,6 +3229,11 @@ const styles = StyleSheet.create({
   outfitCell: {
     width: screenWidth,
   },
+  aiDisclosureRow: {
+    paddingHorizontal: theme.spacing.uacBodyPadding,
+    paddingVertical: theme.spacing.xs,
+    alignItems: 'center',
+  },
   optionSheet: {
     height: OPTION_SHEET_HEIGHT,
     // Figma "Home for option 3/3" (2849:11960): the outfit body is FLAT and
@@ -3278,7 +3336,9 @@ const styles = StyleSheet.create({
   },
   card: {
     height: CARD_HEIGHT,
-    borderRadius: 12, // Figma border-radius/xl = 12
+    // Figma local var `border-radius/xl` = 12px → app token figmaTile (= ds.radius.sm = 12).
+    // NB: this is NOT ds.radius.xl (that is 18) — the Figma file's local "xl" scale differs.
+    borderRadius: theme.borderRadius.figmaTile,
     backgroundColor: theme.colors.figmaCardSurface,
     overflow: 'hidden',
     alignItems: 'center',
@@ -3327,8 +3387,51 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interSemiboldXs,
     color: theme.colors.uacTextPrimaryBase,
   },
-  loadingCard: {
-    backgroundColor: theme.colors.figmaCardSurface,
+  // AU-364 Home-loading state styles (Figma node 2850:11205).
+  // "Generating" pill row — left-aligned above the grid (Figma 2850:11208).
+  loadingPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // Figma node 3914:28282 — bg warm100 (#eee6df), h-32, px-12, gap-8, radius-8.
+  loadingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s, // 8
+    height: 32,
+    maxWidth: 336,
+    paddingHorizontal: theme.spacing.uacDimension12, // 12
+    borderRadius: theme.borderRadius.m, // 8 — border-radius/md
+    backgroundColor: theme.colors.figmaCaptionPillBg, // warm100 / background/primary/subtle_200
+  },
+  // Figma node 3914:28283 — text/primary/bold_700 (#070707), Inter Regular 12/16.
+  loadingPillText: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.figmaTextDark, // #070707
+  },
+  // Loading slot shell: same fixed-3:4 footprint as a loaded tile so the grid
+  // geometry is identical to the `twoByTwo` layout (load→loaded continuity).
+  loadingSlotShell: {
+    height: CARD_HEIGHT,
+  },
+  // Dimmed footer chrome (Figma footer @ opacity-50). Non-interactive preview.
+  loadingFooterChrome: {
+    opacity: motion.opacity.subtle, // 0.6 — calm dim; grid stays the focal point
+    gap: theme.spacing.uacDimension8,
+  },
+  // "Wear this" outline CTA in its disabled/preview form (matches the loaded
+  // `primaryActionFull` shell so the CTA doesn't shift on load complete).
+  loadingWearThis: {
+    minHeight: 56,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.s,
+  },
+  loadingWearThisText: {
+    ...theme.typography.aliases.poppinsButton,
+    color: theme.colors.figmaCtaLabel,
   },
   // H2 fix (2026-05-05 QA sweep): trailing odd-row placeholder is now
   // transparent so the grid reads as "3 items, balanced layout" rather than
@@ -3409,19 +3512,6 @@ const styles = StyleSheet.create({
   },
   secondaryActionText: {
     ...theme.typography.aliases.archivoButton,
-    color: theme.colors.figmaAction,
-  },
-  loadingFooter: {
-    minHeight: 56,
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaSurfaceSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  loadingFooterText: {
-    ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaAction,
   },
   // Error UI fix (2026-05-22): cold-start fetch failure fallback.

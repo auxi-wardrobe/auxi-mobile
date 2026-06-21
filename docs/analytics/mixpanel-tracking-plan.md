@@ -165,6 +165,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
 | `screen_viewed` | React Navigation `onStateChange` → route name change. `OnboardingLoading` skipped (transient). 500ms debounce on identical consecutive names. | `AppNavigator.tsx:70` (`handleNavStateChange`) | `screen_name`, `previous_screen_name?` |
+| `feedback_opened` | Sidebar "Feedback" row tapped → navigates to the `Feedback` screen (App Store B3 dead-button fix — row was previously a no-op). | `SidebarMenu.tsx:107` (live push-drawer). The unused legacy `Sidebar.tsx:164` overlay carries the same call for parity. | `source` (`sidebar`) |
 
 ### 5.10 Analytics helpers (`src/services/analytics.ts`)
 
@@ -202,7 +203,34 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 > PII: bucket KEYS only (`weather` / `hot_28_40` / `mild_10_25` / `cold_0_7` / `freezing_-10_0`) — never raw user text. `rep_temp_c` / `outfit_count` are unquoted numbers. `temperature_apply_clicked` is present-tense (borderline vs the `object_verb` past-tense convention) — kept verbatim per the AU-362 ticket for funnel continuity; flag to CEO if `temperature_applied` is preferred. Bucket→temp_c mapping lives in `src/config/temperature-buckets.ts` (single source of truth).
 
-### 5.14 Pin an item / build-around (AU-307 Figma redesign)
+### 5.14 Legal documents (App Store blocker B5)
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `legal_document_viewed` | Terms of Service / Privacy Policy screen opens (mount effect). Fired once per screen mount; both entry points (Welcome legal-footer links + Settings rows) route through the same screen | `LegalDocumentScreen.tsx:60` via `analytics.ts:237` | `document` (`terms_of_service` / `privacy_policy`), `source` (`welcome` / `settings`) |
+
+> PII: both props are bounded enums — no raw text, no URL, no identifiers. The screen owns the single fire site so the press handlers in `WelcomeScreen.tsx` / `SettingsScreen.tsx` only navigate (no double-count). `source` distinguishes the unauthenticated (Welcome) vs authenticated (Settings) entry for funnel segmentation.
+
+### 5.15 AI data-sharing consent + AI-content disclosure (App Store blockers B1 + B2)
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `ai_consent_granted` | User accepts the AI data-sharing prompt before a try-on photo upload, OR flips the Settings "AI data sharing" toggle ON | `services/aiConsent.ts:32` (called from `useAiConsentGate.ts` Accept + `SettingsScreen.tsx` grant) | — |
+| `ai_consent_declined` | User declines the AI data-sharing prompt (tap Decline / tap-outside) | `services/aiConsent.ts:38` (called from `useAiConsentGate.ts` Decline) | — |
+| `ai_consent_revoked` | User flips the Settings "AI data sharing" toggle OFF (Privacy Policy §6 withdraw) | `services/aiConsent.ts:48` (called from `SettingsScreen.tsx` revoke) | — |
+| `ai_content_reported` | User taps "Report" on an AI-generated result (opens prefilled mailto) | `components/features/AiContentDisclosure.tsx:30` | `surface` (`tryon` / `recommendation`) |
+
+> PII: none. `ai_consent_*` carry no properties; `ai_content_reported.surface` is a bounded enum. The Report mailto subject/body are static localized strings — no ids, photos, or free text leave the device via analytics. Consent is gated server-side too: the try-on route requires `gemini_opt_in === true`, and the client only sends that after a recorded grant, so no photo is uploaded pre-consent.
+
+### 5.16 Root error boundary
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `app_error_caught` | Root `ErrorBoundary.componentDidCatch` fires — an unexpected render/lifecycle error was caught in the navigator subtree and the recoverable fallback rendered (instead of a white screen). Also reported to Sentry. | `components/common/ErrorBoundary.tsx:55` | `fatal` (boolean — always `false`; the boundary recovers) |
+
+> PII: presence-of-error signal only. The raw `error.message` / component stack are NEVER tracked (they can carry PII) — those go to Sentry, not Mixpanel. The single `fatal: false` flag distinguishes a recovered boundary catch from a hard crash (the latter is captured by Mixpanel's automatic-events crash signal + Sentry).
+
+### 5.17 Pin an item / build-around (AU-307 Figma redesign)
 
 The pin feature (AU-307) originally shipped with NO analytics (only `console.info` placeholders). Wired during the 2026-06-20 Figma-flow rebuild. The "Don't show again" checkbox is the genuinely-new interaction the rule mandated; pin/unpin were existing actions with no prior event, so they get one now.
 
@@ -239,7 +267,7 @@ These hooks were spec'd but cannot fire today — the UI surface, control, or AP
 - `wardrobe_url_import_completed`
 - `wardrobe_url_import_failed`
 
-`handleImportFromWeb` in `WardrobeScreen.tsx:158-165` is a "coming soon" Toast — no service, no submit form. Wire on the real handler once import lands.
+The "Import from web" add-item option (its `handleImportFromWeb` "coming soon" Toast + `add_item_method_selected {method: 'import_web'}` event) was REMOVED from `WardrobeScreen` — App Store B3 / Guideline 2.1 (no dead/"coming soon" UI). No service, no submit form ever existed. Re-add the option and wire these events on the real handler once URL import actually lands.
 
 ### 6.3.b Wardrobe — search submit step not built
 

@@ -23,6 +23,8 @@ import {
   BodyPhotoNotPersonError,
 } from '../../services/bodyService';
 import { track } from '../../services/analytics';
+import { useAiConsentGate } from '../../hooks/useAiConsentGate';
+import { AiConsentDialog } from '../../components/features/AiConsentDialog';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { AppStackParamList } from '../../types/navigation';
@@ -89,6 +91,8 @@ export const SeeThisOnMeScreen: React.FC = () => {
   const navigation = useNavigation<Navigation>();
   const { outfit } = useRoute<ScreenRoute>().params;
   const { pickImage } = useImagePicker();
+  // B1: gate the AI photo upload behind explicit, persisted consent.
+  const aiConsentGate = useAiConsentGate();
 
   const [step, setStep] = useState<Step>('selfie');
   const [selfie, setSelfie] = useState<Asset | null>(null);
@@ -152,17 +156,23 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // stored `body_id` (full-body preferred) + outfit + chosen shape to the
   // background store, which runs the high-res render outside React (so it keeps
   // going if the user quits the loading screen — AU-358).
+  // B1: ensure AI data-sharing consent before the high-res render uploads the
+  // body photo to our AI providers. Accept → proceed; Decline → abort, the user
+  // stays on the capture step (app remains usable). The store only ever sends
+  // gemini_opt_in: true, which is now backed by a recorded consent decision.
   const runGenerate = useCallback(
     (bodyId: string, shape: BodyShapeId | null) => {
-      setStep('generating');
-      setErrored(false);
-      track('try_on_started', {
-        outfit_hash: outfit.outfitHash,
-        item_count: outfit.itemIds.length,
+      aiConsentGate.run(() => {
+        setStep('generating');
+        setErrored(false);
+        track('try_on_started', {
+          outfit_hash: outfit.outfitHash,
+          item_count: outfit.itemIds.length,
+        });
+        tryOnGenerationStore.start({ outfit, bodyId, shape });
       });
-      tryOnGenerationStore.start({ outfit, bodyId, shape });
     },
-    [outfit],
+    [aiConsentGate, outfit],
   );
 
   // Mirror background-store transitions onto local step/result state + fire the
@@ -662,6 +672,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
         onClose={closeSourceSheet}
         onSelect={handleSelectSource}
       />
+
+      {/* B1: AI data-sharing consent prompt — gates the high-res render upload. */}
+      <AiConsentDialog {...aiConsentGate.dialogProps} />
     </SafeAreaView>
   );
 };

@@ -4,7 +4,6 @@ import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { resolveItemImage } from '../../utils/url';
-import { OutfitCardCaption } from '../../components/features/OutfitCardCaption';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
 import { MOOD_CHIPS } from '../../components/features/mood-chips';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
@@ -14,6 +13,10 @@ import { Favourite, FavouriteItem } from '../../services/favouriteService';
 type Props = {
   favourite: Favourite;
   view: HomeView;
+  // Per-card date label (e.g. "6 May"), rendered as the first line of the
+  // title block above the top divider (Figma `3539:22168`). The screen formats
+  // it from `created_at` so the date repeats on every saved outfit.
+  dateLabel?: string;
   onRemove: (id: string) => void;
   onSelfVisualization: (favourite: Favourite) => void;
 };
@@ -42,10 +45,17 @@ const moodLabel = (id: string, t: TFunction): string => {
 };
 
 // One saved outfit (Figma `2852:22063`), top→bottom: date → bold outfit title
-// → filled mood/vibe-tag pill → caption (bulb/idea) row → 2-column 3:4 tile
-// grid → ⊖ remove / "Self visualization" action row. Tile look mirrors the
-// Home grid (`HomeScreen` card/cardImage/cardTag styles) so the two screens
-// read identically.
+// → filled mood/vibe-tag pill → 2-column 3:4 tile grid → ⊖ remove /
+// "Self visualization" action row. Tile look mirrors the Home grid
+// (`HomeScreen` card/cardImage/cardTag styles) so the two screens read
+// identically.
+//
+// NO bulb/caption "why this" row here (designer rescan BLOCKER fix 1,
+// 260619): that left-aligned tan pill belongs to Home + the separate
+// `why this` screen, not the favourite card. The card hero is the centred
+// title block; when `favourite.title` is empty (old favourites saved before
+// the message was persisted) the card degrades cleanly — title line AND its
+// flanking dividers are omitted, and NO canned caption is substituted.
 //
 // RARITY-TAG DIVERGENCE (intentional, CEO-confirmed 2026-06-12): the badge is
 // data-driven — it renders ONLY for real common items (`is_common_item === true`).
@@ -85,17 +95,18 @@ const Tile: React.FC<{ item: FavouriteItem; testIDPrefix: string }> = ({
 export const FavouriteOutfitCard: React.FC<Props> = ({
   favourite,
   view,
+  dateLabel,
   onRemove,
   onSelfVisualization,
 }) => {
   const { t } = useTranslation();
   const items = favourite.outfit_items ?? [];
-  const caption = favourite.outfit_context?.reasoning_human;
   const testIDPrefix = `favourite-card-${favourite.id}`;
 
   // Bold outfit title (Figma `3539:22165`) — rendered only when the backend
-  // supplies one. The date sits ABOVE the card as a per-day group header in
-  // FavouriteScreen, so it's intentionally not repeated here.
+  // supplies one. The date is the first line of THIS card's title block
+  // (Figma `3539:22168`); it repeats per saved outfit (CEO 2026-06-19),
+  // replacing the former screen-level per-day group header.
   const title = favourite.title?.trim();
   // Filled vibe-tag pill (Figma `3539:22327`) — render the FIRST saved mood id,
   // mapped to its display label. Empty/missing `mood_tags` ⇒ no pill.
@@ -114,16 +125,27 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
 
   return (
     <View style={styles.card} testID={testIDPrefix}>
-      {title || moodTagLabel ? (
+      {dateLabel || title || moodTagLabel ? (
         <View style={styles.titleBlock}>
-          {title ? (
-            <Text
-              style={styles.title}
-              numberOfLines={2}
-              testID={`${testIDPrefix}-title`}
-            >
-              {title}
+          {dateLabel ? (
+            <Text style={styles.date} testID={`${testIDPrefix}-date`}>
+              {dateLabel}
             </Text>
+          ) : null}
+          {title ? (
+            <>
+              {/* Full-width hairline above the bold title (Figma `3646:10000`). */}
+              <View style={styles.titleDivider} />
+              <Text
+                style={styles.title}
+                numberOfLines={2}
+                testID={`${testIDPrefix}-title`}
+              >
+                {title}
+              </Text>
+              {/* Full-width hairline below the bold title (Figma `3646:9997`). */}
+              <View style={styles.titleDivider} />
+            </>
           ) : null}
           {moodTagLabel ? (
             <View style={styles.moodPill} testID={`${testIDPrefix}-mood-pill`}>
@@ -134,8 +156,6 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
           ) : null}
         </View>
       ) : null}
-
-      <OutfitCardCaption caption={caption} testID={`${testIDPrefix}-caption`} />
 
       <View style={styles.grid}>
         {rows.map((row, rowIndex) => (
@@ -205,11 +225,26 @@ const styles = StyleSheet.create({
     gap: theme.spacing.m,
   },
   // Title + vibe-tag block (Figma `3539:22168`): centred column, 4px gap,
-  // 8px vertical padding. Sits between the date group-header and the bulb row.
+  // 8px vertical padding. date → divider → title → divider → mood chip.
   titleBlock: {
     alignItems: 'center',
     gap: theme.spacing.xs,
     paddingVertical: theme.spacing.s,
+  },
+  // Per-card date — Inter Regular 12/16 (body/xs), text/neutral/base. First
+  // line of the title block, above the top divider (CEO 2026-06-19).
+  date: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
+    textAlign: 'center',
+  },
+  // Full-width 1px hairline flanking the bold title (Figma divider component
+  // `3646:10000` / `3646:9997`). `alignSelf:'stretch'` spans the centred
+  // title block to the card content width.
+  titleDivider: {
+    alignSelf: 'stretch',
+    height: 1,
+    backgroundColor: theme.colors.figmaDividerSubtle,
   },
   // Bold outfit title — Poppins SemiBold 24/32 (heading/h4), text/neutral/base.
   title: {
@@ -243,7 +278,9 @@ const styles = StyleSheet.create({
   tile: {
     flex: 1,
     aspectRatio: 3 / 4,
-    borderRadius: theme.borderRadius.s,
+    // Home/Favourite tile parity (CEO 2026-06-19): 12px, matching the Home
+    // outfit tiles, not the former square-ish 4px.
+    borderRadius: theme.borderRadius.figmaTile,
     backgroundColor: theme.colors.figmaCardSurface,
     overflow: 'hidden',
   },

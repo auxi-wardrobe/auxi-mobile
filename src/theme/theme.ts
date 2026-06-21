@@ -42,6 +42,10 @@ export const theme = {
     figmaTextSecondary: '#616161',
     figmaTextMuted: '#49454F',
     figmaDivider: '#D1D3D8',
+    // Barely-there hairline — Figma `border/neutral/subtle_300` (#f2f4f7).
+    // Used for the favourite card's title-flanking dividers (Figma divider
+    // component `3646:10000` / `3646:9997`); lighter than figmaDivider.
+    figmaDividerSubtle: '#f2f4f7',
     figmaAction: '#272A32',
     figmaButton: '#272A32',
     figmaRed: '#CC4C3E',
@@ -60,6 +64,7 @@ export const theme = {
     // Source: plans/260531-1326-au-303-two-axis-swipe/figma-extraction-au303-guidance.md §8
     figmaDotInactive: '#c6bcb1', // icon/primary/subtle_300 — inactive pagination dot
     figmaOverlayScrim: 'rgba(38, 36, 33, 0.7)', // background/primary/bold_600 (#262421) @ 70% — guidance-overlay backdrop
+    dialogScrim: 'rgba(25, 27, 34, 0.3)', // ink (#191b22) @ 30% — centered dialog/modal backdrop (Settings + AI-consent dialogs)
     figmaOnboardingStickyBarBg: 'rgba(255, 255, 255, 0.6)', // color/neutral/white/Alpha200 — Step-3 sticky bar (backdrop-blur 2 in Figma)
     figmaTextDark: '#070707', // near-black for expand/collapse text buttons
     // Sidebar dark redesign (node 2852:24670) — divider hairline on the dark
@@ -116,6 +121,16 @@ export const theme = {
     figmaSnackbarSuccessBg: '#4cf4d3', // color/success/200 — snackbar surface
     // Glyph + text reuse existing tokens: icon = figmaTextDark (#070707,
     // icon/primary/bold_700), text = uacTextBase (#1d1f23, text/neutral/base).
+    // Home-loading shimmer (AU-364, Figma node 2850:11205 "Home - loading").
+    // The loading outfit slots use a diagonal warm→greige ramp
+    // (linear-gradient(230deg, #f2efec 26.8% → #d5ccc3 84%)). The start stop is
+    // `cream` (#f2efec, figmaCardSurface); the END stop has no prior token.
+    // Source: figma get_design_context node 2850:11215.
+    figmaSkeletonRampEnd: '#d5ccc3', // skeleton/shimmer gradient end-stop (greige)
+    // background/overlay/light/30 (#ffffff4d) — translucent white surface behind
+    // the tile pin badge. Was an inline literal in `pinBadge`; promoted to a
+    // token so the loading-state pin reuses the same value (DRY).
+    figmaOverlayLight30: 'rgba(255, 255, 255, 0.3)',
   },
   spacing: {
     xs: 4,
@@ -204,6 +219,16 @@ export const theme = {
         lineHeight: 24,
         letterSpacing: 0,
       },
+      // Legal documents (Terms / Privacy) — Figma node 3177:6642 document
+      // title + section headings render Poppins Bold 16/24, tracking 0.15.
+      // Bold via the bundled face (RN `fontWeight` can't restyle a named
+      // custom font reliably), so this is a distinct alias from poppinsBody.
+      poppinsBodyBold: {
+        fontFamily: 'Poppins-Bold',
+        fontSize: 16,
+        lineHeight: 24,
+        letterSpacing: 0.15,
+      },
       // Settings redesign (node 2850:15840) — main-list big time value.
       // Figma heading/H2 = Poppins Bold 32/40, letter-spacing −0.64.
       poppinsTimeLg: {
@@ -250,6 +275,14 @@ export const theme = {
       interSemiboldSm: {
         fontFamily: 'Inter-SemiBold',
         fontSize: 16,
+        lineHeight: 20,
+      },
+      // Favourite remove bottom-sheet title (Figma 3539:23380).
+      // Inter SemiBold 14/20 (body/sm Semibold) — one size smaller than
+      // interSemiboldSm (16/20); the sheet header reads at body/sm, not Text-md.
+      interSemiboldXsSm: {
+        fontFamily: 'Inter-SemiBold',
+        fontSize: 14,
         lineHeight: 20,
       },
       uacBodyMdMedium: {

@@ -236,7 +236,6 @@
         "name_edit_placeholder": "Saisir un nom"
       },
       "list": {
-        "coming_soon_body": "L'import depuis un lien web sera bientôt disponible.",
         "added_title": "Ajouté à votre garde-robe",
         "item_ready_title": "Votre article est prêt",
         "upload_failed_title": "Échec du téléchargement",
@@ -255,8 +254,6 @@
         "method_search_title": "Rechercher dans la base",
         "method_search_desc": "Le moyen le plus rapide d'ajouter un article",
         "method_photo_desc": "Utilisez votre appareil photo ou votre bibliothèque",
-        "method_web_title": "Importer depuis le web",
-        "method_web_desc": "Collez un lien produit pour enregistrer un article",
         "preparing_title": "Préparation de votre article…",
         "preparing_step1": "Suppression de l'arrière-plan et identification des détails…",
         "preparing_step2": "Étiquetage automatique de vos articles…",
@@ -343,7 +340,6 @@
       "choose_from_library": "Choisir dans la bibliothèque",
       "no_image": "Aucune image",
       "badge_common": "commun",
-      "coming_soon": "Bientôt disponible",
       "action_cannot_undo": "Cette action est irréversible.",
       "pick_image_failed": "Échec de la sélection de l'image",
       "load_wardrobe_failed_title": "Impossible de charger la garde-robe",
@@ -390,6 +386,7 @@
       "a11y_add_to_wardrobe": "Ajouter un article à votre garde-robe",
       "add_to_wardrobe": "Ajouter à la garde-robe",
       "building_next": "Création de vos prochaines tenues",
+      "generating": "Génération",
       "loading_more": "Chargement d'autres options...",
       "a11y_pin_item": "Épingler l'article",
       "a11y_unpin_item": "Désépingler l'article",
@@ -438,7 +435,7 @@
       "no_photo_hint": "Pas encore de photo. Appuyez sur Reprendre pour en ajouter une.",
       "time_label": "Heure : {{time}}",
       "photo_helps": "Cette photo aide à voir comment les tenues vous vont",
-      "privacy_note": "🔒 Votre photo reste privée.",
+      "privacy_note": "Votre photo est envoyée de façon sécurisée à nos fournisseurs d'IA (Google, OpenAI) pour générer votre résultat. Elle n'est jamais vendue ni partagée avec des annonceurs.",
       "retake": "Reprendre",
       "retake_body": "Reprendre la photo du corps",
       "tryon_tab": "Essayer",
@@ -473,6 +470,7 @@
       "error_load": "Échec du chargement des paramètres",
       "error_update_time": "Échec de la mise à jour de l'heure quotidienne",
       "error_update_analytics": "Échec de la mise à jour des préférences d'analyse",
+      "error_update_ai_sharing": "Échec de la mise à jour du partage de données avec l'IA",
       "error_update_direction": "Échec de la mise à jour de l'orientation de style",
       "error_reset": "Échec de la réinitialisation des préférences",
       "title": "Paramètres",
@@ -483,7 +481,10 @@
       "privacy_control": "Contrôle de la confidentialité",
       "share_analytics": "Partager les analyses d'utilisation",
       "a11y_toggle_analytics": "Activer/désactiver le partage des analyses",
-      "your_information": "Vos informations",
+      "share_ai_data": "Partage de données avec l'IA",
+      "a11y_toggle_ai_data": "Activer/désactiver le partage des photos avec les fournisseurs d'IA",
+      "terms_of_service": "Conditions d'utilisation",
+      "privacy_policy": "Politique de confidentialité",
       "manage_body_photo": "Gérer la photo du corps",
       "delete_data": "Supprimer les données",
       "version": "Version {{version}}",
@@ -536,7 +537,6 @@
       "favourite": "Mes favoris",
       "feedback": "Commentaires",
       "setting": "Paramètres",
-      "account": "Mon compte",
       "outfit_canvas": "Canevas de tenue",
       "logout": "Se déconnecter"
     },
@@ -558,6 +558,7 @@
     "favourite": {
       "title": "Favoris",
       "back": "Retour",
+      "open_menu": "Ouvrir le menu",
       "empty_body": "Appuyez sur « Porter ceci » pour ajouter une tenue",
       "empty_a11y": "Aucune tenue enregistrée pour le moment",
       "common_badge": "commun",
@@ -598,7 +599,7 @@
       "backToHome": "Retour à l'accueil",
       "optIn": "Utiliser cette photo pour les futurs aperçus de tenues",
       "retakeProfile": "Reprendre les photos",
-      "privacy": "Vos photos restent toujours privées",
+      "privacy": "Vos photos sont envoyées de façon sécurisée à nos fournisseurs d'IA (Google, OpenAI) pour générer votre résultat, et ne sont jamais vendues ni partagées avec des annonceurs.",
       "generating": "Création de votre look…",
       "error": "Impossible de créer votre look. Veuillez réessayer.",
       "retry": "Réessayer",
@@ -639,6 +640,19 @@
         "failedTitle": "Impossible de créer votre rendu",
         "failedBody": "Touchez pour revenir et réessayer."
       }
+    },
+    "aiConsent": {
+      "title": "Partager vos photos avec l'IA ?",
+      "body": "Pour créer ce résultat, vos photos sont envoyées de façon sécurisée à nos fournisseurs d'IA, Google et OpenAI. Elles servent uniquement à générer votre résultat — jamais vendues ni partagées avec des annonceurs.",
+      "privacy_link": "Lire notre politique de confidentialité",
+      "accept": "Accepter et continuer",
+      "decline": "Plus tard"
+    },
+    "aiDisclosure": {
+      "label": "Généré par IA — peut être inexact",
+      "report": "Signaler",
+      "report_subject": "Signaler du contenu généré par IA",
+      "report_body": "Je souhaite signaler un problème avec un résultat généré par IA dans l'application. Veuillez décrire ce qui n'a pas fonctionné :"
     }
   }
 }

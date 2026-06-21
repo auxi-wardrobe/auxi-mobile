@@ -54,6 +54,12 @@ export interface MoodFeedbackOutfitRef {
   itemIds: string[];
   /** Threaded into the sheet to pick the contextual chip set. */
   occasion?: string;
+  /**
+   * The per-outfit message (V05 `reasoning_human`) shown on Home. Threaded
+   * into the favourite save so it persists as the card's title hero. Omitted
+   * when the outfit has no message.
+   */
+  title?: string;
 }
 
 /** Ticket `mood_feedback_state` machine. `visible` derives from kind. */
@@ -254,6 +260,10 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
           item_ids: pending.itemIds,
           source: 'home',
           mood_tags: moodIds,
+          // Persist the message shown on Home so the favourite card renders
+          // it as its centred title hero. Backward-safe (backend ignores
+          // `title` until its column ships).
+          ...(pending.title ? { title: pending.title } : {}),
         })
         .then(response => {
           const updated = response.updated === true;

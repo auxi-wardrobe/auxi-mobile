@@ -201,7 +201,9 @@ export const trackTemperatureOverrideActive = (
 };
 
 /** Apply succeeded with `weather` while an override was active → override removed. */
-export const trackTemperatureOverrideRemoved = (previousBucket: string): void => {
+export const trackTemperatureOverrideRemoved = (
+  previousBucket: string,
+): void => {
   track('temperature_override_removed', { previous_bucket: previousBucket });
 };
 
@@ -225,6 +227,18 @@ export const trackRecommendationGeneratedByTemperatureOnce = (
     bucket,
     outfit_count: outfitCount,
   });
+};
+
+// ── Legal documents (Terms of Service / Privacy Policy) ────────────────────
+// App Store blocker B5 (legal docs reachable in-app). Literal event name —
+// no template strings. Props are bounded enums, lowercase, no PII.
+
+/** A legal document screen was opened (Terms of Service or Privacy Policy). */
+export const trackLegalDocumentViewed = (
+  document: 'terms_of_service' | 'privacy_policy',
+  source: 'welcome' | 'settings',
+): void => {
+  track('legal_document_viewed', { document, source });
 };
 
 /**

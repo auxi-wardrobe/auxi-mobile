@@ -21,7 +21,7 @@
  *   "Sign-in is not set up" so the app doesn't crash at the SDK
  *   boundary on builds that haven't received `GoogleService-Info.plist`.
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -54,6 +54,8 @@ import {
   isOAuthConflictError,
   type AuthErrorEnvelope,
 } from '../../services/authTypes';
+import { buildLegalSegments } from '../legal/legalLinkSegments';
+import type { LegalDocumentType } from '../../content/legal';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
@@ -147,6 +149,25 @@ export const WelcomeScreen = () => {
     // `auth_language_changed` from inside LanguageSettings.
     track('auth_language_button_tapped');
     navigation.navigate('LanguageSettings');
+  };
+
+  // Legal footer — split the localised sentence so the Terms / Privacy
+  // substrings are tappable (App Store blocker B5). Recomputes on locale
+  // change because all three inputs are i18n-resolved.
+  const legalSegments = useMemo(
+    () =>
+      buildLegalSegments(
+        t('uac.welcome.legal_text'),
+        t('uac.welcome.legal_terms_link'),
+        t('uac.welcome.legal_privacy_link'),
+      ),
+    [t],
+  );
+
+  const onPressLegal = (documentType: LegalDocumentType) => {
+    // `legal_document_viewed` is fired by LegalDocumentScreen's mount effect
+    // (with source='welcome') — don't double-count it here.
+    navigation.navigate('LegalDocument', { documentType, source: 'welcome' });
   };
 
   /**
@@ -393,10 +414,31 @@ export const WelcomeScreen = () => {
             </Pressable>
           </View>
 
-          {/* Legal footer — kept as single Text per spec note (no separate
-            link nodes in Figma; PM open Q on linkifying substrings). */}
+          {/* Legal footer — the "Terms of Service" + "Privacy Policy"
+            substrings are linkified to the in-app legal screens (App Store
+            blocker B5). Split works across all 3 locales because each
+            legal_text contains both link substrings verbatim. */}
           <Text style={styles.legalText} testID="welcome-legal-text">
-            {t('uac.welcome.legal_text')}
+            {legalSegments.map((segment, index) =>
+              segment.type === 'text' ? (
+                <Text key={`legal-${index}`}>{segment.value}</Text>
+              ) : (
+                <Text
+                  key={`legal-${index}`}
+                  testID={
+                    segment.type === 'terms'
+                      ? 'welcome-legal-terms-link'
+                      : 'welcome-legal-privacy-link'
+                  }
+                  accessibilityRole="link"
+                  accessibilityLabel={segment.value}
+                  style={styles.legalLink}
+                  onPress={() => onPressLegal(segment.type)}
+                >
+                  {segment.value}
+                </Text>
+              ),
+            )}
           </Text>
         </View>
       </View>
@@ -503,6 +545,11 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.uacDimension16,
+  },
+  legalLink: {
+    ...theme.typography.aliases.uacBodyXsMedium,
+    color: theme.colors.uacTextBase,
+    textDecorationLine: 'underline',
   },
   pressed: {
     opacity: 0.7,

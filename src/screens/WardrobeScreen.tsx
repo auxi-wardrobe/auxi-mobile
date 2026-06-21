@@ -342,16 +342,6 @@ export const WardrobeScreen = () => {
     navigation.navigate('Database');
   };
 
-  const handleImportFromWeb = () => {
-    track('add_item_method_selected', { method: 'import_web' });
-    Toast.show({
-      type: 'info',
-      text1: t('common.coming_soon'),
-      text2: t('wardrobe.list.coming_soon_body'),
-      position: 'bottom',
-    });
-  };
-
   const handleImageSelection = async (type: 'camera' | 'gallery') => {
     setAddSheetVisible(false);
 
@@ -683,19 +673,6 @@ export const WardrobeScreen = () => {
                     description={t('wardrobe.list.method_photo_desc')}
                     onPress={handleTakePhoto}
                     testID="wardrobe-add-photo"
-                  />
-                  <AddMethodRow
-                    icon={
-                      <Icons.Globe
-                        width={24}
-                        height={24}
-                        color={theme.colors.uacBackgroundBase}
-                      />
-                    }
-                    title={t('wardrobe.list.method_web_title')}
-                    description={t('wardrobe.list.method_web_desc')}
-                    onPress={handleImportFromWeb}
-                    testID="wardrobe-add-import"
                     isLast
                   />
                 </BottomSheetSurface>

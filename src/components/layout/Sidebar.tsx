@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { useAuth } from '../../context/AuthContext';
+import { track } from '../../services/analytics';
 import { Icons } from '../../assets/icons';
 import { AppStackParamList } from '../../types/navigation';
 
@@ -158,8 +159,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             label={t('sidebar.feedback')}
             Icon={Icons.Feedback}
             testID="sidebar-menu-feedback"
-            // TODO(sidebar): no Feedback route yet
-            onPress={() => {}}
+            isActive={currentRouteName === 'Feedback'}
+            onPress={() => {
+              track('feedback_opened', { source: 'sidebar' });
+              navigation.navigate('Feedback');
+              onClose();
+            }}
           />
           <MenuItem
             label={t('sidebar.setting')}
@@ -171,13 +176,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               onClose();
             }}
           />
-          <MenuItem
-            label={t('sidebar.account')}
-            Icon={Icons.User}
-            testID="sidebar-menu-account"
-            // TODO(sidebar): no My account route yet
-            onPress={() => {}}
-          />
+          {/* "My account" row removed (App Store B3 / Guideline 2.1): no
+              account screen exists, so the row was a dead button. Account
+              actions live under Settings (the row above). */}
           <MenuItem
             label={t('sidebar.outfit_canvas')}
             Icon={Icons.Setting}
