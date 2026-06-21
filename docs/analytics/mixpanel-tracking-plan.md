@@ -208,9 +208,9 @@ The pin feature (AU-307) originally shipped with NO analytics (only `console.inf
 
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
-| **`item_pinned`** | An item becomes pinned — via the on-tile pill (confirm sheet skipped when "Don't show again" is set), or via the confirm/replace sheet "Pin & build" CTA. | `HomeScreen.tsx:1583, 1655` | `source` (`home_tile_pill` / `home_confirm_sheet` / `home_confirm_sheet_replace`), `confirm_skipped` (bool) |
-| **`item_unpinned`** | An item is unpinned — via tapping the "Tap to unpin" pill on the pinned tile, or the header "Pinned: <label>" clear affordance. | `HomeScreen.tsx:1575, 1641` | `source` (`home_tile_pill` / `home_header_label`) |
-| **`pin_dont_show_again_toggled`** | The "Don't show this popup again" checkbox in the pin-confirm sheet is toggled. Fires on every toggle (the value persists to `AsyncStorage` only on confirm). | `HomeScreen.tsx:1668` | `checked` (bool) |
+| **`item_pinned`** | An item becomes pinned — via the on-tile pill (confirm sheet skipped when "Don't show again" is set), or via the confirm/replace sheet "Build around this" CTA. | `HomeScreen.tsx:1624, 1706` | `source` (`home_tile_pill` / `home_confirm_sheet` / `home_confirm_sheet_replace`), `confirm_skipped` (bool) |
+| **`item_unpinned`** | An item is unpinned — via tapping the "Tap to unpin" pill on the pinned tile. | `HomeScreen.tsx:1613` | `source` (`home_tile_pill`) |
+| **`pin_dont_show_again_toggled`** | The "Don't show this popup again" checkbox in the pin-confirm sheet is toggled. Fires on every toggle (the value persists to `AsyncStorage` only on confirm). | `HomeScreen.tsx:1722` | `checked` (bool) |
 
 > PII: none. `source` values are a closed enum of UI-surface keys; `confirm_skipped` / `checked` are unquoted booleans. No item id, no garment name, no free text. Item identifiers are intentionally omitted (the funnel question is "does the pin feature get used", not "which garment").
 
