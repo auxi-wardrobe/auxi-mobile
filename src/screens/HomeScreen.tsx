@@ -2169,10 +2169,11 @@ export const HomeScreen = () => {
         </View>
       ) : null}
 
-      {/* AU-307 phase 04 — "Generating" status text. Renders just above the
+      {/* AU-307 phase 04 — "Finding the mix" status pill. Renders just above the
           deck whenever the pin-driven /build (or /try_another) is in flight.
-          Minimal copy + theme tokens; no Macgie reuse (the Generating UI is
-          the skeleton tiles themselves — the header is a status hint). */}
+          Figma 3171:9988 pairs the caption with a loading spinner — render a
+          small ActivityIndicator next to the text (generic ray-spinner that
+          matches the Figma `streamline-ultimate:loading` icon). */}
       {pinState.outfit === 'generating' ? (
         <View
           style={styles.pinGeneratingHeader}
@@ -2181,6 +2182,11 @@ export const HomeScreen = () => {
           <Text style={styles.pinGeneratingHeaderText} numberOfLines={1}>
             {t('pin.generating_header')}
           </Text>
+          <ActivityIndicator
+            size="small"
+            color={theme.colors.figmaTextPrimary}
+            testID="home-pin-generating-spinner"
+          />
         </View>
       ) : null}
 
@@ -3576,6 +3582,9 @@ const styles = StyleSheet.create({
   // AU-307 phase 04 — "Generating" status hint, mirrors cycledHint geometry
   // so the user perceives it as part of the same status-pill family.
   pinGeneratingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginHorizontal: SHEET_PADDING,
     marginTop: 4,
     paddingHorizontal: 12,
