@@ -49,7 +49,6 @@ import {
 import IconHomeMenu from '../assets/images/icon_home_menu.svg';
 import IconHomeHeartOutline from '../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../assets/images/icon_home_heart_filled.svg';
-import IconHomePin from '../assets/images/icon_home_pin.svg';
 import { theme } from '../theme/theme';
 import { MacgieLoader } from '../components/macgie';
 import { Item } from '../types/item';
@@ -1683,16 +1682,6 @@ export const HomeScreen = () => {
     });
   }, []);
 
-  const handleClearPin = useCallback(() => {
-    if (!pinnedItemId) {
-      return;
-    }
-    track('item_unpinned', { source: 'home_header_label' });
-    // F1: drop the cached pinned Item on an explicit clear.
-    lastPinnedItemRef.current = null;
-    pinDispatch({ type: 'UNPIN' });
-  }, [pinnedItemId, pinDispatch]);
-
   // AU-307 Figma redesign — confirm sheet primary CTA ("Pin & build"). Commits
   // the "Don't show again" checkbox to storage when checked, fires the pin
   // event, then dispatches CONFIRM_PIN / CONFIRM_REPLACE (reducer flips
@@ -2144,29 +2133,6 @@ export const HomeScreen = () => {
           );
         })}
       </View> */}
-
-      {/* PHASE B (AU-222): subtle pin label below the header — tap to clear.
-          Figma 1711:17062's header band itself is unchanged; we render this
-          micro-affordance just under it so the user always knows what they
-          have pinned and can undo it without hunting for the tile. */}
-      {pinnedItem ? (
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={handleClearPin}
-          style={styles.pinHeaderLabel}
-        >
-          <IconHomePin width={24} height={24} />
-          <Text style={styles.pinHeaderLabelText} numberOfLines={1}>
-            {t('home.pinned_label', {
-              label:
-                pinnedItem.category ||
-                pinnedItem.color ||
-                t('home.pinned_item_fallback'),
-            })}
-          </Text>
-          <Text style={styles.pinHeaderLabelClear}>{t('home.clear')}</Text>
-        </TouchableOpacity>
-      ) : null}
 
       {/* Sustainability (2026-05-27): subtle, non-blocking hint once the
           backend starts cycling (uniques exhausted, real outfits re-served).
@@ -3151,33 +3117,6 @@ const styles = StyleSheet.create({
   },
   modePillTextUnselected: {
     color: theme.colors.figmaAction,
-  },
-  // PHASE B (AU-222): subtle "Pinned: <category>" hint just below the header
-  // band. Tap to clear the pin. Kept tasteful — Figma 1711:17062's header
-  // band itself is unchanged; this lives in the gap above the first sheet.
-  pinHeaderLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: theme.colors.figmaSurfaceSoft,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaDivider,
-    marginHorizontal: 24,
-    marginBottom: 4,
-  },
-  pinHeaderLabelText: {
-    ...theme.typography.aliases.manropeCaption,
-    color: theme.colors.figmaTextPrimary,
-    maxWidth: 200,
-  },
-  pinHeaderLabelClear: {
-    ...theme.typography.aliases.manropeCaption,
-    color: theme.colors.figmaAction,
-    fontFamily: 'Manrope-Medium',
   },
   scrollContent: {
     paddingTop: 4,

@@ -376,8 +376,6 @@
       "a11y_open_menu": "Open menu",
       "a11y_saved_fav": "Saved to favourites",
       "a11y_fav_this": "Favourite this look",
-      "pinned_label": "Pinned: {{label}}",
-      "pinned_item_fallback": "item",
       "clear": "Clear",
       "seen_all_hint": "You've seen them all — suggestions will repeat",
       "skip_label": "Skip",
@@ -428,8 +426,7 @@
       "item_unavailable": "This item is no longer available.",
       "tooltip_unpin": "Tap to unpin",
       "guest_blocker": "Sign in to pin items and build around them.",
-      "guest_signin_cta": "Sign in",
-      "a11y_pinned_badge": "Pinned item, double-tap to unpin"
+      "guest_signin_cta": "Sign in"
     },
     "body": {
       "toast_load_failed_title": "My body",

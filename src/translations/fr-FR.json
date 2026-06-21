@@ -376,8 +376,6 @@
       "a11y_open_menu": "Ouvrir le menu",
       "a11y_saved_fav": "Enregistré dans les favoris",
       "a11y_fav_this": "Ajouter cette tenue aux favoris",
-      "pinned_label": "Épinglé : {{label}}",
-      "pinned_item_fallback": "article",
       "clear": "Effacer",
       "seen_all_hint": "Vous avez tout vu — les suggestions se répètent",
       "skip_label": "Passer",
@@ -428,8 +426,7 @@
       "item_unavailable": "Cet article n'est plus disponible.",
       "tooltip_unpin": "Toucher pour désépingler",
       "guest_blocker": "Connectez-vous pour épingler et composer autour.",
-      "guest_signin_cta": "Se connecter",
-      "a11y_pinned_badge": "Article épinglé, double-tap pour désépingler"
+      "guest_signin_cta": "Se connecter"
     },
     "body": {
       "toast_load_failed_title": "Mon corps",
