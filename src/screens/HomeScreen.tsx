@@ -77,7 +77,6 @@ import { resolveItemImage } from '../utils/url';
 import { weatherService } from '../services/weatherService';
 import { WeatherWidget } from '../components/features/WeatherWidget';
 import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
-import { AiContentDisclosure } from '../components/features/AiContentDisclosure';
 import {
   TemperatureOverrideSheet,
   type TemperatureSheetErrorKey,
@@ -1129,9 +1128,22 @@ export const HomeScreen = () => {
       pinDispatch({ type: 'GENERATE_START', snapshot });
     }
 
-    // 30s client-side cap (spec §9 "Loading infinite").
+    // 30s client-side cap (spec §9 "Loading infinite"). The watchdog MUST
+    // drive the UI out of `generating` itself — aborting the request is not
+    // sufficient: apiClient has no request timeout, and RN/axios does not
+    // reliably reject an in-flight request when its AbortSignal fires, so a
+    // request that never settles would strand the user on the skeleton
+    // forever ("bấm pin → loading mãi"). Dispatch GENERATE_ERROR directly so
+    // the loading state always terminates; the `pinAbortRef !== controller`
+    // stale-guards on the resolve/catch paths drop any late settle, so this
+    // can never double-handle.
     const timeoutId = setTimeout(() => {
       controller.abort();
+      if (pinAbortRef.current === controller) {
+        pinAbortRef.current = null;
+        setPinErrorKind('network');
+        pinDispatch({ type: 'GENERATE_ERROR' });
+      }
     }, 30000);
 
     // Endpoint picked by recommendV05 internally — but we set up call shape
@@ -2271,20 +2283,6 @@ export const HomeScreen = () => {
         </View>
       )}
 
-      {/* B2: AI-generated disclosure + Report for the recommendation surface
-          (Apple 2026 AI rules). The outfit is AI-selected content; shown once
-          per screen while a recommendation is present, below the swipe deck.
-          Placed outside the height-locked OptionSheet card so it never
-          perturbs the grid layout. */}
-      {optionSets.length > 0 ? (
-        <View style={styles.aiDisclosureRow}>
-          <AiContentDisclosure
-            surface="recommendation"
-            testID="home-ai-disclosure"
-          />
-        </View>
-      ) : null}
-
       {/* AU-307 phase 04 — error / fallback / guest banner. M5 fix: float the
           banner above the Remix action row + sticky footer (anchored over the
           lower-grid dead space, elevated + own surface) instead of inserting it
@@ -3228,11 +3226,6 @@ const styles = StyleSheet.create({
   // the pre-AU-303 full-bleed sheet width.
   outfitCell: {
     width: screenWidth,
-  },
-  aiDisclosureRow: {
-    paddingHorizontal: theme.spacing.uacBodyPadding,
-    paddingVertical: theme.spacing.xs,
-    alignItems: 'center',
   },
   optionSheet: {
     height: OPTION_SHEET_HEIGHT,
