@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaSurface,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    shadowColor: '#000000',
+    shadowColor: theme.ds.color.shadow,
     shadowOffset: { width: 0, height: 19 },
     shadowOpacity: 0.22,
     shadowRadius: 24,

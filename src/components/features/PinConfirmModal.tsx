@@ -1,13 +1,18 @@
-// AU-307 — Pin confirm / replace modal.
+// AU-307 — Pin confirm / replace sheet (Figma redesign, node 3276:31736).
 //
+// Full-width bottom-anchored sheet (rounded top corners + grabber) replacing
+// the old centered two-button card. Per CEO decision 2:
+//   - single full-width "Pin & build" CTA (no Cancel/Build two-button row)
+//   - "Don't show this popup again" checkbox below the CTA
 // Two variants share one component:
 //   - 'confirm' — first pin, copy: "Keep this item"
 //   - 'replace' — swap pinned, copy: "Replace pinned item?"
 //
-// Layout mirrors ContextChipsModal: RN <Modal transparent>, dim overlay
-// (rgba(0,0,0,0.5)), tap-scrim dismiss, animated slide-up card. Primary CTA
-// debounced via local `isPressed` state so a double-tap can't fire two
-// dispatches before the parent reducer flips `outfit==='generating'`.
+// Motion: slide-up open (medium + enter) / slide-down close (normal + exit)
+// with an asymmetric open/close pair, AND a reduce-motion branch that snaps
+// instead of sliding (motion-rules.md §4). Primary CTA debounced via local
+// `isPressed` so a double-tap can't fire two dispatches before the parent
+// reducer flips `outfit==='generating'`.
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -24,11 +29,9 @@ import {
 import { useTranslation } from 'react-i18next';
 import IconHomePin from '../../assets/images/icon_home_pin.svg';
 import { theme } from '../../theme/theme';
-import { motion } from '../../theme/motion';
+import { motion, useReducedMotion } from '../../theme/motion';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const MODAL_WIDTH = Math.min(screenWidth - 32, 360);
-const ITEM_IMAGE_SIZE = 144;
+const { height: screenHeight } = Dimensions.get('window');
 
 export type PinConfirmModalVariant = 'confirm' | 'replace';
 
@@ -37,6 +40,11 @@ export interface PinConfirmModalProps {
   variant: PinConfirmModalVariant;
   itemImageUrl?: string | null;
   itemLabel?: string;
+  /** Whether the pinned item is a system "common" essential (shows badge). */
+  isCommonItem?: boolean;
+  /** State of the "Don't show this popup again" checkbox. */
+  dontShowAgain: boolean;
+  onToggleDontShowAgain: () => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -46,10 +54,14 @@ export const PinConfirmModal: React.FC<PinConfirmModalProps> = ({
   variant,
   itemImageUrl,
   itemLabel,
+  isCommonItem = false,
+  dontShowAgain,
+  onToggleDontShowAgain,
   onConfirm,
   onCancel,
 }) => {
   const { t } = useTranslation();
+  const reduceMotion = useReducedMotion();
   const [shouldRender, setShouldRender] = useState(visible);
   const [isPressed, setIsPressed] = useState(false);
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
@@ -63,6 +75,11 @@ export const PinConfirmModal: React.FC<PinConfirmModalProps> = ({
     if (visible) {
       // Reset debounce guard on each fresh open.
       setIsPressed(false);
+      if (reduceMotion) {
+        // Reduce-motion: snap in, no slide.
+        slideAnim.setValue(0);
+        return;
+      }
       slideAnim.setValue(screenHeight);
       Animated.timing(slideAnim, {
         toValue: 0,
@@ -77,6 +94,12 @@ export const PinConfirmModal: React.FC<PinConfirmModalProps> = ({
       return;
     }
 
+    if (reduceMotion) {
+      // Reduce-motion: snap out, no slide.
+      slideAnim.setValue(screenHeight);
+      setShouldRender(false);
+      return;
+    }
     Animated.timing(slideAnim, {
       toValue: screenHeight,
       duration: motion.duration.normal,
@@ -85,7 +108,7 @@ export const PinConfirmModal: React.FC<PinConfirmModalProps> = ({
     }).start(() => {
       setShouldRender(false);
     });
-  }, [shouldRender, slideAnim, visible]);
+  }, [reduceMotion, shouldRender, slideAnim, visible]);
 
   if (!shouldRender) {
     return null;
@@ -118,11 +141,20 @@ export const PinConfirmModal: React.FC<PinConfirmModalProps> = ({
 
         <Animated.View
           testID="pin-confirm-modal-root"
-          style={[
-            styles.card,
-            { transform: [{ translateY: slideAnim }] },
-          ]}
+          style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}
         >
+          {/* Grabber handle (CEO decision 2). */}
+          <View style={styles.grabber} accessibilityElementsHidden />
+
+          <View style={styles.headerBlock}>
+            <Text style={styles.title} testID="pin-confirm-modal-title">
+              {t(titleKey)}
+            </Text>
+            <Text style={styles.subtitle} testID="pin-confirm-modal-subtitle">
+              {t('pin.modal_subtitle')}
+            </Text>
+          </View>
+
           <View style={styles.itemPreview}>
             {itemImageUrl ? (
               <Image
@@ -135,42 +167,58 @@ export const PinConfirmModal: React.FC<PinConfirmModalProps> = ({
             ) : (
               <View style={[styles.itemImage, styles.itemImagePlaceholder]} />
             )}
-            <View style={styles.pinIndicator} accessibilityElementsHidden>
-              <IconHomePin width={20} height={20} />
+            {isCommonItem ? (
+              <View style={styles.commonBadge} accessibilityElementsHidden>
+                <Text style={styles.commonBadgeText} numberOfLines={1}>
+                  {t('common.badge_common')}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Single full-width "Pin & build" CTA (CEO decision 2). */}
+          <TouchableOpacity
+            testID="pin-confirm-modal-confirm"
+            accessibilityRole="button"
+            accessibilityLabel={t('pin.build_cta')}
+            activeOpacity={0.85}
+            disabled={isPressed}
+            style={[styles.confirmButton, isPressed && styles.confirmButtonDisabled]}
+            onPress={handleConfirm}
+          >
+            <Text style={styles.confirmText}>{t('pin.build_cta')}</Text>
+            <IconHomePin
+              width={20}
+              height={20}
+              color={theme.colors.uacTextPrimaryBase}
+            />
+          </TouchableOpacity>
+
+          {/* "Don't show this popup again" checkbox row. */}
+          <TouchableOpacity
+            testID="pin-confirm-modal-dont-show-again"
+            accessibilityRole="checkbox"
+            accessibilityLabel={t('pin.dont_show_again')}
+            accessibilityState={{ checked: dontShowAgain }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.checkboxRow}
+            onPress={onToggleDontShowAgain}
+          >
+            <View
+              style={[
+                styles.checkbox,
+                dontShowAgain && styles.checkboxChecked,
+              ]}
+            >
+              {dontShowAgain ? (
+                <Text style={styles.checkMark} allowFontScaling={false}>
+                  ✓
+                </Text>
+              ) : null}
             </View>
-          </View>
-
-          <Text style={styles.title} testID="pin-confirm-modal-title">
-            {t(titleKey)}
-          </Text>
-          <Text style={styles.subtitle} testID="pin-confirm-modal-subtitle">
-            {t('pin.modal_subtitle')}
-          </Text>
-
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              testID="pin-confirm-modal-cancel"
-              accessibilityRole="button"
-              accessibilityLabel={t('pin.cancel_cta')}
-              activeOpacity={0.85}
-              style={styles.cancelButton}
-              onPress={onCancel}
-            >
-              <Text style={styles.cancelText}>{t('pin.cancel_cta')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              testID="pin-confirm-modal-confirm"
-              accessibilityRole="button"
-              accessibilityLabel={t('pin.build_cta')}
-              activeOpacity={0.85}
-              disabled={isPressed}
-              style={[styles.confirmButton, isPressed && styles.confirmButtonDisabled]}
-              onPress={handleConfirm}
-            >
-              <Text style={styles.confirmText}>{t('pin.build_cta')}</Text>
-            </TouchableOpacity>
-          </View>
+            <Text style={styles.checkboxLabel}>{t('pin.dont_show_again')}</Text>
+          </TouchableOpacity>
         </Animated.View>
       </View>
     </Modal>
@@ -180,101 +228,118 @@ export const PinConfirmModal: React.FC<PinConfirmModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+    // Figma scrim: color/neutral/black @ ~30%.
+    backgroundColor: theme.colors.figmaOverlayScrim,
   },
-  card: {
+  sheet: {
     zIndex: theme.zIndex.modal,
-    width: MODAL_WIDTH,
-    borderRadius: 20,
-    backgroundColor: theme.colors.figmaSurface,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 20,
+    width: '100%',
+    borderTopLeftRadius: theme.ds.radius.md,
+    borderTopRightRadius: theme.ds.radius.md,
+    backgroundColor: theme.ds.color.surface,
+    paddingHorizontal: theme.spacing.m,
+    paddingTop: theme.spacing.m,
+    paddingBottom: 36, // Figma button-group pb 36
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 19 },
-    shadowOpacity: 0.22,
-    shadowRadius: 24,
-    elevation: 16,
+    ...theme.ds.shadow.sheet,
+  },
+  grabber: {
+    width: 36,
+    height: 4,
+    borderRadius: theme.ds.radius.full,
+    backgroundColor: theme.ds.color.tanStroke,
+    marginBottom: theme.spacing.m,
+  },
+  headerBlock: {
+    alignSelf: 'stretch',
+    gap: theme.spacing.s,
+    marginBottom: theme.spacing.m,
+  },
+  title: {
+    ...theme.typography.aliases.uacBodyMdSemibold,
+    color: theme.colors.uacTextBase,
+  },
+  subtitle: {
+    ...theme.typography.aliases.interBodySm,
+    color: theme.colors.uacTextBase,
   },
   itemPreview: {
-    width: ITEM_IMAGE_SIZE,
-    height: ITEM_IMAGE_SIZE,
-    marginBottom: 16,
+    alignSelf: 'stretch',
+    aspectRatio: 3 / 4,
+    borderRadius: theme.ds.radius.md,
+    backgroundColor: theme.colors.figmaCardSurface,
+    overflow: 'hidden',
+    marginBottom: theme.spacing.m,
     position: 'relative',
   },
   itemImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 12,
-    backgroundColor: theme.colors.figmaIconSurface,
   },
   itemImagePlaceholder: {
     borderWidth: 1,
     borderColor: theme.colors.figmaDivider,
   },
-  pinIndicator: {
+  commonBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaAction,
-    alignItems: 'center',
-    justifyContent: 'center',
+    bottom: theme.spacing.m,
+    alignSelf: 'center',
+    paddingHorizontal: theme.spacing.m - 4,
+    paddingVertical: theme.spacing.xs / 2,
+    borderRadius: theme.borderRadius.m,
+    backgroundColor: theme.colors.figmaCardTag,
   },
-  title: {
-    ...theme.typography.aliases.playfairDisplaySection,
-    color: theme.colors.figmaAction,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 8,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    alignSelf: 'stretch',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    minHeight: 56,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaDivider,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  cancelText: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.figmaAction,
+  commonBadgeText: {
+    ...theme.typography.aliases.interCaptionXxs,
+    color: theme.colors.white,
   },
   confirmButton: {
-    flex: 1,
-    minHeight: 56,
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaAction,
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+    minHeight: theme.spacing.uacButtonHeight,
+    borderRadius: theme.ds.radius.md,
+    backgroundColor: theme.ds.color.ink,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    gap: theme.spacing.s,
+    paddingHorizontal: theme.spacing.m,
+    marginBottom: theme.spacing.m,
   },
   confirmButtonDisabled: {
     opacity: 0.7,
   },
   confirmText: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.white,
+    ...theme.typography.aliases.poppinsButton,
+    color: theme.colors.uacTextPrimaryBase,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: theme.ds.radius.xs,
+    borderWidth: 1.5,
+    borderColor: theme.ds.color.black,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: theme.ds.color.black,
+    borderColor: theme.ds.color.black,
+  },
+  checkMark: {
+    color: theme.ds.color.white,
+    fontSize: 12,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  checkboxLabel: {
+    ...theme.typography.aliases.interCaptionXxs,
+    color: theme.colors.uacTextBase,
   },
 });

@@ -49,7 +49,6 @@ import {
 import IconHomeMenu from '../assets/images/icon_home_menu.svg';
 import IconHomeHeartOutline from '../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../assets/images/icon_home_heart_filled.svg';
-import IconHomePin from '../assets/images/icon_home_pin.svg';
 import { theme } from '../theme/theme';
 import { Item } from '../types/item';
 import {
@@ -114,10 +113,15 @@ import {
 } from '../components/features/PinGenerationError';
 import { PinFallbackNotice } from '../components/features/PinFallbackNotice';
 import { PinnedItemUnavailableNotice } from '../components/features/PinnedItemUnavailableNotice';
-import { PinnedItemTooltip } from '../components/features/PinnedItemTooltip';
+import { PinTilePill } from '../components/features/PinTilePill';
 import { snapshotOutfit } from '../utils/snapshotOutfit';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// AU-307 Figma redesign — persisted "Don't show this popup again" preference
+// for the pin-confirm sheet. When set, a first pin skips the confirm sheet and
+// builds straight away.
+const PIN_DONT_SHOW_STORAGE_KEY = '@auxi/pin/dont_show_confirm';
 
 const GRID_GAP = 4;
 const SHEET_GAP = 4;
@@ -139,11 +143,12 @@ const CARD_ASPECT = 0.75; // Figma 3:4 (width / height) — the CEO's tracked me
 // GRID_AREA derivation below stays arithmetically honest.
 // - OPTION_SHEET_VPAD: optionSheet paddingTop(12) + paddingBottom(24).
 // - OPTION_ACTIONS_HEIGHT: true non-grid CONTENT inside the sheet —
-//   caption pill 40 + 2×12 inter-block gaps (flex-start + gap:12) + action
-//   row 32 = 96. The "Wear this" CTA (56) moved OUT of the card to the sticky
-//   footer, so it's reserved via WEAR_THIS_FOOTER_HEIGHT below (not here).
+//   caption pill 40 + 2×8 inter-block gaps (flex-start + gap:8, 4px grid) +
+//   action row 32 = 88. The "Wear this" CTA (56) moved OUT of the card to the
+//   sticky footer, so it's reserved via WEAR_THIS_FOOTER_HEIGHT below (not here).
+//   Tightened from 96→88 (gap 12→8) to give the 3:4 grid more vertical room.
 const OPTION_SHEET_VPAD = 36;
-const OPTION_ACTIONS_HEIGHT = 96;
+const OPTION_ACTIONS_HEIGHT = 88;
 
 // Widest a tile can be if it filled the content frame edge-to-edge (the old
 // full-bleed width). Used only to size the *ideal* (uncapped) sheet height on
@@ -210,7 +215,7 @@ const GRID_AREA_H =
 // (CARD_HEIGHT for 2-row, computeHeroRowHeight for 5+) sizes against it, so
 // total grid height ≤ GRID_AREA_H for any item count → nothing clips, no
 // scroll needed (preserves the collage drag-to-play C4 fix).
-const GRID_CONTENT_PAD = 16;
+const GRID_CONTENT_PAD = 8;
 // Also net out the gridWrap vertical inset (SHEET_PADDING_V top+bottom, added for
 // the Figma 8px grid py). Without it the extra 16px overflows GRID_AREA_H and the
 // dormant (scrollEnabled=false) gridScroll hard-clips the bottom row on smaller
@@ -322,11 +327,11 @@ const buildGridOutfitSheet = (outfit: OutfitSheet): OutfitSheetWithGrid => ({
   gridItems: buildGrid(outfit.items),
 });
 
-// PHASE B (AU-222): MOBILE FALLBACK — until the backend honours
-// `pinned_item_id` and reshuffles around it, we splice the pinned item into
-// position 0 of the local grid for any sheet that doesn't already contain it.
-// Tracked as a backend follow-up: "valen-get-recommendations-offical: mix
-// around `pinned_item_id`".
+// PHASE B (AU-222): MOBILE FALLBACK — the backend logs `pinned_item_id` but
+// does not yet compose around it (only /try_another filters on it), so we
+// splice the pinned item into position 0 of the local grid for any sheet that
+// doesn't already contain it. Tracked: auxi-backend#108 (compose around
+// `pinned_item_id` on /start + /next); once shipped, this splice is a no-op.
 const buildGridOutfitSheetWithPin = (
   outfit: OutfitSheet,
   pinnedItem: Item | null,
@@ -335,16 +340,36 @@ const buildGridOutfitSheetWithPin = (
     return buildGridOutfitSheet(outfit);
   }
 
-  const alreadyContainsPinned = outfit.items.some(
+  // M1 fix (AU-307 Figma redesign): the pinned item must ALWAYS read first
+  // (Figma position 0 / top-left). Two cases produced a non-lead placement:
+  //   1. fallback path — pinned item absent from the returned sheet → splice
+  //      it into slot 0 (and drop the last item to keep the 4-tile shape).
+  //   2. backend-honoured / stalled-fallback path — pinned item present but
+  //      NOT at index 0 → the previous code returned the order untouched, so
+  //      it landed wherever the backend put it (designer saw it top-right).
+  //      Now we move it to the front so the lead position always holds.
+  const existingIndex = outfit.items.findIndex(
     item => item?.id === pinnedItem.id,
   );
 
-  if (alreadyContainsPinned) {
+  if (existingIndex === 0) {
+    // Already leading — nothing to reorder.
     return buildGridOutfitSheet(outfit);
   }
 
-  // Splice the pinned item into position 0; drop the last item to keep the
-  // 4-tile grid shape. Server-side mixing will replace this once available.
+  if (existingIndex > 0) {
+    // Present but not leading → move it to the front, preserve the rest.
+    const rest = outfit.items.filter(item => item?.id !== pinnedItem.id);
+    const reordered: Item[] = [outfit.items[existingIndex], ...rest];
+    return {
+      ...outfit,
+      items: reordered,
+      gridItems: buildGrid(reordered),
+    };
+  }
+
+  // Absent → splice into position 0; drop the last item to keep the 4-tile
+  // grid shape. Server-side mixing will replace this once available.
   const mixed: Item[] = [pinnedItem, ...outfit.items.slice(0, 3)];
   return {
     ...outfit,
@@ -522,12 +547,33 @@ export const HomeScreen = () => {
   // sync watcher); auto-clears ~5s later via a setTimeout in an effect below.
   // null = banner hidden.
   const [pinnedItemGoneAt, setPinnedItemGoneAt] = useState<number | null>(null);
-  // AU-307 phase 06 — "Touch to unpin" tooltip nudge. Session-scoped: shown
-  // for the first 3 pin actions per app lifecycle; `useRef` (not state) so
-  // incrementing does not re-render, and module-level lifetime resets only
-  // on cold start (spec §8 — no AsyncStorage persistence).
-  const pinTooltipCountRef = useRef(0);
-  const [pinTooltipVisible, setPinTooltipVisible] = useState(false);
+  // AU-307 Figma redesign — the old off-tile "Touch to unpin" band tooltip is
+  // removed (CEO decision 1): the persistent on-tile "Tap to unpin" pill is
+  // now the single unpin affordance, so the session-capped nudge is redundant.
+  // AU-307 Figma redesign — persisted "Don't show this popup again" preference.
+  // The persisted flag (ref, since render never reads it) gates whether a first
+  // pin opens the confirm sheet. `pinDontShowAgainPending` is the in-sheet
+  // checkbox state, committed to storage only on confirm. Loaded once on mount.
+  const pinDontShowAgainRef = useRef(false);
+  const [pinDontShowAgainPending, setPinDontShowAgainPending] = useState(false);
+  // F2 fix (2026-06-20 QA): synchronous mirror of the in-sheet checkbox so the
+  // confirm handler persists the value at commit time without a stale closure.
+  // Kept in lockstep with `pinDontShowAgainPending` (reset on sheet open,
+  // flipped on toggle).
+  const pinDontShowAgainPendingRef = useRef(false);
+  useEffect(() => {
+    let mounted = true;
+    AsyncStorage.getItem(PIN_DONT_SHOW_STORAGE_KEY)
+      .then(value => {
+        if (mounted && value === 'true') {
+          pinDontShowAgainRef.current = true;
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
   // Latest cached V05 session id — surfaced from recommendV05 so the
   // phase 04 generation effect can choose `/try_another` (when set) vs
   // `/build` (cold start). Mirrors v05Api.ts's module-scope cache.
@@ -607,6 +653,19 @@ export const HomeScreen = () => {
   // PHASE B (AU-222): mirror pinnedItemId so the prefetch trigger reads the
   // latest value without recreating callbacks on every pin/unpin tap.
   const pinnedItemIdRef = useRef<string | null>(null);
+  // F1 fix (2026-06-20 QA): stable reference to the actual Item the user
+  // pinned, captured at pin time. The `pinnedItem` memo re-derives from
+  // `listOutfits`, which resolves to null whenever a reshuffle batch omits the
+  // pinned item — that null collapses the slot-0 splice, the on-tile pill, AND
+  // the "Pinned:" header chip, stranding the user with an invisible/uncleared
+  // pin (`pinnedItemId` stays set). Caching the captured Item here lets the
+  // visual pin state survive a batch that drops it, FE-robust regardless of
+  // whether the backend echoes `pinned_item_id` back in the reshuffled set.
+  // Cleared on unpin / item-gone so a stale Item can never leak into a new pin.
+  const lastPinnedItemRef = useRef<Item | null>(null);
+  // F1: mirror of `pinDialogItem` (the resolved confirm/replace candidate) so
+  // the sheet-confirm handler can capture the actual Item at commit time.
+  const pinDialogItemRef = useRef<Item | null>(null);
   // PHASE C (AU-221): mirror selectedMode for the same reason — prefetch
   // and "Show another" callbacks should read the latest mode without
   // re-binding on every tap.
@@ -1251,21 +1310,6 @@ export const HomeScreen = () => {
     return () => clearTimeout(handle);
   }, [pinnedItemGoneAt]);
 
-  // AU-307 phase 06 — show the "Touch to unpin" tooltip whenever a new
-  // pin is set, but only for the first 3 pin actions of the session.
-  // When the pin clears, hide any existing tooltip immediately. The
-  // tooltip component itself owns its 3-second auto-dismiss timer.
-  useEffect(() => {
-    if (pinState.pinnedItemId) {
-      if (pinTooltipCountRef.current < 3) {
-        pinTooltipCountRef.current += 1;
-        setPinTooltipVisible(true);
-      }
-    } else {
-      setPinTooltipVisible(false);
-    }
-  }, [pinState.pinnedItemId]);
-
   // AU-307 phase 05 — AUTH_BLOCK handler. The phase 04 generation effect
   // routes 401 → `AUTH_BLOCK`, which sets `outfit='auth_required'`. We
   // surface this as an inline banner with a Sign-in CTA. Keeping it
@@ -1295,13 +1339,25 @@ export const HomeScreen = () => {
   // survives even if the user has scrolled past the originating sheet.
   const pinnedItem = useMemo<Item | null>(() => {
     if (!pinnedItemId) {
+      // No pin → drop any cached Item so it can't leak into a later pin.
+      lastPinnedItemRef.current = null;
       return null;
     }
     for (const outfit of listOutfits) {
       const found = outfit.items.find(item => item?.id === pinnedItemId);
       if (found) {
+        // Cache the actual Item so the visual pin state survives a later
+        // reshuffle whose batch omits it (F1 fix).
+        lastPinnedItemRef.current = found;
         return found;
       }
+    }
+    // Batch omits the pinned item → fall back to the last-known Item captured
+    // at pin time, but only if it still matches the active pin id (guards
+    // against a stale cache after a replace). This keeps the slot-0 splice and
+    // the on-tile pill rendered.
+    if (lastPinnedItemRef.current?.id === pinnedItemId) {
+      return lastPinnedItemRef.current;
     }
     return null;
   }, [listOutfits, pinnedItemId]);
@@ -1326,6 +1382,14 @@ export const HomeScreen = () => {
   const pinDialogImageUrl = pinDialogItem
     ? resolveItemImage(pinDialogItem) ?? null
     : null;
+
+  // F1: mirror the resolved confirm/replace candidate Item so the modal's
+  // confirm handler can stash it into `lastPinnedItemRef` at commit time —
+  // the reducer's CONFIRM_PIN/CONFIRM_REPLACE actions carry only ids, so this
+  // ref is how we preserve the actual Item across the impending reshuffle.
+  useEffect(() => {
+    pinDialogItemRef.current = pinDialogItem;
+  }, [pinDialogItem]);
 
   const optionSets = useMemo<OutfitSheetWithGrid[]>(
     () =>
@@ -1553,9 +1617,34 @@ export const HomeScreen = () => {
       if (!item?.id) {
         return;
       }
+      // Tapping the pill on the already-pinned item is an unpin.
+      if (pinnedItemIdRef.current === item.id) {
+        track('item_unpinned', { source: 'home_tile_pill' });
+        // F1: clearing the pin must drop the cached Item so a later pin
+        // never falls back to a stale reference.
+        lastPinnedItemRef.current = null;
+        pinDispatch({ type: 'PIN_TAP', itemId: item.id });
+        return;
+      }
+      // First pin (nothing pinned yet) + "Don't show again" set → skip the
+      // confirm sheet and build straight away (reuses the from-detail bypass
+      // path: sets pinnedId + outfit='generating', no modal).
+      if (pinnedItemIdRef.current === null && pinDontShowAgainRef.current) {
+        track('item_pinned', {
+          source: 'home_tile_pill',
+          confirm_skipped: true,
+        });
+        // F1: capture the tapped Item so the visual pin state survives a
+        // reshuffle batch that omits it.
+        lastPinnedItemRef.current = item;
+        pinDispatch({ type: 'CONFIRM_PIN_FROM_DETAIL', itemId: item.id });
+        return;
+      }
+      // Otherwise open the confirm (first pin) or replace sheet.
+      setPinDontShowAgainPending(false);
+      // F2: keep the synchronous mirror in lockstep with the state reset.
+      pinDontShowAgainPendingRef.current = false;
       pinDispatch({ type: 'PIN_TAP', itemId: item.id });
-      console.info('home.pin.tap', { itemId: item.id });
-      // TODO(analytics): replace console.info with the real telemetry hook.
     },
     [pinDispatch],
   );
@@ -1603,14 +1692,46 @@ export const HomeScreen = () => {
     });
   }, []);
 
-  const handleClearPin = useCallback(() => {
-    if (!pinnedItemId) {
-      return;
+  // AU-307 Figma redesign — confirm sheet primary CTA ("Pin & build"). Commits
+  // the "Don't show again" checkbox to storage when checked, fires the pin
+  // event, then dispatches CONFIRM_PIN / CONFIRM_REPLACE (reducer flips
+  // outfit='generating').
+  const handleConfirmPinFromModal = useCallback(() => {
+    const isReplace = pinState.modal === 'replace';
+    // F2 fix (2026-06-20 QA): read the checkbox value from a ref, not the
+    // `pinDontShowAgainPending` state closure. The persist write must reflect
+    // the value AT CONFIRM TIME and run BEFORE any reset, with zero dependence
+    // on closure freshness — the QA repro showed the write never landing in
+    // AsyncStorage. The ref is written synchronously by the toggle handler.
+    if (pinDontShowAgainPendingRef.current) {
+      pinDontShowAgainRef.current = true;
+      AsyncStorage.setItem(PIN_DONT_SHOW_STORAGE_KEY, 'true').catch(() => {});
     }
-    console.info('home.pin.clear', { itemId: pinnedItemId });
-    // TODO(analytics): replace console.info with the real telemetry hook.
-    pinDispatch({ type: 'UNPIN' });
-  }, [pinnedItemId, pinDispatch]);
+    // F1: capture the actual Item being pinned so its visual state survives a
+    // reshuffle batch that omits it (reducer actions carry only ids).
+    if (pinDialogItemRef.current) {
+      lastPinnedItemRef.current = pinDialogItemRef.current;
+    }
+    track('item_pinned', {
+      source: isReplace ? 'home_confirm_sheet_replace' : 'home_confirm_sheet',
+      confirm_skipped: false,
+    });
+    pinDispatch({ type: isReplace ? 'CONFIRM_REPLACE' : 'CONFIRM_PIN' });
+  }, [pinState.modal, pinDispatch]);
+
+  // AU-307 Figma redesign — toggle the in-sheet "Don't show again" checkbox.
+  // Persistence is deferred to confirm; toggling alone fires the analytics
+  // event so the CEO can see how often users opt out of the confirm sheet.
+  const handleToggleDontShowAgain = useCallback(() => {
+    setPinDontShowAgainPending(prev => {
+      const next = !prev;
+      // F2: mirror into the ref synchronously so confirm reads the value at
+      // commit time without a stale-closure race.
+      pinDontShowAgainPendingRef.current = next;
+      track('pin_dont_show_again_toggled', { checked: next });
+      return next;
+    });
+  }, []);
 
   // Tinder deck: advance to the next card. End of deck keeps the last card on
   // screen (re-likeable) per spec §2.5, and nudges a prefetch.
@@ -2023,29 +2144,6 @@ export const HomeScreen = () => {
         })}
       </View> */}
 
-      {/* PHASE B (AU-222): subtle pin label below the header — tap to clear.
-          Figma 1711:17062's header band itself is unchanged; we render this
-          micro-affordance just under it so the user always knows what they
-          have pinned and can undo it without hunting for the tile. */}
-      {pinnedItem ? (
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={handleClearPin}
-          style={styles.pinHeaderLabel}
-        >
-          <IconHomePin width={24} height={24} />
-          <Text style={styles.pinHeaderLabelText} numberOfLines={1}>
-            {t('home.pinned_label', {
-              label:
-                pinnedItem.category ||
-                pinnedItem.color ||
-                t('home.pinned_item_fallback'),
-            })}
-          </Text>
-          <Text style={styles.pinHeaderLabelClear}>{t('home.clear')}</Text>
-        </TouchableOpacity>
-      ) : null}
-
       {/* Sustainability (2026-05-27): subtle, non-blocking hint once the
           backend starts cycling (uniques exhausted, real outfits re-served).
           Does NOT gate swiping — purely informational. Hidden once a fresh
@@ -2187,11 +2285,14 @@ export const HomeScreen = () => {
         </View>
       ) : null}
 
-      {/* AU-307 phase 04 — inline error or fallback banner below the deck
-          but above the sticky "Wear this" footer. They are mutually
-          exclusive (reducer's outfit lifecycle), so render at most one. */}
+      {/* AU-307 phase 04 — error / fallback / guest banner. M5 fix: float the
+          banner above the Remix action row + sticky footer (anchored over the
+          lower-grid dead space, elevated + own surface) instead of inserting it
+          into the flex column, where it collided with the fixed-height deck and
+          clipped "Remix". `box-none` host so taps still reach the deck.
+          Mutually exclusive (reducer's outfit lifecycle) → render at most one. */}
       {pinState.outfit === 'error' ? (
-        <View style={styles.pinInlineBanner}>
+        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
           <PinGenerationError
             kind={pinErrorKind}
             onRetry={() => {
@@ -2201,14 +2302,18 @@ export const HomeScreen = () => {
           />
         </View>
       ) : pinState.outfit === 'fallback' ? (
-        <View style={styles.pinInlineBanner}>
+        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
           <PinFallbackNotice />
         </View>
       ) : pinState.outfit === 'auth_required' ? (
-        // AU-307 phase 05 — guest blocker. Inline banner with explicit
-        // Sign-in CTA → auth stack EmailInput (signin mode). Inline (vs
+        // AU-307 phase 05 — guest blocker. Floating banner with explicit
+        // Sign-in CTA → auth stack EmailInput (signin mode). Floating (vs
         // modal) so a guest can dismiss naturally by interacting elsewhere.
-        <View testID="pin-guest-banner" style={styles.pinInlineBanner}>
+        <View
+          testID="pin-guest-banner"
+          pointerEvents="box-none"
+          style={styles.pinBannerFloat}
+        >
           <View style={styles.pinGuestBox} accessibilityRole="alert">
             <Text style={styles.pinGuestText} numberOfLines={3}>
               {t('pin.guest_blocker')}
@@ -2240,22 +2345,10 @@ export const HomeScreen = () => {
           outfit-state banners above so it can co-occur with idle / error
           / fallback states without flicker. */}
       {pinnedItemGoneAt !== null ? (
-        <View style={styles.pinInlineBanner}>
+        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
           <PinnedItemUnavailableNotice />
         </View>
       ) : null}
-
-      {/* AU-307 phase 06 — "Touch to unpin" nudge tooltip. Anchored to the
-          inline-banner band so it shows beneath the grid but above the
-          sticky footer; `pointerEvents="box-none"` on its host so taps
-          still reach any sibling. Session-capped at 3 actions; component
-          owns its own 3-second auto-dismiss timer. */}
-      <View pointerEvents="box-none" style={styles.pinInlineBanner}>
-        <PinnedItemTooltip
-          visible={pinTooltipVisible}
-          onDismiss={() => setPinTooltipVisible(false)}
-        />
-      </View>
 
       {/* Sticky "Wear this" CTA — belongs to the footer (acts on the ACTIVE
           outfit), not inside the swipeable card. Routes through the mood
@@ -2324,20 +2417,19 @@ export const HomeScreen = () => {
         onConfirm={handleSubmitContext}
       />
 
-      {/* AU-307: pin confirm / replace modal. Variant flips off pinState.modal.
-          onConfirm dispatches CONFIRM_PIN or CONFIRM_REPLACE; reducer flips
-          outfit='generating'. Phase 04 wires the network fire on that state. */}
+      {/* AU-307 Figma redesign — pin confirm / replace sheet (full-width
+          bottom sheet, single "Pin & build" CTA, "Don't show again" checkbox).
+          onConfirm commits the checkbox + dispatches CONFIRM_PIN /
+          CONFIRM_REPLACE; reducer flips outfit='generating'. */}
       <PinConfirmModal
         visible={pinState.modal !== 'closed'}
         variant={pinState.modal === 'replace' ? 'replace' : 'confirm'}
         itemImageUrl={pinDialogImageUrl}
         itemLabel={pinDialogItem?.name ?? undefined}
-        onConfirm={() =>
-          pinDispatch({
-            type:
-              pinState.modal === 'replace' ? 'CONFIRM_REPLACE' : 'CONFIRM_PIN',
-          })
-        }
+        isCommonItem={pinDialogItem?.isSystem ?? false}
+        dontShowAgain={pinDontShowAgainPending}
+        onToggleDontShowAgain={handleToggleDontShowAgain}
+        onConfirm={handleConfirmPinFromModal}
         onCancel={() => pinDispatch({ type: 'CANCEL_MODAL' })}
       />
 
@@ -2599,10 +2691,10 @@ const OptionSheet = React.memo(
           testID={`home-tile-${cellKey}-${flatTileIndex}`}
           accessibilityLabel={`home-tile-${cellKey}-${flatTileIndex}`}
           activeOpacity={0.86}
-          style={[styles.card, style, isPinned && styles.cardPinned]}
+          style={[styles.card, style]}
           onPress={() => onItemPress(item)}
-          // PHASE B (AU-222): long-press as a secondary affordance for pin
-          // toggle. Primary tap target is the pin badge overlay below.
+          // Long-press stays as a secondary affordance for pin toggle. Primary
+          // tap target is the on-tile PinTilePill overlay below.
           onLongPress={() => onTogglePin(item)}
           delayLongPress={500}
         >
@@ -2621,34 +2713,20 @@ const OptionSheet = React.memo(
               </Text>
             </View>
           ) : null}
-          {/* AU-307 phase 05 — hide pin badge on SYSTEM common-essential
-              tiles. `Item.isSystem` is set from the V05 `source` field
-              (`mapV05Item`: `it.source === 'common_essential'`). UX +
-              defense-in-depth: BE rejects pin requests for SYSTEM items
-              with 422 anyway (spec §6 source check), but we never render
-              the affordance so the user can't tap it. */}
+          {/* AU-307 Figma redesign — on-tile "Pin" / "Tap to unpin" pill
+              (replaces the old icon-only badge + 2px ring + off-tile band).
+              Hidden on SYSTEM common-essential tiles: `Item.isSystem` is set
+              from the V05 `source` field (`mapV05Item`:
+              `it.source === 'common_essential'`). UX + defense-in-depth — BE
+              rejects pin requests for SYSTEM items with 422 anyway (spec §6
+              source check), but we never render the affordance so the user
+              can't tap it. */}
           {!item.isSystem ? (
-            <TouchableOpacity
-              testID={
-                isPinned
-                  ? `home-tile-pin-${cellKey}-${flatTileIndex}-set`
-                  : `home-tile-pin-${cellKey}-${flatTileIndex}`
-              }
-              activeOpacity={0.7}
-              onPress={e => {
-                e.stopPropagation();
-                onTogglePin(item);
-              }}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              style={[styles.pinBadge, isPinned && styles.pinBadgeActive]}
-              accessibilityRole="button"
-              accessibilityLabel={
-                isPinned ? t('pin.a11y_pinned_badge') : t('home.a11y_pin_item')
-              }
-              accessibilityState={{ selected: isPinned }}
-            >
-              <IconHomePin width={17} height={17} />
-            </TouchableOpacity>
+            <PinTilePill
+              isPinned={isPinned}
+              testID={`home-tile-pin-${cellKey}-${flatTileIndex}`}
+              onPress={() => onTogglePin(item)}
+            />
           ) : null}
         </TouchableOpacity>
       );
@@ -2683,20 +2761,22 @@ const OptionSheet = React.memo(
         return (
           <View style={[styles.gridWrap, styles.gridWrapStart]}>
             <View style={styles.cardRow}>
-              <View style={styles.cardShell}>
+              <View style={styles.cardShellFixed}>
                 {renderTile(layout.row1[0], 0)}
               </View>
-              <View style={styles.cardShell}>
+              <View style={styles.cardShellFixed}>
                 {renderTile(layout.row1[1], 1)}
               </View>
             </View>
             <View style={styles.cardRow}>
-              <View style={styles.cardShell}>
+              <View style={styles.cardShellFixed}>
                 {renderTile(layout.row2Large, 2)}
               </View>
               {/* opacity-0 placeholder holds the right column so the lone 3rd
-                  tile stays left-aligned (non-interactive, no testID). */}
-              <View style={[styles.cardShell, styles.cardCellHidden]} />
+                  tile stays left-aligned (non-interactive, no testID). It must
+                  match the fixed CARD_WIDTH so the visible tile lands under the
+                  top-left tile (centred pair → left of centre). */}
+              <View style={[styles.cardShellFixed, styles.cardCellHidden]} />
             </View>
           </View>
         );
@@ -2715,7 +2795,7 @@ const OptionSheet = React.memo(
                 {row.map((item, itemIndex) => (
                   <View
                     key={`shell-${outfit.outfitHash}-${rowIndex}-${itemIndex}`}
-                    style={styles.cardShell}
+                    style={styles.cardShellFixed}
                   >
                     {renderTile(item, rowIndex * 2 + itemIndex)}
                   </View>
@@ -3094,33 +3174,6 @@ const styles = StyleSheet.create({
   modePillTextUnselected: {
     color: theme.colors.figmaAction,
   },
-  // PHASE B (AU-222): subtle "Pinned: <category>" hint just below the header
-  // band. Tap to clear the pin. Kept tasteful — Figma 1711:17062's header
-  // band itself is unchanged; this lives in the gap above the first sheet.
-  pinHeaderLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: theme.colors.figmaSurfaceSoft,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaDivider,
-    marginHorizontal: 24,
-    marginBottom: 4,
-  },
-  pinHeaderLabelText: {
-    ...theme.typography.aliases.manropeCaption,
-    color: theme.colors.figmaTextPrimary,
-    maxWidth: 200,
-  },
-  pinHeaderLabelClear: {
-    ...theme.typography.aliases.manropeCaption,
-    color: theme.colors.figmaAction,
-    fontFamily: 'Manrope-Medium',
-  },
   scrollContent: {
     paddingTop: 4,
     paddingBottom: 24,
@@ -3193,13 +3246,14 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: SHEET_PADDING,
     paddingBottom: 24,
-    // A2 (AU-253 2026-05-25): Figma uniform 12pt rhythm between the sheet's
+    // A2 (AU-253 2026-05-25): uniform vertical rhythm between the sheet's
     // blocks (caption · grid · action row · CTA). Was 'space-between', which
     // distributed leftover slack as a ~36pt void between the grid and the
-    // "Wear this" CTA. flex-start + gap:12 makes the stack content-sized so
-    // there is no slack to dump → void eliminated by construction.
+    // "Wear this" CTA. flex-start + gap:8 (4px grid) makes the stack
+    // content-sized so there is no slack to dump → void eliminated by
+    // construction. Tightened 12→8 so the 3:4 grid keeps more vertical room.
     justifyContent: 'flex-start',
-    gap: 12,
+    gap: 8,
   },
   gridWrap: {
     gap: GRID_GAP,
@@ -3315,36 +3369,6 @@ const styles = StyleSheet.create({
   },
   heroStackCell: {
     flex: 1,
-  },
-  // PHASE B (AU-222): pinned tile gets a 2px action-coloured ring.
-  // Figma 1711:17062 communicates pin via the badge rather than a border;
-  // the ring is a small extra cue the spec asked for explicitly.
-  cardPinned: {
-    borderWidth: 2,
-    borderColor: theme.colors.figmaAction,
-  },
-  // PHASE B (AU-222): pin badge — small rounded pill in the top-right of
-  // each tile. Inactive state mirrors the SVG's beige fill on a translucent
-  // surface; active state flips to the action colour for clear feedback.
-  pinBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 9,
-    width: 34,
-    height: 34,
-    borderRadius: theme.borderRadius.m,
-    backgroundColor: theme.colors.figmaOverlayLight30, // background/overlay/light/30
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Figma 3399:18455 — drop-shadow 4/4, blur 5.3, #070707 @ 5%.
-    shadowColor: 'rgba(7, 7, 7, 0.05)',
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 5.3,
-    elevation: 3,
-  },
-  pinBadgeActive: {
-    backgroundColor: theme.colors.figmaAction,
   },
   // AU-351: "Your Piece" exploration badge — small text pill in the TOP-LEFT
   // of each tile (opposite corner from the top-right pin badge so they never
@@ -3571,11 +3595,22 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.manropeCaption,
     color: theme.colors.figmaTextPrimary,
   },
-  // AU-307 phase 04 — inline error / fallback banner placement above the
-  // sticky Wear-this footer.
-  pinInlineBanner: {
-    marginHorizontal: SHEET_PADDING,
-    marginBottom: 8,
+  // AU-307 M5 fix — float the error / fallback / guest / unavailable banner
+  // above the deck's Remix action row AND the two stacked footers, with its own
+  // surface + shadow so it reads as a composed layered notice (not a flex-flow
+  // collision that clips "Remix"). Anchored over the lower-grid dead space.
+  pinBannerFloat: {
+    position: 'absolute',
+    left: SHEET_PADDING,
+    right: SHEET_PADDING,
+    bottom:
+      HOME_VIEW_TOGGLE_FOOTER_HEIGHT +
+      WEAR_THIS_FOOTER_HEIGHT +
+      OPTION_ACTIONS_HEIGHT +
+      theme.spacing.s,
+    zIndex: theme.zIndex.sticky,
+    borderRadius: 12,
+    ...theme.ds.shadow.card,
   },
   // AU-307 phase 05 — guest auth blocker. Inline pill with explanatory
   // copy + a small filled CTA on the right. Tokenised; no literal hex.
