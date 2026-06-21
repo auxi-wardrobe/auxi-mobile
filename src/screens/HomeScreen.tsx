@@ -2245,6 +2245,8 @@ export const HomeScreen = () => {
                 onTogglePin={handleToggleItemPin}
                 onEditContext={handleOpenContextEditModal}
                 onRemix={handleRemix}
+                onShowAnother={handleSkip}
+                activeDot={clampedActiveIndex % OUTFITS_PER_SET}
                 homeView={homeView}
                 onCollageDragActiveChange={setCollageDragActive}
                 // AU-307 phase 04 — show skeletons in non-pinned slots only for
@@ -2592,6 +2594,8 @@ const OptionSheet = React.memo(
     // while the prop stays in the contract for when the button is re-enabled.
     onEditContext: _onEditContext,
     onRemix,
+    onShowAnother,
+    activeDot = 0,
     homeView,
     onCollageDragActiveChange,
     isGenerating = false,
@@ -2609,6 +2613,10 @@ const OptionSheet = React.memo(
     onTogglePin: (item: Item) => void;
     onEditContext: () => void;
     onRemix: () => void;
+    // Figma 3140-5959 action row: "Show another" advances the deck (a forward
+    // step, same as a left-swipe skip); activeDot is the set-position index.
+    onShowAnother?: (outfit: OutfitSheetWithGrid) => void;
+    activeDot?: number;
     homeView: HomeView;
     onCollageDragActiveChange: (active: boolean) => void;
     // AU-307 phase 04 — true while pinState.outfit === 'generating'. Causes
@@ -2943,6 +2951,11 @@ const OptionSheet = React.memo(
           <OutfitActionRow
             testID={`home-action-row-${cellKey}`}
             onRemix={onRemix}
+            onShowAnother={
+              onShowAnother ? () => onShowAnother(outfit) : undefined
+            }
+            dotCount={OUTFITS_PER_SET}
+            activeDot={activeDot}
           />
         </View>
       </View>
