@@ -644,8 +644,27 @@ export const HomeScreen = () => {
     if (lastPinnedItemRef.current?.id === pinnedItemId) {
       return lastPinnedItemRef.current;
     }
+    // "Build around this" pins a WARDROBE item that isn't in any current
+    // outfit, so the loops above miss it and pinnedItem would be null —
+    // leaving the local fallback unable to inject it. Resolve it from the
+    // wardrobe list so it gets mixed into every suggestion.
+    const fromWardrobe = wardrobeItemsData?.find(w => w.id === pinnedItemId);
+    if (fromWardrobe) {
+      const mapped: Item = {
+        id: fromWardrobe.id,
+        image_url: fromWardrobe.image_url ?? '',
+        image_png: fromWardrobe.image_png ?? null,
+        name: fromWardrobe.name ?? null,
+        category: fromWardrobe.category ?? 'Top',
+        color: fromWardrobe.color_hex ?? '',
+        isSystem: fromWardrobe.is_common_item ?? false,
+        isExploration: false,
+      };
+      lastPinnedItemRef.current = mapped;
+      return mapped;
+    }
     return null;
-  }, [listOutfits, pinnedItemId]);
+  }, [listOutfits, pinnedItemId, wardrobeItemsData]);
 
   const pinDialogItem = useMemo<Item | null>(() => {
     const targetId =
