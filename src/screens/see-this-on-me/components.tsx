@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.uacDimension12,
     paddingHorizontal: theme.spacing.uacDimension12,
     paddingVertical: theme.spacing.uacDimension12,
-    borderRadius: theme.borderRadius.l,
+    borderRadius: theme.borderRadius.m, // chat bubble — 8px (border-radius/md)
     backgroundColor: theme.colors.figmaCaptionPillBg,
   },
   promptText: {
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     maxWidth: '92%',
     paddingHorizontal: theme.spacing.uacDimension12,
     paddingVertical: theme.spacing.s,
-    borderRadius: theme.borderRadius.l,
+    borderRadius: theme.borderRadius.m, // chat bubble — 8px (border-radius/md)
     backgroundColor: theme.colors.figmaCaptionPillBg,
   },
   inlineErrorText: {

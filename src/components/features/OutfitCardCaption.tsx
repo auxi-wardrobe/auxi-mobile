@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     height: 40,
     paddingHorizontal: theme.spacing.uacDimension12,
     paddingVertical: theme.spacing.s,
-    borderRadius: theme.borderRadius.round,
+    borderRadius: theme.borderRadius.m, // chat bubble — 8px (border-radius/md)
     backgroundColor: theme.colors.figmaCaptionPillBg,
     alignItems: 'center',
     justifyContent: 'center',
