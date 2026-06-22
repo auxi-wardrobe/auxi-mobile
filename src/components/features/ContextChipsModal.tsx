@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    minHeight: 48,
+    minHeight: 44, // chip size M
     minWidth: 64,
     borderRadius: theme.borderRadius.round,
     borderWidth: 0,
