@@ -18,7 +18,7 @@ export const theme = {
     macgieEyeWhite: '#FFFFFF', // eye-white gradient end
     macgiePupil: '#000000', // pupil fill
     // Figma aliases for route-screen parity
-    figmaBackground: '#f2efec', // background/primary/subtle_50
+    figmaBackground: '#FFFFFF', // app screen background — white per design
     figmaCardSurface: '#f2efec', // background/primary/subtle_50 — clothing tile bg
     figmaCardTag: 'rgba(18,18,18,0.75)', // color/neutral/black/Alpha300 (#121212bf)
     figmaSurface: '#FFFFFF',
@@ -52,7 +52,7 @@ export const theme = {
     figmaIconSurface: '#E3E3EC',
     figmaDestructive: '#bb251a', // red for Cancel/delete actions — aliased by uacTextDangerBase below
     figmaAiSparkle: '#822be6', // purple AI-sparkle accent — self-visualization icon (Figma 472:2030, purple→magenta gradient median)
-    figmaOnboardingBackground: '#f7f7f8', // onboarding screens bg (differs from app figmaBackground #f2efec)
+    figmaOnboardingBackground: '#FFFFFF', // onboarding screens bg — white per design
     // Onboarding redesign (node 2849:8331) — 3 genuinely-new colors.
     // Source: plans/260526-1443-onboarding-figma-extraction/figma-extraction-onboarding.md §4.1
     // Everything else reuses existing tokens (caption pill = figmaCardTag rgba(18,18,18,0.75) per D5;
