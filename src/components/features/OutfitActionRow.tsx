@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s,
     paddingHorizontal: theme.spacing.uacDimension12,
     height: 32,
-    borderRadius: theme.borderRadius.round,
+    borderRadius: 16,
   },
   remixText: {
     ...theme.typography.aliases.uacBodyXsRegular,

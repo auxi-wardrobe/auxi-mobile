@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalTextAction: {
-    borderRadius: theme.borderRadius.uacRadioPill,
+    borderRadius: 16,
   },
   modalPrimaryAction: {
     borderRadius: theme.borderRadius.uacButtonCta,

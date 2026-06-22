@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     height: 56,
     minWidth: 160,
     paddingHorizontal: 22,
-    borderRadius: ds.radius.lg,
+    borderRadius: ds.radius.md,
     borderWidth: 1.5,
     borderColor: ds.color.ink,
     alignItems: 'center',
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   btnText: {
     height: 44,
     paddingHorizontal: theme.spacing.m,
-    borderRadius: ds.radius.sm,
+    borderRadius: ds.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 48,
     height: 48,
-    borderRadius: ds.radius.full,
+    borderRadius: ds.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },

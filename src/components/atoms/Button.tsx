@@ -91,7 +91,7 @@ export const Button: React.FC<ButtonProps> = ({
 const styles = StyleSheet.create({
     button: {
         height: 48,
-        borderRadius: theme.borderRadius.round, // Pill shape
+        borderRadius: 16, // DS button radius (uniform 16px)
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: theme.spacing.l,

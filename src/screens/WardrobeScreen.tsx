@@ -797,7 +797,7 @@ const styles = StyleSheet.create({
   },
   headerIconButton: {
     backgroundColor: theme.colors.figmaSurface,
-    borderRadius: 14,
+    borderRadius: 16,
   },
   scrollContent: {
     paddingTop: 12,

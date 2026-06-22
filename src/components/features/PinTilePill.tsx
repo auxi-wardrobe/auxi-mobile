@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     right: 9, // Figma right-[9px]
     width: 34,
     height: 34,
-    borderRadius: theme.borderRadius.m, // 8 — border-radius/md
+    borderRadius: 16, // 8 — border-radius/md
     backgroundColor: 'rgba(255, 255, 255, 0.3)', // background/overlay/light/30
     alignItems: 'center',
     justifyContent: 'center',
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     paddingHorizontal: theme.spacing.m - 4, // 12 — Figma pill horizontal pad
     paddingVertical: 7,
-    borderRadius: theme.ds.radius.full,
+    borderRadius: 16,
     // Soft floating shadow so the pill lifts off the garment.
     ...theme.ds.shadow.floatingButton,
   },

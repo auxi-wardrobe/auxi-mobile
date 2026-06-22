@@ -159,13 +159,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 116,
     height: 56,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: theme.colors.figmaInsightPillBg,
   },
   tab: {
     width: 48,
     height: 48,
-    borderRadius: 11,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   // with the nav-button drop shadow (0 1 1 rgba(0,0,0,0.15)).
   activeCell: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 11,
+    borderRadius: 16,
     backgroundColor: theme.colors.figmaSurface,
     shadowColor: 'rgba(0, 0, 0, 0.15)',
     shadowOffset: { width: 0, height: 1 },

@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.uacDimension12,
     gap: theme.spacing.uacDimension8,
-    borderRadius: theme.borderRadius.figmaTile,
+    borderRadius: 16,
     backgroundColor: theme.colors.figmaBackground,
   },
   pillText: {
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.uacDimension12,
     gap: theme.spacing.uacDimension8,
-    borderRadius: theme.borderRadius.figmaTile,
+    borderRadius: 16,
     height: 48,
   },
   // Active page: white pill on the dark sidebar (Figma active state).
