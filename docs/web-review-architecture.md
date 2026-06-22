@@ -58,13 +58,13 @@ Result: real account data on a public link, with **no credentials in the bundle*
 ## 4. Build & deploy pipeline (the "worker")
 
 ```
-  "deploy đi"  (designer on web-base, zero toolchain)
+  "sandbox đi"  (designer on any branch off main, zero toolchain)
       │   yarn web:deploy:preview "<desc>"
       │   → git push  web-preview/<ts>-<desc>   (a fresh branch)
       ▼
   Cloudflare Pages — Git Build   (runs on CF infra, NOT GitHub Actions)
       │   env: NODE_VERSION=20, REVIEW_*  (held by Cloudflare)
-      │   builds ONLY  web-base (production)  +  web-preview/*  (previews)
+      │   builds ONLY  main (production)  +  web-preview/*  (previews)
       │   yarn install  →  yarn web:build  →  publish dist-web/ + functions/
       ▼
   https://web-preview-<ts>-<desc>.auxi-web-review.pages.dev   (live ~1–2 min)
@@ -72,30 +72,27 @@ Result: real account data on a public link, with **no credentials in the bundle*
 
 - Every deploy is its **own** `web-preview/*` branch → its **own** preview URL;
   many designers in parallel never collide.
-- CF builds **only** `web-base` (production) and `web-preview/*` (previews) — a
-  custom branch filter, so random branches don't waste build minutes.
+- CF builds **only** `main` (production) and `web-preview/*` (previews) — a custom
+  branch filter, so random branches don't waste build minutes.
+- The web build tooling lives on `main` (`.ruby-version` 3.1.6 lets CF keep the
+  Gemfile) — no parallel `web-base` branch, so previews never drift from main.
 - Build is server-side → designer needs no Node/RN/wrangler/CF auth locally.
 - No GitHub Actions (the org's Actions billing is blocked) — CF builds instead.
 
 ## 5. Git / promotion flow (review gate preserved)
 
 ```
-  feature branches ──(reviewed PR)──▶  main        ← maintainer review (unchanged)
-                                         │
-                          (merge / rebase, reviewed) │
-                                         ▼
-                                   web-base          ← CF production (stable URL)
-                                         │  "deploy đi" snapshots →
-                                         ▼
-                                web-preview/<ts>-…    ← CF preview (per deploy)
-                                         │
-                                         ▼
-                                   live review URL
+  feature / designer branch
+        │  "sandbox đi"  →  web-preview/<ts>-…  ──▶  CF preview URL (per deploy)
+        │
+        │  (reviewed PR — the ONLY path to ship)
+        ▼
+       main  ──▶  CF production (auxi-web-review.pages.dev)
 ```
 
-Deploys are decoupled from `main`. Code reaches `main` only via your reviewed
-PRs; `web-base` is the stable build base, and `web-preview/*` are disposable
-per-deploy preview branches.
+Deploys are decoupled from shipping. Code reaches `main` only via reviewed PRs;
+`web-preview/*` are disposable per-deploy preview branches cut from the current
+branch (so they always carry the latest main code).
 
 ## 6. Component inventory
 
@@ -108,7 +105,7 @@ per-deploy preview branches.
 | Fonts / svg | `web/fonts.css`, `public/fonts/*`, `web/svg-plugin.ts` | @font-face + svgr |
 | Runtime auth proxy | `functions/api/[[path]].js` | injects auth from CF secrets |
 | Mock mode (optional) | `web/mocks/*` | MSW fixtures; unused when proxy is live |
-| Build worker | Cloudflare Pages Git build (`web-base` + `web-preview/*`) | server-side build |
+| Build worker | Cloudflare Pages Git build (`main` + `web-preview/*`) | server-side build |
 | Deploy trigger | `scripts/deploy-preview.sh` + skill `deploy-auxi-web` | "deploy đi" → push `web-preview/*` |
 | Backend | Railway (Valen) + Postgres + R2 | real data |
 
