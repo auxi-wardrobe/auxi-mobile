@@ -2491,29 +2491,6 @@ export const HomeScreen = () => {
           <Text style={styles.moodBannerText}>{moodBannerText}</Text>
         </View>
       ) : null}
-      {/* DEMO: Doraemon overlay — web deploy test (remove after) */}
-      <Image
-        testID="home-doraemon-demo"
-        source={{
-          uri:
-            'data:image/svg+xml;utf8,' +
-            encodeURIComponent(
-              "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><rect width='320' height='320' rx='28' fill='#1a9ee6'/><text x='160' y='150' font-family='sans-serif' font-size='42' font-weight='800' fill='#ffffff' text-anchor='middle'>DORAEMON</text><text x='160' y='200' font-family='sans-serif' font-size='20' fill='#cdebff' text-anchor='middle'>deploy test</text></svg>",
-            ),
-        }}
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: 160,
-          height: 160,
-          marginLeft: -80,
-          marginTop: -80,
-          borderRadius: 16,
-          zIndex: 999,
-        }}
-      />
     </SafeAreaView>
   );
 };
