@@ -114,3 +114,4 @@ dist-web/
 
 # cloudflare deploy token (local only)
 .env.deploy
+node_modules
