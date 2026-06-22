@@ -12,7 +12,6 @@ import {
   screenWidth,
   SHEET_GAP,
   SHEET_PADDING,
-  SHEET_PADDING_V,
   SMALL_CARD_HEIGHT,
   SMALL_CARD_WIDTH,
   WEAR_THIS_FOOTER_HEIGHT,
@@ -99,9 +98,9 @@ export const styles = StyleSheet.create({
   optionSheet: {
     flex: 1,
     backgroundColor: theme.colors.white,
-    paddingTop: 12,
+    paddingTop: 0,
     paddingHorizontal: SHEET_PADDING,
-    paddingBottom: 24,
+    paddingBottom: 0,
     justifyContent: 'flex-start',
     gap: 8,
   },
@@ -113,7 +112,7 @@ export const styles = StyleSheet.create({
   },
   gridWrap: {
     gap: GRID_GAP,
-    paddingVertical: SHEET_PADDING_V,
+    paddingVertical: 0,
   },
   gridWrapCenter: {
     alignItems: 'center',
