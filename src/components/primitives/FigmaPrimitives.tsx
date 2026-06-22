@@ -239,7 +239,7 @@ export const BottomSheetSurface: React.FC<BottomSheetSurfaceProps> = ({
 
 const styles = StyleSheet.create({
   disabled: {
-    opacity: 0.45,
+    opacity: 0.5,
   },
   pillContent: {
     flexDirection: 'row',
@@ -297,8 +297,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   filledButton: {
-    backgroundColor: theme.colors.figmaAction,
-    borderColor: theme.colors.figmaAction,
+    backgroundColor: theme.colors.uacTextBase,
+    borderColor: theme.colors.uacTextBase,
   },
   outlineButton: {
     backgroundColor: 'transparent',

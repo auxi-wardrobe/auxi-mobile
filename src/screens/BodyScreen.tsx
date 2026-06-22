@@ -1017,7 +1017,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   detailActionDisabled: {
-    opacity: 0.45,
+    opacity: 0.5,
   },
   detailDeleteLabel: {
     ...theme.typography.aliases.poppinsBody,

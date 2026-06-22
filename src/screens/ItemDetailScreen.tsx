@@ -1331,7 +1331,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   disabledText: {
-    opacity: 0.45,
+    opacity: 0.5,
   },
   modalOverlay: {
     flex: 1,
