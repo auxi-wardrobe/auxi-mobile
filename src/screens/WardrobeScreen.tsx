@@ -945,7 +945,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: theme.colors.figmaText,
+    borderColor: theme.colors.uacTextBase,
     paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',

@@ -105,8 +105,8 @@ const styles = StyleSheet.create({
     },
     outlineButton: {
         backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: theme.colors.primary,
+        borderWidth: 1.5,
+        borderColor: theme.colors.uacTextBase,
     },
     textButton: {
         backgroundColor: 'transparent',
