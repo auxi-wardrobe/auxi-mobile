@@ -18,7 +18,7 @@
     "web:dev": "vite",
     "web:build": "vite build",
     "web:preview": "vite preview --outDir dist-web",
-    "web:deploy": "vite build && wrangler pages deploy dist-web --project-name auxi-web-review --branch main --commit-dirty=true"
+    "web:deploy": "bash scripts/deploy-web.sh"
   },
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.5.1",

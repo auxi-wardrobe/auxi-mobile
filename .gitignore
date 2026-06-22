@@ -111,3 +111,6 @@ dist-web/
 # local env (secrets - never commit)
 .env.local
 .env*.local
+
+# cloudflare deploy token (local only)
+.env.deploy
