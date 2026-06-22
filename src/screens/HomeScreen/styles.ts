@@ -60,7 +60,7 @@ export const styles = StyleSheet.create({
     paddingTop: 4,
   },
   aiDisclosureRow: {
-    paddingHorizontal: theme.spacing.uacBodyPadding,
+    paddingHorizontal: SHEET_PADDING,
     paddingVertical: theme.spacing.xs,
     alignItems: 'center',
   },
