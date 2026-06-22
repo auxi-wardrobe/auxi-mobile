@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   chip: {
-    minHeight: 32, // chip size M
+    minHeight: 48, // chip size M
     borderRadius: theme.borderRadius.round, // pill
     paddingHorizontal: theme.spacing.m,
     alignItems: 'center',
