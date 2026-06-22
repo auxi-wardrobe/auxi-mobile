@@ -1071,18 +1071,32 @@ export const HomeScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {hasCycled &&
-      !isWardrobeGap &&
-      optionSets.length > 0 &&
-      !cycledHintDismissed ? (
-        <View style={styles.noticeSlot}>
+      {/* Floating toast layer (z-index tier 5) — sits on top of the grid,
+          never stacks with the cards. */}
+      <View style={styles.noticeStack} pointerEvents="box-none">
+        {optionSets.length > 0 && !aiNoticeDismissed ? (
+          <InfoSnackbar
+            message={t('aiDisclosure.label')}
+            action={{
+              label: t('aiDisclosure.report'),
+              onPress: handleReportAi,
+              testID: 'ai-report-recommendation',
+            }}
+            onClose={() => setAiNoticeDismissed(true)}
+            testID="home-ai-disclosure"
+          />
+        ) : null}
+        {hasCycled &&
+        !isWardrobeGap &&
+        optionSets.length > 0 &&
+        !cycledHintDismissed ? (
           <InfoSnackbar
             message={t('home.seen_all_hint')}
             onClose={() => setCycledHintDismissed(true)}
             testID="home-cycled-hint"
           />
-        </View>
-      ) : null}
+        ) : null}
+      </View>
 
       {pinState.outfit === 'generating' ? (
         <View
@@ -1187,21 +1201,6 @@ export const HomeScreen = () => {
           />
         </View>
       )}
-
-      {optionSets.length > 0 && !aiNoticeDismissed ? (
-        <View style={styles.noticeSlot}>
-          <InfoSnackbar
-            message={t('aiDisclosure.label')}
-            action={{
-              label: t('aiDisclosure.report'),
-              onPress: handleReportAi,
-              testID: 'ai-report-recommendation',
-            }}
-            onClose={() => setAiNoticeDismissed(true)}
-            testID="home-ai-disclosure"
-          />
-        </View>
-      ) : null}
 
       {pinState.outfit === 'error' ? (
         <View pointerEvents="box-none" style={styles.pinBannerFloat}>
