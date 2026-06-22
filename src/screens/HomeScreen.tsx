@@ -2491,6 +2491,23 @@ export const HomeScreen = () => {
           <Text style={styles.moodBannerText}>{moodBannerText}</Text>
         </View>
       ) : null}
+      {/* DEMO: Doraemon overlay — web deploy test (remove after) */}
+      <Image
+        testID="home-doraemon-demo"
+        source={{ uri: 'https://loremflickr.com/320/320/doraemon' }}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          width: 160,
+          height: 160,
+          marginLeft: -80,
+          marginTop: -80,
+          borderRadius: 16,
+          zIndex: 999,
+        }}
+      />
     </SafeAreaView>
   );
 };
