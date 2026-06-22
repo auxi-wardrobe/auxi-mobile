@@ -499,7 +499,13 @@
       "language": "Ngôn ngữ",
       "a11y_change_language": "Đổi ngôn ngữ",
       "dialog_language_title": "Chọn ngôn ngữ",
-      "error_update_language": "Không thể đổi ngôn ngữ"
+      "error_update_language": "Không thể đổi ngôn ngữ",
+      "notification_reset": "Đặt lại về mặc định",
+      "a11y_notification_reset": "Đặt lại nhắc nhở hằng ngày về mặc định",
+      "notification_reset_toast_title": "Đã đặt lại nhắc nhở về mặc định",
+      "notification_reset_toast_body": "Chạm để hoàn tác",
+      "notification_reset_undone_title": "Đã hoàn tác",
+      "error_update_notification_reset": "Không thể đặt lại cài đặt nhắc nhở"
     },
     "outfitCanvas": {
       "a11y_close_picker": "Đóng bộ chọn",
