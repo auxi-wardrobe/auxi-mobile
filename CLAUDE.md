@@ -3,6 +3,15 @@
 Personal-wardrobe + AI outfit recommender. RN 0.83 + TypeScript 5.
 Backend "Valen" generates outfits given the user's wardrobe + weather/occasion/time.
 
+## "Sandbox" = the web preview (NOT a security sandbox)
+
+In this repo, **"sandbox"** — "sandbox đi", "deploy sandbox", "sandbox là gì",
+also "deploy đi" / "preview" / "xem trên web" — ALWAYS means the **web preview**:
+the app built for the browser and published to Cloudflare Pages so designers see
+a change at a URL (no simulator, no local build). It is NOT a generic
+security/container sandbox. To make one (works from any branch), follow the skill
+`deploy-auxi-web`. Designer guide: `docs/designer-quickstart.md`.
+
 ## Stack at a glance
 - React Native 0.83.1, React 19.2, TypeScript 5.8
 - Navigation: `@react-navigation/native` 7 (native-stack)
