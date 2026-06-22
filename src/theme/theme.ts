@@ -22,6 +22,8 @@ export const theme = {
     figmaCardSurface: '#f2efec', // background/primary/subtle_50 — clothing tile bg
     figmaCardTag: 'rgba(18,18,18,0.75)', // color/neutral/black/Alpha300 (#121212bf)
     figmaSurface: '#FFFFFF',
+    // Home screen background — pink (per design request).
+    homeBackgroundPink: '#FFC0CB',
     // Home Grid View (AU-253) tokens — Figma node 2849:11340
     // Source: plans/260525-1505-home-grid-view-extraction/figma-extraction-home-grid-view.md
     figmaCaptionPillBg: '#eee6df', // color/primary/100 — caption pill bg (Frame 2036)
