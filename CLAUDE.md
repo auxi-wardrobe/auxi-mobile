@@ -60,6 +60,19 @@ Backend "Valen" generates outfits given the user's wardrobe + weather/occasion/t
   3 warnings; don't add more.
 - iOS smoke test: `yarn ios:sim`. Bring up the full stack with
   `./scripts/qa-boot.sh` from the umbrella root.
+- **Build flakiness?** Node is pinned to 20 via `.nvmrc` (RN 0.83 needs ≥20;
+  avoid non-LTS like 23). If a code change doesn't show on the sim it's almost
+  always a stale JS bundle: reload first, then `yarn start:reset`, then
+  `yarn ios:clean` (deterministic rebuild). `yarn ios:doctor` is a read-only
+  preflight (Node/Xcode/pods/watchman/Metro). Install watchman once
+  (`brew install watchman`) — its absence is the #1 cause of stale-bundle.
+  Full root-cause map: `docs/ios-build-troubleshooting.md`.
+- **Many concurrent CC sessions:** Metro `:8081` / Simulator / watchman are ONE
+  shared machine singleton. A code change should **hot-reload** (Fast Refresh),
+  never trigger a rebuild. Destructive/global ops (`yarn ios:clean`, kill Metro,
+  watchman reset, `pod install`, native rebuild) disrupt EVERY other session
+  (qa-ui, running app) — never run them unilaterally. `ios:clean` has a
+  concurrency guard (refuses non-TTY without `--yes`).
 - Deterministic UI verification: Maestro flows under `maestro/flows/`,
   authored by `qa-ui` and executed by `qa-mobile`. Run a single flow
   with `maestro test maestro/flows/<feature>/<name>.yaml` (requires

@@ -259,9 +259,7 @@ export const isEmailNotVerifiedError = (
 ): err is AuthErrorEnvelope & {
   code: 'EMAIL_NOT_VERIFIED';
   detail: { email: string };
-} =>
-  err.code === 'EMAIL_NOT_VERIFIED' &&
-  typeof err.detail?.email === 'string';
+} => err.code === 'EMAIL_NOT_VERIFIED' && typeof err.detail?.email === 'string';
 
 export const isOAuthAccountError = (
   err: AuthErrorEnvelope,

@@ -7,11 +7,7 @@ import {
   User,
 } from '../types/auth';
 import { BASE_URL } from '../config/env';
-import {
-  clearTokens,
-  getAccessToken,
-  setTokens,
-} from './tokenStorage';
+import { clearTokens, getAccessToken, setTokens } from './tokenStorage';
 import type {
   AppleSignInRequest,
   AppleSignInResponse,
@@ -67,28 +63,32 @@ const computeExpiresAt = (expiresIn?: number): number | null => {
 // Known AuthErrorCode values — used to validate strings coming off the wire.
 // ---------------------------------------------------------------------------
 
-const KNOWN_AUTH_ERROR_CODES: ReadonlySet<AuthErrorCode> = new Set<AuthErrorCode>([
-  'EMAIL_NOT_VERIFIED',
-  'OAUTH_ACCOUNT',
-  'INVALID_CREDENTIALS',
-  'TOKEN_INVALID',
-  'TOKEN_EXPIRED',
-  'TOKEN_CONSUMED',
-  'EMAIL_ALREADY_EXISTS',
-  'WEAK_PASSWORD',
-  'OAUTH_VERIFICATION_FAILED',
-  'OAUTH_EMAIL_UNVERIFIED',
-  'EMAIL_LINKED_TO_PASSWORD',
-  'EMAIL_LINKED_TO_OTHER_PROVIDER',
-  'APPLE_EMAIL_MISSING',
-  'RATE_LIMITED',
-  'VALIDATION_ERROR',
-  'NETWORK_ERROR',
-  'UNKNOWN',
-]);
+const KNOWN_AUTH_ERROR_CODES: ReadonlySet<AuthErrorCode> =
+  new Set<AuthErrorCode>([
+    'EMAIL_NOT_VERIFIED',
+    'OAUTH_ACCOUNT',
+    'INVALID_CREDENTIALS',
+    'TOKEN_INVALID',
+    'TOKEN_EXPIRED',
+    'TOKEN_CONSUMED',
+    'EMAIL_ALREADY_EXISTS',
+    'WEAK_PASSWORD',
+    'OAUTH_VERIFICATION_FAILED',
+    'OAUTH_EMAIL_UNVERIFIED',
+    'EMAIL_LINKED_TO_PASSWORD',
+    'EMAIL_LINKED_TO_OTHER_PROVIDER',
+    'APPLE_EMAIL_MISSING',
+    'RATE_LIMITED',
+    'VALIDATION_ERROR',
+    'NETWORK_ERROR',
+    'UNKNOWN',
+  ]);
 
 const asAuthErrorCode = (raw: unknown): AuthErrorCode => {
-  if (typeof raw === 'string' && KNOWN_AUTH_ERROR_CODES.has(raw as AuthErrorCode)) {
+  if (
+    typeof raw === 'string' &&
+    KNOWN_AUTH_ERROR_CODES.has(raw as AuthErrorCode)
+  ) {
     return raw as AuthErrorCode;
   }
   return 'UNKNOWN';
@@ -129,7 +129,9 @@ export const mapAuthError = (error: unknown): AuthErrorEnvelope => {
     const detail = safeRecord(data.detail);
     const topCode = data.code;
     const detailCode = detail?.code;
-    const code = asAuthErrorCode(topCode ?? detailCode ?? (status === 429 ? 'RATE_LIMITED' : null));
+    const code = asAuthErrorCode(
+      topCode ?? detailCode ?? (status === 429 ? 'RATE_LIMITED' : null),
+    );
 
     const messageRaw =
       (typeof data.message === 'string' && data.message) ||
@@ -141,16 +143,16 @@ export const mapAuthError = (error: unknown): AuthErrorEnvelope => {
       typeof data.request_id === 'string'
         ? data.request_id
         : typeof detail?.request_id === 'string'
-          ? (detail.request_id as string)
-          : undefined;
+        ? (detail.request_id as string)
+        : undefined;
 
     // Coerce 400 validation envelope into VALIDATION_ERROR if no code is set
     const finalCode: AuthErrorCode =
       code === 'UNKNOWN' && status === 400 && data.error === 'Validation Error'
         ? 'VALIDATION_ERROR'
         : code === 'UNKNOWN' && status === 429
-          ? 'RATE_LIMITED'
-          : code;
+        ? 'RATE_LIMITED'
+        : code;
 
     return {
       code: finalCode,
@@ -398,10 +400,7 @@ export const refreshTokens = async (
   req: RefreshTokenRequest,
 ): Promise<RefreshTokenResponse> => {
   try {
-    const response = await api.post<RefreshTokenResponse>(
-      '/auth/refresh',
-      req,
-    );
+    const response = await api.post<RefreshTokenResponse>('/auth/refresh', req);
     await persistTokens(response.data);
     return response.data;
   } catch (error) {
@@ -441,10 +440,7 @@ export const signInWithGoogle = async (
   req: GoogleSignInRequest,
 ): Promise<GoogleSignInResponse> => {
   try {
-    const response = await api.post<GoogleSignInResponse>(
-      '/auth/google',
-      req,
-    );
+    const response = await api.post<GoogleSignInResponse>('/auth/google', req);
     await persistTokens(response.data);
     return response.data;
   } catch (error) {
@@ -464,10 +460,7 @@ export const signInWithApple = async (
   req: AppleSignInRequest,
 ): Promise<AppleSignInResponse> => {
   try {
-    const response = await api.post<AppleSignInResponse>(
-      '/auth/apple',
-      req,
-    );
+    const response = await api.post<AppleSignInResponse>('/auth/apple', req);
     await persistTokens(response.data);
     return response.data;
   } catch (error) {
