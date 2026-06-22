@@ -5,7 +5,6 @@ import { HOME_VIEW_TOGGLE_FOOTER_HEIGHT } from '../../components/features/HomeVi
 import {
   CARD_ASPECT,
   CARD_HEIGHT,
-  CARD_WIDTH,
   GRID_AREA_H,
   GRID_CONTENT_PAD,
   GRID_GAP,
@@ -135,8 +134,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   cardShellFixed: {
-    flexGrow: 0,
-    width: CARD_WIDTH,
+    flex: 1,
   },
   cardShellNarrow: {
     flexGrow: 0,
