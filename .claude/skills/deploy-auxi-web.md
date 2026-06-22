@@ -1,12 +1,13 @@
 ---
 name: deploy-auxi-web
-description: When the designer wants to preview their changes in the browser — e.g. "deploy đi", "deploy", "preview", "xem trên web", "tôi muốn xem thử", "ship a preview" — publish the CURRENT working changes as a Cloudflare preview and give back a clickable URL. Auto-creates a web-preview/* branch (from the web-base base) and pushes it; Cloudflare builds it server-side. Never touches main, never opens a PR.
+description: When the designer wants to preview their changes in the browser — this feature is called the **Sandbox**. Triggers: "sandbox", "sandbox đi", "deploy sandbox", "lên sandbox", "xem sandbox", "tạo sandbox", plus the older "deploy đi", "deploy", "preview", "xem trên web", "tôi muốn xem thử", "ship a preview". Any of these = publish the CURRENT working changes as a Cloudflare preview and give back a clickable URL. Auto-creates a web-preview/* branch (from the web-base base) and pushes it; Cloudflare builds it server-side. Never touches main, never opens a PR.
 ---
 
-# Deploy a Web Preview (designer flow)
+# Sandbox — Deploy a Web Preview (designer flow)
 
-When the designer asks to deploy / preview / "see it on web", do this — no
-questions needed:
+Designers call this feature the **Sandbox**. When they say "sandbox", "sandbox
+đi", "deploy sandbox", "deploy đi", "preview", "xem thử" (or similar), do this —
+no questions needed:
 
 1. Make sure you're in the auxi repo root on a **web base** — the branch
    **`web-base`** (source of truth, has `vite.config.ts`) or an existing
