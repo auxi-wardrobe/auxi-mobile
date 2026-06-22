@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   submitChevron: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 16,
     backgroundColor: theme.colors.uacBackgroundBase,
     alignItems: 'center',
     justifyContent: 'center',

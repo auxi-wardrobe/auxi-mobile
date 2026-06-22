@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   },
   headerBack: {
     backgroundColor: theme.colors.figmaSurface,
-    borderRadius: theme.borderRadius.figmaTile,
+    borderRadius: 16,
   },
   headerTitle: {
     ...theme.typography.aliases.interMediumSm,

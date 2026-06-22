@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   topIconButton: {
     width: 45,
     height: 45,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: theme.colors.figmaIconSurface,
     justifyContent: 'center',
     alignItems: 'center',
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   },
   pillBase: {
     height: 56,
-    borderRadius: 100,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: theme.colors.figmaAction,
     paddingHorizontal: 24,

@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
   emptyCta: {
     marginTop: 18,
     minHeight: 44,
-    borderRadius: 22,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: theme.colors.figmaAction,
     paddingHorizontal: 18,

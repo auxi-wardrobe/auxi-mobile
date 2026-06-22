@@ -34,7 +34,7 @@ export const styles = StyleSheet.create({
   headerIconButton: {
     width: 44,
     height: 44,
-    borderRadius: theme.borderRadius.figmaTile,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.figmaSurface,
@@ -409,7 +409,7 @@ export const styles = StyleSheet.create({
   pinGuestCta: {
     paddingHorizontal: theme.spacing.m,
     paddingVertical: theme.spacing.xs,
-    borderRadius: 999,
+    borderRadius: 16,
     backgroundColor: theme.colors.figmaAction,
   },
   pinGuestCtaText: {

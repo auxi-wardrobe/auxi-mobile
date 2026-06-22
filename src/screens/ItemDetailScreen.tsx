@@ -1154,7 +1154,7 @@ const styles = StyleSheet.create({
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: theme.colors.white,
     shadowColor: theme.colors.figmaOverlayDark10,
     shadowOffset: { width: 0, height: 4 },
@@ -1287,13 +1287,13 @@ const styles = StyleSheet.create({
   iconOnlyButton: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryAction: {
     height: 56,
-    borderRadius: 100,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -1323,7 +1323,7 @@ const styles = StyleSheet.create({
     // Figma "Text button / size 56": match the Save pill's height + radius so
     // the two bottom buttons align. PillButton's `text` variant defaults to h40.
     height: 56,
-    borderRadius: 100,
+    borderRadius: 16,
     paddingHorizontal: 20,
   },
   editSaveButton: {
