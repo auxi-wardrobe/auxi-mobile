@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.m,
   },
   headerIconBtnDisabled: {
-    opacity: 0.35,
+    opacity: 0.5,
   },
   headerActions: {
     flexDirection: 'row',
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.m,
   },
   toolbarBtnDisabled: {
-    opacity: 0.3,
+    opacity: 0.5,
   },
   toolbarBtnPressed: {
     backgroundColor: theme.colors.figmaSurfaceSoft,
@@ -982,7 +982,7 @@ const pickerStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   confirmBtnDisabled: {
-    opacity: 0.4,
+    opacity: 0.5,
   },
   confirmBtnLabel: {
     fontFamily: 'ArchivoNarrow-SemiBold',

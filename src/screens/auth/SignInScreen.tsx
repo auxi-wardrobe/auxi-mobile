@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.uacBackgroundBase,
   },
   submitButtonDisabled: {
-    opacity: 0.4,
+    opacity: 0.5,
   },
   submitButtonPressed: {
     opacity: 0.85,

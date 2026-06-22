@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   submitChevronDisabled: {
-    opacity: 0.4,
+    opacity: 0.5,
   },
   submitChevronPressed: {
     opacity: 0.85,

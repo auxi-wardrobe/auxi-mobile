@@ -139,5 +139,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  disabled: { opacity: 0.38 },
+  disabled: { opacity: 0.5 },
 });
