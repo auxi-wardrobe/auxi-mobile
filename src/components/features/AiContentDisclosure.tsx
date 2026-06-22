@@ -7,6 +7,25 @@ import { AI_REPORT_EMAIL } from '../../config/aiConsent';
 
 type AiSurface = 'tryon' | 'recommendation';
 
+/**
+ * Opens the prefilled AI-content report mailto. Subject/body are static,
+ * localized, and carry NO user data (no ids, photos, or free text) — only a
+ * generic flag the user can edit. Shared by the inline disclosure and the
+ * home black info snackbar so the Report action behaves identically.
+ */
+export const useAiReport = (surface: AiSurface) => {
+  const { t } = useTranslation();
+  return useCallback(() => {
+    track('ai_content_reported', { surface });
+    const subject = encodeURIComponent(t('aiDisclosure.report_subject'));
+    const body = encodeURIComponent(t('aiDisclosure.report_body'));
+    const url = `mailto:${AI_REPORT_EMAIL}?subject=${subject}&body=${body}`;
+    Linking.openURL(url).catch(() => {
+      /* No mail client / cannot open — fail silently; the label still stands. */
+    });
+  }, [surface, t]);
+};
+
 type AiContentDisclosureProps = {
   /** Which AI output this labels — drives the ai_content_reported property. */
   surface: AiSurface;
@@ -25,18 +44,7 @@ export const AiContentDisclosure: React.FC<AiContentDisclosureProps> = ({
   testID,
 }) => {
   const { t } = useTranslation();
-
-  const handleReport = useCallback(() => {
-    track('ai_content_reported', { surface });
-    // Subject/body are static, localized, and carry NO user data (no ids,
-    // photos, or free text) — only a generic flag the user can edit.
-    const subject = encodeURIComponent(t('aiDisclosure.report_subject'));
-    const body = encodeURIComponent(t('aiDisclosure.report_body'));
-    const url = `mailto:${AI_REPORT_EMAIL}?subject=${subject}&body=${body}`;
-    Linking.openURL(url).catch(() => {
-      /* No mail client / cannot open — fail silently; the label still stands. */
-    });
-  }, [surface, t]);
+  const handleReport = useAiReport(surface);
 
   return (
     <View style={styles.row} testID={testID}>

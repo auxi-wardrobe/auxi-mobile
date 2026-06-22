@@ -72,7 +72,8 @@ import {
   repTempCFor,
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
-import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
+import { useAiReport } from '../../components/features/AiContentDisclosure';
+import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import {
   HomeView,
@@ -172,6 +173,9 @@ export const HomeScreen = () => {
   );
   const [styleFeedback, setStyleFeedback] = useState<string | null>(null);
   const [hasCycled, setHasCycled] = useState(false);
+  const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
+  const [aiNoticeDismissed, setAiNoticeDismissed] = useState(false);
+  const handleReportAi = useAiReport('recommendation');
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   const unfavoritedSwipeCountRef = useRef(0);
   const listOutfitsRef = useRef<OutfitSheet[]>([]);
@@ -1067,11 +1071,16 @@ export const HomeScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {hasCycled && !isWardrobeGap && optionSets.length > 0 ? (
-        <View style={styles.cycledHint} testID="home-cycled-hint">
-          <Text style={styles.cycledHintText} numberOfLines={1}>
-            {t('home.seen_all_hint')}
-          </Text>
+      {hasCycled &&
+      !isWardrobeGap &&
+      optionSets.length > 0 &&
+      !cycledHintDismissed ? (
+        <View style={styles.noticeSlot}>
+          <InfoSnackbar
+            message={t('home.seen_all_hint')}
+            onClose={() => setCycledHintDismissed(true)}
+            testID="home-cycled-hint"
+          />
         </View>
       ) : null}
 
@@ -1179,10 +1188,16 @@ export const HomeScreen = () => {
         </View>
       )}
 
-      {optionSets.length > 0 ? (
-        <View style={styles.aiDisclosureRow}>
-          <AiContentDisclosure
-            surface="recommendation"
+      {optionSets.length > 0 && !aiNoticeDismissed ? (
+        <View style={styles.noticeSlot}>
+          <InfoSnackbar
+            message={t('aiDisclosure.label')}
+            action={{
+              label: t('aiDisclosure.report'),
+              onPress: handleReportAi,
+              testID: 'ai-report-recommendation',
+            }}
+            onClose={() => setAiNoticeDismissed(true)}
             testID="home-ai-disclosure"
           />
         </View>
