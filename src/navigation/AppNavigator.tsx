@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './navigationRef';
 import { track } from '../services/analytics';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createAppStack } from './createStack';
 import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
 import { AppWelcomeScreen } from '../screens/AppWelcomeScreen';
@@ -31,7 +31,7 @@ import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
 
-const Stack = createNativeStackNavigator<AppStackParamList>();
+const Stack = createAppStack<AppStackParamList>();
 
 export const AppNavigator = () => {
   useEffect(() => {

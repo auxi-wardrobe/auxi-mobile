@@ -1,0 +1,17 @@
+/* Web @font-face for the RN named font families (theme.ts). Same-origin ttf. */
+@font-face { font-family: 'Poppins-Regular';  src: url('/fonts/Poppins-Regular.ttf')  format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Poppins-Medium';   src: url('/fonts/Poppins-Medium.ttf')   format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Poppins-SemiBold'; src: url('/fonts/Poppins-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Poppins-Bold';     src: url('/fonts/Poppins-Bold.ttf')     format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Inter-Regular';    src: url('/fonts/Inter-Regular.ttf')    format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Inter-Medium';     src: url('/fonts/Inter-Medium.ttf')     format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Inter-SemiBold';   src: url('/fonts/Inter-SemiBold.ttf')   format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'NotoSans-Regular'; src: url('/fonts/NotoSans-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Roboto-Regular';   src: url('/fonts/Roboto-Regular.ttf')   format('truetype'); font-weight: 400; font-display: swap; }
+/* Variable fonts pinned per RN named family */
+@font-face { font-family: 'Manrope-Regular';      src: url('/fonts/Manrope.ttf')        format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Manrope-Medium';       src: url('/fonts/Manrope.ttf')        format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'PlayfairDisplay-Medium'; src: url('/fonts/PlayfairDisplay.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'PlayfairDisplay-Bold';   src: url('/fonts/PlayfairDisplay.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'ArchivoNarrow-Regular';  src: url('/fonts/ArchivoNarrow.ttf')   format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'ArchivoNarrow-SemiBold'; src: url('/fonts/ArchivoNarrow.ttf')   format('truetype'); font-weight: 600; font-display: swap; }

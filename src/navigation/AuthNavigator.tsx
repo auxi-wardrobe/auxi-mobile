@@ -13,7 +13,7 @@
  *                                ForgotPasswordCheckMail, ResetNewPassword
  */
 import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createAppStack } from './createStack';
 
 import { AuthStackParamList } from '../types/navigation';
 
@@ -31,7 +31,7 @@ import { ResetNewPasswordScreen } from '../screens/auth/ResetNewPasswordScreen';
 import { VerifiedScreen } from '../screens/auth/VerifiedScreen';
 import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 
-const Stack = createNativeStackNavigator<AuthStackParamList>();
+const Stack = createAppStack<AuthStackParamList>();
 
 export const AuthNavigator = () => {
   return (

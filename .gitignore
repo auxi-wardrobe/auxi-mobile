@@ -101,3 +101,6 @@ plans/**/*.gif
 plans/**/*.webp
 plans/**/*.mp4
 plans/**/*.mov
+
+# web review build output
+dist-web/

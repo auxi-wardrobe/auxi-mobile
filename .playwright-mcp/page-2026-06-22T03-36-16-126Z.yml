@@ -1,0 +1,28 @@
+- generic [ref=e3]:
+  - button "Full bleed" [ref=e4] [cursor=pointer]
+  - generic [ref=e8]:
+    - generic [ref=e10]:
+      - generic "See my outfits" [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+        - generic [ref=e15]: See my outfits
+      - generic [ref=e16]:
+        - generic "Wardrobe" [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+          - generic [ref=e20]: Wardrobe
+        - generic "My Favourite" [ref=e21] [cursor=pointer]:
+          - img [ref=e22]
+          - generic [ref=e24]: My Favourite
+        - generic "Feedback" [ref=e25] [cursor=pointer]:
+          - img [ref=e26]
+          - generic [ref=e31]: Feedback
+        - generic "Setting" [ref=e32] [cursor=pointer]:
+          - img [ref=e33]
+          - generic [ref=e37]: Setting
+        - generic "Outfit Canvas" [ref=e38] [cursor=pointer]:
+          - img [ref=e39]
+          - generic [ref=e43]: Outfit Canvas
+        - generic "Log out" [ref=e44] [cursor=pointer]:
+          - img [ref=e45]
+          - generic [ref=e48]: Log out
+    - img "Loading" [ref=e51]:
+      - img [ref=e53]

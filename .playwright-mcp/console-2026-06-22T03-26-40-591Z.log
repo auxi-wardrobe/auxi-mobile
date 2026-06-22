@@ -1,0 +1,77 @@
+[    3119ms] [LOG] %cDocumentation: %chttps://mswjs.io/docs font-weight:bold font-weight:normal @ http://localhost:4173/assets/index-C6_3ajSr.js:67
+[    3119ms] [LOG] Found an issue? https://github.com/mswjs/msw/issues @ http://localhost:4173/assets/index-C6_3ajSr.js:67
+[    3120ms] [LOG] Worker script URL: http://localhost:4173/mockServiceWorker.js @ http://localhost:4173/assets/index-C6_3ajSr.js:67
+[    3120ms] [LOG] Worker scope: http://localhost:4173/ @ http://localhost:4173/assets/index-C6_3ajSr.js:67
+[    3120ms] [LOG] Client ID: %s (%s) e97ed102-ba07-468b-9b72-3b66cd440c4c top-level @ http://localhost:4173/assets/index-C6_3ajSr.js:67
+[    3208ms] [WARNING] Animated: `useNativeDriver` is not supported because the native animated module is missing. Falling back to JS-based animation. To resolve this, add `RCTAnimation` module to this app, or remove `useNativeDriver`. Make sure to run `bundle exec pod install` first. Read more about autolinking: https://github.com/react-native-community/cli/blob/master/docs/autolinking.md @ http://localhost:4173/assets/index-C6_3ajSr.js:78
+[    3333ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3336ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3336ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"id":"mock-user-1","email":"designer@auxi.test","…dence_level":"balanced","display_state":"light"}}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3399ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3400ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3400ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"temp_c":24,"is_rainy":false}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3400ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3400ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3400ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: []} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3400ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3400ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3400ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"enabled":false}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3466ms] [LOG] Request {url: URL, method: POST, headers: Object, body: {"weather":{"temp_c":22,"is_rainy":false},"user":{…sion":"safe"},"intent":{"mood":"calm"},"count":3}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3466ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[    3467ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"outfits":[{"items":[{"id":"itm-1","human_readabl…tier_pools_partial":false,"low_confidence":false}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   23131ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-4/600/800:0
+[   23135ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-5/600/800:0
+[   23135ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-6/600/800:0
+[   23135ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-2/600/800:0
+[   23136ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-1/600/800:0
+[   23136ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-3/600/800:0
+[   46304ms] [INFO] home.swipe.miss {from: 0} @ http://localhost:4173/assets/index-C6_3ajSr.js:126
+[   46397ms] [LOG] Request {url: URL, method: POST, headers: Object, body: {"session_id":"mock-session-1","current_outfit_hash":"mock-hash-2","mode":"safe"}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   46397ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   46397ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"outfit":{"items":[{"id":"itm-4","human_readable_…log_count":0,"fallback_flags":[]},"message":null}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   48765ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   48765ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   48765ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: []} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   49734ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   49734ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   49734ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: []} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   50182ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   50182ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   50182ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: []} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   50640ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   50640ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   50640ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: []} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   74390ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   74390ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   74390ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: []} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76275ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76275ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76275ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"temp_c":24,"is_rainy":false}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76275ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76275ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76275ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: []} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76276ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76276ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76276ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"enabled":false}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76292ms] [LOG] Request {url: URL, method: POST, headers: Object, body: {"session_id":"mock-session-1","current_outfit_hash":"mock-hash-2","mode":"safe"}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76292ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   76293ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"outfit":{"items":[{"id":"itm-7","human_readable_…log_count":0,"fallback_flags":[]},"message":null}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   78200ms] [INFO] home.swipe.favorite {outfitHash: mock-hash-3} @ http://localhost:4173/assets/index-C6_3ajSr.js:126
+[   78217ms] [LOG] Request {url: URL, method: POST, headers: Object, body: {"outfit_hash":"mock-hash-3","item_ids":["itm-7","…tle":"Polished: blazer with a fine-gauge layer."}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   78217ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   78217ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"ok":true}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   84173ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   84173ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   84173ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: []} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   85613ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-6/600/800:0
+[   85613ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-5/600/800:0
+[   85613ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-9/600/800:0
+[   85613ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-8/600/800:0
+[   85614ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-4/600/800:0
+[   85614ms] [ERROR] Failed to load resource: the server responded with a status of 522 () @ https://picsum.photos/seed/itm-7/600/800:0
+[   85891ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   85891ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   85891ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: []} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   92839ms] [LOG] Request {url: URL, method: POST, headers: Object, body: {"category":"general","message":"hello","platform":"ios","rating":5}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   92839ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-C6_3ajSr.js:68
+[   92839ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {}} @ http://localhost:4173/assets/index-C6_3ajSr.js:68

@@ -1,0 +1,35 @@
+[     811ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4173/favicon.ico:0
+[     965ms] [LOG] %cDocumentation: %chttps://mswjs.io/docs font-weight:bold font-weight:normal @ http://localhost:4173/assets/index-SNyKLNti.js:67
+[     965ms] [LOG] Found an issue? https://github.com/mswjs/msw/issues @ http://localhost:4173/assets/index-SNyKLNti.js:67
+[     965ms] [LOG] Worker script URL: http://localhost:4173/mockServiceWorker.js @ http://localhost:4173/assets/index-SNyKLNti.js:67
+[     965ms] [LOG] Worker scope: http://localhost:4173/ @ http://localhost:4173/assets/index-SNyKLNti.js:67
+[     965ms] [LOG] Client ID: %s (%s) f72f3547-f4bb-4bec-a43c-dbbba01b2cc1 top-level @ http://localhost:4173/assets/index-SNyKLNti.js:67
+[    1044ms] [WARNING] Animated: `useNativeDriver` is not supported because the native animated module is missing. Falling back to JS-based animation. To resolve this, add `RCTAnimation` module to this app, or remove `useNativeDriver`. Make sure to run `bundle exec pod install` first. Read more about autolinking: https://github.com/react-native-community/cli/blob/master/docs/autolinking.md @ http://localhost:4173/assets/index-SNyKLNti.js:78
+[    1073ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-SNyKLNti.js:68
+[    1074ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-SNyKLNti.js:68
+[    1074ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"id":"mock-user-1","email":"designer@auxi.test","…dence_level":"balanced","display_state":"light"}}} @ http://localhost:4173/assets/index-SNyKLNti.js:68
+[    1110ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-SNyKLNti.js:68
+[    1110ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-SNyKLNti.js:68
+[    1110ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: {"temp_c":24,"condition":"clear"}} @ http://localhost:4173/assets/index-SNyKLNti.js:68
+[    1110ms] [LOG] Request {url: URL, method: GET, headers: Object, body: } @ http://localhost:4173/assets/index-SNyKLNti.js:68
+[    1110ms] [LOG] Handler: hc @ http://localhost:4173/assets/index-SNyKLNti.js:68
+[    1110ms] [LOG] Response {status: 200, statusText: OK, headers: Object, body: []} @ http://localhost:4173/assets/index-SNyKLNti.js:68
+[    1699ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://wardrobe-backend-production-c8d9.up.railway.app/api/v05/recommendation/build:0
+[    1715ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://wardrobe-backend-production-c8d9.up.railway.app/api/v05/mood-feedback/policy:0
+[    2146ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://wardrobe-backend-production-c8d9.up.railway.app/api/auth/refresh:0
+[    2147ms] [WARNING] [apiClient] refresh failed AxiosError: Request failed with status code 401
+    at mL (http://localhost:4173/assets/index-SNyKLNti.js:81:1073)
+    at XMLHttpRequest.g (http://localhost:4173/assets/index-SNyKLNti.js:81:5661)
+    at rR.request (http://localhost:4173/assets/index-SNyKLNti.js:83:2002)
+    at async jR (http://localhost:4173/assets/index-SNyKLNti.js:84:8937) @ http://localhost:4173/assets/index-SNyKLNti.js:83
+[    2148ms] [ERROR] Failed to load recommendation AxiosError: Request failed with status code 401
+    at mL (http://localhost:4173/assets/index-SNyKLNti.js:81:1073)
+    at XMLHttpRequest.g (http://localhost:4173/assets/index-SNyKLNti.js:81:5661)
+    at rR.request (http://localhost:4173/assets/index-SNyKLNti.js:83:2002)
+    at async i1 (http://localhost:4173/assets/index-SNyKLNti.js:127:28176)
+    at async m1 (http://localhost:4173/assets/index-SNyKLNti.js:127:28547)
+    at async Object.mutationFn (http://localhost:4173/assets/index-SNyKLNti.js:127:82664) @ http://localhost:4173/assets/index-SNyKLNti.js:126
+[   17662ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://wardrobe-backend-production-c8d9.up.railway.app/api/auth/google:0
+[   19988ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://wardrobe-backend-production-c8d9.up.railway.app/api/auth/google:0
+[   31109ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://wardrobe-backend-production-c8d9.up.railway.app/api/auth/google:0
+[   32145ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://wardrobe-backend-production-c8d9.up.railway.app/api/auth/google:0

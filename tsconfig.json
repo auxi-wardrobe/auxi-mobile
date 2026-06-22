@@ -4,5 +4,14 @@
     "types": ["jest"],
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/node_modules", "**/Pods"]
+  "exclude": [
+    "**/node_modules",
+    "**/Pods",
+    "dist-web",
+    "web",
+    "index.web.tsx",
+    "vite.config.ts",
+    "**/*.web.ts",
+    "**/*.web.tsx"
+  ]
 }

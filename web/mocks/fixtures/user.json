@@ -1,0 +1,14 @@
+{
+  "id": "mock-user-1",
+  "email": "designer@auxi.test",
+  "role": "user",
+  "created_at": "2026-01-01T00:00:00Z",
+  "is_active": true,
+  "gender": "female",
+  "is_first_login": false,
+  "user_metadata": {
+    "style_direction": "stay_balanced",
+    "confidence_level": "balanced",
+    "display_state": "light"
+  }
+}
