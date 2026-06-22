@@ -107,3 +107,10 @@ dist-web/
 
 # playwright test artifacts
 .playwright-mcp/
+
+# local env (secrets - never commit)
+.env.local
+.env*.local
+
+# cloudflare deploy hook url (local only)
+.env.deploy
