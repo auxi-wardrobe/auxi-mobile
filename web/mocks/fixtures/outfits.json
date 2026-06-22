@@ -1,0 +1,32 @@
+[
+  {
+    "outfit_hash": "mock-hash-1",
+    "styling_note": "Clean weekday: crisp oxford with tailored trousers.",
+    "fallback_flags": [],
+    "items": [
+      {"id": "itm-1", "name": "White Oxford Shirt", "category": "top", "image_url": "https://picsum.photos/seed/itm-1/600/800"},
+      {"id": "itm-2", "name": "Navy Trousers", "category": "bottom", "image_url": "https://picsum.photos/seed/itm-2/600/800"},
+      {"id": "itm-3", "name": "Leather Loafers", "category": "shoes", "image_url": "https://picsum.photos/seed/itm-3/600/800"}
+    ]
+  },
+  {
+    "outfit_hash": "mock-hash-2",
+    "styling_note": "Relaxed: knit over tee with straight denim.",
+    "fallback_flags": [],
+    "items": [
+      {"id": "itm-4", "name": "Beige Knit", "category": "top", "image_url": "https://picsum.photos/seed/itm-4/600/800"},
+      {"id": "itm-5", "name": "Straight Denim", "category": "bottom", "image_url": "https://picsum.photos/seed/itm-5/600/800"},
+      {"id": "itm-6", "name": "White Sneakers", "category": "shoes", "image_url": "https://picsum.photos/seed/itm-6/600/800"}
+    ]
+  },
+  {
+    "outfit_hash": "mock-hash-3",
+    "styling_note": "Polished: blazer with a fine-gauge layer.",
+    "fallback_flags": [],
+    "items": [
+      {"id": "itm-7", "name": "Charcoal Blazer", "category": "outerwear", "image_url": "https://picsum.photos/seed/itm-7/600/800"},
+      {"id": "itm-8", "name": "Wool Trousers", "category": "bottom", "image_url": "https://picsum.photos/seed/itm-8/600/800"},
+      {"id": "itm-9", "name": "Chelsea Boots", "category": "shoes", "image_url": "https://picsum.photos/seed/itm-9/600/800"}
+    ]
+  }
+]
