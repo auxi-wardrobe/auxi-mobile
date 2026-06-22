@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>auxi · Web Review Architecture</title>
+<style>
+  :root{--bg:#0e1116;--card:#171b22;--bd:#262c36;--fg:#e6edf3;--mut:#9aa7b4;--acc:#5db0ff;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1040px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:26px;margin:0 0 4px} .sub{color:var(--mut);margin:0 0 28px}
+  h2{font-size:18px;margin:34px 0 10px;border-left:3px solid var(--acc);padding-left:10px}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin:12px 0}
+  .mermaid{display:flex;justify-content:center}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{border:1px solid var(--bd);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#1d222b;color:var(--mut);font-weight:600}
+  code{background:#11151b;border:1px solid var(--bd);border-radius:5px;padding:1px 5px;font-size:13px}
+  .pill{display:inline-block;background:#11304d;color:var(--acc);border-radius:999px;padding:2px 10px;font-size:12px;margin-right:6px}
+  .foot{color:var(--mut);font-size:13px;margin-top:24px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>auxi — Web Review Surface Architecture</h1>
+  <p class="sub">Browser-viewable build of the RN app for design review · server-side build &amp; deploy · zero designer toolchain</p>
+  <p><span class="pill">one source</span><span class="pill">RN web via Vite</span><span class="pill">server-side auth proxy</span><span class="pill">Cloudflare Pages Git build</span><span class="pill">deploy = trigger only</span></p>
+
+  <h2>1 · One source, two build targets</h2>
+  <div class="card"><div class="mermaid">
+flowchart TB
+  SRC["auxi/src — SINGLE source of truth<br/>screens · components · theme · services · hooks"]
+  SRC --> METRO["Metro build<br/>iOS / Android (unchanged)"]
+  SRC --> VITE["Vite + react-native-web<br/>+ thin .web overrides + native stubs"]
+  VITE --> DIST["dist-web/ &nbsp;+&nbsp; functions/ (proxy)"]
+  </div></div>
+
+  <h2>2 · Web build composition</h2>
+  <div class="card"><div class="mermaid">
+flowchart TB
+  ENTRY["index.web.tsx"] --> FRAME["DeviceFrame (iframe + iPhone 12–18 selector)"]
+  FRAME --> APP["&lt;App/&gt; — the real shared app"]
+  CFG["vite.config.ts"] --> A1["alias react-native → react-native-web"]
+  CFG --> A2[".web.* wins: env.web (BASE_URL=/api) · createStack.web (JS stack)"]
+  CFG --> A3["stubs: keychain·blur·image-picker·oauth·geo·mixpanel·sentry·localize·toast"]
+  CFG --> A4["@svgr svg plugin · fonts.css @font-face"]
+  </div></div>
+
+  <h2>3 · Runtime — auth &amp; data (deployed)</h2>
+  <div class="card"><div class="mermaid">
+flowchart TB
+  B["Designer browser"] -->|"GET pages.dev — static + iframe frame"| CFP["Cloudflare Pages (static dist-web)"]
+  B -->|"/api/* (same-origin)"| FN["Pages Function proxy<br/>functions/api/[[path]].js"]
+  SEC[("CF secrets<br/>REVIEW_EMAIL / REVIEW_PASSWORD")] -.->|server-side only| FN
+  FN -->|"auto-login, inject real Bearer"| API["Railway backend — Valen API"]
+  API --> DB[("Postgres + R2 images — REAL data")]
+  note["Browser never sees real creds or token"] -.- FN
+  </div></div>
+
+  <h2>4 · Build &amp; deploy pipeline (the worker)</h2>
+  <div class="card"><div class="mermaid">
+flowchart TB
+  D["'deploy đi' — designer, any machine, no toolchain"] -->|"yarn web:deploy:remote"| HOOK["POST Deploy Hook URL"]
+  HOOK --> CFB["Cloudflare Pages — Git Build (CF infra, not GitHub Actions)<br/>env: NODE_VERSION=20, REVIEW_*"]
+  CFB -->|"pull web-preview → yarn install → yarn web:build"| PUB["publish dist-web/ + functions/"]
+  PUB --> LIVE["https://auxi-web-review.pages.dev — live ~1–2 min"]
+  </div></div>
+
+  <h2>5 · Git promotion (review gate preserved)</h2>
+  <div class="card"><div class="mermaid">
+flowchart LR
+  F["feature branches"] -->|"PR — YOUR review"| MAIN["main"]
+  MAIN -->|"merge / rebase (reviewed)"| WP["web-preview (disposable build branch)"]
+  WP -->|"deploy đi = trigger only, no git"| LIVE2["live review URL"]
+  </div></div>
+
+  <h2>6 · Component inventory</h2>
+  <div class="card"><table>
+    <tr><th>Concern</th><th>Where</th><th>Notes</th></tr>
+    <tr><td>Shared UI</td><td><code>src/**</code></td><td>one codebase, mobile + web</td></tr>
+    <tr><td>Web entry / device frame</td><td><code>index.web.tsx</code>, <code>web/device-frame/</code></td><td>iframe → true device width; iPhone 12–18</td></tr>
+    <tr><td>Web overrides</td><td><code>src/config/env.web.ts</code>, <code>src/navigation/createStack.web.ts</code></td><td>API base = /api; JS stack</td></tr>
+    <tr><td>Native stubs</td><td><code>web/stubs/*</code> (aliased in <code>vite.config.ts</code>)</td><td>keychain, blur, image-picker, oauth, geo, analytics, sentry, localize, toast</td></tr>
+    <tr><td>Fonts / svg</td><td><code>web/fonts.css</code>, <code>public/fonts/*</code>, <code>web/svg-plugin.ts</code></td><td>@font-face + svgr</td></tr>
+    <tr><td>Runtime auth proxy</td><td><code>functions/api/[[path]].js</code></td><td>injects auth from CF secrets</td></tr>
+    <tr><td>Build worker</td><td>Cloudflare Pages Git build (<code>web-preview</code>)</td><td>server-side build</td></tr>
+    <tr><td>Deploy trigger</td><td><code>scripts/deploy-hook.sh</code> + skill <code>deploy-auxi-web</code></td><td>"deploy đi" → hook</td></tr>
+    <tr><td>Backend</td><td>Railway (Valen) + Postgres + R2</td><td>real data</td></tr>
+  </table></div>
+
+  <h2>7 · Key decisions &amp; trade-offs</h2>
+  <div class="card"><table>
+    <tr><th>Decision</th><th>Why</th><th>Trade-off</th></tr>
+    <tr><td>Shared <code>src/</code></td><td>mobile &amp; web never drift in code</td><td>RNW ≠ native pixel-for-pixel (verify on sim)</td></tr>
+    <tr><td>Server-side auth proxy</td><td>safe public link; deploys need no secrets</td><td>a Pages Function + CF secrets</td></tr>
+    <tr><td>CF Pages Git build</td><td>no GitHub Actions billing; no designer toolchain</td><td>one-time dashboard Git connect</td></tr>
+    <tr><td>Deploy = trigger only</td><td>never mutates git; <code>main</code> review intact</td><td>code enters preview via a separate branch</td></tr>
+  </table></div>
+
+  <p class="foot">Source: <code>auxi/docs/web-review-architecture.md</code> · live: https://auxi-web-review.pages.dev</p>
+</div>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad:true, theme:'dark', themeVariables:{ fontSize:'14px' }, flowchart:{ htmlLabels:true, curve:'basis' } });
+</script>
+</body>
+</html>

@@ -32,3 +32,4 @@ questions needed:
 - Preview data comes from a server-side auth proxy (`functions/api/[[path]].js`)
   using Cloudflare secrets — no credentials in the bundle.
 - One-time infra setup: `docs/web-review-cf-git-setup.md`.
+- Hand designers the step-by-step guide: `docs/designer-quickstart.md`.
