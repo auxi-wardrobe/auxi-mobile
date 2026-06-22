@@ -10,6 +10,7 @@ export const theme = {
     success: '#388E3C', // Green
     border: '#E0E0E0', // Light Gray Border
     white: '#FFFFFF',
+    black: '#000000',
     transparent: 'transparent',
     // Macgie mascot (loading character) — source: figma.site idle-loop loader.
     // Black cat-head silhouette with shaded white eyes + black pupils.
