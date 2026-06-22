@@ -288,7 +288,7 @@ export const OptionSheet = React.memo(
             style={styles.gridScroll}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.gridScrollContent}
-            scrollEnabled={false}
+            scrollEnabled={homeView !== 'collage'}
           >
             <Animated.View
               testID={`home-outfit-grid-${itemCount}`}
