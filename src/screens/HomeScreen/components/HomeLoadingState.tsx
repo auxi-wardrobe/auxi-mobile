@@ -10,7 +10,7 @@ import { styles } from '../styles';
 export const HomeLoadingState = () => {
   const { t } = useTranslation();
   return (
-    <View style={styles.optionSheet}>
+    <View style={[styles.optionSheet, styles.optionSheetLoading]}>
       <View style={styles.loadingPillRow}>
         <View style={styles.loadingPill} testID="home-loading-generating-pill">
           <Text style={styles.loadingPillText}>{t('home.generating')}</Text>

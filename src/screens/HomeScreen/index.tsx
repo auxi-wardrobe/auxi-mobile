@@ -91,7 +91,6 @@ import { PinnedItemUnavailableNotice } from '../../components/features/PinnedIte
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   MOOD_BANNER_DURATION_MS,
-  OPTION_SHEET_HEIGHT,
   PIN_DONT_SHOW_STORAGE_KEY,
   TARGET_AHEAD,
   UNFAVORITED_SWIPE_THRESHOLD,
@@ -1119,7 +1118,6 @@ export const HomeScreen = () => {
             testID="home-swipe-deck"
             items={optionSets}
             activeIndex={clampedActiveIndex}
-            cardHeight={OPTION_SHEET_HEIGHT}
             swipeEnabled={!collageDragActive}
             keyOf={outfit => outfit.outfitHash}
             onLike={handleLike}

@@ -5,7 +5,6 @@ import { HOME_VIEW_TOGGLE_FOOTER_HEIGHT } from '../../components/features/HomeVi
 import {
   CARD_ASPECT,
   CARD_HEIGHT,
-  GRID_AREA_H,
   GRID_CONTENT_PAD,
   GRID_GAP,
   OPTION_ACTIONS_HEIGHT,
@@ -94,16 +93,23 @@ export const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   outfitCell: {
+    flex: 1,
     width: screenWidth,
   },
   optionSheet: {
-    height: OPTION_SHEET_HEIGHT,
+    flex: 1,
     backgroundColor: theme.colors.white,
     paddingTop: 12,
     paddingHorizontal: SHEET_PADDING,
     paddingBottom: 24,
     justifyContent: 'flex-start',
     gap: 8,
+  },
+  // Loading skeleton reuses optionSheet but isn't inside the flex deck, so it
+  // needs an explicit height instead of flex-filling.
+  optionSheetLoading: {
+    flex: 0,
+    height: OPTION_SHEET_HEIGHT,
   },
   gridWrap: {
     gap: GRID_GAP,
@@ -117,7 +123,7 @@ export const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   gridScroll: {
-    maxHeight: GRID_AREA_H,
+    flex: 1,
   },
   gridScrollContent: {
     paddingBottom: GRID_CONTENT_PAD,
