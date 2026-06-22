@@ -2494,7 +2494,13 @@ export const HomeScreen = () => {
       {/* DEMO: Doraemon overlay — web deploy test (remove after) */}
       <Image
         testID="home-doraemon-demo"
-        source={{ uri: 'https://loremflickr.com/320/320/doraemon' }}
+        source={{
+          uri:
+            'data:image/svg+xml;utf8,' +
+            encodeURIComponent(
+              "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><rect width='320' height='320' rx='28' fill='#1a9ee6'/><text x='160' y='150' font-family='sans-serif' font-size='42' font-weight='800' fill='#ffffff' text-anchor='middle'>DORAEMON</text><text x='160' y='200' font-family='sans-serif' font-size='20' fill='#cdebff' text-anchor='middle'>deploy test</text></svg>",
+            ),
+        }}
         pointerEvents="none"
         style={{
           position: 'absolute',
