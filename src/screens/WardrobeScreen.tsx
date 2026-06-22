@@ -399,11 +399,10 @@ export const WardrobeScreen = () => {
           addedProps.category = createdItem.category;
         }
         track('wardrobe_item_added', addedProps);
-        Toast.show({
-          type: 'success',
-          text1: t('wardrobe.list.added_title'),
-          position: 'bottom',
-        });
+        // AU-372: surface add-success via the mint M3 ItemReadySnackbar overlay
+        // (same component as the ready moment), not the default bottom toast.
+        // Copy reads "Item added. We'll finish preparing it in the background."
+        showReadySnackbar(t('wardrobe.list.added_title'));
 
         await fetchItems();
       } catch (error) {
