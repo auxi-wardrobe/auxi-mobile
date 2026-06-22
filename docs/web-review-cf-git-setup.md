@@ -1,53 +1,62 @@
 # Web Review — Cloudflare Pages Git Build (one-time setup)
 
-Goal: Cloudflare builds the `web-preview` branch on **its own** infra (no GitHub
-Actions billing, no designer toolchain). "deploy đi" just hits a Deploy Hook URL.
+Goal: Cloudflare builds the web target on **its own** infra (no GitHub Actions
+billing, no designer toolchain). Designers just `git push` a `web-preview/*`
+branch ("deploy đi") and CF auto-builds it.
+
+## Branch model
+
+- **`web-base`** — the web build base (has `vite.config.ts` + all web infra).
+  It is the Cloudflare **production branch** → `auxi-web-review.pages.dev`.
+  Maintainer keeps it in sync with `main`; nobody edits it directly.
+- **`web-preview/*`** — disposable per-deploy preview branches. Cloudflare is
+  set to build **only** these (custom preview filter). Each push = its own
+  preview URL; two designers never collide.
+- `main` / PRs are untouched by deploys (maintainer review intact).
+
+> Git note: a branch literally named `web-preview` **cannot** coexist with
+> `web-preview/x` (ref file/dir conflict) — that's why the base is `web-base`.
 
 ## A. Connect the repo to a Git-backed Pages project (dashboard)
 
-The current `auxi-web-review` project is **Direct Upload** — Pages can't convert
-it to Git. Pick ONE:
-- **Keep the URL** `auxi-web-review.pages.dev`: delete the existing project first
-  (CF > Workers & Pages > auxi-web-review > Settings > Delete), then reuse the name.
-- **Or** create a new project with a new name (new `*.pages.dev` URL).
-
-Then: CF dashboard > **Create application > Pages > Connect to Git** >
-authorize the Cloudflare GitHub App for the **auxi-wardrobe** org > pick
-**auxi-mobile**.
+The project `auxi-web-review` is Git-connected to **auxi-wardrobe/auxi-mobile**
+(CF dashboard > Workers & Pages > Create application > Pages > Connect to Git).
 
 ## B. Build settings
 
-- Project name: `auxi-web-review` (if you deleted the old one) — else new.
-- Production branch: **`web-preview`**
+- Project name: `auxi-web-review`
+- Production branch: **`web-base`**
+- Preview deployments: **Custom** → include only **`web-preview/*`**
 - Framework preset: **None**
 - Build command: **`yarn web:build`**
 - Build output directory: **`dist-web`**
 - Root directory: **`/`**
 
-## C. Environment variables (Production)  — needed by the proxy at runtime
+These are also settable via the CF API on the project's `source.config`:
+`production_branch="web-base"`, `preview_deployment_setting="custom"`,
+`preview_branch_includes=["web-preview/*"]`.
+
+## C. Environment variables — needed by the proxy at runtime
+
+Set in **both** Production and Preview scopes (previews need data too):
 
 - `NODE_VERSION` = `20`
-- `REVIEW_EMAIL` = `duc2820@gmail.com`   (Encrypt)
-- `REVIEW_PASSWORD` = `Chunga2820@`       (Encrypt)
+- `REVIEW_EMAIL` = `<review account email>`  (Encrypt)
+- `REVIEW_PASSWORD` = `<set in CF dashboard — keep the value in the password
+  manager, NEVER in git>`  (Encrypt)
 
-(If you also want preview-branch builds to load data, add the two REVIEW_* vars
-to the **Preview** scope too.)
+The Pages Function (`functions/api/[[path]].js`) reads these at runtime to inject
+auth server-side, so credentials never reach the browser bundle.
 
-Save & Deploy → first build runs → confirm the live URL works.
+## D. How it runs after setup
 
-## D. Deploy Hook (the "deploy đi" trigger)
-
-CF > the project > Settings > **Builds & deployments > Deploy hooks** > Add:
-- Name: `designer-deploy`
-- Branch: `web-preview`
-- Create → **copy the URL** and hand it to Claude (it goes into the gitignored
-  `auxi/.env.deploy` as `PAGES_DEPLOY_HOOK`, or hardcode it for zero designer setup
-  since this repo is private).
-
-## E. How it runs after setup
-
-- **Designer:** "deploy đi" → `yarn web:deploy:remote` → POSTs the hook → CF
-  builds `web-preview` server-side → live in ~1–2 min. No git, no local build.
-- **Update what the preview shows:** bring new app changes into `web-preview`
-  (merge/rebase), which is a normal reviewed step — CF auto-builds on push too.
+- **Designer:** on `web-base`, edit, then "deploy đi" →
+  `yarn web:deploy:preview "<desc>"` → pushes `web-preview/<ts>-<desc>` → CF
+  auto-builds → live in ~1–2 min. No git knowledge, no CF token, no local build.
+- **Update what previews show:** bring new app changes from `main` into
+  `web-base` (a normal reviewed step) — CF auto-builds `web-base` (production)
+  on push.
+- **Optional legacy path:** a Deploy Hook URL (`scripts/deploy-hook.sh` +
+  gitignored `.env.deploy`) can POST-trigger a build without git. Not used by the
+  default flow.
 - `main` / PRs / merges are untouched by deploys (maintainer review intact).

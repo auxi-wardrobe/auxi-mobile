@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# "deploy đi" — trigger a Cloudflare Pages build of the web-preview branch.
+# Legacy alt-path: POST-trigger a Cloudflare Pages build of web-base (production).
+# Default designer flow is scripts/deploy-preview.sh (git push web-preview/*).
 # Server-side build (Cloudflare infra) handles everything; this only POSTs a hook.
 # No git, no local build env needed (just curl + the hook URL).
 set -euo pipefail
@@ -14,7 +15,7 @@ if [ -z "${PAGES_DEPLOY_HOOK:-}" ]; then
 MSG
   exit 1
 fi
-echo "→ triggering Cloudflare build of web-preview…"
+echo "→ triggering Cloudflare build of web-base…"
 curl -fsS -X POST "$PAGES_DEPLOY_HOOK" >/dev/null
 echo "✅ Build triggered. Live in ~1–2 min at https://auxi-web-review.pages.dev"
 echo "   (hard-refresh: Cmd+Shift+R). Watch progress in the Cloudflare dashboard."

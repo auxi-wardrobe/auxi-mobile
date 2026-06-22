@@ -58,37 +58,44 @@ Result: real account data on a public link, with **no credentials in the bundle*
 ## 4. Build & deploy pipeline (the "worker")
 
 ```
-  "deploy đi"  (designer, any machine, zero toolchain)
-      │   yarn web:deploy:remote  →  POST  <Deploy Hook URL>
+  "deploy đi"  (designer on web-base, zero toolchain)
+      │   yarn web:deploy:preview "<desc>"
+      │   → git push  web-preview/<ts>-<desc>   (a fresh branch)
       ▼
   Cloudflare Pages — Git Build   (runs on CF infra, NOT GitHub Actions)
       │   env: NODE_VERSION=20, REVIEW_*  (held by Cloudflare)
-      │   git pull  web-preview  →  yarn install  →  yarn web:build
-      │   publish  dist-web/ + functions/
+      │   builds ONLY  web-base (production)  +  web-preview/*  (previews)
+      │   yarn install  →  yarn web:build  →  publish dist-web/ + functions/
       ▼
-  https://auxi-web-review.pages.dev   (live in ~1–2 min)
+  https://web-preview-<ts>-<desc>.auxi-web-review.pages.dev   (live ~1–2 min)
 ```
 
-- The deploy **only triggers a rebuild** of the `web-preview` branch HEAD — it
-  touches **no git** (no commit/push/PR/merge).
+- Every deploy is its **own** `web-preview/*` branch → its **own** preview URL;
+  many designers in parallel never collide.
+- CF builds **only** `web-base` (production) and `web-preview/*` (previews) — a
+  custom branch filter, so random branches don't waste build minutes.
 - Build is server-side → designer needs no Node/RN/wrangler/CF auth locally.
 - No GitHub Actions (the org's Actions billing is blocked) — CF builds instead.
 
 ## 5. Git / promotion flow (review gate preserved)
 
 ```
-  feature branches ──(reviewed PR)──▶  main          ← maintainer review (unchanged)
+  feature branches ──(reviewed PR)──▶  main        ← maintainer review (unchanged)
                                          │
                           (merge / rebase, reviewed) │
                                          ▼
-                                   web-preview        ← what CF builds for review
-                                         │  deploy đi (trigger only)
+                                   web-base          ← CF production (stable URL)
+                                         │  "deploy đi" snapshots →
+                                         ▼
+                                web-preview/<ts>-…    ← CF preview (per deploy)
+                                         │
                                          ▼
                                    live review URL
 ```
 
-Deploys are decoupled from source control. Code reaches `main` only via your
-reviewed PRs; `web-preview` is the disposable build branch for previews.
+Deploys are decoupled from `main`. Code reaches `main` only via your reviewed
+PRs; `web-base` is the stable build base, and `web-preview/*` are disposable
+per-deploy preview branches.
 
 ## 6. Component inventory
 
@@ -101,8 +108,8 @@ reviewed PRs; `web-preview` is the disposable build branch for previews.
 | Fonts / svg | `web/fonts.css`, `public/fonts/*`, `web/svg-plugin.ts` | @font-face + svgr |
 | Runtime auth proxy | `functions/api/[[path]].js` | injects auth from CF secrets |
 | Mock mode (optional) | `web/mocks/*` | MSW fixtures; unused when proxy is live |
-| Build worker | Cloudflare Pages Git build (`web-preview`) | server-side build |
-| Deploy trigger | `scripts/deploy-hook.sh` + skill `deploy-auxi-web` | "deploy đi" → hook |
+| Build worker | Cloudflare Pages Git build (`web-base` + `web-preview/*`) | server-side build |
+| Deploy trigger | `scripts/deploy-preview.sh` + skill `deploy-auxi-web` | "deploy đi" → push `web-preview/*` |
 | Backend | Railway (Valen) + Postgres + R2 | real data |
 
 ## 7. Key decisions & trade-offs
@@ -113,4 +120,5 @@ reviewed PRs; `web-preview` is the disposable build branch for previews.
   triggered deploys need no secrets. Trade-off: a Pages Function + CF secrets.
 - **CF Pages Git build** (not GitHub Actions) → no Actions-billing dependency,
   no designer toolchain. Trade-off: one-time dashboard Git connect.
-- **Deploy = trigger only** → never mutates git; review gate on `main` intact.
+- **Deploy = push a `web-preview/*` branch** → unique URL per deploy, never
+  touches `main`; review gate on `main` intact.

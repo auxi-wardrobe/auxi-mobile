@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
-# Designer "deploy/preview": commit current edits to a fresh preview branch and
-# push it. Cloudflare auto-builds it into a unique preview URL. No CF token, no
-# local build toolchain needed — just git. Never touches main.
+# Designer "deploy/preview": snapshot the current edits onto a fresh
+# web-preview/* branch and push it. Cloudflare auto-builds it into a unique
+# preview URL. No CF token, no local build toolchain needed — just git.
+# Never touches main or web-base.
+#
+# The branch MUST live under the web-preview/ prefix: Cloudflare is configured to
+# build ONLY web-preview/* branches (production = web-base). Any other branch is
+# ignored, so two designers never collide — every deploy is its own branch+URL.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-[ -f vite.config.ts ] || { echo "✗ Not on the web-review base (no vite.config.ts). Run on the 'web-preview' branch (or a branch based on it)."; exit 1; }
+[ -f vite.config.ts ] || { echo "✗ Not on a web base (no vite.config.ts). Switch to 'web-base' (or an existing web-preview/* branch) first."; exit 1; }
 DESC="${1:-home}"
 SLUG=$(printf '%s' "$DESC" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-*//;s/-*$//' | cut -c1-16)
 [ -z "$SLUG" ] && SLUG=home
 TS=$(date +%y%m%d-%H%M%S)
-BR="preview/${SLUG}-${TS}"
+# Timestamp FIRST: the "web-preview-" alias prefix is long, and Cloudflare caps
+# the branch alias at 28 chars. Putting the unique TS up front guarantees the
+# preview URL stays unique even when the (decorative) slug gets truncated.
+BR="web-preview/${TS}-${SLUG}"
 git checkout -q -b "$BR"
 git add -A
 git commit -q --allow-empty -m "preview: ${SLUG} (${TS})"
