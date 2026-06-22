@@ -15,10 +15,15 @@
  *   - Contains a number
  *
  * On submit (`useRegisterMutation`):
- *   - 201 → AuthContext caches `pendingVerifyEmail` (already wired in
- *           foundation; we call `setPendingVerifyEmail` here too as a
- *           belt-and-braces store before navigation in case the
- *           caller skipped the `register` action).
+ *   - 201 + `verification_required: true` (real/email mode) → cache
+ *           `pendingVerifyEmail` and navigate to `VerifyEmail`. The user
+ *           verifies via the emailed magic link.
+ *   - 201 + `verification_required: false` / `auto_verified: true` (dev
+ *           "mock email" mode — account already verified server-side) →
+ *           skip VerifyEmail and complete sign-in directly via
+ *           `AuthContext.login(...)`, so the AppNavigator `user` gate lands
+ *           the user in the app. If that auto-login fails, fall back to
+ *           `SignIn` with the email prefilled (never strand / crash).
  *   - 409 EMAIL_ALREADY_EXISTS → navigate `SignIn` with email param.
  *   - 422 WEAK_PASSWORD → inline highlight + i18n error.
  *   - 429 RATE_LIMITED → inline copy.
@@ -113,7 +118,7 @@ export const PasswordCreationScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<Route>();
   const { t } = useTranslation();
-  const { setPendingVerifyEmail } = useAuth();
+  const { setPendingVerifyEmail, login } = useAuth();
   const register = useRegisterMutation();
 
   const email = route.params?.email ?? '';
@@ -148,10 +153,43 @@ export const PasswordCreationScreen = () => {
     register.mutate(
       { email, password },
       {
-        onSuccess: () => {
-          // Belt-and-braces: ensure VerifyEmail can read this even if
-          // AuthContext.register() wasn't the caller (we used the raw
-          // mutation here, not the context wrapper).
+        onSuccess: async data => {
+          // The backend tells us whether this account still needs email
+          // verification. In the real/email flow `verification_required`
+          // is true and the user must click the magic link. In dev "mock
+          // email" mode the account is already verified at registration
+          // (`verification_required: false` / `auto_verified: true`) — in
+          // that case we skip the VerifyEmail screen and complete sign-in
+          // directly so the user lands in the app.
+          const alreadyVerified =
+            data.verification_required === false || data.auto_verified === true;
+
+          if (alreadyVerified) {
+            // Funnel terminus for the auto-verified branch: the deep-link
+            // `sign_up_completed` (services/deepLinkHandler.ts) never fires
+            // here because no email arrives, so emit it now to keep the
+            // activation funnel intact, plus a branch marker.
+            track('sign_up_auto_verified', { method: 'email' });
+            track('sign_up_completed', { method: 'email' });
+            try {
+              // Reuse the existing login path — persists tokens, sets
+              // `user`, and lets AuthContext's identity effect emit
+              // `sign_in_completed`. AppNavigator's `user` gate then
+              // switches to the app/onboarding stack.
+              await login({ email, password });
+            } catch {
+              // Auto-login fell over (e.g. transient network). Don't crash
+              // or strand the user on this screen — hand off to SignIn with
+              // the email prefilled so they can complete sign-in manually.
+              navigation.navigate('SignIn', { email });
+            }
+            return;
+          }
+
+          // Real mode: verification required. Belt-and-braces — ensure
+          // VerifyEmail can read this even if AuthContext.register() wasn't
+          // the caller (we used the raw mutation here, not the context
+          // wrapper).
           setPendingVerifyEmail(email);
           navigation.navigate('VerifyEmail', { email });
         },
@@ -183,7 +221,16 @@ export const PasswordCreationScreen = () => {
         },
       },
     );
-  }, [allMet, email, password, register, navigation, setPendingVerifyEmail, t]);
+  }, [
+    allMet,
+    email,
+    password,
+    register,
+    navigation,
+    setPendingVerifyEmail,
+    login,
+    t,
+  ]);
 
   const submitDisabled = !allMet || register.isPending;
   const submitIconColor = submitDisabled

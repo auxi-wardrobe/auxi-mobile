@@ -47,7 +47,19 @@ export interface RegisterRequest {
 export interface RegisterResponse {
   message: string;
   user: User;
-  verification_required: true;
+  /**
+   * `true` (real/email mode) — the account needs email verification; the
+   * client must route to VerifyEmail and wait for the magic-link deep link.
+   * `false` (dev "mock email" mode) — registration already verified the
+   * account server-side; the client should auto-complete sign-in instead.
+   */
+  verification_required: boolean;
+  /**
+   * Present + `true` only when the backend auto-verified the account at
+   * registration time (mock email mode). Treated as a synonym of
+   * `verification_required === false` by the client. Omitted in real mode.
+   */
+  auto_verified?: boolean;
 }
 
 // ---------------------------------------------------------------------------
