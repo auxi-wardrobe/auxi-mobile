@@ -90,6 +90,7 @@ import {
   type TemperatureBucketKey,
 } from '../config/temperature-buckets';
 import { OutfitActionRow } from '../components/features/OutfitActionRow';
+import { AiContentDisclosure } from '../components/features/AiContentDisclosure';
 import { OutfitSwipeDeck } from '../components/features/OutfitSwipeDeck';
 import { motion } from '../theme/motion';
 import {
@@ -2291,6 +2292,20 @@ export const HomeScreen = () => {
         </View>
       )}
 
+      {/* B2: AI-generated disclosure + Report for the recommendation surface
+          (Apple 2026 AI rules). The outfit is AI-selected content; shown once
+          per screen while a recommendation is present, below the swipe deck.
+          Placed outside the height-locked OptionSheet card so it never
+          perturbs the grid layout. */}
+      {optionSets.length > 0 ? (
+        <View style={styles.aiDisclosureRow}>
+          <AiContentDisclosure
+            surface="recommendation"
+            testID="home-ai-disclosure"
+          />
+        </View>
+      ) : null}
+
       {/* AU-307 phase 04 — error / fallback / guest banner. M5 fix: float the
           banner above the Remix action row + sticky footer (anchored over the
           lower-grid dead space, elevated + own surface) instead of inserting it
@@ -3204,6 +3219,12 @@ const styles = StyleSheet.create({
   deckWrap: {
     flex: 1,
     paddingTop: 4,
+  },
+  // B2 (merged from main): AI-generated disclosure row below the swipe deck.
+  aiDisclosureRow: {
+    paddingHorizontal: theme.spacing.uacBodyPadding,
+    paddingVertical: theme.spacing.xs,
+    alignItems: 'center',
   },
   // Like/Skip cue badge shown during a drag (calm, premium — not a Tinder
   // stamp). Opacity is driven by the live drag distance (OutfitSwipeDeck).
