@@ -27,7 +27,6 @@ type Role = 'active' | 'peek';
 type Props<T> = {
   items: T[];
   activeIndex: number;
-  cardHeight: number;
   /** False while a collage item is being dragged — freezes the deck swipe. */
   swipeEnabled: boolean;
   keyOf: (item: T) => string;
@@ -45,7 +44,6 @@ type Props<T> = {
 export function OutfitSwipeDeck<T>({
   items,
   activeIndex,
-  cardHeight,
   swipeEnabled,
   keyOf,
   renderCard,
@@ -158,7 +156,9 @@ export function OutfitSwipeDeck<T>({
     extrapolate: 'clamp',
   });
 
-  const cardStyle: ViewStyle = { height: cardHeight, width: '100%' };
+  // Cards fill the deck via absolute insets (see cardBase), so the deck stack
+  // flex-fills its parent and the card height follows the available space.
+  const cardStyle: ViewStyle = { width: '100%' };
   const a11yActions = useMemo(
     () => [
       { name: 'like' as const, label: 'Like outfit' },
@@ -172,7 +172,7 @@ export function OutfitSwipeDeck<T>({
   }
 
   return (
-    <View testID={testID} style={[styles.stack, { height: cardHeight }]}>
+    <View testID={testID} style={styles.stack}>
       {peek ? (
         <Animated.View
           key={`peek-${keyOf(peek)}`}
@@ -219,8 +219,8 @@ export function OutfitSwipeDeck<T>({
 }
 
 const styles = StyleSheet.create({
-  stack: { width: '100%', position: 'relative' },
-  cardBase: { position: 'absolute', top: 0, left: 0, right: 0 },
+  stack: { flex: 1, width: '100%', position: 'relative' },
+  cardBase: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   // AU-359: during a hold/swipe the active card carries a live translateX +
   // rotate (±6°). Without self-clipping, the rotation exposes a hairline of the
   // peek card's cream tile surface (figmaCardSurface) at the screen edge and a
