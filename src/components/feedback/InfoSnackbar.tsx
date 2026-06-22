@@ -55,7 +55,7 @@ export const InfoSnackbar: React.FC<InfoSnackbarProps> = ({
       onPress={onClose}
       style={styles.closeButton}
     >
-      <IconClose width={16} height={16} color={theme.colors.white} />
+      <IconClose width={24} height={24} color={theme.colors.white} />
     </TouchableOpacity>
   </View>
 );

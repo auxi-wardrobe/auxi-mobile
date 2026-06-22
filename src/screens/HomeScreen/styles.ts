@@ -61,11 +61,17 @@ export const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
     alignItems: 'center',
   },
-  // Slot for the black info snackbars (AI disclosure, "seen them all"): 12px
-  // horizontal inset so the stretched snackbar sits inside the screen edges.
-  noticeSlot: {
-    paddingHorizontal: SHEET_PADDING,
-    paddingVertical: theme.spacing.xs,
+  // Floating toast/snackbar layer (z-index tier 5). The info snackbars (AI
+  // disclosure, "seen them all") float ON TOP of the content — absolutely
+  // positioned so they never stack with / push the grid cards. Anchored just
+  // below the header, inset 12px from the edges.
+  noticeStack: {
+    position: 'absolute',
+    top: 76,
+    left: SHEET_PADDING,
+    right: SHEET_PADDING,
+    zIndex: theme.zIndex.toast,
+    gap: theme.spacing.s,
   },
   deckCue: {
     position: 'absolute',
