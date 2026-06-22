@@ -558,6 +558,8 @@
       "a11y_collage_view": "Vue collage"
     },
     "contextChips": {
+      "title": "Affiner les suggestions",
+      "subtitle": "Sélectionnez ou saisissez un contexte pour améliorer les choix du jour.",
       "a11y_shuffle": "Mélanger les suggestions",
       "placeholder": "Dites-nous ce que vous aimeriez changer"
     },
