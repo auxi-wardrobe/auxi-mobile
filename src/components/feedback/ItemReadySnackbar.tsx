@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: theme.spacing.s, // dimension/8 = 8px
     paddingHorizontal: theme.spacing.m, // 16px
-    paddingVertical: 14, // Figma py-14 (between xs=4 / m=16, no exact token)
+    paddingVertical: 12, // Figma .padding(.vertical, 12) (between s=8 / m=16, no exact token)
     borderRadius: theme.borderRadius.s, // 4px
     backgroundColor: theme.colors.figmaSnackbarSuccessBg, // color/success/200
     // M3/Elevation Light/3 — RN approximation of the two Figma drop shadows.

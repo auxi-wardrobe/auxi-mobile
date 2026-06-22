@@ -236,7 +236,7 @@
         "name_edit_placeholder": "Saisir un nom"
       },
       "list": {
-        "added_title": "Ajouté à votre garde-robe",
+        "added_title": "Article ajouté. Nous finissons de le préparer en arrière-plan.",
         "item_ready_title": "Votre article est prêt",
         "upload_failed_title": "Échec du téléchargement",
         "upload_failed_body": "Nous n'avons pas pu enregistrer cet article.",

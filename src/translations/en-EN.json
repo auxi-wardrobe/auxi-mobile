@@ -236,7 +236,7 @@
         "name_edit_placeholder": "Enter a name"
       },
       "list": {
-        "added_title": "Added to your wardrobe",
+        "added_title": "Item added. We'll finish preparing it in the background.",
         "item_ready_title": "Your item is ready",
         "upload_failed_title": "Upload failed",
         "upload_failed_body": "We could not save that item.",
