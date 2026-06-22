@@ -142,13 +142,13 @@ export const OptionSheet = React.memo(
               </Text>
             </View>
           ) : null}
-          {!item.isSystem ? (
-            <PinTilePill
-              isPinned={isPinned}
-              testID={`home-tile-pin-${cellKey}-${flatTileIndex}`}
-              onPress={() => onTogglePin(item)}
-            />
-          ) : null}
+          {/* Pin affordance shows on every item — common/system items are
+              pinnable too (confirm sheet shows the "common" badge). */}
+          <PinTilePill
+            isPinned={isPinned}
+            testID={`home-tile-pin-${cellKey}-${flatTileIndex}`}
+            onPress={() => onTogglePin(item)}
+          />
         </TouchableOpacity>
       );
     };
