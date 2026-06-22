@@ -140,7 +140,11 @@ export const AppNavigator = () => {
                 component={SeeThisOnMeScreen}
                 options={{ gestureEnabled: false }}
               />
-              <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
+              <Stack.Screen
+                name="ItemDetail"
+                component={ItemDetailScreen}
+                options={{ presentation: 'modal' }}
+              />
               <Stack.Screen name="Database" component={DatabaseScreen} />
               <Stack.Screen
                 name="OutfitCanvas"
