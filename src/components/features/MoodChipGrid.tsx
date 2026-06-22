@@ -40,7 +40,9 @@ export const MoodChipGrid: React.FC<MoodChipGridProps> = ({
             style={[styles.chip, selected && styles.chipSelected]}
             onPress={() => onToggle(chip.id)}
           >
-            <Text style={styles.chipText}>{t(chip.labelKey)}</Text>
+            <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+              {t(chip.labelKey)}
+            </Text>
           </TouchableOpacity>
         );
       })}
@@ -56,18 +58,21 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   chip: {
-    minHeight: 40,
-    borderRadius: 16,
+    minHeight: 32, // chip size M
+    borderRadius: theme.borderRadius.round, // pill
     paddingHorizontal: theme.spacing.m,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.figmaCardTag,
+    backgroundColor: theme.colors.figmaInsightPillBg, // default #E0D2C4
   },
   chipSelected: {
-    backgroundColor: theme.colors.figmaChipBg,
+    backgroundColor: theme.colors.figmaChipBg, // selected #5B5550
   },
   chipText: {
     ...theme.typography.aliases.archivoBody,
-    color: theme.colors.white,
+    color: theme.colors.figmaText, // dark on default tan
+  },
+  chipTextSelected: {
+    color: theme.colors.white, // white on selected
   },
 });

@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     paddingHorizontal: theme.spacing.m - 4, // 12 — Figma pill horizontal pad
     paddingVertical: 7,
-    borderRadius: 16,
+    borderRadius: theme.borderRadius.round,
     // Soft floating shadow so the pill lifts off the garment.
     ...theme.ds.shadow.floatingButton,
   },

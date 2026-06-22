@@ -219,7 +219,7 @@ export const styles = StyleSheet.create({
     height: 32,
     maxWidth: 336,
     paddingHorizontal: theme.spacing.uacDimension12,
-    borderRadius: theme.borderRadius.m,
+    borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaCaptionPillBg,
   },
   loadingPillText: {
@@ -267,7 +267,7 @@ export const styles = StyleSheet.create({
   cardTagPill: {
     height: 19,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaCardTag,
     alignItems: 'center',
     justifyContent: 'center',

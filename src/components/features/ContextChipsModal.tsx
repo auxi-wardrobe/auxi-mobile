@@ -278,18 +278,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    minHeight: 48,
+    minHeight: 44,
     minWidth: 64,
-    borderRadius: 16,
-    borderWidth: 2,
+    borderRadius: theme.borderRadius.round,
+    borderWidth: 0,
     borderColor: 'transparent',
-    backgroundColor: theme.colors.figmaIconSurface,
+    backgroundColor: theme.colors.figmaInsightPillBg,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   selectedChip: {
-    borderColor: theme.colors.figmaAction,
+    backgroundColor: theme.colors.figmaChipBg,
   },
   shuffleChip: {
     width: 70,
@@ -300,10 +300,10 @@ const styles = StyleSheet.create({
   },
   chipText: {
     ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
+    color: theme.colors.figmaText,
   },
   selectedChipText: {
-    color: theme.colors.figmaAction,
+    color: theme.colors.white,
   },
   editInput: {
     marginTop: 12,

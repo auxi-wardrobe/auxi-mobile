@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    zIndex: 10,
+    zIndex: theme.zIndex.sticky,
   },
   backHit: {
     width: 45,
