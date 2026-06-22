@@ -14,7 +14,7 @@ export const motion = {
     reveal: 700,
   },
   distance: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
-  scale: { press: 0.97, hover: 1.02, select: 1.03, emphasis: 1.05 },
+  scale: { background: 0.96, press: 0.97, hover: 1.02, select: 1.03, emphasis: 1.05 },
   opacity: { hidden: 0, subtle: 0.6, visible: 1 },
   stagger: { tight: 40, normal: 80, relaxed: 120 },
   elevation: { sm: 2, md: 4, lg: 8 },

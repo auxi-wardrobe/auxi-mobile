@@ -55,7 +55,7 @@ const FILTER_TABS = [
 type FilterTab = (typeof FILTER_TABS)[number];
 
 // Grid — Figma node 2850:16492: 3 columns, 24px side padding, 4px gaps, 3:4 tiles.
-const HORIZONTAL_PADDING = 24;
+const HORIZONTAL_PADDING = 12;
 const GRID_GAP = 4;
 const GRID_COLUMNS = 3;
 const TILE_WIDTH =
