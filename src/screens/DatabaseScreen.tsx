@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tileBadgeText: {
-    fontFamily: 'Manrope-Medium',
+    fontFamily: 'Poppins-Medium',
     fontSize: 8,
     lineHeight: 12,
     color: theme.colors.white,

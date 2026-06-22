@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   topIconLabel: {
-    fontFamily: 'Manrope-Medium',
+    fontFamily: 'Poppins-Medium',
     fontSize: 14,
     lineHeight: 20,
     color: theme.colors.figmaAction,
@@ -318,17 +318,17 @@ const styles = StyleSheet.create({
   },
   pillText: {
     ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.figmaAction,
+    color: theme.colors.figmaTextDark, // secondary/text button label #070707
   },
   filledText: {
-    color: theme.colors.white,
+    color: theme.colors.uacTextPrimaryBase, // primary button label #F2EFEC
   },
   dangerText: {
     color: theme.colors.figmaRed,
   },
   textOnly: {
     ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.figmaAction,
+    color: theme.colors.figmaTextDark, // text button label #070707
   },
   bottomSheetSurface: {
     borderTopLeftRadius: 16,

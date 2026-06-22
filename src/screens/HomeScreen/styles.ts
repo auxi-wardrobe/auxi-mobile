@@ -273,7 +273,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardTagText: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Poppins-Regular',
     fontSize: 10,
     lineHeight: 12,
     color: theme.colors.white,

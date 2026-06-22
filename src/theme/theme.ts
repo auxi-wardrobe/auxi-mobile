@@ -159,7 +159,7 @@ export const theme = {
     uacSafeAreaBottom: 12,
   },
   typography: {
-    fontFamily: 'System', // Use system font for now
+    fontFamily: 'Poppins-Regular', // Use system font for now
     sizes: {
       h1: 32,
       h2: 24,
@@ -175,38 +175,38 @@ export const theme = {
     },
     aliases: {
       playfairDisplayTitle: {
-        fontFamily: 'PlayfairDisplay-Bold',
+        fontFamily: 'Poppins-Bold',
         fontSize: 40,
         lineHeight: 52,
       },
       playfairDisplaySection: {
-        fontFamily: 'PlayfairDisplay-Medium',
+        fontFamily: 'Poppins-Medium',
         fontSize: 24,
         lineHeight: 32,
       },
       playfairDisplayHeader: {
-        fontFamily: 'PlayfairDisplay-Medium',
+        fontFamily: 'Poppins-Medium',
         fontSize: 40,
         lineHeight: 56,
       },
       manropeBody: {
-        fontFamily: 'Manrope-Medium',
+        fontFamily: 'Poppins-Medium',
         fontSize: 16,
         lineHeight: 24,
       },
       manropeCaption: {
-        fontFamily: 'Manrope-Regular',
+        fontFamily: 'Poppins-Regular',
         fontSize: 14,
         lineHeight: 20,
       },
       archivoBody: {
-        fontFamily: 'ArchivoNarrow-Regular',
+        fontFamily: 'Poppins-Regular',
         fontSize: 16,
         lineHeight: 24,
         letterSpacing: 0.15,
       },
       archivoButton: {
-        fontFamily: 'ArchivoNarrow-SemiBold',
+        fontFamily: 'Poppins-SemiBold',
         fontSize: 16,
         lineHeight: 24,
         letterSpacing: 0.15,
@@ -270,14 +270,14 @@ export const theme = {
         lineHeight: 32,
       },
       uacBodyMdSemibold: {
-        fontFamily: 'Inter-SemiBold',
+        fontFamily: 'Poppins-SemiBold',
         fontSize: 16,
         lineHeight: 24,
       },
       // Settings redesign — Delete-data dialog title (Frame 4).
       // Inter SemiBold 16/20 (Text-md l-20/Semibold) — line-height 20, not 24.
       interSemiboldSm: {
-        fontFamily: 'Inter-SemiBold',
+        fontFamily: 'Poppins-SemiBold',
         fontSize: 16,
         lineHeight: 20,
       },
@@ -285,7 +285,7 @@ export const theme = {
       // Inter SemiBold 14/20 (body/sm Semibold) — one size smaller than
       // interSemiboldSm (16/20); the sheet header reads at body/sm, not Text-md.
       interSemiboldXsSm: {
-        fontFamily: 'Inter-SemiBold',
+        fontFamily: 'Poppins-SemiBold',
         fontSize: 14,
         lineHeight: 20,
       },
@@ -300,18 +300,18 @@ export const theme = {
         lineHeight: 24,
       },
       uacBodyXsRegular: {
-        fontFamily: 'Inter-Regular',
+        fontFamily: 'Poppins-Regular',
         fontSize: 12,
         lineHeight: 16,
       },
       uacBodyXsMedium: {
-        fontFamily: 'Inter-Medium',
+        fontFamily: 'Poppins-Medium',
         fontSize: 12,
         lineHeight: 16,
       },
       // Home header weather temperature — Figma 3227:19834 (Inter SemiBold 12/16).
       interSemiboldXs: {
-        fontFamily: 'Inter-SemiBold',
+        fontFamily: 'Poppins-SemiBold',
         fontSize: 12,
         lineHeight: 16,
       },
@@ -319,24 +319,24 @@ export const theme = {
       // Figma Text-xxs = Inter Regular 10/12. No existing 10/12 Inter alias.
       // Source: figma-extraction-onboarding.md §4.2
       interCaptionXxs: {
-        fontFamily: 'Inter-Regular',
+        fontFamily: 'Poppins-Regular',
         fontSize: 10,
         lineHeight: 12,
       },
       // Wardrobe add-item flow (node 2852:19750) — Inter body text.
       // Text-md (l-24) Regular 16/24, Text-sm (l-20) Regular/Medium 14/20.
       interBodyMd: {
-        fontFamily: 'Inter-Regular',
+        fontFamily: 'Poppins-Regular',
         fontSize: 16,
         lineHeight: 24,
       },
       interBodySm: {
-        fontFamily: 'Inter-Regular',
+        fontFamily: 'Poppins-Regular',
         fontSize: 14,
         lineHeight: 20,
       },
       interMediumSm: {
-        fontFamily: 'Inter-Medium',
+        fontFamily: 'Poppins-Medium',
         fontSize: 14,
         lineHeight: 20,
       },
@@ -346,7 +346,7 @@ export const theme = {
         lineHeight: 24,
       },
       uacM3BodySmall: {
-        fontFamily: 'Roboto-Regular',
+        fontFamily: 'Poppins-Regular',
         fontSize: 12,
         lineHeight: 16,
         letterSpacing: 0.4,
@@ -474,8 +474,8 @@ export const theme = {
     // (JetBrains Mono) is NOT bundled, so the screen falls back to platform mono.
     font: {
       display: 'Poppins', // headings / display
-      ui: 'Roboto', // primary UI
-      uiAlt: 'Inter', // alternate UI / body
+      ui: 'Poppins', // primary UI
+      uiAlt: 'Poppins', // alternate UI / body
       mono: 'JetBrains Mono', // labels / code (not bundled — falls back)
     },
   },

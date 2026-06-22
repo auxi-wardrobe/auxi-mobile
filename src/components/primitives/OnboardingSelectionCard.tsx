@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(39, 42, 50, 0.85)',
   },
   labelText: {
-    fontFamily: 'Manrope-Medium',
+    fontFamily: 'Poppins-Medium',
     fontSize: 8,
     lineHeight: 10,
     color: '#87898B',
