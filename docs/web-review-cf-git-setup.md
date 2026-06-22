@@ -2,20 +2,23 @@
 
 Goal: Cloudflare builds the web target on **its own** infra (no GitHub Actions
 billing, no designer toolchain). Designers just `git push` a `web-preview/*`
-branch ("deploy đi") and CF auto-builds it.
+branch ("sandbox đi") and CF auto-builds it.
 
-## Branch model
+## Branch model (web build lives on `main`)
 
-- **`web-base`** — the web build base (has `vite.config.ts` + all web infra).
-  It is the Cloudflare **production branch** → `auxi-web-review.pages.dev`.
-  Maintainer keeps it in sync with `main`; nobody edits it directly.
-- **`web-preview/*`** — disposable per-deploy preview branches. Cloudflare is
-  set to build **only** these (custom preview filter). Each push = its own
-  preview URL; two designers never collide.
-- `main` / PRs are untouched by deploys (maintainer review intact).
+- **`main`** — holds the web build tooling (`vite.config.ts`, `web/`,
+  `functions/`, `src/config/env.web.ts`, `scripts/deploy-preview.sh`,
+  `.ruby-version`). It is the Cloudflare **production branch** →
+  `auxi-web-review.pages.dev` (always the current app).
+- **`web-preview/*`** — disposable per-deploy preview branches, cut from the
+  designer's current branch (off main). Cloudflare builds **only** these (custom
+  preview filter). Each push = its own preview URL; many designers never collide.
+- There is **no longer a `web-base` branch** — it was retired once the web build
+  moved onto main (no parallel branch → no drift).
 
-> Git note: a branch literally named `web-preview` **cannot** coexist with
-> `web-preview/x` (ref file/dir conflict) — that's why the base is `web-base`.
+> Why `.ruby-version`: CF auto-runs `bundle install` when a `Gemfile` is present,
+> and that crashes on CF's default Ruby 3.4 (`untaint` removed). `.ruby-version`
+> `3.1.6` makes it pass, so the Gemfile (needed for iOS) can stay on main.
 
 ## A. Connect the repo to a Git-backed Pages project (dashboard)
 
@@ -25,15 +28,15 @@ The project `auxi-web-review` is Git-connected to **auxi-wardrobe/auxi-mobile**
 ## B. Build settings
 
 - Project name: `auxi-web-review`
-- Production branch: **`web-base`**
+- Production branch: **`main`**
 - Preview deployments: **Custom** → include only **`web-preview/*`**
 - Framework preset: **None**
 - Build command: **`yarn web:build`**
 - Build output directory: **`dist-web`**
 - Root directory: **`/`**
 
-These are also settable via the CF API on the project's `source.config`:
-`production_branch="web-base"`, `preview_deployment_setting="custom"`,
+Also settable via the CF API on the project's `source.config`:
+`production_branch="main"`, `preview_deployment_setting="custom"`,
 `preview_branch_includes=["web-preview/*"]`.
 
 ## C. Environment variables — needed by the proxy at runtime
@@ -50,13 +53,13 @@ auth server-side, so credentials never reach the browser bundle.
 
 ## D. How it runs after setup
 
-- **Designer:** on `web-base`, edit, then "deploy đi" →
+- **Designer:** on any branch (off main), edit, then "sandbox đi" →
   `yarn web:deploy:preview "<desc>"` → pushes `web-preview/<ts>-<desc>` → CF
-  auto-builds → live in ~1–2 min. No git knowledge, no CF token, no local build.
-- **Update what previews show:** bring new app changes from `main` into
-  `web-base` (a normal reviewed step) — CF auto-builds `web-base` (production)
-  on push.
+  auto-builds → live in ~1–2 min. No branch setup, no CF token, no local build.
+- **Production URL** (`auxi-web-review.pages.dev`) rebuilds automatically on every
+  push to `main`.
 - **Optional legacy path:** a Deploy Hook URL (`scripts/deploy-hook.sh` +
   gitignored `.env.deploy`) can POST-trigger a build without git. Not used by the
   default flow.
-- `main` / PRs / merges are untouched by deploys (maintainer review intact).
+- Deploys never push `main` or open a PR — promoting a change to the real app is a
+  separate, human-reviewed step (maintainer review intact).
