@@ -153,7 +153,8 @@ export const styles = StyleSheet.create({
     opacity: 0,
   },
   card: {
-    height: CARD_HEIGHT,
+    width: '100%',
+    aspectRatio: CARD_ASPECT,
     borderRadius: theme.borderRadius.figmaTile,
     backgroundColor: theme.colors.figmaCardSurface,
     overflow: 'hidden',
