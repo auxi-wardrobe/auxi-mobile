@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
+import { useBackgroundScale } from '../../context/BackgroundScaleContext';
 import { PillButton } from '../primitives/FigmaPrimitives';
 import { MoodChipGrid } from './MoodChipGrid';
 import { getMoodChipsForOccasion } from './mood-chips';
@@ -52,6 +53,14 @@ export const MoodFeedbackSheet: React.FC<MoodFeedbackSheetProps> = ({
 }) => {
   const { t } = useTranslation();
   const [shouldRender, setShouldRender] = useState(visible);
+  const { pushSheet, popSheet } = useBackgroundScale();
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+    pushSheet();
+    return () => popSheet();
+  }, [visible, pushSheet, popSheet]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 
