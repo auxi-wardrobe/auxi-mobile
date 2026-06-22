@@ -3115,13 +3115,10 @@ const GarmentPreview = ({ item }: { item: Item }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // Figma "Home for option 3/3" (2849:11960) frame background is white
-    // (#ffffff / background/neutral/subtlest), NOT the warm cream
-    // figmaBackground (#f2efec). The cream base made the header read as a
-    // dirty greige band against the white content sheet + white floating
-    // buttons; white unifies the status bar, header, content, and footer
-    // gutters into one clean surface per the design.
-    backgroundColor: theme.colors.figmaSurface,
+    // Home screen background set to black per request. Uses the `primary`
+    // token (#000000) instead of a literal hex to honour the theme-token
+    // convention (no literal hex in screens).
+    backgroundColor: theme.colors.primary,
   },
   header: {
     flexDirection: 'row',
