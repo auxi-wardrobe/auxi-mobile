@@ -1,4 +1,0 @@
-- generic [ref=e3]:
-  - button "Full bleed" [ref=e4] [cursor=pointer]
-  - progressbar [ref=e7]:
-    - img [ref=e9]

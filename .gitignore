@@ -104,3 +104,6 @@ plans/**/*.mov
 
 # web review build output
 dist-web/
+
+# playwright test artifacts
+.playwright-mcp/
