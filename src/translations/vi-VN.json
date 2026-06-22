@@ -557,6 +557,8 @@
       "a11y_collage_view": "Xem dạng ghép"
     },
     "contextChips": {
+      "title": "Tinh chỉnh gợi ý",
+      "subtitle": "Chọn hoặc nhập ngữ cảnh để cải thiện gợi ý hôm nay.",
       "a11y_shuffle": "Xáo trộn gợi ý",
       "placeholder": "Cho chúng tôi biết bạn muốn thay đổi gì"
     },

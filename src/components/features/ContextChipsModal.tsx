@@ -139,6 +139,12 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
             },
           ]}
         >
+          <View style={styles.header}>
+            <Text style={styles.title}>{t('contextChips.title')}</Text>
+            <Text style={styles.subtitle}>
+              {t('contextChips.subtitle')}
+            </Text>
+          </View>
           <View style={styles.chipRow}>
             {chipOptions.map(chip => {
               const selected = chip.id === selectedChipId;
@@ -280,6 +286,18 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 16,
   },
+  header: {
+    marginBottom: theme.spacing.m,
+  },
+  title: {
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.figmaTextPrimary,
+  },
+  subtitle: {
+    ...theme.typography.aliases.poppinsBodySm,
+    color: theme.colors.figmaTextSecondary,
+    marginTop: theme.spacing.xs,
+  },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -287,7 +305,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    minHeight: 44,
+    minHeight: 48,
     minWidth: 64,
     borderRadius: theme.borderRadius.round,
     borderWidth: 0,

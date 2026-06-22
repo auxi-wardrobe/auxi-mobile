@@ -558,6 +558,8 @@
       "a11y_collage_view": "Collage view"
     },
     "contextChips": {
+      "title": "Refine suggestions",
+      "subtitle": "Select or input context to improve today’s picks.",
       "a11y_shuffle": "Shuffle suggestions",
       "placeholder": "Tell us what you'd like to change"
     },
