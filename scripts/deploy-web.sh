@@ -30,5 +30,7 @@ fi
 
 echo "→ building web bundle…"
 npx vite build
-echo "→ deploying to Cloudflare Pages (auxi-web-review)…"
+# NOTE: --commit-dirty is a wrangler flag (deploy with a dirty git tree).
+# It does NOT create any git commit. This script never touches git.
+echo "→ deploying preview to Cloudflare Pages (auxi-web-review)…"
 npx wrangler pages deploy dist-web --project-name auxi-web-review --branch main --commit-dirty=true
