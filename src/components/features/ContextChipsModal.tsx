@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
+import { useBackgroundScale } from '../../context/BackgroundScaleContext';
 import { Input } from '../atoms/Input';
 import { track } from '../../services/analytics';
 
@@ -68,6 +69,14 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [shouldRender, setShouldRender] = useState(visible);
+  const { pushSheet, popSheet } = useBackgroundScale();
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+    pushSheet();
+    return () => popSheet();
+  }, [visible, pushSheet, popSheet]);
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 
   useEffect(() => {

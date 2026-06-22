@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { motion, useReducedMotion } from '../../theme/motion';
+import { useBackgroundScale } from '../../context/BackgroundScaleContext';
 import { PillButton } from '../primitives/FigmaPrimitives';
 import {
   TEMPERATURE_BUCKETS,
@@ -82,6 +83,14 @@ export const TemperatureOverrideSheet: React.FC<
   const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
   const [shouldRender, setShouldRender] = useState(visible);
+  const { pushSheet, popSheet } = useBackgroundScale();
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+    pushSheet();
+    return () => popSheet();
+  }, [visible, pushSheet, popSheet]);
   const [pendingKey, setPendingKey] =
     useState<TemperatureBucketKey>(activeBucketKey);
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;

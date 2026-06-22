@@ -14,6 +14,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { SidebarProvider } from './src/context/SidebarContext';
 import { RootDrawer } from './src/components/layout/RootDrawer';
+import { BackgroundScaleProvider } from './src/context/BackgroundScaleContext';
 import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import Toast from 'react-native-toast-message';
 import { initI18n } from './src/i18n/init';
@@ -81,9 +82,11 @@ function App() {
                   an unexpected render error anywhere in the navigator tree
                   (recoverable fallback instead of a white screen on review). */}
               <ErrorBoundary>
-                <RootDrawer>
-                  <AppNavigator />
-                </RootDrawer>
+                <BackgroundScaleProvider>
+                  <RootDrawer>
+                    <AppNavigator />
+                  </RootDrawer>
+                </BackgroundScaleProvider>
               </ErrorBoundary>
             </SidebarProvider>
           </AuthProvider>

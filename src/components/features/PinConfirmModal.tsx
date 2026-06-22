@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import IconHomePin from '../../assets/images/icon_home_pin.svg';
 import { theme } from '../../theme/theme';
 import { motion, useReducedMotion } from '../../theme/motion';
+import { useBackgroundScale } from '../../context/BackgroundScaleContext';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -63,6 +64,14 @@ export const PinConfirmModal: React.FC<PinConfirmModalProps> = ({
   const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
   const [shouldRender, setShouldRender] = useState(visible);
+  const { pushSheet, popSheet } = useBackgroundScale();
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+    pushSheet();
+    return () => popSheet();
+  }, [visible, pushSheet, popSheet]);
   const [isPressed, setIsPressed] = useState(false);
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 
