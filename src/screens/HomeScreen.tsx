@@ -77,7 +77,6 @@ import { resolveItemImage } from '../utils/url';
 import { weatherService } from '../services/weatherService';
 import { WeatherWidget } from '../components/features/WeatherWidget';
 import { OutfitCardCaption } from '../components/features/OutfitCardCaption';
-import { AiContentDisclosure } from '../components/features/AiContentDisclosure';
 import {
   TemperatureOverrideSheet,
   type TemperatureSheetErrorKey,
@@ -91,6 +90,7 @@ import {
   type TemperatureBucketKey,
 } from '../config/temperature-buckets';
 import { OutfitActionRow } from '../components/features/OutfitActionRow';
+import { AiContentDisclosure } from '../components/features/AiContentDisclosure';
 import { OutfitSwipeDeck } from '../components/features/OutfitSwipeDeck';
 import { motion } from '../theme/motion';
 import {
@@ -1129,9 +1129,22 @@ export const HomeScreen = () => {
       pinDispatch({ type: 'GENERATE_START', snapshot });
     }
 
-    // 30s client-side cap (spec §9 "Loading infinite").
+    // 30s client-side cap (spec §9 "Loading infinite"). The watchdog MUST
+    // drive the UI out of `generating` itself — aborting the request is not
+    // sufficient: apiClient has no request timeout, and RN/axios does not
+    // reliably reject an in-flight request when its AbortSignal fires, so a
+    // request that never settles would strand the user on the skeleton
+    // forever ("bấm pin → loading mãi"). Dispatch GENERATE_ERROR directly so
+    // the loading state always terminates; the `pinAbortRef !== controller`
+    // stale-guards on the resolve/catch paths drop any late settle, so this
+    // can never double-handle.
     const timeoutId = setTimeout(() => {
       controller.abort();
+      if (pinAbortRef.current === controller) {
+        pinAbortRef.current = null;
+        setPinErrorKind('network');
+        pinDispatch({ type: 'GENERATE_ERROR' });
+      }
     }, 30000);
 
     // Endpoint picked by recommendV05 internally — but we set up call shape
@@ -2157,10 +2170,11 @@ export const HomeScreen = () => {
         </View>
       ) : null}
 
-      {/* AU-307 phase 04 — "Generating" status text. Renders just above the
+      {/* AU-307 phase 04 — "Finding the mix" status pill. Renders just above the
           deck whenever the pin-driven /build (or /try_another) is in flight.
-          Minimal copy + theme tokens; no Macgie reuse (the Generating UI is
-          the skeleton tiles themselves — the header is a status hint). */}
+          Figma 3171:9988 pairs the caption with a loading spinner — render a
+          small ActivityIndicator next to the text (generic ray-spinner that
+          matches the Figma `streamline-ultimate:loading` icon). */}
       {pinState.outfit === 'generating' ? (
         <View
           style={styles.pinGeneratingHeader}
@@ -2169,6 +2183,11 @@ export const HomeScreen = () => {
           <Text style={styles.pinGeneratingHeaderText} numberOfLines={1}>
             {t('pin.generating_header')}
           </Text>
+          <ActivityIndicator
+            size="small"
+            color={theme.colors.figmaTextPrimary}
+            testID="home-pin-generating-spinner"
+          />
         </View>
       ) : null}
 
@@ -2227,6 +2246,8 @@ export const HomeScreen = () => {
                 onTogglePin={handleToggleItemPin}
                 onEditContext={handleOpenContextEditModal}
                 onRemix={handleRemix}
+                onShowAnother={handleSkip}
+                activeDot={clampedActiveIndex % OUTFITS_PER_SET}
                 homeView={homeView}
                 onCollageDragActiveChange={setCollageDragActive}
                 // AU-307 phase 04 — show skeletons in non-pinned slots only for
@@ -2588,6 +2609,8 @@ const OptionSheet = React.memo(
     // while the prop stays in the contract for when the button is re-enabled.
     onEditContext: _onEditContext,
     onRemix,
+    onShowAnother,
+    activeDot = 0,
     homeView,
     onCollageDragActiveChange,
     isGenerating = false,
@@ -2605,6 +2628,10 @@ const OptionSheet = React.memo(
     onTogglePin: (item: Item) => void;
     onEditContext: () => void;
     onRemix: () => void;
+    // Figma 3140-5959 action row: "Show another" advances the deck (a forward
+    // step, same as a left-swipe skip); activeDot is the set-position index.
+    onShowAnother?: (outfit: OutfitSheetWithGrid) => void;
+    activeDot?: number;
     homeView: HomeView;
     onCollageDragActiveChange: (active: boolean) => void;
     // AU-307 phase 04 — true while pinState.outfit === 'generating'. Causes
@@ -2939,6 +2966,11 @@ const OptionSheet = React.memo(
           <OutfitActionRow
             testID={`home-action-row-${cellKey}`}
             onRemix={onRemix}
+            onShowAnother={
+              onShowAnother ? () => onShowAnother(outfit) : undefined
+            }
+            dotCount={OUTFITS_PER_SET}
+            activeDot={activeDot}
           />
         </View>
       </View>
@@ -3188,6 +3220,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 4,
   },
+  // B2 (merged from main): AI-generated disclosure row below the swipe deck.
+  aiDisclosureRow: {
+    paddingHorizontal: theme.spacing.uacBodyPadding,
+    paddingVertical: theme.spacing.xs,
+    alignItems: 'center',
+  },
   // Like/Skip cue badge shown during a drag (calm, premium — not a Tinder
   // stamp). Opacity is driven by the live drag distance (OutfitSwipeDeck).
   deckCue: {
@@ -3228,11 +3266,6 @@ const styles = StyleSheet.create({
   // the pre-AU-303 full-bleed sheet width.
   outfitCell: {
     width: screenWidth,
-  },
-  aiDisclosureRow: {
-    paddingHorizontal: theme.spacing.uacBodyPadding,
-    paddingVertical: theme.spacing.xs,
-    alignItems: 'center',
   },
   optionSheet: {
     height: OPTION_SHEET_HEIGHT,
@@ -3583,6 +3616,9 @@ const styles = StyleSheet.create({
   // AU-307 phase 04 — "Generating" status hint, mirrors cycledHint geometry
   // so the user perceives it as part of the same status-pill family.
   pinGeneratingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginHorizontal: SHEET_PADDING,
     marginTop: 4,
     paddingHorizontal: 12,
