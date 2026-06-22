@@ -337,7 +337,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: theme.colors.figmaText,
+    borderColor: theme.colors.uacTextBase,
   },
   errorStateRetryLabel: {
     ...theme.typography.aliases.poppinsButton,

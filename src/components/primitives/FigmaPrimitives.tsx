@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: theme.colors.figmaAction,
+    borderColor: theme.colors.uacTextBase, // secondary/outline border #1D1F23
     paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
