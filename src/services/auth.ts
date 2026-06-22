@@ -271,8 +271,11 @@ export const authService = {
 // ---------------------------------------------------------------------------
 
 /**
- * POST /api/register — create a password-auth account. Backend NO LONGER
- * returns tokens; caller must drive the user to the verify-email screen.
+ * POST /api/register — create a password-auth account. Does NOT return
+ * tokens. The response's `verification_required` tells the caller what to do
+ * next: `true` (real/email mode) → drive the user to the verify-email screen;
+ * `false` / `auto_verified: true` (dev "mock email" mode) → the account is
+ * already verified, so the caller should complete sign-in directly.
  *
  * Errors: EMAIL_ALREADY_EXISTS (409), WEAK_PASSWORD / VALIDATION_ERROR (400).
  */
