@@ -119,6 +119,10 @@ export const theme = {
     // success surface. Source:
     // plans/260617-1743-au-361-item-ready-toast/figma-extraction-item-ready-toast.md §Snackbar visual spec
     figmaSnackbarSuccessBg: '#4cf4d3', // color/success/200 — snackbar surface
+    // Black "info" snackbar (Figma node 3910:22127). Used for dismissible
+    // toasts that add UI complexity (AI-generated disclosure, "seen them all"
+    // limited-suggestion notice) — black surface, white label, close button.
+    figmaSnackbarInfoBg: '#1d1f23', // color/neutral/base — info snackbar surface
     // Glyph + text reuse existing tokens: icon = figmaTextDark (#070707,
     // icon/primary/bold_700), text = uacTextBase (#1d1f23, text/neutral/base).
     // Home-loading shimmer (AU-364, Figma node 2850:11205 "Home - loading").

@@ -61,6 +61,12 @@ export const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
     alignItems: 'center',
   },
+  // Slot for the black info snackbars (AI disclosure, "seen them all"): 12px
+  // horizontal inset so the stretched snackbar sits inside the screen edges.
+  noticeSlot: {
+    paddingHorizontal: SHEET_PADDING,
+    paddingVertical: theme.spacing.xs,
+  },
   deckCue: {
     position: 'absolute',
     top: 16,
