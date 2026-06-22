@@ -2,6 +2,7 @@
   "name": "auxi",
   "version": "0.0.1",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
@@ -17,7 +18,10 @@
     "typecheck": "tsc --noEmit",
     "web:dev": "vite",
     "web:build": "vite build",
-    "web:preview": "vite preview --outDir dist-web"
+    "web:preview": "vite preview --outDir dist-web",
+    "web:deploy": "bash scripts/deploy-web.sh",
+    "web:deploy:remote": "bash scripts/deploy-hook.sh",
+    "web:deploy:preview": "bash scripts/deploy-preview.sh"
   },
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.5.1",
