@@ -8,7 +8,6 @@ import React, {
 import {
   ActivityIndicator,
   Animated,
-  Keyboard,
   SafeAreaView,
   ScrollView,
   Text,
@@ -25,11 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
-import {
-  ContextChipId,
-  ContextChipOption,
-  ContextChipsModal,
-} from '../../components/features/ContextChipsModal';
+import { ContextChipsModal } from '../../components/features/ContextChipsModal';
 import {
   LEGACY_COACHMARK_STORAGE_KEY,
   SwipeCoachMark,
@@ -113,9 +108,9 @@ import {
   mapV05Item,
   normalizeOutfits,
 } from './outfit-normalize';
-import { CONTEXT_CHIP_LABEL_KEYS, CONTEXT_CHIP_SETS } from './context-chips';
 import { styles } from './styles';
 import { useWeather } from './hooks/useWeather';
+import { useContextRefineModal } from './hooks/useContextRefineModal';
 import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { HomeLoadingState } from './components/HomeLoadingState';
@@ -139,12 +134,6 @@ export const HomeScreen = () => {
   const { open: openSidebar } = useSidebar();
   const [homeView, setHomeView] = useState<HomeView>('grid');
   const [collageDragActive, setCollageDragActive] = useState(false);
-  const [isContextModalOpen, setIsContextModalOpen] = useState(false);
-  const [contextSuggestionSetIndex, setContextSuggestionSetIndex] = useState(0);
-  const [selectedContextChipId, setSelectedContextChipId] =
-    useState<ContextChipId | null>(null);
-  const [isEditingContext, setIsEditingContext] = useState(false);
-  const [customContextText, setCustomContextText] = useState('');
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [listOutfits, setListOutfits] = useState<OutfitSheet[]>([]);
@@ -234,31 +223,6 @@ export const HomeScreen = () => {
   }, [activeIndex]);
 
   useEffect(() => {
-    if (isContextModalOpen) {
-      return;
-    }
-    const total = listOutfitsRef.current.length;
-    if (total === 0) {
-      return;
-    }
-    const clamped =
-      activeIndex >= total ? total - 1 : activeIndex < 0 ? 0 : activeIndex;
-    const settled = listOutfitsRef.current[clamped];
-    const hash = settled?.outfitHash;
-    if (!hash) {
-      return;
-    }
-    const source = recommendationSourceRef.current;
-    if (source === 'refine') {
-      recommendationSourceRef.current = 'feed';
-    }
-    trackRecommendationViewedOnce(hash, {
-      position: clamped + 1,
-      source,
-    });
-  }, [activeIndex, listOutfits, isContextModalOpen]);
-
-  useEffect(() => {
     AsyncStorage.removeItem(LEGACY_COACHMARK_STORAGE_KEY).catch(() => {});
     AsyncStorage.removeItem('@auxi/coachmark/swipe-set').catch(() => {});
   }, []);
@@ -280,19 +244,6 @@ export const HomeScreen = () => {
       setPinnedItemId(null);
     };
   }, [setPinnedItemId]);
-
-  const resetContextDraft = useCallback(() => {
-    setContextSuggestionSetIndex(0);
-    setSelectedContextChipId(null);
-    setIsEditingContext(false);
-    setCustomContextText('');
-  }, []);
-
-  const closeContextModal = useCallback(() => {
-    Keyboard.dismiss();
-    setIsContextModalOpen(false);
-    resetContextDraft();
-  }, [resetContextDraft]);
 
   const buildViaV05 = useCallback(
     async (
@@ -465,6 +416,55 @@ export const HomeScreen = () => {
     });
   }, [requestRecommendation]);
 
+  const onSubmitFeedback = useCallback(
+    (payload: string) => {
+      setStyleFeedback(payload);
+      styleFeedbackRef.current = payload;
+      unfavoritedSwipeCountRef.current = 0;
+      recommendationSourceRef.current = 'refine';
+      resetV05Session();
+      fetchGenerationRef.current += 1;
+      poolDepletedRef.current = false;
+      isFirstLoadRef.current = true;
+      requestRecommendation(
+        {
+          style_feedback: payload,
+          pinned_item_id: pinnedItemIdRef.current ?? undefined,
+          mode: selectedModeRef.current,
+        },
+        { force: true },
+      );
+    },
+    [requestRecommendation],
+  );
+
+  const refine = useContextRefineModal({ onSubmitFeedback });
+
+  useEffect(() => {
+    if (refine.isOpen) {
+      return;
+    }
+    const total = listOutfitsRef.current.length;
+    if (total === 0) {
+      return;
+    }
+    const clamped =
+      activeIndex >= total ? total - 1 : activeIndex < 0 ? 0 : activeIndex;
+    const settled = listOutfitsRef.current[clamped];
+    const hash = settled?.outfitHash;
+    if (!hash) {
+      return;
+    }
+    const source = recommendationSourceRef.current;
+    if (source === 'refine') {
+      recommendationSourceRef.current = 'feed';
+    }
+    trackRecommendationViewedOnce(hash, {
+      position: clamped + 1,
+      source,
+    });
+  }, [activeIndex, listOutfits, refine.isOpen]);
+
   useEffect(() => {
     return () => {
       clearTimeoutRef(snackbarTimeoutRef);
@@ -625,11 +625,6 @@ export const HomeScreen = () => {
   }, [pinState.outfit]);
 
   const loading = isStartPending && listOutfits.length === 0;
-  const activeContextChipOptions =
-    CONTEXT_CHIP_SETS[contextSuggestionSetIndex] ?? CONTEXT_CHIP_SETS[0];
-  const trimmedCustomContextText = customContextText.trim();
-  const isContextConfirmDisabled =
-    !selectedContextChipId && trimmedCustomContextText.length === 0;
 
   const pinnedItem = useMemo<Item | null>(() => {
     if (!pinnedItemId) {
@@ -767,16 +762,6 @@ export const HomeScreen = () => {
   }, [activeOutfit, handleHeartTapForOutfit]);
 
   const { t } = useTranslation();
-  const displayContextChipOptions = useMemo<ContextChipOption[]>(
-    () =>
-      activeContextChipOptions.map(option => ({
-        ...option,
-        label: t(CONTEXT_CHIP_LABEL_KEYS[option.id], {
-          defaultValue: option.label,
-        }),
-      })),
-    [activeContextChipOptions, t],
-  );
   const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
 
   const showMoodBanner = useCallback((text: string) => {
@@ -791,7 +776,9 @@ export const HomeScreen = () => {
   const handleMoodSaveSuccess = useCallback(
     (outfitHash: string, updated: boolean) => {
       setSaveStateByHash(current => ({ ...current, [outfitHash]: 'saved' }));
-      showMoodBanner(t(updated ? 'mood.moodUpdatedBanner' : 'mood.savedBanner'));
+      showMoodBanner(
+        t(updated ? 'mood.moodUpdatedBanner' : 'mood.savedBanner'),
+      );
     },
     [showMoodBanner, t],
   );
@@ -914,93 +901,15 @@ export const HomeScreen = () => {
         const nextCount = unfavoritedSwipeCountRef.current + 1;
         if (nextCount >= UNFAVORITED_SWIPE_THRESHOLD) {
           unfavoritedSwipeCountRef.current = 0;
-          setIsContextModalOpen(true);
-          track('refine_modal_opened', { source: 'unfavorited_swipe' });
+          refine.open('unfavorited_swipe');
         } else {
           unfavoritedSwipeCountRef.current = nextCount;
         }
       }
       advanceDeck();
     },
-    [advanceDeck],
+    [advanceDeck, refine],
   );
-
-  const handleOpenContextEditModal = useCallback(() => {
-    Keyboard.dismiss();
-    setIsContextModalOpen(true);
-    track('refine_modal_opened', { source: 'card_button' });
-  }, []);
-
-  const handleShuffleSuggestions = () => {
-    Keyboard.dismiss();
-    setContextSuggestionSetIndex(
-      currentIndex => (currentIndex + 1) % CONTEXT_CHIP_SETS.length,
-    );
-    setSelectedContextChipId(null);
-    setIsEditingContext(false);
-    setCustomContextText('');
-  };
-
-  const handleSelectContextChip = (chipId: ContextChipId) => {
-    Keyboard.dismiss();
-    setSelectedContextChipId(currentChipId =>
-      currentChipId === chipId ? null : chipId,
-    );
-    setIsEditingContext(false);
-    setCustomContextText('');
-  };
-
-  const handleOpenContextChipEdit = () => {
-    setSelectedContextChipId(null);
-    setIsEditingContext(true);
-  };
-
-  const handleChangeContextText = (text: string) => {
-    setSelectedContextChipId(null);
-    setIsEditingContext(true);
-    setCustomContextText(text);
-  };
-
-  const handleSubmitContext = () => {
-    const chipLabel = selectedContextChipId
-      ? activeContextChipOptions.find(c => c.id === selectedContextChipId)
-          ?.label
-      : null;
-    const payload = chipLabel ?? (trimmedCustomContextText || null);
-
-    if (!payload) {
-      closeContextModal();
-      return;
-    }
-
-    setStyleFeedback(payload);
-    styleFeedbackRef.current = payload;
-
-    unfavoritedSwipeCountRef.current = 0;
-
-    track('refine_submitted', {
-      mode: chipLabel ? 'chip' : 'custom',
-      ...(chipLabel ? { value: payload } : {}),
-    });
-
-    recommendationSourceRef.current = 'refine';
-
-    closeContextModal();
-
-    resetV05Session();
-    fetchGenerationRef.current += 1;
-    poolDepletedRef.current = false;
-    isFirstLoadRef.current = true;
-
-    requestRecommendation(
-      {
-        style_feedback: payload,
-        pinned_item_id: pinnedItemIdRef.current ?? undefined,
-        mode: selectedModeRef.current,
-      },
-      { force: true },
-    );
-  };
 
   const openTempSheet = useCallback(() => {
     setTempErrorKey(null);
@@ -1229,7 +1138,7 @@ export const HomeScreen = () => {
                 }
                 onItemPress={handleOpenItemDetail}
                 onTogglePin={handleToggleItemPin}
-                onEditContext={handleOpenContextEditModal}
+                onEditContext={() => refine.open('card_button')}
                 onRemix={handleRemix}
                 onShowAnother={handleSkip}
                 activeDot={clampedActiveIndex % OUTFITS_PER_SET}
@@ -1342,7 +1251,9 @@ export const HomeScreen = () => {
                 : t('home.wear_this')
             }
             variant="outline"
-            onPress={() => activeOutfit && handleWearThisForOutfit(activeOutfit)}
+            onPress={() =>
+              activeOutfit && handleWearThisForOutfit(activeOutfit)
+            }
             disabled={
               !activeOutfit ||
               activeSaveState === 'saved' ||
@@ -1368,25 +1279,19 @@ export const HomeScreen = () => {
       />
 
       <ContextChipsModal
-        visible={isContextModalOpen}
-        chipOptions={displayContextChipOptions}
-        selectedChipId={selectedContextChipId}
-        isEditing={isEditingContext}
-        customContextText={customContextText}
+        visible={refine.isOpen}
+        chipOptions={refine.displayChipOptions}
+        selectedChipId={refine.selectedChipId}
+        isEditing={refine.isEditing}
+        customContextText={refine.customText}
         isSubmitting={false}
-        confirmDisabled={isContextConfirmDisabled}
-        onSelectChip={handleSelectContextChip}
-        onShuffle={handleShuffleSuggestions}
-        onEdit={handleOpenContextChipEdit}
-        onChangeText={handleChangeContextText}
-        onCancel={() => {
-          track('refine_cancelled', {
-            had_selection:
-              !!selectedContextChipId || trimmedCustomContextText.length > 0,
-          });
-          closeContextModal();
-        }}
-        onConfirm={handleSubmitContext}
+        confirmDisabled={refine.confirmDisabled}
+        onSelectChip={refine.onSelectChip}
+        onShuffle={refine.onShuffle}
+        onEdit={refine.onEdit}
+        onChangeText={refine.onChangeText}
+        onCancel={refine.onCancel}
+        onConfirm={refine.onConfirm}
       />
 
       <PinConfirmModal
