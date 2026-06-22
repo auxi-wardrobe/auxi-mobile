@@ -921,7 +921,7 @@ const pickerStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontFamily: 'ArchivoNarrow-SemiBold',
+    fontFamily: 'Poppins-SemiBold',
     fontSize: 16,
     color: theme.colors.figmaTextPrimary,
   },
@@ -965,7 +965,7 @@ const pickerStyles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
     color: theme.colors.figmaTextSecondary,
-    fontFamily: 'Manrope-Regular',
+    fontFamily: 'Poppins-Regular',
   },
   footer: {
     paddingHorizontal: 16,
@@ -985,7 +985,7 @@ const pickerStyles = StyleSheet.create({
     opacity: 0.5,
   },
   confirmBtnLabel: {
-    fontFamily: 'ArchivoNarrow-SemiBold',
+    fontFamily: 'Poppins-SemiBold',
     fontSize: 16,
     color: theme.colors.white,
     letterSpacing: 0.15,
