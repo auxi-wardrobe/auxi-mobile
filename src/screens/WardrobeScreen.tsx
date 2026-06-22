@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
     // `bottom` is supplied inline (insets.bottom + 24) so it respects the
     // home-indicator safe area — see F6.
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: theme.zIndex.toast,
     elevation: 1000,
   },
   headerTitle: {

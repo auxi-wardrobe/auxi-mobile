@@ -41,12 +41,12 @@ const styles = StyleSheet.create({
   },
   chip: {
     backgroundColor: theme.colors.figmaChipBg,
-    borderRadius: theme.borderRadius.chip,
+    borderRadius: theme.borderRadius.round,
     paddingHorizontal: theme.spacing.uacDimension12,
     paddingVertical: theme.spacing.s,
   },
   chipLabel: {
     ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.figmaCaptionPillBg,
+    color: theme.colors.white,
   },
 });

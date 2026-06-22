@@ -1037,7 +1037,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 2,
+    zIndex: theme.zIndex.sticky,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

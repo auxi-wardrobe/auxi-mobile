@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     height: 40,
     paddingHorizontal: theme.spacing.uacDimension12,
     paddingVertical: theme.spacing.s,
-    borderRadius: theme.borderRadius.s,
+    borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaCaptionPillBg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     // AU-253: padding dropped so the now-24×24 idea icon sits centred inside
     // the fixed 40×40 pill (8px margin all round). The old 12/8 padding left a
     // 16px-wide inner box that clipped a 24px glyph. Pill footprint unchanged.
-    borderRadius: theme.borderRadius.s,
+    borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaInsightPillBg,
     alignItems: 'center',
     justifyContent: 'center',

@@ -900,7 +900,7 @@ const pickerStyles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: theme.colors.figmaBackground,
-    zIndex: 100,
+    zIndex: theme.zIndex.sticky,
   },
   safeArea: {
     flex: 1,

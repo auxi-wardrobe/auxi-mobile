@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   tab: {
     height: 44,
     paddingHorizontal: 12,
-    borderRadius: 16,
+    borderRadius: theme.borderRadius.round, // pill
     backgroundColor: theme.colors.figmaInsightPillBg,
     alignItems: 'center',
     justifyContent: 'center',
