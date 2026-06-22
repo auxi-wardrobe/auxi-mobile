@@ -62,7 +62,19 @@ export const buildGridOutfitSheetWithPin = (
     };
   }
 
-  const mixed: Item[] = [pinnedItem, ...outfit.items.slice(0, 3)];
+  // The pinned item isn't in this outfit — the backend hasn't built around it
+  // (AU-222/AU-233), so the outfit still carries its own item of the pinned
+  // item's category (e.g. a top). Drop that same-category item before
+  // prepending the pin; otherwise the sheet shows two of the same category
+  // (pin a shirt → two shirts). If the pinned category is unknown, fall back
+  // to the previous prepend so we never accidentally strip everything.
+  const pinnedCategory = pinnedItem.category?.trim().toLowerCase();
+  const deduped = pinnedCategory
+    ? outfit.items.filter(
+        item => item && item.category?.trim().toLowerCase() !== pinnedCategory,
+      )
+    : outfit.items;
+  const mixed: Item[] = [pinnedItem, ...deduped.slice(0, 3)];
   return {
     ...outfit,
     items: mixed,
