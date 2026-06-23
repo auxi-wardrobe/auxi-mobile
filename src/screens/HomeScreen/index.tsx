@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useNavigation,
   useRoute,
@@ -131,6 +131,7 @@ export const HomeScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute<RouteProp<AppStackParamList, 'Home'>>();
+  const queryClient = useQueryClient();
   const { open: openSidebar } = useSidebar();
   const [homeView, setHomeView] = useState<HomeView>('grid');
   const [collageDragActive, setCollageDragActive] = useState(false);
@@ -595,6 +596,18 @@ export const HomeScreen = () => {
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 30_000,
   });
+
+  // Header heart badge: how many outfits the user has saved ("Wear this").
+  // Shares the `['favourites']` cache key with FavouriteScreen so the count and
+  // the list stay in sync — `total` is the full saved count (independent of the
+  // page limit). Saving a look (swipe-like / wear-this / mood save) invalidates
+  // this key, so the badge increments without a manual refetch.
+  const { data: favouritesData } = useQuery({
+    queryKey: ['favourites'],
+    queryFn: () => favouriteService.listFavourites(),
+    staleTime: 30_000,
+  });
+  const favouritesCount = favouritesData?.total ?? 0;
   useEffect(() => {
     if (!pinState.pinnedItemId) {
       return;
@@ -770,18 +783,21 @@ export const HomeScreen = () => {
             item_count: items.length,
             source: 'home',
           });
+          // Refresh the header badge + Favourite list count.
+          queryClient.invalidateQueries({ queryKey: ['favourites'] });
         })
         .catch(error => {
           console.warn('saveFavourite failed', error);
           setSaveStateByHash(current => ({ ...current, [hash]: 'error' }));
         });
     },
-    [],
+    [queryClient],
   );
 
-  const handleHeartTapActive = useCallback(() => {
-    handleHeartTapForOutfit(activeOutfit);
-  }, [activeOutfit, handleHeartTapForOutfit]);
+  const handleOpenFavourites = useCallback(() => {
+    track('home_favourites_shortcut_tapped', { count: favouritesCount });
+    navigation.navigate('Favourite');
+  }, [navigation, favouritesCount]);
 
   const { t } = useTranslation();
   const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
@@ -801,8 +817,11 @@ export const HomeScreen = () => {
       showMoodBanner(
         t(updated ? 'mood.moodUpdatedBanner' : 'mood.savedBanner'),
       );
+      // A brand-new save bumps the header badge; a mood update is a no-op count
+      // change but refetching keeps the list authoritative either way.
+      queryClient.invalidateQueries({ queryKey: ['favourites'] });
     },
-    [showMoodBanner, t],
+    [showMoodBanner, t, queryClient],
   );
 
   const { onWearThisPress, sheetProps: moodSheetProps } =
@@ -1056,37 +1075,29 @@ export const HomeScreen = () => {
         )}
 
         <TouchableOpacity
-          testID={
-            activeSaveState === 'saved'
-              ? 'home-heart-toggle-saved'
-              : 'home-heart-toggle'
-          }
+          testID="home-favourites-shortcut"
           accessibilityRole="button"
           accessibilityLabel={
-            activeSaveState === 'saved'
-              ? t('home.a11y_saved_fav')
-              : t('home.a11y_fav_this')
+            favouritesCount > 0
+              ? t('home.a11y_open_favourites_count', { count: favouritesCount })
+              : t('home.a11y_open_favourites')
           }
           activeOpacity={0.82}
-          style={[
-            styles.headerIconButton,
-            activeSaveState === 'saved' && styles.heartButtonSaved,
-            activeSaveState === 'error' && styles.heartButtonError,
-          ]}
-          disabled={
-            !activeOutfit ||
-            activeSaveState === 'saving' ||
-            activeSaveState === 'saved'
-          }
-          onPress={handleHeartTapActive}
+          style={styles.headerIconButton}
+          onPress={handleOpenFavourites}
         >
-          {activeSaveState === 'saving' ? (
-            <ActivityIndicator size="small" color={theme.colors.figmaAction} />
-          ) : activeSaveState === 'saved' ? (
-            <IconHomeHeartFilled width={24} height={24} />
-          ) : (
-            <IconHomeHeartOutline width={24} height={24} />
-          )}
+          <IconHomeHeartOutline width={24} height={24} />
+          {favouritesCount > 0 ? (
+            <View
+              testID="home-favourites-badge"
+              style={styles.favBadge}
+              pointerEvents="none"
+            >
+              <Text style={styles.favBadgeText} numberOfLines={1}>
+                {favouritesCount > 99 ? '99+' : favouritesCount}
+              </Text>
+            </View>
+          ) : null}
         </TouchableOpacity>
       </View>
 

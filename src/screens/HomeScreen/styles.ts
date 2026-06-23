@@ -39,13 +39,29 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaSurface,
     ...theme.ds.shadow.floatingButton,
   },
-  heartButtonSaved: {
-    borderWidth: 1.5,
-    borderColor: theme.colors.figmaAction,
+  // Count badge sitting on the top-right corner of the header favourites
+  // heart. A white ring lifts it off the heart's rounded surface; the count
+  // grows the pill rightwards (minWidth keeps a single digit perfectly round).
+  favBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    backgroundColor: theme.colors.figmaRed,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.figmaSurface,
   },
-  heartButtonError: {
-    borderWidth: 1.5,
-    borderColor: theme.colors.figmaRed,
+  favBadgeText: {
+    color: theme.colors.white,
+    fontFamily: 'Poppins-Medium',
+    fontSize: 11,
+    lineHeight: 14,
+    textAlign: 'center',
   },
   scrollContent: {
     paddingTop: 4,
