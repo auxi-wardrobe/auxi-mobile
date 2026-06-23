@@ -7,6 +7,9 @@ export const { width: screenWidth, height: screenHeight } =
   Dimensions.get('window');
 
 export const PIN_DONT_SHOW_STORAGE_KEY = '@auxi/pin/dont_show_confirm';
+// Persisted so the "AI-generated — may be inaccurate" toast shows only the
+// first time; afterwards the floating feedback button is the affordance.
+export const AI_NOTICE_DISMISSED_KEY = '@auxi/ai_notice/dismissed';
 
 export const GRID_GAP = 4;
 export const SHEET_GAP = 4;

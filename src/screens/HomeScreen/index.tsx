@@ -38,6 +38,7 @@ import {
 import IconHomeMenu from '../../assets/images/icon_home_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../../assets/images/icon_home_heart_filled.svg';
+import IconFeedback from '../../assets/images/feedback.svg';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -92,6 +93,7 @@ import { PinnedItemUnavailableNotice } from '../../components/features/PinnedIte
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   MOOD_BANNER_DURATION_MS,
+  AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
   TARGET_AHEAD,
   UNFAVORITED_SWIPE_THRESHOLD,
@@ -176,6 +178,21 @@ export const HomeScreen = () => {
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
   const [aiNoticeDismissed, setAiNoticeDismissed] = useState(false);
   const handleReportAi = useAiReport('recommendation');
+  // Persist the AI notice dismissal so the toast appears only the first time;
+  // the floating feedback button remains as the ongoing affordance.
+  useEffect(() => {
+    AsyncStorage.getItem(AI_NOTICE_DISMISSED_KEY)
+      .then(v => {
+        if (v === 'true') {
+          setAiNoticeDismissed(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+  const dismissAiNotice = useCallback(() => {
+    setAiNoticeDismissed(true);
+    AsyncStorage.setItem(AI_NOTICE_DISMISSED_KEY, 'true').catch(() => {});
+  }, []);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   const unfavoritedSwipeCountRef = useRef(0);
   const listOutfitsRef = useRef<OutfitSheet[]>([]);
@@ -1096,12 +1113,7 @@ export const HomeScreen = () => {
         {optionSets.length > 0 && !aiNoticeDismissed ? (
           <InfoSnackbar
             message={t('aiDisclosure.label')}
-            action={{
-              label: t('aiDisclosure.report'),
-              onPress: handleReportAi,
-              testID: 'ai-report-recommendation',
-            }}
-            onClose={() => setAiNoticeDismissed(true)}
+            onClose={dismissAiNotice}
             testID="home-ai-disclosure"
           />
         ) : null}
@@ -1301,6 +1313,25 @@ export const HomeScreen = () => {
             </Text>
           ) : null}
         </View>
+      ) : null}
+
+      {/* AI feedback affordance — 44px floating button, bottom-left of the
+          footer, Home only. Opens the same prefilled AI report. */}
+      {optionSets.length > 0 ? (
+        <TouchableOpacity
+          testID="home-ai-feedback-fab"
+          accessibilityRole="button"
+          accessibilityLabel={t('aiDisclosure.report')}
+          activeOpacity={0.85}
+          onPress={handleReportAi}
+          style={styles.aiFeedbackFab}
+        >
+          <IconFeedback
+            width={24}
+            height={24}
+            color={theme.colors.uacTextBase}
+          />
+        </TouchableOpacity>
       ) : null}
 
       <HomeViewToggleFooter

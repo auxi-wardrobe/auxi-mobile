@@ -39,6 +39,21 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaSurface,
     ...theme.ds.shadow.floatingButton,
   },
+  // AI feedback affordance — 44px floating button, bottom-left of the footer,
+  // vertically centred against the view-toggle footer.
+  aiFeedbackFab: {
+    position: 'absolute',
+    left: SHEET_PADDING,
+    bottom: (HOME_VIEW_TOGGLE_FOOTER_HEIGHT - 44) / 2,
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.figmaSurface,
+    zIndex: theme.zIndex.sticky,
+    ...theme.ds.shadow.floatingButton,
+  },
   heartButtonSaved: {
     borderWidth: 1.5,
     borderColor: theme.colors.figmaAction,
