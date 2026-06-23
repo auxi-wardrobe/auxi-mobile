@@ -34,9 +34,8 @@ export const OptionSheet = React.memo(
     reveal,
     onItemPress,
     onTogglePin,
-    onEditContext: _onEditContext,
+    onEditContext,
     onRemix,
-    onShowAnother,
     activeDot = 0,
     homeView,
     onCollageDragActiveChange,
@@ -52,7 +51,6 @@ export const OptionSheet = React.memo(
     onTogglePin: (item: Item) => void;
     onEditContext: () => void;
     onRemix: () => void;
-    onShowAnother?: (outfit: OutfitSheetWithGrid) => void;
     activeDot?: number;
     homeView: HomeView;
     onCollageDragActiveChange: (active: boolean) => void;
@@ -311,9 +309,7 @@ export const OptionSheet = React.memo(
           <OutfitActionRow
             testID={`home-action-row-${cellKey}`}
             onRemix={onRemix}
-            onShowAnother={
-              onShowAnother ? () => onShowAnother(outfit) : undefined
-            }
+            onRefine={onEditContext}
             dotCount={OUTFITS_PER_SET}
             activeDot={activeDot}
           />

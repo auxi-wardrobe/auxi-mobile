@@ -1195,9 +1195,8 @@ export const HomeScreen = () => {
                 }
                 onItemPress={handleOpenItemDetail}
                 onTogglePin={handleToggleItemPin}
-                onEditContext={() => refine.open('card_button')}
+                onEditContext={() => refine.open('refine_button')}
                 onRemix={handleRemix}
-                onShowAnother={handleSkip}
                 activeDot={clampedActiveIndex % OUTFITS_PER_SET}
                 homeView={homeView}
                 onCollageDragActiveChange={setCollageDragActive}
