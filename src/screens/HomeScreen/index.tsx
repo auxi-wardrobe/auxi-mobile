@@ -93,8 +93,8 @@ import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   MOOD_BANNER_DURATION_MS,
   PIN_DONT_SHOW_STORAGE_KEY,
+  REFINE_AFTER_OUTFITS,
   TARGET_AHEAD,
-  UNFAVORITED_SWIPE_THRESHOLD,
 } from './constants';
 import {
   BuildViaV05Input,
@@ -138,6 +138,17 @@ export const HomeScreen = () => {
 
   const [listOutfits, setListOutfits] = useState<OutfitSheet[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  // Progressive refinement (Outfit Discovery & Refinement spec). Distinct
+  // outfit hashes viewed within the current tier — once this hits
+  // REFINE_AFTER_OUTFITS, auto-generation pauses and the Refine sheet opens.
+  // The Set dedups re-lands on the same outfit; reset on submit/skip.
+  const tierViewedHashesRef = useRef<Set<string>>(new Set());
+  const [tierViewedCount, setTierViewedCount] = useState(0);
+  // Session counter — how many times the user deferred the refine gate.
+  const refinementSkippedRef = useRef(0);
+  // True while the open Refine sheet was triggered by the after-6 gate (vs the
+  // manual "edit context" button) — drives the Skip affordance + copy.
+  const [refineGated, setRefineGated] = useState(false);
   const [saveStateByHash, setSaveStateByHash] = useState<
     Record<string, SaveState>
   >({});
@@ -419,11 +430,20 @@ export const HomeScreen = () => {
     });
   }, [requestRecommendation]);
 
+  // Reset the progressive-refinement tier (run synchronously on submit/skip so
+  // the gate effect can't re-fire in the window before the new batch resolves).
+  const resetRefineTier = useCallback(() => {
+    tierViewedHashesRef.current.clear();
+    setTierViewedCount(0);
+    setRefineGated(false);
+  }, []);
+
   const onSubmitFeedback = useCallback(
     (payload: string) => {
       setStyleFeedback(payload);
       styleFeedbackRef.current = payload;
       unfavoritedSwipeCountRef.current = 0;
+      resetRefineTier();
       recommendationSourceRef.current = 'refine';
       resetV05Session();
       fetchGenerationRef.current += 1;
@@ -438,10 +458,33 @@ export const HomeScreen = () => {
         { force: true },
       );
     },
-    [requestRecommendation],
+    [requestRecommendation, resetRefineTier],
   );
 
-  const refine = useContextRefineModal({ onSubmitFeedback });
+  // "Skip for now" on the refine gate: record the skip, reset the tier, and
+  // force-generate the next batch of 6 (no new style feedback).
+  const onSkipRefinement = useCallback(() => {
+    refinementSkippedRef.current += 1;
+    track('refine_skipped_resumed', {
+      skipped_count: refinementSkippedRef.current,
+    });
+    resetRefineTier();
+    recommendationSourceRef.current = 'feed';
+    resetV05Session();
+    fetchGenerationRef.current += 1;
+    poolDepletedRef.current = false;
+    isFirstLoadRef.current = true;
+    requestRecommendation(
+      {
+        mode: selectedModeRef.current,
+        pinned_item_id: pinnedItemIdRef.current ?? undefined,
+        style_feedback: styleFeedbackRef.current ?? undefined,
+      },
+      { force: true },
+    );
+  }, [requestRecommendation, resetRefineTier]);
+
+  const refine = useContextRefineModal({ onSubmitFeedback, onSkipRefinement });
 
   useEffect(() => {
     if (refine.isOpen) {
@@ -466,7 +509,29 @@ export const HomeScreen = () => {
       position: clamped + 1,
       source,
     });
+
+    // Progressive refinement: tally distinct outfits the user has actually
+    // landed on this tier. Reaching REFINE_AFTER_OUTFITS arms the gate effect.
+    if (!tierViewedHashesRef.current.has(hash)) {
+      tierViewedHashesRef.current.add(hash);
+      setTierViewedCount(tierViewedHashesRef.current.size);
+    }
   }, [activeIndex, listOutfits, refine.isOpen]);
+
+  // Progressive refinement gate — after REFINE_AFTER_OUTFITS distinct outfits
+  // viewed (2 batches), open the Refine sheet instead of generating more. The
+  // `ensureBuffer` length cap has already paused generation; submitting
+  // feedback or skipping resets the tier and unlocks the next 6.
+  useEffect(() => {
+    if (refine.isOpen) {
+      return;
+    }
+    if (tierViewedCount < REFINE_AFTER_OUTFITS) {
+      return;
+    }
+    setRefineGated(true);
+    refine.open('viewed_threshold');
+  }, [tierViewedCount, refine]);
 
   useEffect(() => {
     return () => {
@@ -716,6 +781,14 @@ export const HomeScreen = () => {
       if (poolDepletedRef.current) {
         return;
       }
+      // Progressive refinement gate: once a tier's worth of outfits
+      // (REFINE_AFTER_OUTFITS) exists, stop auto-generating so the Refine sheet
+      // can collect a preference signal first. A forced fetch (cold-start
+      // prime, refine submit, skip) deliberately bypasses this to seed the
+      // next tier.
+      if (!force && total >= REFINE_AFTER_OUTFITS) {
+        return;
+      }
       const activeFlat = activeIndexRef.current;
       const ahead = total - 1 - activeFlat;
       if (!force && ahead >= TARGET_AHEAD) {
@@ -907,10 +980,6 @@ export const HomeScreen = () => {
   const handleSkip = useCallback(
     (outfit: OutfitSheetWithGrid) => {
       const fromHash = outfit?.outfitHash;
-      const fromState = fromHash
-        ? saveStateByHashRef.current[fromHash] ?? 'idle'
-        : 'idle';
-      const wasFavorited = fromState === 'saved' || fromState === 'saving';
       console.info('home.swipe.miss', { from: activeIndexRef.current });
       if (fromHash) {
         track('outfit_swiped', {
@@ -919,18 +988,11 @@ export const HomeScreen = () => {
           method: 'gesture',
         });
       }
-      if (!wasFavorited) {
-        const nextCount = unfavoritedSwipeCountRef.current + 1;
-        if (nextCount >= UNFAVORITED_SWIPE_THRESHOLD) {
-          unfavoritedSwipeCountRef.current = 0;
-          refine.open('unfavorited_swipe');
-        } else {
-          unfavoritedSwipeCountRef.current = nextCount;
-        }
-      }
+      // The refine prompt is now driven by the after-6-outfits gate
+      // (tierViewedCount), not a raw skip counter.
       advanceDeck();
     },
-    [advanceDeck, refine],
+    [advanceDeck],
   );
 
   const openTempSheet = useCallback(() => {
@@ -1178,7 +1240,10 @@ export const HomeScreen = () => {
                 }
                 onItemPress={handleOpenItemDetail}
                 onTogglePin={handleToggleItemPin}
-                onEditContext={() => refine.open('card_button')}
+                onEditContext={() => {
+                  setRefineGated(false);
+                  refine.open('card_button');
+                }}
                 onRemix={handleRemix}
                 onShowAnother={handleSkip}
                 activeDot={clampedActiveIndex % OUTFITS_PER_SET}
@@ -1323,6 +1388,11 @@ export const HomeScreen = () => {
         onChangeText={refine.onChangeText}
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
+        onSkip={refineGated ? refine.onSkip : undefined}
+        title={refineGated ? t('contextChips.refine_title') : undefined}
+        subtitle={
+          refineGated ? t('contextChips.refine_subtitle') : undefined
+        }
       />
 
       <PinConfirmModal

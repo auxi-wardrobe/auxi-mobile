@@ -368,6 +368,11 @@
       "chip_different_vibe": "Phong cách khác",
       "chip_more_polished": "Chỉn chu hơn",
       "chip_more_casual": "Đời thường hơn",
+      "chip_more_minimalist": "Tối giản hơn",
+      "chip_more_colorful": "Nhiều màu hơn",
+      "chip_more_formal": "Trang trọng hơn",
+      "chip_weather_warm": "Thời tiết thấy hơi nóng",
+      "chip_weather_cold": "Thời tiết thấy hơi lạnh",
       "chip_bolder": "Táo bạo hơn",
       "chip_simpler": "Đơn giản hơn",
       "a11y_open_menu": "Mở menu",
@@ -560,6 +565,9 @@
     "contextChips": {
       "title": "Tinh chỉnh gợi ý",
       "subtitle": "Chọn hoặc nhập ngữ cảnh để cải thiện gợi ý hôm nay.",
+      "refine_title": "Giúp tôi hiểu gu của bạn",
+      "refine_subtitle": "Điều gì sẽ làm gợi ý tốt hơn?",
+      "skip": "Để sau",
       "a11y_shuffle": "Xáo trộn gợi ý",
       "placeholder": "Cho chúng tôi biết bạn muốn thay đổi gì"
     },

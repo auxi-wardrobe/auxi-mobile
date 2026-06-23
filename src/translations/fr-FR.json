@@ -368,6 +368,11 @@
       "chip_different_vibe": "Autre ambiance",
       "chip_more_polished": "Plus soigné",
       "chip_more_casual": "Plus décontracté",
+      "chip_more_minimalist": "Plus minimaliste",
+      "chip_more_colorful": "Plus coloré",
+      "chip_more_formal": "Plus habillé",
+      "chip_weather_warm": "Il fait trop chaud",
+      "chip_weather_cold": "Il fait trop froid",
       "chip_bolder": "Choix plus audacieux",
       "chip_simpler": "Look plus simple",
       "a11y_open_menu": "Ouvrir le menu",
@@ -561,6 +566,9 @@
     "contextChips": {
       "title": "Affiner les suggestions",
       "subtitle": "Sélectionnez ou saisissez un contexte pour améliorer les choix du jour.",
+      "refine_title": "Aidez-moi à cerner votre style",
+      "refine_subtitle": "Qu'est-ce qui améliorerait ces suggestions ?",
+      "skip": "Plus tard",
       "a11y_shuffle": "Mélanger les suggestions",
       "placeholder": "Dites-nous ce que vous aimeriez changer"
     },

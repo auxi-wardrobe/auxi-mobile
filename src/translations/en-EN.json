@@ -368,6 +368,11 @@
       "chip_different_vibe": "Different vibe",
       "chip_more_polished": "More polished",
       "chip_more_casual": "More casual",
+      "chip_more_minimalist": "More minimalist",
+      "chip_more_colorful": "More colorful",
+      "chip_more_formal": "More formal",
+      "chip_weather_warm": "Weather feels too warm",
+      "chip_weather_cold": "Weather feels too cold",
       "chip_bolder": "Bolder choice",
       "chip_simpler": "Simpler look",
       "a11y_open_menu": "Open menu",
@@ -561,6 +566,9 @@
     "contextChips": {
       "title": "Refine suggestions",
       "subtitle": "Select or input context to improve today’s picks.",
+      "refine_title": "Help me understand your style",
+      "refine_subtitle": "What would make these picks better?",
+      "skip": "Skip for now",
       "a11y_shuffle": "Shuffle suggestions",
       "placeholder": "Tell us what you'd like to change"
     },

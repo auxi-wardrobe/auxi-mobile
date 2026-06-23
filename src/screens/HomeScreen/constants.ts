@@ -68,4 +68,10 @@ export const COLLAGE_SURFACE_HEIGHT = Math.round(
 export const UNFAVORITED_SWIPE_THRESHOLD = 3;
 export const TARGET_AHEAD = OUTFITS_PER_SET;
 
+// Progressive refinement: after this many distinct outfits are viewed within a
+// tier (2 batches of 3), auto-generation pauses and the Refine sheet opens so
+// the AI can gather a preference signal before producing more. Submitting
+// feedback or skipping resets the tier and unlocks the next 6.
+export const REFINE_AFTER_OUTFITS = 6;
+
 export const MOOD_BANNER_DURATION_MS = 3000;
