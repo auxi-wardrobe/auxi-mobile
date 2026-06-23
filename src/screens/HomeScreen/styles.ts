@@ -71,6 +71,12 @@ export const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 4,
   },
+  // Static footer for the action row (Remix · dots · Refine). Sits below the
+  // deck so the row holds still while only the card photo swipes beneath it.
+  deckActionRow: {
+    paddingHorizontal: SHEET_PADDING,
+    paddingTop: theme.spacing.s,
+  },
   aiDisclosureRow: {
     paddingHorizontal: SHEET_PADDING,
     paddingVertical: theme.spacing.xs,

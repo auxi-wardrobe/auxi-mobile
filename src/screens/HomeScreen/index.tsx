@@ -118,6 +118,7 @@ import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { HomeLoadingState } from './components/HomeLoadingState';
 import { OptionSheet } from './components/OptionSheet';
+import { OutfitActionRow } from '../../components/features/OutfitActionRow';
 
 const clearTimeoutRef = (
   timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
@@ -1195,9 +1196,6 @@ export const HomeScreen = () => {
                 }
                 onItemPress={handleOpenItemDetail}
                 onTogglePin={handleToggleItemPin}
-                onEditContext={() => refine.open('refine_button')}
-                onRemix={handleRemix}
-                activeDot={clampedActiveIndex % OUTFITS_PER_SET}
                 homeView={homeView}
                 onCollageDragActiveChange={setCollageDragActive}
                 isGenerating={
@@ -1239,6 +1237,17 @@ export const HomeScreen = () => {
               </>
             )}
           />
+          {/* Fixed action row — Remix · dots · Refine stay put while only the
+              card photo swipes beneath them (it lives outside the deck). */}
+          <View style={styles.deckActionRow}>
+            <OutfitActionRow
+              testID="home-action-row"
+              onRemix={handleRemix}
+              onRefine={() => refine.open('refine_button')}
+              dotCount={OUTFITS_PER_SET}
+              activeDot={clampedActiveIndex % OUTFITS_PER_SET}
+            />
+          </View>
         </View>
       )}
 

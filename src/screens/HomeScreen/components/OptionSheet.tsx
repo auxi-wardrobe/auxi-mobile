@@ -10,9 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Item } from '../../../types/item';
 import { motion } from '../../../theme/motion';
 import { HomeView } from '../../../components/features/HomeViewToggleFooter';
-import { OUTFITS_PER_SET } from '../../../utils/groupOutfitsIntoSets';
 import { OutfitCardCaption } from '../../../components/features/OutfitCardCaption';
-import { OutfitActionRow } from '../../../components/features/OutfitActionRow';
 import { CollageSheetCanvas } from '../../../components/features/CollageSheetCanvas';
 import { SkeletonTile } from '../../../components/features/SkeletonTile';
 import { PinTilePill } from '../../../components/features/PinTilePill';
@@ -34,9 +32,6 @@ export const OptionSheet = React.memo(
     reveal,
     onItemPress,
     onTogglePin,
-    onEditContext,
-    onRemix,
-    activeDot = 0,
     homeView,
     onCollageDragActiveChange,
     isGenerating = false,
@@ -49,9 +44,6 @@ export const OptionSheet = React.memo(
     reveal: OutfitReveal;
     onItemPress: (item: Item) => void;
     onTogglePin: (item: Item) => void;
-    onEditContext: () => void;
-    onRemix: () => void;
-    activeDot?: number;
     homeView: HomeView;
     onCollageDragActiveChange: (active: boolean) => void;
     isGenerating?: boolean;
@@ -305,14 +297,6 @@ export const OptionSheet = React.memo(
               )}
             </Animated.View>
           </ScrollView>
-
-          <OutfitActionRow
-            testID={`home-action-row-${cellKey}`}
-            onRemix={onRemix}
-            onRefine={onEditContext}
-            dotCount={OUTFITS_PER_SET}
-            activeDot={activeDot}
-          />
         </View>
       </View>
     );
