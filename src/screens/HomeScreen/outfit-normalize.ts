@@ -125,6 +125,10 @@ export const buildGridOutfitSheetWithPin = (
   // item's category (e.g. a top). Prepend the pin and let the de-dup drop the
   // outfit's same-category item; otherwise the sheet shows two of the same
   // category (pin a shirt → two shirts).
+  //
+  // Cap at 4 = the pin + 3 outfit garments (e.g. top, bottom, shoes), matching
+  // the previous behaviour before the pin was prepended. De-dup runs first so
+  // the cap counts distinct categories, not the dropped same-category item.
   const mixed = dedupeByCategory(
     [pinnedItem, ...outfit.items],
     pinnedItem.id,
