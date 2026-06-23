@@ -31,12 +31,14 @@ type Props<T> = {
   swipeEnabled: boolean;
   keyOf: (item: T) => string;
   renderCard: (item: T, role: Role) => React.ReactNode;
-  onLike: (item: T) => void;
-  onSkip: (item: T) => void;
-  /** Optional like/skip cue overlay driven by the live drag position. */
+  /** Advance to the next suggestion (swipe left). */
+  onForward: (item: T) => void;
+  /** Return to the previous suggestion (swipe right). No-op at the first card. */
+  onBack: (item: T) => void;
+  /** Optional next/back cue overlay driven by the live drag position. */
   renderCue?: (
-    likeOpacity: Animated.AnimatedInterpolation<number>,
-    skipOpacity: Animated.AnimatedInterpolation<number>,
+    forwardOpacity: Animated.AnimatedInterpolation<number>,
+    backOpacity: Animated.AnimatedInterpolation<number>,
   ) => React.ReactNode;
   testID?: string;
 };
@@ -47,8 +49,8 @@ export function OutfitSwipeDeck<T>({
   swipeEnabled,
   keyOf,
   renderCard,
-  onLike,
-  onSkip,
+  onForward,
+  onBack,
   renderCue,
   testID,
 }: Props<T>) {
@@ -56,6 +58,7 @@ export function OutfitSwipeDeck<T>({
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const active = items[activeIndex];
   const peek = items[activeIndex + 1];
+  const prev = items[activeIndex - 1];
 
   // Latest props for the gesture closures (the PanResponder is created once).
   // Reading these from refs keeps `commit`/the responder stable across card
@@ -63,39 +66,42 @@ export function OutfitSwipeDeck<T>({
   // resolves the CURRENT active item, not a stale one captured at create time.
   const itemsRef = useRef(items);
   const activeIndexRef = useRef(activeIndex);
-  const onLikeRef = useRef(onLike);
-  const onSkipRef = useRef(onSkip);
+  const onForwardRef = useRef(onForward);
+  const onBackRef = useRef(onBack);
   useEffect(() => {
     itemsRef.current = items;
     activeIndexRef.current = activeIndex;
-    onLikeRef.current = onLike;
-    onSkipRef.current = onSkip;
+    onForwardRef.current = onForward;
+    onBackRef.current = onBack;
   });
   // True while a commit fling is in flight — drops a second rapid swipe so it
   // cannot double-save / double-advance the same card.
   const committingRef = useRef(false);
 
   const commit = useCallback(
-    (dir: 1 | -1) => {
+    (direction: 'forward' | 'back') => {
       if (committingRef.current) {
         return;
       }
       committingRef.current = true;
       const item = itemsRef.current[activeIndexRef.current];
+      // Forward (swipe left) flings the card off-screen to the left; back
+      // (swipe right) flings it to the right and restores the previous card.
+      const toX = direction === 'forward' ? -SCREEN_W * 1.4 : SCREEN_W * 1.4;
       Animated.timing(pan, {
-        toValue: { x: dir * SCREEN_W * 1.4, y: 0 },
+        toValue: { x: toX, y: 0 },
         duration: motion.duration.normal,
         easing: motion.easing.exit,
         useNativeDriver: true,
       }).start(() => {
-        // Reset the shared pan BEFORE advancing so the promoted card mounts at
+        // Reset the shared pan BEFORE re-indexing so the promoted card mounts at
         // centre (not at the flung offset) — avoids a one-frame centre-flash.
         pan.setValue({ x: 0, y: 0 });
         committingRef.current = false;
-        if (dir === 1) {
-          onLikeRef.current(item);
+        if (direction === 'forward') {
+          onForwardRef.current(item);
         } else {
-          onSkipRef.current(item);
+          onBackRef.current(item);
         }
       });
     },
@@ -124,10 +130,20 @@ export function OutfitSwipeDeck<T>({
         onPanResponderMove: (_, g) => pan.setValue({ x: g.dx, y: 0 }),
         onPanResponderRelease: (_, g) => {
           if (isCommit(g.dx, g.vx, SCREEN_W)) {
-            commit(g.dx > 0 ? 1 : -1);
-          } else {
-            cancel();
+            // Swipe left → next suggestion (only if one exists ahead); swipe
+            // right → previous (only if not on the first card). Anything else
+            // springs back — so the first card can't be swiped right.
+            const idx = activeIndexRef.current;
+            if (g.dx < 0 && itemsRef.current[idx + 1]) {
+              commit('forward');
+              return;
+            }
+            if (g.dx > 0 && idx > 0) {
+              commit('back');
+              return;
+            }
           }
+          cancel();
         },
         onPanResponderTerminate: cancel,
         onPanResponderTerminationRequest: () => false,
@@ -140,19 +156,34 @@ export function OutfitSwipeDeck<T>({
     inputRange: [-SCREEN_W, 0, SCREEN_W],
     outputRange: [`${-cap}deg`, '0deg', `${cap}deg`],
   });
-  const likeOpacity = pan.x.interpolate({
-    inputRange: [0, SCREEN_W * 0.3],
-    outputRange: [motion.opacity.hidden, motion.opacity.visible],
-    extrapolate: 'clamp',
-  });
-  const skipOpacity = pan.x.interpolate({
+  // Forward cue fades in on a leftward drag; back cue on a rightward drag.
+  const forwardOpacity = pan.x.interpolate({
     inputRange: [-SCREEN_W * 0.3, 0],
     outputRange: [motion.opacity.visible, motion.opacity.hidden],
+    extrapolate: 'clamp',
+  });
+  const backOpacity = pan.x.interpolate({
+    inputRange: [0, SCREEN_W * 0.3],
+    outputRange: [motion.opacity.hidden, motion.opacity.visible],
     extrapolate: 'clamp',
   });
   const peekScale = pan.x.interpolate({
     inputRange: [-SCREEN_W, 0, SCREEN_W],
     outputRange: [1, 0.98, 1],
+    extrapolate: 'clamp',
+  });
+  // Background cards: the next card is revealed while dragging left (forward),
+  // the previous card while dragging right (back). The opaque active card masks
+  // both at rest, so peek can stay at full opacity until a right drag swaps it
+  // out for prev.
+  const peekOpacity = pan.x.interpolate({
+    inputRange: [0, SCREEN_W * 0.08],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const prevOpacity = pan.x.interpolate({
+    inputRange: [0, SCREEN_W * 0.08],
+    outputRange: [0, 1],
     extrapolate: 'clamp',
   });
 
@@ -161,8 +192,8 @@ export function OutfitSwipeDeck<T>({
   const cardStyle: ViewStyle = { width: '100%' };
   const a11yActions = useMemo(
     () => [
-      { name: 'like' as const, label: 'Like outfit' },
-      { name: 'skip' as const, label: 'Skip outfit' },
+      { name: 'next' as const, label: 'Next outfit' },
+      { name: 'previous' as const, label: 'Previous outfit' },
     ],
     [],
   );
@@ -173,13 +204,26 @@ export function OutfitSwipeDeck<T>({
 
   return (
     <View testID={testID} style={styles.stack}>
+      {/* Previous card — revealed from behind on a rightward (back) drag. */}
+      {prev ? (
+        <Animated.View
+          key={`prev-${keyOf(prev)}`}
+          style={[styles.cardBase, cardStyle, { opacity: prevOpacity }]}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {renderCard(prev, 'peek')}
+        </Animated.View>
+      ) : null}
+
       {peek ? (
         <Animated.View
           key={`peek-${keyOf(peek)}`}
           style={[
             styles.cardBase,
             cardStyle,
-            { transform: [{ scale: peekScale }] },
+            { opacity: peekOpacity, transform: [{ scale: peekScale }] },
           ]}
           pointerEvents="none"
           // The background card is decorative until promoted: keep its subtree
@@ -196,11 +240,11 @@ export function OutfitSwipeDeck<T>({
         key={`active-${keyOf(active)}`}
         accessibilityActions={a11yActions}
         onAccessibilityAction={e => {
-          if (e.nativeEvent.actionName === 'like') {
-            onLike(active);
+          if (e.nativeEvent.actionName === 'next') {
+            onForward(active);
           }
-          if (e.nativeEvent.actionName === 'skip') {
-            onSkip(active);
+          if (e.nativeEvent.actionName === 'previous') {
+            onBack(active);
           }
         }}
         style={[
@@ -211,7 +255,7 @@ export function OutfitSwipeDeck<T>({
         ]}
         {...responder.panHandlers}
       >
-        {renderCue ? renderCue(likeOpacity, skipOpacity) : null}
+        {renderCue ? renderCue(forwardOpacity, backOpacity) : null}
         {renderCard(active, 'active')}
       </Animated.View>
     </View>

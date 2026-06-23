@@ -962,19 +962,28 @@ export const HomeScreen = () => {
     ensureBuffer();
   }, [ensureBuffer]);
 
-  const handleLike = useCallback(
+  // Swipe right → step back to the previous suggestion. Pure navigation: no
+  // favouriting (the user saves via "Wear this"). Clamped at the first card.
+  const goBack = useCallback(() => {
+    const prevIdx = activeIndexRef.current - 1;
+    if (prevIdx >= 0) {
+      activeIndexRef.current = prevIdx;
+      setActiveIndex(prevIdx);
+    }
+  }, []);
+
+  const handleSwipeBack = useCallback(
     (outfit: OutfitSheetWithGrid) => {
       if (outfit?.outfitHash) {
         track('outfit_swiped', {
           outfit_hash: outfit.outfitHash,
-          direction: 'next',
+          direction: 'prev',
           method: 'gesture',
         });
       }
-      handleHeartTapForOutfit(outfit);
-      advanceDeck();
+      goBack();
     },
-    [handleHeartTapForOutfit, advanceDeck],
+    [goBack],
   );
 
   const handleSkip = useCallback(
@@ -1224,8 +1233,8 @@ export const HomeScreen = () => {
             activeIndex={clampedActiveIndex}
             swipeEnabled={!collageDragActive}
             keyOf={outfit => outfit.outfitHash}
-            onLike={handleLike}
-            onSkip={handleSkip}
+            onForward={handleSkip}
+            onBack={handleSwipeBack}
             renderCard={(outfit, role) => (
               <OptionSheet
                 cellKey={outfit.outfitHash}
@@ -1256,28 +1265,33 @@ export const HomeScreen = () => {
                 insightActive={isOverrideActive}
               />
             )}
-            renderCue={(likeOpacity, skipOpacity) => (
+            renderCue={(forwardOpacity, backOpacity) => (
               <>
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.deckCue,
-                    styles.deckCueLike,
-                    { opacity: likeOpacity },
-                  ]}
-                >
-                  <IconHomeHeartFilled width={28} height={28} />
-                </Animated.View>
+                {/* Swipe left → next: cue sits on the left edge (the side you
+                    drag toward). */}
                 <Animated.View
                   pointerEvents="none"
                   style={[
                     styles.deckCue,
                     styles.deckCueSkip,
-                    { opacity: skipOpacity },
+                    { opacity: forwardOpacity },
                   ]}
                 >
                   <Text style={styles.deckCueSkipText}>
-                    {t('home.skip_label')}
+                    {t('home.swipe_next')}
+                  </Text>
+                </Animated.View>
+                {/* Swipe right → previous: cue on the right edge. */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.deckCue,
+                    styles.deckCueLike,
+                    { opacity: backOpacity },
+                  ]}
+                >
+                  <Text style={styles.deckCueSkipText}>
+                    {t('home.swipe_previous')}
                   </Text>
                 </Animated.View>
               </>
