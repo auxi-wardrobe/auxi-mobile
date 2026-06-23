@@ -44,9 +44,9 @@ type Props = NativeStackScreenProps<AppStackParamList, 'OutfitCanvas'>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Figma "remix" frame (node 2852:16582): the canvas card "Image 3:4" is an
-// inset rounded card sitting inside the body's 24px horizontal padding
-// (theme.spacing.l each side), aspect 3:4 (height = width × 4/3).
-const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.l;
+// inset rounded card sitting inside the body's 12px horizontal padding
+// (theme.spacing.uacDimension12 each side), aspect 3:4 (height = width × 4/3).
+const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.uacDimension12;
 const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
 const ITEM_DEFAULT_SIZE = 160;
 
@@ -764,10 +764,10 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   // Body — fills remaining height; Figma justify-between pins Save at bottom.
-  // 24px (theme.spacing.l) horizontal inset matches the canvas card inset.
+  // 12px (theme.spacing.uacDimension12) horizontal inset matches the canvas card inset.
   body: {
     flex: 1,
-    paddingHorizontal: theme.spacing.l,
+    paddingHorizontal: theme.spacing.uacDimension12,
     justifyContent: 'space-between',
   },
   // Top group — canvas card / add-row / tags stacked with 16px gap.
@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
   },
   // Add-item button (circular, below canvas — Figma Group 36, 48×48).
   // Left-aligned, flush to the canvas card's left edge (body provides the
-  // 24px horizontal inset; gap handled by topGroup).
+  // 12px horizontal inset; gap handled by topGroup).
   addRow: {
     flexDirection: 'row',
   },
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
   },
   // Save button — Figma: 1.5px border border/neutral/base (#1d1f23), radius 16,
   // height 56, transparent fill, label Poppins Medium 16/24 #262421.
-  // Side inset = 24px (theme.spacing.l), supplied by the body padding so the
+  // Side inset = 12px (theme.spacing.uacDimension12), supplied by the body padding so the
   // button aligns flush with the canvas card edges.
   saveRow: {
     paddingBottom: theme.spacing.m,
