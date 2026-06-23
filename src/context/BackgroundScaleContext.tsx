@@ -121,5 +121,5 @@ const styles = StyleSheet.create({
   // Dark frame revealed as the page shrinks — reads as background de-emphasis.
   root: { flex: 1, backgroundColor: '#000000' },
   content: { flex: 1, overflow: 'hidden' },
-  contentRounded: { borderRadius: 16 },
+  contentRounded: { borderRadius: 20 },
 });
