@@ -570,6 +570,7 @@
       "empty_body": "Appuyez sur « Porter ceci » pour ajouter une tenue",
       "empty_a11y": "Aucune tenue enregistrée pour le moment",
       "common_badge": "commun",
+      "view_item_a11y": "Voir les détails de l’article",
       "self_visualization": "Auto-visualisation",
       "remove_a11y": "Retirer cette tenue des favoris",
       "remove_title": "Retirer de vos favoris",

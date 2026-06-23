@@ -192,6 +192,9 @@ export const FavouriteScreen: React.FC = () => {
                   dateLabel={formatDateLabel(favourite.created_at)}
                   onRemove={setPendingRemovalId}
                   onSelfVisualization={handleSelfVisualization}
+                  onItemPress={itemId =>
+                    navigation.navigate('ItemDetail', { itemId })
+                  }
                 />
               </View>
             ))}

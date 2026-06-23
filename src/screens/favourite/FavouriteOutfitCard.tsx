@@ -19,6 +19,8 @@ type Props = {
   dateLabel?: string;
   onRemove: (id: string) => void;
   onSelfVisualization: (favourite: Favourite) => void;
+  /** Open an item's detail. Omit to keep tiles non-interactive. */
+  onItemPress?: (itemId: string) => void;
 };
 
 // Mood-id → i18n labelKey, reusing the single mood vocab source
@@ -62,16 +64,25 @@ const moodLabel = (id: string, t: TFunction): string => {
 // Figma `2852:22063` draws a "common" pill on EVERY tile, but that is placeholder
 // content. Data-driven rarity is the correct, confirmed behaviour. Do NOT
 // "fix" this to match the design's every-tile pill.
-const Tile: React.FC<{ item: FavouriteItem; testIDPrefix: string }> = ({
-  item,
-  testIDPrefix,
-}) => {
+const Tile: React.FC<{
+  item: FavouriteItem;
+  testIDPrefix: string;
+  onItemPress?: (itemId: string) => void;
+}> = ({ item, testIDPrefix, onItemPress }) => {
   const { t } = useTranslation();
   const imageUrl = resolveItemImage(item);
   const isCommon = item.is_common_item === true;
 
   return (
-    <View style={styles.tile} testID={`${testIDPrefix}-tile-${item.id}`}>
+    <TouchableOpacity
+      style={styles.tile}
+      testID={`${testIDPrefix}-tile-${item.id}`}
+      accessibilityRole="button"
+      accessibilityLabel={t('favourite.view_item_a11y')}
+      activeOpacity={0.86}
+      disabled={!onItemPress}
+      onPress={onItemPress ? () => onItemPress(item.id) : undefined}
+    >
       {imageUrl ? (
         <Image
           source={{ uri: imageUrl }}
@@ -88,7 +99,7 @@ const Tile: React.FC<{ item: FavouriteItem; testIDPrefix: string }> = ({
           </Text>
         </View>
       ) : null}
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -98,6 +109,7 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
   dateLabel,
   onRemove,
   onSelfVisualization,
+  onItemPress,
 }) => {
   const { t } = useTranslation();
   const items = favourite.outfit_items ?? [];
@@ -165,6 +177,7 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
                 key={`${favourite.id}-${item.id}`}
                 item={item}
                 testIDPrefix={testIDPrefix}
+                onItemPress={onItemPress}
               />
             ))}
             {/* Pad the final row so a lone tile keeps its column width
