@@ -39,6 +39,7 @@ import IconHomeMenu from '../../assets/images/icon_home_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../../assets/images/icon_home_heart_filled.svg';
 import IconFeedback from '../../assets/images/feedback.svg';
+import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -906,20 +907,24 @@ export const HomeScreen = () => {
     ensureBuffer();
   }, [ensureBuffer]);
 
-  const handleLike = useCallback(
-    (outfit: OutfitSheetWithGrid) => {
-      if (outfit?.outfitHash) {
-        track('outfit_swiped', {
-          outfit_hash: outfit.outfitHash,
-          direction: 'next',
-          method: 'gesture',
-        });
-      }
-      handleHeartTapForOutfit(outfit);
-      advanceDeck();
-    },
-    [handleHeartTapForOutfit, advanceDeck],
-  );
+  // Swipe RIGHT = step back to the previous suggestion. No favouriting here —
+  // the heart button owns that — and the deck blocks this gesture at index 0,
+  // so by the time we run there is always a previous card to return to.
+  const handleSwipeBack = useCallback((outfit: OutfitSheetWithGrid) => {
+    const prev = activeIndexRef.current - 1;
+    if (prev < 0) {
+      return;
+    }
+    if (outfit?.outfitHash) {
+      track('outfit_swiped', {
+        outfit_hash: outfit.outfitHash,
+        direction: 'prev',
+        method: 'gesture',
+      });
+    }
+    activeIndexRef.current = prev;
+    setActiveIndex(prev);
+  }, []);
 
   const handleSkip = useCallback(
     (outfit: OutfitSheetWithGrid) => {
@@ -1174,8 +1179,8 @@ export const HomeScreen = () => {
             activeIndex={clampedActiveIndex}
             swipeEnabled={!collageDragActive}
             keyOf={outfit => outfit.outfitHash}
-            onLike={handleLike}
-            onSkip={handleSkip}
+            onSwipeNext={handleSkip}
+            onSwipeBack={handleSwipeBack}
             renderCard={(outfit, role) => (
               <OptionSheet
                 cellKey={outfit.outfitHash}
@@ -1203,24 +1208,29 @@ export const HomeScreen = () => {
                 insightActive={isOverrideActive}
               />
             )}
-            renderCue={(likeOpacity, skipOpacity) => (
+            renderCue={(backOpacity, nextOpacity) => (
               <>
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.deckCue,
-                    styles.deckCueLike,
-                    { opacity: likeOpacity },
-                  ]}
-                >
-                  <IconHomeHeartFilled width={28} height={28} />
-                </Animated.View>
+                {clampedActiveIndex > 0 ? (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.deckCue,
+                      styles.deckCueLike,
+                      { opacity: backOpacity },
+                    ]}
+                  >
+                    <IconChevronLeft width={20} height={20} />
+                    <Text style={styles.deckCueSkipText}>
+                      {t('home.back_label')}
+                    </Text>
+                  </Animated.View>
+                ) : null}
                 <Animated.View
                   pointerEvents="none"
                   style={[
                     styles.deckCue,
                     styles.deckCueSkip,
-                    { opacity: skipOpacity },
+                    { opacity: nextOpacity },
                   ]}
                 >
                   <Text style={styles.deckCueSkipText}>

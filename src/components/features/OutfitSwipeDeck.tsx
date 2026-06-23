@@ -1,8 +1,15 @@
-// OutfitSwipeDeck — Tinder-style single-axis card deck for Home.
+// OutfitSwipeDeck — single-axis card deck for Home.
 // See docs/superpowers/specs/2026-06-12-home-tinder-swipe-design.md and
 // docs/MOTION_SYSTEM.md. Built on PanResponder + Animated (no new dep),
 // mirroring OutfitCanvasSurface. The card follows the finger live; on release
 // it either commits (flies off) or springs back (critically damped, no bounce).
+//
+// Navigation semantics (not "like/skip"): swipe LEFT advances to the next
+// suggestion, swipe RIGHT goes BACK to the previous one. The back-swipe is
+// blocked on the first card (index 0) — there is nothing older to return to —
+// so a rightward drag there rubber-bands and springs home instead of
+// committing. The card revealed behind the active one is direction-aware: the
+// previous card while dragging right, the next card while dragging left.
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
@@ -26,12 +33,14 @@ type Props<T> = {
   swipeEnabled: boolean;
   keyOf: (item: T) => string;
   renderCard: (item: T, role: Role) => React.ReactNode;
-  onLike: (item: T) => void;
-  onSkip: (item: T) => void;
-  /** Optional like/skip cue overlay driven by the live drag position. */
+  /** Swipe LEFT — advance to the next suggestion. */
+  onSwipeNext: (item: T) => void;
+  /** Swipe RIGHT — go back to the previous suggestion (blocked at index 0). */
+  onSwipeBack: (item: T) => void;
+  /** Optional cue overlay driven by the live drag position (back, next). */
   renderCue?: (
-    likeOpacity: Animated.AnimatedInterpolation<number>,
-    skipOpacity: Animated.AnimatedInterpolation<number>,
+    backOpacity: Animated.AnimatedInterpolation<number>,
+    nextOpacity: Animated.AnimatedInterpolation<number>,
   ) => React.ReactNode;
   testID?: string;
 };
@@ -42,15 +51,18 @@ export function OutfitSwipeDeck<T>({
   swipeEnabled,
   keyOf,
   renderCard,
-  onLike,
-  onSkip,
+  onSwipeNext,
+  onSwipeBack,
   renderCue,
   testID,
 }: Props<T>) {
   const reduced = useReducedMotion();
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const active = items[activeIndex];
-  const peek = items[activeIndex + 1];
+  // The card revealed behind the active one depends on swipe direction: the
+  // previous card when dragging right (back), the next card when dragging left.
+  const nextPeek = items[activeIndex + 1];
+  const prevPeek = activeIndex > 0 ? items[activeIndex - 1] : undefined;
 
   // Latest props for the gesture closures (the PanResponder is created once).
   // Reading these from refs keeps `commit`/the responder stable across card
@@ -58,13 +70,13 @@ export function OutfitSwipeDeck<T>({
   // resolves the CURRENT active item, not a stale one captured at create time.
   const itemsRef = useRef(items);
   const activeIndexRef = useRef(activeIndex);
-  const onLikeRef = useRef(onLike);
-  const onSkipRef = useRef(onSkip);
+  const onSwipeNextRef = useRef(onSwipeNext);
+  const onSwipeBackRef = useRef(onSwipeBack);
   useEffect(() => {
     itemsRef.current = items;
     activeIndexRef.current = activeIndex;
-    onLikeRef.current = onLike;
-    onSkipRef.current = onSkip;
+    onSwipeNextRef.current = onSwipeNext;
+    onSwipeBackRef.current = onSwipeBack;
   });
   // True while a commit fling is in flight — drops a second rapid swipe so it
   // cannot double-save / double-advance the same card.
@@ -88,9 +100,9 @@ export function OutfitSwipeDeck<T>({
         pan.setValue({ x: 0, y: 0 });
         committingRef.current = false;
         if (dir === 1) {
-          onLikeRef.current(item);
+          onSwipeBackRef.current(item);
         } else {
-          onSkipRef.current(item);
+          onSwipeNextRef.current(item);
         }
       });
     },
@@ -116,8 +128,20 @@ export function OutfitSwipeDeck<T>({
           !committingRef.current &&
           Math.abs(g.dx) > Math.abs(g.dy) &&
           Math.abs(g.dx) > 6,
-        onPanResponderMove: (_, g) => pan.setValue({ x: g.dx, y: 0 }),
+        onPanResponderMove: (_, g) => {
+          // No previous suggestion to return to on the first card — let the
+          // rightward drag move only a fraction so it reads as a soft wall.
+          const atStart = activeIndexRef.current <= 0;
+          const dx = atStart && g.dx > 0 ? g.dx * 0.2 : g.dx;
+          pan.setValue({ x: dx, y: 0 });
+        },
         onPanResponderRelease: (_, g) => {
+          const atStart = activeIndexRef.current <= 0;
+          // Block the back-swipe at index 0: spring home, never commit.
+          if (atStart && g.dx > 0) {
+            cancel();
+            return;
+          }
           if (isCommit(g.dx, g.vx, SCREEN_W)) {
             commit(g.dx > 0 ? 1 : -1);
           } else {
@@ -130,12 +154,13 @@ export function OutfitSwipeDeck<T>({
     [swipeEnabled, reduced, pan, commit, cancel],
   );
 
-  const likeOpacity = pan.x.interpolate({
+  // Back cue rises as the card is dragged right; next cue as it's dragged left.
+  const backOpacity = pan.x.interpolate({
     inputRange: [0, SCREEN_W * 0.3],
     outputRange: [motion.opacity.hidden, motion.opacity.visible],
     extrapolate: 'clamp',
   });
-  const skipOpacity = pan.x.interpolate({
+  const nextOpacity = pan.x.interpolate({
     inputRange: [-SCREEN_W * 0.3, 0],
     outputRange: [motion.opacity.visible, motion.opacity.hidden],
     extrapolate: 'clamp',
@@ -145,14 +170,26 @@ export function OutfitSwipeDeck<T>({
     outputRange: [1, 0.98, 1],
     extrapolate: 'clamp',
   });
+  // Reveal the previous card only while dragging right, the next card only
+  // while dragging left — a step at x=0 so the wrong card never bleeds through.
+  const prevPeekOpacity = pan.x.interpolate({
+    inputRange: [0, 1],
+    outputRange: [motion.opacity.hidden, motion.opacity.visible],
+    extrapolate: 'clamp',
+  });
+  const nextPeekOpacity = pan.x.interpolate({
+    inputRange: [-1, 0],
+    outputRange: [motion.opacity.visible, motion.opacity.hidden],
+    extrapolate: 'clamp',
+  });
 
   // Cards fill the deck via absolute insets (see cardBase), so the deck stack
   // flex-fills its parent and the card height follows the available space.
   const cardStyle: ViewStyle = { width: '100%' };
   const a11yActions = useMemo(
     () => [
-      { name: 'like' as const, label: 'Like outfit' },
-      { name: 'skip' as const, label: 'Skip outfit' },
+      { name: 'next' as const, label: 'Next outfit' },
+      { name: 'back' as const, label: 'Previous outfit' },
     ],
     [],
   );
@@ -163,22 +200,38 @@ export function OutfitSwipeDeck<T>({
 
   return (
     <View testID={testID} style={styles.stack}>
-      {peek ? (
+      {prevPeek ? (
         <Animated.View
-          key={`peek-${keyOf(peek)}`}
+          key={`prev-${keyOf(prevPeek)}`}
           style={[
             styles.cardBase,
             cardStyle,
-            { transform: [{ scale: peekScale }] },
+            { opacity: prevPeekOpacity, transform: [{ scale: peekScale }] },
           ]}
           pointerEvents="none"
-          // The background card is decorative until promoted: keep its subtree
+          // Background cards are decorative until promoted: keep their subtree
           // out of the accessibility / test tree so VoiceOver doesn't announce
           // the hidden card and duplicate testIDs (e.g. home-remix) don't clash.
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          {renderCard(peek, 'peek')}
+          {renderCard(prevPeek, 'peek')}
+        </Animated.View>
+      ) : null}
+
+      {nextPeek ? (
+        <Animated.View
+          key={`next-${keyOf(nextPeek)}`}
+          style={[
+            styles.cardBase,
+            cardStyle,
+            { opacity: nextPeekOpacity, transform: [{ scale: peekScale }] },
+          ]}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {renderCard(nextPeek, 'peek')}
         </Animated.View>
       ) : null}
 
@@ -186,11 +239,11 @@ export function OutfitSwipeDeck<T>({
         key={`active-${keyOf(active)}`}
         accessibilityActions={a11yActions}
         onAccessibilityAction={e => {
-          if (e.nativeEvent.actionName === 'like') {
-            onLike(active);
+          if (e.nativeEvent.actionName === 'next') {
+            onSwipeNext(active);
           }
-          if (e.nativeEvent.actionName === 'skip') {
-            onSkip(active);
+          if (e.nativeEvent.actionName === 'back' && activeIndex > 0) {
+            onSwipeBack(active);
           }
         }}
         style={[
@@ -201,7 +254,7 @@ export function OutfitSwipeDeck<T>({
         ]}
         {...responder.panHandlers}
       >
-        {renderCue ? renderCue(likeOpacity, skipOpacity) : null}
+        {renderCue ? renderCue(backOpacity, nextOpacity) : null}
         {renderCard(active, 'active')}
       </Animated.View>
     </View>
@@ -211,15 +264,12 @@ export function OutfitSwipeDeck<T>({
 const styles = StyleSheet.create({
   stack: { flex: 1, width: '100%', position: 'relative' },
   cardBase: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  // AU-359: during a hold/swipe the active card carries a live translateX +
-  // rotate (±6°). Without self-clipping, the rotation exposes a hairline of the
-  // peek card's cream tile surface (figmaCardSurface) at the screen edge and a
-  // ragged corner seam where iOS can't anti-alias a child tile's overflow mask
-  // mid-transform. Clipping the moving card to its own bounds and backing it
-  // with the white app surface makes the rotated corners read as white-on-white
-  // (matching the screen) and masks the peek card beneath — clean photo edge.
-  // Applied to the ACTIVE card only; the peek card must stay unclipped so its
-  // scale-up affordance still reads behind the active card.
+  // AU-359: during a hold/swipe the active card carries a live translateX.
+  // Clipping the moving card to its own bounds and backing it with the white
+  // app surface keeps its edge clean as it slides — the peek card's cream tile
+  // surface (figmaCardSurface) never bleeds a hairline at the screen edge, and
+  // the corners read white-on-white against the screen. Applied to the ACTIVE
+  // card only; the peek cards stay unclipped so their scale affordance reads.
   activeCard: {
     overflow: 'hidden',
     backgroundColor: theme.colors.figmaSurface,
