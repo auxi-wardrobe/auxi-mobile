@@ -1,20 +1,11 @@
 /**
  * Design System — List rows + Tabs/Segments (NEW showcase).
  * List: value · chevron · danger. Segmented control · underline tabs · dark tab
- * bar · floating-pill footer. Motion: the floating-pill thumb springs with an
- * OVERSHOOT (cubic-bezier(.34,1.32,.5,1) ≈ a low-damping spring) on x + width.
+ * bar. The springy floating-pill footer lives in DsFloatingPill.tsx.
  */
-import React, { useRef, useState } from 'react';
-import {
-  Animated,
-  LayoutChangeEvent,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icons } from '../../assets/icons';
-import { useReducedMotion } from '../../theme/motion';
 import { color, radius, role, shadow, space, type } from './ds-tokens';
 
 const IconChevronRight = Icons.ChevronRight;
@@ -137,61 +128,6 @@ export const DsTabBar: React.FC = () => {
   );
 };
 
-/* ---------------- floating pill footer (signature springy thumb) ---------------- */
-export const DsFloatingPill: React.FC = () => {
-  const reduce = useReducedMotion();
-  const tabs = ['Today', 'Browse', 'You'];
-  const [idx, setIdx] = useState(0);
-  const x = useRef(new Animated.Value(0)).current;
-  const widths = useRef<number[]>([]);
-  const xs = useRef<number[]>([]);
-  const w = useRef(new Animated.Value(0)).current;
-
-  const onLayout = (i: number) => (e: LayoutChangeEvent) => {
-    const { x: lx, width } = e.nativeEvent.layout;
-    xs.current[i] = lx;
-    widths.current[i] = width;
-    if (i === idx) {
-      x.setValue(lx);
-      w.setValue(width);
-    }
-  };
-
-  const move = (i: number) => {
-    setIdx(i);
-    const targetX = xs.current[i] ?? 0;
-    const targetW = widths.current[i] ?? 0;
-    if (reduce) {
-      x.setValue(targetX);
-      w.setValue(targetW);
-      return;
-    }
-    // Overshoot spring ≈ cubic-bezier(.34,1.32,.5,1): low damping → bounce.
-    const cfg = { stiffness: 320, damping: 16, mass: 1, useNativeDriver: false };
-    Animated.spring(x, { toValue: targetX, ...cfg }).start();
-    Animated.spring(w, { toValue: targetW, ...cfg }).start();
-  };
-
-  return (
-    <View style={styles.fbar} testID="ds-floating-pill">
-      <Animated.View style={[styles.fthumb, { left: x, width: w }]} />
-      {tabs.map((tb, i) => (
-        <Pressable
-          key={tb}
-          onLayout={onLayout(i)}
-          onPress={() => move(i)}
-          style={styles.fitem}
-          testID={`ds-floating-pill-${tb.toLowerCase()}${i === idx ? '-active' : ''}`}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: i === idx }}
-        >
-          <Text style={[styles.ftext, i === idx && styles.ftextOn]}>{tb}</Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-};
-
 const styles = StyleSheet.create({
   phone: {
     width: 320,
@@ -251,22 +187,4 @@ const styles = StyleSheet.create({
   tbItem: { alignItems: 'center', gap: 4 },
   tbLabel: { fontFamily: type.caption.fontFamily, fontSize: 10, color: color.n400, textTransform: 'capitalize' },
   tbLabelOn: { color: color.p50 },
-  fbar: {
-    flexDirection: 'row',
-    backgroundColor: color.p100,
-    borderRadius: radius['2xl'],
-    padding: 8,
-    alignItems: 'center',
-  },
-  fthumb: {
-    position: 'absolute',
-    top: 8,
-    bottom: 8,
-    backgroundColor: color.white,
-    borderRadius: radius.xl,
-    ...shadow.card,
-  },
-  fitem: { paddingVertical: 10, paddingHorizontal: 22, alignItems: 'center' },
-  ftext: { ...type.bodySm, color: role.ink3 },
-  ftextOn: { color: role.ink, fontFamily: type.h3.fontFamily },
 });

@@ -5,8 +5,11 @@
  */
 import React, { useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, MONO, radius, role, shadow, space, type } from './ds-tokens';
+import { color, radius, role, space, type } from './ds-tokens';
 import { useToggleValue } from './DsMotion';
+import { DsCheckMenu } from './DsCheckMenu';
+
+export { DsCheckMenu };
 
 /* ---------------- switch ---------------- */
 export const DsSwitch: React.FC<{
@@ -87,35 +90,6 @@ export const DsCheckbox: React.FC<{
     <Text style={styles.label}>{label}</Text>
   </Pressable>
 );
-
-/* ---------------- checkmenu ---------------- */
-export const DsCheckMenu: React.FC = () => {
-  const opts = ['All categories', 'Tops', 'Bottoms', 'Shoes'];
-  const [sel, setSel] = useState<Record<string, boolean>>({ Tops: true });
-  return (
-    <View style={[styles.menu, shadow.card]} testID="ds-checkmenu">
-      {opts.map((o, i) => {
-        const on = !!sel[o];
-        return (
-          <Pressable
-            key={o}
-            onPress={() => setSel(s => ({ ...s, [o]: !s[o] }))}
-            style={[styles.cmRow, i > 0 && styles.cmDivider, on && styles.cmSel]}
-            testID={`ds-checkmenu-${o.split(' ')[0].toLowerCase()}${on ? '-on' : ''}`}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: on }}
-          >
-            <View style={[styles.box, on && styles.boxOn]}>
-              {on && <View style={styles.check} />}
-            </View>
-            <Text style={styles.cmLabel}>{o}</Text>
-            <Text style={styles.cmTag}>{i === 0 ? 'all' : `0${i}`}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-};
 
 /* ---------------- group demos ---------------- */
 export const DsSelectionShowcase: React.FC = () => {
@@ -225,21 +199,4 @@ const styles = StyleSheet.create({
     borderColor: color.white,
     transform: [{ rotate: '-45deg' }, { translateY: -1 }],
   },
-  menu: {
-    width: 280,
-    backgroundColor: role.surface2,
-    borderRadius: radius['2xl'],
-    overflow: 'hidden',
-  },
-  cmRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.s3,
-    paddingVertical: 14,
-    paddingHorizontal: space.s4,
-  },
-  cmDivider: { borderTopWidth: 1, borderTopColor: role.lineCream },
-  cmSel: { backgroundColor: color.n50 },
-  cmLabel: { ...type.bodySm, color: role.ink, flex: 1 },
-  cmTag: { fontFamily: MONO, fontSize: 10.5, color: role.ink3 },
 });

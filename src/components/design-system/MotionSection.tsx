@@ -11,8 +11,8 @@ import { Caption, NoteBold, NoteCard, SectionHeader, Stage, SubHead } from './ds
 import { DsButton } from './DsButtons';
 import { DsSwitch } from './DsControls';
 import { DsTile } from './DsCardsAvatar';
-import { DsFloatingPill } from './DsListsTabs';
-import { DsSnackbar, DsToast } from './DsOverlays';
+import { DsFloatingPill } from './DsFloatingPill';
+import { DsSnackbar, DsToast } from './DsToasts';
 
 export const MotionSection: React.FC = () => {
   const reduce = useReducedMotion();

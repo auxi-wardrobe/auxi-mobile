@@ -11,21 +11,11 @@ import { DsButtonShowcase } from './DsButtons';
 import { DsDivider } from './DsDivider';
 import { DsSelectionShowcase } from './DsControls';
 import { DsChips, DsInputs } from './DsInputsChips';
-import {
-  DsFloatingPill,
-  DsListRows,
-  DsSegmented,
-  DsTabBar,
-  DsTabs,
-} from './DsListsTabs';
+import { DsListRows, DsSegmented, DsTabBar, DsTabs } from './DsListsTabs';
+import { DsFloatingPill } from './DsFloatingPill';
 import { DsAvatars, DsTile, DsTopBar } from './DsCardsAvatar';
-import {
-  DsActionSheet,
-  DsDialog,
-  DsSheet,
-  DsSnackbar,
-  DsToast,
-} from './DsOverlays';
+import { DsActionSheet, DsDialog, DsSheet } from './DsOverlays';
+import { DsSnackbar, DsToast } from './DsToasts';
 import { DsCalendar, DsKeyboard, DsTimePicker } from './DsDateKeyboard';
 
 export const ComponentsSection: React.FC = () => (
