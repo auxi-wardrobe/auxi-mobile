@@ -4,6 +4,17 @@ import user from './fixtures/user.json';
 const variant = () =>
   new URLSearchParams(window.location.search).get('home') ?? 'full';
 
+// Design-review toggle: `?onboarding` (or `?onboarding=1`) flips the mock user
+// to first-login so the app boots straight into the V2 onboarding flow
+// (Welcome → LocationPermission → Wardrobe → Fit → Styles → Loading →
+// Completed → Outro). Default (no param) is unchanged → lands on Home.
+const onboardingMode = () =>
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).has('onboarding');
+
+const meResponse = () =>
+  onboardingMode() ? { ...user, is_first_login: true } : user;
+
 // Self-contained data-URI placeholder (no external host -> never fails).
 const palette: Record<string, string> = {
   top: '#cfe3ff', bottom: '#d8d2c6', footwear: '#e7d6c2', outerwear: '#c8d0d8',
@@ -39,9 +50,38 @@ const tryAnotherResponse = () => { ta += 1; return { outfit: OUTFITS[ta % OUTFIT
 const tokens = () => ({ access_token: 'mock-access-token', refresh_token: 'mock-refresh-token', expires_in: 31536000, refresh_expires_in: 31536000, token_type: 'Bearer' });
 
 export const handlers = [
-  http.get('*/api/me', () => HttpResponse.json(user)),
-  http.get('*/me', () => HttpResponse.json(user)),
+  http.get('*/api/me', () => HttpResponse.json(meResponse())),
+  http.get('*/me', () => HttpResponse.json(meResponse())),
   http.post('*/api/auth/refresh', () => HttpResponse.json(tokens())),
+
+  // Onboarding starter-wardrobe generation — stubbed so the Loading screen's
+  // in-flight POST resolves and the flow advances to Completed → Outro.
+  http.post('*/api/v05/onboarding/generate', async () => {
+    await delay(900);
+    const styleAffinities = {
+      minimal: 1.0, classic: 0.7, street: 0.4, romantic: 0.0, bold: 0.0,
+    } as Record<string, number>;
+    return HttpResponse.json({
+      wardrobe_items: OUTFITS.flatMap(o => o.items).map((it, i) => ({
+        id: `usr-${i}`, human_readable_id: `USR_${i}`, name: it.name,
+        image_url: it.image_url, category: it.category_family,
+        category_code: it.category_family, category_family: it.category_family,
+        layer_code: 'base', style_tags: ['minimal'], gender_tags: ['female'],
+        styling_metadata: {}, physical_attributes: {},
+      })),
+      profile_classification: {
+        gender_style: 'female', fit_classification: 'balanced',
+        style_affinities: styleAffinities,
+      },
+      trace: {
+        pool_size_after_gender_filter: 120, pool_size_with_style_tags: 80,
+        fallback_used: false, fallback_reason: null,
+        style_tag_diversity_count: 3,
+        category_distribution: { top: 3, bottom: 3, footwear: 2, outerwear: 1 },
+        total_items: 9, style_affinity_weights: styleAffinities, elapsed_ms: 900,
+      },
+    });
+  }),
 
   http.post('*/api/v05/recommendation/build', async () => {
     if (variant() === 'loading') await delay('infinite');
