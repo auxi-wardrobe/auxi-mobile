@@ -39,29 +39,17 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaSurface,
     ...theme.ds.shadow.floatingButton,
   },
-  // Count badge sitting on the top-right corner of the header favourites
-  // heart. A white ring lifts it off the heart's rounded surface; the count
-  // grows the pill rightwards (minWidth keeps a single digit perfectly round).
-  favBadge: {
+  // 12×12 mint indicator dot over the top-right lobe of the header favourites
+  // heart — signals "you have saved looks" without a count. Positioned within
+  // the 44×44 button so it overlaps the 24×24 heart's upper-right curve.
+  favDot: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    paddingHorizontal: 5,
-    backgroundColor: theme.colors.figmaRed,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: theme.colors.figmaSurface,
-  },
-  favBadgeText: {
-    color: theme.colors.white,
-    fontFamily: 'Poppins-Medium',
-    fontSize: 11,
-    lineHeight: 14,
-    textAlign: 'center',
+    top: 8,
+    right: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: theme.colors.figmaFavouriteDot,
   },
   scrollContent: {
     paddingTop: 4,
@@ -106,9 +94,6 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
-  },
-  deckCueLike: {
-    right: 24,
   },
   deckCueSkip: {
     left: 24,

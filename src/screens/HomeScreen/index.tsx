@@ -37,7 +37,6 @@ import {
 } from '../../components/primitives/FigmaPrimitives';
 import IconHomeMenu from '../../assets/images/icon_home_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
-import IconHomeHeartFilled from '../../assets/images/icon_home_heart_filled.svg';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -917,10 +916,11 @@ export const HomeScreen = () => {
           method: 'gesture',
         });
       }
-      handleHeartTapForOutfit(outfit);
+      // Swiping no longer saves the look — saving is exclusively the "Wear this"
+      // button now. Both swipe directions simply browse to the next outfit.
       advanceDeck();
     },
-    [handleHeartTapForOutfit, advanceDeck],
+    [advanceDeck],
   );
 
   const handleSkip = useCallback(
@@ -1090,13 +1090,9 @@ export const HomeScreen = () => {
           {favouritesCount > 0 ? (
             <View
               testID="home-favourites-badge"
-              style={styles.favBadge}
+              style={styles.favDot}
               pointerEvents="none"
-            >
-              <Text style={styles.favBadgeText} numberOfLines={1}>
-                {favouritesCount > 99 ? '99+' : favouritesCount}
-              </Text>
-            </View>
+            />
           ) : null}
         </TouchableOpacity>
       </View>
@@ -1202,31 +1198,22 @@ export const HomeScreen = () => {
                 insightActive={isOverrideActive}
               />
             )}
-            renderCue={(likeOpacity, skipOpacity) => (
-              <>
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.deckCue,
-                    styles.deckCueLike,
-                    { opacity: likeOpacity },
-                  ]}
-                >
-                  <IconHomeHeartFilled width={28} height={28} />
-                </Animated.View>
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.deckCue,
-                    styles.deckCueSkip,
-                    { opacity: skipOpacity },
-                  ]}
-                >
-                  <Text style={styles.deckCueSkipText}>
-                    {t('home.skip_label')}
-                  </Text>
-                </Animated.View>
-              </>
+            renderCue={(_likeOpacity, skipOpacity) => (
+              // Swiping only browses now (saving is "Wear this"-only), so there
+              // is no "like"/favourite cue — just the skip affordance on the
+              // dismiss (left) direction.
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.deckCue,
+                  styles.deckCueSkip,
+                  { opacity: skipOpacity },
+                ]}
+              >
+                <Text style={styles.deckCueSkipText}>
+                  {t('home.skip_label')}
+                </Text>
+              </Animated.View>
             )}
           />
         </View>
