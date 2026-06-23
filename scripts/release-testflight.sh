@@ -11,6 +11,11 @@ cd "$(dirname "$0")/.."
 
 API_KEY_ID="${ASC_API_KEY_ID:?Set ASC_API_KEY_ID in shell rc — see docs/release-checklist.md}"
 API_ISSUER="${ASC_API_ISSUER:?Set ASC_API_ISSUER in shell rc — see docs/release-checklist.md}"
+# Let xcodebuild create/refresh managed provisioning profiles via the ASC API key.
+# Required after enabling a capability (e.g. Sign In with Apple) on the App ID —
+# otherwise the cached profile is reused and signing fails.
+ASC_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8"
+PROV_FLAGS=(-allowProvisioningUpdates -authenticationKeyID "$API_KEY_ID" -authenticationKeyIssuerID "$API_ISSUER" -authenticationKeyPath "$ASC_KEY_PATH")
 SCHEME=auxi
 WORKSPACE=ios/auxi.xcworkspace
 EXPORT_OPTIONS=ios/ExportOptions.plist
@@ -76,6 +81,7 @@ xcodebuild archive \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE_DIR/auxi.xcarchive" \
+  "${PROV_FLAGS[@]}" \
   > "$ARCHIVE_DIR/archive.log" 2>&1
 echo ">>> Archive OK"
 
@@ -85,6 +91,7 @@ xcodebuild -exportArchive \
   -archivePath "$ARCHIVE_DIR/auxi.xcarchive" \
   -exportPath "$ARCHIVE_DIR/export" \
   -exportOptionsPlist "$EXPORT_OPTIONS" \
+  "${PROV_FLAGS[@]}" \
   > "$ARCHIVE_DIR/export.log" 2>&1
 ls -lh "$ARCHIVE_DIR/export/auxi.ipa"
 

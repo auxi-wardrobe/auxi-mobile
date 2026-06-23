@@ -50,9 +50,35 @@ if [ -z "${SLACK_DEFAULT_CHANNEL:-}" ] && [ -f "$BE_ENV" ]; then
 fi
 
 if [ -n "${SLACK_BOT_TOKEN:-}" ] && [ -n "${SLACK_DEFAULT_CHANNEL:-}" ] && command -v python3 >/dev/null 2>&1; then
+  # Pull the GitHub release notes (generated changelog) and reshape into a
+  # Slack bullet list of what shipped — "• <PR title> (#NN)", capped to 25.
+  NOTES=""
+  if command -v gh >/dev/null 2>&1; then
+    NOTES="$(gh release view "$TAG" -R "$REPO" --json body --jq '.body' 2>/dev/null || true)"
+  fi
+  CHANGES="$(printf '%s\n' "$NOTES" | python3 -c '
+import sys, re
+out = []
+for ln in sys.stdin:
+    m = re.match(r"\s*[*-]\s+(.*)", ln.rstrip("\n"))
+    if not m:
+        continue
+    item = m.group(1)
+    pm = re.search(r"/pull/(\d+)", item)
+    pr = " (#%s)" % pm.group(1) if pm else ""
+    item = re.sub(r"\s+by @\S+.*$", "", item).strip()
+    if item:
+        out.append("• " + item + pr)
+print("\n".join(out[:25]))
+' 2>/dev/null || true)"
+  [ -z "$CHANGES" ] && CHANGES="• See full notes: ${RELEASE_URL}"
+
   TEXT=":rocket: *Auxi ${MARKETING_VERSION:-?} (build ${BUILD_NUMBER:-?}) — TestFlight*
 Release: <${RELEASE_URL}|${TAG}>
-:hourglass_flowing_sand: Apple processing — internal testers get it shortly."
+:hourglass_flowing_sand: Apple processing — internal testers get it shortly.
+
+*What's in this build:*
+${CHANGES}"
   PAYLOAD="$(CH="$SLACK_DEFAULT_CHANNEL" TXT="$TEXT" python3 -c 'import json,os;print(json.dumps({"channel":os.environ["CH"],"text":os.environ["TXT"],"unfurl_links":False}))')"
   curl -sS -X POST https://slack.com/api/chat.postMessage \
     -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
