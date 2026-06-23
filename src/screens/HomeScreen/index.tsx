@@ -919,7 +919,7 @@ export const HomeScreen = () => {
     if (outfit?.outfitHash) {
       track('outfit_swiped', {
         outfit_hash: outfit.outfitHash,
-        direction: 'prev',
+        direction: 'previous',
         method: 'gesture',
       });
     }
@@ -1243,7 +1243,7 @@ export const HomeScreen = () => {
             <OutfitActionRow
               testID="home-action-row"
               onRemix={handleRemix}
-              onRefine={() => refine.open('refine_button')}
+              onRefine={() => refine.open('card_button')}
               dotCount={OUTFITS_PER_SET}
               activeDot={clampedActiveIndex % OUTFITS_PER_SET}
             />
