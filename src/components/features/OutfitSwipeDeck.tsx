@@ -12,12 +12,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import {
-  motion,
-  rotationForDx,
-  isCommit,
-  useReducedMotion,
-} from '../../theme/motion';
+import { motion, isCommit, useReducedMotion } from '../../theme/motion';
 import { theme } from '../../theme/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -135,11 +130,6 @@ export function OutfitSwipeDeck<T>({
     [swipeEnabled, reduced, pan, commit, cancel],
   );
 
-  const cap = rotationForDx(SCREEN_W, SCREEN_W);
-  const rotate = pan.x.interpolate({
-    inputRange: [-SCREEN_W, 0, SCREEN_W],
-    outputRange: [`${-cap}deg`, '0deg', `${cap}deg`],
-  });
   const likeOpacity = pan.x.interpolate({
     inputRange: [0, SCREEN_W * 0.3],
     outputRange: [motion.opacity.hidden, motion.opacity.visible],
@@ -207,7 +197,7 @@ export function OutfitSwipeDeck<T>({
           styles.cardBase,
           styles.activeCard,
           cardStyle,
-          { transform: [{ translateX: pan.x }, { rotate }] },
+          { transform: [{ translateX: pan.x }] },
         ]}
         {...responder.panHandlers}
       >
