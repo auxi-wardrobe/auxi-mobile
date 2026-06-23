@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
+import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
 import {
   LEGACY_COACHMARK_STORAGE_KEY,
@@ -132,6 +133,8 @@ export const HomeScreen = () => {
   const route = useRoute<RouteProp<AppStackParamList, 'Home'>>();
   const queryClient = useQueryClient();
   const { open: openSidebar } = useSidebar();
+  const { hasUnseen: hasUnseenFavourites, markSaved: markFavouriteSaved } =
+    useFavouritesSeen();
   const [homeView, setHomeView] = useState<HomeView>('grid');
   const [collageDragActive, setCollageDragActive] = useState(false);
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -595,18 +598,6 @@ export const HomeScreen = () => {
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 30_000,
   });
-
-  // Header heart badge: how many outfits the user has saved ("Wear this").
-  // Shares the `['favourites']` cache key with FavouriteScreen so the count and
-  // the list stay in sync — `total` is the full saved count (independent of the
-  // page limit). Saving a look (swipe-like / wear-this / mood save) invalidates
-  // this key, so the badge increments without a manual refetch.
-  const { data: favouritesData } = useQuery({
-    queryKey: ['favourites'],
-    queryFn: () => favouriteService.listFavourites(),
-    staleTime: 30_000,
-  });
-  const favouritesCount = favouritesData?.total ?? 0;
   useEffect(() => {
     if (!pinState.pinnedItemId) {
       return;
@@ -782,7 +773,9 @@ export const HomeScreen = () => {
             item_count: items.length,
             source: 'home',
           });
-          // Refresh the header badge + Favourite list count.
+          // Light the header "unseen saved looks" dot and keep the Favourite
+          // list cache fresh for when the user opens it.
+          markFavouriteSaved();
           queryClient.invalidateQueries({ queryKey: ['favourites'] });
         })
         .catch(error => {
@@ -790,13 +783,13 @@ export const HomeScreen = () => {
           setSaveStateByHash(current => ({ ...current, [hash]: 'error' }));
         });
     },
-    [queryClient],
+    [queryClient, markFavouriteSaved],
   );
 
   const handleOpenFavourites = useCallback(() => {
-    track('home_favourites_shortcut_tapped', { count: favouritesCount });
+    track('home_favourites_shortcut_tapped', { had_unseen: hasUnseenFavourites });
     navigation.navigate('Favourite');
-  }, [navigation, favouritesCount]);
+  }, [navigation, hasUnseenFavourites]);
 
   const { t } = useTranslation();
   const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
@@ -816,11 +809,12 @@ export const HomeScreen = () => {
       showMoodBanner(
         t(updated ? 'mood.moodUpdatedBanner' : 'mood.savedBanner'),
       );
-      // A brand-new save bumps the header badge; a mood update is a no-op count
-      // change but refetching keeps the list authoritative either way.
+      // "Wear this" with a mood saved a look → light the unseen dot and keep
+      // the Favourite list cache fresh.
+      markFavouriteSaved();
       queryClient.invalidateQueries({ queryKey: ['favourites'] });
     },
-    [showMoodBanner, t, queryClient],
+    [showMoodBanner, t, queryClient, markFavouriteSaved],
   );
 
   const { onWearThisPress, sheetProps: moodSheetProps } =
@@ -1078,8 +1072,8 @@ export const HomeScreen = () => {
           testID="home-favourites-shortcut"
           accessibilityRole="button"
           accessibilityLabel={
-            favouritesCount > 0
-              ? t('home.a11y_open_favourites_count', { count: favouritesCount })
+            hasUnseenFavourites
+              ? t('home.a11y_open_favourites_new')
               : t('home.a11y_open_favourites')
           }
           activeOpacity={0.82}
@@ -1087,7 +1081,7 @@ export const HomeScreen = () => {
           onPress={handleOpenFavourites}
         >
           <IconHomeHeartOutline width={24} height={24} />
-          {favouritesCount > 0 ? (
+          {hasUnseenFavourites ? (
             <View
               testID="home-favourites-badge"
               style={styles.favDot}

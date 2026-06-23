@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
 import { useReducedMotion } from '../theme/motion';
 import { useSidebar } from '../context/SidebarContext';
+import { useFavouritesSeen } from '../context/FavouritesSeenContext';
 import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
@@ -44,6 +45,16 @@ export const FavouriteScreen: React.FC = () => {
   const queryClient = useQueryClient();
   const reduced = useReducedMotion();
   const { open: openSidebar } = useSidebar();
+  const { markSeen: markFavouritesSeen } = useFavouritesSeen();
+
+  // Viewing the saved list — by any route (header dot, sidebar, deep link) —
+  // clears the Home "unseen saved looks" dot. useFocusEffect so a back-then-
+  // return also re-clears if a save happened while this screen was backgrounded.
+  useFocusEffect(
+    useCallback(() => {
+      markFavouritesSeen();
+    }, [markFavouritesSeen]),
+  );
 
   const [view, setView] = useState<HomeView>('grid');
   const [pendingRemovalId, setPendingRemovalId] = useState<string | null>(null);
