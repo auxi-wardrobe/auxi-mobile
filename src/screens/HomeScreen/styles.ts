@@ -39,6 +39,21 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaSurface,
     ...theme.ds.shadow.floatingButton,
   },
+  // AI feedback affordance — 44px floating button, bottom-left of the footer,
+  // vertically centred against the view-toggle footer.
+  aiFeedbackFab: {
+    position: 'absolute',
+    left: SHEET_PADDING,
+    bottom: (HOME_VIEW_TOGGLE_FOOTER_HEIGHT - 44) / 2,
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.figmaSurface,
+    zIndex: theme.zIndex.sticky,
+    ...theme.ds.shadow.floatingButton,
+  },
   heartButtonSaved: {
     borderWidth: 1.5,
     borderColor: theme.colors.figmaAction,
@@ -55,6 +70,12 @@ export const styles = StyleSheet.create({
   deckWrap: {
     flex: 1,
     paddingTop: 4,
+  },
+  // Static footer for the action row (Remix · dots · Refine). Sits below the
+  // deck so the row holds still while only the card photo swipes beneath it.
+  deckActionRow: {
+    paddingHorizontal: SHEET_PADDING,
+    paddingTop: theme.spacing.s,
   },
   aiDisclosureRow: {
     paddingHorizontal: SHEET_PADDING,
@@ -85,6 +106,7 @@ export const styles = StyleSheet.create({
     borderColor: theme.colors.uacTextBase,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
     shadowColor: theme.colors.uacTextBase,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

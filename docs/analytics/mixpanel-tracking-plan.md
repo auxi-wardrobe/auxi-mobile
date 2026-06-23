@@ -95,7 +95,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | **`outfit_recommendation_viewed`** | Active sheet settles on a new `outfit_hash`. Dedup'd via module-level `Set<outfit_hash>` per session — see `trackRecommendationViewedOnce()` helper. | `HomeScreen.tsx:564` via `analytics.ts:173` | `outfit_hash`, `position`, `source` (`feed`/`refine`) |
 | **`outfit_favorited`** ★ (pre-existing) | `saveFavourite` success | `HomeScreen.tsx:973` | `outfit_hash`, `item_count`, `source` |
 | `outfit_unfavorited` (pre-existing) | Favourite removed | `FavouriteScreen.tsx:53` | `favorite_id` |
-| `outfit_swiped` | Swipe left → next suggestion / swipe right → previous (navigation only; favouriting moved to "Wear this"). First card can't swipe right. | `HomeScreen/index.tsx` (`handleSkip`, `handleSwipeBack`) | `outfit_hash`, `direction` (`next`/`previous`), `method` (`gesture`) |
+| `outfit_swiped` | Swipe left → next suggestion / swipe right → previous (navigation only; favouriting moved to "Wear this"). Right-swipe is blocked on the first card, so `previous` only fires from index ≥ 1. | `HomeScreen/index.tsx` (`handleSkip`, `handleSwipeBack`) | `outfit_hash`, `direction` (`next`/`previous`), `method` (`gesture`) |
 | `outfit_card_tapped` | Tap on outfit card | `HomeScreen.tsx:1386` | `outfit_hash`, `position` |
 | `context_chip_changed` | Mode chip change (wired defensively — UI parked behind AU-221) | `HomeScreen.tsx:1137` | `chip_type` (`mode`), `value` |
 | `refine_modal_opened` (pre-existing) | Refine sheet opens — manual ("edit context" button) or the after-6 progressive gate | `HomeScreen/index.tsx` | `source` (`card_button` / `viewed_threshold`; legacy `unfavorited_swipe` removed) |
@@ -225,7 +225,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `ai_consent_granted` | User accepts the AI data-sharing prompt before a try-on photo upload, OR flips the Settings "AI data sharing" toggle ON | `services/aiConsent.ts:32` (called from `useAiConsentGate.ts` Accept + `SettingsScreen.tsx` grant) | — |
 | `ai_consent_declined` | User declines the AI data-sharing prompt (tap Decline / tap-outside) | `services/aiConsent.ts:38` (called from `useAiConsentGate.ts` Decline) | — |
 | `ai_consent_revoked` | User flips the Settings "AI data sharing" toggle OFF (Privacy Policy §6 withdraw) | `services/aiConsent.ts:48` (called from `SettingsScreen.tsx` revoke) | — |
-| `ai_content_reported` | User taps "Report" on an AI-generated result (opens prefilled mailto) | `components/features/AiContentDisclosure.tsx:30` | `surface` (`tryon` / `recommendation`) |
+| `ai_content_reported` | User reports an AI-generated result (opens prefilled mailto). Fires from the inline disclosure "Report" link and from the Home AI-feedback floating button (`surface = recommendation`). | `components/features/AiContentDisclosure.tsx:30` (`useAiReport`); Home FAB via `HomeScreen.tsx` `handleReportAi` | `surface` (`tryon` / `recommendation`) |
 
 > PII: none. `ai_consent_*` carry no properties; `ai_content_reported.surface` is a bounded enum. The Report mailto subject/body are static localized strings — no ids, photos, or free text leave the device via analytics. Consent is gated server-side too: the try-on route requires `gemini_opt_in === true`, and the client only sends that after a recorded grant, so no photo is uploaded pre-consent.
 

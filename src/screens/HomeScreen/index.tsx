@@ -38,6 +38,8 @@ import {
 import IconHomeMenu from '../../assets/images/icon_home_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
 import IconHomeHeartFilled from '../../assets/images/icon_home_heart_filled.svg';
+import IconFeedback from '../../assets/images/feedback.svg';
+import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -92,6 +94,7 @@ import { PinnedItemUnavailableNotice } from '../../components/features/PinnedIte
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   MOOD_BANNER_DURATION_MS,
+  AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
   REFINE_AFTER_OUTFITS,
   TARGET_AHEAD,
@@ -115,6 +118,7 @@ import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { HomeLoadingState } from './components/HomeLoadingState';
 import { OptionSheet } from './components/OptionSheet';
+import { OutfitActionRow } from '../../components/features/OutfitActionRow';
 
 const clearTimeoutRef = (
   timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
@@ -187,6 +191,21 @@ export const HomeScreen = () => {
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
   const [aiNoticeDismissed, setAiNoticeDismissed] = useState(false);
   const handleReportAi = useAiReport('recommendation');
+  // Persist the AI notice dismissal so the toast appears only the first time;
+  // the floating feedback button remains as the ongoing affordance.
+  useEffect(() => {
+    AsyncStorage.getItem(AI_NOTICE_DISMISSED_KEY)
+      .then(v => {
+        if (v === 'true') {
+          setAiNoticeDismissed(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+  const dismissAiNotice = useCallback(() => {
+    setAiNoticeDismissed(true);
+    AsyncStorage.setItem(AI_NOTICE_DISMISSED_KEY, 'true').catch(() => {});
+  }, []);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   const unfavoritedSwipeCountRef = useRef(0);
   const listOutfitsRef = useRef<OutfitSheet[]>([]);
@@ -963,29 +982,24 @@ export const HomeScreen = () => {
     ensureBuffer();
   }, [ensureBuffer]);
 
-  // Swipe right → step back to the previous suggestion. Pure navigation: no
-  // favouriting (the user saves via "Wear this"). Clamped at the first card.
-  const goBack = useCallback(() => {
-    const prevIdx = activeIndexRef.current - 1;
-    if (prevIdx >= 0) {
-      activeIndexRef.current = prevIdx;
-      setActiveIndex(prevIdx);
+  // Swipe RIGHT = step back to the previous suggestion. No favouriting here —
+  // the heart button / "Wear this" own that — and the deck blocks this gesture
+  // at index 0, so by the time we run there is always a previous card.
+  const handleSwipeBack = useCallback((outfit: OutfitSheetWithGrid) => {
+    const prev = activeIndexRef.current - 1;
+    if (prev < 0) {
+      return;
     }
+    if (outfit?.outfitHash) {
+      track('outfit_swiped', {
+        outfit_hash: outfit.outfitHash,
+        direction: 'previous',
+        method: 'gesture',
+      });
+    }
+    activeIndexRef.current = prev;
+    setActiveIndex(prev);
   }, []);
-
-  const handleSwipeBack = useCallback(
-    (outfit: OutfitSheetWithGrid) => {
-      if (outfit?.outfitHash) {
-        track('outfit_swiped', {
-          outfit_hash: outfit.outfitHash,
-          direction: 'previous',
-          method: 'gesture',
-        });
-      }
-      goBack();
-    },
-    [goBack],
-  );
 
   const handleSkip = useCallback(
     (outfit: OutfitSheetWithGrid) => {
@@ -1168,12 +1182,7 @@ export const HomeScreen = () => {
         {optionSets.length > 0 && !aiNoticeDismissed ? (
           <InfoSnackbar
             message={t('aiDisclosure.label')}
-            action={{
-              label: t('aiDisclosure.report'),
-              onPress: handleReportAi,
-              testID: 'ai-report-recommendation',
-            }}
-            onClose={() => setAiNoticeDismissed(true)}
+            onClose={dismissAiNotice}
             testID="home-ai-disclosure"
           />
         ) : null}
@@ -1234,8 +1243,8 @@ export const HomeScreen = () => {
             activeIndex={clampedActiveIndex}
             swipeEnabled={!collageDragActive}
             keyOf={outfit => outfit.outfitHash}
-            onForward={handleSkip}
-            onBack={handleSwipeBack}
+            onSwipeNext={handleSkip}
+            onSwipeBack={handleSwipeBack}
             renderCard={(outfit, role) => (
               <OptionSheet
                 cellKey={outfit.outfitHash}
@@ -1250,13 +1259,6 @@ export const HomeScreen = () => {
                 }
                 onItemPress={handleOpenItemDetail}
                 onTogglePin={handleToggleItemPin}
-                onEditContext={() => {
-                  setRefineGated(false);
-                  refine.open('card_button');
-                }}
-                onRemix={handleRemix}
-                onShowAnother={handleSkip}
-                activeDot={clampedActiveIndex % OUTFITS_PER_SET}
                 homeView={homeView}
                 onCollageDragActiveChange={setCollageDragActive}
                 isGenerating={
@@ -1266,38 +1268,55 @@ export const HomeScreen = () => {
                 insightActive={isOverrideActive}
               />
             )}
-            renderCue={(forwardOpacity, backOpacity) => (
+            renderCue={(backOpacity, nextOpacity) => (
               <>
-                {/* Swipe left → next: cue sits on the left edge (the side you
-                    drag toward). */}
+                {/* Swipe right → previous: back chevron on the right edge
+                    (hidden on the first card — nothing to return to). */}
+                {clampedActiveIndex > 0 ? (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.deckCue,
+                      styles.deckCueLike,
+                      { opacity: backOpacity },
+                    ]}
+                  >
+                    <IconChevronLeft width={20} height={20} />
+                    <Text style={styles.deckCueSkipText}>
+                      {t('home.back_label')}
+                    </Text>
+                  </Animated.View>
+                ) : null}
+                {/* Swipe left → next: cue on the left edge. */}
                 <Animated.View
                   pointerEvents="none"
                   style={[
                     styles.deckCue,
                     styles.deckCueSkip,
-                    { opacity: forwardOpacity },
+                    { opacity: nextOpacity },
                   ]}
                 >
                   <Text style={styles.deckCueSkipText}>
-                    {t('home.swipe_next')}
-                  </Text>
-                </Animated.View>
-                {/* Swipe right → previous: cue on the right edge. */}
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.deckCue,
-                    styles.deckCueLike,
-                    { opacity: backOpacity },
-                  ]}
-                >
-                  <Text style={styles.deckCueSkipText}>
-                    {t('home.swipe_previous')}
+                    {t('home.skip_label')}
                   </Text>
                 </Animated.View>
               </>
             )}
           />
+          {/* Fixed action row — Remix · dots · Refine stay put while only the
+              card photo swipes beneath them (it lives outside the deck). */}
+          <View style={styles.deckActionRow}>
+            <OutfitActionRow
+              testID="home-action-row"
+              onRemix={handleRemix}
+              onRefine={() => {
+                setRefineGated(false);
+                refine.open('refine_button');
+              }}
+              dotCount={OUTFITS_PER_SET}
+              activeDot={clampedActiveIndex % OUTFITS_PER_SET}
+            />
+          </View>
         </View>
       )}
 
@@ -1381,6 +1400,25 @@ export const HomeScreen = () => {
             </Text>
           ) : null}
         </View>
+      ) : null}
+
+      {/* AI feedback affordance — 44px floating button, bottom-left of the
+          footer, Home only. Opens the same prefilled AI report. */}
+      {optionSets.length > 0 ? (
+        <TouchableOpacity
+          testID="home-ai-feedback-fab"
+          accessibilityRole="button"
+          accessibilityLabel={t('aiDisclosure.report')}
+          activeOpacity={0.85}
+          onPress={handleReportAi}
+          style={styles.aiFeedbackFab}
+        >
+          <IconFeedback
+            width={24}
+            height={24}
+            color={theme.colors.uacTextBase}
+          />
+        </TouchableOpacity>
       ) : null}
 
       <HomeViewToggleFooter
