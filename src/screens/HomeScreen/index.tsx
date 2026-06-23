@@ -465,7 +465,7 @@ export const HomeScreen = () => {
   // force-generate the next batch of 6 (no new style feedback).
   const onSkipRefinement = useCallback(() => {
     refinementSkippedRef.current += 1;
-    track('refine_skipped_resumed', {
+    track('refine_skipped', {
       skipped_count: refinementSkippedRef.current,
     });
     resetRefineTier();
@@ -522,16 +522,17 @@ export const HomeScreen = () => {
   // viewed (2 batches), open the Refine sheet instead of generating more. The
   // `ensureBuffer` length cap has already paused generation; submitting
   // feedback or skipping resets the tier and unlocks the next 6.
+  const { isOpen: refineIsOpen, open: openRefine } = refine;
   useEffect(() => {
-    if (refine.isOpen) {
+    if (refineIsOpen) {
       return;
     }
     if (tierViewedCount < REFINE_AFTER_OUTFITS) {
       return;
     }
     setRefineGated(true);
-    refine.open('viewed_threshold');
-  }, [tierViewedCount, refine]);
+    openRefine('viewed_threshold');
+  }, [tierViewedCount, refineIsOpen, openRefine]);
 
   useEffect(() => {
     return () => {
@@ -977,7 +978,7 @@ export const HomeScreen = () => {
       if (outfit?.outfitHash) {
         track('outfit_swiped', {
           outfit_hash: outfit.outfitHash,
-          direction: 'prev',
+          direction: 'previous',
           method: 'gesture',
         });
       }

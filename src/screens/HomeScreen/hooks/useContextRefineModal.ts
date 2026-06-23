@@ -102,12 +102,11 @@ export const useContextRefineModal = ({
   }, [selectedChipId, trimmedCustomText, close]);
 
   const onSkip = useCallback(() => {
-    track('refine_skipped', {
-      had_selection: !!selectedChipId || trimmedCustomText.length > 0,
-    });
+    // Skip analytics fire once from the parent's onSkipRefinement (with the
+    // session skip count) to avoid double-counting a single user action.
     close();
     onSkipRefinement?.();
-  }, [selectedChipId, trimmedCustomText, close, onSkipRefinement]);
+  }, [close, onSkipRefinement]);
 
   const onConfirm = useCallback(() => {
     const chipLabel = selectedChipId
