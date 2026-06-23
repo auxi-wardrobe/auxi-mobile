@@ -329,6 +329,7 @@
     "common": {
       "error_title": "Lỗi",
       "cancel": "Hủy",
+      "close": "Đóng",
       "ok": "OK",
       "edit": "Sửa",
       "delete": "Xóa",
