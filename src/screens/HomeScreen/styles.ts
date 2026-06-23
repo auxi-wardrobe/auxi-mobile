@@ -138,6 +138,17 @@ export const styles = StyleSheet.create({
   },
   gridScrollContent: {
     paddingBottom: GRID_CONTENT_PAD,
+    // Fill the scroll viewport so the grid (and its full-height tiles) can
+    // stretch to the available height instead of hugging the top.
+    flexGrow: 1,
+  },
+  // Stretch the grid + its rows to consume the full sheet height so tiles read
+  // full-height and the action/wear cluster is pushed to the bottom.
+  gridFill: {
+    flex: 1,
+  },
+  cardRowFill: {
+    flex: 1,
   },
   loadingCards: {
     gap: GRID_GAP,
@@ -170,7 +181,14 @@ export const styles = StyleSheet.create({
     opacity: 0,
   },
   card: {
-    width: '100%',
+    // Height-driven so a tile fills the full row height it's given (the grid
+    // now stretches to fill the sheet — see gridFill/cardRowFill). aspectRatio
+    // keeps the CEO-tracked 3:4 (width = height × 0.75); maxWidth caps the tile
+    // to its cell so a tall row can't push the width past the column. Explicit
+    // width/height overrides (cardFull, cardFixedSmall, hero rows) still win.
+    height: '100%',
+    maxWidth: '100%',
+    alignSelf: 'center',
     aspectRatio: CARD_ASPECT,
     borderRadius: theme.borderRadius.figmaTile,
     backgroundColor: theme.colors.figmaCardSurface,
@@ -289,7 +307,8 @@ export const styles = StyleSheet.create({
   wearThisFooter: {
     paddingHorizontal: SHEET_PADDING,
     paddingTop: theme.spacing.uacDimension8,
-    paddingBottom: theme.spacing.uacDimension8,
+    // 12px gap between the button cluster and the view-toggle footer below.
+    paddingBottom: theme.spacing.uacDimension12,
   },
   primaryActionFull: {
     alignSelf: 'stretch',

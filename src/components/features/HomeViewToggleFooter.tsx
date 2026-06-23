@@ -125,8 +125,11 @@ const styles = StyleSheet.create({
   bar: {
     height: HOME_VIEW_TOGGLE_FOOTER_HEIGHT,
     width: '100%',
-    justifyContent: 'center',
+    // Sit the tabs toward the bottom with a 24px bottom padding (the toggle
+    // group reads lower in the bar, closer to the screen edge).
+    justifyContent: 'flex-end',
     alignItems: 'center',
+    paddingBottom: 24,
     overflow: 'hidden',
   },
   // Oversized backdrop-blur slab (Figma 3227:13480: 430×100, centred). Bar

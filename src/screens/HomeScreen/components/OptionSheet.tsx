@@ -171,8 +171,8 @@ export const OptionSheet = React.memo(
 
       if (layout.kind === 'twoRowOneLarge') {
         return (
-          <View style={[styles.gridWrap, styles.gridWrapStart]}>
-            <View style={styles.cardRow}>
+          <View style={[styles.gridWrap, styles.gridWrapStart, styles.gridFill]}>
+            <View style={[styles.cardRow, styles.cardRowFill]}>
               <View style={styles.cardShellFixed}>
                 {renderTile(layout.row1[0], 0)}
               </View>
@@ -180,7 +180,7 @@ export const OptionSheet = React.memo(
                 {renderTile(layout.row1[1], 1)}
               </View>
             </View>
-            <View style={styles.cardRow}>
+            <View style={[styles.cardRow, styles.cardRowFill]}>
               <View style={styles.cardShellFixed}>
                 {renderTile(layout.row2Large, 2)}
               </View>
@@ -192,11 +192,11 @@ export const OptionSheet = React.memo(
 
       if (layout.kind === 'twoByTwo') {
         return (
-          <View style={[styles.gridWrap, styles.gridWrapStart]}>
+          <View style={[styles.gridWrap, styles.gridWrapStart, styles.gridFill]}>
             {layout.rows.map((row, rowIndex) => (
               <View
                 key={`row-${outfit.outfitHash}-${rowIndex}`}
-                style={styles.cardRow}
+                style={[styles.cardRow, styles.cardRowFill]}
               >
                 {row.map((item, itemIndex) => (
                   <View
@@ -292,7 +292,7 @@ export const OptionSheet = React.memo(
           >
             <Animated.View
               testID={`home-outfit-grid-${itemCount}`}
-              style={revealStyle}
+              style={[styles.gridFill, revealStyle]}
             >
               {homeView === 'collage' ? (
                 <CollageSheetCanvas
