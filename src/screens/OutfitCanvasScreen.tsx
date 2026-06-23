@@ -23,6 +23,7 @@ import {
   CanvasItemData,
   OutfitCanvasSurface,
 } from '../components/features/OutfitCanvasSurface';
+import { seedCanvasLayout } from '../components/features/collage-seed-layout';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { getImageUrl } from '../utils/url';
@@ -313,22 +314,19 @@ const ToolbarBtn = ({
 export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<RouteProp<AppStackParamList, 'OutfitCanvas'>>();
   const { t } = useTranslation();
-  // Seed from the real outfit passed by Home's Remix button; fall back to mock
-  // items only when opened without params (deep-link / dev). Staggered so the
-  // pieces don't stack exactly on top of each other.
+  // Seed from the real outfit passed by Home's Remix button, reusing the shared
+  // collage layout so pieces land in the SAME overlapping positions/sizes the
+  // user just saw in Home's collage view (scaled to this canvas width). Fall
+  // back to mock items only when opened without params (deep-link / dev).
   const initialItems = useRef<CanvasItemData[]>(
     route.params?.items?.length
-      ? route.params.items.map((it, i) => ({
-          id: it.id,
-          imageSource: { uri: it.imageUrl },
-          x: 20 + i * 24,
-          y: 20 + i * 28,
-          zIndex: i + 1,
-          width: ITEM_DEFAULT_SIZE,
-          height: ITEM_DEFAULT_SIZE,
-          scale: 1,
-          rotation: 0,
-        }))
+      ? seedCanvasLayout(
+          route.params.items.map(it => ({
+            id: it.id,
+            imageUri: it.imageUrl,
+          })),
+          CANVAS_WIDTH,
+        )
       : INITIAL_MOCK_ITEMS,
   ).current;
   const [items, setItems] = useState<CanvasItemData[]>(initialItems);
