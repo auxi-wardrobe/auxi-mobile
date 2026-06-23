@@ -29,12 +29,68 @@ export const mapV05Item = (it: V05OutfitItem): Item => ({
 export const buildGrid = (items: Item[]): Array<Item | null> =>
   Array.from({ length: items.length }, (_, index) => items[index] || null);
 
+// A single suggestion should carry at most one garment per category family.
+// When it doesn't — typically the user's own item plus a system
+// `common_essential` fallback of the same category (two tops, two pairs of
+// jeans) — the sheet would render the duplicate. Collapse to one item per
+// category, keeping the first occurrence's slot and preferring the user's own
+// garment over the system fallback. A `protectedId` (the pinned item) always
+// wins its category regardless of source.
+export const dedupeByCategory = (
+  items: Item[],
+  protectedId?: string,
+): Item[] => {
+  const indexByCategory = new Map<string, number>();
+  const result: Item[] = [];
+
+  for (const item of items) {
+    if (!item) {
+      continue;
+    }
+
+    const key = item.category?.trim().toLowerCase();
+    // Items without a category can't be compared — keep them all rather than
+    // collapsing unrelated garments into one bucket.
+    if (!key) {
+      result.push(item);
+      continue;
+    }
+
+    const existingIndex = indexByCategory.get(key);
+    if (existingIndex === undefined) {
+      indexByCategory.set(key, result.length);
+      result.push(item);
+      continue;
+    }
+
+    const existing = result[existingIndex];
+    // Never displace a pinned item from its slot.
+    if (protectedId && existing.id === protectedId) {
+      continue;
+    }
+    // The incoming item takes the slot if it's the pin, or if it's the user's
+    // garment beating a system fallback. Otherwise the earlier item stays.
+    if (
+      (protectedId && item.id === protectedId) ||
+      (existing.isSystem && !item.isSystem)
+    ) {
+      result[existingIndex] = item;
+    }
+  }
+
+  return result;
+};
+
 export const buildGridOutfitSheet = (
   outfit: OutfitSheet,
-): OutfitSheetWithGrid => ({
-  ...outfit,
-  gridItems: buildGrid(outfit.items),
-});
+): OutfitSheetWithGrid => {
+  const items = dedupeByCategory(outfit.items);
+  return {
+    ...outfit,
+    items,
+    gridItems: buildGrid(items),
+  };
+};
 
 export const buildGridOutfitSheetWithPin = (
   outfit: OutfitSheet,
@@ -48,13 +104,15 @@ export const buildGridOutfitSheetWithPin = (
     item => item?.id === pinnedItem.id,
   );
 
-  if (existingIndex === 0) {
-    return buildGridOutfitSheet(outfit);
-  }
-
-  if (existingIndex > 0) {
+  if (existingIndex >= 0) {
+    // Pinned item is already in this outfit — float it to the front, then
+    // collapse any same-category duplicate (the pin always keeps its slot, so
+    // a stray system top alongside the pinned top is dropped).
     const rest = outfit.items.filter(item => item?.id !== pinnedItem.id);
-    const reordered: Item[] = [outfit.items[existingIndex], ...rest];
+    const reordered = dedupeByCategory(
+      [outfit.items[existingIndex], ...rest],
+      pinnedItem.id,
+    );
     return {
       ...outfit,
       items: reordered,
@@ -64,17 +122,13 @@ export const buildGridOutfitSheetWithPin = (
 
   // The pinned item isn't in this outfit — the backend hasn't built around it
   // (AU-222/AU-233), so the outfit still carries its own item of the pinned
-  // item's category (e.g. a top). Drop that same-category item before
-  // prepending the pin; otherwise the sheet shows two of the same category
-  // (pin a shirt → two shirts). If the pinned category is unknown, fall back
-  // to the previous prepend so we never accidentally strip everything.
-  const pinnedCategory = pinnedItem.category?.trim().toLowerCase();
-  const deduped = pinnedCategory
-    ? outfit.items.filter(
-        item => item && item.category?.trim().toLowerCase() !== pinnedCategory,
-      )
-    : outfit.items;
-  const mixed: Item[] = [pinnedItem, ...deduped.slice(0, 3)];
+  // item's category (e.g. a top). Prepend the pin and let the de-dup drop the
+  // outfit's same-category item; otherwise the sheet shows two of the same
+  // category (pin a shirt → two shirts).
+  const mixed = dedupeByCategory(
+    [pinnedItem, ...outfit.items],
+    pinnedItem.id,
+  ).slice(0, 4);
   return {
     ...outfit,
     items: mixed,
