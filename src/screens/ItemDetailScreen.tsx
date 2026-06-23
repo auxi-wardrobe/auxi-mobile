@@ -20,6 +20,7 @@ import {
   PillButton,
   TopIconButton,
 } from '../components/primitives/FigmaPrimitives';
+import { AnimatedBottomSheet } from '../components/primitives/AnimatedBottomSheet';
 import { MacgieLoader } from '../components/macgie';
 import { Icons } from '../assets/icons';
 import {
@@ -836,79 +837,19 @@ export const ItemDetailScreen = () => {
         ) : null}
       </View>
 
-      {/* Bottom panel (Figma component 3516:18640). Read mode = title +
-          date + button group ONLY — attribute rows moved to the Edit flow
-          (qa-ui safe default #3). pb 36 covers the home indicator zone
-          (extraction §One-off literals); larger future insets win. */}
-      <BottomSheetSurface
-        style={{
-          ...styles.sheet,
-          paddingBottom: Math.max(SHEET_BOTTOM_PADDING, insets.bottom),
-        }}
-      >
-        {isEditing ? (
-          // EDIT MODE (Figma 3508:8356): editable attribute list + bottom
-          // [Cancel] [Save]. Name stays read-only (free-text edit needs a
-          // text-input picker; the option picker only supports enumerations
-          // — tracked in extraction note §New backend fields).
-          <>
-            <View style={styles.details}>
-              {item.name ? (
-                <DividerRow
-                  label={t('wardrobe.itemDetail.row_name')}
-                  value={item.name}
-                  labelStyle={styles.rowLabel}
-                  valueStyle={styles.rowValue}
-                />
-              ) : null}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_type'),
-                draftCategory,
-                'category',
-              )}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_style'),
-                draftStyle,
-                'style',
-              )}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_color'),
-                draftColor,
-                'color',
-              )}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_fit'),
-                draftFit,
-                'fit',
-                true,
-              )}
-            </View>
-
-            <View style={styles.actionBlock}>
-              <View style={styles.editActionRow}>
-                <PillButton
-                  testID="item-detail-cancel-btn"
-                  variant="text"
-                  title={t('wardrobe.itemDetail.cancel')}
-                  onPress={handleCancelEditing}
-                  disabled={saving}
-                  style={styles.editCancelButton}
-                />
-                <PillButton
-                  testID="item-detail-save-btn"
-                  variant="filled"
-                  title={t('wardrobe.itemDetail.save')}
-                  onPress={handleSaveEdits}
-                  loading={saving}
-                  disabled={saving}
-                  style={styles.editSaveButton}
-                />
-              </View>
-            </View>
-          </>
-        ) : (
-          // READ MODE (Figma 2852:14557 "detail"): centred title + date,
-          // outlined "Build around this" CTA, [trash][Less use] … [Edit].
+      {/* READ MODE (Figma 2852:14557 "detail"): centred title + date,
+          outlined "Build around this" CTA, [trash][Less use] … [Edit].
+          Unmounted while editing so the edit sheet slides up over a clean
+          backdrop and the read-mode CTA never lingers behind the scrim
+          (Maestro asserts item-detail-mix-btn is gone in edit mode). pb 36
+          covers the home indicator zone; larger future insets win. */}
+      {!isEditing ? (
+        <BottomSheetSurface
+          style={{
+            ...styles.sheet,
+            paddingBottom: Math.max(SHEET_BOTTOM_PADDING, insets.bottom),
+          }}
+        >
           <>
             <View style={styles.titleBlock}>
               {isPreparing ? (
@@ -1049,79 +990,155 @@ export const ItemDetailScreen = () => {
               </View>
             </View>
           </>
-        )}
-      </BottomSheetSurface>
+        </BottomSheetSurface>
+      ) : null}
 
-      <Modal
-        visible={!!pickerField}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPickerField(null)}
+      {/* EDIT MODE (Figma 3508:8356): editable attribute list + bottom
+          [Cancel] [Save], presented as a bottom sheet with the house entrance
+          motion shared with MoodFeedbackSheet ("How did this outfit feel").
+          Swipe down or tap the scrim to cancel; dismissal locks while a save is
+          in flight. Name stays read-only (free-text edit needs a text-input
+          picker; the option picker only supports enumerations — tracked in
+          extraction note §New backend fields). The option picker nests inside
+          this sheet's Modal so it stacks reliably on iOS. */}
+      <AnimatedBottomSheet
+        visible={isEditing}
+        onDismiss={handleCancelEditing}
+        dismissDisabled={saving}
+        testID="item-detail-edit-sheet"
+        backdropTestID="item-detail-edit-backdrop"
+        backdropAccessibilityLabel={t('wardrobe.itemDetail.cancel')}
+        sheetStyle={{
+          paddingHorizontal: theme.spacing.m,
+          paddingBottom: Math.max(SHEET_BOTTOM_PADDING, insets.bottom),
+        }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {t('wardrobe.itemDetail.picker_title', {
-                  field: pickerField ? getPickerFieldLabel(pickerField) : '',
-                })}
-              </Text>
-              <TouchableOpacity
-                testID="item-detail-picker-close-btn"
-                onPress={() => setPickerField(null)}
-              >
-                <Text style={styles.modalClose}>
-                  {t('wardrobe.itemDetail.picker_close')}
-                </Text>
-              </TouchableOpacity>
-            </View>
+        <View style={styles.details}>
+          {item.name ? (
+            <DividerRow
+              label={t('wardrobe.itemDetail.row_name')}
+              value={item.name}
+              labelStyle={styles.rowLabel}
+              valueStyle={styles.rowValue}
+            />
+          ) : null}
+          {renderDetailRow(
+            t('wardrobe.itemDetail.row_type'),
+            draftCategory,
+            'category',
+          )}
+          {renderDetailRow(
+            t('wardrobe.itemDetail.row_style'),
+            draftStyle,
+            'style',
+          )}
+          {renderDetailRow(
+            t('wardrobe.itemDetail.row_color'),
+            draftColor,
+            'color',
+          )}
+          {renderDetailRow(
+            t('wardrobe.itemDetail.row_fit'),
+            draftFit,
+            'fit',
+            true,
+          )}
+        </View>
 
-            <ScrollView>
-              {(pickerField ? getPickerOptions(pickerField) : []).map(
-                option => {
-                  const isSelected =
-                    (pickerField === 'category' && draftCategory === option) ||
-                    (pickerField === 'color' && draftColor === option) ||
-                    (pickerField === 'fit' && draftFit === option) ||
-                    (pickerField === 'style' && draftStyle === option);
-
-                  return (
-                    <TouchableOpacity
-                      key={option}
-                      testID={`item-detail-option-${option}`}
-                      style={styles.optionItem}
-                      onPress={() => handleSelectOption(option)}
-                    >
-                      <View style={styles.optionLeft}>
-                        {pickerField === 'color' ? (
-                          <View
-                            style={[
-                              styles.optionColorDot,
-                              { backgroundColor: findColorHex(option) },
-                            ]}
-                          />
-                        ) : null}
-                        <Text style={styles.optionText}>
-                          {pickerField
-                            ? getOptionDisplayLabel(pickerField, option)
-                            : option}
-                        </Text>
-                      </View>
-                      {isSelected ? (
-                        <Icons.ChevronRight
-                          width={18}
-                          height={18}
-                          color={theme.colors.figmaAction}
-                        />
-                      ) : null}
-                    </TouchableOpacity>
-                  );
-                },
-              )}
-            </ScrollView>
+        <View style={styles.actionBlock}>
+          <View style={styles.editActionRow}>
+            <PillButton
+              testID="item-detail-cancel-btn"
+              variant="text"
+              title={t('wardrobe.itemDetail.cancel')}
+              onPress={handleCancelEditing}
+              disabled={saving}
+              style={styles.editCancelButton}
+            />
+            <PillButton
+              testID="item-detail-save-btn"
+              variant="filled"
+              title={t('wardrobe.itemDetail.save')}
+              onPress={handleSaveEdits}
+              loading={saving}
+              disabled={saving}
+              style={styles.editSaveButton}
+            />
           </View>
         </View>
-      </Modal>
+
+        <Modal
+          visible={!!pickerField}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setPickerField(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {t('wardrobe.itemDetail.picker_title', {
+                    field: pickerField ? getPickerFieldLabel(pickerField) : '',
+                  })}
+                </Text>
+                <TouchableOpacity
+                  testID="item-detail-picker-close-btn"
+                  onPress={() => setPickerField(null)}
+                >
+                  <Text style={styles.modalClose}>
+                    {t('wardrobe.itemDetail.picker_close')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView>
+                {(pickerField ? getPickerOptions(pickerField) : []).map(
+                  option => {
+                    const isSelected =
+                      (pickerField === 'category' &&
+                        draftCategory === option) ||
+                      (pickerField === 'color' && draftColor === option) ||
+                      (pickerField === 'fit' && draftFit === option) ||
+                      (pickerField === 'style' && draftStyle === option);
+
+                    return (
+                      <TouchableOpacity
+                        key={option}
+                        testID={`item-detail-option-${option}`}
+                        style={styles.optionItem}
+                        onPress={() => handleSelectOption(option)}
+                      >
+                        <View style={styles.optionLeft}>
+                          {pickerField === 'color' ? (
+                            <View
+                              style={[
+                                styles.optionColorDot,
+                                { backgroundColor: findColorHex(option) },
+                              ]}
+                            />
+                          ) : null}
+                          <Text style={styles.optionText}>
+                            {pickerField
+                              ? getOptionDisplayLabel(pickerField, option)
+                              : option}
+                          </Text>
+                        </View>
+                        {isSelected ? (
+                          <Icons.ChevronRight
+                            width={18}
+                            height={18}
+                            color={theme.colors.figmaAction}
+                          />
+                        ) : null}
+                      </TouchableOpacity>
+                    );
+                  },
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </AnimatedBottomSheet>
     </View>
   );
 };
