@@ -329,6 +329,7 @@
     "common": {
       "error_title": "Error",
       "cancel": "Cancel",
+      "close": "Close",
       "ok": "OK",
       "edit": "Edit",
       "delete": "Delete",

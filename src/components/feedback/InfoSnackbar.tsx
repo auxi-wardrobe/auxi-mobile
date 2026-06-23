@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import IconClose from '../../assets/images/icon_close.svg';
 
@@ -23,7 +24,9 @@ export const InfoSnackbar: React.FC<InfoSnackbarProps> = ({
   action,
   onClose,
   testID,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <View
     style={styles.snackbar}
     testID={testID}
@@ -49,7 +52,7 @@ export const InfoSnackbar: React.FC<InfoSnackbarProps> = ({
     <TouchableOpacity
       testID={testID ? `${testID}-close` : 'info-snackbar-close'}
       accessibilityRole="button"
-      accessibilityLabel="Close"
+      accessibilityLabel={t('common.close')}
       activeOpacity={0.7}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       onPress={onClose}
@@ -58,7 +61,8 @@ export const InfoSnackbar: React.FC<InfoSnackbarProps> = ({
       <IconClose width={24} height={24} color={theme.colors.white} />
     </TouchableOpacity>
   </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   snackbar: {
