@@ -172,6 +172,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 |---|---|---|---|
 | `screen_viewed` | React Navigation `onStateChange` → route name change. `OnboardingLoading` skipped (transient). 500ms debounce on identical consecutive names. | `AppNavigator.tsx:70` (`handleNavStateChange`) | `screen_name`, `previous_screen_name?` |
 | `feedback_opened` | Sidebar "Feedback" row tapped → navigates to the `Feedback` screen (App Store B3 dead-button fix — row was previously a no-op). | `SidebarMenu.tsx:107` (live push-drawer). The unused legacy `Sidebar.tsx:164` overlay carries the same call for parity. | `source` (`sidebar`) |
+| `design_system_opened` | Email-gated "Design System" sidebar row tapped → opens the in-app DS reference page (internal-only, CEO + designer accounts). | `SidebarMenu.tsx` (live push-drawer). | `source` (`sidebar`) |
 
 ### 5.10 Analytics helpers (`src/services/analytics.ts`)
 
