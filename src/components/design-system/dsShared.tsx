@@ -1,22 +1,18 @@
 /**
  * Shared building blocks for the in-app Design System reference screen.
- * __DEV__-gated catalog — faithful RN recreation of `Auxi Design System.html`.
- * All styling reads from `theme.ds` / `theme.typography.aliases`; no hex/font
- * literals (token-lint clean). Mono role uses a platform monospace fallback
- * (JetBrains Mono is not bundled).
+ * Rebuilt on ds-tokens.ts (NEW claude.ai showcase). Poppins-only typography;
+ * mono role uses a platform monospace fallback (JetBrains Mono not bundled),
+ * for spec overlines only.
+ *
+ * These tokens diverge from theme.ts on purpose (DS page = new target). See
+ * ds-tokens.ts header.
  */
 import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../../theme/theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { color, MONO, radius, role, space, type } from './ds-tokens';
 
-const ds = theme.ds;
-
-// JetBrains Mono is NOT bundled — fall back to the platform monospace face.
-export const MONO_FAMILY = Platform.select({
-  ios: 'Menlo',
-  android: 'monospace',
-  default: 'monospace',
-}) as string;
+// Back-compat re-export: older sections import MONO_FAMILY from here.
+export const MONO_FAMILY = MONO;
 
 /** Section header: number + title + optional blurb. */
 export const SectionHeader: React.FC<{
@@ -62,10 +58,7 @@ export const NoteBold: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => <Text style={styles.noteBold}>{children}</Text>;
 
-/**
- * Spec list (the right-hand "Spec" panel from the HTML), rendered as a
- * stacked dt/dd grid: muted term on the left, mono value on the right.
- */
+/** Spec panel: muted term left, mono value right. */
 export const SpecList: React.FC<{
   title?: string;
   rows: Array<[string, string]>;
@@ -81,103 +74,89 @@ export const SpecList: React.FC<{
   </View>
 );
 
+/** A framed demo stage — cream / plain(surface2) / dark backdrop. */
+export const Stage: React.FC<{
+  children: React.ReactNode;
+  variant?: 'default' | 'plain' | 'dark';
+  column?: boolean;
+}> = ({ children, variant = 'default', column }) => (
+  <View
+    style={[
+      styles.stage,
+      variant === 'plain' && styles.stagePlain,
+      variant === 'dark' && styles.stageDark,
+      column && styles.stageCol,
+    ]}
+  >
+    {children}
+  </View>
+);
+
 const styles = StyleSheet.create({
-  secHead: {
-    marginTop: theme.spacing.xxl,
-    marginBottom: theme.spacing.l,
-  },
-  secNum: {
-    fontFamily: MONO_FAMILY,
-    fontSize: 12,
-    color: ds.color.warm500,
-    letterSpacing: 0.5,
-  },
-  secTitle: {
-    ...theme.typography.aliases.uacH4Bold,
-    color: ds.color.ink,
-    marginTop: theme.spacing.s,
-  },
-  secBlurb: {
-    ...theme.typography.aliases.interBodySm,
-    color: ds.color.onVariant,
-    marginTop: theme.spacing.s,
-  },
+  secHead: { marginTop: space.s12, marginBottom: space.s6 },
+  secNum: { ...type.overline, color: role.ink3, letterSpacing: 1 },
+  secTitle: { ...type.h2, color: role.ink, marginTop: space.s2 },
+  secBlurb: { ...type.bodySm, color: role.ink2, marginTop: space.s2 },
   subHead: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: theme.spacing.s,
-    marginTop: theme.spacing.xl,
-    marginBottom: theme.spacing.m,
+    gap: space.s2,
+    marginTop: space.s8,
+    marginBottom: space.s4,
     flexWrap: 'wrap',
   },
-  subLabel: {
-    ...theme.typography.aliases.poppinsButton,
-    color: ds.color.ink,
-  },
-  subTag: {
-    fontFamily: MONO_FAMILY,
-    fontSize: 10,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    color: ds.color.warm500,
-  },
-  caption: {
-    fontFamily: MONO_FAMILY,
-    fontSize: 12,
-    color: ds.color.warm500,
-    letterSpacing: 0.2,
-    marginBottom: theme.spacing.s,
-  },
+  subLabel: { ...type.h3, color: role.ink },
+  subTag: { ...type.overline, color: role.ink3 },
+  caption: { ...type.overline, color: role.ink3, marginBottom: space.s2 },
   note: {
-    backgroundColor: ds.color.cream,
+    backgroundColor: role.surfaceCream,
     borderWidth: 1,
-    borderColor: ds.line,
+    borderColor: role.lineCream,
     borderLeftWidth: 3,
-    borderLeftColor: ds.color.tanStroke,
-    borderRadius: 10,
+    borderLeftColor: color.p300,
+    borderRadius: radius.lg,
     paddingVertical: 14,
     paddingHorizontal: 18,
-    marginVertical: theme.spacing.m,
+    marginVertical: space.s4,
   },
-  noteFlag: {
-    borderLeftColor: ds.color.danger,
-  },
-  noteText: {
-    ...theme.typography.aliases.interBodySm,
-    color: ds.color.onVariant,
-  },
-  noteBold: {
-    ...theme.typography.aliases.interMediumSm,
-    color: ds.color.ink,
-  },
+  noteFlag: { borderLeftColor: color.da400 },
+  noteText: { ...type.bodySm, color: role.ink2 },
+  noteBold: { ...type.bodySm, fontFamily: type.h3.fontFamily, color: role.ink },
   specs: {
-    backgroundColor: ds.color.white,
+    backgroundColor: role.surface,
     borderTopWidth: 1,
-    borderTopColor: ds.line,
-    padding: theme.spacing.l,
+    borderTopColor: role.line,
+    paddingVertical: space.s4,
   },
-  specsTitle: {
-    fontFamily: MONO_FAMILY,
-    fontSize: 10,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: ds.color.warm500,
-    marginBottom: theme.spacing.m,
-  },
+  specsTitle: { ...type.overline, color: role.ink3, marginBottom: space.s3 },
   specRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
     paddingVertical: 4,
   },
-  specDt: {
-    ...theme.typography.aliases.interBodySm,
-    color: ds.color.warm500,
-  },
+  specDt: { ...type.bodySm, color: role.ink3 },
   specDd: {
-    fontFamily: MONO_FAMILY,
+    fontFamily: MONO,
     fontSize: 11.5,
-    color: ds.color.ink,
+    color: role.ink,
     textAlign: 'right',
   },
+  stage: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: role.surfaceCream,
+    borderWidth: 1,
+    borderColor: role.lineCream,
+    borderRadius: radius['2xl'],
+    padding: space.s6,
+    marginBottom: space.s4,
+    minHeight: 120,
+  },
+  stagePlain: { backgroundColor: role.surface2, borderColor: role.line },
+  stageDark: { backgroundColor: color.n800, borderColor: color.n700 },
+  stageCol: { flexDirection: 'column', alignItems: 'stretch' },
 });

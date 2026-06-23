@@ -1,44 +1,72 @@
 /**
- * Design System — live selection-control demos (radio, checkbox, chip,
- * segmented control). The real `SettingsSwitch` is showcased separately in the
- * Components section. Each control is stateful + carries a testID per repo
- * convention (ds-<element>-<state>).
- *
- * Specs (auxi-ds.css):
- *  - radio  20px, ON ring + dot ink/black (#070707)
- *  - check  18×18, radius xs=2, ink fill + white check when on
- *  - chip   on = ink bg cream text; off = white + 1px line
- *  - seg    track cream, active pill white with subtle card shadow
+ * Design System — Selection controls (NEW showcase).
+ * switch (animated knob slide) · checkbox · radio · checkmenu. Stateful + each
+ * carries a testID. Motion: knob slides over motion.duration.fast (useToggleValue).
  */
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../../theme/theme';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { color, MONO, radius, role, shadow, space, type } from './ds-tokens';
+import { useToggleValue } from './DsMotion';
 
-const ds = theme.ds;
+/* ---------------- switch ---------------- */
+export const DsSwitch: React.FC<{
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+  testID: string;
+  accessibilityLabel: string;
+}> = ({ value, onValueChange, testID, accessibilityLabel }) => {
+  const v = useToggleValue(value);
+  const left = v.interpolate({ inputRange: [0, 1], outputRange: [4, 24] });
+  const bg = v.interpolate({
+    inputRange: [0, 1],
+    outputRange: [color.n300, color.su400],
+  });
+  return (
+    <Pressable
+      testID={value ? `${testID}-on` : testID}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      accessibilityLabel={accessibilityLabel}
+      onPress={() => onValueChange(!value)}
+    >
+      <Animated.View style={[styles.track, { backgroundColor: bg }]}>
+        <Animated.View style={[styles.knob, { left }]} />
+      </Animated.View>
+    </Pressable>
+  );
+};
 
+/* ---------------- radio ---------------- */
 export const DsRadio: React.FC<{
   label: string;
   selected: boolean;
   onPress: () => void;
   testID: string;
-}> = ({ label, selected, onPress, testID }) => (
+  disabled?: boolean;
+}> = ({ label, selected, onPress, testID, disabled }) => (
   <Pressable
-    style={styles.radioRow}
-    onPress={onPress}
+    style={styles.row}
+    onPress={disabled ? undefined : onPress}
     testID={testID}
+    disabled={disabled}
     accessibilityRole="radio"
-    accessibilityState={{ selected }}
+    accessibilityState={{ selected, disabled }}
     accessibilityLabel={label}
   >
-    <View style={[styles.radioRing, selected && styles.radioRingOn]}>
-      {selected && <View style={styles.radioDot} />}
+    <View
+      style={[
+        styles.ring,
+        selected && styles.ringOn,
+        disabled && styles.disabledBorder,
+      ]}
+    >
+      {selected && <View style={styles.dot} />}
     </View>
-    <Text style={[styles.controlLabel, !selected && styles.controlLabelMuted]}>
-      {label}
-    </Text>
+    <Text style={[styles.label, disabled && styles.muted]}>{label}</Text>
   </Pressable>
 );
 
+/* ---------------- checkbox ---------------- */
 export const DsCheckbox: React.FC<{
   label: string;
   checked: boolean;
@@ -46,197 +74,172 @@ export const DsCheckbox: React.FC<{
   testID: string;
 }> = ({ label, checked, onPress, testID }) => (
   <Pressable
-    style={styles.radioRow}
+    style={styles.row}
     onPress={onPress}
-    testID={testID}
+    testID={checked ? `${testID}-checked` : testID}
     accessibilityRole="checkbox"
     accessibilityState={{ checked }}
     accessibilityLabel={label}
   >
-    <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
-      {checked && <View style={styles.checkMark} />}
+    <View style={[styles.box, checked && styles.boxOn]}>
+      {checked && <View style={styles.check} />}
     </View>
-    <Text style={styles.controlLabel}>{label}</Text>
+    <Text style={styles.label}>{label}</Text>
   </Pressable>
 );
 
-/** AM/PM radio pair (single-select group). */
-export const DsRadioGroup: React.FC = () => {
-  const [period, setPeriod] = useState<'AM' | 'PM'>('AM');
+/* ---------------- checkmenu ---------------- */
+export const DsCheckMenu: React.FC = () => {
+  const opts = ['All categories', 'Tops', 'Bottoms', 'Shoes'];
+  const [sel, setSel] = useState<Record<string, boolean>>({ Tops: true });
   return (
-    <View style={styles.row}>
-      <DsRadio
-        label="AM"
-        selected={period === 'AM'}
-        onPress={() => setPeriod('AM')}
-        testID="ds-controls-radio-am"
-      />
-      <DsRadio
-        label="PM"
-        selected={period === 'PM'}
-        onPress={() => setPeriod('PM')}
-        testID="ds-controls-radio-pm"
-      />
-    </View>
-  );
-};
-
-export const DsCheckboxGroup: React.FC = () => {
-  const [weekdays, setWeekdays] = useState(true);
-  const [weekends, setWeekends] = useState(false);
-  return (
-    <View style={styles.row}>
-      <DsCheckbox
-        label="Weekdays"
-        checked={weekdays}
-        onPress={() => setWeekdays(v => !v)}
-        testID="ds-controls-check-weekdays"
-      />
-      <DsCheckbox
-        label="Weekends"
-        checked={weekends}
-        onPress={() => setWeekends(v => !v)}
-        testID="ds-controls-check-weekends"
-      />
-    </View>
-  );
-};
-
-export const DsChips: React.FC = () => {
-  const labels = ['All', 'Tops', 'Bottoms', 'Shoes', 'Outerwear'];
-  const [active, setActive] = useState<Record<string, boolean>>({ All: true });
-  return (
-    <View style={styles.chipRow}>
-      {labels.map(l => {
-        const on = !!active[l];
-        return (
-          <Pressable
-            key={l}
-            onPress={() => setActive(a => ({ ...a, [l]: !a[l] }))}
-            style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
-            testID={`ds-chip-${l.toLowerCase()}${on ? '-on' : '-off'}`}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
-          >
-            <Text style={on ? styles.chipTextOn : styles.chipTextOff}>{l}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-};
-
-export const DsSegmented: React.FC = () => {
-  const options = ['Grid view', 'Collage view'];
-  const [active, setActive] = useState(options[0]);
-  return (
-    <View style={styles.seg}>
-      {options.map(o => {
-        const on = o === active;
+    <View style={[styles.menu, shadow.card]} testID="ds-checkmenu">
+      {opts.map((o, i) => {
+        const on = !!sel[o];
         return (
           <Pressable
             key={o}
-            onPress={() => setActive(o)}
-            style={[styles.segBtn, on && styles.segBtnOn]}
-            testID={`ds-segmented-${o.split(' ')[0].toLowerCase()}${
-              on ? '-active' : ''
-            }`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
+            onPress={() => setSel(s => ({ ...s, [o]: !s[o] }))}
+            style={[styles.cmRow, i > 0 && styles.cmDivider, on && styles.cmSel]}
+            testID={`ds-checkmenu-${o.split(' ')[0].toLowerCase()}${on ? '-on' : ''}`}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: on }}
           >
-            <Text style={[styles.segText, on && styles.segTextOn]}>{o}</Text>
+            <View style={[styles.box, on && styles.boxOn]}>
+              {on && <View style={styles.check} />}
+            </View>
+            <Text style={styles.cmLabel}>{o}</Text>
+            <Text style={styles.cmTag}>{i === 0 ? 'all' : `0${i}`}</Text>
           </Pressable>
         );
       })}
+    </View>
+  );
+};
+
+/* ---------------- group demos ---------------- */
+export const DsSelectionShowcase: React.FC = () => {
+  const [notify, setNotify] = useState(true);
+  const [autoSync, setAutoSync] = useState(false);
+  const [period, setPeriod] = useState<'AM' | 'PM'>('AM');
+  const [weekdays, setWeekdays] = useState(true);
+  const [weekends, setWeekends] = useState(false);
+  return (
+    <View style={styles.wrap}>
+      <View style={styles.switchRow}>
+        <Text style={styles.switchLabel}>Daily reminder</Text>
+        <DsSwitch
+          value={notify}
+          onValueChange={setNotify}
+          testID="ds-switch-reminder"
+          accessibilityLabel="Daily reminder"
+        />
+      </View>
+      <View style={styles.switchRow}>
+        <Text style={styles.switchLabel}>Auto-sync wardrobe</Text>
+        <DsSwitch
+          value={autoSync}
+          onValueChange={setAutoSync}
+          testID="ds-switch-autosync"
+          accessibilityLabel="Auto-sync wardrobe"
+        />
+      </View>
+      <View style={styles.groupRow}>
+        <DsRadio
+          label="AM"
+          selected={period === 'AM'}
+          onPress={() => setPeriod('AM')}
+          testID="ds-radio-am"
+        />
+        <DsRadio
+          label="PM"
+          selected={period === 'PM'}
+          onPress={() => setPeriod('PM')}
+          testID="ds-radio-pm"
+        />
+        <DsRadio label="Disabled" selected={false} onPress={() => {}} disabled testID="ds-radio-disabled" />
+      </View>
+      <View style={styles.groupRow}>
+        <DsCheckbox
+          label="Weekdays"
+          checked={weekdays}
+          onPress={() => setWeekdays(v => !v)}
+          testID="ds-check-weekdays"
+        />
+        <DsCheckbox
+          label="Weekends"
+          checked={weekends}
+          onPress={() => setWeekends(v => !v)}
+          testID="ds-check-weekends"
+        />
+      </View>
+      <DsCheckMenu />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 26 },
-  radioRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  controlLabel: {
-    ...theme.typography.aliases.interBodySm,
-    color: ds.color.ink,
+  wrap: { width: '100%', gap: space.s4 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  switchLabel: { ...type.body, color: role.ink },
+  groupRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s6 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.s2 },
+  label: { ...type.bodySm, color: role.ink },
+  muted: { color: role.ink3 },
+  track: { width: 52, height: 32, borderRadius: radius.full, justifyContent: 'center' },
+  knob: {
+    position: 'absolute',
+    top: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: color.white,
   },
-  controlLabelMuted: { color: ds.color.warm500 },
-  radioRing: {
+  ring: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: ds.color.warm500,
+    borderColor: color.n400,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radioRingOn: { borderColor: ds.color.black },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: ds.color.black,
-  },
-  checkBox: {
-    width: 18,
-    height: 18,
-    borderRadius: ds.radius.xs,
+  ringOn: { borderColor: color.p700 },
+  disabledBorder: { borderColor: color.n300 },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: color.p700 },
+  box: {
+    width: 20,
+    height: 20,
+    borderRadius: radius.xs,
     borderWidth: 2,
-    borderColor: ds.color.ink,
+    borderColor: color.n400,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkBoxOn: {
-    backgroundColor: ds.color.ink,
-    borderColor: ds.color.ink,
-  },
-  checkMark: {
+  boxOn: { backgroundColor: role.ink, borderColor: role.ink },
+  check: {
     width: 9,
     height: 5,
     borderLeftWidth: 2,
     borderBottomWidth: 2,
-    borderColor: ds.color.white,
+    borderColor: color.white,
     transform: [{ rotate: '-45deg' }, { translateY: -1 }],
   },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: ds.radius.full,
+  menu: {
+    width: 280,
+    backgroundColor: role.surface2,
+    borderRadius: radius['2xl'],
+    overflow: 'hidden',
   },
-  chipOn: { backgroundColor: ds.color.ink },
-  chipOff: {
-    backgroundColor: ds.color.white,
-    borderWidth: 1,
-    borderColor: ds.line,
-  },
-  chipTextOn: {
-    ...theme.typography.aliases.interBodySm,
-    color: ds.color.cream,
-  },
-  chipTextOff: {
-    ...theme.typography.aliases.interBodySm,
-    color: ds.color.ink,
-  },
-  seg: {
+  cmRow: {
     flexDirection: 'row',
-    backgroundColor: ds.color.cream,
-    borderRadius: ds.radius.full,
-    padding: 4,
-    gap: 2,
-    alignSelf: 'flex-start',
+    alignItems: 'center',
+    gap: space.s3,
+    paddingVertical: 14,
+    paddingHorizontal: space.s4,
   },
-  segBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: ds.radius.full,
-  },
-  segBtnOn: {
-    backgroundColor: ds.color.white,
-    ...ds.shadow.card,
-  },
-  segText: {
-    ...theme.typography.aliases.interMediumSm,
-    color: ds.color.onVariant,
-  },
-  segTextOn: { color: ds.color.ink },
+  cmDivider: { borderTopWidth: 1, borderTopColor: role.lineCream },
+  cmSel: { backgroundColor: color.n50 },
+  cmLabel: { ...type.bodySm, color: role.ink, flex: 1 },
+  cmTag: { fontFamily: MONO, fontSize: 10.5, color: role.ink3 },
 });

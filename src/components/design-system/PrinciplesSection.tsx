@@ -1,6 +1,6 @@
 /**
- * Design System — Principles & gaps (brief).
- * A couple of note cards summarising the DS's flagged inconsistencies.
+ * Design System — Principles & notes (NEW showcase).
+ * Short note cards on how the new system behaves + the page-local-token caveat.
  */
 import React from 'react';
 import { View } from 'react-native';
@@ -9,26 +9,33 @@ import { NoteBold, NoteCard, SectionHeader, SubHead } from './dsShared';
 export const PrinciplesSection: React.FC = () => (
   <View>
     <SectionHeader
-      num="06"
-      title="Principles & gaps"
-      blurb="How the system wants to behave — and the honest list of where it currently doesn't."
+      num="05"
+      title="Principles & notes"
+      blurb="How the new system wants to behave — and the honest caveats while it is page-local."
     />
 
-    <SubHead label="Known inconsistencies" tag="consolidate before scale" />
-    <NoteCard flag>
-      <NoteBold>Switch palette. </NoteBold>
-      Un-themed Material purple shipped under teal overrides — now resolved on
-      teal #16A085.
+    <SubHead label="Principles" tag="warm · calm · deliberate" />
+    <NoteCard>
+      <NoteBold>One family. </NoteBold>
+      Poppins across the whole UI. The mono face is reserved for overlines / spec
+      labels (it is a platform monospace fallback, not bundled JetBrains Mono).
     </NoteCard>
-    <NoteCard flag>
-      <NoteBold>Radius drift. </NoteBold>
-      Primary 16 vs secondary 17 vs text 12 vs sheet 18 — pick one button
-      radius.
+    <NoteCard>
+      <NoteBold>Generous radius. </NoteBold>
+      The new scale runs xs(4) → 4xl(32) plus a full pill. Buttons use 2xl/xl/lg
+      by size; dialogs and sheets use 3xl.
     </NoteCard>
+    <NoteCard>
+      <NoteBold>Motion has tokens. </NoteBold>
+      Every interaction maps to motion.ts (durations, springs, easing) and falls
+      back cleanly under Reduce Motion. See section C.
+    </NoteCard>
+
+    <SubHead label="Caveats" tag="before product migration" />
     <NoteCard flag>
-      <NoteBold>Type sprawl. </NoteBold>
-      43 text styles across the file; the shippable system is only Poppins /
-      Roboto / Inter.
+      <NoteBold>Page-local tokens. </NoteBold>
+      These ramps + radii diverge from the live theme.ts on purpose. Product
+      screens still read theme.ds.*; migrating them is a separate, later task.
     </NoteCard>
   </View>
 );

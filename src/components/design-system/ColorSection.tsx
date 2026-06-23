@@ -1,101 +1,123 @@
 /**
- * Design System — Color section.
- * Grouped swatch grids (Ink & neutrals · Surfaces · Functional accents).
- * Each swatch shows the color block, token name, the hex (READ FROM the same
- * token so no literal hex appears here), and the `use` note from auxi-ds.css.
+ * Design System — Color foundation (NEW claude.ai ramps).
+ * Six functional ramps (Primary/Neutral/Success/Danger/Warning/Info) shown as
+ * stepped swatch rows + the semantic role mapping. Values read from ds-tokens.
  */
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../../theme/theme';
-import {
-  MONO_FAMILY,
-  NoteBold,
-  NoteCard,
-  SectionHeader,
-  SubHead,
-} from './dsShared';
+import { StyleSheet, Text, View } from 'react-native';
+import { color, MONO, radius, role, space, type } from './ds-tokens';
+import { NoteBold, NoteCard, SectionHeader, SubHead } from './dsShared';
 
-const ds = theme.ds;
+type Step = { label: string; value: string };
+type Ramp = { name: string; tag: string; steps: Step[] };
 
-type Swatch = {
-  name: string;
-  /** color value, used BOTH as the block bg AND printed as the caption */
-  value: string;
-  use: string;
-  /** subtle inset border for near-white blocks so they read on white */
-  bordered?: boolean;
-};
-
-const INK: Swatch[] = [
-  { name: 'Ink', value: ds.color.ink, use: 'Primary text · primary button' },
-  { name: 'Slate', value: ds.color.slate, use: 'Deep surfaces · scrims' },
-  { name: 'Black', value: ds.color.black, use: 'Control fills (radio)' },
+const RAMPS: Ramp[] = [
   {
-    name: 'On-variant',
-    value: ds.color.onVariant,
-    use: 'Secondary text (MD3)',
+    name: 'Primary',
+    tag: 'warm sand / taupe',
+    steps: [
+      { label: '50', value: color.p50 },
+      { label: '100', value: color.p100 },
+      { label: '200', value: color.p200 },
+      { label: '300', value: color.p300 },
+      { label: '400', value: color.p400 },
+      { label: '500', value: color.p500 },
+      { label: '600', value: color.p600 },
+      { label: '700', value: color.p700 },
+    ],
   },
-  { name: 'Warm 700', value: ds.color.warm700, use: 'Strokes · warm gray' },
-  { name: 'Warm 500', value: ds.color.warm500, use: 'Muted labels · hints' },
+  {
+    name: 'Neutral',
+    tag: 'cool gray',
+    steps: [
+      { label: '50', value: color.n50 },
+      { label: '100', value: color.n100 },
+      { label: '200', value: color.n200 },
+      { label: '300', value: color.n300 },
+      { label: '400', value: color.n400 },
+      { label: '500', value: color.n500 },
+      { label: '600', value: color.n600 },
+      { label: '700', value: color.n700 },
+      { label: '800', value: color.n800 },
+      { label: '900', value: color.n900 },
+    ],
+  },
+  {
+    name: 'Success',
+    tag: 'teal / green',
+    steps: [
+      { label: '100', value: color.su100 },
+      { label: '200', value: color.su200 },
+      { label: '400', value: color.su400 },
+      { label: '500', value: color.su500 },
+    ],
+  },
+  {
+    name: 'Danger',
+    tag: 'destructive',
+    steps: [
+      { label: '50', value: color.da50 },
+      { label: '100', value: color.da100 },
+      { label: '200', value: color.da200 },
+      { label: '300', value: color.da300 },
+      { label: '400', value: color.da400 },
+      { label: '500', value: color.da500 },
+      { label: '600', value: color.da600 },
+    ],
+  },
+  {
+    name: 'Warning',
+    tag: 'caution',
+    steps: [
+      { label: '50', value: color.wa50 },
+      { label: '100', value: color.wa100 },
+      { label: '400', value: color.wa400 },
+      { label: '500', value: color.wa500 },
+    ],
+  },
+  {
+    name: 'Info',
+    tag: 'informational',
+    steps: [
+      { label: '50', value: color.in50 },
+      { label: '100', value: color.in100 },
+      { label: '200', value: color.in200 },
+      { label: '300', value: color.in300 },
+      { label: '400', value: color.in400 },
+      { label: '500', value: color.in500 },
+    ],
+  },
 ];
 
-const SURFACES: Swatch[] = [
-  { name: 'White', value: ds.color.white, use: 'App canvas', bordered: true },
-  {
-    name: 'Surface',
-    value: ds.color.surface,
-    use: 'Dialogs · sheets',
-    bordered: true,
-  },
-  {
-    name: 'Surface 2',
-    value: ds.color.surface2,
-    use: 'Subtle fills',
-    bordered: true,
-  },
-  { name: 'Cream', value: ds.color.cream, use: 'Primary warm surface · cards' },
-  { name: 'Warm 100', value: ds.color.warm100, use: 'Dividers · hairlines' },
-  { name: 'Tan', value: ds.color.tan, use: 'Warm accent surface' },
-  { name: 'Tan stroke', value: ds.color.tanStroke, use: 'Borders on tan' },
-  {
-    name: 'Placeholder',
-    value: ds.color.placeholder,
-    use: 'Image placeholders',
-  },
+const ROLES: Array<[string, string]> = [
+  ['ink', color.n800],
+  ['ink-2', color.n600],
+  ['ink-3', color.n500],
+  ['surface', color.white],
+  ['surface-2', color.n50],
+  ['surface-cream', color.p50],
+  ['line', color.n200],
+  ['line-cream', color.p100],
 ];
 
-const ACCENTS: Swatch[] = [
-  { name: 'Teal', value: ds.color.teal, use: 'Switch active · success' },
-  { name: 'Green', value: ds.color.green, use: 'Selected radio · confirm' },
-  { name: 'Danger', value: ds.color.danger, use: 'Destructive actions' },
-];
-
-const SwatchCell: React.FC<{ swatch: Swatch }> = ({ swatch }) => (
-  <Pressable
-    style={styles.swatch}
-    testID={`ds-color-swatch-${swatch.name.toLowerCase().replace(/\s+/g, '-')}`}
-    accessibilityLabel={`${swatch.name} ${swatch.value}`}
-  >
-    <View
-      style={[
-        styles.chip,
-        { backgroundColor: swatch.value },
-        swatch.bordered && styles.chipBordered,
-      ]}
-    />
-    <View style={styles.body}>
-      <Text style={styles.nm}>{swatch.name}</Text>
-      <Text style={styles.hex}>{swatch.value.toUpperCase()}</Text>
-      <Text style={styles.use}>{swatch.use}</Text>
+const RampRow: React.FC<{ ramp: Ramp }> = ({ ramp }) => (
+  <View style={styles.rampBlock}>
+    <View style={styles.rampHead}>
+      <Text style={styles.rampName}>{ramp.name}</Text>
+      <Text style={styles.rampTag}>{ramp.tag}</Text>
     </View>
-  </Pressable>
-);
-
-const Grid: React.FC<{ items: Swatch[] }> = ({ items }) => (
-  <View style={styles.grid}>
-    {items.map(s => (
-      <SwatchCell key={s.name} swatch={s} />
-    ))}
+    <View style={styles.rampRow}>
+      {ramp.steps.map(s => (
+        <View
+          key={s.label}
+          style={styles.step}
+          testID={`ds-color-${ramp.name.toLowerCase()}-${s.label}`}
+        >
+          <View style={[styles.swatch, { backgroundColor: s.value }]} />
+          <Text style={styles.stepLbl}>{s.label}</Text>
+        </View>
+      ))}
+    </View>
   </View>
 );
 
@@ -104,67 +126,63 @@ export const ColorSection: React.FC = () => (
     <SectionHeader
       num="01"
       title="Color"
-      blurb="A warm, paper-toned neutral palette does the heavy lifting; ink near-black carries text and primary actions. Functional accents are used sparingly."
+      blurb="Warm, paper-toned primary does the heavy lifting; cool neutrals carry chrome. Functional ramps (success / danger / warning / info) are used sparingly for state."
     />
 
-    <SubHead label="Ink & neutrals" tag="text · actions · strokes" />
-    <Grid items={INK} />
+    <SubHead label="Ramps" tag="6 functional families" />
+    {RAMPS.map(r => (
+      <RampRow key={r.name} ramp={r} />
+    ))}
 
-    <SubHead label="Surfaces — warm paper" tag="backgrounds · cards · sheets" />
-    <Grid items={SURFACES} />
+    <SubHead label="Semantic roles" tag="text · surface · line" />
+    <View style={styles.roleGrid}>
+      {ROLES.map(([name, value]) => (
+        <View key={name} style={styles.roleCell}>
+          <View
+            style={[
+              styles.roleChip,
+              { backgroundColor: value },
+              value === color.white && styles.roleChipBordered,
+            ]}
+          />
+          <Text style={styles.roleName}>{name}</Text>
+          <Text style={styles.roleHex}>{value.toUpperCase()}</Text>
+        </View>
+      ))}
+    </View>
 
-    <SubHead label="Functional accents" tag="state · feedback" />
-    <Grid items={ACCENTS} />
-
-    <NoteCard flag>
-      <NoteBold>Documented inconsistency. </NoteBold>
-      The base switch shipped as un-themed Material purple while the app
-      overrides toggles to teal #16A085 — now resolved to teal. Destructive
-      color drifts between raw #FF0000 and the applied #BB251A; standardise on
-      #BB251A.
+    <NoteCard>
+      <NoteBold>Diverges from theme.ts. </NoteBold>
+      These ramps are the new target system, page-local for now. Product screens
+      still read the live `theme.ds.*`; migration is a separate task.
     </NoteCard>
   </View>
 );
 
 const styles = StyleSheet.create({
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 14,
-  },
+  rampBlock: { marginBottom: space.s4 },
+  rampHead: { flexDirection: 'row', alignItems: 'baseline', gap: space.s2 },
+  rampName: { ...type.bodySm, fontFamily: type.h3.fontFamily, color: role.ink },
+  rampTag: { ...type.overline, color: role.ink3 },
+  rampRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  step: { alignItems: 'center', gap: 3 },
   swatch: {
-    width: 150,
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: ds.line,
-    borderRadius: ds.radius.sm,
-    overflow: 'hidden',
-    backgroundColor: ds.color.white,
+    borderColor: role.line,
   },
-  chip: {
-    height: 72,
+  stepLbl: { fontFamily: MONO, fontSize: 9.5, color: role.ink3 },
+  roleGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  roleCell: { width: 150 },
+  roleChip: {
+    height: 44,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: role.line,
   },
-  chipBordered: {
-    borderBottomWidth: 1,
-    borderBottomColor: ds.line2,
-  },
-  body: {
-    paddingHorizontal: 13,
-    paddingTop: 11,
-    paddingBottom: 13,
-  },
-  nm: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: ds.color.ink,
-  },
-  hex: {
-    fontFamily: MONO_FAMILY,
-    fontSize: 11,
-    color: ds.color.onVariant,
-    marginTop: 3,
-  },
-  use: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: ds.color.warm500,
-    marginTop: 5,
-  },
+  roleChipBordered: { borderColor: role.line },
+  roleName: { ...type.bodySm, color: role.ink, marginTop: 5 },
+  roleHex: { fontFamily: MONO, fontSize: 10.5, color: role.ink3, marginTop: 1 },
 });

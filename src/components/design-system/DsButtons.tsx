@@ -1,143 +1,144 @@
 /**
- * Design System — button demos (faithful to auxi-ds.css).
- *  primary   : bg ink, height 56, radius md=16, label cream, Roboto/ui 16/24,
- *              minWidth 200; pressed → darker (black); disabled → opacity .38
- *  secondary : transparent, 1.5px ink inset border, radius lg=17
- *  text      : Inter 12/16, height 44, radius sm=12
- *  icon      : 48×48 round
- *
- * Roboto ships Regular only; the label uses the bundled Roboto-Regular face
- * (via uacM3BodySmall.fontFamily) at the DS label size.
+ * Design System — Buttons (NEW showcase).
+ * Variants: primary · outline · text · danger · danger-outline · icon.
+ * Sizes: lg 56 / md 44 / sm 32. States: enabled → pressed → disabled → loading.
+ * Motion: press → scale .96 spring (PressScale); loading → 3-dot loader.
  */
 import React from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
-import { theme } from '../../theme/theme';
+import { StyleSheet, Text, View } from 'react-native';
 import { Icons } from '../../assets/icons';
+import { color, radius, role, space, type } from './ds-tokens';
+import { DotsLoader, PressScale } from './DsMotion';
 
-const { Plus: IconPlus, Edit: IconEdit } = Icons;
+const IconPlus = Icons.Plus;
 
-const ds = theme.ds;
+type Variant = 'primary' | 'outline' | 'text' | 'danger' | 'danger-outline';
+type Size = 'lg' | 'md' | 'sm';
 
-const ROBOTO = theme.typography.aliases.uacM3BodySmall.fontFamily; // Roboto-Regular
+const SIZE: Record<Size, { height: number; px: number; r: number; fs: number }> = {
+  lg: { height: 56, px: 28, r: radius['2xl'], fs: 16 },
+  md: { height: 44, px: 22, r: radius.xl, fs: 15 },
+  sm: { height: 32, px: 14, r: radius.lg, fs: 13 },
+};
 
-export const DsPrimaryButton: React.FC<{
+export const DsButton: React.FC<{
   label: string;
+  variant?: Variant;
+  size?: Size;
   disabled?: boolean;
+  loading?: boolean;
   testID: string;
-}> = ({ label, disabled, testID }) => (
-  <Pressable
-    testID={testID}
-    accessibilityRole="button"
-    disabled={disabled}
-    style={({ pressed }) => [
-      styles.btnPrimary,
-      pressed && styles.btnPrimaryPressed,
-      disabled && styles.disabled,
-    ]}
-  >
-    <Text style={styles.labelPrimary}>{label}</Text>
-  </Pressable>
-);
+}> = ({ label, variant = 'primary', size = 'lg', disabled, loading, testID }) => {
+  const sz = SIZE[size];
+  const isOutline = variant === 'outline' || variant === 'danger-outline';
+  const bg =
+    variant === 'primary'
+      ? role.ink
+      : variant === 'danger'
+      ? color.da400
+      : 'transparent';
+  const fg =
+    variant === 'primary'
+      ? color.p50
+      : variant === 'danger'
+      ? color.white
+      : variant === 'danger-outline'
+      ? color.da400
+      : role.ink;
+  const borderColor =
+    variant === 'danger-outline' ? color.da400 : role.ink;
 
-export const DsSecondaryButton: React.FC<{
-  label: string;
-  testID: string;
-}> = ({ label, testID }) => (
-  <Pressable
-    testID={testID}
-    accessibilityRole="button"
-    style={({ pressed }) => [styles.btnSecondary, pressed && styles.secPressed]}
-  >
-    <Text style={styles.labelSecondary}>{label}</Text>
-  </Pressable>
-);
-
-export const DsTextButton: React.FC<{ label: string; testID: string }> = ({
-  label,
-  testID,
-}) => (
-  <Pressable
-    testID={testID}
-    accessibilityRole="button"
-    style={({ pressed }) => [styles.btnText, pressed && styles.textPressed]}
-  >
-    <Text style={styles.labelText}>{label}</Text>
-  </Pressable>
-);
-
-export const DsIconButton: React.FC<{
-  icon: 'plus' | 'edit';
-  testID: string;
-  accessibilityLabel: string;
-}> = ({ icon, testID, accessibilityLabel }) => {
-  const Icon = icon === 'plus' ? IconPlus : IconEdit;
   return (
-    <Pressable
+    <PressScale
       testID={testID}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [styles.iconBtn, pressed && styles.textPressed]}
+      disabled={disabled || loading}
+      accessibilityLabel={label}
+      style={[
+        styles.btn,
+        {
+          height: sz.height,
+          paddingHorizontal: sz.px,
+          borderRadius: sz.r,
+          backgroundColor: bg,
+        },
+        isOutline && styles.outline,
+        isOutline && { borderColor },
+        disabled && styles.disabled,
+      ]}
     >
-      <Icon width={24} height={24} color={ds.color.ink} />
-    </Pressable>
+      {loading ? (
+        <DotsLoader tint={fg} testID={`${testID}-loader`} />
+      ) : (
+        <Text style={[styles.label, { color: fg, fontSize: sz.fs }]}>
+          {label}
+        </Text>
+      )}
+    </PressScale>
   );
 };
 
+export const DsIconButton: React.FC<{
+  testID: string;
+  accessibilityLabel: string;
+  size?: Size;
+}> = ({ testID, accessibilityLabel, size = 'md' }) => {
+  const dim = size === 'lg' ? 56 : size === 'sm' ? 32 : 44;
+  const r = size === 'lg' ? radius['2xl'] : size === 'sm' ? radius.lg : radius.xl;
+  return (
+    <PressScale
+      testID={testID}
+      accessibilityLabel={accessibilityLabel}
+      style={[styles.iconBtn, { width: dim, height: dim, borderRadius: r }]}
+    >
+      <IconPlus width={20} height={20} color={role.ink} />
+    </PressScale>
+  );
+};
+
+/** Stage content: full variant + size + state matrix. */
+export const DsButtonShowcase: React.FC = () => (
+  <View style={styles.wrap}>
+    <View style={styles.row}>
+      <DsButton label="Primary" variant="primary" testID="ds-btn-primary" />
+      <DsButton label="Outline" variant="outline" testID="ds-btn-outline" />
+      <DsButton label="Text" variant="text" testID="ds-btn-text" />
+    </View>
+    <View style={styles.row}>
+      <DsButton label="Danger" variant="danger" testID="ds-btn-danger" />
+      <DsButton
+        label="Danger outline"
+        variant="danger-outline"
+        testID="ds-btn-danger-outline"
+      />
+      <DsIconButton
+        testID="ds-btn-icon"
+        accessibilityLabel="Add item"
+      />
+    </View>
+    <View style={styles.row}>
+      <DsButton label="Large" size="lg" testID="ds-btn-lg" />
+      <DsButton label="Medium" size="md" testID="ds-btn-md" />
+      <DsButton label="Small" size="sm" testID="ds-btn-sm" />
+    </View>
+    <View style={styles.row}>
+      <DsButton label="Disabled" disabled testID="ds-btn-disabled" />
+      <DsButton label="Loading" loading testID="ds-btn-loading" />
+    </View>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  btnPrimary: {
-    backgroundColor: ds.color.ink,
-    height: 56,
-    minWidth: 200,
-    paddingHorizontal: theme.spacing.l,
-    borderRadius: ds.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnPrimaryPressed: { backgroundColor: ds.color.black },
-  labelPrimary: {
-    fontFamily: ROBOTO,
-    fontSize: 16,
-    lineHeight: 24,
-    letterSpacing: 0.15,
-    color: ds.color.cream,
-  },
-  btnSecondary: {
-    backgroundColor: ds.color.white,
-    height: 56,
-    minWidth: 160,
-    paddingHorizontal: 22,
-    borderRadius: ds.radius.md,
-    borderWidth: 1.5,
-    borderColor: ds.color.ink,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secPressed: { backgroundColor: ds.color.cream },
-  labelSecondary: {
-    fontFamily: ROBOTO,
-    fontSize: 16,
-    lineHeight: 24,
-    letterSpacing: 0.15,
-    color: ds.color.ink,
-  },
-  btnText: {
-    height: 44,
-    paddingHorizontal: theme.spacing.m,
-    borderRadius: ds.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  textPressed: { backgroundColor: ds.color.cream },
-  labelText: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: ds.color.ink,
-  },
+  wrap: { gap: space.s3, width: '100%' },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s3, alignItems: 'center' },
+  btn: { alignItems: 'center', justifyContent: 'center', minWidth: 96 },
+  outline: { borderWidth: 1.5 },
+  label: { fontFamily: type.h3.fontFamily, lineHeight: 24 },
   iconBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: ds.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: role.line,
   },
   disabled: { opacity: 0.5 },
 });
