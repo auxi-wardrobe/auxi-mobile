@@ -9,11 +9,14 @@
  *     options={[{ label:'Share', onPress }, { label:'Delete', destructive, onPress }]} />
  *
  * Slide-up + fade ENTER (spring), faster exit CLOSE; action rows stagger off the
- * shared progress. Absolute-fill scrim into the nearest positioned parent. Tokens
- * + motion encapsulated INSIDE. Honors reduce-motion.
+ * shared progress. Renders through a real RN <Modal> so the scrim portals to
+ * root and always overlays full-screen above everything (header/status-bar
+ * included), regardless of where the component is mounted in the tree. Modal
+ * uses animationType="none" — our spring/timing drives the motion. Tokens +
+ * motion encapsulated INSIDE. Honors reduce-motion.
  */
 import React from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, radius, role, shadow, space, type } from '../m-tokens';
 import { useOverlayProgress } from './useOverlayProgress';
 
@@ -34,32 +37,43 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
   testID,
 }) => {
   const { progress, mounted } = useOverlayProgress(visible);
-  if (!mounted) return null;
   const translateY = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [SHEET_TRAVEL, 0],
   });
   return (
-    <View style={styles.scrim} testID={testID}>
-      <Animated.View
-        style={[styles.backdrop, { opacity: progress }]}
-        pointerEvents="none"
-      />
-      <Pressable
-        style={styles.sheetAnchor}
-        onPress={onDismiss}
-        testID={testID ? `${testID}-backdrop` : undefined}
-        accessibilityRole="button"
-        accessibilityLabel="Dismiss"
-      >
+    <Modal
+      transparent
+      visible={mounted}
+      onRequestClose={onDismiss}
+      animationType="none"
+      statusBarTranslucent
+    >
+      <View style={styles.scrim} testID={testID}>
         <Animated.View
-          style={[styles.sheet, shadow.sheet, { transform: [{ translateY }] }]}
+          style={[styles.backdrop, { opacity: progress }]}
+          pointerEvents="none"
+        />
+        <Pressable
+          style={styles.sheetAnchor}
+          onPress={onDismiss}
+          testID={testID ? `${testID}-backdrop` : undefined}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
         >
-          <View style={styles.grab} />
-          {children}
-        </Animated.View>
-      </Pressable>
-    </View>
+          <Animated.View
+            style={[
+              styles.sheet,
+              shadow.sheet,
+              { transform: [{ translateY }] },
+            ]}
+          >
+            <View style={styles.grab} />
+            {children}
+          </Animated.View>
+        </Pressable>
+      </View>
+    </Modal>
   );
 };
 
@@ -112,49 +126,60 @@ export const MActionSheet: React.FC<MActionSheetProps> = ({
   testID,
 }) => {
   const { progress, mounted } = useOverlayProgress(visible);
-  if (!mounted) return null;
   const translateY = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [SHEET_TRAVEL, 0],
   });
   return (
-    <View style={styles.scrim} testID={testID}>
-      <Animated.View
-        style={[styles.backdrop, { opacity: progress }]}
-        pointerEvents="none"
-      />
-      <Pressable
-        style={styles.sheetAnchor}
-        onPress={onDismiss}
-        testID={testID ? `${testID}-backdrop` : undefined}
-        accessibilityRole="button"
-        accessibilityLabel="Dismiss"
-      >
+    <Modal
+      transparent
+      visible={mounted}
+      onRequestClose={onDismiss}
+      animationType="none"
+      statusBarTranslucent
+    >
+      <View style={styles.scrim} testID={testID}>
         <Animated.View
-          style={[styles.asheet, shadow.sheet, { transform: [{ translateY }] }]}
+          style={[styles.backdrop, { opacity: progress }]}
+          pointerEvents="none"
+        />
+        <Pressable
+          style={styles.sheetAnchor}
+          onPress={onDismiss}
+          testID={testID ? `${testID}-backdrop` : undefined}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
         >
-          {!!title && <Text style={styles.aHead}>{title}</Text>}
-          {options.map((opt, i) => (
-            <ActionRow
-              key={opt.label}
-              action={opt}
-              index={i}
-              progress={progress}
-              testID={testID ? `${testID}-${slug(opt.label)}` : undefined}
-            />
-          ))}
-          <Pressable
-            style={styles.aCancel}
-            onPress={onDismiss}
-            testID={testID ? `${testID}-cancel` : undefined}
-            accessibilityRole="button"
-            accessibilityLabel={cancelLabel}
+          <Animated.View
+            style={[
+              styles.asheet,
+              shadow.sheet,
+              { transform: [{ translateY }] },
+            ]}
           >
-            <Text style={styles.aCancelText}>{cancelLabel}</Text>
-          </Pressable>
-        </Animated.View>
-      </Pressable>
-    </View>
+            {!!title && <Text style={styles.aHead}>{title}</Text>}
+            {options.map((opt, i) => (
+              <ActionRow
+                key={opt.label}
+                action={opt}
+                index={i}
+                progress={progress}
+                testID={testID ? `${testID}-${slug(opt.label)}` : undefined}
+              />
+            ))}
+            <Pressable
+              style={styles.aCancel}
+              onPress={onDismiss}
+              testID={testID ? `${testID}-cancel` : undefined}
+              accessibilityRole="button"
+              accessibilityLabel={cancelLabel}
+            >
+              <Text style={styles.aCancelText}>{cancelLabel}</Text>
+            </Pressable>
+          </Animated.View>
+        </Pressable>
+      </View>
+    </Modal>
   );
 };
 

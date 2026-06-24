@@ -6,13 +6,15 @@
  *             confirmLabel="Delete" destructive
  *             onConfirm={wipe} onCancel={() => setOpen(false)} />
  *
- * Renders an absolute-fill scrim into the nearest positioned parent (wrap in a
- * full-screen container for a true app dialog; the showcase frames it). ENTER
- * = scale .92→1 + fade spring; CLOSE = faster exit. Tokens + motion + the two
- * action buttons (MButton) encapsulated INSIDE. Honors reduce-motion.
+ * Renders through a real RN <Modal> so the scrim portals to root and always
+ * overlays full-screen above everything, regardless of where it is mounted in
+ * the tree. Modal uses animationType="none" — our spring/timing drives the
+ * motion. ENTER = scale .92→1 + fade spring; CLOSE = faster exit. Tokens +
+ * motion + the two action buttons (MButton) encapsulated INSIDE. Honors
+ * reduce-motion.
  */
 import React from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { radius, role, shadow, space, type } from '../m-tokens';
 import { useOverlayProgress } from './useOverlayProgress';
 import { MButton } from './MButton';
@@ -41,54 +43,61 @@ export const MDialog: React.FC<MDialogProps> = ({
   testID,
 }) => {
   const { progress, mounted } = useOverlayProgress(visible);
-  if (!mounted) return null;
   const scale = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [0.92, 1],
   });
   return (
-    <View style={styles.scrim} testID={testID}>
-      <Animated.View
-        style={[styles.backdrop, { opacity: progress }]}
-        pointerEvents="none"
-      />
-      <Pressable
-        style={styles.anchor}
-        onPress={onCancel}
-        testID={testID ? `${testID}-backdrop` : undefined}
-        accessibilityRole="button"
-        accessibilityLabel="Dismiss"
-      >
+    <Modal
+      transparent
+      visible={mounted}
+      onRequestClose={onCancel}
+      animationType="none"
+      statusBarTranslucent
+    >
+      <View style={styles.scrim} testID={testID}>
         <Animated.View
-          style={[
-            styles.dialog,
-            shadow.dialog,
-            { opacity: progress, transform: [{ scale }] },
-          ]}
+          style={[styles.backdrop, { opacity: progress }]}
+          pointerEvents="none"
+        />
+        <Pressable
+          style={styles.anchor}
+          onPress={onCancel}
+          testID={testID ? `${testID}-backdrop` : undefined}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
         >
-          <Text style={styles.dialogTitle}>{title}</Text>
-          {!!message && <Text style={styles.dialogBody}>{message}</Text>}
-          <View style={styles.dialogActions}>
-            <MButton
-              variant="secondary"
-              size="md"
-              onPress={onCancel}
-              testID={testID ? `${testID}-cancel` : undefined}
-            >
-              {cancelLabel}
-            </MButton>
-            <MButton
-              variant={destructive ? 'danger' : 'primary'}
-              size="md"
-              onPress={onConfirm}
-              testID={testID ? `${testID}-confirm` : undefined}
-            >
-              {confirmLabel}
-            </MButton>
-          </View>
-        </Animated.View>
-      </Pressable>
-    </View>
+          <Animated.View
+            style={[
+              styles.dialog,
+              shadow.dialog,
+              { opacity: progress, transform: [{ scale }] },
+            ]}
+          >
+            <Text style={styles.dialogTitle}>{title}</Text>
+            {!!message && <Text style={styles.dialogBody}>{message}</Text>}
+            <View style={styles.dialogActions}>
+              <MButton
+                variant="secondary"
+                size="md"
+                onPress={onCancel}
+                testID={testID ? `${testID}-cancel` : undefined}
+              >
+                {cancelLabel}
+              </MButton>
+              <MButton
+                variant={destructive ? 'danger' : 'primary'}
+                size="md"
+                onPress={onConfirm}
+                testID={testID ? `${testID}-confirm` : undefined}
+              >
+                {confirmLabel}
+              </MButton>
+            </View>
+          </Animated.View>
+        </Pressable>
+      </View>
+    </Modal>
   );
 };
 

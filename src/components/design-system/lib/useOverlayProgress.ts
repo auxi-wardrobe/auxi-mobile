@@ -7,8 +7,13 @@
  * Honors reduce-motion (jumps). NOT exported from the barrel.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Animated } from 'react-native';
+import { Animated, Platform } from 'react-native';
 import { motion, useReducedMotion } from '../../../theme/motion';
+
+// Inside RNW's <Modal>, the native driver for transform/opacity can drop frames
+// or no-op; the JS driver is reliable on web. Native platforms keep the native
+// driver. (Overlays now portal through a real RN Modal — see MBottomSheet etc.)
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 export const useOverlayProgress = (visible: boolean) => {
   const reduce = useReducedMotion();
@@ -27,7 +32,7 @@ export const useOverlayProgress = (visible: boolean) => {
         stiffness: motion.spring.standard.stiffness,
         damping: motion.spring.standard.damping,
         mass: 1,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }).start();
     } else if (mounted) {
       if (reduce) {
@@ -40,7 +45,7 @@ export const useOverlayProgress = (visible: boolean) => {
         toValue: 0,
         duration: motion.duration.fast,
         easing: motion.easing.exit,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }).start(() => setMounted(false));
     }
   }, [visible, reduce]); // eslint-disable-line react-hooks/exhaustive-deps
