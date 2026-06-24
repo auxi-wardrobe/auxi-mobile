@@ -30,9 +30,14 @@ import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
 import { MBottomSheet, MButton } from '../components/design-system/lib';
 import { useSidebar } from '../context/SidebarContext';
-import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
+import {
+  wardrobeService,
+  WardrobeItem,
+  getItemUsageFrequency,
+} from '../services/wardrobeService';
 import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
+import { useWardrobeViewed } from '../context/WardrobeViewedContext';
 import { AppStackParamList } from '../types/navigation';
 import { resolveItemImage } from '../utils/url';
 import { Icons } from '../assets/icons';
@@ -93,6 +98,38 @@ const isCommonItem = (item: WardrobeItem): boolean =>
 // item becomes ready to use. The grid renders a "preparing" overlay while true.
 const isPreparing = (item: WardrobeItem): boolean => item.is_preparing === true;
 
+// A grid tile shows at most one status pill (Figma: bottom-centre). The four
+// states are mutually exclusive and resolved with the precedence
+// new > less use > common (product decision):
+//   • new      — one of the user's OWN items (not a catalog/common item) that
+//     they uploaded but have not opened the detail for yet. "Viewed" is tracked
+//     locally per-user (see WardrobeViewedContext); opening the detail clears
+//     the tag. Checked first so a fresh upload reads as "new".
+//   • less use — user explicitly demoted the item (NORMAL ↔ LESS_USED). Wins
+//     over "common" so a demoted catalog item still reads as "less use".
+//   • common   — item originates from our shared database (catalog).
+//   • (none)   — a user item that has been seen.
+type TileStatus = 'new' | 'less_use' | 'common' | null;
+
+const resolveTileStatus = (
+  item: WardrobeItem,
+  viewed: boolean,
+): TileStatus => {
+  // "New" only applies to the user's own uploads, never to catalog/common
+  // items — those carry the "common" tag regardless of whether they've been
+  // opened.
+  if (!isCommonItem(item) && !viewed) {
+    return 'new';
+  }
+  if (getItemUsageFrequency(item) === 'LESS_USED') {
+    return 'less_use';
+  }
+  if (isCommonItem(item)) {
+    return 'common';
+  }
+  return null;
+};
+
 // While any item is still preparing we poll the wardrobe so the ready
 // transition can actually be observed (the screen otherwise only refetches on
 // focus). Kept light: a single refetch every few seconds, stopped once nothing
@@ -109,6 +146,7 @@ export const WardrobeScreen = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const { open: openSidebar } = useSidebar();
+  const { isViewed, markViewed } = useWardrobeViewed();
 
   const insets = useSafeAreaInsets();
 
@@ -283,6 +321,8 @@ export const WardrobeScreen = () => {
       item_id: item.id,
       is_common: isCommonItem(item),
     });
+    // Opening the detail clears the item's "new" tag (uploaded → seen).
+    markViewed(item.id);
     navigation.navigate('ItemDetail', { itemId: item.id });
   };
 
@@ -412,6 +452,12 @@ export const WardrobeScreen = () => {
     const tileTestID =
       index === 0 ? 'wardrobe-item-first' : `wardrobe-item-${item.id}`;
 
+    // A tile shows at most one status pill, bottom-centre. Preparing items show
+    // the processing overlay instead of a status pill.
+    const status = item.is_preparing
+      ? null
+      : resolveTileStatus(item, isViewed(item.id));
+
     return (
       <PressableScale
         key={item.id}
@@ -441,24 +487,43 @@ export const WardrobeScreen = () => {
           </View>
         ) : null}
 
-        {/* AU-351: "New" exploration badge — top-left overlay so it never
-            collides with the bottom-centre common badge or the centred
-            preparing overlay. */}
-        {item.is_exploration_item ? (
-          <View
-            style={styles.tileNewBadge}
-            testID={`wardrobe-item-new-${item.id}`}
-            accessibilityLabel={t('wardrobe.new_badge')}
-          >
-            <Text numberOfLines={1} style={styles.tileNewBadgeText}>
-              {t('wardrobe.new_badge')}
-            </Text>
+        {/* A single status pill, bottom-centre (Figma): "less use" (demoted),
+            "common" (catalog item) or "new" (fresh upload, not yet opened). */}
+        {status === 'new' ? (
+          <View style={styles.tileBadgeWrap}>
+            <View
+              style={[styles.tileBadge, styles.tileNewBadge]}
+              testID={`wardrobe-item-new-${item.id}`}
+              accessibilityLabel={t('wardrobe.new_badge')}
+            >
+              <Text numberOfLines={1} style={styles.tileNewBadgeText}>
+                {t('wardrobe.new_badge')}
+              </Text>
+            </View>
           </View>
         ) : null}
 
-        {isCommonItem(item) ? (
+        {status === 'less_use' ? (
           <View style={styles.tileBadgeWrap}>
-            <View style={styles.tileBadge}>
+            <View
+              style={[styles.tileBadge, styles.tileLessUsedBadge]}
+              testID={`wardrobe-item-less-used-${item.id}`}
+              accessibilityLabel={t('wardrobe.less_used_badge')}
+            >
+              <Text numberOfLines={1} style={styles.tileLessUsedBadgeText}>
+                {t('wardrobe.less_used_badge')}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {status === 'common' ? (
+          <View style={styles.tileBadgeWrap}>
+            <View
+              style={styles.tileBadge}
+              testID={`wardrobe-item-common-${item.id}`}
+              accessibilityLabel={t('common.badge_common')}
+            >
               <Text numberOfLines={1} style={styles.tileBadgeText}>
                 {t('common.badge_common')}
               </Text>
@@ -779,29 +844,14 @@ const styles = StyleSheet.create({
     bottom: 8,
     alignItems: 'center',
   },
-  // AU-351: "New" exploration pill — top-left, token-styled (accent fill so it
-  // reads distinctly from the bottom common badge), no hex literals.
-  tileNewBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    paddingHorizontal: theme.spacing.uacDimension8,
-    paddingVertical: 3,
-    borderRadius: theme.borderRadius.round,
-    backgroundColor: theme.colors.figmaAction,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tileNewBadgeText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.white,
-  },
+  // Base status pill (bottom-centre). The "common" variant uses this as-is
+  // (dark fill, white text); "new" / "less use" override only the colours.
+  // F5: reuse the existing token instead of re-inlining the rgba duplicate
+  // (figmaCardTag === rgba(18,18,18,0.75), theme.ts:23). DRY.
   tileBadge: {
     paddingHorizontal: 12,
     paddingVertical: 3,
     borderRadius: 9999,
-    // F5: reuse the existing token instead of re-inlining the rgba duplicate
-    // (figmaCardTag === rgba(18,18,18,0.75), theme.ts:23). DRY.
     backgroundColor: theme.colors.figmaCardTag,
     justifyContent: 'center',
     alignItems: 'center',
@@ -809,6 +859,23 @@ const styles = StyleSheet.create({
   tileBadgeText: {
     ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.white,
+  },
+  // "New" — mint fill (reuses the success/200 token) + dark text.
+  tileNewBadge: {
+    backgroundColor: theme.colors.figmaSnackbarSuccessBg,
+  },
+  tileNewBadgeText: {
+    ...theme.typography.aliases.interCaptionXxs,
+    color: theme.colors.figmaTextPrimary,
+  },
+  // "Less use" — soft coral fill + danger-red text (matches the item-detail
+  // "Less used" affordance colour).
+  tileLessUsedBadge: {
+    backgroundColor: theme.colors.figmaTileLessUsedBadgeBg,
+  },
+  tileLessUsedBadgeText: {
+    ...theme.typography.aliases.interCaptionXxs,
+    color: theme.colors.figmaItemDetailDanger,
   },
   tilePreparingOverlay: {
     position: 'absolute',
