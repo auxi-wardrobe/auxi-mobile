@@ -96,9 +96,13 @@ import {
   MOOD_BANNER_DURATION_MS,
   AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
-  REFINE_AFTER_OUTFITS,
   TARGET_AHEAD,
 } from './constants';
+import {
+  registerTierView,
+  shouldOpenRefineGate,
+  shouldPauseGeneration,
+} from './refinement-gate';
 import {
   BuildViaV05Input,
   OutfitSheet,
@@ -210,7 +214,6 @@ export const HomeScreen = () => {
     AsyncStorage.setItem(AI_NOTICE_DISMISSED_KEY, 'true').catch(() => {});
   }, []);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
-  const unfavoritedSwipeCountRef = useRef(0);
   const listOutfitsRef = useRef<OutfitSheet[]>([]);
   const saveStateByHashRef = useRef<Record<string, SaveState>>({});
   const inFlightCountRef = useRef(0);
@@ -374,7 +377,6 @@ export const HomeScreen = () => {
         setListOutfits(incoming);
         setActiveIndex(0);
         activeIndexRef.current = 0;
-        unfavoritedSwipeCountRef.current = 0;
         poolDepletedRef.current = false;
         if (addedCount > 0) {
           setHasCycled(false);
@@ -464,7 +466,6 @@ export const HomeScreen = () => {
     (payload: string) => {
       setStyleFeedback(payload);
       styleFeedbackRef.current = payload;
-      unfavoritedSwipeCountRef.current = 0;
       resetRefineTier();
       recommendationSourceRef.current = 'refine';
       resetV05Session();
@@ -534,9 +535,10 @@ export const HomeScreen = () => {
 
     // Progressive refinement: tally distinct outfits the user has actually
     // landed on this tier. Reaching REFINE_AFTER_OUTFITS arms the gate effect.
-    if (!tierViewedHashesRef.current.has(hash)) {
-      tierViewedHashesRef.current.add(hash);
-      setTierViewedCount(tierViewedHashesRef.current.size);
+    const prevCount = tierViewedHashesRef.current.size;
+    const nextCount = registerTierView(tierViewedHashesRef.current, hash);
+    if (nextCount !== prevCount) {
+      setTierViewedCount(nextCount);
     }
   }, [activeIndex, listOutfits, refine.isOpen]);
 
@@ -546,10 +548,7 @@ export const HomeScreen = () => {
   // feedback or skipping resets the tier and unlocks the next 6.
   const { isOpen: refineIsOpen, open: openRefine } = refine;
   useEffect(() => {
-    if (refineIsOpen) {
-      return;
-    }
-    if (tierViewedCount < REFINE_AFTER_OUTFITS) {
+    if (!shouldOpenRefineGate(tierViewedCount, refineIsOpen)) {
       return;
     }
     setRefineGated(true);
@@ -809,7 +808,7 @@ export const HomeScreen = () => {
       // can collect a preference signal first. A forced fetch (cold-start
       // prime, refine submit, skip) deliberately bypasses this to seed the
       // next tier.
-      if (!force && total >= REFINE_AFTER_OUTFITS) {
+      if (shouldPauseGeneration(total, force)) {
         return;
       }
       const activeFlat = activeIndexRef.current;
@@ -841,8 +840,6 @@ export const HomeScreen = () => {
       const hash = outfit.outfitHash;
       const items = outfit.items || [];
       const previousState = saveStateByHashRef.current[hash] ?? 'idle';
-
-      unfavoritedSwipeCountRef.current = 0;
 
       if (previousState === 'saving' || previousState === 'saved') {
         return;
@@ -923,7 +920,6 @@ export const HomeScreen = () => {
       if (!outfit) {
         return;
       }
-      unfavoritedSwipeCountRef.current = 0;
       onWearThisPress({
         outfitHash: outfit.outfitHash,
         itemIds: (outfit.items || []).map(item => item.id).filter(Boolean),

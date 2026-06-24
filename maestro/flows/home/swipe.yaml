@@ -2,14 +2,14 @@
 # Home flow — Tinder-style swipe deck (supersedes the AU-303 two-axis flow).
 # Spec: auxi/docs/superpowers/specs/2026-06-12-home-tinder-swipe-design.md
 #   1. Header favourites shortcut present (heart → Favourite page, saved dot)
-#   2. Swipe LEFT  = next card
-#   3. Swipe RIGHT = next card
+#   2. Swipe LEFT  = next suggestion (2/3, 3/3, …)
+#   3. Swipe RIGHT = previous suggestion (back-nav; blocked on the first card)
 #   4. Remix button present
 #
 # The header heart is a quick-access shortcut to the Favourite page (mint dot
-# when looks are saved), not an inline save toggle. Swiping (either direction)
-# only browses to the next outfit — saving is exclusively the "Wear this"
-# footer button now.
+# when looks are saved), not an inline save toggle. Swiping NAVIGATES the
+# suggestion deck — LEFT goes forward, RIGHT goes back — and never saves;
+# saving is exclusively the "Wear this" footer button now.
 #
 # Selector note: per-card testIDs are now keyed by the dynamic `outfitHash`
 # (`home-outfit-sheet-<hash>`), so this flow asserts only on STABLE selectors:
@@ -52,9 +52,11 @@ env:
 - assertVisible:
     id: home-swipe-deck
 
-# --- 3. Swipe RIGHT = next card ---
-# Swiping no longer saves — both directions just advance the deck. Assert the
-# deck survived the gesture.
+# --- 3. Swipe RIGHT = previous card (back-nav) ---
+# Swiping no longer saves. After the LEFT swipe above we're past the first
+# card, so a RIGHT swipe steps BACK to the previous suggestion. (On the very
+# first card a right-swipe rubber-bands and commits nothing.) Assert the deck
+# survived the gesture.
 - swipe:
     direction: RIGHT
 - waitForAnimationToEnd
