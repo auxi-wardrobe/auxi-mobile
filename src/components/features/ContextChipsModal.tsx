@@ -24,10 +24,16 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const MODAL_WIDTH = Math.min(screenWidth - 16, 414);
 
 export type ContextChipId =
+  | 'more_casual'
+  | 'more_minimalist'
+  | 'more_colorful'
+  | 'more_formal'
+  | 'weather_warm'
+  | 'weather_cold'
+  // Legacy ids — kept so older references still type-check.
   | 'more_relaxed'
   | 'different_vibe'
   | 'more_polished'
-  | 'more_casual'
   | 'bolder_choice'
   | 'simpler_look';
 
@@ -50,6 +56,15 @@ interface ContextChipsModalProps {
   onChangeText: (text: string) => void;
   onCancel: () => void;
   onConfirm: () => void;
+  // Optional copy override (the progressive-refinement gate uses preference
+  // wording instead of the default "Refine suggestions"). Falls back to the
+  // contextChips.* translations when omitted.
+  title?: string;
+  subtitle?: string;
+  // When provided, a "Skip for now" affordance is shown. Used by the
+  // after-6-outfits refinement gate so the user can defer feedback and get the
+  // next batch instead.
+  onSkip?: () => void;
 }
 
 export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
@@ -66,6 +81,9 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
   onChangeText,
   onCancel,
   onConfirm,
+  title,
+  subtitle,
+  onSkip,
 }) => {
   const { t } = useTranslation();
   const [shouldRender, setShouldRender] = useState(visible);
@@ -119,7 +137,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
       transparent
       visible={shouldRender}
       animationType="none"
-      onRequestClose={isSubmitting ? undefined : onCancel}
+      onRequestClose={isSubmitting ? undefined : onSkip ?? onCancel}
     >
       <KeyboardAvoidingView
         style={styles.overlay}
@@ -127,7 +145,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
       >
         <Pressable
           style={StyleSheet.absoluteFillObject}
-          onPress={isSubmitting ? undefined : onCancel}
+          onPress={isSubmitting ? undefined : onSkip ?? onCancel}
         />
 
         <Animated.View
@@ -140,9 +158,11 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
           ]}
         >
           <View style={styles.header}>
-            <Text style={styles.title}>{t('contextChips.title')}</Text>
+            <Text style={styles.title}>
+              {title ?? t('contextChips.title')}
+            </Text>
             <Text style={styles.subtitle}>
-              {t('contextChips.subtitle')}
+              {subtitle ?? t('contextChips.subtitle')}
             </Text>
           </View>
           <View style={styles.chipRow}>
@@ -224,13 +244,15 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
 
           <View style={styles.actionsRow}>
             <TouchableOpacity
-              testID="context-chips-modal-close"
+              testID={onSkip ? 'context-chips-skip' : 'context-chips-modal-close'}
               activeOpacity={0.82}
               style={styles.cancelButton}
               disabled={isSubmitting}
-              onPress={onCancel}
+              onPress={onSkip ?? onCancel}
             >
-              <Text style={styles.cancelText}>{t('common.cancel')}</Text>
+              <Text style={styles.cancelText}>
+                {onSkip ? t('contextChips.skip') : t('common.cancel')}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity

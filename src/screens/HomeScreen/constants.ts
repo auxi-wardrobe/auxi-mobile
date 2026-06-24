@@ -7,6 +7,9 @@ export const { width: screenWidth, height: screenHeight } =
   Dimensions.get('window');
 
 export const PIN_DONT_SHOW_STORAGE_KEY = '@auxi/pin/dont_show_confirm';
+// Persisted so the "AI-generated — may be inaccurate" toast shows only the
+// first time; afterwards the floating feedback button is the affordance.
+export const AI_NOTICE_DISMISSED_KEY = '@auxi/ai_notice/dismissed';
 
 export const GRID_GAP = 4;
 export const SHEET_GAP = 4;
@@ -65,7 +68,12 @@ export const COLLAGE_SURFACE_HEIGHT = Math.round(
   COLLAGE_SURFACE_WIDTH * COLLAGE_ASPECT,
 );
 
-export const UNFAVORITED_SWIPE_THRESHOLD = 3;
 export const TARGET_AHEAD = OUTFITS_PER_SET;
+
+// Progressive refinement: after this many distinct outfits are viewed within a
+// tier (2 batches of 3), auto-generation pauses and the Refine sheet opens so
+// the AI can gather a preference signal before producing more. Submitting
+// feedback or skipping resets the tier and unlocks the next 6.
+export const REFINE_AFTER_OUTFITS = 6;
 
 export const MOOD_BANNER_DURATION_MS = 3000;

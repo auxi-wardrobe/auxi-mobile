@@ -10,9 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Item } from '../../../types/item';
 import { motion } from '../../../theme/motion';
 import { HomeView } from '../../../components/features/HomeViewToggleFooter';
-import { OUTFITS_PER_SET } from '../../../utils/groupOutfitsIntoSets';
 import { OutfitCardCaption } from '../../../components/features/OutfitCardCaption';
-import { OutfitActionRow } from '../../../components/features/OutfitActionRow';
 import { CollageSheetCanvas } from '../../../components/features/CollageSheetCanvas';
 import { SkeletonTile } from '../../../components/features/SkeletonTile';
 import { PinTilePill } from '../../../components/features/PinTilePill';
@@ -34,10 +32,6 @@ export const OptionSheet = React.memo(
     reveal,
     onItemPress,
     onTogglePin,
-    onEditContext: _onEditContext,
-    onRemix,
-    onShowAnother,
-    activeDot = 0,
     homeView,
     onCollageDragActiveChange,
     isGenerating = false,
@@ -50,10 +44,6 @@ export const OptionSheet = React.memo(
     reveal: OutfitReveal;
     onItemPress: (item: Item) => void;
     onTogglePin: (item: Item) => void;
-    onEditContext: () => void;
-    onRemix: () => void;
-    onShowAnother?: (outfit: OutfitSheetWithGrid) => void;
-    activeDot?: number;
     homeView: HomeView;
     onCollageDragActiveChange: (active: boolean) => void;
     isGenerating?: boolean;
@@ -171,8 +161,8 @@ export const OptionSheet = React.memo(
 
       if (layout.kind === 'twoRowOneLarge') {
         return (
-          <View style={[styles.gridWrap, styles.gridWrapStart]}>
-            <View style={styles.cardRow}>
+          <View style={[styles.gridWrap, styles.gridWrapStart, styles.gridFill]}>
+            <View style={[styles.cardRow, styles.cardRowFill]}>
               <View style={styles.cardShellFixed}>
                 {renderTile(layout.row1[0], 0)}
               </View>
@@ -180,7 +170,7 @@ export const OptionSheet = React.memo(
                 {renderTile(layout.row1[1], 1)}
               </View>
             </View>
-            <View style={styles.cardRow}>
+            <View style={[styles.cardRow, styles.cardRowFill]}>
               <View style={styles.cardShellFixed}>
                 {renderTile(layout.row2Large, 2)}
               </View>
@@ -192,11 +182,11 @@ export const OptionSheet = React.memo(
 
       if (layout.kind === 'twoByTwo') {
         return (
-          <View style={[styles.gridWrap, styles.gridWrapStart]}>
+          <View style={[styles.gridWrap, styles.gridWrapStart, styles.gridFill]}>
             {layout.rows.map((row, rowIndex) => (
               <View
                 key={`row-${outfit.outfitHash}-${rowIndex}`}
-                style={styles.cardRow}
+                style={[styles.cardRow, styles.cardRowFill]}
               >
                 {row.map((item, itemIndex) => (
                   <View
@@ -292,7 +282,7 @@ export const OptionSheet = React.memo(
           >
             <Animated.View
               testID={`home-outfit-grid-${itemCount}`}
-              style={revealStyle}
+              style={[styles.gridFill, revealStyle]}
             >
               {homeView === 'collage' ? (
                 <CollageSheetCanvas
@@ -307,16 +297,6 @@ export const OptionSheet = React.memo(
               )}
             </Animated.View>
           </ScrollView>
-
-          <OutfitActionRow
-            testID={`home-action-row-${cellKey}`}
-            onRemix={onRemix}
-            onShowAnother={
-              onShowAnother ? () => onShowAnother(outfit) : undefined
-            }
-            dotCount={OUTFITS_PER_SET}
-            activeDot={activeDot}
-          />
         </View>
       </View>
     );
