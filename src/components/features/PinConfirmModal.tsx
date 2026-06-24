@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     minHeight: theme.spacing.uacButtonHeight,
     borderRadius: theme.ds.radius.md,
-    backgroundColor: theme.ds.color.ink,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
     alignItems: 'center',
     justifyContent: 'center',
     gap: theme.spacing.s,
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   },
   confirmText: {
     ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.uacTextPrimaryBase,
+    color: theme.colors.figmaPrimaryButtonText,
   },
   checkboxRow: {
     flexDirection: 'row',

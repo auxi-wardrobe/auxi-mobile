@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.uacDimension8,
   },
   buttonPrimary: {
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   buttonSecondary: {
     borderWidth: 1.5,
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
   },
   buttonLabelLight: {
     ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextPrimaryBase,
+    color: theme.colors.figmaPrimaryButtonText,
   },
   // "or" divider: line · label · line (Figma Frame 2135, M3 dividers).
   orDivider: {

@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   cta: {
     height: theme.spacing.uacButtonHeight,
     borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   },
   ctaLabel: {
     ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextPrimaryBase,
+    color: theme.colors.figmaPrimaryButtonText,
   },
 });
 

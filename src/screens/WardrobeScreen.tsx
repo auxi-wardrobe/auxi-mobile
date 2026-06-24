@@ -912,14 +912,14 @@ const styles = StyleSheet.create({
     marginTop: 20,
     height: 48,
     borderRadius: 16,
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
     paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyCtaText: {
     ...theme.typography.aliases.interMediumSm,
-    color: theme.colors.white,
+    color: theme.colors.figmaPrimaryButtonText,
   },
   // F7: error state — distinct from empty, with a Retry CTA. Mirrors the
   // HomeScreen error-state layout/tokens for cross-screen consistency.
