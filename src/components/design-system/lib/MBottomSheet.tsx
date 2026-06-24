@@ -1,11 +1,11 @@
 /**
- * DsBottomSheet / DsActionSheet — self-contained controlled bottom sheets.
+ * MBottomSheet / MActionSheet — self-contained controlled bottom sheets.
  *
- *   import { DsBottomSheet, DsActionSheet } from '../components/design-system/lib';
- *   <DsBottomSheet visible={open} onDismiss={close}>
- *     <DsSheetOption icon={IconCamera} label="Take a photo" onPress={shoot} />
- *   </DsBottomSheet>
- *   <DsActionSheet visible={open} title="Manage outfit" onDismiss={close}
+ *   import { MBottomSheet, MActionSheet } from '../components/design-system/lib';
+ *   <MBottomSheet visible={open} onDismiss={close}>
+ *     <MSheetOption icon={IconCamera} label="Take a photo" onPress={shoot} />
+ *   </MBottomSheet>
+ *   <MActionSheet visible={open} title="Manage outfit" onDismiss={close}
  *     options={[{ label:'Share', onPress }, { label:'Delete', destructive, onPress }]} />
  *
  * Slide-up + fade ENTER (spring), faster exit CLOSE; action rows stagger off the
@@ -14,20 +14,20 @@
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, radius, role, shadow, space, type } from '../ds-tokens';
+import { color, radius, role, shadow, space, type } from '../m-tokens';
 import { useOverlayProgress } from './useOverlayProgress';
 
 const SHEET_TRAVEL = 320;
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
-export interface DsBottomSheetProps {
+export interface MBottomSheetProps {
   visible: boolean;
   onDismiss: () => void;
   children?: React.ReactNode;
   testID?: string;
 }
 
-export const DsBottomSheet: React.FC<DsBottomSheetProps> = ({
+export const MBottomSheet: React.FC<MBottomSheetProps> = ({
   visible,
   onDismiss,
   children,
@@ -63,14 +63,14 @@ export const DsBottomSheet: React.FC<DsBottomSheetProps> = ({
   );
 };
 
-export interface DsSheetOptionProps {
+export interface MSheetOptionProps {
   icon?: React.FC<{ width?: number; height?: number; color?: string }>;
   label: string;
   onPress?: () => void;
   testID?: string;
 }
 
-export const DsSheetOption: React.FC<DsSheetOptionProps> = ({
+export const MSheetOption: React.FC<MSheetOptionProps> = ({
   icon: Icon,
   label,
   onPress,
@@ -88,22 +88,22 @@ export const DsSheetOption: React.FC<DsSheetOptionProps> = ({
   </Pressable>
 );
 
-export interface DsActionSheetAction {
+export interface MActionSheetAction {
   label: string;
   destructive?: boolean;
   onPress?: () => void;
 }
 
-export interface DsActionSheetProps {
+export interface MActionSheetProps {
   visible: boolean;
   onDismiss: () => void;
   title?: string;
-  options: DsActionSheetAction[];
+  options: MActionSheetAction[];
   cancelLabel?: string;
   testID?: string;
 }
 
-export const DsActionSheet: React.FC<DsActionSheetProps> = ({
+export const MActionSheet: React.FC<MActionSheetProps> = ({
   visible,
   onDismiss,
   title,
@@ -159,7 +159,7 @@ export const DsActionSheet: React.FC<DsActionSheetProps> = ({
 };
 
 const ActionRow: React.FC<{
-  action: DsActionSheetAction;
+  action: MActionSheetAction;
   index: number;
   progress: Animated.Value;
   testID?: string;

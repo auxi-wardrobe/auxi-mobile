@@ -1,9 +1,9 @@
 /**
- * DsSnackbar / DsToast — self-contained controlled transient surfaces.
+ * MSnackbar / MToast — self-contained controlled transient surfaces.
  *
- *   import { DsSnackbar, DsToast } from '../components/design-system/lib';
- *   <DsSnackbar visible={shown} message="Item archived" actionLabel="UNDO" onAction={undo} />
- *   <DsToast visible={busy} message="Generating your look…" />
+ *   import { MSnackbar, MToast } from '../components/design-system/lib';
+ *   <MSnackbar visible={shown} message="Item archived" actionLabel="UNDO" onAction={undo} />
+ *   <MToast visible={busy} message="Generating your look…" />
  *
  * Reveal = opacity + scale(.9→1) ~200ms (useToggleValue); toast leads with a
  * continuous spinner (SpinLoader). `tone="mint"` = success accent. Tokens +
@@ -11,10 +11,10 @@
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text } from 'react-native';
-import { color, radius, shadow, space, type } from '../ds-tokens';
-import { SpinLoader, useToggleValue } from '../DsMotion';
+import { color, radius, shadow, space, type } from '../m-tokens';
+import { SpinLoader, useToggleValue } from '../MMotion';
 
-export interface DsSnackbarProps {
+export interface MSnackbarProps {
   visible: boolean;
   message: string;
   actionLabel?: string;
@@ -23,7 +23,7 @@ export interface DsSnackbarProps {
   testID?: string;
 }
 
-export const DsSnackbar: React.FC<DsSnackbarProps> = ({
+export const MSnackbar: React.FC<MSnackbarProps> = ({
   visible,
   message,
   actionLabel,
@@ -63,13 +63,13 @@ export const DsSnackbar: React.FC<DsSnackbarProps> = ({
   );
 };
 
-export interface DsToastProps {
+export interface MToastProps {
   visible: boolean;
   message: string;
   testID?: string;
 }
 
-export const DsToast: React.FC<DsToastProps> = ({
+export const MToast: React.FC<MToastProps> = ({
   visible,
   message,
   testID,

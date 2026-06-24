@@ -9,7 +9,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useReducedMotion } from '../../theme/motion';
-import { color, radius, role, type } from './ds-tokens';
+import { color, radius, role, type } from './m-tokens';
 import {
   Caption,
   NoteBold,
@@ -17,14 +17,14 @@ import {
   SectionHeader,
   Stage,
   SubHead,
-} from './dsShared';
+} from './mShared';
 import {
-  DsButton,
-  DsCard,
-  DsFloatingPill,
-  DsSnackbar,
-  DsSwitch,
-  DsToast,
+  MButton,
+  MCard,
+  MFloatingPill,
+  MSnackbar,
+  MSwitch,
+  MToast,
 } from './lib';
 
 export const MotionSection: React.FC = () => {
@@ -51,16 +51,21 @@ export const MotionSection: React.FC = () => {
           : 'Toggle iOS Settings → Accessibility → Motion to preview the fallback.'}
       </NoteCard>
 
-      <SubHead label="Button press + loading" tag="scale .96 spring · 3-dot loader" />
+      <SubHead
+        label="Button press + loading"
+        tag="scale .96 spring · 3-dot loader"
+      />
       <Caption>Press → scale(.96) · spring.confident</Caption>
       <Stage>
-        <DsButton testID="ds-motion-press">Press me</DsButton>
-        <DsButton loading testID="ds-motion-loading">Loading</DsButton>
+        <MButton testID="ds-motion-press">Press me</MButton>
+        <MButton loading testID="ds-motion-loading">
+          Loading
+        </MButton>
       </Stage>
 
       <SubHead label="Switch knob" tag="slide · duration.fast" />
       <Stage>
-        <DsSwitch
+        <MSwitch
           value={on}
           onValueChange={setOn}
           testID="ds-motion-switch"
@@ -73,10 +78,11 @@ export const MotionSection: React.FC = () => {
 
       <SubHead label="Tile pin" tag="press scale 1.06 · status slide-in" />
       <Caption>
-        Tap the pin: scale(1.06) press, then 'Pinned' slides in (translateY -3→0)
+        Tap the pin: scale(1.06) press, then 'Pinned' slides in (translateY
+        -3→0)
       </Caption>
       <Stage>
-        <DsCard
+        <MCard
           caption="Linen overshirt"
           sub="Tops · Ecru"
           tag="item"
@@ -89,16 +95,26 @@ export const MotionSection: React.FC = () => {
 
       <SubHead label="Snackbar & toast" tag="opacity + scale(.9→1) · spinner" />
       <Stage column>
-        <MotionTransient label="snackbar" testID="ds-motion-snackbar" shown={snackbar} setShown={setSnackbar}>
-          <DsSnackbar
+        <MotionTransient
+          label="snackbar"
+          testID="ds-motion-snackbar"
+          shown={snackbar}
+          setShown={setSnackbar}
+        >
+          <MSnackbar
             visible={snackbar}
             message="Item moved to archive"
             actionLabel="UNDO"
             testID="ds-motion-snackbar"
           />
         </MotionTransient>
-        <MotionTransient label="mint snackbar" testID="ds-motion-snackbar-mint" shown={mintSnack} setShown={setMintSnack}>
-          <DsSnackbar
+        <MotionTransient
+          label="mint snackbar"
+          testID="ds-motion-snackbar-mint"
+          shown={mintSnack}
+          setShown={setMintSnack}
+        >
+          <MSnackbar
             visible={mintSnack}
             tone="mint"
             message="Outfit saved"
@@ -106,15 +122,26 @@ export const MotionSection: React.FC = () => {
             testID="ds-motion-snackbar-mint"
           />
         </MotionTransient>
-        <MotionTransient label="toast" testID="ds-motion-toast" shown={toast} setShown={setToast}>
-          <DsToast visible={toast} message="Generating your look…" testID="ds-motion-toast" />
+        <MotionTransient
+          label="toast"
+          testID="ds-motion-toast"
+          shown={toast}
+          setShown={setToast}
+        >
+          <MToast
+            visible={toast}
+            message="Generating your look…"
+            testID="ds-motion-toast"
+          />
         </MotionTransient>
       </Stage>
 
       <SubHead label="Floating pill footer" tag="spring overshoot · .34s" />
-      <Caption>The signature springy nav — thumb overshoots on x + width</Caption>
+      <Caption>
+        The signature springy nav — thumb overshoots on x + width
+      </Caption>
       <Stage>
-        <DsFloatingPill
+        <MFloatingPill
           tabs={['Today', 'Browse', 'You']}
           value={pill}
           onChange={setPill}

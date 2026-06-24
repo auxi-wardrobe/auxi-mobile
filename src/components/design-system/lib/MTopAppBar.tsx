@@ -1,8 +1,8 @@
 /**
- * DsTopAppBar — self-contained top app bar (back · title · action).
+ * MTopAppBar — self-contained top app bar (back · title · action).
  *
- *   import { DsTopAppBar } from '../components/design-system/lib';
- *   <DsTopAppBar title="Wardrobe" onBack={goBack} onAction={add} />
+ *   import { MTopAppBar } from '../components/design-system/lib';
+ *   <MTopAppBar title="Wardrobe" onBack={goBack} onAction={add} />
  *
  * Each icon presses (scale .88 + bg fade). Provide `onBack` / `onAction` (and
  * optional `actionIcon`) to show the side buttons. Tokens + press motion
@@ -11,8 +11,8 @@
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icons } from '../../../assets/icons';
-import { color, radius, role, space, type } from '../ds-tokens';
-import { usePressHighlight } from '../DsMotion';
+import { color, radius, role, space, type } from '../m-tokens';
+import { usePressHighlight } from '../MMotion';
 
 const IconChevronLeft = Icons.ChevronLeft;
 const IconPlus = Icons.Plus;
@@ -53,7 +53,7 @@ const TopIcon: React.FC<{
   );
 };
 
-export interface DsTopAppBarProps {
+export interface MTopAppBarProps {
   title: string;
   onBack?: () => void;
   onAction?: () => void;
@@ -62,7 +62,7 @@ export interface DsTopAppBarProps {
   testID?: string;
 }
 
-export const DsTopAppBar: React.FC<DsTopAppBarProps> = ({
+export const MTopAppBar: React.FC<MTopAppBarProps> = ({
   title,
   onBack,
   onAction,

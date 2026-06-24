@@ -1,31 +1,31 @@
 /**
- * DsButton / DsIconButton — self-contained action primitives.
+ * MButton / MIconButton — self-contained action primitives.
  *
  * Import + render, nothing else:
- *   import { DsButton } from '../components/design-system/lib';
- *   <DsButton variant="primary" onPress={save}>Save</DsButton>
+ *   import { MButton } from '../components/design-system/lib';
+ *   <MButton variant="primary" onPress={save}>Save</MButton>
  *
  * Tokens + press-scale motion are encapsulated INSIDE. Honors reduce-motion via
- * PressScale. Minimal call works: `<DsButton>Label</DsButton>` (primary / lg).
+ * PressScale. Minimal call works: `<MButton>Label</MButton>` (primary / lg).
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Icons } from '../../../assets/icons';
-import { color, radius, role, type } from '../ds-tokens';
-import { DotsLoader, PressScale } from '../DsMotion';
+import { color, radius, role, type } from '../m-tokens';
+import { DotsLoader, PressScale } from '../MMotion';
 
 const IconPlus = Icons.Plus;
 
-export type DsButtonVariant =
+export type MButtonVariant =
   | 'primary'
   | 'secondary'
   | 'text'
   | 'danger'
   | 'dangerOutline';
-export type DsButtonSize = 'lg' | 'md' | 'sm';
+export type MButtonSize = 'lg' | 'md' | 'sm';
 
 const SIZE: Record<
-  DsButtonSize,
+  MButtonSize,
   { height: number; px: number; r: number; fs: number }
 > = {
   lg: { height: 56, px: 28, r: radius['2xl'], fs: 16 },
@@ -33,10 +33,10 @@ const SIZE: Record<
   sm: { height: 32, px: 14, r: radius.lg, fs: 13 },
 };
 
-export interface DsButtonProps {
+export interface MButtonProps {
   children: React.ReactNode;
-  variant?: DsButtonVariant;
-  size?: DsButtonSize;
+  variant?: MButtonVariant;
+  size?: MButtonSize;
   disabled?: boolean;
   loading?: boolean;
   leftIcon?: React.FC<{ width?: number; height?: number; color?: string }>;
@@ -45,7 +45,7 @@ export interface DsButtonProps {
   accessibilityLabel?: string;
 }
 
-export const DsButton: React.FC<DsButtonProps> = ({
+export const MButton: React.FC<MButtonProps> = ({
   children,
   variant = 'primary',
   size = 'lg',
@@ -114,15 +114,15 @@ export const DsButton: React.FC<DsButtonProps> = ({
   );
 };
 
-export interface DsIconButtonProps {
+export interface MIconButtonProps {
   icon?: React.FC<{ width?: number; height?: number; color?: string }>;
-  size?: DsButtonSize;
+  size?: MButtonSize;
   onPress?: () => void;
   testID?: string;
   accessibilityLabel?: string;
 }
 
-export const DsIconButton: React.FC<DsIconButtonProps> = ({
+export const MIconButton: React.FC<MIconButtonProps> = ({
   icon: Icon = IconPlus,
   size = 'md',
   onPress,

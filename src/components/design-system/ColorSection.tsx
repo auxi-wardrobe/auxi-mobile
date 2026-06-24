@@ -1,12 +1,12 @@
 /**
  * Design System — Color foundation (NEW claude.ai ramps).
  * Six functional ramps (Primary/Neutral/Success/Danger/Warning/Info) shown as
- * stepped swatch rows + the semantic role mapping. Values read from ds-tokens.
+ * stepped swatch rows + the semantic role mapping. Values read from m-tokens.
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { color, MONO, radius, role, space, type } from './ds-tokens';
-import { NoteBold, NoteCard, SectionHeader, SubHead } from './dsShared';
+import { color, MONO, radius, role, space, type } from './m-tokens';
+import { NoteBold, NoteCard, SectionHeader, SubHead } from './mShared';
 
 type Step = { label: string; value: string };
 type Ramp = { name: string; tag: string; steps: Step[] };

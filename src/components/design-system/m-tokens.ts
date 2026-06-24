@@ -1,5 +1,5 @@
 /**
- * ds-tokens.ts — DS-PAGE-LOCAL design tokens for the NEW claude.ai showcase.
+ * m-tokens.ts — DS-PAGE-LOCAL design tokens for the NEW claude.ai showcase.
  *
  * Source of truth: plans/260624-0030-GH-364-design-system-page/reference/
  *                  auxi-showcase.reference.css (exported from claude.ai/design
@@ -190,7 +190,7 @@ export const type = {
   },
 } as const;
 
-export const dsTokens = {
+export const mTokens = {
   FONT,
   MONO,
   color,
@@ -202,4 +202,4 @@ export const dsTokens = {
   type,
 } as const;
 
-export type DsTokens = typeof dsTokens;
+export type MTokens = typeof mTokens;

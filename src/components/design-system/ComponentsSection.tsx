@@ -6,42 +6,42 @@
  * lib primitive rendered with local showcase state — no inline component markup,
  * no token/motion imports for the primitives themselves. Foundations (color /
  * type / spacing) live in their own sections; the keyboard demo is showcase-only
- * (not a reusable primitive) and lives in ./DsKeyboardDemo.
+ * (not a reusable primitive) and lives in ./MKeyboardDemo.
  */
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icons } from '../../assets/icons';
-import { color, radius, role, space, type } from './ds-tokens';
-import { Caption, SectionHeader, Stage, SubHead } from './dsShared';
-import { DsKeyboardDemo } from './DsKeyboardDemo';
+import { color, radius, role, space, type } from './m-tokens';
+import { Caption, SectionHeader, Stage, SubHead } from './mShared';
+import { MKeyboardDemo } from './MKeyboardDemo';
 import {
-  DsActionSheet,
-  DsAvatar,
-  DsBadge,
-  DsBottomSheet,
-  DsButton,
-  DsCalendar,
-  DsCard,
-  DsCheckbox,
-  DsCheckMenu,
-  DsChip,
-  DsDialog,
-  DsDivider,
-  DsIconButton,
-  DsInput,
-  DsListRow,
-  DsRadio,
-  DsSegmented,
-  DsSheetOption,
-  DsSnackbar,
-  DsStatus,
-  DsSwitch,
-  DsTabBar,
-  DsTabs,
-  DsTag,
-  DsTimePicker,
-  DsToast,
-  DsTopAppBar,
+  MActionSheet,
+  MAvatar,
+  MBadge,
+  MBottomSheet,
+  MButton,
+  MCalendar,
+  MCard,
+  MCheckbox,
+  MCheckMenu,
+  MChip,
+  MDialog,
+  MDivider,
+  MIconButton,
+  MInput,
+  MListRow,
+  MRadio,
+  MSegmented,
+  MSheetOption,
+  MSnackbar,
+  MStatus,
+  MSwitch,
+  MTabBar,
+  MTabs,
+  MTag,
+  MTimePicker,
+  MToast,
+  MTopAppBar,
 } from './lib';
 
 const IconCamera = Icons.Camera;
@@ -118,7 +118,9 @@ export const ComponentsSection: React.FC = () => {
   const [period, setPeriod] = useState<'AM' | 'PM'>('AM');
   const [weekdays, setWeekdays] = useState(true);
   const [weekends, setWeekends] = useState(false);
-  const [menuSel, setMenuSel] = useState<Record<string, boolean>>({ tops: true });
+  const [menuSel, setMenuSel] = useState<Record<string, boolean>>({
+    tops: true,
+  });
   // inputs
   const [email, setEmail] = useState('macgie@auxi.app');
   const [search, setSearch] = useState('Linen overshirt');
@@ -148,25 +150,43 @@ export const ComponentsSection: React.FC = () => {
       <SubHead label="Buttons" tag="5 variants · 3 sizes · states" />
       <Stage column>
         <View style={styles.rowWrap}>
-          <DsButton variant="primary" testID="ds-btn-primary">Primary</DsButton>
-          <DsButton variant="secondary" testID="ds-btn-secondary">Secondary</DsButton>
-          <DsButton variant="text" testID="ds-btn-text">Text</DsButton>
+          <MButton variant="primary" testID="ds-btn-primary">
+            Primary
+          </MButton>
+          <MButton variant="secondary" testID="ds-btn-secondary">
+            Secondary
+          </MButton>
+          <MButton variant="text" testID="ds-btn-text">
+            Text
+          </MButton>
         </View>
         <View style={styles.rowWrap}>
-          <DsButton variant="danger" testID="ds-btn-danger">Danger</DsButton>
-          <DsButton variant="dangerOutline" testID="ds-btn-danger-outline">
+          <MButton variant="danger" testID="ds-btn-danger">
+            Danger
+          </MButton>
+          <MButton variant="dangerOutline" testID="ds-btn-danger-outline">
             Danger outline
-          </DsButton>
-          <DsIconButton testID="ds-btn-icon" accessibilityLabel="Add item" />
+          </MButton>
+          <MIconButton testID="ds-btn-icon" accessibilityLabel="Add item" />
         </View>
         <View style={styles.rowWrap}>
-          <DsButton size="lg" testID="ds-btn-lg">Large</DsButton>
-          <DsButton size="md" testID="ds-btn-md">Medium</DsButton>
-          <DsButton size="sm" testID="ds-btn-sm">Small</DsButton>
+          <MButton size="lg" testID="ds-btn-lg">
+            Large
+          </MButton>
+          <MButton size="md" testID="ds-btn-md">
+            Medium
+          </MButton>
+          <MButton size="sm" testID="ds-btn-sm">
+            Small
+          </MButton>
         </View>
         <View style={styles.rowWrap}>
-          <DsButton disabled testID="ds-btn-disabled">Disabled</DsButton>
-          <DsButton loading testID="ds-btn-loading">Loading</DsButton>
+          <MButton disabled testID="ds-btn-disabled">
+            Disabled
+          </MButton>
+          <MButton loading testID="ds-btn-loading">
+            Loading
+          </MButton>
         </View>
       </Stage>
 
@@ -174,19 +194,22 @@ export const ComponentsSection: React.FC = () => {
       <SubHead label="Dividers" tag="h · labeled · inset" />
       <Stage column>
         <View style={styles.dividerWrap}>
-          <DsDivider testID="ds-divider-h" />
-          <DsDivider label="OR" testID="ds-divider-labelled" />
-          <DsDivider inset={56} testID="ds-divider-inset" />
+          <MDivider testID="ds-divider-h" />
+          <MDivider label="OR" testID="ds-divider-labelled" />
+          <MDivider inset={56} testID="ds-divider-inset" />
         </View>
       </Stage>
 
       {/* 3 — Selection */}
-      <SubHead label="Selection controls" tag="switch · checkbox · radio · checkmenu" />
+      <SubHead
+        label="Selection controls"
+        tag="switch · checkbox · radio · checkmenu"
+      />
       <Stage column>
         <View style={styles.selWrap}>
           <View style={styles.switchRow}>
             <Text style={styles.switchLabel}>Daily reminder</Text>
-            <DsSwitch
+            <MSwitch
               value={notify}
               onValueChange={setNotify}
               testID="ds-switch-reminder"
@@ -195,7 +218,7 @@ export const ComponentsSection: React.FC = () => {
           </View>
           <View style={styles.switchRow}>
             <Text style={styles.switchLabel}>Auto-sync wardrobe</Text>
-            <DsSwitch
+            <MSwitch
               value={autoSync}
               onValueChange={setAutoSync}
               testID="ds-switch-autosync"
@@ -203,35 +226,41 @@ export const ComponentsSection: React.FC = () => {
             />
           </View>
           <View style={styles.groupRow}>
-            <DsRadio
+            <MRadio
               label="AM"
               selected={period === 'AM'}
               onSelect={() => setPeriod('AM')}
               testID="ds-radio-am"
             />
-            <DsRadio
+            <MRadio
               label="PM"
               selected={period === 'PM'}
               onSelect={() => setPeriod('PM')}
               testID="ds-radio-pm"
             />
-            <DsRadio label="Disabled" selected={false} onSelect={() => {}} disabled testID="ds-radio-disabled" />
+            <MRadio
+              label="Disabled"
+              selected={false}
+              onSelect={() => {}}
+              disabled
+              testID="ds-radio-disabled"
+            />
           </View>
           <View style={styles.groupRow}>
-            <DsCheckbox
+            <MCheckbox
               label="Weekdays"
               checked={weekdays}
               onChange={setWeekdays}
               testID="ds-check-weekdays"
             />
-            <DsCheckbox
+            <MCheckbox
               label="Weekends"
               checked={weekends}
               onChange={setWeekends}
               testID="ds-check-weekends"
             />
           </View>
-          <DsCheckMenu
+          <MCheckMenu
             options={MENU_OPTS}
             selected={menuSel}
             onToggle={v => setMenuSel(s => ({ ...s, [v]: !s[v] }))}
@@ -244,21 +273,21 @@ export const ComponentsSection: React.FC = () => {
       <SubHead label="Inputs" tag="label · focus · error · icon" />
       <Stage column>
         <View style={styles.colWrap}>
-          <DsInput
+          <MInput
             label="Email"
             value={email}
             onChangeText={setEmail}
             hint="We never share this."
             testID="ds-input-email"
           />
-          <DsInput
+          <MInput
             label="Search wardrobe"
             value={search}
             onChangeText={setSearch}
             placeholder="Search…"
             testID="ds-input-search"
           />
-          <DsInput
+          <MInput
             label="Password"
             value={pwd}
             onChangeText={setPwd}
@@ -276,14 +305,14 @@ export const ComponentsSection: React.FC = () => {
           <Caption>Filter chips · tap to toggle</Caption>
           <View style={styles.chipRow}>
             {FILTERS.map(f => (
-              <DsChip
+              <MChip
                 key={f}
                 selected={!!chips[f]}
                 onPress={() => setChips(c => ({ ...c, [f]: !c[f] }))}
                 testID={`ds-chip-${f.toLowerCase()}`}
               >
                 {f}
-              </DsChip>
+              </MChip>
             ))}
           </View>
 
@@ -302,31 +331,45 @@ export const ComponentsSection: React.FC = () => {
           </View>
           <View style={styles.chipRow}>
             {removable.map(r => (
-              <DsChip
+              <MChip
                 key={r}
                 removable
                 onRemove={() => setRemovable(list => list.filter(x => x !== r))}
                 testID={`ds-chip-removable-${r.toLowerCase()}`}
               >
                 {r}
-              </DsChip>
+              </MChip>
             ))}
           </View>
 
           <Caption>Tags & badges</Caption>
           <View style={styles.chipRow}>
-            <DsTag testID="ds-tag-new">NEW</DsTag>
-            <DsBadge tone="cream" testID="ds-badge-cream">Cream</DsBadge>
-            <DsBadge tone="tan" testID="ds-badge-tan">Tan</DsBadge>
-            <DsBadge tone="soft" testID="ds-badge-soft">Soft</DsBadge>
+            <MTag testID="ds-tag-new">NEW</MTag>
+            <MBadge tone="cream" testID="ds-badge-cream">
+              Cream
+            </MBadge>
+            <MBadge tone="tan" testID="ds-badge-tan">
+              Tan
+            </MBadge>
+            <MBadge tone="soft" testID="ds-badge-soft">
+              Soft
+            </MBadge>
           </View>
 
           <Caption>Status</Caption>
           <View style={styles.chipRow}>
-            <DsStatus tone="ok" testID="ds-status-ok">Synced</DsStatus>
-            <DsStatus tone="warn" testID="ds-status-warn">Generating</DsStatus>
-            <DsStatus tone="err" testID="ds-status-err">Failed</DsStatus>
-            <DsStatus tone="info" testID="ds-status-info">Info</DsStatus>
+            <MStatus tone="ok" testID="ds-status-ok">
+              Synced
+            </MStatus>
+            <MStatus tone="warn" testID="ds-status-warn">
+              Generating
+            </MStatus>
+            <MStatus tone="err" testID="ds-status-err">
+              Failed
+            </MStatus>
+            <MStatus tone="info" testID="ds-status-info">
+              Info
+            </MStatus>
           </View>
         </View>
       </Stage>
@@ -335,16 +378,31 @@ export const ComponentsSection: React.FC = () => {
       <SubHead label="List rows" tag="value · chevron · danger" />
       <Stage variant="plain">
         <View style={styles.phone}>
-          <DsListRow label="Privacy" chevron onPress={() => {}} testID="ds-listrow-privacy" />
-          <DsListRow
+          <MListRow
+            label="Privacy"
+            chevron
+            onPress={() => {}}
+            testID="ds-listrow-privacy"
+          />
+          <MListRow
             label="Style direction"
             value="Calm, Effortless"
             chevron
             onPress={() => {}}
             testID="ds-listrow-style"
           />
-          <DsListRow label="Your photos" chevron onPress={() => {}} testID="ds-listrow-photos" />
-          <DsListRow label="Delete data" danger onPress={() => {}} testID="ds-listrow-delete" />
+          <MListRow
+            label="Your photos"
+            chevron
+            onPress={() => {}}
+            testID="ds-listrow-photos"
+          />
+          <MListRow
+            label="Delete data"
+            danger
+            onPress={() => {}}
+            testID="ds-listrow-delete"
+          />
         </View>
       </Stage>
 
@@ -352,7 +410,7 @@ export const ComponentsSection: React.FC = () => {
       <SubHead label="Tabs & segments" tag="segmented · underline · dark bar" />
       <Caption>Segmented control</Caption>
       <Stage>
-        <DsSegmented
+        <MSegmented
           options={['Grid', 'Collage']}
           value={segment}
           onChange={setSegment}
@@ -361,7 +419,7 @@ export const ComponentsSection: React.FC = () => {
       </Stage>
       <Caption>Underline tabs</Caption>
       <Stage>
-        <DsTabs
+        <MTabs
           tabs={['Outfits', 'Saved', 'History']}
           value={tab}
           onChange={setTab}
@@ -370,7 +428,7 @@ export const ComponentsSection: React.FC = () => {
       </Stage>
       <Caption>Dark tab bar</Caption>
       <Stage variant="dark">
-        <DsTabBar
+        <MTabBar
           items={[
             { key: 'home', icon: IconGrid },
             { key: 'wardrobe', icon: IconWardrobe },
@@ -386,7 +444,7 @@ export const ComponentsSection: React.FC = () => {
       {/* 8 — Cards / tiles */}
       <SubHead label="Cards & tiles" tag="item · outfit · pin" />
       <Stage>
-        <DsCard
+        <MCard
           caption="Linen overshirt"
           sub="Tops · Ecru"
           tag="item"
@@ -396,7 +454,7 @@ export const ComponentsSection: React.FC = () => {
           index={0}
           testID="ds-card-overshirt"
         />
-        <DsCard
+        <MCard
           caption="Quiet Monday"
           sub="3 items · Balanced"
           tag="outfit"
@@ -409,15 +467,29 @@ export const ComponentsSection: React.FC = () => {
       {/* 9 — Avatar */}
       <SubHead label="Avatar" tag="88 · 44 · initials · fallback" />
       <Stage>
-        <DsAvatar size="lg" initials="MG" testID="ds-avatar-lg" accessibilityLabel="Macgie" />
-        <DsAvatar size="sm" initials="AX" testID="ds-avatar-sm" accessibilityLabel="Auxi" />
-        <DsAvatar size="sm" testID="ds-avatar-fallback" accessibilityLabel="No avatar" />
+        <MAvatar
+          size="lg"
+          initials="MG"
+          testID="ds-avatar-lg"
+          accessibilityLabel="Macgie"
+        />
+        <MAvatar
+          size="sm"
+          initials="AX"
+          testID="ds-avatar-sm"
+          accessibilityLabel="Auxi"
+        />
+        <MAvatar
+          size="sm"
+          testID="ds-avatar-fallback"
+          accessibilityLabel="No avatar"
+        />
       </Stage>
 
       {/* 10 — Navigation (top app bar) */}
       <SubHead label="Navigation" tag="top app bar" />
       <Stage variant="plain">
-        <DsTopAppBar
+        <MTopAppBar
           title="Wardrobe"
           onBack={() => {}}
           onAction={() => {}}
@@ -427,11 +499,14 @@ export const ComponentsSection: React.FC = () => {
       </Stage>
 
       {/* 11 — Overlays */}
-      <SubHead label="Overlays" tag="dialog · sheet · snackbar · action-sheet · toast" />
+      <SubHead
+        label="Overlays"
+        tag="dialog · sheet · snackbar · action-sheet · toast"
+      />
       <Stage>
         <OverlayStage label="dialog" height={220} testID="ds-dialog">
           {(visible, dismiss) => (
-            <DsDialog
+            <MDialog
               visible={visible}
               title="Delete data"
               message="Auxi will revert to day one. This cannot be undone."
@@ -445,17 +520,33 @@ export const ComponentsSection: React.FC = () => {
         </OverlayStage>
         <OverlayStage label="sheet" height={200} testID="ds-sheet">
           {(visible, dismiss) => (
-            <DsBottomSheet visible={visible} onDismiss={dismiss} testID="ds-sheet">
-              <DsSheetOption icon={IconCamera} label="Take a photo" testID="ds-sheet-camera" />
-              <DsSheetOption icon={IconGrid} label="Upload from gallery" testID="ds-sheet-gallery" />
-            </DsBottomSheet>
+            <MBottomSheet
+              visible={visible}
+              onDismiss={dismiss}
+              testID="ds-sheet"
+            >
+              <MSheetOption
+                icon={IconCamera}
+                label="Take a photo"
+                testID="ds-sheet-camera"
+              />
+              <MSheetOption
+                icon={IconGrid}
+                label="Upload from gallery"
+                testID="ds-sheet-gallery"
+              />
+            </MBottomSheet>
           )}
         </OverlayStage>
       </Stage>
       <Stage>
-        <OverlayStage label="action sheet" height={300} testID="ds-action-sheet">
+        <OverlayStage
+          label="action sheet"
+          height={300}
+          testID="ds-action-sheet"
+        >
           {(visible, dismiss) => (
-            <DsActionSheet
+            <MActionSheet
               visible={visible}
               onDismiss={dismiss}
               title="Manage outfit"
@@ -472,7 +563,7 @@ export const ComponentsSection: React.FC = () => {
       <Stage column>
         <TransientStage label="snackbar" testID="ds-snackbar">
           {visible => (
-            <DsSnackbar
+            <MSnackbar
               visible={visible}
               message="Item moved to archive"
               actionLabel="UNDO"
@@ -482,7 +573,7 @@ export const ComponentsSection: React.FC = () => {
         </TransientStage>
         <TransientStage label="mint snackbar" testID="ds-snackbar-mint">
           {visible => (
-            <DsSnackbar
+            <MSnackbar
               visible={visible}
               tone="mint"
               message="Outfit saved"
@@ -493,7 +584,11 @@ export const ComponentsSection: React.FC = () => {
         </TransientStage>
         <TransientStage label="toast" testID="ds-toast">
           {visible => (
-            <DsToast visible={visible} message="Generating your look…" testID="ds-toast" />
+            <MToast
+              visible={visible}
+              message="Generating your look…"
+              testID="ds-toast"
+            />
           )}
         </TransientStage>
       </Stage>
@@ -501,10 +596,15 @@ export const ComponentsSection: React.FC = () => {
       {/* 12 — Date picker */}
       <SubHead label="Date picker" tag="calendar · time" />
       <Stage>
-        <DsCalendar value={calDay} onChange={setCalDay} today={9} testID="ds-calendar" />
+        <MCalendar
+          value={calDay}
+          onChange={setCalDay}
+          today={9}
+          testID="ds-calendar"
+        />
       </Stage>
       <Stage>
-        <DsTimePicker
+        <MTimePicker
           period={clockPeriod}
           onPeriodChange={setClockPeriod}
           testID="ds-time-picker"
@@ -514,7 +614,7 @@ export const ComponentsSection: React.FC = () => {
       {/* 13 — Keyboard (showcase-only static demo) */}
       <SubHead label="Keyboard" tag="qwerty · showcase-only" />
       <Stage variant="plain">
-        <DsKeyboardDemo />
+        <MKeyboardDemo />
       </Stage>
     </View>
   );
@@ -549,7 +649,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: space.s2,
   },
-  resetLink: { ...type.caption, fontFamily: type.h3.fontFamily, color: color.p600 },
+  resetLink: {
+    ...type.caption,
+    fontFamily: type.h3.fontFamily,
+    color: color.p600,
+  },
   phone: {
     width: 320,
     backgroundColor: color.white,

@@ -1,34 +1,34 @@
 /**
- * DsTabBar — self-contained dark bottom tab bar (icon springs up when active).
+ * MTabBar — self-contained dark bottom tab bar (icon springs up when active).
  *
- *   import { DsTabBar } from '../components/design-system/lib';
- *   <DsTabBar items={[{ key:'home', icon: IconGrid }]} value={tab} onChange={setTab} />
+ *   import { MTabBar } from '../components/design-system/lib';
+ *   <MTabBar items={[{ key:'home', icon: IconGrid }]} value={tab} onChange={setTab} />
  *
  * Active icon springs (scale 1→1.12). Tokens + motion encapsulated INSIDE.
  * Honors reduce-motion.
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, type } from '../ds-tokens';
-import { useToggleValue } from '../DsMotion';
+import { color, type } from '../m-tokens';
+import { useToggleValue } from '../MMotion';
 
 type IconCmp = React.FC<{ width?: number; height?: number; color?: string }>;
 
-export interface DsTabBarItem {
+export interface MTabBarItem {
   key: string;
   icon: IconCmp;
   label?: string;
 }
 
-export interface DsTabBarProps {
-  items: DsTabBarItem[];
+export interface MTabBarProps {
+  items: MTabBarItem[];
   value: string;
   onChange: (key: string) => void;
   testID?: string;
 }
 
 const Item: React.FC<{
-  item: DsTabBarItem;
+  item: MTabBarItem;
   sel: boolean;
   onPress: () => void;
   testID?: string;
@@ -61,7 +61,7 @@ const Item: React.FC<{
   );
 };
 
-export const DsTabBar: React.FC<DsTabBarProps> = ({
+export const MTabBar: React.FC<MTabBarProps> = ({
   items,
   value,
   onChange,

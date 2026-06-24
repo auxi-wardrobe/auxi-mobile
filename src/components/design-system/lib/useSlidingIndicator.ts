@@ -1,5 +1,5 @@
 /**
- * useSlidingIndicator — internal lib hook shared by DsSegmented + DsTabs.
+ * useSlidingIndicator — internal lib hook shared by MSegmented + MTabs.
  *
  * Measures each segment's x/width via onLayout, then springs an Animated x +
  * width to the active one (spring.confident). Reduce-motion jumps. NOT exported

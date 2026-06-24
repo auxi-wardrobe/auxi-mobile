@@ -1,15 +1,15 @@
 /**
  * Design System — Space, Radius, Elevation & Icons foundation (NEW showcase).
  * 4-pt spacing scale · the new radius scale (xs4 → 4xl32 + full) · elevation
- * shadow tokens · icon size set (L32 / M24 / S16). Values from ds-tokens.
+ * shadow tokens · icon size set (L32 / M24 / S16). Values from m-tokens.
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Icons } from '../../assets/icons';
 
 const IconSparkle = Icons.Sparkle;
-import { color, icon, MONO, radius, role, shadow, space } from './ds-tokens';
-import { Caption, SectionHeader, SubHead } from './dsShared';
+import { color, icon, MONO, radius, role, shadow, space } from './m-tokens';
+import { Caption, SectionHeader, SubHead } from './mShared';
 
 const SPACING: Array<{ name: string; value: number }> = [
   { name: 's1', value: space.s1 },

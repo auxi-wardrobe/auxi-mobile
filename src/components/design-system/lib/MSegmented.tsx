@@ -1,28 +1,28 @@
 /**
- * DsSegmented / DsTabs — self-contained sliding-indicator controls.
+ * MSegmented / MTabs — self-contained sliding-indicator controls.
  *
- *   import { DsSegmented, DsTabs } from '../components/design-system/lib';
- *   <DsSegmented options={['Grid','Collage']} value={v} onChange={setV} />
- *   <DsTabs tabs={['Outfits','Saved']} value={v} onChange={setV} />
+ *   import { MSegmented, MTabs } from '../components/design-system/lib';
+ *   <MSegmented options={['Grid','Collage']} value={v} onChange={setV} />
+ *   <MTabs tabs={['Outfits','Saved']} value={v} onChange={setV} />
  *
  * Both share a spring sliding thumb / underline (useSlidingIndicator). Tokens +
  * motion encapsulated INSIDE. Honors reduce-motion (jumps).
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, radius, role, shadow, space, type } from '../ds-tokens';
+import { color, radius, role, shadow, space, type } from '../m-tokens';
 import { useSlidingIndicator } from './useSlidingIndicator';
 
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
-export interface DsSegmentedProps {
+export interface MSegmentedProps {
   options: string[];
   value: string;
   onChange: (value: string) => void;
   testID?: string;
 }
 
-export const DsSegmented: React.FC<DsSegmentedProps> = ({
+export const MSegmented: React.FC<MSegmentedProps> = ({
   options,
   value,
   onChange,
@@ -58,14 +58,14 @@ export const DsSegmented: React.FC<DsSegmentedProps> = ({
   );
 };
 
-export interface DsTabsProps {
+export interface MTabsProps {
   tabs: string[];
   value: string;
   onChange: (value: string) => void;
   testID?: string;
 }
 
-export const DsTabs: React.FC<DsTabsProps> = ({
+export const MTabs: React.FC<MTabsProps> = ({
   tabs,
   value,
   onChange,

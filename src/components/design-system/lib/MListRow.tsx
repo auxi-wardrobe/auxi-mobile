@@ -1,10 +1,10 @@
 /**
- * DsListRow — self-contained settings-style row (label · value · chevron · danger).
+ * MListRow — self-contained settings-style row (label · value · chevron · danger).
  *
- *   import { DsListRow } from '../components/design-system/lib';
- *   <DsListRow label="Privacy" chevron onPress={open} />
- *   <DsListRow label="Style" value="Calm, Effortless" chevron onPress={edit} />
- *   <DsListRow label="Delete data" danger onPress={confirm} />
+ *   import { MListRow } from '../components/design-system/lib';
+ *   <MListRow label="Privacy" chevron onPress={open} />
+ *   <MListRow label="Style" value="Calm, Effortless" chevron onPress={edit} />
+ *   <MListRow label="Delete data" danger onPress={confirm} />
  *
  * Press → bg fade + chevron nudge (danger swaps the trailing icon to a trash
  * glyph in the danger tint). Tokens + press motion encapsulated INSIDE.
@@ -12,13 +12,13 @@
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text } from 'react-native';
 import { Icons } from '../../../assets/icons';
-import { color, role, space, type } from '../ds-tokens';
-import { usePressHighlight } from '../DsMotion';
+import { color, role, space, type } from '../m-tokens';
+import { usePressHighlight } from '../MMotion';
 
 const IconChevronRight = Icons.ChevronRight;
 const IconTrash = Icons.Trash;
 
-export interface DsListRowProps {
+export interface MListRowProps {
   label: string;
   value?: string;
   chevron?: boolean;
@@ -28,7 +28,7 @@ export interface DsListRowProps {
   accessibilityLabel?: string;
 }
 
-export const DsListRow: React.FC<DsListRowProps> = ({
+export const MListRow: React.FC<MListRowProps> = ({
   label,
   value,
   chevron,

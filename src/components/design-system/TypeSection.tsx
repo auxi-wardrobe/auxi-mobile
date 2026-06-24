@@ -1,13 +1,13 @@
 /**
  * Design System — Typography foundation (NEW showcase, Poppins-only).
  * Family card (Poppins, 4 weights) + the type scale display/h1/h2/h3/body/
- * body-sm/caption/overline read from ds-tokens.type. Mono is used ONLY for the
+ * body-sm/caption/overline read from m-tokens.type. Mono is used ONLY for the
  * overline role (JetBrains Mono not bundled → platform fallback).
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { FONT, MONO, role, space, type } from './ds-tokens';
-import { NoteBold, NoteCard, SectionHeader, SubHead } from './dsShared';
+import { FONT, MONO, role, space, type } from './m-tokens';
+import { NoteBold, NoteCard, SectionHeader, SubHead } from './mShared';
 
 const WEIGHTS: Array<{ name: string; family: string }> = [
   { name: 'Regular 400', family: FONT.regular },

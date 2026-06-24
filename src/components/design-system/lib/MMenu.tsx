@@ -1,18 +1,18 @@
 /**
- * DsCheckMenu / DsRadioMenu — self-contained grouped-selection menus.
+ * MCheckMenu / MRadioMenu — self-contained grouped-selection menus.
  *
- *   import { DsCheckMenu } from '../components/design-system/lib';
- *   <DsCheckMenu options={opts} selected={sel} onToggle={toggle} />
+ *   import { MCheckMenu } from '../components/design-system/lib';
+ *   <MCheckMenu options={opts} selected={sel} onToggle={toggle} />
  *
  * A surface-2 menu of rows with a selected-highlight crossfade + spring
  * check/dot. Tokens + motion encapsulated INSIDE. Honors reduce-motion.
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, MONO, radius, role, shadow, space, type } from '../ds-tokens';
-import { useSpringToggle, useToggleValue } from '../DsMotion';
+import { color, MONO, radius, role, shadow, space, type } from '../m-tokens';
+import { useSpringToggle, useToggleValue } from '../MMotion';
 
-export interface DsMenuOption {
+export interface MMenuOption {
   value: string;
   label: string;
   /** small mono trailing tag, e.g. "all" / "02" */
@@ -22,7 +22,7 @@ export interface DsMenuOption {
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
 const Row: React.FC<{
-  option: DsMenuOption;
+  option: MMenuOption;
   index: number;
   on: boolean;
   kind: 'check' | 'radio';
@@ -94,14 +94,14 @@ const Row: React.FC<{
   );
 };
 
-export interface DsCheckMenuProps {
-  options: DsMenuOption[];
+export interface MCheckMenuProps {
+  options: MMenuOption[];
   selected: Record<string, boolean>;
   onToggle: (value: string) => void;
   testID?: string;
 }
 
-export const DsCheckMenu: React.FC<DsCheckMenuProps> = ({
+export const MCheckMenu: React.FC<MCheckMenuProps> = ({
   options,
   selected,
   onToggle,
@@ -122,14 +122,14 @@ export const DsCheckMenu: React.FC<DsCheckMenuProps> = ({
   </View>
 );
 
-export interface DsRadioMenuProps {
-  options: DsMenuOption[];
+export interface MRadioMenuProps {
+  options: MMenuOption[];
   value: string;
   onChange: (value: string) => void;
   testID?: string;
 }
 
-export const DsRadioMenu: React.FC<DsRadioMenuProps> = ({
+export const MRadioMenu: React.FC<MRadioMenuProps> = ({
   options,
   value,
   onChange,

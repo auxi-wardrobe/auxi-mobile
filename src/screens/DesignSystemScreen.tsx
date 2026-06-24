@@ -8,7 +8,7 @@
  *
  * Source of truth: plans/260624-0030-GH-364-design-system-page/reference/
  *                  auxi-showcase.reference.css. All page styling derives from
- *                  the DS-page-local tokens in components/design-system/ds-tokens
+ *                  the DS-page-local tokens in components/design-system/m-tokens
  *                  (which intentionally DIVERGE from theme.ts).
  */
 import React from 'react';
@@ -30,9 +30,9 @@ import { SpaceFormSection } from '../components/design-system/SpaceFormSection';
 import { ComponentsSection } from '../components/design-system/ComponentsSection';
 import { PrinciplesSection } from '../components/design-system/PrinciplesSection';
 import { MotionSection } from '../components/design-system/MotionSection';
-import { dsTokens } from '../components/design-system/ds-tokens';
+import { mTokens } from '../components/design-system/m-tokens';
 
-const { color, role, space, type } = dsTokens;
+const { color, role, space, type } = mTokens;
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'DesignSystem'>;
 

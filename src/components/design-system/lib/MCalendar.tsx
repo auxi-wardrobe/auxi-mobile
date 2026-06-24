@@ -1,9 +1,9 @@
 /**
- * DsCalendar / DsTimePicker — self-contained date/time pickers.
+ * MCalendar / MTimePicker — self-contained date/time pickers.
  *
- *   import { DsCalendar, DsTimePicker } from '../components/design-system/lib';
- *   <DsCalendar value={day} onChange={setDay} />          // month grid, ink fill springs in
- *   <DsTimePicker time="07:30" period={p} onPeriodChange={setP} />
+ *   import { MCalendar, MTimePicker } from '../components/design-system/lib';
+ *   <MCalendar value={day} onChange={setDay} />          // month grid, ink fill springs in
+ *   <MTimePicker time="07:30" period={p} onPeriodChange={setP} />
  *
  * Calendar day: ink fill springs in on select. AM/PM pill: fill crossfade.
  * Tokens + motion encapsulated INSIDE. Honors reduce-motion. Sensible defaults
@@ -11,8 +11,8 @@
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, radius, role, shadow, space, type } from '../ds-tokens';
-import { useSpringToggle, useToggleValue } from '../DsMotion';
+import { color, radius, role, shadow, space, type } from '../m-tokens';
+import { useSpringToggle, useToggleValue } from '../MMotion';
 
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -23,7 +23,7 @@ const buildGrid = (daysInMonth: number, leadingBlanks: number) => {
   return cells;
 };
 
-export interface DsCalendarProps {
+export interface MCalendarProps {
   value: number;
   onChange: (day: number) => void;
   monthLabel?: string;
@@ -33,7 +33,7 @@ export interface DsCalendarProps {
   testID?: string;
 }
 
-export const DsCalendar: React.FC<DsCalendarProps> = ({
+export const MCalendar: React.FC<MCalendarProps> = ({
   value,
   onChange,
   monthLabel = 'June 2026',
@@ -106,14 +106,14 @@ const Day: React.FC<{
   );
 };
 
-export interface DsTimePickerProps {
+export interface MTimePickerProps {
   time?: string;
   period: 'AM' | 'PM';
   onPeriodChange: (p: 'AM' | 'PM') => void;
   testID?: string;
 }
 
-export const DsTimePicker: React.FC<DsTimePickerProps> = ({
+export const MTimePicker: React.FC<MTimePickerProps> = ({
   time = '07 : 30',
   period,
   onPeriodChange,

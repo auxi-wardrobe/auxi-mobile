@@ -3,99 +3,99 @@
  *
  * THE CONTRACT: import a primitive, render it, nothing else.
  *
- *   import { DsButton, DsSwitch, DsChip } from '../components/design-system/lib';
- *   <DsButton variant="primary" onPress={save}>Save</DsButton>
+ *   import { MButton, MSwitch, MChip } from '../components/design-system/lib';
+ *   <MButton variant="primary" onPress={save}>Save</MButton>
  *
- * Each primitive is fully self-contained — it pulls ds-tokens, DsMotion helpers,
+ * Each primitive is fully self-contained — it pulls m-tokens, MMotion helpers,
  * states, and a11y INTERNALLY. Consumers never import tokens, motion, or styles.
  * Every interactive primitive takes pass-through `testID` + `accessibilityLabel`.
  *
- * Internal-only modules (NOT re-exported): ds-tokens, DsMotion, useSlidingIndicator,
+ * Internal-only modules (NOT re-exported): m-tokens, MMotion, useSlidingIndicator,
  * useOverlayProgress — these are lib implementation details.
  */
 
 // Actions
 export {
-  DsButton,
-  DsIconButton,
-  type DsButtonProps,
-  type DsButtonVariant,
-  type DsButtonSize,
-  type DsIconButtonProps,
-} from './DsButton';
+  MButton,
+  MIconButton,
+  type MButtonProps,
+  type MButtonVariant,
+  type MButtonSize,
+  type MIconButtonProps,
+} from './MButton';
 
 // Selection
-export { DsSwitch, type DsSwitchProps } from './DsSwitch';
+export { MSwitch, type MSwitchProps } from './MSwitch';
 export {
-  DsCheckbox,
-  DsRadio,
-  type DsCheckboxProps,
-  type DsRadioProps,
-} from './DsCheckbox';
+  MCheckbox,
+  MRadio,
+  type MCheckboxProps,
+  type MRadioProps,
+} from './MCheckbox';
 export {
-  DsCheckMenu,
-  DsRadioMenu,
-  type DsMenuOption,
-  type DsCheckMenuProps,
-  type DsRadioMenuProps,
-} from './DsMenu';
+  MCheckMenu,
+  MRadioMenu,
+  type MMenuOption,
+  type MCheckMenuProps,
+  type MRadioMenuProps,
+} from './MMenu';
 
 // Inputs
-export { DsInput, type DsInputProps } from './DsInput';
+export { MInput, type MInputProps } from './MInput';
 
 // Tagging
 export {
-  DsChip,
-  DsBadge,
-  DsTag,
-  DsStatus,
-  type DsChipProps,
-  type DsBadgeProps,
-  type DsBadgeTone,
-  type DsTagProps,
-  type DsStatusProps,
-  type DsStatusTone,
-} from './DsChip';
+  MChip,
+  MBadge,
+  MTag,
+  MStatus,
+  type MChipProps,
+  type MBadgeProps,
+  type MBadgeTone,
+  type MTagProps,
+  type MStatusProps,
+  type MStatusTone,
+} from './MChip';
 
 // Structure
-export { DsDivider, type DsDividerProps } from './DsDivider';
-export { DsListRow, type DsListRowProps } from './DsListRow';
+export { MDivider, type MDividerProps } from './MDivider';
+export { MListRow, type MListRowProps } from './MListRow';
 export {
-  DsSegmented,
-  DsTabs,
-  type DsSegmentedProps,
-  type DsTabsProps,
-} from './DsSegmented';
-export { DsAvatar, type DsAvatarProps } from './DsAvatar';
-export { DsCard, DsTile, type DsCardProps } from './DsCard';
+  MSegmented,
+  MTabs,
+  type MSegmentedProps,
+  type MTabsProps,
+} from './MSegmented';
+export { MAvatar, type MAvatarProps } from './MAvatar';
+export { MCard, MTile, type MCardProps } from './MCard';
 
 // Overlays (controlled `visible` + callbacks)
-export { DsDialog, type DsDialogProps } from './DsDialog';
+export { MDialog, type MDialogProps } from './MDialog';
 export {
-  DsBottomSheet,
-  DsSheetOption,
-  DsActionSheet,
-  type DsBottomSheetProps,
-  type DsSheetOptionProps,
-  type DsActionSheetProps,
-  type DsActionSheetAction,
-} from './DsBottomSheet';
+  MBottomSheet,
+  MSheetOption,
+  MActionSheet,
+  type MBottomSheetProps,
+  type MSheetOptionProps,
+  type MActionSheetProps,
+  type MActionSheetAction,
+} from './MBottomSheet';
 export {
-  DsSnackbar,
-  DsToast,
-  type DsSnackbarProps,
-  type DsToastProps,
-} from './DsSnackbar';
+  MSnackbar,
+  MToast,
+  type MSnackbarProps,
+  type MToastProps,
+} from './MSnackbar';
 
 // Navigation
-export { DsTopAppBar, type DsTopAppBarProps } from './DsTopAppBar';
-export { DsTabBar, type DsTabBarItem, type DsTabBarProps } from './DsTabBar';
-export { DsFloatingPill, type DsFloatingPillProps } from './DsFloatingPill';
+export { MTopAppBar, type MTopAppBarProps } from './MTopAppBar';
+export { MTabBar, type MTabBarItem, type MTabBarProps } from './MTabBar';
+export { MFloatingPill, type MFloatingPillProps } from './MFloatingPill';
 
 // Pickers
 export {
-  DsCalendar,
-  DsTimePicker,
-  type DsCalendarProps,
-  type DsTimePickerProps,
-} from './DsCalendar';
+  MCalendar,
+  MTimePicker,
+  type MCalendarProps,
+  type MTimePickerProps,
+} from './MCalendar';

@@ -1,8 +1,8 @@
 /**
- * DsInput — self-contained text field (label · focus ring · error · leftIcon).
+ * MInput — self-contained text field (label · focus ring · error · leftIcon).
  *
- *   import { DsInput } from '../components/design-system/lib';
- *   <DsInput value={v} onChangeText={setV} label="Email" placeholder="you@auxi.app" />
+ *   import { MInput } from '../components/design-system/lib';
+ *   <MInput value={v} onChangeText={setV} label="Email" placeholder="you@auxi.app" />
  *
  * Focus border crossfades to ink; `error` switches to danger + shows the
  * message. Tokens encapsulated INSIDE. `secureTextEntry` / `keyboardType`
@@ -16,9 +16,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { color, radius, role, type } from '../ds-tokens';
+import { color, radius, role, type } from '../m-tokens';
 
-export interface DsInputProps {
+export interface MInputProps {
   value: string;
   onChangeText: (text: string) => void;
   label?: string;
@@ -33,7 +33,7 @@ export interface DsInputProps {
   accessibilityLabel?: string;
 }
 
-export const DsInput: React.FC<DsInputProps> = ({
+export const MInput: React.FC<MInputProps> = ({
   value,
   onChangeText,
   label,

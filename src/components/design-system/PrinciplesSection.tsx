@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import { View } from 'react-native';
-import { NoteBold, NoteCard, SectionHeader, SubHead } from './dsShared';
+import { NoteBold, NoteCard, SectionHeader, SubHead } from './mShared';
 
 export const PrinciplesSection: React.FC = () => (
   <View>

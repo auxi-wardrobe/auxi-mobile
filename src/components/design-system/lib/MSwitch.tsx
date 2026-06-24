@@ -1,17 +1,17 @@
 /**
- * DsSwitch — self-contained toggle primitive (knob slide + track crossfade).
+ * MSwitch — self-contained toggle primitive (knob slide + track crossfade).
  *
- *   import { DsSwitch } from '../components/design-system/lib';
- *   <DsSwitch value={on} onValueChange={setOn} />
+ *   import { MSwitch } from '../components/design-system/lib';
+ *   <MSwitch value={on} onValueChange={setOn} />
  *
  * Tokens + toggle motion encapsulated INSIDE. Honors reduce-motion.
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet } from 'react-native';
-import { color, radius } from '../ds-tokens';
-import { useToggleValue } from '../DsMotion';
+import { color, radius } from '../m-tokens';
+import { useToggleValue } from '../MMotion';
 
-export interface DsSwitchProps {
+export interface MSwitchProps {
   value: boolean;
   onValueChange: (v: boolean) => void;
   disabled?: boolean;
@@ -19,7 +19,7 @@ export interface DsSwitchProps {
   accessibilityLabel?: string;
 }
 
-export const DsSwitch: React.FC<DsSwitchProps> = ({
+export const MSwitch: React.FC<MSwitchProps> = ({
   value,
   onValueChange,
   disabled,

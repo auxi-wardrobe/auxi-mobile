@@ -1,10 +1,10 @@
 /**
- * DsAvatar — self-contained avatar (image · initials · icon fallback).
+ * MAvatar — self-contained avatar (image · initials · icon fallback).
  *
- *   import { DsAvatar } from '../components/design-system/lib';
- *   <DsAvatar size="lg" initials="MG" />
- *   <DsAvatar size="sm" source={{ uri }} />
- *   <DsAvatar size="sm" />            // user-icon fallback
+ *   import { MAvatar } from '../components/design-system/lib';
+ *   <MAvatar size="lg" initials="MG" />
+ *   <MAvatar size="sm" source={{ uri }} />
+ *   <MAvatar size="sm" />            // user-icon fallback
  *
  * Tokens encapsulated INSIDE.
  */
@@ -17,11 +17,11 @@ import {
   View,
 } from 'react-native';
 import { Icons } from '../../../assets/icons';
-import { color, role, type } from '../ds-tokens';
+import { color, role, type } from '../m-tokens';
 
 const IconUser = Icons.User;
 
-export interface DsAvatarProps {
+export interface MAvatarProps {
   size?: 'lg' | 'sm';
   initials?: string;
   source?: ImageSourcePropType;
@@ -29,7 +29,7 @@ export interface DsAvatarProps {
   accessibilityLabel?: string;
 }
 
-export const DsAvatar: React.FC<DsAvatarProps> = ({
+export const MAvatar: React.FC<MAvatarProps> = ({
   size = 'sm',
   initials,
   source,

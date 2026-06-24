@@ -1,23 +1,23 @@
 /**
- * DsDialog — self-contained controlled confirm dialog.
+ * MDialog — self-contained controlled confirm dialog.
  *
- *   import { DsDialog } from '../components/design-system/lib';
- *   <DsDialog visible={open} title="Delete data" message="Cannot be undone."
+ *   import { MDialog } from '../components/design-system/lib';
+ *   <MDialog visible={open} title="Delete data" message="Cannot be undone."
  *             confirmLabel="Delete" destructive
  *             onConfirm={wipe} onCancel={() => setOpen(false)} />
  *
  * Renders an absolute-fill scrim into the nearest positioned parent (wrap in a
  * full-screen container for a true app dialog; the showcase frames it). ENTER
  * = scale .92→1 + fade spring; CLOSE = faster exit. Tokens + motion + the two
- * action buttons (DsButton) encapsulated INSIDE. Honors reduce-motion.
+ * action buttons (MButton) encapsulated INSIDE. Honors reduce-motion.
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { radius, role, shadow, space, type } from '../ds-tokens';
+import { radius, role, shadow, space, type } from '../m-tokens';
 import { useOverlayProgress } from './useOverlayProgress';
-import { DsButton } from './DsButton';
+import { MButton } from './MButton';
 
-export interface DsDialogProps {
+export interface MDialogProps {
   visible: boolean;
   title: string;
   message?: string;
@@ -29,7 +29,7 @@ export interface DsDialogProps {
   testID?: string;
 }
 
-export const DsDialog: React.FC<DsDialogProps> = ({
+export const MDialog: React.FC<MDialogProps> = ({
   visible,
   title,
   message,
@@ -69,22 +69,22 @@ export const DsDialog: React.FC<DsDialogProps> = ({
           <Text style={styles.dialogTitle}>{title}</Text>
           {!!message && <Text style={styles.dialogBody}>{message}</Text>}
           <View style={styles.dialogActions}>
-            <DsButton
+            <MButton
               variant="secondary"
               size="md"
               onPress={onCancel}
               testID={testID ? `${testID}-cancel` : undefined}
             >
               {cancelLabel}
-            </DsButton>
-            <DsButton
+            </MButton>
+            <MButton
               variant={destructive ? 'danger' : 'primary'}
               size="md"
               onPress={onConfirm}
               testID={testID ? `${testID}-confirm` : undefined}
             >
               {confirmLabel}
-            </DsButton>
+            </MButton>
           </View>
         </Animated.View>
       </Pressable>

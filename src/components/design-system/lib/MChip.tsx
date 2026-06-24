@@ -1,11 +1,11 @@
 /**
- * DsChip / DsBadge / DsTag / DsStatus — self-contained tagging primitives.
+ * MChip / MBadge / MTag / MStatus — self-contained tagging primitives.
  *
- *   import { DsChip, DsBadge, DsStatus } from '../components/design-system/lib';
- *   <DsChip selected={on} onPress={toggle}>Tops</DsChip>
- *   <DsChip removable onRemove={drop}>Calm</DsChip>
- *   <DsBadge tone="cream">NEW</DsBadge>
- *   <DsStatus tone="ok">Synced</DsStatus>
+ *   import { MChip, MBadge, MStatus } from '../components/design-system/lib';
+ *   <MChip selected={on} onPress={toggle}>Tops</MChip>
+ *   <MChip removable onRemove={drop}>Calm</MChip>
+ *   <MBadge tone="cream">NEW</MBadge>
+ *   <MStatus tone="ok">Synced</MStatus>
  *
  * Filter chip: bg crossfade + select "pop" spring. Removable chip: collapse
  * (scale→0 + fade) before unmount (parent drops it in onRemove). Tokens +
@@ -14,10 +14,10 @@
 import React, { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { motion, useReducedMotion } from '../../../theme/motion';
-import { color, radius, role, type } from '../ds-tokens';
-import { useToggleValue } from '../DsMotion';
+import { color, radius, role, type } from '../m-tokens';
+import { useToggleValue } from '../MMotion';
 
-export interface DsChipProps {
+export interface MChipProps {
   children: string;
   selected?: boolean;
   onPress?: () => void;
@@ -27,7 +27,7 @@ export interface DsChipProps {
   accessibilityLabel?: string;
 }
 
-export const DsChip: React.FC<DsChipProps> = ({
+export const MChip: React.FC<MChipProps> = ({
   children,
   selected = false,
   onPress,
@@ -112,15 +112,15 @@ export const DsChip: React.FC<DsChipProps> = ({
   );
 };
 
-export type DsBadgeTone = 'cream' | 'tan' | 'soft';
+export type MBadgeTone = 'cream' | 'tan' | 'soft';
 
-export interface DsBadgeProps {
+export interface MBadgeProps {
   children: string;
-  tone?: DsBadgeTone;
+  tone?: MBadgeTone;
   testID?: string;
 }
 
-export const DsBadge: React.FC<DsBadgeProps> = ({
+export const MBadge: React.FC<MBadgeProps> = ({
   children,
   tone = 'cream',
   testID,
@@ -135,33 +135,33 @@ export const DsBadge: React.FC<DsBadgeProps> = ({
   );
 };
 
-export interface DsTagProps {
+export interface MTagProps {
   children: string;
   testID?: string;
 }
 
-export const DsTag: React.FC<DsTagProps> = ({ children, testID }) => (
+export const MTag: React.FC<MTagProps> = ({ children, testID }) => (
   <View style={styles.tag} testID={testID}>
     <Text style={styles.tagText}>{children}</Text>
   </View>
 );
 
-export type DsStatusTone = 'ok' | 'warn' | 'err' | 'info';
+export type MStatusTone = 'ok' | 'warn' | 'err' | 'info';
 
-const TONE: Record<DsStatusTone, { bg: string; fg: string; dot: string }> = {
+const TONE: Record<MStatusTone, { bg: string; fg: string; dot: string }> = {
   ok: { bg: color.su100, fg: color.su500, dot: color.su400 },
   warn: { bg: color.wa100, fg: color.wa500, dot: color.wa400 },
   err: { bg: color.da100, fg: color.da500, dot: color.da400 },
   info: { bg: color.in100, fg: color.in500, dot: color.in400 },
 };
 
-export interface DsStatusProps {
+export interface MStatusProps {
   children: string;
-  tone?: DsStatusTone;
+  tone?: MStatusTone;
   testID?: string;
 }
 
-export const DsStatus: React.FC<DsStatusProps> = ({
+export const MStatus: React.FC<MStatusProps> = ({
   children,
   tone = 'info',
   testID,

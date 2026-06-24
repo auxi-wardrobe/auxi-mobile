@@ -1,15 +1,15 @@
 /**
  * Shared building blocks for the in-app Design System reference screen.
- * Rebuilt on ds-tokens.ts (NEW claude.ai showcase). Poppins-only typography;
+ * Rebuilt on m-tokens.ts (NEW claude.ai showcase). Poppins-only typography;
  * mono role uses a platform monospace fallback (JetBrains Mono not bundled),
  * for spec overlines only.
  *
  * These tokens diverge from theme.ts on purpose (DS page = new target). See
- * ds-tokens.ts header.
+ * m-tokens.ts header.
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { color, MONO, radius, role, space, type } from './ds-tokens';
+import { color, MONO, radius, role, space, type } from './m-tokens';
 
 // Back-compat re-export: older sections import MONO_FAMILY from here.
 export const MONO_FAMILY = MONO;

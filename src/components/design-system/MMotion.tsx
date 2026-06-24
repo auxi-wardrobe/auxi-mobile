@@ -14,7 +14,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { motion, useReducedMotion } from '../../theme/motion';
-import { color } from './ds-tokens';
+import { color } from './m-tokens';
 
 /** Wraps children; presses spring-scale to .96 (motion.scale.background). */
 export const PressScale: React.FC<{

@@ -1,19 +1,19 @@
 /**
- * DsCheckbox / DsRadio — self-contained selection atoms.
+ * MCheckbox / MRadio — self-contained selection atoms.
  *
- *   import { DsCheckbox, DsRadio } from '../components/design-system/lib';
- *   <DsCheckbox checked={c} onChange={setC} label="Weekdays" />
- *   <DsRadio selected={s} onSelect={pick} label="AM" />
+ *   import { MCheckbox, MRadio } from '../components/design-system/lib';
+ *   <MCheckbox checked={c} onChange={setC} label="Weekdays" />
+ *   <MRadio selected={s} onSelect={pick} label="AM" />
  *
  * Box fill / ring crossfade + spring check/dot encapsulated INSIDE. Honors
  * reduce-motion. `indeterminate` renders a dash; `disabled` mutes + blocks press.
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text } from 'react-native';
-import { color, radius, role, space, type } from '../ds-tokens';
-import { useSpringToggle, useToggleValue } from '../DsMotion';
+import { color, radius, role, space, type } from '../m-tokens';
+import { useSpringToggle, useToggleValue } from '../MMotion';
 
-export interface DsCheckboxProps {
+export interface MCheckboxProps {
   checked: boolean;
   onChange: (next: boolean) => void;
   label?: string;
@@ -23,7 +23,7 @@ export interface DsCheckboxProps {
   accessibilityLabel?: string;
 }
 
-export const DsCheckbox: React.FC<DsCheckboxProps> = ({
+export const MCheckbox: React.FC<MCheckboxProps> = ({
   checked,
   onChange,
   label,
@@ -83,7 +83,7 @@ export const DsCheckbox: React.FC<DsCheckboxProps> = ({
   );
 };
 
-export interface DsRadioProps {
+export interface MRadioProps {
   selected: boolean;
   onSelect: () => void;
   label?: string;
@@ -92,7 +92,7 @@ export interface DsRadioProps {
   accessibilityLabel?: string;
 }
 
-export const DsRadio: React.FC<DsRadioProps> = ({
+export const MRadio: React.FC<MRadioProps> = ({
   selected,
   onSelect,
   label,

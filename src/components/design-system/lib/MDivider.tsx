@@ -1,18 +1,18 @@
 /**
- * DsDivider — self-contained hairline / labelled / inset divider.
+ * MDivider — self-contained hairline / labelled / inset divider.
  *
- *   import { DsDivider } from '../components/design-system/lib';
- *   <DsDivider />                 // plain hairline
- *   <DsDivider label="OR" />      // mono overline between two rules
- *   <DsDivider inset={56} />      // left-inset hairline
+ *   import { MDivider } from '../components/design-system/lib';
+ *   <MDivider />                 // plain hairline
+ *   <MDivider label="OR" />      // mono overline between two rules
+ *   <MDivider inset={56} />      // left-inset hairline
  *
  * Tokens encapsulated INSIDE.
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { role, space, type } from '../ds-tokens';
+import { role, space, type } from '../m-tokens';
 
-export interface DsDividerProps {
+export interface MDividerProps {
   /** centred mono overline between two flex rules */
   label?: string;
   /** left inset in px (hairline only) */
@@ -20,7 +20,7 @@ export interface DsDividerProps {
   testID?: string;
 }
 
-export const DsDivider: React.FC<DsDividerProps> = ({
+export const MDivider: React.FC<MDividerProps> = ({
   label,
   inset,
   testID,

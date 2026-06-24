@@ -8,8 +8,8 @@
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, radius, role, type } from './ds-tokens';
-import { usePressHighlight } from './DsMotion';
+import { color, radius, role, type } from './m-tokens';
+import { usePressHighlight } from './MMotion';
 
 const KEY_ROWS = [
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -46,7 +46,7 @@ const Key: React.FC<{ label: string; wrapStyle?: object; testID: string }> = ({
   );
 };
 
-export const DsKeyboardDemo: React.FC = () => (
+export const MKeyboardDemo: React.FC = () => (
   <View style={styles.kbd} testID="ds-keyboard">
     {KEY_ROWS.map((row, ri) => (
       <View key={ri} style={styles.kbdRow}>

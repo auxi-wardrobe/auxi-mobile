@@ -1,14 +1,14 @@
 /**
- * DsCard / DsTile — self-contained item/outfit tile (image · caption · pin).
+ * MCard / MTile — self-contained item/outfit tile (image · caption · pin).
  *
- *   import { DsCard } from '../components/design-system/lib';
- *   <DsCard caption="Linen overshirt" sub="Tops · Ecru" tag="item"
+ *   import { MCard } from '../components/design-system/lib';
+ *   <MCard caption="Linen overshirt" sub="Tops · Ecru" tag="item"
  *           source={{ uri }} pinned={p} onPinChange={setP} />
- *   <DsTile caption="Quiet Monday" sub="3 items" tag="outfit" fill="#E0D2C4" />
+ *   <MTile caption="Quiet Monday" sub="3 items" tag="outfit" fill="#E0D2C4" />
  *
  * Entrance fade-up stagger (index) + press scale; pin button (press scale 1.06)
  * + pin-status slide-in. Controlled `pinned`+`onPinChange` ⇒ pinnable. Tokens +
- * motion encapsulated INSIDE. Honors reduce-motion. `DsTile` aliases `DsCard`.
+ * motion encapsulated INSIDE. Honors reduce-motion. `MTile` aliases `MCard`.
  */
 import React from 'react';
 import {
@@ -21,13 +21,13 @@ import {
   View,
 } from 'react-native';
 import { Icons } from '../../../assets/icons';
-import { color, MONO, radius, role, shadow, type } from '../ds-tokens';
-import { useEntrance, usePressHighlight, useToggleValue } from '../DsMotion';
+import { color, MONO, radius, role, shadow, type } from '../m-tokens';
+import { useEntrance, usePressHighlight, useToggleValue } from '../MMotion';
 
 const IconPlus = Icons.Plus;
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
-export interface DsCardProps {
+export interface MCardProps {
   caption: string;
   sub?: string;
   tag?: string;
@@ -44,7 +44,7 @@ export interface DsCardProps {
   accessibilityLabel?: string;
 }
 
-export const DsCard: React.FC<DsCardProps> = ({
+export const MCard: React.FC<MCardProps> = ({
   caption,
   sub,
   tag,
@@ -121,7 +121,7 @@ export const DsCard: React.FC<DsCardProps> = ({
   );
 };
 
-export const DsTile = DsCard;
+export const MTile = MCard;
 
 const PinButton: React.FC<{
   pinned: boolean;
