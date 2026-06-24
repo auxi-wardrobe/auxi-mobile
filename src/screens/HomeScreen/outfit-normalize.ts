@@ -29,18 +29,25 @@ export const mapV05Item = (it: V05OutfitItem): Item => ({
 export const buildGrid = (items: Item[]): Array<Item | null> =>
   Array.from({ length: items.length }, (_, index) => items[index] || null);
 
-// A single suggestion should carry at most one garment per category family.
-// When it doesn't — typically the user's own item plus a system
-// `common_essential` fallback of the same category (two tops, two pairs of
-// jeans) — the sheet would render the duplicate. Collapse to one item per
-// category, keeping the first occurrence's slot and preferring the user's own
-// garment over the system fallback. A `protectedId` (the pinned item) always
-// wins its category regardless of source.
+// A single suggestion should carry at most one garment per category family —
+// EXCEPT accessories. Hats, bags, sunglasses and earrings all share the one
+// `Accessory` category today, so a hard one-per-category rule would hide a
+// legitimate hat + bag pairing. We therefore allow up to two accessories while
+// still collapsing duplicate garments (the user's own item plus a system
+// `common_essential` fallback — two tops, two pairs of jeans). Within a
+// category we keep the earliest slot and prefer the user's garment over a
+// system fallback; a `protectedId` (the pinned item) always wins a slot.
+const ACCESSORY_CATEGORY = 'accessory';
+const MAX_ACCESSORIES = 2;
+
+const categoryLimit = (categoryKey: string): number =>
+  categoryKey === ACCESSORY_CATEGORY ? MAX_ACCESSORIES : 1;
+
 export const dedupeByCategory = (
-  items: Item[],
+  items: Array<Item | null | undefined>,
   protectedId?: string,
 ): Item[] => {
-  const indexByCategory = new Map<string, number>();
+  const slotsByCategory = new Map<string, number[]>();
   const result: Item[] = [];
 
   for (const item of items) {
@@ -56,25 +63,35 @@ export const dedupeByCategory = (
       continue;
     }
 
-    const existingIndex = indexByCategory.get(key);
-    if (existingIndex === undefined) {
-      indexByCategory.set(key, result.length);
+    const slots = slotsByCategory.get(key) ?? [];
+    if (slots.length < categoryLimit(key)) {
+      slots.push(result.length);
+      slotsByCategory.set(key, slots);
       result.push(item);
       continue;
     }
 
-    const existing = result[existingIndex];
-    // Never displace a pinned item from its slot.
-    if (protectedId && existing.id === protectedId) {
+    // The category is full. Replace the weakest existing slot only when the
+    // incoming item is stronger: the pin always claims a slot, and a user
+    // garment displaces a system fallback. Prefer evicting a system item, and
+    // never evict the pin.
+    const isPin = !!protectedId && item.id === protectedId;
+    if (isPin) {
+      const victim =
+        slots.find(i => result[i].id !== protectedId && result[i].isSystem) ??
+        slots.find(i => result[i].id !== protectedId);
+      if (victim !== undefined) {
+        result[victim] = item;
+      }
       continue;
     }
-    // The incoming item takes the slot if it's the pin, or if it's the user's
-    // garment beating a system fallback. Otherwise the earlier item stays.
-    if (
-      (protectedId && item.id === protectedId) ||
-      (existing.isSystem && !item.isSystem)
-    ) {
-      result[existingIndex] = item;
+    if (!item.isSystem) {
+      const victim = slots.find(
+        i => result[i].id !== protectedId && result[i].isSystem,
+      );
+      if (victim !== undefined) {
+        result[victim] = item;
+      }
     }
   }
 
@@ -126,13 +143,12 @@ export const buildGridOutfitSheetWithPin = (
   // outfit's same-category item; otherwise the sheet shows two of the same
   // category (pin a shirt → two shirts).
   //
-  // Cap at 4 = the pin + 3 outfit garments (e.g. top, bottom, shoes), matching
-  // the previous behaviour before the pin was prepended. De-dup runs first so
-  // the cap counts distinct categories, not the dropped same-category item.
-  const mixed = dedupeByCategory(
-    [pinnedItem, ...outfit.items],
-    pinnedItem.id,
-  ).slice(0, 4);
+  // No length cap here: de-dup already bounds the result to one item per
+  // garment family plus up to two accessories. The old `.slice(0, 4)` silently
+  // dropped a 5th item — which, since accessories tend to come last in the
+  // outfit array, was usually the hat/bag. The grid (`pickLayout`) renders
+  // 5+ items via the hero-stack layout, so there's nothing to truncate for.
+  const mixed = dedupeByCategory([pinnedItem, ...outfit.items], pinnedItem.id);
   return {
     ...outfit,
     items: mixed,

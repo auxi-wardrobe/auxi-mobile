@@ -54,6 +54,49 @@ describe('dedupeByCategory', () => {
     expect(result.map(i => i.id)).toEqual(['pin']);
   });
 
+  it('allows up to two accessories (hat + bag) in one outfit', () => {
+    const hat = item({ id: 'hat', category: 'Accessory' });
+    const bag = item({ id: 'bag', category: 'Accessory' });
+    const top = item({ id: 'top', category: 'Top' });
+
+    expect(dedupeByCategory([hat, bag, top]).map(i => i.id)).toEqual([
+      'hat',
+      'bag',
+      'top',
+    ]);
+  });
+
+  it('caps accessories at two, dropping a system extra and keeping user ones', () => {
+    const hat = item({ id: 'hat', category: 'Accessory', isSystem: false });
+    const bag = item({ id: 'bag', category: 'Accessory', isSystem: false });
+    const sysBelt = item({
+      id: 'sys-belt',
+      category: 'Accessory',
+      isSystem: true,
+    });
+
+    // Two user accessories already fill the bucket — a third (system) is dropped.
+    expect(dedupeByCategory([hat, bag, sysBelt]).map(i => i.id)).toEqual([
+      'hat',
+      'bag',
+    ]);
+  });
+
+  it('replaces a system accessory with a user accessory when the bucket is full', () => {
+    const sysHat = item({ id: 'sys-hat', category: 'Accessory', isSystem: true });
+    const userBag = item({ id: 'bag', category: 'Accessory', isSystem: false });
+    const userScarf = item({
+      id: 'scarf',
+      category: 'Accessory',
+      isSystem: false,
+    });
+
+    // sysHat + userBag fill the two slots; userScarf evicts the system hat.
+    expect(dedupeByCategory([sysHat, userBag, userScarf]).map(i => i.id)).toEqual(
+      ['scarf', 'bag'],
+    );
+  });
+
   it('treats category casing/whitespace as the same bucket', () => {
     const a = item({ id: 'a', category: 'Top' });
     const b = item({ id: 'b', category: ' top ' });
@@ -109,5 +152,27 @@ describe('buildGridOutfitSheetWithPin', () => {
 
     expect(result.items[0].id).toBe('pin');
     expect(categories(result.gridItems)).toEqual(['Top', 'Bottom']);
+  });
+
+  it('keeps the accessory when a pinned top pushes the outfit past four items', () => {
+    // Full outfit: top, bottom, outerwear, shoes, accessory (5 items). Pinning
+    // a top used to dedupe to 5 then `.slice(0, 4)` cut the trailing accessory.
+    const pinnedTop = item({ id: 'pin', category: 'Top', isSystem: false });
+    const sysTop = item({ id: 'sys-top', category: 'Top', isSystem: true });
+    const bottom = item({ id: 'bottom', category: 'Bottom' });
+    const outer = item({ id: 'outer', category: 'Outerwear' });
+    const shoes = item({ id: 'shoes', category: 'Shoes' });
+    const hat = item({ id: 'hat', category: 'Accessory' });
+
+    const result = buildGridOutfitSheetWithPin(
+      sheet([sysTop, bottom, outer, shoes, hat]),
+      pinnedTop,
+    );
+
+    const ids = result.items.map(i => i.id);
+    expect(ids[0]).toBe('pin');
+    expect(ids).toContain('hat');
+    expect(ids).not.toContain('sys-top');
+    expect(result.gridItems).toHaveLength(5);
   });
 });
