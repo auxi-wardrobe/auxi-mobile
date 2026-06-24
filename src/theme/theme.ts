@@ -49,6 +49,13 @@ export const theme = {
     figmaDividerSubtle: '#f2f4f7',
     figmaAction: '#272A32',
     figmaButton: '#272A32',
+    // Canonical primary (solid) button tokens — the ONE source of truth for
+    // every solid-dark primary CTA. Fill = color/neutral/800, label =
+    // color/primary/100, paired with the `poppinsButton` (Poppins-Medium)
+    // alias and a 16px radius. Don't reintroduce figmaAction/figmaButton/
+    // figmaButtonDark or white as a primary-button fill/label.
+    figmaPrimaryButtonBg: '#1D1F23', // color/neutral/800 — primary button fill
+    figmaPrimaryButtonText: '#EFE9E3', // color/primary/100 — primary button label
     figmaRed: '#CC4C3E',
     figmaIconSurface: '#E3E3EC',
     figmaDestructive: '#bb251a', // red for Cancel/delete actions — aliased by uacTextDangerBase below

@@ -215,11 +215,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.figmaAction,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   refineText: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.white,
+    ...theme.typography.aliases.poppinsButton,
+    color: theme.colors.figmaPrimaryButtonText,
   },
   // Secondary text button — mirrors the refine sheet's "Skip for now"
   // (ContextChipsModal.skipText): archivoBody @ color/primary/600.

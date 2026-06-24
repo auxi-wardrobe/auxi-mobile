@@ -222,7 +222,7 @@ export const PillButton: React.FC<PillButtonProps> = ({
             size="small"
             color={
               variant === 'filled'
-                ? theme.colors.white
+                ? theme.colors.figmaPrimaryButtonText
                 : theme.colors.figmaAction
             }
           />
@@ -297,8 +297,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   filledButton: {
-    backgroundColor: theme.colors.uacTextBase,
-    borderColor: theme.colors.uacTextBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
+    borderColor: theme.colors.figmaPrimaryButtonBg,
   },
   outlineButton: {
     backgroundColor: 'transparent',
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaTextDark, // secondary/text button label #070707
   },
   filledText: {
-    color: theme.colors.uacTextPrimaryBase, // primary button label #F2EFEC
+    color: theme.colors.figmaPrimaryButtonText, // primary button label color/primary/100
   },
   dangerText: {
     color: theme.colors.figmaRed,

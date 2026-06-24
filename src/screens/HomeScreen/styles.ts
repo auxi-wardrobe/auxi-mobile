@@ -466,11 +466,12 @@ export const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.m,
     paddingVertical: theme.spacing.xs,
     borderRadius: 16,
-    backgroundColor: theme.colors.figmaAction,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   pinGuestCtaText: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.white,
+    fontFamily: 'Poppins-Medium',
+    color: theme.colors.figmaPrimaryButtonText,
   },
   moodBanner: {
     position: 'absolute',

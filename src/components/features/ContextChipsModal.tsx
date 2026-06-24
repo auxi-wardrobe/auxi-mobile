@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.figmaAction,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   confirmButtonDisabled: {
     backgroundColor: '#EEF1F6',
@@ -393,8 +393,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.figmaDivider,
   },
   confirmText: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.white,
+    ...theme.typography.aliases.poppinsButton,
+    color: theme.colors.figmaPrimaryButtonText,
   },
   confirmTextDisabled: {
     color: '#B4BBC6',
