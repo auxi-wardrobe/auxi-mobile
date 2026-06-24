@@ -33,11 +33,11 @@ export const styles = StyleSheet.create({
   headerIconButton: {
     width: 44,
     height: 44,
-    borderRadius: 16,
+    borderRadius: theme.borderRadius.m,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.figmaSurface,
-    ...theme.ds.shadow.floatingButton,
+    backgroundColor: theme.colors.white,
+    ...theme.ds.shadow.headerIcon,
   },
   // AI feedback affordance — 44px floating button, bottom-left of the footer,
   // vertically centred against the view-toggle footer.

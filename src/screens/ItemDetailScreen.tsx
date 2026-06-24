@@ -1154,13 +1154,9 @@ const styles = StyleSheet.create({
   backButton: {
     width: 44,
     height: 44,
-    borderRadius: 16,
+    borderRadius: theme.borderRadius.m,
     backgroundColor: theme.colors.white,
-    shadowColor: theme.colors.figmaOverlayDark10,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 3,
+    ...theme.ds.shadow.headerIcon,
   },
   imageRegion: {
     flex: 1,

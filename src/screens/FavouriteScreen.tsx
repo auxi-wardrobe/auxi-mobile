@@ -288,12 +288,14 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: theme.colors.figmaItemDetailHeaderBg,
   },
-  // Hamburger footprint (44×44 Figma menu slot); transparent so the blurred
-  // bar shows through.
+  // Hamburger chip (44×44 Figma menu slot) — white surface, radius 8, with the
+  // shared header-icon drop-shadow (matches every other header icon).
   menuButton: {
     width: 44,
     height: 44,
-    backgroundColor: theme.colors.transparent,
+    borderRadius: theme.borderRadius.m,
+    backgroundColor: theme.colors.white,
+    ...theme.ds.shadow.headerIcon,
   },
   body: {
     flex: 1,

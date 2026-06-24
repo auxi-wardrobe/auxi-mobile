@@ -90,10 +90,13 @@ const styles = StyleSheet.create({
         color: theme.colors.figmaAction, // Dark color
     },
     rightButton: {
-        width: 32,
-        height: 32,
+        width: 44,
+        height: 44,
+        borderRadius: theme.borderRadius.m,
+        backgroundColor: theme.colors.white,
         alignItems: 'center',
         justifyContent: 'center',
+        ...theme.ds.shadow.headerIcon,
     },
     icon: {
         width: 24,

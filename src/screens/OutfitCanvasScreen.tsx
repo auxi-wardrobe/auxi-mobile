@@ -748,11 +748,13 @@ const styles = StyleSheet.create({
     height: 56,
   },
   headerIconBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.borderRadius.m,
+    backgroundColor: theme.colors.white,
+    ...theme.ds.shadow.headerIcon,
   },
   headerIconBtnDisabled: {
     opacity: 0.5,
