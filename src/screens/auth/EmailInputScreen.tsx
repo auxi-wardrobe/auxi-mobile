@@ -280,7 +280,7 @@ export const EmailInputScreen = () => {
               <ChevronRightGlyph
                 color={
                   isValid
-                    ? theme.colors.uacTextPrimaryBase
+                    ? theme.colors.figmaPrimaryButtonIcon
                     : theme.colors.uacTextSubtle200
                 }
               />
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -63,6 +63,21 @@ import {
 } from '../../services/authTypes';
 import type { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
+import Svg, { Path } from 'react-native-svg';
+
+// Themeable right-chevron for the primary icon (submit) button — the shared
+// icon_chevron_left.svg hardcodes a dark stroke and can't be recoloured.
+const ChevronRightGlyph = ({ color }: { color: string }) => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M9 6l6 6-6 6"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignIn'>;
 
@@ -259,9 +274,7 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
                 pressed && canSubmit && styles.submitButtonPressed,
               ]}
             >
-              <View style={styles.submitArrow}>
-                <IconChevronLeft width={24} height={24} />
-              </View>
+              <ChevronRightGlyph color={theme.colors.figmaPrimaryButtonIcon} />
             </Pressable>
           </View>
 
@@ -391,16 +404,13 @@ const styles = StyleSheet.create({
     borderRadius: SUBMIT_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   submitButtonDisabled: {
     opacity: 0.5,
   },
   submitButtonPressed: {
     opacity: 0.85,
-  },
-  submitArrow: {
-    transform: [{ rotate: '180deg' }],
   },
   errorText: {
     ...theme.typography.aliases.uacBodyXsRegular,

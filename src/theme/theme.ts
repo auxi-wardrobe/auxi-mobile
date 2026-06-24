@@ -56,6 +56,10 @@ export const theme = {
     // figmaButtonDark or white as a primary-button fill/label.
     figmaPrimaryButtonBg: '#1D1F23', // color/neutral/800 — primary button fill
     figmaPrimaryButtonText: '#EFE9E3', // color/primary/100 — primary button label
+    // Primary ICON button: same fill as the primary button, but the icon uses
+    // color/primary/50 (NOT the /100 text tone). For icon-only CTAs (submit
+    // chevrons / arrows).
+    figmaPrimaryButtonIcon: '#F2EFEC', // color/primary/50 — primary icon-button icon
     figmaRed: '#CC4C3E',
     figmaIconSurface: '#E3E3EC',
     figmaDestructive: '#bb251a', // red for Cancel/delete actions — aliased by uacTextDangerBase below

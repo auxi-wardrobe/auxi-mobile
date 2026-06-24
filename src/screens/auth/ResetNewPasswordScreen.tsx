@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   submitChevronIcon: {
     fontSize: 26,
     lineHeight: 28,
-    color: theme.colors.uacTextPrimaryBase,
+    color: theme.colors.figmaPrimaryButtonIcon,
   },
   checklist: {
     width: 327,
