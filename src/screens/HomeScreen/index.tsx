@@ -31,6 +31,7 @@ import {
   SwipeCoachMark,
 } from '../../components/features/SwipeCoachMark';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
+import { FeedbackSheet } from '../../components/features/FeedbackSheet';
 import { useMoodFeedback } from '../../hooks/use-mood-feedback';
 import {
   PillButton,
@@ -192,6 +193,7 @@ export const HomeScreen = () => {
   const [hasCycled, setHasCycled] = useState(false);
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
   const [aiNoticeDismissed, setAiNoticeDismissed] = useState(false);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
   // Persist the AI notice dismissal so the toast appears only the first time;
   // the floating feedback button remains as the ongoing affordance.
   useEffect(() => {
@@ -1403,15 +1405,15 @@ export const HomeScreen = () => {
       ) : null}
 
       {/* Feedback affordance — 44px floating button, bottom-left of the
-          footer, Home only. Opens the in-app Feedback form. AI-result feedback
-          now lives on the try-on result (see OutfitPreview). */}
+          footer, Home only. Opens the in-app Feedback bottom sheet. AI-result
+          feedback now lives on the try-on result (see OutfitPreview). */}
       {optionSets.length > 0 ? (
         <TouchableOpacity
           testID="home-feedback-fab"
           accessibilityRole="button"
           accessibilityLabel={t('feedback.title')}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate('Feedback')}
+          onPress={() => setFeedbackVisible(true)}
           style={styles.aiFeedbackFab}
         >
           <IconFeedback
@@ -1472,6 +1474,11 @@ export const HomeScreen = () => {
         onApply={applyTemperature}
         onSelect={handleTempSelect}
         onCancel={closeTempSheet}
+      />
+
+      <FeedbackSheet
+        visible={feedbackVisible}
+        onClose={() => setFeedbackVisible(false)}
       />
 
       {moodBannerText ? (
