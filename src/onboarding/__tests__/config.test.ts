@@ -168,8 +168,8 @@ describe('config — D3/D4 copy hygiene (no placeholders/typos)', () => {
     expect(allCopy).not.toMatch(/in you profile/);
   });
 
-  it('Loading/Completed headlines use "Your wardrobe" (D3)', () => {
+  it('Loading headline uses "Your wardrobe"; Completed uses the personalization line (D3)', () => {
     expect(LOADING_COPY.headline).toMatch(/Your wardrobe/);
-    expect(COMPLETED_COPY.headline).toMatch(/Your wardrobe/);
+    expect(COMPLETED_COPY.headline).toMatch(/personal it becomes/);
   });
 });

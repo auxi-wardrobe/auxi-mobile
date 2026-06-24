@@ -276,14 +276,18 @@ export const LOADING_COPY: LoadingCopy = {
 
 export interface CompletedCopy {
   headline: string;
-  footer: string;
+  /** Reassurance line shown above the headline (between chips and headline). */
+  helper: string;
   ctaLabel: string;
+  /** Secondary action — restarts onboarding from Step 1 (Wardrobe). */
+  retakeLabel: string;
 }
 
 export const COMPLETED_COPY: CompletedCopy = {
-  headline: 'Your wardrobe is ready',
-  footer: 'You can fine-tune everything in your profile.',
-  ctaLabel: 'Continue',
+  headline: 'The more you use Macgie, the more personal it becomes.',
+  helper: "Don't worry you can change later in your profile setting",
+  ctaLabel: 'Next',
+  retakeLabel: 'Retake',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
