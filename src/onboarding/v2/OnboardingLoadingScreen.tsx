@@ -145,10 +145,29 @@ const LoadingRow: React.FC<{ label: string }> = ({ label }) => {
   );
 };
 
+// Minimum time the loading state stays on screen before advancing to Completed,
+// so the "building your wardrobe" moment is perceptible even when /generate
+// resolves almost instantly (cached responses, or the mocked web-preview
+// backend). Generation in production takes longer and exceeds this floor.
+const MIN_VISIBLE_MS = 1800;
+
 export const OnboardingLoadingScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<ScreenRoute>();
   const { selection } = route.params;
+
+  // Hold the loading state for at least MIN_VISIBLE_MS from mount before
+  // advancing on success (see constant above). Cleared on unmount.
+  const mountedAt = useRef(Date.now()).current;
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (redirectTimer.current) {
+        clearTimeout(redirectTimer.current);
+      }
+    },
+    [],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -179,7 +198,12 @@ export const OnboardingLoadingScreen = () => {
       // DEFERRED COMPLETION: do NOT call completeOnboarding() here. `replace`
       // so a back gesture from Completed cannot return to Loading (generate
       // already ran). completeOnboarding fires only at the Outro CTA.
-      navigation.replace('OnboardingCompleted', { selection });
+      // Honor the minimum-visible floor: advance only once MIN_VISIBLE_MS has
+      // elapsed since mount (instant on a slow real backend; padded when fast).
+      const remaining = Math.max(0, MIN_VISIBLE_MS - (Date.now() - mountedAt));
+      redirectTimer.current = setTimeout(() => {
+        navigation.replace('OnboardingCompleted', { selection });
+      }, remaining);
     },
   });
 

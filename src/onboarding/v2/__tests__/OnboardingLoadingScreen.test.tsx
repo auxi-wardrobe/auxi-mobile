@@ -26,6 +26,9 @@ const SELECTION = {
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ replace: mockReplace, navigate: mockNavigate }),
   useRoute: () => ({ params: { selection: SELECTION } }),
+  // Screen calls useFocusEffect for screen-view analytics; no-op here (the
+  // tracking side effect is out of scope for these mutation/navigation tests).
+  useFocusEffect: jest.fn(),
 }));
 
 const mockGenerate = jest.fn();
