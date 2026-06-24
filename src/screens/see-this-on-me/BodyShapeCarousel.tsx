@@ -9,7 +9,6 @@
 import React, { useState } from 'react';
 import {
   Dimensions,
-  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
@@ -19,6 +18,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { MBottomSheet } from '../../components/design-system/lib';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
@@ -63,19 +63,17 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
   const current = BODY_SHAPE_OPTIONS[index] ?? BODY_SHAPE_OPTIONS[0];
 
   return (
-    <Modal
+    <MBottomSheet
       visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onRetake}
+      onDismiss={onRetake}
+      testID="stom-shape-carousel-sheet"
     >
-      <View style={styles.scrim}>
-        <View style={styles.sheet} testID="stom-shape-carousel">
-          <Text style={styles.headline}>
-            {t('seeThisOnMe.step3.expandedTitle')}
-          </Text>
+      <View style={styles.sheet} testID="stom-shape-carousel">
+        <Text style={styles.headline}>
+          {t('seeThisOnMe.step3.expandedTitle')}
+        </Text>
 
-          <ScrollView
+        <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
@@ -143,22 +141,15 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
             />
           </View>
         </View>
-      </View>
-    </Modal>
+    </MBottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  scrim: {
-    flex: 1,
-    backgroundColor: theme.colors.figmaOverlayScrim,
-    justifyContent: 'flex-end',
-  },
+  // MBottomSheet owns the scrim + rounded surface + top padding; this just adds
+  // the internal vertical rhythm + bottom padding for the carousel body.
   sheet: {
-    backgroundColor: theme.colors.figmaSurface,
-    borderTopLeftRadius: theme.borderRadius.l,
-    borderTopRightRadius: theme.borderRadius.l,
-    paddingTop: theme.spacing.l,
+    paddingTop: theme.spacing.s,
     paddingBottom: theme.spacing.xl,
     gap: theme.spacing.l,
   },

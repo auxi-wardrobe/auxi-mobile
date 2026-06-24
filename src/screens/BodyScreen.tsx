@@ -13,6 +13,10 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import {
+  MBottomSheet,
+  MSheetOption,
+} from '../components/design-system/lib';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
@@ -483,56 +487,28 @@ export const BodyScreen = () => {
           </View>
         </View>
 
-        <Modal
-          animationType="fade"
-          transparent
+        <MBottomSheet
           visible={modalVisible}
-          onRequestClose={() => setModalVisible(false)}
+          onDismiss={() => setModalVisible(false)}
+          testID="body-detail-retake-sheet"
         >
-          <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>{t('body.retake_body')}</Text>
-
-                  <TouchableOpacity
-                    testID="body-detail-retake-camera"
-                    style={styles.modalAction}
-                    onPress={() => handleImageSelection('camera')}
-                  >
-                    <Text style={styles.modalActionText}>
-                      {t('common.take_photo')}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.modalDivider} />
-
-                  <TouchableOpacity
-                    testID="body-detail-retake-gallery"
-                    style={styles.modalAction}
-                    onPress={() => handleImageSelection('gallery')}
-                  >
-                    <Text style={styles.modalActionText}>
-                      {t('common.upload_gallery')}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.modalDivider} />
-
-                  <TouchableOpacity
-                    testID="body-detail-retake-cancel"
-                    style={styles.modalCancel}
-                    onPress={() => setModalVisible(false)}
-                  >
-                    <Text style={styles.modalCancelText}>
-                      {t('common.cancel')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
+          <Text style={styles.sheetTitle}>{t('body.retake_body')}</Text>
+          <MSheetOption
+            testID="body-detail-retake-camera"
+            label={t('common.take_photo')}
+            onPress={() => handleImageSelection('camera')}
+          />
+          <MSheetOption
+            testID="body-detail-retake-gallery"
+            label={t('common.upload_gallery')}
+            onPress={() => handleImageSelection('gallery')}
+          />
+          <MSheetOption
+            testID="body-detail-retake-cancel"
+            label={t('common.cancel')}
+            onPress={() => setModalVisible(false)}
+          />
+        </MBottomSheet>
       </SafeAreaView>
     );
   }
@@ -678,56 +654,31 @@ export const BodyScreen = () => {
         )}
       </View>
 
-      <Modal
-        animationType="fade"
-        transparent
+      <MBottomSheet
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onDismiss={() => setModalVisible(false)}
+        testID="body-upload-sheet"
       >
-        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>
-                  {t('body.upload_body_photo')}
-                </Text>
+        <Text style={styles.sheetTitle}>{t('body.upload_body_photo')}</Text>
+        <MSheetOption
+          testID="body-upload-camera"
+          label={t('common.take_photo')}
+          onPress={() => handleImageSelection('camera')}
+        />
+        <MSheetOption
+          testID="body-upload-gallery"
+          label={t('common.upload_gallery')}
+          onPress={() => handleImageSelection('gallery')}
+        />
+        <MSheetOption
+          testID="body-upload-cancel"
+          label={t('common.cancel')}
+          onPress={() => setModalVisible(false)}
+        />
+      </MBottomSheet>
 
-                <TouchableOpacity
-                  style={styles.modalAction}
-                  onPress={() => handleImageSelection('camera')}
-                >
-                  <Text style={styles.modalActionText}>
-                    {t('common.take_photo')}
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={styles.modalDivider} />
-
-                <TouchableOpacity
-                  style={styles.modalAction}
-                  onPress={() => handleImageSelection('gallery')}
-                >
-                  <Text style={styles.modalActionText}>
-                    {t('common.upload_gallery')}
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={styles.modalDivider} />
-
-                <TouchableOpacity
-                  style={styles.modalCancel}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <Text style={styles.modalCancelText}>
-                    {t('common.cancel')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
+      {/* Full-screen image lightbox — a centered zoom view, NOT a sheet/dialog/
+          action-list overlay, so it stays a raw <Modal> (GH-364 SKIP rule). */}
       <Modal
         animationType="fade"
         transparent
@@ -902,47 +853,13 @@ const styles = StyleSheet.create({
     right: 22,
     bottom: 28,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 22,
-    paddingTop: 20,
-    paddingBottom: 34,
-  },
-  modalTitle: {
+  // Title row for the MBottomSheet photo-source sheets (camera/gallery/cancel).
+  sheetTitle: {
     ...theme.typography.aliases.manropeBody,
     textAlign: 'center',
     color: theme.colors.figmaAction,
-    marginBottom: 16,
-  },
-  modalAction: {
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalActionText: {
-    ...theme.typography.aliases.manropeBody,
-    color: theme.colors.figmaAction,
-  },
-  modalDivider: {
-    height: 1,
-    backgroundColor: theme.colors.figmaDivider,
-  },
-  modalCancel: {
-    marginTop: 8,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalCancelText: {
-    ...theme.typography.aliases.manropeBody,
-    color: theme.colors.figmaRed,
+    paddingHorizontal: 22,
+    paddingBottom: 8,
   },
   largeImageModalOverlay: {
     flex: 1,

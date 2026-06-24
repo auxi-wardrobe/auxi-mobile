@@ -4,16 +4,12 @@
  * conversational layout (prompt bubble + user photo thumbnail) is DRY.
  */
 import React from 'react';
-import {
-  Image,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import {
+  MBottomSheet,
+  MSheetOption,
+} from '../../components/design-system/lib';
 import { TopIconButton } from '../../components/primitives/FigmaPrimitives';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
@@ -123,60 +119,30 @@ export const PhotoSourceSheet: React.FC<PhotoSourceSheetProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Modal
-      animationType="fade"
-      transparent
+    <MBottomSheet
       visible={visible}
-      onRequestClose={onClose}
+      onDismiss={onClose}
+      testID="stom-photo-source-sheet"
     >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.sheetOverlay}>
-          <TouchableWithoutFeedback>
-            <View style={styles.sheetContent} testID="stom-photo-source-sheet">
-              <Text style={styles.sheetTitle}>
-                {t('seeThisOnMe.choosePhotoSource')}
-              </Text>
-
-              <TouchableOpacity
-                testID="stom-photo-source-camera"
-                accessibilityLabel={t('seeThisOnMe.takePhoto')}
-                style={styles.sheetAction}
-                onPress={() => onSelect('camera')}
-              >
-                <Text style={styles.sheetActionText}>
-                  {t('seeThisOnMe.takePhoto')}
-                </Text>
-              </TouchableOpacity>
-
-              <View style={styles.sheetDivider} />
-
-              <TouchableOpacity
-                testID="stom-photo-source-gallery"
-                accessibilityLabel={t('seeThisOnMe.chooseFromLibrary')}
-                style={styles.sheetAction}
-                onPress={() => onSelect('gallery')}
-              >
-                <Text style={styles.sheetActionText}>
-                  {t('seeThisOnMe.chooseFromLibrary')}
-                </Text>
-              </TouchableOpacity>
-
-              <View style={styles.sheetDivider} />
-
-              <TouchableOpacity
-                testID="stom-photo-source-cancel"
-                style={styles.sheetCancel}
-                onPress={onClose}
-              >
-                <Text style={styles.sheetCancelText}>
-                  {t('seeThisOnMe.cancel')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
+      <Text style={styles.sheetTitle}>
+        {t('seeThisOnMe.choosePhotoSource')}
+      </Text>
+      <MSheetOption
+        testID="stom-photo-source-camera"
+        label={t('seeThisOnMe.takePhoto')}
+        onPress={() => onSelect('camera')}
+      />
+      <MSheetOption
+        testID="stom-photo-source-gallery"
+        label={t('seeThisOnMe.chooseFromLibrary')}
+        onPress={() => onSelect('gallery')}
+      />
+      <MSheetOption
+        testID="stom-photo-source-cancel"
+        label={t('seeThisOnMe.cancel')}
+        onPress={onClose}
+      />
+    </MBottomSheet>
   );
 };
 
@@ -250,46 +216,12 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaRed,
   },
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: theme.colors.figmaOverlayScrim,
-    justifyContent: 'flex-end',
-  },
-  sheetContent: {
-    backgroundColor: theme.colors.figmaSurface,
-    borderTopLeftRadius: theme.borderRadius.l,
-    borderTopRightRadius: theme.borderRadius.l,
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingTop: theme.spacing.l,
-    paddingBottom: theme.spacing.xl,
-  },
+  // Title row for the MBottomSheet photo-source picker (camera/gallery/cancel).
   sheetTitle: {
     ...theme.typography.aliases.interMediumSm,
     textAlign: 'center',
     color: theme.colors.figmaAction,
-    marginBottom: theme.spacing.m,
-  },
-  sheetAction: {
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetActionText: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaAction,
-  },
-  sheetDivider: {
-    height: 1,
-    backgroundColor: theme.colors.figmaDivider,
-  },
-  sheetCancel: {
-    marginTop: theme.spacing.s,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetCancelText: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaRed,
+    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingBottom: theme.spacing.s,
   },
 });
