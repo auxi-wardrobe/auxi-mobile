@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GROUP_ORDER, SHAREABLE_SCREENS } from '../share/shareable-screens';
 import { SCREEN_PARAM } from '../share/screen-intent';
 
@@ -39,7 +39,36 @@ const readParam = (key: string): string | null => {
   }
 };
 
+// On a real phone the device-frame simulation is pointless (the phone IS the
+// device) and a fixed-size iframe traps scrolling — so there we render the app
+// full-viewport so it scrolls naturally, and tuck the controls behind one
+// button to keep the small screen clear.
+const detectMobile = (): boolean => {
+  try {
+    return window.matchMedia('(max-width: 700px), (pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
+};
+
+const selectStyle: React.CSSProperties = {
+  padding: '8px 10px',
+  borderRadius: 8,
+  border: 'none',
+  fontSize: 14,
+  cursor: 'pointer',
+  maxWidth: 240,
+};
+const btnStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 8,
+  border: 'none',
+  cursor: 'pointer',
+  fontWeight: 600,
+};
+
 export const DeviceFrame: React.FC = () => {
+  const isMobile = useMemo(detectMobile, []);
   const [idx, setIdx] = useState<number>(() => {
     const fromUrl = Number(readParam(DEVICE_PARAM));
     if (Number.isInteger(fromUrl) && fromUrl >= 0 && fromUrl < DEVICES.length) {
@@ -57,6 +86,7 @@ export const DeviceFrame: React.FC = () => {
   );
   const [bleed, setBleed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
   const d = DEVICES[idx] || DEVICES[DEFAULT_INDEX];
 
   // The OUTER url is the shareable link — keep it in sync with the current
@@ -116,79 +146,48 @@ export const DeviceFrame: React.FC = () => {
     }
   };
 
-  return (
+  // Every control lives in one place, revealed by a single button. On mobile
+  // the device + bleed controls are irrelevant (the app is always full-screen),
+  // so only the Screen picker + Copy show.
+  const controls = (
     <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        background: '#1c1c1e',
-        padding: 16,
-        gap: 12,
-        minHeight: '100vh',
-        boxSizing: 'border-box',
-        overflow: 'auto',
-      }}
+      data-testid="review-controls"
+      style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
     >
-      <div
+      <select
+        data-testid="screen-select"
+        value={screenKey}
+        onChange={onScreen}
+        style={selectStyle}
+      >
+        <option value="">— Default (Home) —</option>
+        {GROUP_ORDER.map(g => (
+          <optgroup key={g} label={g}>
+            {SHAREABLE_SCREENS.filter(s => s.group === g).map(s => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      <button
+        data-testid="copy-link"
+        onClick={onCopy}
         style={{
-          display: 'flex',
-          gap: 10,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
+          ...btnStyle,
+          background: copied ? '#34c759' : '#fff',
+          color: copied ? '#fff' : '#000',
         }}
       >
-        <select
-          data-testid="screen-select"
-          value={screenKey}
-          onChange={onScreen}
-          style={{
-            padding: '7px 10px',
-            borderRadius: 8,
-            border: 'none',
-            fontSize: 14,
-            cursor: 'pointer',
-          }}
-        >
-          <option value="">— Default (Home) —</option>
-          {GROUP_ORDER.map(g => (
-            <optgroup key={g} label={g}>
-              {SHAREABLE_SCREENS.filter(s => s.group === g).map(s => (
-                <option key={s.key} value={s.key}>
-                  {s.label}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        <button
-          data-testid="copy-link"
-          onClick={onCopy}
-          style={{
-            padding: '7px 12px',
-            borderRadius: 8,
-            border: 'none',
-            cursor: 'pointer',
-            background: copied ? '#34c759' : '#fff',
-            color: copied ? '#fff' : '#000',
-            fontWeight: 600,
-          }}
-        >
-          {copied ? 'Copied!' : 'Copy link'}
-        </button>
+        {copied ? 'Copied!' : 'Copy link'}
+      </button>
+      {!isMobile && (
         <select
           data-testid="device-select"
           value={idx}
           onChange={onDevice}
-          style={{
-            padding: '7px 10px',
-            borderRadius: 8,
-            border: 'none',
-            fontSize: 14,
-            cursor: 'pointer',
-          }}
+          style={selectStyle}
         >
           {DEVICES.map((dev, i) => (
             <option key={i} value={i}>
@@ -196,19 +195,101 @@ export const DeviceFrame: React.FC = () => {
             </option>
           ))}
         </select>
+      )}
+      {!isMobile && (
         <button
           data-testid="frame-bleed-toggle"
           onClick={() => setBleed(b => !b)}
-          style={{
-            padding: '7px 12px',
-            borderRadius: 8,
-            border: 'none',
-            cursor: 'pointer',
-          }}
+          style={{ ...btnStyle, background: '#fff', color: '#000' }}
         >
-          {bleed ? 'Device' : 'Full bleed'}
+          {bleed ? 'Device frame' : 'Full bleed'}
         </button>
+      )}
+    </div>
+  );
+
+  const toggle = (
+    <button
+      data-testid="controls-toggle"
+      onClick={() => setOpen(o => !o)}
+      style={{
+        ...btnStyle,
+        position: 'fixed',
+        top: 'calc(10px + env(safe-area-inset-top))',
+        right: 10,
+        zIndex: 20,
+        background: open ? '#fff' : 'rgba(28,28,30,0.92)',
+        color: open ? '#000' : '#fff',
+        border: open ? 'none' : '1px solid rgba(255,255,255,0.3)',
+      }}
+    >
+      {open ? '✕ Close' : '⚙ Screens'}
+    </button>
+  );
+
+  const panel = open ? (
+    <div
+      style={{
+        position: 'fixed',
+        top: 'calc(56px + env(safe-area-inset-top))',
+        right: 10,
+        zIndex: 20,
+        background: '#1c1c1e',
+        padding: 12,
+        borderRadius: 12,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+        maxWidth: '82vw',
+      }}
+    >
+      {controls}
+    </div>
+  ) : null;
+
+  // Mobile: app fills the viewport so it scrolls; controls float above it.
+  if (isMobile) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#000',
+          overflow: 'hidden',
+        }}
+      >
+        <iframe
+          key={screenKey}
+          title="auxi web review"
+          src={iframeSrc()}
+          style={{
+            width: '100vw',
+            height: '100dvh',
+            border: 'none',
+            display: 'block',
+            background: '#fff',
+          }}
+        />
+        {toggle}
+        {panel}
       </div>
+    );
+  }
+
+  // Desktop: centered device frame, controls behind the same single button.
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#1c1c1e',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        boxSizing: 'border-box',
+        overflow: 'auto',
+      }}
+    >
+      {toggle}
+      {panel}
       <iframe
         key={`${idx}-${screenKey}-${bleed}`}
         title="auxi web review"
