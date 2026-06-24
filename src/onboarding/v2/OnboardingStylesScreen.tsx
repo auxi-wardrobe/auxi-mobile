@@ -216,8 +216,8 @@ const styles = StyleSheet.create({
   textBlock: {
     gap: theme.spacing.xs,
     alignItems: 'center',
-    paddingTop: theme.spacing.uacDimension12,
-    paddingBottom: theme.spacing.xl,
+    paddingTop: theme.spacing.l,
+    paddingBottom: theme.spacing.l,
   },
   title: {
     ...theme.typography.aliases.uacBodyMdSemibold,
