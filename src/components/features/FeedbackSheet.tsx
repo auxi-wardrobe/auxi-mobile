@@ -109,9 +109,7 @@ export const FeedbackSheet: React.FC<FeedbackSheetProps> = ({
           testID="feedback-sheet-root"
           style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}
         >
-          <View style={styles.handle} />
-
-          {/* Header — title left, close right. */}
+          {/* Header — title left, close button anchored top-right. */}
           <View style={styles.header}>
             <Text style={styles.title}>{t('feedback.title')}</Text>
             <TopIconButton
@@ -146,14 +144,6 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.s,
     paddingBottom: theme.spacing.l,
     ...theme.ds.shadow.sheet,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.figmaListDivider,
-    marginBottom: theme.spacing.s,
   },
   header: {
     flexDirection: 'row',
