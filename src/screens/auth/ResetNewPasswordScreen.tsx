@@ -48,6 +48,7 @@ import { useResetPasswordMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 import { theme } from '../../theme/theme';
+import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { PasswordCriteriaChecklist } from '../../components/auth/PasswordCriteriaChecklist';
 import { validatePassword } from '../../utils/password-rules';
 
@@ -272,7 +273,11 @@ export const ResetNewPasswordScreen: React.FC = () => {
                 pressed && canSubmit && styles.submitChevronPressed,
               ]}
             >
-              <Text style={styles.submitChevronIcon}>›</Text>
+              <IconChevronRight
+                width={24}
+                height={24}
+                color={theme.colors.figmaPrimaryButtonIcon}
+              />
             </Pressable>
           </View>
 
@@ -390,11 +395,6 @@ const styles = StyleSheet.create({
   },
   submitChevronPressed: {
     opacity: 0.85,
-  },
-  submitChevronIcon: {
-    fontSize: 26,
-    lineHeight: 28,
-    color: theme.colors.figmaPrimaryButtonIcon,
   },
   checklist: {
     width: 327,

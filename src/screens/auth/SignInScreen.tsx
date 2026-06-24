@@ -63,21 +63,7 @@ import {
 } from '../../services/authTypes';
 import type { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
-import Svg, { Path } from 'react-native-svg';
-
-// Themeable right-chevron for the primary icon (submit) button — the shared
-// icon_chevron_left.svg hardcodes a dark stroke and can't be recoloured.
-const ChevronRightGlyph = ({ color }: { color: string }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M9 6l6 6-6 6"
-      stroke={color}
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
+import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignIn'>;
 
@@ -274,7 +260,11 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
                 pressed && canSubmit && styles.submitButtonPressed,
               ]}
             >
-              <ChevronRightGlyph color={theme.colors.figmaPrimaryButtonIcon} />
+              <IconChevronRight
+                width={24}
+                height={24}
+                color={theme.colors.figmaPrimaryButtonIcon}
+              />
             </Pressable>
           </View>
 
