@@ -153,11 +153,12 @@ export const OutfitLimitSheet: React.FC<OutfitLimitSheetProps> = ({
 
 const styles = StyleSheet.create({
   // Dim tier — RN <Modal> host carries the scrim (see docs/Z_INDEX_LAYERING.md §1).
+  // Matches the refine sheet (ContextChipsModal) scrim for visual parity.
   overlay: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    backgroundColor: theme.colors.figmaOverlayScrim,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {
     // Modal tier — sheet sits above the dim/dismiss layer.
@@ -166,9 +167,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.s,
     borderRadius: 16,
     backgroundColor: theme.colors.figmaSurface,
-    paddingHorizontal: theme.spacing.l,
-    paddingTop: theme.spacing.l,
-    paddingBottom: theme.spacing.m,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     shadowColor: theme.ds.color.shadow,
     shadowOffset: { width: 0, height: 19 },
     shadowOpacity: 0.22,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   body: {
     ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.figmaTextSecondary,
-    marginTop: theme.spacing.s,
+    marginTop: theme.spacing.xs,
   },
   tipsIntro: {
     ...theme.typography.aliases.poppinsBodySm,
@@ -206,10 +206,13 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaTextSecondary,
     flex: 1,
   },
+  // Full-width primary CTA. Height / radius / fill / text match the refine
+  // sheet's confirm button (ContextChipsModal.confirmButton + confirmText).
   refineButton: {
     marginTop: theme.spacing.l,
     height: 56,
     borderRadius: 16,
+    paddingHorizontal: 32,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.figmaAction,
@@ -218,6 +221,8 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.archivoButton,
     color: theme.colors.white,
   },
+  // Secondary text button — mirrors the refine sheet's "Skip for now"
+  // (ContextChipsModal.skipText): archivoBody @ color/primary/600.
   keepBrowsingButton: {
     marginTop: theme.spacing.xs,
     height: 48,
@@ -225,7 +230,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   keepBrowsingText: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.figmaTextPrimary,
+    ...theme.typography.aliases.archivoBody,
+    color: theme.colors.figmaPrimary600,
   },
 });
