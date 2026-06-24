@@ -194,6 +194,93 @@ export const useToggleValue = (
   return v;
 };
 
+/**
+ * Springs a 0↔1 Animated.Value with `spring.confident` (the brand overshoot).
+ * Used for check-mark / radio-dot scale-in, chip select pop, calendar-day pick.
+ * `native` toggles useNativeDriver (true for transform-only, false if the value
+ * also drives layout/color). Honors reduce-motion (jumps to end state).
+ */
+export const useSpringToggle = (
+  on: boolean,
+  native: boolean = true,
+  spring = motion.spring.confident,
+) => {
+  const reduce = useReducedMotion();
+  const v = useRef(new Animated.Value(on ? 1 : 0)).current;
+  useEffect(() => {
+    if (reduce) {
+      v.setValue(on ? 1 : 0);
+      return;
+    }
+    Animated.spring(v, {
+      toValue: on ? 1 : 0,
+      stiffness: spring.stiffness,
+      damping: spring.damping,
+      mass: 1,
+      useNativeDriver: native,
+    }).start();
+  }, [on, v, reduce, native, spring.stiffness, spring.damping]);
+  return v;
+};
+
+/**
+ * A press-highlight driver: 0 at rest → 1 while pressed (timed in/out over
+ * `motion.duration.instant`/`fast`). Drive bg crossfade + a small translate.
+ * Returns the value + onPressIn/onPressOut handlers. Reduce-motion → stays 0.
+ */
+export const usePressHighlight = () => {
+  const reduce = useReducedMotion();
+  const v = useRef(new Animated.Value(0)).current;
+  const to = (toValue: number, duration: number) => {
+    if (reduce) {
+      v.setValue(0);
+      return;
+    }
+    Animated.timing(v, {
+      toValue,
+      duration,
+      easing: motion.easing.standard,
+      useNativeDriver: false,
+    }).start();
+  };
+  return {
+    v,
+    onPressIn: () => to(1, motion.duration.instant),
+    onPressOut: () => to(0, motion.duration.fast),
+  };
+};
+
+/**
+ * Entrance fade-up: each child mounts with opacity 0→1 + translateY 8→0,
+ * staggered by index × `motion.stagger.normal`. Spring on the transform for a
+ * subtle settle. Reduce-motion → renders at end state immediately.
+ */
+export const useEntrance = (index: number = 0, distance: number = 8) => {
+  const reduce = useReducedMotion();
+  const v = useRef(new Animated.Value(reduce ? 1 : 0)).current;
+  useEffect(() => {
+    if (reduce) {
+      v.setValue(1);
+      return;
+    }
+    Animated.sequence([
+      Animated.delay(index * motion.stagger.normal),
+      Animated.spring(v, {
+        toValue: 1,
+        stiffness: motion.spring.standard.stiffness,
+        damping: motion.spring.standard.damping,
+        mass: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [v, reduce, index]);
+  const translateY = v.interpolate({
+    inputRange: [0, 1],
+    outputRange: [distance, 0],
+  });
+  return { opacity: v, transform: [{ translateY }] };
+};
+
 const styles = StyleSheet.create({
   dots: { flexDirection: 'row', gap: 5, alignItems: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4 },

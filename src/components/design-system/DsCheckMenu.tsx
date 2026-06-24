@@ -3,35 +3,77 @@
  * with a selected highlight + mono trailing tag. Token-driven, stateful.
  */
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, MONO, radius, role, shadow, space, type } from './ds-tokens';
+import { useSpringToggle, useToggleValue } from './DsMotion';
+
+/** A check-menu row: bg highlight crossfade + spring check-mark on toggle. */
+const CheckRow: React.FC<{
+  label: string;
+  index: number;
+  on: boolean;
+  onPress: () => void;
+}> = ({ label, index, on, onPress }) => {
+  const fillV = useToggleValue(on, 130);
+  const checkV = useSpringToggle(on);
+  const rowBg = fillV.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(255,255,255,0)', color.n50],
+  });
+  const boxBg = fillV.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(29,31,35,0)', role.ink],
+  });
+  const boxBorder = fillV.interpolate({
+    inputRange: [0, 1],
+    outputRange: [color.n400, role.ink],
+  });
+  return (
+    <Pressable
+      onPress={onPress}
+      testID={`ds-checkmenu-${label.split(' ')[0].toLowerCase()}${
+        on ? '-on' : ''
+      }`}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: on }}
+    >
+      <Animated.View
+        style={[styles.row, index > 0 && styles.divider, { backgroundColor: rowBg }]}
+      >
+        <Animated.View
+          style={[styles.box, { backgroundColor: boxBg, borderColor: boxBorder }]}
+        >
+          <Animated.View
+            style={[
+              styles.check,
+              {
+                transform: [{ rotate: '-45deg' }, { scale: checkV }],
+                opacity: checkV,
+              },
+            ]}
+          />
+        </Animated.View>
+        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.tag}>{index === 0 ? 'all' : `0${index}`}</Text>
+      </Animated.View>
+    </Pressable>
+  );
+};
 
 export const DsCheckMenu: React.FC = () => {
   const opts = ['All categories', 'Tops', 'Bottoms', 'Shoes'];
   const [sel, setSel] = useState<Record<string, boolean>>({ Tops: true });
   return (
     <View style={[styles.menu, shadow.card]} testID="ds-checkmenu">
-      {opts.map((o, i) => {
-        const on = !!sel[o];
-        return (
-          <Pressable
-            key={o}
-            onPress={() => setSel(s => ({ ...s, [o]: !s[o] }))}
-            style={[styles.row, i > 0 && styles.divider, on && styles.selected]}
-            testID={`ds-checkmenu-${o.split(' ')[0].toLowerCase()}${
-              on ? '-on' : ''
-            }`}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: on }}
-          >
-            <View style={[styles.box, on && styles.boxOn]}>
-              {on && <View style={styles.check} />}
-            </View>
-            <Text style={styles.label}>{o}</Text>
-            <Text style={styles.tag}>{i === 0 ? 'all' : `0${i}`}</Text>
-          </Pressable>
-        );
-      })}
+      {opts.map((o, i) => (
+        <CheckRow
+          key={o}
+          label={o}
+          index={i}
+          on={!!sel[o]}
+          onPress={() => setSel(s => ({ ...s, [o]: !s[o] }))}
+        />
+      ))}
     </View>
   );
 };
@@ -51,7 +93,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.s4,
   },
   divider: { borderTopWidth: 1, borderTopColor: role.lineCream },
-  selected: { backgroundColor: color.n50 },
   label: { ...type.bodySm, color: role.ink, flex: 1 },
   tag: { fontFamily: MONO, fontSize: 10.5, color: role.ink3 },
   box: {
@@ -63,13 +104,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  boxOn: { backgroundColor: role.ink, borderColor: role.ink },
   check: {
     width: 9,
     height: 5,
     borderLeftWidth: 2,
     borderBottomWidth: 2,
     borderColor: color.white,
-    transform: [{ rotate: '-45deg' }, { translateY: -1 }],
+    marginTop: -1,
   },
 });

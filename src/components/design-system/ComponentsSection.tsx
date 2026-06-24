@@ -96,12 +96,14 @@ export const ComponentsSection: React.FC = () => (
         tag="item"
         pinnable
         fill={color.p200}
+        index={0}
       />
       <DsTile
         caption="Quiet Monday"
         sub="3 items · Balanced"
         tag="outfit"
         fill={color.n200}
+        index={1}
       />
     </Stage>
 

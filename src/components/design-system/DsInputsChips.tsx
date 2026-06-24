@@ -1,11 +1,14 @@
 /**
  * Design System — Inputs + Chips/Tags/Badges (NEW showcase).
- * Inputs: default · focus · error. Chips: suggestion · removable · filter.
- * Tag · badge (cream / tan / soft) · status (ok / warn / err / info).
+ * Inputs: default · focus · error. Filter chips: tap → bg crossfade + select pop
+ * (1→1.04→1 spring). Removable chips: tap → collapse (scale→0 + fade) then unmount
+ * (Reset restores). Tag · badge (cream / tan / soft) · status (ok/warn/err/info).
  */
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { motion, useReducedMotion } from '../../theme/motion';
 import { color, radius, role, space, type } from './ds-tokens';
+import { useToggleValue } from './DsMotion';
 
 /* ---------------- inputs ---------------- */
 const Field: React.FC<{
@@ -48,6 +51,96 @@ export const DsInputs: React.FC = () => (
 );
 
 /* ---------------- chips / tags / badges ---------------- */
+
+/** Filter chip: bg crossfade + a select "pop" (1 → 1.04 → 1) spring on toggle. */
+const FilterChip: React.FC<{ label: string; on: boolean; onPress: () => void }> = ({
+  label,
+  on,
+  onPress,
+}) => {
+  const reduce = useReducedMotion();
+  const fillV = useToggleValue(on, 120);
+  const pop = useRef(new Animated.Value(1)).current;
+  const bg = fillV.interpolate({
+    inputRange: [0, 1],
+    outputRange: [color.p200, color.p500],
+  });
+  const onToggle = () => {
+    onPress();
+    if (reduce) return;
+    Animated.sequence([
+      Animated.spring(pop, {
+        toValue: 1.04,
+        stiffness: motion.spring.confident.stiffness,
+        damping: 12,
+        mass: 1,
+        useNativeDriver: true,
+      }),
+      Animated.spring(pop, {
+        toValue: 1,
+        stiffness: motion.spring.confident.stiffness,
+        damping: motion.spring.confident.damping,
+        mass: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+  return (
+    <Pressable
+      onPress={onToggle}
+      testID={`ds-chip-${label.toLowerCase()}${on ? '-on' : ''}`}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+    >
+      <Animated.View
+        style={[styles.chip, { backgroundColor: bg, transform: [{ scale: pop }] }]}
+      >
+        <Text style={[styles.chipText, on && styles.chipTextOn]}>{label}</Text>
+      </Animated.View>
+    </Pressable>
+  );
+};
+
+/** Removable chip: on remove, collapses (scale → 0 + fade) then unmounts. */
+const RemovableChip: React.FC<{ label: string; onRemove: () => void }> = ({
+  label,
+  onRemove,
+}) => {
+  const reduce = useReducedMotion();
+  const v = useRef(new Animated.Value(1)).current;
+  const remove = () => {
+    if (reduce) {
+      onRemove();
+      return;
+    }
+    Animated.timing(v, {
+      toValue: 0,
+      duration: motion.duration.fast,
+      easing: motion.easing.exit,
+      useNativeDriver: true,
+    }).start(onRemove);
+  };
+  return (
+    <Pressable
+      onPress={remove}
+      testID={`ds-chip-removable-${label.toLowerCase()}`}
+      accessibilityRole="button"
+      accessibilityLabel={`Remove ${label}`}
+    >
+      <Animated.View
+        style={[
+          styles.chip,
+          styles.chipRemovable,
+          { opacity: v, transform: [{ scale: v }] },
+        ]}
+      >
+        <Text style={styles.chipText}>{label}</Text>
+        <Text style={styles.chipX}>×</Text>
+      </Animated.View>
+    </Pressable>
+  );
+};
+
 export const DsChips: React.FC = () => {
   const filters = ['All', 'Tops', 'Bottoms', 'Shoes'];
   const [active, setActive] = useState<Record<string, boolean>>({ All: true });
@@ -56,39 +149,36 @@ export const DsChips: React.FC = () => {
     <View style={styles.colWrap}>
       <Text style={styles.cap}>Filter chips · tap to toggle</Text>
       <View style={styles.chipRow}>
-        {filters.map(f => {
-          const on = !!active[f];
-          return (
-            <Pressable
-              key={f}
-              onPress={() => setActive(a => ({ ...a, [f]: !a[f] }))}
-              style={[styles.chip, on && styles.chipOn]}
-              testID={`ds-chip-${f.toLowerCase()}${on ? '-on' : ''}`}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-            >
-              <Text style={[styles.chipText, on && styles.chipTextOn]}>
-                {f}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {filters.map(f => (
+          <FilterChip
+            key={f}
+            label={f}
+            on={!!active[f]}
+            onPress={() => setActive(a => ({ ...a, [f]: !a[f] }))}
+          />
+        ))}
       </View>
 
-      <Text style={styles.cap}>Removable chips</Text>
+      <View style={styles.removableHead}>
+        <Text style={styles.cap}>Removable chips · tap to remove</Text>
+        {removable.length < 3 && (
+          <Pressable
+            onPress={() => setRemovable(['Calm', 'Effortless', 'Warm'])}
+            testID="ds-chip-removable-reset"
+            accessibilityRole="button"
+            accessibilityLabel="Reset removable chips"
+          >
+            <Text style={styles.resetLink}>Reset</Text>
+          </Pressable>
+        )}
+      </View>
       <View style={styles.chipRow}>
         {removable.map(r => (
-          <Pressable
+          <RemovableChip
             key={r}
-            style={[styles.chip, styles.chipRemovable]}
-            onPress={() => setRemovable(list => list.filter(x => x !== r))}
-            testID={`ds-chip-removable-${r.toLowerCase()}`}
-            accessibilityRole="button"
-            accessibilityLabel={`Remove ${r}`}
-          >
-            <Text style={styles.chipText}>{r}</Text>
-            <Text style={styles.chipX}>×</Text>
-          </Pressable>
+            label={r}
+            onRemove={() => setRemovable(list => list.filter(x => x !== r))}
+          />
         ))}
       </View>
 
@@ -191,8 +281,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
   },
-  chipOn: { backgroundColor: color.p500 },
   chipRemovable: { paddingLeft: 11 },
+  removableHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: space.s2,
+  },
+  resetLink: {
+    ...type.caption,
+    fontFamily: type.h3.fontFamily,
+    color: color.p600,
+  },
   chipText: {
     ...type.bodySm,
     fontFamily: type.h3.fontFamily,

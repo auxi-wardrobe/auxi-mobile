@@ -1,14 +1,14 @@
 /**
  * Design System — Cards/Tiles + Avatar + Top app bar (NEW showcase).
- * Tile: item / outfit, pin button (press → scale 1.06) + pin-status slide-in
- * (opacity + translateY -3→0). Avatar 88 / 44 (initials / fallback icon).
- * Top app bar with back + title + action.
+ * Tile: entrance fade-up stagger on mount + press scale .97; pin button (press →
+ * scale 1.06) + pin-status slide-in (opacity + translateY -3→0). Avatar 88 / 44.
+ * Top app bar: back + title + action, each icon presses (scale .88 + bg fade).
  */
 import React, { useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icons } from '../../assets/icons';
 import { color, MONO, radius, role, shadow, space, type } from './ds-tokens';
-import { useToggleValue } from './DsMotion';
+import { useEntrance, usePressHighlight, useToggleValue } from './DsMotion';
 
 const IconChevronLeft = Icons.ChevronLeft;
 const IconPlus = Icons.Plus;
@@ -21,42 +21,62 @@ export const DsTile: React.FC<{
   tag: string;
   pinnable?: boolean;
   fill: string;
-}> = ({ caption, sub, tag, pinnable, fill }) => {
+  /** entrance stagger index when a row of tiles mounts (default 0). */
+  index?: number;
+}> = ({ caption, sub, tag, pinnable, fill, index = 0 }) => {
   const [pinned, setPinned] = useState(false);
   const statusV = useToggleValue(pinned, 200);
+  const press = usePressHighlight();
+  const entrance = useEntrance(index);
   const opacity = statusV;
   const translateY = statusV.interpolate({
     inputRange: [0, 1],
     outputRange: [-3, 0],
   });
+  const pressScale = press.v.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.97],
+  });
 
   return (
-    <View
-      style={styles.tile}
-      testID={`ds-tile-${caption.toLowerCase().replace(/\s+/g, '-')}`}
-    >
-      <View style={[styles.tileImg, { backgroundColor: fill }]}>
-        {pinnable && (
-          <PinButton pinned={pinned} onPress={() => setPinned(p => !p)} />
-        )}
-        {pinnable && (
-          <Animated.View
-            style={[styles.pinStatus, { opacity, transform: [{ translateY }] }]}
-            testID="ds-tile-pin-status"
-          >
-            <View style={styles.pinStatusDot} />
-            <Text style={styles.pinStatusText}>Pinned</Text>
-          </Animated.View>
-        )}
-        <View style={styles.tileTag}>
-          <Text style={styles.tileTagText}>{tag}</Text>
-        </View>
-      </View>
-      <View style={styles.tileCap}>
-        <Text style={styles.tileCapText}>{caption}</Text>
-        <Text style={styles.tileSub}>{sub}</Text>
-      </View>
-    </View>
+    <Animated.View style={entrance}>
+      <Pressable
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        testID={`ds-tile-${caption.toLowerCase().replace(/\s+/g, '-')}`}
+        accessibilityRole="button"
+        accessibilityLabel={caption}
+      >
+        <Animated.View
+          style={[styles.tile, { transform: [{ scale: pressScale }] }]}
+        >
+          <View style={[styles.tileImg, { backgroundColor: fill }]}>
+            {pinnable && (
+              <PinButton pinned={pinned} onPress={() => setPinned(p => !p)} />
+            )}
+            {pinnable && (
+              <Animated.View
+                style={[
+                  styles.pinStatus,
+                  { opacity, transform: [{ translateY }] },
+                ]}
+                testID="ds-tile-pin-status"
+              >
+                <View style={styles.pinStatusDot} />
+                <Text style={styles.pinStatusText}>Pinned</Text>
+              </Animated.View>
+            )}
+            <View style={styles.tileTag}>
+              <Text style={styles.tileTagText}>{tag}</Text>
+            </View>
+          </View>
+          <View style={styles.tileCap}>
+            <Text style={styles.tileCapText}>{caption}</Text>
+            <Text style={styles.tileSub}>{sub}</Text>
+          </View>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
   );
 };
 
@@ -105,25 +125,50 @@ export const DsAvatars: React.FC = () => (
 );
 
 /* ---------------- top app bar ---------------- */
+const TopIcon: React.FC<{
+  Icon: React.FC<any>;
+  testID: string;
+  accessibilityLabel: string;
+}> = ({ Icon, testID, accessibilityLabel }) => {
+  const press = usePressHighlight();
+  const scale = press.v.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.88],
+  });
+  const bg = press.v.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(255,255,255,0)', color.n100],
+  });
+  return (
+    <Pressable
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Animated.View
+        style={[styles.topIcon, { backgroundColor: bg, transform: [{ scale }] }]}
+      >
+        <Icon width={22} height={22} color={role.ink} />
+      </Animated.View>
+    </Pressable>
+  );
+};
+
 export const DsTopBar: React.FC = () => (
   <View style={styles.topbar} testID="ds-topbar">
-    <Pressable
-      style={styles.topIcon}
+    <TopIcon
+      Icon={IconChevronLeft}
       testID="ds-topbar-back"
-      accessibilityRole="button"
       accessibilityLabel="Back"
-    >
-      <IconChevronLeft width={22} height={22} color={role.ink} />
-    </Pressable>
+    />
     <Text style={styles.topTitle}>Wardrobe</Text>
-    <Pressable
-      style={styles.topIcon}
+    <TopIcon
+      Icon={IconPlus}
       testID="ds-topbar-action"
-      accessibilityRole="button"
       accessibilityLabel="Add item"
-    >
-      <IconPlus width={22} height={22} color={role.ink} />
-    </Pressable>
+    />
   </View>
 );
 
@@ -233,6 +278,7 @@ const styles = StyleSheet.create({
   topIcon: {
     width: 40,
     height: 40,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },

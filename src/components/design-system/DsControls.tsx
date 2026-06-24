@@ -1,12 +1,13 @@
 /**
  * Design System — Selection controls (NEW showcase).
- * switch (animated knob slide) · checkbox · radio · checkmenu. Stateful + each
- * carries a testID. Motion: knob slides over motion.duration.fast (useToggleValue).
+ * switch (knob slide + track crossfade) · checkbox (box fill crossfade +
+ * spring check-mark) · radio (ring crossfade + spring dot) · checkmenu.
+ * Stateful + each carries a testID. Motion via useToggleValue / useSpringToggle.
  */
 import React, { useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, radius, role, space, type } from './ds-tokens';
-import { useToggleValue } from './DsMotion';
+import { useSpringToggle, useToggleValue } from './DsMotion';
 import { DsCheckMenu } from './DsCheckMenu';
 
 export { DsCheckMenu };
@@ -46,28 +47,38 @@ export const DsRadio: React.FC<{
   onPress: () => void;
   testID: string;
   disabled?: boolean;
-}> = ({ label, selected, onPress, testID, disabled }) => (
-  <Pressable
-    style={styles.row}
-    onPress={disabled ? undefined : onPress}
-    testID={testID}
-    disabled={disabled}
-    accessibilityRole="radio"
-    accessibilityState={{ selected, disabled }}
-    accessibilityLabel={label}
-  >
-    <View
-      style={[
-        styles.ring,
-        selected && styles.ringOn,
-        disabled && styles.disabledBorder,
-      ]}
+}> = ({ label, selected, onPress, testID, disabled }) => {
+  // ring color crossfades (layout-bound) + dot springs in (transform).
+  const ringV = useToggleValue(selected, 130);
+  const dotV = useSpringToggle(selected);
+  const borderColor = disabled
+    ? color.n300
+    : (ringV.interpolate({
+        inputRange: [0, 1],
+        outputRange: [color.n400, color.p700],
+      }) as unknown as string);
+  return (
+    <Pressable
+      style={styles.row}
+      onPress={disabled ? undefined : onPress}
+      testID={testID}
+      disabled={disabled}
+      accessibilityRole="radio"
+      accessibilityState={{ selected, disabled }}
+      accessibilityLabel={label}
     >
-      {selected && <View style={styles.dot} />}
-    </View>
-    <Text style={[styles.label, disabled && styles.muted]}>{label}</Text>
-  </Pressable>
-);
+      <Animated.View style={[styles.ring, { borderColor }]}>
+        <Animated.View
+          style={[
+            styles.dot,
+            { transform: [{ scale: dotV }], opacity: dotV },
+          ]}
+        />
+      </Animated.View>
+      <Text style={[styles.label, disabled && styles.muted]}>{label}</Text>
+    </Pressable>
+  );
+};
 
 /* ---------------- checkbox ---------------- */
 export const DsCheckbox: React.FC<{
@@ -75,21 +86,39 @@ export const DsCheckbox: React.FC<{
   checked: boolean;
   onPress: () => void;
   testID: string;
-}> = ({ label, checked, onPress, testID }) => (
-  <Pressable
-    style={styles.row}
-    onPress={onPress}
-    testID={checked ? `${testID}-checked` : testID}
-    accessibilityRole="checkbox"
-    accessibilityState={{ checked }}
-    accessibilityLabel={label}
-  >
-    <View style={[styles.box, checked && styles.boxOn]}>
-      {checked && <View style={styles.check} />}
-    </View>
-    <Text style={styles.label}>{label}</Text>
-  </Pressable>
-);
+}> = ({ label, checked, onPress, testID }) => {
+  // box fill crossfades; check-mark springs in (scale + fade).
+  const fillV = useToggleValue(checked, 130);
+  const checkV = useSpringToggle(checked);
+  const backgroundColor = fillV.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(29,31,35,0)', role.ink],
+  });
+  const borderColor = fillV.interpolate({
+    inputRange: [0, 1],
+    outputRange: [color.n400, role.ink],
+  });
+  return (
+    <Pressable
+      style={styles.row}
+      onPress={onPress}
+      testID={checked ? `${testID}-checked` : testID}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      accessibilityLabel={label}
+    >
+      <Animated.View style={[styles.box, { backgroundColor, borderColor }]}>
+        <Animated.View
+          style={[
+            styles.check,
+            { transform: [{ rotate: '-45deg' }, { scale: checkV }], opacity: checkV },
+          ]}
+        />
+      </Animated.View>
+      <Text style={styles.label}>{label}</Text>
+    </Pressable>
+  );
+};
 
 /* ---------------- group demos ---------------- */
 export const DsSelectionShowcase: React.FC = () => {
@@ -193,8 +222,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ringOn: { borderColor: color.p700 },
-  disabledBorder: { borderColor: color.n300 },
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: color.p700 },
   box: {
     width: 20,
@@ -205,13 +232,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  boxOn: { backgroundColor: role.ink, borderColor: role.ink },
   check: {
     width: 9,
     height: 5,
     borderLeftWidth: 2,
     borderBottomWidth: 2,
     borderColor: color.white,
-    transform: [{ rotate: '-45deg' }, { translateY: -1 }],
+    marginTop: -1,
   },
 });

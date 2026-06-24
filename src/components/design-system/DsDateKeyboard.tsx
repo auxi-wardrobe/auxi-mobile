@@ -1,9 +1,16 @@
 /**
  * Design System — Date picker (calendar + time picker) + Keyboard (NEW showcase).
+ * Calendar day: ink fill springs in on select. Time picker AM/PM: fill crossfade.
+ * Keyboard keys: press → scale .92 + bg highlight. All honor useReducedMotion().
  */
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, radius, role, shadow, space, type } from './ds-tokens';
+import {
+  usePressHighlight,
+  useSpringToggle,
+  useToggleValue,
+} from './DsMotion';
 
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 // A 5×7 month grid: leading blanks then 1..31.
@@ -61,30 +68,77 @@ export const DsCalendar: React.FC = () => {
       <View style={styles.calGrid}>
         {GRID.map((day, i) => {
           if (day === null) return <View key={i} style={styles.dayCell} />;
-          const isSel = day === sel;
-          const isToday = day === today;
           return (
-            <Pressable
+            <CalendarDay
               key={i}
+              day={day}
+              isSel={day === sel}
+              isToday={day === today}
               onPress={() => setSel(day)}
-              style={[
-                styles.dayCell,
-                styles.day,
-                isSel && styles.daySel,
-                isToday && !isSel && styles.dayToday,
-              ]}
-              testID={`ds-calendar-day-${day}${isSel ? '-selected' : ''}`}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isSel }}
-            >
-              <Text style={[styles.dayText, isSel && styles.daySelText]}>
-                {day}
-              </Text>
-            </Pressable>
+            />
           );
         })}
       </View>
     </View>
+  );
+};
+
+/** A calendar day: when selected, the ink fill springs in (scale + fade). */
+const CalendarDay: React.FC<{
+  day: number;
+  isSel: boolean;
+  isToday: boolean;
+  onPress: () => void;
+}> = ({ day, isSel, isToday, onPress }) => {
+  const fillV = useSpringToggle(isSel);
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.dayCell, styles.day, isToday && !isSel && styles.dayToday]}
+      testID={`ds-calendar-day-${day}${isSel ? '-selected' : ''}`}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isSel }}
+    >
+      <Animated.View
+        style={[
+          styles.daySelFill,
+          { opacity: fillV, transform: [{ scale: fillV }] },
+        ]}
+        pointerEvents="none"
+      />
+      <Text style={[styles.dayText, isSel && styles.daySelText]}>{day}</Text>
+    </Pressable>
+  );
+};
+
+/** An AM/PM pill with a fill crossfade on select. */
+const PeriodPill: React.FC<{
+  label: 'AM' | 'PM';
+  on: boolean;
+  onPress: () => void;
+}> = ({ label, on, onPress }) => {
+  const v = useToggleValue(on, 130);
+  const backgroundColor = v.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(29,31,35,0)', role.ink],
+  });
+  const borderColor = v.interpolate({
+    inputRange: [0, 1],
+    outputRange: [role.line, role.ink],
+  });
+  return (
+    <Pressable
+      onPress={onPress}
+      testID={`ds-time-period-${label.toLowerCase()}${on ? '-active' : ''}`}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+    >
+      <Animated.View style={[styles.period, { backgroundColor, borderColor }]}>
+        <Text style={[styles.periodText, on && styles.periodTextOn]}>
+          {label}
+        </Text>
+      </Animated.View>
+    </Pressable>
   );
 };
 
@@ -94,23 +148,14 @@ export const DsTimePicker: React.FC = () => {
     <View style={styles.timepick} testID="ds-time-picker">
       <Text style={styles.clock}>07 : 30</Text>
       <View style={styles.ampm}>
-        {(['AM', 'PM'] as const).map(p => {
-          const on = p === period;
-          return (
-            <Pressable
-              key={p}
-              onPress={() => setPeriod(p)}
-              style={[styles.period, on && styles.periodOn]}
-              testID={`ds-time-period-${p.toLowerCase()}${on ? '-active' : ''}`}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-            >
-              <Text style={[styles.periodText, on && styles.periodTextOn]}>
-                {p}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {(['AM', 'PM'] as const).map(p => (
+          <PeriodPill
+            key={p}
+            label={p}
+            on={p === period}
+            onPress={() => setPeriod(p)}
+          />
+        ))}
       </View>
     </View>
   );
@@ -122,27 +167,49 @@ const KEY_ROWS = [
   ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
 ];
 
+/** A key that springs down (scale .92) + briefly highlights while pressed. */
+const Key: React.FC<{ label: string; wrapStyle?: any; testID: string }> = ({
+  label,
+  wrapStyle,
+  testID,
+}) => {
+  const { v, onPressIn, onPressOut } = usePressHighlight();
+  const scale = v.interpolate({ inputRange: [0, 1], outputRange: [1, 0.92] });
+  const bg = v.interpolate({
+    inputRange: [0, 1],
+    outputRange: [color.white, color.n100],
+  });
+  return (
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      style={[styles.keyHit, wrapStyle]}
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Animated.View
+        style={[styles.key, { backgroundColor: bg, transform: [{ scale }] }]}
+      >
+        <Text style={styles.keyText}>{label}</Text>
+      </Animated.View>
+    </Pressable>
+  );
+};
+
 export const DsKeyboard: React.FC = () => (
   <View style={styles.kbd} testID="ds-keyboard">
     {KEY_ROWS.map((row, ri) => (
       <View key={ri} style={styles.kbdRow}>
         {row.map(k => (
-          <View key={k} style={styles.key}>
-            <Text style={styles.keyText}>{k}</Text>
-          </View>
+          <Key key={k} label={k} testID={`ds-key-${k.toLowerCase()}`} />
         ))}
       </View>
     ))}
     <View style={styles.kbdRow}>
-      <View style={[styles.key, styles.keyWide]}>
-        <Text style={styles.keyText}>123</Text>
-      </View>
-      <View style={[styles.key, styles.keySpace]}>
-        <Text style={styles.keyText}>space</Text>
-      </View>
-      <View style={[styles.key, styles.keyWide]}>
-        <Text style={styles.keyText}>return</Text>
-      </View>
+      <Key label="123" wrapStyle={styles.keyWide} testID="ds-key-123" />
+      <Key label="space" wrapStyle={styles.keySpace} testID="ds-key-space" />
+      <Key label="return" wrapStyle={styles.keyWide} testID="ds-key-return" />
     </View>
   </View>
 );
@@ -170,7 +237,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   day: { borderRadius: radius.full },
-  daySel: { backgroundColor: role.ink },
+  daySelFill: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: role.ink,
+    borderRadius: radius.full,
+  },
   dayToday: {
     borderWidth: 1,
     borderColor: color.n300,
@@ -188,7 +259,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: role.line,
   },
-  periodOn: { backgroundColor: role.ink, borderColor: role.ink },
   periodText: { ...type.bodySm, color: role.ink },
   periodTextOn: { color: color.p50 },
   kbd: {
@@ -201,16 +271,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   kbdRow: { flexDirection: 'row', justifyContent: 'center', gap: 4 },
+  keyHit: { flex: 1, maxWidth: 30 },
   key: {
-    flex: 1,
-    maxWidth: 30,
     height: 40,
     borderRadius: radius.sm,
-    backgroundColor: color.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  keyWide: { flex: 1.6, maxWidth: 56, backgroundColor: color.n400 },
+  keyWide: { flex: 1.6, maxWidth: 56 },
   keySpace: { flex: 5, maxWidth: 180 },
   keyText: { ...type.caption, color: role.ink, fontSize: 13 },
 });

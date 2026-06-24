@@ -1,12 +1,66 @@
 /**
  * Design System — List rows + Tabs/Segments (NEW showcase).
- * List: value · chevron · danger. Segmented control · underline tabs · dark tab
- * bar. The springy floating-pill footer lives in DsFloatingPill.tsx.
+ * List rows: press → bg fade + chevron nudge. Segmented control + underline tabs
+ * share a SLIDING spring indicator (translateX + width, spring.confident). Dark
+ * tab bar: active icon springs up. Springy floating-pill footer → DsFloatingPill.
  */
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  Animated,
+  LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useReducedMotion } from '../../theme/motion';
 import { Icons } from '../../assets/icons';
 import { color, radius, role, shadow, space, type } from './ds-tokens';
+import { usePressHighlight, useToggleValue } from './DsMotion';
+
+/**
+ * Shared sliding-indicator hook for segmented control + underline tabs: measures
+ * each segment's x/width, then springs an Animated x + width to the active one
+ * (spring.confident). Reduce-motion jumps. Returns the indicator anim values +
+ * an onLayout factory + a move(i) commit.
+ */
+const useSlidingIndicator = (active: number) => {
+  const reduce = useReducedMotion();
+  const x = useRef(new Animated.Value(0)).current;
+  const w = useRef(new Animated.Value(0)).current;
+  const xs = useRef<number[]>([]);
+  const widths = useRef<number[]>([]);
+
+  const settle = (i: number) => {
+    const tx = xs.current[i] ?? 0;
+    const tw = widths.current[i] ?? 0;
+    if (reduce) {
+      x.setValue(tx);
+      w.setValue(tw);
+      return;
+    }
+    const cfg = {
+      stiffness: 350,
+      damping: 28,
+      mass: 1,
+      useNativeDriver: false,
+    };
+    Animated.spring(x, { toValue: tx, ...cfg }).start();
+    Animated.spring(w, { toValue: tw, ...cfg }).start();
+  };
+
+  const onLayout = (i: number) => (e: LayoutChangeEvent) => {
+    const { x: lx, width } = e.nativeEvent.layout;
+    xs.current[i] = lx;
+    widths.current[i] = width;
+    if (i === active) {
+      x.setValue(lx);
+      w.setValue(width);
+    }
+  };
+
+  return { x, w, onLayout, settle };
+};
 
 const IconChevronRight = Icons.ChevronRight;
 const IconTrash = Icons.Trash;
@@ -30,34 +84,58 @@ const Row: React.FC<{
   value?: string;
   chevron?: boolean;
   danger?: boolean;
-}> = ({ label, value, chevron, danger }) => (
-  <View
-    style={styles.row}
-    testID={`ds-listrow-${label.toLowerCase().replace(/\s+/g, '-')}`}
-  >
-    <Text style={[styles.rowLabel, danger && styles.rowDanger]}>{label}</Text>
-    {!!value && <Text style={styles.rowValue}>{value}</Text>}
-    {danger ? (
-      <IconTrash width={20} height={20} color={color.da400} />
-    ) : chevron ? (
-      <IconChevronRight width={20} height={20} color={role.ink3} />
-    ) : null}
-  </View>
-);
+}> = ({ label, value, chevron, danger }) => {
+  // press → bg fade + chevron nudges right a few px.
+  const { v, onPressIn, onPressOut } = usePressHighlight();
+  const bg = v.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(255,255,255,0)', color.n50],
+  });
+  const nudge = v.interpolate({ inputRange: [0, 1], outputRange: [0, 4] });
+  return (
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      testID={`ds-listrow-${label.toLowerCase().replace(/\s+/g, '-')}`}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Animated.View style={[styles.row, { backgroundColor: bg }]}>
+        <Text style={[styles.rowLabel, danger && styles.rowDanger]}>
+          {label}
+        </Text>
+        {!!value && <Text style={styles.rowValue}>{value}</Text>}
+        {danger ? (
+          <IconTrash width={20} height={20} color={color.da400} />
+        ) : chevron ? (
+          <Animated.View style={{ transform: [{ translateX: nudge }] }}>
+            <IconChevronRight width={20} height={20} color={role.ink3} />
+          </Animated.View>
+        ) : null}
+      </Animated.View>
+    </Pressable>
+  );
+};
 
 /* ---------------- segmented ---------------- */
 export const DsSegmented: React.FC = () => {
   const opts = ['Grid', 'Collage'];
-  const [on, setOn] = useState(opts[0]);
+  const [idx, setIdx] = useState(0);
+  const { x, w, onLayout, settle } = useSlidingIndicator(idx);
   return (
     <View style={styles.seg}>
-      {opts.map(o => {
-        const sel = o === on;
+      <Animated.View style={[styles.segThumb, { left: x, width: w }]} />
+      {opts.map((o, i) => {
+        const sel = i === idx;
         return (
           <Pressable
             key={o}
-            onPress={() => setOn(o)}
-            style={[styles.segBtn, sel && styles.segBtnOn]}
+            onLayout={onLayout(i)}
+            onPress={() => {
+              setIdx(i);
+              settle(i);
+            }}
+            style={styles.segBtn}
             testID={`ds-segmented-${o.toLowerCase()}${sel ? '-active' : ''}`}
             accessibilityRole="tab"
             accessibilityState={{ selected: sel }}
@@ -73,22 +151,27 @@ export const DsSegmented: React.FC = () => {
 /* ---------------- underline tabs ---------------- */
 export const DsTabs: React.FC = () => {
   const tabs = ['Outfits', 'Saved', 'History'];
-  const [on, setOn] = useState(tabs[0]);
+  const [idx, setIdx] = useState(0);
+  const { x, w, onLayout, settle } = useSlidingIndicator(idx);
   return (
     <View style={styles.tabs}>
-      {tabs.map(tb => {
-        const sel = tb === on;
+      <Animated.View style={[styles.tabUnderline, { left: x, width: w }]} />
+      {tabs.map((tb, i) => {
+        const sel = i === idx;
         return (
           <Pressable
             key={tb}
-            onPress={() => setOn(tb)}
+            onLayout={onLayout(i)}
+            onPress={() => {
+              setIdx(i);
+              settle(i);
+            }}
             style={styles.tab}
             testID={`ds-tab-${tb.toLowerCase()}${sel ? '-active' : ''}`}
             accessibilityRole="tab"
             accessibilityState={{ selected: sel }}
           >
             <Text style={[styles.tabText, sel && styles.tabTextOn]}>{tb}</Text>
-            {sel && <View style={styles.tabUnderline} />}
           </Pressable>
         );
       })}
@@ -97,6 +180,34 @@ export const DsTabs: React.FC = () => {
 };
 
 /* ---------------- dark tab bar ---------------- */
+const TabBarItem: React.FC<{
+  itemKey: string;
+  Icon: React.FC<any>;
+  sel: boolean;
+  onPress: () => void;
+}> = ({ itemKey, Icon, sel, onPress }) => {
+  // active icon springs up (scale 1 → 1.12) when selected.
+  const pop = useToggleValue(sel, 200);
+  const iconScale = pop.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.12],
+  });
+  return (
+    <Pressable
+      onPress={onPress}
+      style={styles.tbItem}
+      testID={`ds-tabbar-${itemKey}${sel ? '-active' : ''}`}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: sel }}
+    >
+      <Animated.View style={{ transform: [{ scale: iconScale }] }}>
+        <Icon width={24} height={24} color={sel ? color.p50 : color.n400} />
+      </Animated.View>
+      <Text style={[styles.tbLabel, sel && styles.tbLabelOn]}>{itemKey}</Text>
+    </Pressable>
+  );
+};
+
 export const DsTabBar: React.FC = () => {
   const items: Array<{ key: string; Icon: React.FC<any> }> = [
     { key: 'home', Icon: IconGrid },
@@ -107,22 +218,15 @@ export const DsTabBar: React.FC = () => {
   const [on, setOn] = useState('home');
   return (
     <View style={styles.tabbar}>
-      {items.map(({ key, Icon }) => {
-        const sel = key === on;
-        return (
-          <Pressable
-            key={key}
-            onPress={() => setOn(key)}
-            style={styles.tbItem}
-            testID={`ds-tabbar-${key}${sel ? '-active' : ''}`}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: sel }}
-          >
-            <Icon width={24} height={24} color={sel ? color.p50 : color.n400} />
-            <Text style={[styles.tbLabel, sel && styles.tbLabelOn]}>{key}</Text>
-          </Pressable>
-        );
-      })}
+      {items.map(({ key, Icon }) => (
+        <TabBarItem
+          key={key}
+          itemKey={key}
+          Icon={Icon}
+          sel={key === on}
+          onPress={() => setOn(key)}
+        />
+      ))}
     </View>
   );
 };
@@ -153,14 +257,20 @@ const styles = StyleSheet.create({
     backgroundColor: color.n100,
     borderRadius: radius.full,
     padding: 4,
-    gap: 2,
+  },
+  segThumb: {
+    position: 'absolute',
+    top: 4,
+    bottom: 4,
+    backgroundColor: color.white,
+    borderRadius: radius.full,
+    ...shadow.card,
   },
   segBtn: {
     paddingVertical: 9,
     paddingHorizontal: 20,
     borderRadius: radius.full,
   },
-  segBtnOn: { backgroundColor: color.white, ...shadow.card },
   segText: { ...type.bodySm, color: role.ink3 },
   segTextOn: { color: role.ink, fontFamily: type.h3.fontFamily },
   tabs: {
@@ -174,8 +284,6 @@ const styles = StyleSheet.create({
   tabTextOn: { color: role.ink, fontFamily: type.h3.fontFamily },
   tabUnderline: {
     position: 'absolute',
-    left: 0,
-    right: 0,
     bottom: -1,
     height: 2.5,
     borderRadius: 3,
