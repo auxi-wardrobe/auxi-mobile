@@ -27,6 +27,7 @@ import {
   MChip,
   MDialog,
   MDivider,
+  MFloatingPill,
   MIconButton,
   MInput,
   MListRow,
@@ -132,6 +133,7 @@ export const ComponentsSection: React.FC = () => {
   const [segment, setSegment] = useState('Grid');
   const [tab, setTab] = useState('Outfits');
   const [tabBar, setTabBar] = useState('home');
+  const [footerTab, setFooterTab] = useState('Today');
   // cards
   const [pinnedA, setPinnedA] = useState(false);
   // pickers
@@ -501,8 +503,8 @@ export const ComponentsSection: React.FC = () => {
         />
       </Stage>
 
-      {/* 10 — Navigation (top app bar) */}
-      <SubHead label="Navigation" tag="top app bar" />
+      {/* 10 — Navigation (top app bar · floating pill) */}
+      <SubHead label="Navigation" tag="top app bar · floating pill" />
       <Stage variant="plain">
         <MTopAppBar
           title="Wardrobe"
@@ -510,6 +512,15 @@ export const ComponentsSection: React.FC = () => {
           onAction={() => {}}
           actionLabel="Add item"
           testID="ds-topbar"
+        />
+      </Stage>
+      <Caption>Footer app bar — floating pill</Caption>
+      <Stage>
+        <MFloatingPill
+          tabs={['Today', 'Browse', 'You']}
+          value={footerTab}
+          onChange={setFooterTab}
+          testID="ds-floating-pill"
         />
       </Stage>
 

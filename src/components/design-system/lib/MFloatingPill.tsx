@@ -8,17 +8,10 @@
  * cubic-bezier(.34,1.32,.5,1)). Tokens + motion encapsulated INSIDE. Honors
  * reduce-motion (jumps to target).
  */
-import React, { useRef } from 'react';
-import {
-  Animated,
-  LayoutChangeEvent,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { useReducedMotion } from '../../../theme/motion';
+import React from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, radius, role, shadow, type } from '../m-tokens';
+import { useSlidingIndicator } from './useSlidingIndicator';
 
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
@@ -35,41 +28,14 @@ export const MFloatingPill: React.FC<MFloatingPillProps> = ({
   onChange,
   testID,
 }) => {
-  const reduce = useReducedMotion();
   const idx = Math.max(0, tabs.indexOf(value));
-  const x = useRef(new Animated.Value(0)).current;
-  const w = useRef(new Animated.Value(0)).current;
-  const widths = useRef<number[]>([]);
-  const xs = useRef<number[]>([]);
-
-  const onLayout = (i: number) => (e: LayoutChangeEvent) => {
-    const { x: lx, width } = e.nativeEvent.layout;
-    xs.current[i] = lx;
-    widths.current[i] = width;
-    if (i === idx) {
-      x.setValue(lx);
-      w.setValue(width);
-    }
-  };
+  // Signature overshoot motion lives in the shared lib hook (bounce variant) —
+  // same motion drives the themed Home footer cell. See useSlidingIndicator.
+  const { x, w, onLayout, settle } = useSlidingIndicator(idx, { bounce: true });
 
   const move = (i: number, tab: string) => {
     onChange(tab);
-    const targetX = xs.current[i] ?? 0;
-    const targetW = widths.current[i] ?? 0;
-    if (reduce) {
-      x.setValue(targetX);
-      w.setValue(targetW);
-      return;
-    }
-    // Overshoot spring ≈ cubic-bezier(.34,1.32,.5,1): low damping → bounce.
-    const cfg = {
-      stiffness: 320,
-      damping: 16,
-      mass: 1,
-      useNativeDriver: false,
-    };
-    Animated.spring(x, { toValue: targetX, ...cfg }).start();
-    Animated.spring(w, { toValue: targetW, ...cfg }).start();
+    settle(i);
   };
 
   return (

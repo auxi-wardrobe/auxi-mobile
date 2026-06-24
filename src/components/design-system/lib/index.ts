@@ -10,8 +10,9 @@
  * states, and a11y INTERNALLY. Consumers never import tokens, motion, or styles.
  * Every interactive primitive takes pass-through `testID` + `accessibilityLabel`.
  *
- * Internal-only modules (NOT re-exported): m-tokens, MMotion, useSlidingIndicator,
- * useOverlayProgress — these are lib implementation details.
+ * Internal-only modules (NOT re-exported): m-tokens, MMotion, useOverlayProgress
+ * — these are lib implementation details. `useSlidingIndicator` IS exported (see
+ * Motion below) so feature footers reuse the sliding-cell motion, not re-roll it.
  */
 
 // Actions
@@ -109,3 +110,10 @@ export {
   type MCalendarProps,
   type MTimePickerProps,
 } from './MCalendar';
+
+// Motion (shared sliding-indicator hook — drive a themed feature cell with the
+// floating-pill / segmented motion instead of hand-rolling a spring)
+export {
+  useSlidingIndicator,
+  type SlidingIndicatorOptions,
+} from './useSlidingIndicator';

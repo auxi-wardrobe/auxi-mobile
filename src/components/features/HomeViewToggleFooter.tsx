@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
+import { useSlidingIndicator } from '../design-system/lib';
 import IconGrid from '../../assets/images/icon_grid.svg';
 import IconGridAlt from '../../assets/images/icon_grid_alt.svg';
 
@@ -45,6 +46,19 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
   testID,
 }) => {
   const { t } = useTranslation();
+  const activeIdx = activeView === 'collage' ? 1 : 0;
+  // The white active cell slides between tab slots with the floating-pill
+  // OVERSHOOT motion — reused from the design-system lib (useSlidingIndicator,
+  // bounce variant) so the spring isn't re-rolled per screen. The cell stays
+  // themed here (Figma cream/white); only the motion is shared. onLayout
+  // measures each tab, settle() springs the cell on tap, reduce-motion jumps.
+  const { x, w, onLayout, settle } = useSlidingIndicator(activeIdx, {
+    bounce: true,
+  });
+  const select = (i: number, view: HomeView) => {
+    onSelectView?.(view);
+    settle(i);
+  };
   return (
     <View testID={testID} style={styles.bar}>
       {/* Decorative layers MUST NOT capture touches — without pointerEvents
@@ -63,6 +77,13 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
           (below) moves to the active tab. */}
       <View style={styles.activeCapsule} pointerEvents="none" />
       <View style={styles.tabCluster}>
+        {/* White active cell (Figma 2464:17303) — one instance that SLIDES
+            between slots (floating-pill motion) instead of showing/hiding per
+            tab. Decorative, behind the icons → must not capture touches. */}
+        <Animated.View
+          style={[styles.activeCell, { left: x, width: w }]}
+          pointerEvents="none"
+        />
         <TouchableOpacity
           testID={
             activeView === 'grid'
@@ -73,11 +94,10 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
           accessibilityLabel={t('outfitActions.a11y_grid_view')}
           accessibilityState={{ selected: activeView === 'grid' }}
           activeOpacity={0.82}
-          onPress={() => onSelectView?.('grid')}
+          onPress={() => select(0, 'grid')}
+          onLayout={onLayout(0)}
           style={styles.tab}
         >
-          {/* White active cell (Figma 2464:17303) over the selected tab. */}
-          {activeView === 'grid' && <View style={styles.activeCell} />}
           {/* Active tab icon = ink (#070707); inactive icon dims to the muted
               tan token (icon/primary/subtle_300, #c6bcb1) per Figma 3914:24540. */}
           <IconGrid
@@ -100,10 +120,10 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
           accessibilityLabel={t('outfitActions.a11y_collage_view')}
           accessibilityState={{ selected: activeView === 'collage' }}
           activeOpacity={0.82}
-          onPress={() => onSelectView?.('collage')}
+          onPress={() => select(1, 'collage')}
+          onLayout={onLayout(1)}
           style={styles.tab}
         >
-          {activeView === 'collage' && <View style={styles.activeCell} />}
           {/* Active tab icon = ink (#070707); inactive icon dims to the muted
               tan token (icon/primary/subtle_300, #c6bcb1) per Figma 3914:24540. */}
           <IconGridAlt
@@ -173,9 +193,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   // White inner cell over the active tab — Figma 2464:17303 (48×48, radius 11),
-  // with the nav-button drop shadow (0 1 1 rgba(0,0,0,0.15)).
+  // with the nav-button drop shadow (0 1 1 rgba(0,0,0,0.15)). A single thumb
+  // whose left + width are driven by the shared useSlidingIndicator hook (it
+  // measures each tab via onLayout); top:4 vertically centers it in the
+  // 56-tall cluster (48 tab height).
   activeCell: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 4,
+    height: 48,
     borderRadius: 16,
     backgroundColor: theme.colors.figmaSurface,
     shadowColor: 'rgba(0, 0, 0, 0.15)',
