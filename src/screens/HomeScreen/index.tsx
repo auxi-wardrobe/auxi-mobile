@@ -1103,7 +1103,10 @@ export const HomeScreen = () => {
         id: it.id,
         imageUrl: resolveItemImage(it) || it.image_url,
       }));
-    navigation.navigate('OutfitCanvas', items.length ? { items } : undefined);
+    navigation.navigate(
+      'OutfitCanvas',
+      items.length ? { items, entry: 'remix' } : { entry: 'remix' },
+    );
   }, [navigation, pinState.outfit]);
 
   const handleOpenItemDetail = useCallback(
