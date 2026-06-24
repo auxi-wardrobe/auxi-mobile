@@ -259,16 +259,6 @@ export const styles = StyleSheet.create({
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextDark,
   },
-  // Shimmer slot adopts the loaded tile geometry (3:4, height-driven, centred)
-  // so it occupies the exact footprint the real `card` will, leaving no gap on
-  // load complete.
-  loadingSlotCard: {
-    flex: 0,
-    height: '100%',
-    maxWidth: '100%',
-    alignSelf: 'center',
-    aspectRatio: CARD_ASPECT,
-  },
   // Real footer chrome previewed during loading, dimmed (Figma skeleton-first).
   loadingDim: {
     opacity: motion.opacity.subtle,

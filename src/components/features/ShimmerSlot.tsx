@@ -119,8 +119,13 @@ export const ShimmerSlot: React.FC<ShimmerSlotProps> = ({
 
 const styles = StyleSheet.create({
   slot: {
+    // Fill the grid cell via flex (NOT a percentage height) so the gradient
+    // always has a real box to paint — `height: '100%'` collapses to 0 inside a
+    // flex-stretched cell on react-native-web (the web preview), which left the
+    // grid looking empty. `alignSelf: 'stretch'` fills the cross axis (width).
     flex: 1,
-    height: '100%',
+    alignSelf: 'stretch',
+    backgroundColor: theme.colors.figmaCardSurface, // gradient base + web fallback
     borderRadius: theme.borderRadius.figmaTile, // 12 — Figma border-radius/xl
     overflow: 'hidden',
   },
