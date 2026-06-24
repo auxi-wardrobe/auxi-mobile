@@ -130,7 +130,7 @@ export const SidebarMenu: React.FC = () => {
             button. Account actions live under Settings (the row above). */}
         <MenuItem
           label={t('sidebar.outfit_canvas')}
-          Icon={Icons.Setting}
+          Icon={Icons.OutfitCanvas}
           testID="sidebar-menu-outfit-canvas"
           isActive={routeName === 'OutfitCanvas'}
           onPress={() => go('OutfitCanvas', close)}
