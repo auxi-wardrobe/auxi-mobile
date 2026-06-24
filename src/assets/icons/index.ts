@@ -10,6 +10,7 @@ import IconArchive from '../images/icon_archive.svg';
 import IconTrash from '../images/icon_trash.svg';
 import IconLogout from '../images/icon_logout.svg';
 import IconClose from '../images/icon_close.svg';
+import IconCloseThin from '../images/icon_close_thin.svg';
 import IconGetDressed from '../images/icon_get_dressed.svg';
 import IconFeedback from '../images/feedback.svg';
 import IconSend from '../images/send_icon.svg';
@@ -55,6 +56,7 @@ export const Icons = {
   Trash: IconTrash,
   Logout: IconLogout,
   Close: IconClose,
+  CloseThin: IconCloseThin,
   GetDressed: IconGetDressed,
   Feedback: IconFeedback,
   Send: IconSend,
@@ -101,6 +103,7 @@ export {
   IconTrash,
   IconLogout,
   IconClose,
+  IconCloseThin,
   IconGetDressed,
   IconFeedback,
   IconSend,

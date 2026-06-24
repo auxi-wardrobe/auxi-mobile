@@ -673,6 +673,11 @@
       "report": "Báo cáo",
       "report_subject": "Báo cáo nội dung do AI tạo",
       "report_body": "Tôi muốn báo cáo một vấn đề với kết quả do AI tạo trong ứng dụng. Vui lòng mô tả điều gì đã xảy ra:"
+    },
+    "welcome": {
+      "title": "Chào mừng đến với Macgie",
+      "body": "Những bộ trang phục đầu tiên này đến từ tủ đồ khởi đầu của chúng tôi.\nThêm quần áo của riêng bạn để nhận gợi ý phù hợp với những gì bạn thực sự sở hữu.",
+      "cta": "Đã hiểu"
     }
   }
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
-import IconClose from '../../assets/images/icon_close.svg';
+import IconCloseThin from '../../assets/images/icon_close_thin.svg';
 
 /**
  * Black "info" snackbar (Figma node 3910:22127) — for dismissible toasts that
@@ -58,7 +58,7 @@ export const InfoSnackbar: React.FC<InfoSnackbarProps> = ({
       onPress={onClose}
       style={styles.closeButton}
     >
-      <IconClose width={24} height={24} color={theme.colors.white} />
+      <IconCloseThin width={24} height={24} color={theme.colors.white} />
     </TouchableOpacity>
   </View>
   );

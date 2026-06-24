@@ -26,11 +26,9 @@ import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
 import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
-import {
-  LEGACY_COACHMARK_STORAGE_KEY,
-  SwipeCoachMark,
-} from '../../components/features/SwipeCoachMark';
+import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
+import { FeedbackSheet } from '../../components/features/FeedbackSheet';
 import { useMoodFeedback } from '../../hooks/use-mood-feedback';
 import {
   PillButton,
@@ -74,7 +72,6 @@ import {
   repTempCFor,
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
-import { useAiReport } from '../../components/features/AiContentDisclosure';
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import {
@@ -193,7 +190,7 @@ export const HomeScreen = () => {
   const [hasCycled, setHasCycled] = useState(false);
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
   const [aiNoticeDismissed, setAiNoticeDismissed] = useState(false);
-  const handleReportAi = useAiReport('recommendation');
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
   // Persist the AI notice dismissal so the toast appears only the first time;
   // the floating feedback button remains as the ongoing affordance.
   useEffect(() => {
@@ -257,11 +254,6 @@ export const HomeScreen = () => {
   useEffect(() => {
     activeIndexRef.current = activeIndex;
   }, [activeIndex]);
-
-  useEffect(() => {
-    AsyncStorage.removeItem(LEGACY_COACHMARK_STORAGE_KEY).catch(() => {});
-    AsyncStorage.removeItem('@auxi/coachmark/swipe-set').catch(() => {});
-  }, []);
 
   useEffect(() => {
     saveStateByHashRef.current = saveStateByHash;
@@ -1404,15 +1396,16 @@ export const HomeScreen = () => {
         </View>
       ) : null}
 
-      {/* AI feedback affordance — 44px floating button, bottom-left of the
-          footer, Home only. Opens the same prefilled AI report. */}
+      {/* Feedback affordance — 44px floating button, bottom-left of the
+          footer, Home only. Opens the in-app Feedback bottom sheet. AI-result
+          feedback now lives on the try-on result (see OutfitPreview). */}
       {optionSets.length > 0 ? (
         <TouchableOpacity
-          testID="home-ai-feedback-fab"
+          testID="home-feedback-fab"
           accessibilityRole="button"
-          accessibilityLabel={t('aiDisclosure.report')}
+          accessibilityLabel={t('feedback.title')}
           activeOpacity={0.85}
-          onPress={handleReportAi}
+          onPress={() => setFeedbackVisible(true)}
           style={styles.aiFeedbackFab}
         >
           <IconFeedback
@@ -1460,7 +1453,7 @@ export const HomeScreen = () => {
         onCancel={() => pinDispatch({ type: 'CANCEL_MODAL' })}
       />
 
-      <SwipeCoachMark variant="horizontal" enabled={optionSets.length > 0} />
+      <WelcomeDialog enabled={optionSets.length > 0} />
 
       <MoodFeedbackSheet {...moodSheetProps} />
 
@@ -1473,6 +1466,11 @@ export const HomeScreen = () => {
         onApply={applyTemperature}
         onSelect={handleTempSelect}
         onCancel={closeTempSheet}
+      />
+
+      <FeedbackSheet
+        visible={feedbackVisible}
+        onClose={() => setFeedbackVisible(false)}
       />
 
       {moodBannerText ? (

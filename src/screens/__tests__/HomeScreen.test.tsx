@@ -71,9 +71,8 @@ jest.mock('../../components/layout/Sidebar', () => ({
 jest.mock('../../components/features/ContextChipsModal', () => ({
   ContextChipsModal: () => null,
 }));
-jest.mock('../../components/features/SwipeCoachMark', () => ({
-  SwipeCoachMark: () => null,
-  LEGACY_COACHMARK_STORAGE_KEY: 'coachmark-swipe-home',
+jest.mock('../../components/features/WelcomeDialog', () => ({
+  WelcomeDialog: () => null,
 }));
 jest.mock('../../components/features/CollageSheetCanvas', () => ({
   CollageSheetCanvas: () => null,
