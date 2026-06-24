@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     bottom: 7,
     minWidth: 59,
     paddingHorizontal: theme.spacing.uacDimension12,
-    height: 15,
+    height: 24, // chip size SM
     borderRadius: theme.borderRadius.m,
     backgroundColor: theme.colors.figmaCardTag,
     alignItems: 'center',

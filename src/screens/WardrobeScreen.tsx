@@ -785,8 +785,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
+    height: 24, // chip size SM
     paddingHorizontal: theme.spacing.uacDimension8,
-    paddingVertical: 3,
     borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaAction,
     justifyContent: 'center',
@@ -797,8 +797,8 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
   },
   tileBadge: {
+    height: 24, // chip size SM
     paddingHorizontal: 12,
-    paddingVertical: 3,
     borderRadius: 9999,
     // F5: reuse the existing token instead of re-inlining the rgba duplicate
     // (figmaCardTag === rgba(18,18,18,0.75), theme.ts:23). DRY.

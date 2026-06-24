@@ -1192,7 +1192,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 19,
     alignSelf: 'center',
-    minHeight: 19,
+    minHeight: 24, // chip size SM
     borderRadius: theme.borderRadius.m,
     backgroundColor: theme.colors.figmaCardTag,
     paddingHorizontal: theme.spacing.uacDimension12,
