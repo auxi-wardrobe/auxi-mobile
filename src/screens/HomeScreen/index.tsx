@@ -38,6 +38,8 @@ import {
 } from '../../components/primitives/FigmaPrimitives';
 import IconHomeMenu from '../../assets/images/icon_home_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
+import IconFeedback from '../../assets/images/feedback.svg';
+import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -92,9 +94,10 @@ import { PinnedItemUnavailableNotice } from '../../components/features/PinnedIte
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   MOOD_BANNER_DURATION_MS,
+  AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
+  REFINE_AFTER_OUTFITS,
   TARGET_AHEAD,
-  UNFAVORITED_SWIPE_THRESHOLD,
 } from './constants';
 import {
   BuildViaV05Input,
@@ -115,6 +118,7 @@ import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { HomeLoadingState } from './components/HomeLoadingState';
 import { OptionSheet } from './components/OptionSheet';
+import { OutfitActionRow } from '../../components/features/OutfitActionRow';
 
 const clearTimeoutRef = (
   timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
@@ -141,6 +145,17 @@ export const HomeScreen = () => {
 
   const [listOutfits, setListOutfits] = useState<OutfitSheet[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  // Progressive refinement (Outfit Discovery & Refinement spec). Distinct
+  // outfit hashes viewed within the current tier — once this hits
+  // REFINE_AFTER_OUTFITS, auto-generation pauses and the Refine sheet opens.
+  // The Set dedups re-lands on the same outfit; reset on submit/skip.
+  const tierViewedHashesRef = useRef<Set<string>>(new Set());
+  const [tierViewedCount, setTierViewedCount] = useState(0);
+  // Session counter — how many times the user deferred the refine gate.
+  const refinementSkippedRef = useRef(0);
+  // True while the open Refine sheet was triggered by the after-6 gate (vs the
+  // manual "edit context" button) — drives the Skip affordance + copy.
+  const [refineGated, setRefineGated] = useState(false);
   const [saveStateByHash, setSaveStateByHash] = useState<
     Record<string, SaveState>
   >({});
@@ -179,6 +194,21 @@ export const HomeScreen = () => {
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
   const [aiNoticeDismissed, setAiNoticeDismissed] = useState(false);
   const handleReportAi = useAiReport('recommendation');
+  // Persist the AI notice dismissal so the toast appears only the first time;
+  // the floating feedback button remains as the ongoing affordance.
+  useEffect(() => {
+    AsyncStorage.getItem(AI_NOTICE_DISMISSED_KEY)
+      .then(v => {
+        if (v === 'true') {
+          setAiNoticeDismissed(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+  const dismissAiNotice = useCallback(() => {
+    setAiNoticeDismissed(true);
+    AsyncStorage.setItem(AI_NOTICE_DISMISSED_KEY, 'true').catch(() => {});
+  }, []);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   const unfavoritedSwipeCountRef = useRef(0);
   const listOutfitsRef = useRef<OutfitSheet[]>([]);
@@ -422,11 +452,20 @@ export const HomeScreen = () => {
     });
   }, [requestRecommendation]);
 
+  // Reset the progressive-refinement tier (run synchronously on submit/skip so
+  // the gate effect can't re-fire in the window before the new batch resolves).
+  const resetRefineTier = useCallback(() => {
+    tierViewedHashesRef.current.clear();
+    setTierViewedCount(0);
+    setRefineGated(false);
+  }, []);
+
   const onSubmitFeedback = useCallback(
     (payload: string) => {
       setStyleFeedback(payload);
       styleFeedbackRef.current = payload;
       unfavoritedSwipeCountRef.current = 0;
+      resetRefineTier();
       recommendationSourceRef.current = 'refine';
       resetV05Session();
       fetchGenerationRef.current += 1;
@@ -441,10 +480,33 @@ export const HomeScreen = () => {
         { force: true },
       );
     },
-    [requestRecommendation],
+    [requestRecommendation, resetRefineTier],
   );
 
-  const refine = useContextRefineModal({ onSubmitFeedback });
+  // "Skip for now" on the refine gate: record the skip, reset the tier, and
+  // force-generate the next batch of 6 (no new style feedback).
+  const onSkipRefinement = useCallback(() => {
+    refinementSkippedRef.current += 1;
+    track('refine_skipped', {
+      skipped_count: refinementSkippedRef.current,
+    });
+    resetRefineTier();
+    recommendationSourceRef.current = 'feed';
+    resetV05Session();
+    fetchGenerationRef.current += 1;
+    poolDepletedRef.current = false;
+    isFirstLoadRef.current = true;
+    requestRecommendation(
+      {
+        mode: selectedModeRef.current,
+        pinned_item_id: pinnedItemIdRef.current ?? undefined,
+        style_feedback: styleFeedbackRef.current ?? undefined,
+      },
+      { force: true },
+    );
+  }, [requestRecommendation, resetRefineTier]);
+
+  const refine = useContextRefineModal({ onSubmitFeedback, onSkipRefinement });
 
   useEffect(() => {
     if (refine.isOpen) {
@@ -469,7 +531,30 @@ export const HomeScreen = () => {
       position: clamped + 1,
       source,
     });
+
+    // Progressive refinement: tally distinct outfits the user has actually
+    // landed on this tier. Reaching REFINE_AFTER_OUTFITS arms the gate effect.
+    if (!tierViewedHashesRef.current.has(hash)) {
+      tierViewedHashesRef.current.add(hash);
+      setTierViewedCount(tierViewedHashesRef.current.size);
+    }
   }, [activeIndex, listOutfits, refine.isOpen]);
+
+  // Progressive refinement gate — after REFINE_AFTER_OUTFITS distinct outfits
+  // viewed (2 batches), open the Refine sheet instead of generating more. The
+  // `ensureBuffer` length cap has already paused generation; submitting
+  // feedback or skipping resets the tier and unlocks the next 6.
+  const { isOpen: refineIsOpen, open: openRefine } = refine;
+  useEffect(() => {
+    if (refineIsOpen) {
+      return;
+    }
+    if (tierViewedCount < REFINE_AFTER_OUTFITS) {
+      return;
+    }
+    setRefineGated(true);
+    openRefine('viewed_threshold');
+  }, [tierViewedCount, refineIsOpen, openRefine]);
 
   useEffect(() => {
     return () => {
@@ -719,6 +804,14 @@ export const HomeScreen = () => {
       if (poolDepletedRef.current) {
         return;
       }
+      // Progressive refinement gate: once a tier's worth of outfits
+      // (REFINE_AFTER_OUTFITS) exists, stop auto-generating so the Refine sheet
+      // can collect a preference signal first. A forced fetch (cold-start
+      // prime, refine submit, skip) deliberately bypasses this to seed the
+      // next tier.
+      if (!force && total >= REFINE_AFTER_OUTFITS) {
+        return;
+      }
       const activeFlat = activeIndexRef.current;
       const ahead = total - 1 - activeFlat;
       if (!force && ahead >= TARGET_AHEAD) {
@@ -787,7 +880,9 @@ export const HomeScreen = () => {
   );
 
   const handleOpenFavourites = useCallback(() => {
-    track('home_favourites_shortcut_tapped', { had_unseen: hasUnseenFavourites });
+    track('home_favourites_shortcut_tapped', {
+      had_unseen: hasUnseenFavourites,
+    });
     navigation.navigate('Favourite');
   }, [navigation, hasUnseenFavourites]);
 
@@ -901,29 +996,28 @@ export const HomeScreen = () => {
     ensureBuffer();
   }, [ensureBuffer]);
 
-  const handleLike = useCallback(
-    (outfit: OutfitSheetWithGrid) => {
-      if (outfit?.outfitHash) {
-        track('outfit_swiped', {
-          outfit_hash: outfit.outfitHash,
-          direction: 'next',
-          method: 'gesture',
-        });
-      }
-      // Swiping no longer saves the look — saving is exclusively the "Wear this"
-      // button now. Both swipe directions simply browse to the next outfit.
-      advanceDeck();
-    },
-    [advanceDeck],
-  );
+  // Swipe RIGHT = step back to the previous suggestion. No favouriting here —
+  // the heart button / "Wear this" own that — and the deck blocks this gesture
+  // at index 0, so by the time we run there is always a previous card.
+  const handleSwipeBack = useCallback((outfit: OutfitSheetWithGrid) => {
+    const prev = activeIndexRef.current - 1;
+    if (prev < 0) {
+      return;
+    }
+    if (outfit?.outfitHash) {
+      track('outfit_swiped', {
+        outfit_hash: outfit.outfitHash,
+        direction: 'previous',
+        method: 'gesture',
+      });
+    }
+    activeIndexRef.current = prev;
+    setActiveIndex(prev);
+  }, []);
 
   const handleSkip = useCallback(
     (outfit: OutfitSheetWithGrid) => {
       const fromHash = outfit?.outfitHash;
-      const fromState = fromHash
-        ? saveStateByHashRef.current[fromHash] ?? 'idle'
-        : 'idle';
-      const wasFavorited = fromState === 'saved' || fromState === 'saving';
       console.info('home.swipe.miss', { from: activeIndexRef.current });
       if (fromHash) {
         track('outfit_swiped', {
@@ -932,18 +1026,11 @@ export const HomeScreen = () => {
           method: 'gesture',
         });
       }
-      if (!wasFavorited) {
-        const nextCount = unfavoritedSwipeCountRef.current + 1;
-        if (nextCount >= UNFAVORITED_SWIPE_THRESHOLD) {
-          unfavoritedSwipeCountRef.current = 0;
-          refine.open('unfavorited_swipe');
-        } else {
-          unfavoritedSwipeCountRef.current = nextCount;
-        }
-      }
+      // The refine prompt is now driven by the after-6-outfits gate
+      // (tierViewedCount), not a raw skip counter.
       advanceDeck();
     },
-    [advanceDeck, refine],
+    [advanceDeck],
   );
 
   const openTempSheet = useCallback(() => {
@@ -1097,12 +1184,7 @@ export const HomeScreen = () => {
         {optionSets.length > 0 && !aiNoticeDismissed ? (
           <InfoSnackbar
             message={t('aiDisclosure.label')}
-            action={{
-              label: t('aiDisclosure.report'),
-              onPress: handleReportAi,
-              testID: 'ai-report-recommendation',
-            }}
-            onClose={() => setAiNoticeDismissed(true)}
+            onClose={dismissAiNotice}
             testID="home-ai-disclosure"
           />
         ) : null}
@@ -1163,8 +1245,8 @@ export const HomeScreen = () => {
             activeIndex={clampedActiveIndex}
             swipeEnabled={!collageDragActive}
             keyOf={outfit => outfit.outfitHash}
-            onLike={handleLike}
-            onSkip={handleSkip}
+            onSwipeNext={handleSkip}
+            onSwipeBack={handleSwipeBack}
             renderCard={(outfit, role) => (
               <OptionSheet
                 cellKey={outfit.outfitHash}
@@ -1179,10 +1261,6 @@ export const HomeScreen = () => {
                 }
                 onItemPress={handleOpenItemDetail}
                 onTogglePin={handleToggleItemPin}
-                onEditContext={() => refine.open('card_button')}
-                onRemix={handleRemix}
-                onShowAnother={handleSkip}
-                activeDot={clampedActiveIndex % OUTFITS_PER_SET}
                 homeView={homeView}
                 onCollageDragActiveChange={setCollageDragActive}
                 isGenerating={
@@ -1192,24 +1270,55 @@ export const HomeScreen = () => {
                 insightActive={isOverrideActive}
               />
             )}
-            renderCue={(_likeOpacity, skipOpacity) => (
-              // Swiping only browses now (saving is "Wear this"-only), so there
-              // is no "like"/favourite cue — just the skip affordance on the
-              // dismiss (left) direction.
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.deckCue,
-                  styles.deckCueSkip,
-                  { opacity: skipOpacity },
-                ]}
-              >
-                <Text style={styles.deckCueSkipText}>
-                  {t('home.skip_label')}
-                </Text>
-              </Animated.View>
+            renderCue={(backOpacity, nextOpacity) => (
+              <>
+                {/* Swipe right → previous: back chevron on the right edge
+                    (hidden on the first card — nothing to return to). */}
+                {clampedActiveIndex > 0 ? (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.deckCue,
+                      styles.deckCueLike,
+                      { opacity: backOpacity },
+                    ]}
+                  >
+                    <IconChevronLeft width={20} height={20} />
+                    <Text style={styles.deckCueSkipText}>
+                      {t('home.back_label')}
+                    </Text>
+                  </Animated.View>
+                ) : null}
+                {/* Swipe left → next: cue on the left edge. */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.deckCue,
+                    styles.deckCueSkip,
+                    { opacity: nextOpacity },
+                  ]}
+                >
+                  <Text style={styles.deckCueSkipText}>
+                    {t('home.skip_label')}
+                  </Text>
+                </Animated.View>
+              </>
             )}
           />
+          {/* Fixed action row — Remix · dots · Refine stay put while only the
+              card photo swipes beneath them (it lives outside the deck). */}
+          <View style={styles.deckActionRow}>
+            <OutfitActionRow
+              testID="home-action-row"
+              onRemix={handleRemix}
+              onRefine={() => {
+                setRefineGated(false);
+                refine.open('refine_button');
+              }}
+              dotCount={OUTFITS_PER_SET}
+              activeDot={clampedActiveIndex % OUTFITS_PER_SET}
+            />
+          </View>
         </View>
       )}
 
@@ -1295,6 +1404,25 @@ export const HomeScreen = () => {
         </View>
       ) : null}
 
+      {/* AI feedback affordance — 44px floating button, bottom-left of the
+          footer, Home only. Opens the same prefilled AI report. */}
+      {optionSets.length > 0 ? (
+        <TouchableOpacity
+          testID="home-ai-feedback-fab"
+          accessibilityRole="button"
+          accessibilityLabel={t('aiDisclosure.report')}
+          activeOpacity={0.85}
+          onPress={handleReportAi}
+          style={styles.aiFeedbackFab}
+        >
+          <IconFeedback
+            width={24}
+            height={24}
+            color={theme.colors.uacTextBase}
+          />
+        </TouchableOpacity>
+      ) : null}
+
       <HomeViewToggleFooter
         testID="home-footer-view-toggle"
         activeView={homeView}
@@ -1315,6 +1443,9 @@ export const HomeScreen = () => {
         onChangeText={refine.onChangeText}
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
+        onSkip={refineGated ? refine.onSkip : undefined}
+        title={refineGated ? t('contextChips.refine_title') : undefined}
+        subtitle={refineGated ? t('contextChips.refine_subtitle') : undefined}
       />
 
       <PinConfirmModal

@@ -4,16 +4,16 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import IconRemix from '../../assets/images/icon_remix.svg';
 
-// Home action row — Figma 3140-5959: [Remix]  ·  [• • • dots]  ·  [Show another].
-// Restored to match the pin-flow Figma (CEO 2026-06-21). The dots are a
-// set-position indicator (OUTFITS_PER_SET outfits per set); "Show another"
-// advances the deck — the same forward step as a left-swipe skip — giving a
-// tap affordance ALONGSIDE the Tinder swipe gesture (additive, swipe still
-// drives browse/skip). All props optional so the loading-state caller
-// (no handlers) renders a static [Remix] · dots · disabled "Show another".
+// Home action row — [Remix]  ·  [• • • dots]  ·  [Refine suggestions].
+// The dots are a set-position indicator (OUTFITS_PER_SET outfits per set).
+// "Refine suggestions" opens the context-refine bottom sheet — a deliberate
+// tweak affordance. (The old "Show another" tap was dropped: a left-swipe
+// already advances/explores, so the forward step needed no button.) All props
+// optional so the loading-state caller (no handlers) renders a static
+// [Remix] · dots · disabled "Refine suggestions".
 type Props = {
   onRemix?: () => void;
-  onShowAnother?: () => void;
+  onRefine?: () => void;
   /** Set-position dots: total count + active index (0-based). */
   dotCount?: number;
   activeDot?: number;
@@ -22,7 +22,7 @@ type Props = {
 
 export const OutfitActionRow: React.FC<Props> = ({
   onRemix,
-  onShowAnother,
+  onRefine,
   dotCount = 3,
   activeDot = 0,
   testID,
@@ -59,22 +59,22 @@ export const OutfitActionRow: React.FC<Props> = ({
       </View>
 
       <TouchableOpacity
-        testID="home-show-another"
+        testID="home-refine"
         accessibilityRole="button"
-        accessibilityLabel={t('outfitActions.a11y_show_another')}
+        accessibilityLabel={t('outfitActions.a11y_refine')}
         activeOpacity={0.82}
-        onPress={onShowAnother}
-        disabled={!onShowAnother}
+        onPress={onRefine}
+        disabled={!onRefine}
         style={styles.sideSlot}
       >
         <Text
           style={[
             styles.showAnotherText,
-            !onShowAnother && styles.showAnotherDisabled,
+            !onRefine && styles.showAnotherDisabled,
           ]}
           numberOfLines={1}
         >
-          {t('outfitActions.show_another')}
+          {t('outfitActions.refine')}
         </Text>
       </TouchableOpacity>
     </View>

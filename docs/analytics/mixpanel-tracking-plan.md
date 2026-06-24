@@ -95,13 +95,14 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | **`outfit_recommendation_viewed`** | Active sheet settles on a new `outfit_hash`. Dedup'd via module-level `Set<outfit_hash>` per session — see `trackRecommendationViewedOnce()` helper. | `HomeScreen.tsx:564` via `analytics.ts:173` | `outfit_hash`, `position`, `source` (`feed`/`refine`) |
 | **`outfit_favorited`** ★ (pre-existing) | `saveFavourite` success | `HomeScreen.tsx:973` | `outfit_hash`, `item_count`, `source` |
 | `outfit_unfavorited` (pre-existing) | Favourite removed | `FavouriteScreen.tsx:53` | `favorite_id` |
-| `outfit_swiped` | Swipe right/like or left/skip | `HomeScreen.tsx:1193, 1222` | `outfit_hash`, `direction`, `method` |
+| `outfit_swiped` | Swipe left → next suggestion / swipe right → previous (navigation only; favouriting moved to "Wear this"). Right-swipe is blocked on the first card, so `previous` only fires from index ≥ 1. | `HomeScreen/index.tsx` (`handleSkip`, `handleSwipeBack`) | `outfit_hash`, `direction` (`next`/`previous`), `method` (`gesture`) |
 | `outfit_card_tapped` | Tap on outfit card | `HomeScreen.tsx:1386` | `outfit_hash`, `position` |
 | `context_chip_changed` | Mode chip change (wired defensively — UI parked behind AU-221) | `HomeScreen.tsx:1137` | `chip_type` (`mode`), `value` |
-| `refine_modal_opened` (pre-existing) | Refine open | `HomeScreen.tsx:1185, 1172` | `source` |
+| `refine_modal_opened` (pre-existing) | Refine sheet opens — manual ("Refine" action-row button) or the after-6 progressive gate | `HomeScreen/index.tsx` | `source` (`refine_button` / `viewed_threshold`; legacy `unfavorited_swipe` removed) |
 | `refine_chip_selected` / `refine_chip_deselected` | ContextChipsModal chip toggle | `ContextChipsModal.tsx:152` | `chip_type` (`style_feedback`), `value` |
 | `refine_submitted` (pre-existing) | Refine confirm | `HomeScreen.tsx:1246` | `occasion`, `time_of_day`, `weather_condition` |
 | `refine_cancelled` (pre-existing) | Refine dismiss | `HomeScreen.tsx:1589` | `source` |
+| `refine_skipped` | "Skip for now" on the after-6 progressive-refinement gate — defers feedback and resumes generation of the next tier | `HomeScreen/index.tsx` (`onSkipRefinement`) | `skipped_count` (running per-session skip tally) |
 
 ### 5.4 Wardrobe + ItemDetail
 
@@ -225,7 +226,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `ai_consent_granted` | User accepts the AI data-sharing prompt before a try-on photo upload, OR flips the Settings "AI data sharing" toggle ON | `services/aiConsent.ts:32` (called from `useAiConsentGate.ts` Accept + `SettingsScreen.tsx` grant) | — |
 | `ai_consent_declined` | User declines the AI data-sharing prompt (tap Decline / tap-outside) | `services/aiConsent.ts:38` (called from `useAiConsentGate.ts` Decline) | — |
 | `ai_consent_revoked` | User flips the Settings "AI data sharing" toggle OFF (Privacy Policy §6 withdraw) | `services/aiConsent.ts:48` (called from `SettingsScreen.tsx` revoke) | — |
-| `ai_content_reported` | User taps "Report" on an AI-generated result (opens prefilled mailto) | `components/features/AiContentDisclosure.tsx:30` | `surface` (`tryon` / `recommendation`) |
+| `ai_content_reported` | User reports an AI-generated result (opens prefilled mailto). Fires from the inline disclosure "Report" link and from the Home AI-feedback floating button (`surface = recommendation`). | `components/features/AiContentDisclosure.tsx:30` (`useAiReport`); Home FAB via `HomeScreen.tsx` `handleReportAi` | `surface` (`tryon` / `recommendation`) |
 
 > PII: none. `ai_consent_*` carry no properties; `ai_content_reported.surface` is a bounded enum. The Report mailto subject/body are static localized strings — no ids, photos, or free text leave the device via analytics. Consent is gated server-side too: the try-on route requires `gemini_opt_in === true`, and the client only sends that after a recorded grant, so no photo is uploaded pre-consent.
 
@@ -264,7 +265,7 @@ These hooks were spec'd but cannot fire today — the UI surface, control, or AP
 ### 6.2 Home — CTAs missing
 
 - `outfit_try_on_tapped` — no "See on me" CTA on Home (footer is "Wear this" + Remix). Wire when a Home-level try-on entry ships.
-- `outfit_swiped` `direction: 'previous'` — deck is forward-only; never fires today
+- `outfit_swiped` `direction: 'previous'` — now fires on swipe-right (back navigation); `'next'` on swipe-left
 - `outfit_swiped` `method: 'button'` — no button-driven swipe path; never fires today
 - `context_chip_changed` runtime UI — mode-selector JSX commented out behind AU-221. `handleSelectMode` is wired so the event fires automatically once the UI lands.
 
@@ -338,7 +339,7 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 - **Wardrobe-grow funnel (take-photo):** `add_item_opened` → `add_item_method_selected` (`take_photo`) → `add_item_upload_started` → `add_item_upload_succeeded` → `wardrobe_item_added` → `item_ready_toast_shown` (AU-361: background processing completed — tail of the take-photo funnel)
 - **Wardrobe-grow funnel (database):** `wardrobe_search_initiated` → `wardrobe_search_result_selected` → `wardrobe_item_added`
 - **Wardrobe load-error recovery (design-review F7):** `wardrobe_load_failed` → `wardrobe_load_retry_tapped` measures how often a failed wardrobe load is recovered via the error-state Retry (denominator: `wardrobe_load_failed`). A high failure rate with low retry signals a journey dead-end.
-- **Refine-engagement funnel:** `refine_modal_opened` → `refine_chip_selected` ×N → `refine_submitted` (vs `refine_cancelled`)
+- **Refine-engagement funnel:** `refine_modal_opened` → `refine_chip_selected` ×N → `refine_submitted` (vs `refine_cancelled`, or `refine_skipped` on the after-6 gate). `refine_skipped` ÷ `refine_modal_opened` (source `viewed_threshold`) measures defer rate on the progressive gate; rising `skipped_count` flags users repeatedly dodging refinement.
 - **Retention insight:** `screen_viewed` per `screen_name` over time — identifies dead screens
 - **Mood-feedback funnel:** `wear_this_clicked` → `mood_feedback_opened` → `mood_feedback_submitted` (vs `mood_feedback_skipped`)
 - **App-feedback submission funnel:** `screen_viewed` (`screen_name = Feedback`) → `feedback_submitted` (vs `feedback_submit_failed`, broken down by `error_code`) — measures completion rate of the feedback form and surfaces rate-limit / validation friction.

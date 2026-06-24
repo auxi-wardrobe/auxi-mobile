@@ -10,10 +10,15 @@ import { CONTEXT_CHIP_LABEL_KEYS, CONTEXT_CHIP_SETS } from '../context-chips';
 
 type UseContextRefineModalParams = {
   onSubmitFeedback: (payload: string) => void;
+  // Invoked when the user defers the progressive-refinement gate ("Skip for
+  // now"). The parent resumes generation + records the skip; the hook only
+  // closes the sheet.
+  onSkipRefinement?: () => void;
 };
 
 export const useContextRefineModal = ({
   onSubmitFeedback,
+  onSkipRefinement,
 }: UseContextRefineModalParams) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -96,6 +101,13 @@ export const useContextRefineModal = ({
     close();
   }, [selectedChipId, trimmedCustomText, close]);
 
+  const onSkip = useCallback(() => {
+    // Skip analytics fire once from the parent's onSkipRefinement (with the
+    // session skip count) to avoid double-counting a single user action.
+    close();
+    onSkipRefinement?.();
+  }, [close, onSkipRefinement]);
+
   const onConfirm = useCallback(() => {
     const chipLabel = selectedChipId
       ? activeChipOptions.find(c => c.id === selectedChipId)?.label
@@ -136,5 +148,6 @@ export const useContextRefineModal = ({
     onChangeText,
     onCancel,
     onConfirm,
+    onSkip,
   };
 };
