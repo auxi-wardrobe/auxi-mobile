@@ -1,31 +1,38 @@
 /**
  * DesignSystemScreen — in-app Design System reference / style guide.
  *
- * A single scrollable catalog of tokens + components, faithfully recreating
- * `Auxi Design System.html`. __DEV__-gated reference screen (reached from the
- * Settings "Version" row in dev builds) — NOT a shipped consumer screen, so
- * its section/token labels are static English (no i18n).
+ * Rebuilt to the NEW claude.ai showcase (GH-364). Poppins-only, motion-aware.
+ * Reached from the email-gated sidebar "Design System" row (CEO + designer) and
+ * in __DEV__ via Settings → Version. NOT a shipped consumer screen — its
+ * section/token labels are static English (no i18n).
  *
- * Source of truth: auxi-ds.css. All styling derives from `theme.ds` /
- * `theme.typography.aliases` — no hex/font literals (token-lint clean).
- * Section files live under src/components/design-system/.
+ * Source of truth: plans/260624-0030-GH-364-design-system-page/reference/
+ *                  auxi-showcase.reference.css. All page styling derives from
+ *                  the DS-page-local tokens in components/design-system/m-tokens
+ *                  (which intentionally DIVERGE from theme.ts).
  */
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { theme } from '../theme/theme';
 import { AppStackParamList } from '../types/navigation';
-import { TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { IconChevronLeft } from '../assets/icons';
 import { ColorSection } from '../components/design-system/ColorSection';
 import { TypeSection } from '../components/design-system/TypeSection';
 import { SpaceFormSection } from '../components/design-system/SpaceFormSection';
 import { ComponentsSection } from '../components/design-system/ComponentsSection';
 import { PrinciplesSection } from '../components/design-system/PrinciplesSection';
-import { MONO_FAMILY } from '../components/design-system/dsShared';
+import { MotionSection } from '../components/design-system/MotionSection';
+import { mTokens } from '../components/design-system/m-tokens';
 
-const ds = theme.ds;
+const { color, role, space, type } = mTokens;
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'DesignSystem'>;
 
@@ -35,12 +42,15 @@ export const DesignSystemScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.topbar}>
-        <TopIconButton
+        <Pressable
+          style={styles.backBtn}
           testID="ds-screen-back"
+          accessibilityRole="button"
           accessibilityLabel="Go back"
           onPress={() => navigation.goBack()}
-          icon={<IconChevronLeft width={22} height={22} color={ds.color.ink} />}
-        />
+        >
+          <IconChevronLeft width={22} height={22} color={role.ink} />
+        </Pressable>
         <Text style={styles.topbarTitle}>Design System</Text>
         <View style={styles.topbarSpacer} />
       </View>
@@ -57,8 +67,9 @@ export const DesignSystemScreen: React.FC = () => {
           <Text style={styles.heroTitle}>The Auxi{'\n'}Design System</Text>
           <Text style={styles.heroLead}>
             The living reference for Auxi's wardrobe & styling app — a calm,
-            warm-neutral interface built on a customised Material foundation.
-            Tokens and components below are documented as they ship today.
+            warm-neutral interface on Poppins. This page mirrors the new
+            claude.ai design system; tokens here are page-local and diverge from
+            the live theme on purpose.
           </Text>
         </View>
 
@@ -66,11 +77,12 @@ export const DesignSystemScreen: React.FC = () => {
         <TypeSection />
         <SpaceFormSection />
         <ComponentsSection />
+        <MotionSection />
         <PrinciplesSection />
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            AUXI · DESIGN SYSTEM — documented as-built. v1.0 · June 2026.
+            AUXI · DESIGN SYSTEM — new claude.ai sync. v2.0 · June 2026.
           </Text>
         </View>
       </ScrollView>
@@ -79,61 +91,40 @@ export const DesignSystemScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: ds.color.white,
-  },
+  safe: { flex: 1, backgroundColor: color.white },
   topbar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.m,
-    paddingVertical: theme.spacing.s,
+    paddingHorizontal: space.s4,
+    paddingVertical: space.s2,
     borderBottomWidth: 1,
-    borderBottomColor: ds.line,
+    borderBottomColor: role.line,
   },
-  topbarTitle: {
-    ...theme.typography.aliases.interMediumSm,
-    color: ds.color.ink,
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  topbarTitle: { ...type.h3, color: role.ink },
   topbarSpacer: { width: 40 },
   scroll: { flex: 1 },
-  content: {
-    paddingHorizontal: theme.spacing.l,
-    paddingBottom: theme.spacing.xxl,
-  },
+  content: { paddingHorizontal: space.s6, paddingBottom: space.s12 },
   hero: {
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing.l,
+    paddingTop: space.s8,
+    paddingBottom: space.s6,
     borderBottomWidth: 1,
-    borderBottomColor: ds.line,
+    borderBottomColor: role.line,
   },
-  kicker: {
-    fontFamily: MONO_FAMILY,
-    fontSize: 11,
-    letterSpacing: 1.5,
-    color: ds.color.warm500,
-    marginBottom: theme.spacing.m,
-  },
-  heroTitle: {
-    ...theme.typography.aliases.uacH1Bold,
-    color: ds.color.ink,
-  },
-  heroLead: {
-    ...theme.typography.aliases.interBodyMd,
-    color: ds.color.onVariant,
-    marginTop: theme.spacing.m,
-  },
+  kicker: { ...type.overline, color: role.ink3, marginBottom: space.s4 },
+  heroTitle: { ...type.display, color: role.ink },
+  heroLead: { ...type.body, color: role.ink2, marginTop: space.s4 },
   footer: {
-    marginTop: theme.spacing.xxl,
+    marginTop: space.s12,
     borderTopWidth: 1,
-    borderTopColor: ds.line,
-    paddingTop: theme.spacing.l,
+    borderTopColor: role.line,
+    paddingTop: space.s6,
   },
-  footerText: {
-    fontFamily: MONO_FAMILY,
-    fontSize: 11,
-    letterSpacing: 0.2,
-    color: ds.color.warm500,
-  },
+  footerText: { ...type.overline, color: role.ink3 },
 });

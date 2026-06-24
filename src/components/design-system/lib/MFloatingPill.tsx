@@ -1,0 +1,121 @@
+/**
+ * MFloatingPill — self-contained springy floating-pill nav (signature motion).
+ *
+ *   import { MFloatingPill } from '../components/design-system/lib';
+ *   <MFloatingPill tabs={['Today','Browse','You']} value={v} onChange={setV} />
+ *
+ * The active thumb springs with an OVERSHOOT on x + width (low-damping spring ≈
+ * cubic-bezier(.34,1.32,.5,1)). Tokens + motion encapsulated INSIDE. Honors
+ * reduce-motion (jumps to target).
+ */
+import React, { useRef } from 'react';
+import {
+  Animated,
+  LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useReducedMotion } from '../../../theme/motion';
+import { color, radius, role, shadow, type } from '../m-tokens';
+
+const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
+
+export interface MFloatingPillProps {
+  tabs: string[];
+  value: string;
+  onChange: (value: string) => void;
+  testID?: string;
+}
+
+export const MFloatingPill: React.FC<MFloatingPillProps> = ({
+  tabs,
+  value,
+  onChange,
+  testID,
+}) => {
+  const reduce = useReducedMotion();
+  const idx = Math.max(0, tabs.indexOf(value));
+  const x = useRef(new Animated.Value(0)).current;
+  const w = useRef(new Animated.Value(0)).current;
+  const widths = useRef<number[]>([]);
+  const xs = useRef<number[]>([]);
+
+  const onLayout = (i: number) => (e: LayoutChangeEvent) => {
+    const { x: lx, width } = e.nativeEvent.layout;
+    xs.current[i] = lx;
+    widths.current[i] = width;
+    if (i === idx) {
+      x.setValue(lx);
+      w.setValue(width);
+    }
+  };
+
+  const move = (i: number, tab: string) => {
+    onChange(tab);
+    const targetX = xs.current[i] ?? 0;
+    const targetW = widths.current[i] ?? 0;
+    if (reduce) {
+      x.setValue(targetX);
+      w.setValue(targetW);
+      return;
+    }
+    // Overshoot spring ≈ cubic-bezier(.34,1.32,.5,1): low damping → bounce.
+    const cfg = {
+      stiffness: 320,
+      damping: 16,
+      mass: 1,
+      useNativeDriver: false,
+    };
+    Animated.spring(x, { toValue: targetX, ...cfg }).start();
+    Animated.spring(w, { toValue: targetW, ...cfg }).start();
+  };
+
+  return (
+    <View style={styles.fbar} testID={testID}>
+      <Animated.View style={[styles.fthumb, { left: x, width: w }]} />
+      {tabs.map((tb, i) => {
+        const sel = tb === value;
+        return (
+          <Pressable
+            key={tb}
+            onLayout={onLayout(i)}
+            onPress={() => move(i, tb)}
+            style={styles.fitem}
+            testID={
+              testID
+                ? `${testID}-${slug(tb)}${sel ? '-active' : ''}`
+                : undefined
+            }
+            accessibilityRole="tab"
+            accessibilityState={{ selected: sel }}
+          >
+            <Text style={[styles.ftext, sel && styles.ftextOn]}>{tb}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  fbar: {
+    flexDirection: 'row',
+    backgroundColor: color.p100,
+    borderRadius: radius['2xl'],
+    padding: 8,
+    alignItems: 'center',
+  },
+  fthumb: {
+    position: 'absolute',
+    top: 8,
+    bottom: 8,
+    backgroundColor: color.white,
+    borderRadius: radius.xl,
+    ...shadow.card,
+  },
+  fitem: { paddingVertical: 10, paddingHorizontal: 22, alignItems: 'center' },
+  ftext: { ...type.bodySm, color: role.ink3 },
+  ftextOn: { color: role.ink, fontFamily: type.h3.fontFamily },
+});

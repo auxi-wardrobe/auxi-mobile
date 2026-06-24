@@ -1,132 +1,51 @@
 /**
- * Design System — Typography section.
- * Family roles (display=Poppins, ui=Roboto, uiAlt=Inter) as live specimens
- * rendered with BUNDLED faces only, plus the UI size scale (h1..caption from
- * theme.typography.sizes). Mono role falls back to platform monospace
- * (JetBrains Mono is not bundled) and is labelled as such.
- *
- * Specimens reuse `theme.typography.aliases.*` so every fontFamily resolves to
- * a face that ships in src/assets/fonts/. Roboto ships Regular only, so the
- * Roboto specimen renders Regular weight.
+ * Design System — Typography foundation (NEW showcase, Poppins-only).
+ * Family card (Poppins, 4 weights) + the type scale display/h1/h2/h3/body/
+ * body-sm/caption/overline read from m-tokens.type. Mono is used ONLY for the
+ * overline role (JetBrains Mono not bundled → platform fallback).
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { theme } from '../../theme/theme';
-import {
-  MONO_FAMILY,
-  NoteBold,
-  NoteCard,
-  SectionHeader,
-  SubHead,
-} from './dsShared';
+import { FONT, MONO, role, space, type } from './m-tokens';
+import { NoteBold, NoteCard, SectionHeader, SubHead } from './mShared';
 
-const ds = theme.ds;
-const sizes = theme.typography.sizes;
-
-type Family = {
-  name: string;
-  weights: string;
-  role: string;
-  specimen: string;
-  specimenStyle: object;
-};
-
-const FAMILIES: Family[] = [
-  {
-    name: 'Poppins',
-    weights: '400 · 500 · 600 · 700',
-    role: 'Display, marketing & large numerics',
-    specimen: 'See this on me',
-    specimenStyle: {
-      ...theme.typography.aliases.uacH4Bold,
-      color: ds.color.ink,
-    },
-  },
-  {
-    name: 'Roboto',
-    weights: '400 (Regular bundled)',
-    role: 'Button labels & UI (MD3 base)',
-    specimen: 'Generate my look',
-    specimenStyle: {
-      ...theme.typography.aliases.uacM3BodyLarge,
-      fontFamily: theme.typography.aliases.uacM3BodySmall.fontFamily, // Roboto-Regular
-      fontSize: 24,
-      lineHeight: 32,
-      color: ds.color.ink,
-    },
-  },
-  {
-    name: 'Inter',
-    weights: '400 · 500 · 600',
-    role: 'Dense UI, captions, text buttons',
-    specimen: 'Manage body photo',
-    specimenStyle: {
-      ...theme.typography.aliases.uacBodyMdSemibold,
-      fontSize: 24,
-      lineHeight: 32,
-      color: ds.color.ink,
-    },
-  },
+const WEIGHTS: Array<{ name: string; family: string }> = [
+  { name: 'Regular 400', family: FONT.regular },
+  { name: 'Medium 500', family: FONT.medium },
+  { name: 'SemiBold 600', family: FONT.semibold },
+  { name: 'Bold 700', family: FONT.bold },
 ];
 
 type ScaleRow = { meta: string; sample: string; style: object };
 
 const SCALE: ScaleRow[] = [
   {
-    meta: `h1 · Poppins ${sizes.h1}`,
-    sample: 'Notification',
-    style: {
-      ...theme.typography.aliases.uacH4Bold,
-      fontSize: sizes.h1,
-      lineHeight: sizes.h1 + 8,
-      color: ds.color.ink,
-    },
+    meta: 'display · 40 / Bold',
+    sample: 'See this on me',
+    style: type.display,
+  },
+  { meta: 'h1 · 32 / Bold', sample: 'The Auxi look', style: type.h1 },
+  { meta: 'h2 · 24 / SemiBold', sample: 'Style direction', style: type.h2 },
+  { meta: 'h3 · 20 / SemiBold', sample: 'Notification time', style: type.h3 },
+  {
+    meta: 'body · 16 / Regular',
+    sample: 'Auxi reverts to day one. This cannot be undone.',
+    style: type.body,
   },
   {
-    meta: `h2 · Poppins ${sizes.h2}`,
-    sample: 'Style direction',
-    style: {
-      ...theme.typography.aliases.poppinsH4SemiBold,
-      fontSize: sizes.h2,
-      lineHeight: sizes.h2 + 8,
-      color: ds.color.ink,
-    },
-  },
-  {
-    meta: `h3 · Inter ${sizes.h3}`,
-    sample: 'Notification time',
-    style: {
-      ...theme.typography.aliases.uacBodyMdSemibold,
-      fontSize: sizes.h3,
-      lineHeight: sizes.h3 + 6,
-      color: ds.color.ink,
-    },
-  },
-  {
-    meta: `body · Inter ${sizes.body}`,
-    sample: 'Auxi will revert to day one. This cannot be undone.',
-    style: {
-      ...theme.typography.aliases.interBodyMd,
-      color: ds.color.onVariant,
-    },
-  },
-  {
-    meta: `caption · Inter ${sizes.caption}`,
+    meta: 'body-sm · 14 / Regular',
     sample: 'Weekdays · Everydays',
-    style: {
-      ...theme.typography.aliases.uacBodyXsMedium,
-      color: ds.color.warm500,
-    },
+    style: type.bodySm,
   },
   {
-    meta: 'overline · JetBrains Mono (falls back)',
+    meta: 'caption · 12 / Regular',
+    sample: '3 items · Stay balanced',
+    style: type.caption,
+  },
+  {
+    meta: 'overline · 10 / mono',
     sample: 'STYLE DIRECTION',
-    style: {
-      fontFamily: MONO_FAMILY,
-      fontSize: 10,
-      letterSpacing: 1,
-      color: ds.color.warm500,
-    },
+    style: type.overline,
   },
 ];
 
@@ -135,70 +54,55 @@ export const TypeSection: React.FC = () => (
     <SectionHeader
       num="02"
       title="Typography"
-      blurb="A humanist display face paired with a Material UI scale. The consolidated, shippable set is Poppins / Roboto / Inter."
+      blurb="Poppins carries the entire UI — display through caption. The mono face is reserved for overlines / spec labels only (platform monospace fallback)."
     />
 
-    <SubHead label="Type families" tag="in production" />
-    {FAMILIES.map(f => (
-      <View key={f.name} style={styles.fam}>
-        <View style={styles.famLbl}>
-          <Text style={styles.famNm}>{f.name}</Text>
-          <Text style={styles.famMeta}>{f.weights}</Text>
-          <Text style={styles.famRole}>{f.role}</Text>
+    <SubHead label="Poppins" tag="display · ui · numerics" />
+    <View style={styles.famCard}>
+      {WEIGHTS.map(w => (
+        <View key={w.name} style={styles.weightRow}>
+          <Text style={[styles.specimen, { fontFamily: w.family }]}>
+            See this on me
+          </Text>
+          <Text style={styles.weightMeta}>{w.name}</Text>
         </View>
-        <Text style={f.specimenStyle}>{f.specimen}</Text>
+      ))}
+    </View>
+
+    <SubHead label="Type scale" tag="8 roles" />
+    {SCALE.map(r => (
+      <View key={r.meta} style={styles.scaleRow}>
+        <Text style={styles.scaleMeta}>{r.meta}</Text>
+        <Text style={[r.style, styles.scaleSample]}>{r.sample}</Text>
       </View>
     ))}
 
-    <SubHead label="UI type scale" tag="Inter / Poppins" />
-    {SCALE.map(row => (
-      <View key={row.meta} style={styles.scaleRow}>
-        <Text style={styles.scaleMeta}>{row.meta}</Text>
-        <Text style={row.style}>{row.sample}</Text>
-      </View>
-    ))}
-
-    <NoteCard flag>
-      <NoteBold>Type sprawl. </NoteBold>
-      43 text styles across the file (Manrope, DM Sans, Archivo Narrow, Playfair
-      & more in moodboards). Treat anything outside Poppins / Roboto / Inter as
-      exploratory, not system.
+    <NoteCard>
+      <NoteBold>Poppins-only. </NoteBold>
+      Inter / Roboto are retired from the new system. Treat any other family in
+      the file as exploratory, not system.
     </NoteCard>
   </View>
 );
 
 const styles = StyleSheet.create({
-  fam: {
-    paddingVertical: theme.spacing.l,
+  famCard: { gap: space.s3 },
+  weightRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    paddingVertical: space.s2,
     borderBottomWidth: 1,
-    borderBottomColor: ds.line2,
-    gap: theme.spacing.s,
+    borderBottomColor: role.line,
   },
-  famLbl: {
-    gap: 2,
-  },
-  famNm: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: ds.color.ink,
-  },
-  famMeta: {
-    fontFamily: MONO_FAMILY,
-    fontSize: 10.5,
-    color: ds.color.warm500,
-  },
-  famRole: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: ds.color.onVariant,
-  },
+  specimen: { fontSize: 22, color: role.ink },
+  weightMeta: { fontFamily: MONO, fontSize: 11, color: role.ink3 },
   scaleRow: {
-    paddingVertical: 13,
+    paddingVertical: space.s3,
     borderBottomWidth: 1,
-    borderBottomColor: ds.line2,
+    borderBottomColor: role.line,
     gap: 6,
   },
-  scaleMeta: {
-    fontFamily: MONO_FAMILY,
-    fontSize: 11,
-    color: ds.color.warm500,
-  },
+  scaleMeta: { fontFamily: MONO, fontSize: 11, color: role.ink3 },
+  scaleSample: { color: role.ink },
 });
