@@ -4,13 +4,10 @@ import { motion } from '../../theme/motion';
 import { HOME_VIEW_TOGGLE_FOOTER_HEIGHT } from '../../components/features/HomeViewToggleFooter';
 import {
   CARD_ASPECT,
-  CARD_HEIGHT,
   GRID_CONTENT_PAD,
   GRID_GAP,
   OPTION_ACTIONS_HEIGHT,
-  OPTION_SHEET_HEIGHT,
   screenWidth,
-  SHEET_GAP,
   SHEET_PADDING,
   SMALL_CARD_HEIGHT,
   SMALL_CARD_WIDTH,
@@ -65,11 +62,6 @@ export const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: theme.colors.figmaFavouriteDot,
-  },
-  scrollContent: {
-    paddingTop: 4,
-    paddingBottom: 24,
-    gap: SHEET_GAP,
   },
   deckWrap: {
     flex: 1,
@@ -142,12 +134,6 @@ export const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     gap: 8,
   },
-  // Loading skeleton reuses optionSheet but isn't inside the flex deck, so it
-  // needs an explicit height instead of flex-filling.
-  optionSheetLoading: {
-    flex: 0,
-    height: OPTION_SHEET_HEIGHT,
-  },
   gridWrap: {
     gap: GRID_GAP,
     paddingVertical: 0,
@@ -176,8 +162,11 @@ export const styles = StyleSheet.create({
   cardRowFill: {
     flex: 1,
   },
-  loadingCards: {
-    gap: GRID_GAP,
+  // Loading grid mirrors the loaded `twoByTwo` content padding so the
+  // load→loaded swap is shift-free (the real grid lives in a ScrollView whose
+  // contentContainer carries `gridScrollContent.paddingBottom`).
+  loadingGrid: {
+    paddingBottom: GRID_CONTENT_PAD,
   },
   cardRow: {
     flexDirection: 'row',
@@ -270,12 +259,19 @@ export const styles = StyleSheet.create({
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextDark,
   },
-  loadingSlotShell: {
-    height: CARD_HEIGHT,
+  // Shimmer slot adopts the loaded tile geometry (3:4, height-driven, centred)
+  // so it occupies the exact footprint the real `card` will, leaving no gap on
+  // load complete.
+  loadingSlotCard: {
+    flex: 0,
+    height: '100%',
+    maxWidth: '100%',
+    alignSelf: 'center',
+    aspectRatio: CARD_ASPECT,
   },
-  loadingFooterChrome: {
+  // Real footer chrome previewed during loading, dimmed (Figma skeleton-first).
+  loadingDim: {
     opacity: motion.opacity.subtle,
-    gap: theme.spacing.uacDimension8,
   },
   loadingWearThis: {
     minHeight: 56,

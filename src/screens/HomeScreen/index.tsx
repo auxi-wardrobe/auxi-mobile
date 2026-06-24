@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Animated,
   SafeAreaView,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -1217,12 +1216,7 @@ export const HomeScreen = () => {
       ) : null}
 
       {loading ? (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          scrollEnabled={false}
-        >
-          <HomeLoadingState />
-        </ScrollView>
+        <HomeLoadingState />
       ) : optionSets.length === 0 && isWardrobeGap ? (
         <HomeWardrobeGapState
           onAddItems={() => navigation.navigate('Wardrobe')}
