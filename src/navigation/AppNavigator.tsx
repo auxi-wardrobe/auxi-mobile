@@ -30,6 +30,10 @@ import { OutfitCanvasScreen } from '../screens/OutfitCanvasScreen';
 import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
+import {
+  getPendingNavIntent,
+  setPendingNavIntent,
+} from '../services/reviewOverrides';
 
 const Stack = createAppStack<AppStackParamList>();
 
@@ -75,6 +79,29 @@ export const AppNavigator = () => {
     });
   };
 
+  // Web-review only: once the navigator is ready, jump to the screen a shared
+  // `?screen=` link requested. Cleared after the first apply so it never fights
+  // later user navigation. No-op outside the sandbox — the intent is only ever
+  // set from the web entry (index.web.tsx).
+  const applyPendingScreenIntent = () => {
+    const intent = getPendingNavIntent();
+    if (!intent || !navigationRef.isReady()) {
+      return;
+    }
+    setPendingNavIntent(null);
+    // Loose cast: the target name is dynamic (resolved from the share
+    // registry), so we bypass the per-route param typing here.
+    const navigate = navigationRef.navigate as unknown as (
+      name: string,
+      params?: object,
+    ) => void;
+    if (intent.kind === 'auth') {
+      navigate('Auth', { screen: intent.name });
+    } else {
+      navigate(intent.name);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -86,7 +113,10 @@ export const AppNavigator = () => {
   return (
     <NavigationContainer
       ref={navigationRef}
-      onReady={handleNavStateChange}
+      onReady={() => {
+        applyPendingScreenIntent();
+        handleNavStateChange();
+      }}
       onStateChange={handleNavStateChange}
     >
       <Stack.Navigator screenOptions={{ headerShown: false }}>

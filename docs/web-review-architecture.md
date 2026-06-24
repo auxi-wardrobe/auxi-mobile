@@ -100,6 +100,7 @@ branch (so they always carry the latest main code).
 |---|---|---|
 | Shared UI | `src/**` | one codebase, mobile + web |
 | Web entry / frame | `index.web.tsx`, `web/device-frame/` | iframe → true device width; iPhone 12–18 |
+| Screen-share links | `web/share/*` + `src/services/reviewOverrides.ts` | `?screen=` picker → seeds auth state + deep-links to a screen |
 | Web overrides | `src/config/env.web.ts`, `src/navigation/createStack.web.ts` | API base, JS stack |
 | Native stubs | `web/stubs/*` | aliased in `vite.config.ts` |
 | Fonts / svg | `web/fonts.css`, `public/fonts/*`, `web/svg-plugin.ts` | @font-face + svgr |
@@ -109,7 +110,33 @@ branch (so they always carry the latest main code).
 | Deploy trigger | `scripts/deploy-preview.sh` + skill `deploy-auxi-web` | "deploy đi" → push `web-preview/*` |
 | Backend | Railway (Valen) + Postgres + R2 | real data |
 
-## 7. Key decisions & trade-offs
+## 7. Sharing a specific screen (review links)
+
+So a reviewer can send "look at THIS screen" instead of "open the sandbox and
+tap through to it". The shared link is the **outer** preview URL with a screen
+key, e.g. `…pages.dev/?screen=wardrobe` (and `&device=10` to pin the frame).
+
+- **Pick + copy**: the `DeviceFrame` chrome has a grouped **Screen** dropdown
+  (Logged out / Onboarding / App) + a **Copy link** button. Selecting a screen
+  rewrites the outer URL and reloads the iframe; Copy puts that URL on the
+  clipboard.
+- **Registry**: `web/share/shareable-screens.ts` is the single source of truth —
+  each entry maps a `?screen=` key → `{ label, group, authState, target }`.
+  Only param-free screens are listed (so a link can't land on a crashed screen);
+  add more later with safe default params.
+- **Auth state per screen**: `index.web.tsx` resolves the key and seeds the
+  right mock-auth state — *skip* the token for **logged-out** screens (Auth
+  stack), force `is_first_login` for **onboarding** screens, default for **app**
+  screens. The `is_first_login` force lives behind
+  `src/services/reviewOverrides.ts`, whose setters are only ever called from
+  `index.web.tsx` → **no-op on native / production**.
+- **Landing**: the resolved target is stashed as a pending nav intent;
+  `AppNavigator` applies it once `onReady` fires, then clears it.
+
+No `?screen=` → today's behavior (boot to Home). The mechanism never runs in the
+native app.
+
+## 8. Key decisions & trade-offs
 
 - **Shared `src/`** → mobile/web never drift in code; web is a fast "magnifying
   glass" for design, not a separate app. Trade-off: RNW ≠ native pixel-for-pixel.
