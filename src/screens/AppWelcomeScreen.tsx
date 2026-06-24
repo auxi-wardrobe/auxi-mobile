@@ -34,7 +34,7 @@ export const AppWelcomeScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.centerContent}>
-          <MacgieNod size={120} style={styles.logo} />
+          <MacgieNod size={96} style={styles.logo} />
 
           <View style={styles.textContainer}>
             <Text style={styles.title}>{WELCOME_COPY.title}</Text>
