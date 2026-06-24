@@ -18,6 +18,12 @@ import { Icons } from '../../assets/icons';
 // NavigationContainer.
 const SIDEBAR_WIDTH = 317;
 
+// Internal-only gate: the in-app Design System reference page is shown in the
+// sidebar ONLY for these accounts (CEO + designer). Compared case-insensitively
+// against the logged-in user's email. Not a security boundary — the route is
+// also reachable in __DEV__ via Settings → Version.
+const DS_EMAILS = ['duc2820@gmail.com', 'vietdesign81@gmail.com'];
+
 // Navigate via the shared ref + close the drawer. Guards on isReady so an early
 // tap (before the container mounts) is a no-op rather than a crash.
 const go = (name: keyof AppStackParamList, close: () => void) => {
@@ -32,8 +38,12 @@ const go = (name: keyof AppStackParamList, close: () => void) => {
 export const SidebarMenu: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { close } = useSidebar();
+
+  // Email-gated internal entry to the Design System reference page.
+  const showDesignSystem =
+    !!user?.email && DS_EMAILS.includes(user.email.toLowerCase());
 
   // Track the focused route so the active row reads as selected. navigationRef
   // lives outside the container, so subscribe to its state events.
@@ -125,6 +135,18 @@ export const SidebarMenu: React.FC = () => {
           isActive={routeName === 'OutfitCanvas'}
           onPress={() => go('OutfitCanvas', close)}
         />
+        {showDesignSystem && (
+          <MenuItem
+            label="Design System"
+            Icon={Icons.Grid}
+            testID="sidebar-menu-design-system"
+            isActive={routeName === 'DesignSystem'}
+            onPress={() => {
+              track('design_system_opened', { source: 'sidebar' });
+              go('DesignSystem', close);
+            }}
+          />
+        )}
         <MenuItem
           label={t('sidebar.logout')}
           Icon={Icons.Logout}
