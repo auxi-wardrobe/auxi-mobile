@@ -5,24 +5,26 @@
  * timed splash. This screen OWNS the mutation (moved out of the Styles screen
  * per the Phase 4 reconciliation). It fires `POST /v05/onboarding/generate`
  * once on mount with the selection threaded through route params and:
- *   - on success → `navigation.replace('OnboardingCompleted', { selection })`
- *     so a back gesture from Completed does NOT return to this Loading screen
- *     (the generate already ran). Completed renders chips from the SAME local
- *     selection, so it paints instantly (no second fetch).
+ *   - on success → after a minimum-visible floor it CROSSFADES IN PLACE into
+ *     the completion state (no navigation): the loading copy/rows fade out and
+ *     the "more you use Macgie…" message + Next/Retake CTAs fade in. This
+ *     screen absorbs the former standalone OnboardingCompleted screen.
+ *     Next → Outro; Retake → Step 1 (Wardrobe) to start over.
  *   - on error → show a retry block. "Try again" re-runs the mutation in place;
  *     "Retake" goes back to Step 3 (Styles) to change picks. Error copy reuses
  *     the StylePicker's 422/400/401 parse shape.
  *
  * CRITICAL (deferred-completion contract): this screen does NOT call
- * `completeOnboarding()`. `is_first_login` stays `true` through Loading /
- * Completed / Outro; only the Outro "See my outfit" tap completes onboarding.
- * `/generate` is idempotent, so a mid-flow relaunch re-enters cleanly.
+ * `completeOnboarding()`. `is_first_login` stays `true` through the loading +
+ * completion states and Outro; only the Outro "See my outfit" tap completes
+ * onboarding. `/generate` is idempotent, so a mid-flow relaunch re-enters
+ * cleanly.
  *
  * Visual (extraction §3.5): cream bg (#eee6df = figmaCaptionPillBg), no header.
  * "You selected" chips, Poppins H2 headline, helper + footer lines, and a set
  * of loading rows each with a rotating 24×24 `Icons.Loading` spinner.
  */
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -45,11 +47,13 @@ import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { SelectedChips } from './SelectedChips';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
+import { motion, useReducedMotion } from '../../theme/motion';
 import {
   generateStarterWardrobe,
   type GenerateStarterWardrobeResponse,
 } from '../../services/v05Api';
 import {
+  COMPLETED_COPY,
   LOADING_COPY,
   SELECTED_CHIPS_LEADIN,
   selectionChipLabels,
@@ -151,23 +155,76 @@ const LoadingRow: React.FC<{ label: string }> = ({ label }) => {
 // backend). Generation in production takes longer and exceeds this floor.
 const MIN_VISIBLE_MS = 1800;
 
+// Subtle upward drift (px) for the completion message as it fades in.
+const COMPLETED_RISE_PX = 8;
+
 export const OnboardingLoadingScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<ScreenRoute>();
   const { selection } = route.params;
+  const reduced = useReducedMotion();
 
-  // Hold the loading state for at least MIN_VISIBLE_MS from mount before
-  // advancing on success (see constant above). Cleared on unmount.
+  // Loading → Completed crossfade lives ON this screen (no navigation). After
+  // the MIN_VISIBLE_MS floor, the loading copy/rows fade out and the completion
+  // message + CTAs fade in. `phase` swaps the content once the fade-out
+  // finishes so the two states never overlap in layout.
+  const [phase, setPhase] = useState<'loading' | 'completed'>('loading');
   const mountedAt = useRef(Date.now()).current;
-  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(true);
+  const transitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadingOpacity = useRef(new Animated.Value(1)).current;
+  const completedOpacity = useRef(new Animated.Value(0)).current;
+  const completedShift = useRef(new Animated.Value(COMPLETED_RISE_PX)).current;
   useEffect(
     () => () => {
-      if (redirectTimer.current) {
-        clearTimeout(redirectTimer.current);
+      mounted.current = false;
+      if (transitionTimer.current) {
+        clearTimeout(transitionTimer.current);
       }
     },
     [],
   );
+
+  // Crossfade into the completion state. Also fires the 'completed' step view
+  // (step_index 7) the standalone OnboardingCompleted screen used to own.
+  const revealCompleted = useCallback(() => {
+    if (!mounted.current) {
+      return;
+    }
+    track('onboarding_step_viewed', { step_name: 'completed', step_index: 7 });
+    if (reduced) {
+      loadingOpacity.setValue(0);
+      completedShift.setValue(0);
+      completedOpacity.setValue(1);
+      setPhase('completed');
+      return;
+    }
+    Animated.timing(loadingOpacity, {
+      toValue: 0,
+      duration: motion.duration.normal,
+      easing: motion.easing.exit,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished || !mounted.current) {
+        return;
+      }
+      setPhase('completed');
+      Animated.parallel([
+        Animated.timing(completedOpacity, {
+          toValue: 1,
+          duration: motion.duration.medium,
+          easing: motion.easing.enter,
+          useNativeDriver: true,
+        }),
+        Animated.timing(completedShift, {
+          toValue: 0,
+          duration: motion.duration.medium,
+          easing: motion.easing.enter,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  }, [reduced, loadingOpacity, completedOpacity, completedShift]);
 
   useFocusEffect(
     useCallback(() => {
@@ -195,15 +252,11 @@ export const OnboardingLoadingScreen = () => {
         wardrobe_direction: selection.wardrobe_direction,
         fit_preference: selection.fit_preference,
       });
-      // DEFERRED COMPLETION: do NOT call completeOnboarding() here. `replace`
-      // so a back gesture from Completed cannot return to Loading (generate
-      // already ran). completeOnboarding fires only at the Outro CTA.
-      // Honor the minimum-visible floor: advance only once MIN_VISIBLE_MS has
-      // elapsed since mount (instant on a slow real backend; padded when fast).
+      // DEFERRED COMPLETION: do NOT call completeOnboarding() here — that fires
+      // only at the Outro CTA. Honor the minimum-visible floor, then crossfade
+      // into the completion state in place (no navigation).
       const remaining = Math.max(0, MIN_VISIBLE_MS - (Date.now() - mountedAt));
-      redirectTimer.current = setTimeout(() => {
-        navigation.replace('OnboardingCompleted', { selection });
-      }, remaining);
+      transitionTimer.current = setTimeout(revealCompleted, remaining);
     },
   });
 
@@ -213,17 +266,23 @@ export const OnboardingLoadingScreen = () => {
     mutate();
   }, [mutate]);
 
-  const handleRetake = useCallback(() => {
-    // Back to Step 3 to change the picks.
+  // Error-path retake → back to Step 3 to change the picks.
+  const handleErrorRetake = useCallback(() => {
     navigation.navigate('OnboardingStyles', {
       wardrobe_direction: selection.wardrobe_direction,
       fit_preference: selection.fit_preference,
     });
   }, [navigation, selection]);
 
+  // Completion retake → restart onboarding from Step 1 (Wardrobe).
+  const handleRetake = useCallback(() => {
+    navigation.navigate('OnboardingWardrobe');
+  }, [navigation]);
+
   const chips = selectionChipLabels(selection);
   const isError = generateMutation.isError;
   const parsed = isError ? parseGenerateError(generateMutation.error) : null;
+  const isCompleted = phase === 'completed';
 
   return (
     <SafeAreaView style={styles.container} testID="onboarding-loading-screen">
@@ -234,27 +293,63 @@ export const OnboardingLoadingScreen = () => {
         <View style={styles.chipsBlock}>
           <Text style={styles.leadIn}>{SELECTED_CHIPS_LEADIN}</Text>
           <SelectedChips labels={chips} testID="onboarding-loading-chips" />
-          <Text style={styles.helper}>{LOADING_COPY.helper}</Text>
         </View>
 
-        <Text style={styles.headline}>{LOADING_COPY.headline}</Text>
-        <Text style={styles.footer}>{LOADING_COPY.footer}</Text>
-
-        {parsed ? (
-          <View style={styles.errorBlock} testID="onboarding-loading-error">
-            <Text style={styles.errorTitle}>{parsed.title}</Text>
-            <Text style={styles.errorMessage}>{parsed.message}</Text>
-          </View>
+        {isCompleted ? (
+          <Animated.View
+            testID="onboarding-completed-screen"
+            style={[
+              styles.completedBlock,
+              {
+                opacity: completedOpacity,
+                transform: [{ translateY: completedShift }],
+              },
+            ]}
+          >
+            <Text style={styles.headline}>{COMPLETED_COPY.headline}</Text>
+          </Animated.View>
         ) : (
-          <View style={styles.rows} testID="onboarding-loading-view">
-            {LOADING_COPY.rows.map(row => (
-              <LoadingRow key={row} label={row} />
-            ))}
-          </View>
+          <Animated.View
+            style={[styles.loadingBlock, { opacity: loadingOpacity }]}
+          >
+            <Text style={styles.helper}>{LOADING_COPY.helper}</Text>
+            <Text style={styles.headline}>{LOADING_COPY.headline}</Text>
+            <Text style={styles.footer}>{LOADING_COPY.footer}</Text>
+
+            {parsed ? (
+              <View style={styles.errorBlock} testID="onboarding-loading-error">
+                <Text style={styles.errorTitle}>{parsed.title}</Text>
+                <Text style={styles.errorMessage}>{parsed.message}</Text>
+              </View>
+            ) : (
+              <View style={styles.rows} testID="onboarding-loading-view">
+                {LOADING_COPY.rows.map(row => (
+                  <LoadingRow key={row} label={row} />
+                ))}
+              </View>
+            )}
+          </Animated.View>
         )}
       </ScrollView>
 
-      {parsed ? (
+      {isCompleted ? (
+        <Animated.View style={[styles.footerBar, { opacity: completedOpacity }]}>
+          <PillButton
+            title={COMPLETED_COPY.ctaLabel}
+            variant="filled"
+            onPress={() => navigation.navigate('OnboardingOutro', { selection })}
+            style={styles.cta}
+            testID="onboarding-completed-continue"
+          />
+          <PillButton
+            title={COMPLETED_COPY.retakeLabel}
+            variant="text"
+            onPress={handleRetake}
+            style={styles.cta}
+            testID="onboarding-completed-retake"
+          />
+        </Animated.View>
+      ) : parsed ? (
         <View style={styles.footerBar}>
           <PillButton
             title="Try again"
@@ -266,7 +361,7 @@ export const OnboardingLoadingScreen = () => {
           <PillButton
             title="Retake"
             variant="text"
-            onPress={handleRetake}
+            onPress={handleErrorRetake}
             style={styles.cta}
             testID="onboarding-loading-retake"
           />
@@ -286,6 +381,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing.m,
   },
   chipsBlock: {
+    gap: theme.spacing.m,
+  },
+  loadingBlock: {
+    gap: theme.spacing.m,
+  },
+  completedBlock: {
     gap: theme.spacing.m,
   },
   leadIn: {

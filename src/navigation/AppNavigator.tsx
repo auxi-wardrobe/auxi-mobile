@@ -12,7 +12,6 @@ import { OnboardingWardrobeScreen } from '../onboarding/v2/OnboardingWardrobeScr
 import { OnboardingFitScreen } from '../onboarding/v2/OnboardingFitScreen';
 import { OnboardingStylesScreen } from '../onboarding/v2/OnboardingStylesScreen';
 import { OnboardingLoadingScreen } from '../onboarding/v2/OnboardingLoadingScreen';
-import { OnboardingCompletedScreen } from '../onboarding/v2/OnboardingCompletedScreen';
 import { OnboardingOutroScreen } from '../onboarding/v2/OnboardingOutroScreen';
 import { useAuth } from '../context/AuthContext';
 import { View, StyleSheet } from 'react-native';
@@ -124,7 +123,8 @@ export const AppNavigator = () => {
           user.is_first_login ? (
             <>
               {/* Welcome → LocationPermission → V2 onboarding (Wardrobe →
-                  Fit → Styles → Loading → Completed → Outro). */}
+                  Fit → Styles → Loading → Outro). Loading crossfades in place
+                  into the completion state (no separate Completed screen). */}
               <Stack.Screen name="Welcome" component={AppWelcomeScreen} />
               <Stack.Screen
                 name="LocationPermission"
@@ -145,11 +145,6 @@ export const AppNavigator = () => {
               <Stack.Screen
                 name="OnboardingLoading"
                 component={OnboardingLoadingScreen}
-                options={{ gestureEnabled: false }}
-              />
-              <Stack.Screen
-                name="OnboardingCompleted"
-                component={OnboardingCompletedScreen}
                 options={{ gestureEnabled: false }}
               />
               <Stack.Screen

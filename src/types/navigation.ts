@@ -104,9 +104,10 @@ export type AppStackParamList = {
   //                        forwards the full selection to OnboardingLoading
   //                        (the screen no longer owns the /generate call).
   //   OnboardingLoading  → owns POST /generate (Loading IS the in-flight call,
-  //                        D10). On success → replace to OnboardingCompleted;
+  //                        D10). On success it CROSSFADES IN PLACE into the
+  //                        completion state (Next → Outro, Retake → Wardrobe) —
+  //                        it absorbs the former OnboardingCompleted screen;
   //                        on error → back to OnboardingStyles with a retry.
-  //   OnboardingCompleted → "Your wardrobe is ready" → OnboardingOutro
   //   OnboardingOutro    → "See my outfit" → completeOnboarding() → Home swap
   //
   // `OnboardingFit` and `OnboardingStyles` are each ONE screen parameterised
@@ -117,11 +118,10 @@ export type AppStackParamList = {
     wardrobe_direction: WardrobeDirection;
     fit_preference: FitPreference;
   };
-  // Loading owns the /generate mutation (moved out of Styles per D10). Carries
-  // the full selection forward so it can fire the call and, on success,
-  // hand the same selection to Completed (which renders from it instantly).
+  // Loading owns the /generate mutation (moved out of Styles per D10) AND the
+  // in-place completion state (it absorbed the former OnboardingCompleted
+  // screen). Carries the full selection to fire the call and render the chips.
   OnboardingLoading: { selection: V05OnboardingSelection };
-  OnboardingCompleted: { selection: V05OnboardingSelection };
   OnboardingOutro: { selection: V05OnboardingSelection };
   // AU-312: `fallbackItem` carries the Home tile's payload so the pushed
   // detail screen can still render V05 `common_essential` injections —

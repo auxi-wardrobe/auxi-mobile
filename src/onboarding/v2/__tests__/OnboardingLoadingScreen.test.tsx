@@ -3,7 +3,8 @@
  * OnboardingLoadingScreen — owns the /generate mutation (D10). Phase 6
  * integration scope (mutation mocked at the v05Api boundary; no network):
  *  1. fires generateStarterWardrobe() exactly once on mount.
- *  2. success → navigation.replace('OnboardingCompleted', { selection }).
+ *  2. success → crossfades in place into the completion state (no navigation);
+ *     Next → Outro, Retake → Wardrobe.
  *  3. error → renders the retry block (onboarding-loading-error / -retry).
  *  4. CRITICAL: does NOT call completeOnboarding() (deferred to Outro).
  *
@@ -41,6 +42,14 @@ jest.mock('../../../services/v05Api', () => ({
 const mockCompleteOnboarding = jest.fn();
 jest.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({ completeOnboarding: mockCompleteOnboarding }),
+}));
+
+// Reduce Motion → the loading→completed crossfade resolves synchronously (no
+// Animated timing), so the completion state is assertable right after the
+// min-visible floor timer fires under fake timers.
+jest.mock('../../../theme/motion', () => ({
+  ...jest.requireActual('../../../theme/motion'),
+  useReducedMotion: () => true,
 }));
 
 import { OnboardingLoadingScreen } from '../OnboardingLoadingScreen';
@@ -116,18 +125,40 @@ describe('OnboardingLoadingScreen — generate on mount', () => {
     });
   });
 
-  it('success → navigation.replace to OnboardingCompleted with the same selection', async () => {
+  it('success → crossfades to the completion state in place (no navigation)', async () => {
     mockGenerate.mockResolvedValue({ wardrobe_items: [] });
-    await renderScreen();
-    expect(mockReplace).toHaveBeenCalledWith('OnboardingCompleted', {
-      selection: SELECTION,
-    });
+    const { root } = await renderScreen();
+    // completion content is shown on the SAME screen; loading rows are gone
+    expect(byTestID(root, 'onboarding-completed-screen').length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      byTestID(root, 'onboarding-completed-continue').length,
+    ).toBeGreaterThan(0);
+    expect(byTestID(root, 'onboarding-loading-view').length).toBe(0);
+    // it never navigates to a separate Completed route
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it('does NOT call completeOnboarding (deferred-completion contract)', async () => {
+  it('completion Next → Outro and never calls completeOnboarding (deferred)', async () => {
     mockGenerate.mockResolvedValue({ wardrobe_items: [] });
-    await renderScreen();
+    const { root } = await renderScreen();
+    act(() => {
+      byTestID(root, 'onboarding-completed-continue')[0].props.onPress();
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('OnboardingOutro', {
+      selection: SELECTION,
+    });
     expect(mockCompleteOnboarding).not.toHaveBeenCalled();
+  });
+
+  it('completion Retake → restarts onboarding at Wardrobe', async () => {
+    mockGenerate.mockResolvedValue({ wardrobe_items: [] });
+    const { root } = await renderScreen();
+    act(() => {
+      byTestID(root, 'onboarding-completed-retake')[0].props.onPress();
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('OnboardingWardrobe');
   });
 });
 
@@ -158,7 +189,7 @@ describe('OnboardingLoadingScreen — error path', () => {
 
     expect(mockGenerate).toHaveBeenCalledTimes(1);
 
-    // second attempt succeeds → replace to Completed
+    // second attempt succeeds → crossfades into the completion state
     mockGenerate.mockResolvedValueOnce({ wardrobe_items: [] });
     await act(async () => {
       byTestID(root, 'onboarding-loading-retry')[0].props.onPress();
@@ -166,8 +197,10 @@ describe('OnboardingLoadingScreen — error path', () => {
     await flushMutation();
 
     expect(mockGenerate).toHaveBeenCalledTimes(2);
-    expect(mockReplace).toHaveBeenCalledWith('OnboardingCompleted', {
-      selection: SELECTION,
-    });
+    // second attempt succeeds → crossfades into the completion state in place
+    expect(
+      byTestID(root, 'onboarding-completed-continue').length,
+    ).toBeGreaterThan(0);
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 });

@@ -193,9 +193,9 @@ env:
     id: onboarding-style-next
 
 # --- 8. Loading: real /generate in-flight wait (D10) ---
-# OnboardingLoadingScreen fires POST /v05/onboarding/generate on mount and
-# replaces to Completed on success. Assert the loading screen mounts and the
-# error block did NOT surface (pool_insufficient / 4xx would mount it instead).
+# OnboardingLoadingScreen fires POST /v05/onboarding/generate on mount. Assert
+# the loading screen mounts and the error block did NOT surface
+# (pool_insufficient / 4xx would mount it instead).
 - extendedWaitUntil:
     visible:
       id: onboarding-loading-screen
@@ -203,16 +203,17 @@ env:
 - assertNotVisible:
     id: onboarding-loading-error
 
-# --- 9. Completed: chips render from local selection + CTA -> Outro ---
-# Reached via navigation.replace once /generate succeeds. The single
-# extendedWaitUntil below spans the network call (we wait on the post-state
-# marker, not the transient loading view).
+# --- 9. Completion: crossfades IN PLACE on the same screen (no navigation) ---
+# On /generate success the loading copy fades out and the completion message +
+# CTAs fade in (the former OnboardingCompleted screen, now absorbed here). We
+# wait on the completion marker (spans the network call), then advance via the
+# primary CTA. The selection chips persist from the loading state.
 - extendedWaitUntil:
     visible:
       id: onboarding-completed-screen
     timeout: ${V05_GENERATE_TIMEOUT_MS}
 - assertVisible:
-    id: onboarding-completed-chips
+    id: onboarding-loading-chips
 - tapOn:
     id: onboarding-completed-continue
 

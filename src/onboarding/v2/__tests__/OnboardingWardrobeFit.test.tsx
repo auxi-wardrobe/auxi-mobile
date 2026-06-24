@@ -21,6 +21,8 @@ const ROUTE_PARAMS = { wardrobe_direction: 'Womenswear' as const };
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
   useRoute: () => ({ params: ROUTE_PARAMS }),
+  // Screen tracks a screen-view via useFocusEffect; no-op for these tests.
+  useFocusEffect: jest.fn(),
 }));
 
 import { OnboardingWardrobeScreen } from '../OnboardingWardrobeScreen';

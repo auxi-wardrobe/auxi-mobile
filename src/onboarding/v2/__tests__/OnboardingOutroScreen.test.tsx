@@ -2,8 +2,6 @@
 /**
  * Deferred-completion contract (Phase 0 architecture decision + Phase 5 fix).
  *
- *  - OnboardingCompleted: "Continue" navigates to Outro and does NOT call
- *    completeOnboarding() (is_first_login stays true through Completed).
  *  - OnboardingOutro: "See my outfit" DOES call completeOnboarding(), and
  *    fires track('onboarding_completed') AFTER completeOnboarding RESOLVES
  *    (ordering matters — must emit exactly once, at true completion). On
@@ -26,6 +24,8 @@ const SELECTION = {
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
   useRoute: () => ({ params: { selection: SELECTION } }),
+  // Screen tracks a screen-view via useFocusEffect; no-op for these tests.
+  useFocusEffect: jest.fn(),
 }));
 
 const mockCompleteOnboarding = jest.fn();
@@ -39,7 +39,6 @@ jest.mock('../../../services/analytics', () => ({
 }));
 
 import { OnboardingOutroScreen } from '../OnboardingOutroScreen';
-import { OnboardingCompletedScreen } from '../OnboardingCompletedScreen';
 
 const byTestID = (root: ReactTestInstance, id: string): ReactTestInstance[] =>
   root.findAll(n => n.props?.testID === id);
@@ -75,19 +74,6 @@ afterEach(() => {
     } catch {
       // already unmounted
     }
-  });
-});
-
-describe('OnboardingCompletedScreen — does NOT complete onboarding', () => {
-  it('Continue navigates to Outro and never calls completeOnboarding', () => {
-    const { root } = render(<OnboardingCompletedScreen />);
-    act(() => {
-      oneByTestID(root, 'onboarding-completed-continue').props.onPress();
-    });
-    expect(mockNavigate).toHaveBeenCalledWith('OnboardingOutro', {
-      selection: SELECTION,
-    });
-    expect(mockCompleteOnboarding).not.toHaveBeenCalled();
   });
 });
 
