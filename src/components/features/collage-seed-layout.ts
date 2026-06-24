@@ -45,12 +45,16 @@ const SEED_TABLE: Record<number, Slot[]> = {
 
 export const COLLAGE_ASPECT = FIGMA_REF_HEIGHT / FIGMA_REF_WIDTH; // 4/3
 
-const resolveUri = (item: Item): string => resolveItemImage(item) || '';
+// A pre-resolved collage item: id + an already-resolved image URI. Decouples
+// the layout math from the full `Item` shape so both the Home collage view and
+// the Remix canvas (which only receives lightweight `{ id, imageUrl }` nav
+// params) can seed the *identical* overlapping arrangement.
+export type CollageSeedItem = { id: string; imageUri: string };
 
 // Fallback for counts outside the 3–6 Figma tables: stagger items diagonally so
 // they overlap pleasantly without a hand-tuned table. Never crashes.
 const scatterFallback = (
-  items: Item[],
+  items: CollageSeedItem[],
   scale: number,
   startIndex: number,
 ): CanvasItemData[] => {
@@ -58,7 +62,7 @@ const scatterFallback = (
   const baseH = baseW * COLLAGE_ASPECT;
   return items.map((item, i) => ({
     id: item.id,
-    imageSource: { uri: resolveUri(item) },
+    imageSource: { uri: item.imageUri },
     x: (20 + i * 28) * scale,
     y: (10 + i * 36) * scale,
     width: baseW,
@@ -68,16 +72,16 @@ const scatterFallback = (
 };
 
 /**
- * Map an outfit's items to seeded canvas positions for the collage-play view.
- * Positions are scaled uniformly from the Figma 382w reference to the device
- * surface width, preserving the overlapping collage arrangement and 3:4 aspect.
+ * Core collage seeding: map pre-resolved items to overlapping canvas positions,
+ * scaled uniformly from the Figma 382w reference to `surfaceWidth`, preserving
+ * the overlapping arrangement and 3:4 aspect. Shared by the Home collage view
+ * (`seedFromOutfit`) and the Remix canvas so both render the same layout.
  */
-export const seedFromOutfit = (
-  items: Array<Item | null>,
+export const seedCanvasLayout = (
+  items: CollageSeedItem[],
   surfaceWidth: number,
 ): CanvasItemData[] => {
-  const filled = items.filter((it): it is Item => !!it);
-  const count = filled.length;
+  const count = items.length;
   if (count === 0) {
     return [];
   }
@@ -86,16 +90,16 @@ export const seedFromOutfit = (
   const table = SEED_TABLE[count];
 
   if (!table) {
-    return scatterFallback(filled, scale, 0);
+    return scatterFallback(items, scale, 0);
   }
 
-  const seeded: CanvasItemData[] = filled
+  const seeded: CanvasItemData[] = items
     .slice(0, table.length)
     .map((item, i) => {
       const [x, y, w, h] = table[i];
       return {
         id: item.id,
-        imageSource: { uri: resolveUri(item) },
+        imageSource: { uri: item.imageUri },
         x: x * scale,
         y: y * scale,
         width: w * scale,
@@ -106,11 +110,26 @@ export const seedFromOutfit = (
 
   // Defensive: if somehow more items than slots (shouldn't happen for a matched
   // count), scatter the overflow on top so nothing is dropped.
-  if (filled.length > table.length) {
+  if (items.length > table.length) {
     seeded.push(
-      ...scatterFallback(filled.slice(table.length), scale, table.length),
+      ...scatterFallback(items.slice(table.length), scale, table.length),
     );
   }
 
   return seeded;
 };
+
+/**
+ * Map an outfit's items to seeded canvas positions for the collage-play view.
+ * Thin wrapper over `seedCanvasLayout` that resolves each `Item`'s image URI.
+ */
+export const seedFromOutfit = (
+  items: Array<Item | null>,
+  surfaceWidth: number,
+): CanvasItemData[] =>
+  seedCanvasLayout(
+    items
+      .filter((it): it is Item => !!it)
+      .map(it => ({ id: it.id, imageUri: resolveItemImage(it) || '' })),
+    surfaceWidth,
+  );
