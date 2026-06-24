@@ -232,14 +232,13 @@ export interface StepCopy {
 export const STEP_COPY: Record<'step1' | 'step2' | 'step3', StepCopy> = {
   step1: {
     stepLabel: 'Step 1/3',
-    title: "What's your wardrobe like?",
-    subtitle: 'No judgment. Just so we know what to work with.',
+    title: 'Which wardrobe feels most like you?',
+    subtitle: 'Choose the one that feels most like your everyday style.',
   },
   step2: {
     stepLabel: 'Step 2/3',
-    title: 'Which fit makes you feel most confident?',
-    subtitle:
-      "This will be Auxi's starting point. You can switch up your style anytime.",
+    title: 'Which fit feels most like you?',
+    subtitle: "This helps us recommend silhouettes you'll feel good in.",
   },
   step3: {
     stepLabel: 'Step 3/3',
