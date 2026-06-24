@@ -59,6 +59,7 @@ export {
   MTag,
   MStatus,
   type MChipProps,
+  type MChipSize,
   type MBadgeProps,
   type MBadgeTone,
   type MTagProps,

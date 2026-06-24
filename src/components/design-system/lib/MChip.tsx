@@ -17,12 +17,22 @@ import { motion, useReducedMotion } from '../../../theme/motion';
 import { color, radius, role, type } from '../m-tokens';
 import { useToggleValue } from '../MMotion';
 
+export type MChipSize = 'sm' | 'm';
+
 export interface MChipProps {
   children: string;
   selected?: boolean;
   onPress?: () => void;
   removable?: boolean;
   onRemove?: () => void;
+  /**
+   * Size on the DS chip grid.
+   *  - `m` (default): 44px height, 14/20 text, current horizontal padding.
+   *    Matches the prior chip footprint — keeps the showcase from regressing.
+   *  - `sm`: 24px height, 10/12 text, tighter horizontal padding. For compact
+   *    filter/status chips that previously sat at ~24px.
+   */
+  size?: MChipSize;
   testID?: string;
   accessibilityLabel?: string;
 }
@@ -33,9 +43,11 @@ export const MChip: React.FC<MChipProps> = ({
   onPress,
   removable,
   onRemove,
+  size = 'm',
   testID,
   accessibilityLabel,
 }) => {
+  const sz = size === 'sm' ? SIZE.sm : SIZE.m;
   const reduce = useReducedMotion();
   const fillV = useToggleValue(selected, 120);
   const pop = useRef(new Animated.Value(1)).current;
@@ -93,7 +105,10 @@ export const MChip: React.FC<MChipProps> = ({
       <Animated.View
         style={[
           styles.chip,
-          removable && styles.chipRemovable,
+          {
+            height: sz.height,
+            paddingHorizontal: removable ? sz.padRemovable : sz.pad,
+          },
           {
             backgroundColor: removable ? color.p200 : bg,
             opacity: removable ? collapse : 1,
@@ -102,11 +117,17 @@ export const MChip: React.FC<MChipProps> = ({
         ]}
       >
         <Text
-          style={[styles.chipText, selected && !removable && styles.chipTextOn]}
+          style={[
+            styles.chipText,
+            { fontSize: sz.font, lineHeight: sz.lineHeight },
+            selected && !removable && styles.chipTextOn,
+          ]}
         >
           {children}
         </Text>
-        {removable && <Text style={styles.chipX}>×</Text>}
+        {removable && (
+          <Text style={[styles.chipX, { fontSize: sz.x }]}>×</Text>
+        )}
       </Animated.View>
     </Pressable>
   );
@@ -175,25 +196,31 @@ export const MStatus: React.FC<MStatusProps> = ({
   );
 };
 
+// Per-size geometry. `m` reproduces the prior chip footprint (≈height 44 with
+// 14/20 text + the prior 16px horizontal pad); `sm` is the compact 24px tier
+// (10/12 text, tighter pad). Height owns the vertical sizing so the pill stays
+// centered regardless of font; horizontal pad is tighter for removable chips
+// (the × sits inside) — mirrors the prior `chipRemovable` paddingLeft trim.
+const SIZE = {
+  sm: { height: 24, font: 10, lineHeight: 12, pad: 10, padRemovable: 8, x: 12 },
+  m: { height: 44, font: 14, lineHeight: 20, pad: 16, padRemovable: 11, x: 15 },
+} as const;
+
 const styles = StyleSheet.create({
   chip: {
-    paddingVertical: 9,
-    paddingHorizontal: 16,
     borderRadius: radius.full,
     backgroundColor: color.p200,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
   },
-  chipRemovable: { paddingLeft: 11 },
   chipText: {
     ...type.bodySm,
     fontFamily: type.h3.fontFamily,
     color: color.p600,
-    fontSize: 13.5,
   },
   chipTextOn: { color: color.p50 },
-  chipX: { fontSize: 15, color: color.p600, opacity: 0.7 },
+  chipX: { color: color.p600, opacity: 0.7 },
   tag: {
     paddingVertical: 5,
     paddingHorizontal: 13,

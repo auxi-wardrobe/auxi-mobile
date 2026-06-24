@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
+import { MChip } from '../design-system/lib';
 import { MoodChipDef } from './mood-chips';
 
 /**
@@ -29,21 +30,21 @@ export const MoodChipGrid: React.FC<MoodChipGridProps> = ({
         const selected = selectedIds.has(chip.id);
 
         return (
-          <TouchableOpacity
+          <MChip
             key={chip.id}
+            size="m"
+            selected={selected}
             testID={`mood-chip-${chip.id}`}
-            accessibilityRole="button"
             accessibilityLabel={t(chip.labelKey)}
-            accessibilityState={{ selected, disabled }}
-            activeOpacity={0.82}
-            disabled={disabled}
-            style={[styles.chip, selected && styles.chipSelected]}
-            onPress={() => onToggle(chip.id)}
+            onPress={() => {
+              if (disabled) {
+                return;
+              }
+              onToggle(chip.id);
+            }}
           >
-            <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-              {t(chip.labelKey)}
-            </Text>
-          </TouchableOpacity>
+            {t(chip.labelKey)}
+          </MChip>
         );
       })}
     </View>
@@ -56,23 +57,5 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: theme.spacing.s,
-  },
-  chip: {
-    minHeight: 44, // chip size M
-    borderRadius: theme.borderRadius.round, // pill
-    paddingHorizontal: theme.spacing.m,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.figmaInsightPillBg, // default #E0D2C4
-  },
-  chipSelected: {
-    backgroundColor: theme.colors.figmaChipBg, // selected #5B5550
-  },
-  chipText: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaText, // dark on default tan
-  },
-  chipTextSelected: {
-    color: theme.colors.white, // white on selected
   },
 });

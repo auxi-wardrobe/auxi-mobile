@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { useBackgroundScale } from '../../context/BackgroundScaleContext';
-import { MBottomSheet } from '../design-system/lib';
+import { MBottomSheet, MChip } from '../design-system/lib';
 import { Input } from '../atoms/Input';
 import { track } from '../../services/analytics';
 
@@ -113,13 +113,16 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
               const selected = chip.id === selectedChipId;
 
               return (
-                <TouchableOpacity
+                <MChip
                   key={chip.id}
+                  size="m"
+                  selected={selected}
                   testID={`context-chip-${chip.id}`}
-                  activeOpacity={0.82}
-                  style={[styles.chip, selected && styles.selectedChip]}
-                  disabled={isSubmitting}
+                  accessibilityLabel={chip.label}
                   onPress={() => {
+                    if (isSubmitting) {
+                      return;
+                    }
                     // Analytics §3.3 #27/#28 — refine_chip_selected /
                     // refine_chip_deselected. Tapping the currently selected
                     // chip deselects it (parent toggles); tapping a different
@@ -137,15 +140,8 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
                     onSelectChip(chip.id);
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      selected && styles.selectedChipText,
-                    ]}
-                  >
-                    {chip.label}
-                  </Text>
-                </TouchableOpacity>
+                  {chip.label}
+                </MChip>
               );
             })}
 
@@ -255,6 +251,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  // Shared style for the bespoke shuffle + edit action chips that flank the
+  // MChip filter chips (those are now DS primitives). Sized to the M tier (44px)
+  // so the row stays visually flush with the migrated chips.
   chip: {
     minHeight: 44, // chip size M
     minWidth: 64,
@@ -266,9 +265,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selectedChip: {
-    backgroundColor: theme.colors.figmaChipBg,
-  },
   shuffleChip: {
     width: 70,
     paddingHorizontal: 0,
@@ -279,9 +275,6 @@ const styles = StyleSheet.create({
   chipText: {
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaText,
-  },
-  selectedChipText: {
-    color: theme.colors.white,
   },
   editInput: {
     marginTop: 12,

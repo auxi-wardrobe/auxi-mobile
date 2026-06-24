@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
+import { MBadge } from '../../components/design-system/lib';
 import { resolveItemImage } from '../../utils/url';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
 import { MOOD_CHIPS } from '../../components/features/mood-chips';
@@ -160,11 +161,9 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
             </>
           ) : null}
           {moodTagLabel ? (
-            <View style={styles.moodPill} testID={`${testIDPrefix}-mood-pill`}>
-              <Text style={styles.moodPillText} numberOfLines={1}>
-                {moodTagLabel}
-              </Text>
-            </View>
+            <MBadge tone="tan" testID={`${testIDPrefix}-mood-pill`}>
+              {moodTagLabel}
+            </MBadge>
           ) : null}
         </View>
       ) : null}
@@ -263,22 +262,6 @@ const styles = StyleSheet.create({
   title: {
     ...theme.typography.aliases.poppinsH4SemiBold,
     color: theme.colors.uacTextBase,
-    textAlign: 'center',
-  },
-  // Filled vibe-tag pill (Figma `3539:22327`): bg background/primary/subtle_100
-  // (#e0d2c4 = figmaInsightPillBg), height 24, px 12, fully rounded.
-  moodPill: {
-    height: 24,
-    paddingHorizontal: theme.spacing.uacDimension12,
-    borderRadius: theme.borderRadius.round,
-    backgroundColor: theme.colors.figmaInsightPillBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Pill label — Inter Regular 10/12 (body/xxs), text/primary/bold_700 (#070707).
-  moodPillText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.figmaTextDark,
     textAlign: 'center',
   },
   grid: {

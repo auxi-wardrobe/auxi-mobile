@@ -302,7 +302,7 @@ export const ComponentsSection: React.FC = () => {
       <SubHead label="Chips, tags & badges" tag="filter · removable · status" />
       <Stage column>
         <View style={styles.colWrap}>
-          <Caption>Filter chips · tap to toggle</Caption>
+          <Caption>Filter chips · tap to toggle (M · 44px)</Caption>
           <View style={styles.chipRow}>
             {FILTERS.map(f => (
               <MChip
@@ -310,6 +310,21 @@ export const ComponentsSection: React.FC = () => {
                 selected={!!chips[f]}
                 onPress={() => setChips(c => ({ ...c, [f]: !c[f] }))}
                 testID={`ds-chip-${f.toLowerCase()}`}
+              >
+                {f}
+              </MChip>
+            ))}
+          </View>
+
+          <Caption>Compact chips · SM (24px)</Caption>
+          <View style={styles.chipRow}>
+            {FILTERS.map(f => (
+              <MChip
+                key={`sm-${f}`}
+                size="sm"
+                selected={!!chips[f]}
+                onPress={() => setChips(c => ({ ...c, [f]: !c[f] }))}
+                testID={`ds-chip-sm-${f.toLowerCase()}`}
               >
                 {f}
               </MChip>
