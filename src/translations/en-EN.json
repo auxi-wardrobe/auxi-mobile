@@ -645,11 +645,9 @@
         "retake": "Retake photos"
       },
       "shapes": {
-        "pear": "Pear",
-        "hourglass": "Hourglass",
-        "rectangle": "Rectangle",
-        "triangle": "Triangle",
-        "oval": "Oval"
+        "chubby": "Chubby",
+        "normal": "Normal",
+        "thin": "Thin"
       },
       "quit": {
         "hint": "This can take a moment. You can leave — we’ll let you know the second it’s ready.",

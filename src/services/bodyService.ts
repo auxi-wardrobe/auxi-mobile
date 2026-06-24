@@ -18,7 +18,7 @@ import { apiClient } from './apiClient';
 // (FastAPI's raw envelope), so we check both positions for the `message`.
 
 /** Body shapes the backend recognises for the reusable self-visualization profile. */
-export type BodyShape = 'pear' | 'hourglass' | 'rectangle';
+export type BodyShape = 'chubby' | 'normal' | 'thin';
 
 export interface BodyItem {
   id: string;

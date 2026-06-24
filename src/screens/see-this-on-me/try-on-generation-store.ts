@@ -22,6 +22,7 @@
 import { tryOnService } from '../../services/tryOnService';
 import { TryOnOutfitContext } from '../../types/navigation';
 import { BodyShapeId } from './body-shapes';
+import { pickRandomPose } from './poses';
 
 export type TryOnGenerationStatus =
   | 'idle'
@@ -128,6 +129,12 @@ export const tryOnGenerationStore = {
       provider: null,
     });
 
+    // Pick a fresh random pose per run so re-generating the same outfit varies
+    // the stance (natural vs fashion) instead of always rendering the same flat
+    // front-on pose. The backend must read `prompt_params.pose` for this to
+    // affect the output — see poses.ts.
+    const pose = pickRandomPose();
+
     tryOnService
       .generateTryOn({
         body_id: input.bodyId,
@@ -139,7 +146,11 @@ export const tryOnGenerationStore = {
         // and it now reflects a real, recorded consent decision, not a faked
         // flag. Never call this store method without passing the consent gate.
         gemini_opt_in: true,
-        prompt_params: input.shape ? { body_shape: input.shape } : undefined,
+        prompt_params: {
+          ...(input.shape ? { body_shape: input.shape } : {}),
+          pose: pose.prompt,
+          pose_register: pose.register,
+        },
       })
       .then(res => {
         if (token !== runToken) return; // superseded by a newer run

@@ -644,11 +644,9 @@
         "retake": "Chụp lại ảnh"
       },
       "shapes": {
-        "pear": "Quả lê",
-        "hourglass": "Đồng hồ cát",
-        "rectangle": "Chữ nhật",
-        "triangle": "Tam giác",
-        "oval": "Bầu dục"
+        "chubby": "Đầy đặn",
+        "normal": "Bình thường",
+        "thin": "Thon gọn"
       },
       "quit": {
         "hint": "Việc này có thể mất một lát. Bạn có thể rời đi — chúng tôi sẽ báo ngay khi xong.",

@@ -3,8 +3,9 @@
  * `noti` 3398:17798). Tap-to-expand modal over a scrim: headline + a swipeable
  * shape carousel with pagination dots + Retake / Use this photo actions.
  *
- * ASSET GAP: no silhouette SVGs exist, so each "page" renders the labeled shape
- * card from `body-shapes.ts` rather than artwork (see body-shapes.ts header).
+ * ASSET GAP: no silhouette SVGs (nor per-shape selfie previews) exist yet, so
+ * each "page" renders the labeled shape card from `body-shapes.ts` rather than
+ * artwork (see body-shapes.ts header for the backend dependency).
  */
 import React, { useState } from 'react';
 import {
