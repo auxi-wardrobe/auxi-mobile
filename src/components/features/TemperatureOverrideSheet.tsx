@@ -1,29 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Dimensions,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
-import { motion, useReducedMotion } from '../../theme/motion';
 import { useBackgroundScale } from '../../context/BackgroundScaleContext';
+import { MBottomSheet } from '../design-system/lib';
 import { PillButton } from '../primitives/FigmaPrimitives';
 import {
   TEMPERATURE_BUCKETS,
   bucketLabel,
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const SHEET_WIDTH = Math.min(screenWidth - 16, 414);
-const OPEN_DURATION_MS = motion.duration.medium;
-const CLOSE_DURATION_MS = motion.duration.normal;
 
 export type TemperatureSheetErrorKey = 'recommend_failed' | 'offline';
 
@@ -63,10 +49,11 @@ const RadioRow: React.FC<{
 );
 
 /**
- * AU-362 — "Outfit Temperature" bottom sheet. Modal + slide-up Animated.View
- * cloned from ContextChipsModal / MoodFeedbackSheet (the house pattern; NOT
- * @gorhom/bottom-sheet). Presentational: receives the active bucket + applying
- * /error state, owns only the local pending selection + open/close animation.
+ * AU-362 — "Outfit Temperature" bottom sheet. GH-364: presents through the
+ * design-system MBottomSheet primitive (scrim + slide-up/down motion + grab
+ * handle + reduce-motion all owned by the primitive). Presentational: receives
+ * the active bucket + applying/error state, owns only the local pending
+ * selection. Dismiss is suppressed while applying.
  */
 export const TemperatureOverrideSheet: React.FC<
   TemperatureOverrideSheetProps
@@ -81,8 +68,6 @@ export const TemperatureOverrideSheet: React.FC<
   onCancel,
 }) => {
   const { t } = useTranslation();
-  const reduceMotion = useReducedMotion();
-  const [shouldRender, setShouldRender] = useState(visible);
   const { pushSheet, popSheet } = useBackgroundScale();
   useEffect(() => {
     if (!visible) {
@@ -93,7 +78,6 @@ export const TemperatureOverrideSheet: React.FC<
   }, [visible, pushSheet, popSheet]);
   const [pendingKey, setPendingKey] =
     useState<TemperatureBucketKey>(activeBucketKey);
-  const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 
   // Pre-select the active bucket every time the sheet opens (ticket: reopen
   // after override → previous selection pre-selected; default `weather`).
@@ -103,46 +87,6 @@ export const TemperatureOverrideSheet: React.FC<
     }
   }, [visible, activeBucketKey]);
 
-  // Open/close animation with open/close duration asymmetry. Reduce-motion
-  // skips the slide entirely (instant snap) per the motion spec fallback.
-  useEffect(() => {
-    if (visible && !shouldRender) {
-      setShouldRender(true);
-      return;
-    }
-    if (visible) {
-      if (reduceMotion) {
-        slideAnim.setValue(0);
-        return;
-      }
-      slideAnim.setValue(screenHeight);
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: OPEN_DURATION_MS,
-        easing: motion.easing.enter,
-        useNativeDriver: true,
-      }).start();
-      return;
-    }
-    if (!shouldRender) {
-      return;
-    }
-    if (reduceMotion) {
-      setShouldRender(false);
-      return;
-    }
-    Animated.timing(slideAnim, {
-      toValue: screenHeight,
-      duration: CLOSE_DURATION_MS,
-      easing: motion.easing.exit,
-      useNativeDriver: true,
-    }).start(() => setShouldRender(false));
-  }, [shouldRender, slideAnim, visible, reduceMotion]);
-
-  if (!shouldRender) {
-    return null;
-  }
-
   const errorText =
     errorKey === 'offline'
       ? t('home.temp_error_offline')
@@ -151,96 +95,71 @@ export const TemperatureOverrideSheet: React.FC<
       : null;
 
   return (
-    <Modal
-      transparent
-      visible={shouldRender}
-      animationType="none"
-      onRequestClose={isApplying ? undefined : onCancel}
+    <MBottomSheet
+      visible={visible}
+      onDismiss={isApplying ? () => {} : onCancel}
+      testID="temp-sheet-root"
     >
-      <View style={styles.overlay}>
-        <Pressable
-          testID="temp-sheet-backdrop"
-          accessibilityLabel={t('home.temp_cancel_cta')}
-          style={StyleSheet.absoluteFillObject}
-          onPress={isApplying ? undefined : onCancel}
+      <View style={styles.body}>
+        <Text style={styles.title}>{t('home.temp_sheet_title')}</Text>
+        <Text style={styles.subtitle}>{t('home.temp_sheet_subtitle')}</Text>
+
+        <View style={styles.radioList}>
+          {TEMPERATURE_BUCKETS.map(bucket => (
+            <RadioRow
+              key={bucket.key}
+              testID={`temp-sheet-option-${bucket.key}`}
+              label={bucketLabel(t, bucket.key, liveTempC)}
+              selected={pendingKey === bucket.key}
+              disabled={isApplying}
+              onPress={() => {
+                setPendingKey(bucket.key);
+                onSelect?.(bucket.key);
+              }}
+            />
+          ))}
+        </View>
+
+        {errorText ? (
+          <View style={styles.errorBanner}>
+            <Text testID="temp-sheet-error" style={styles.errorText}>
+              {errorText}
+            </Text>
+          </View>
+        ) : null}
+
+        <PillButton
+          testID="temp-sheet-apply"
+          title={t('home.temp_apply_cta')}
+          variant="filled"
+          disabled={isApplying}
+          loading={isApplying}
+          onPress={() => onApply(pendingKey)}
+          style={styles.applyButton}
         />
 
-        <Animated.View
-          testID="temp-sheet-root"
-          style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}
+        <TouchableOpacity
+          testID="temp-sheet-cancel"
+          accessibilityRole="button"
+          activeOpacity={0.82}
+          disabled={isApplying}
+          style={styles.cancelButton}
+          onPress={onCancel}
         >
-          <Text style={styles.title}>{t('home.temp_sheet_title')}</Text>
-          <Text style={styles.subtitle}>{t('home.temp_sheet_subtitle')}</Text>
-
-          <View style={styles.radioList}>
-            {TEMPERATURE_BUCKETS.map(bucket => (
-              <RadioRow
-                key={bucket.key}
-                testID={`temp-sheet-option-${bucket.key}`}
-                label={bucketLabel(t, bucket.key, liveTempC)}
-                selected={pendingKey === bucket.key}
-                disabled={isApplying}
-                onPress={() => {
-                  setPendingKey(bucket.key);
-                  onSelect?.(bucket.key);
-                }}
-              />
-            ))}
-          </View>
-
-          {errorText ? (
-            <View style={styles.errorBanner}>
-              <Text testID="temp-sheet-error" style={styles.errorText}>
-                {errorText}
-              </Text>
-            </View>
-          ) : null}
-
-          <PillButton
-            testID="temp-sheet-apply"
-            title={t('home.temp_apply_cta')}
-            variant="filled"
-            disabled={isApplying}
-            loading={isApplying}
-            onPress={() => onApply(pendingKey)}
-            style={styles.applyButton}
-          />
-
-          <TouchableOpacity
-            testID="temp-sheet-cancel"
-            accessibilityRole="button"
-            activeOpacity={0.82}
-            disabled={isApplying}
-            style={styles.cancelButton}
-            onPress={onCancel}
-          >
-            <Text style={styles.cancelText}>{t('home.temp_cancel_cta')}</Text>
-          </TouchableOpacity>
-        </Animated.View>
+          <Text style={styles.cancelText}>{t('home.temp_cancel_cta')}</Text>
+        </TouchableOpacity>
       </View>
-    </Modal>
+    </MBottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  // Dim tier — RN <Modal> host carries the scrim (docs/Z_INDEX_LAYERING.md §1).
-  overlay: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    backgroundColor: theme.colors.figmaOverlayScrim,
-  },
-  sheet: {
-    // Modal tier — sheet sits above the dim/dismiss layer.
-    zIndex: theme.zIndex.modal,
-    width: SHEET_WIDTH,
-    marginBottom: theme.spacing.s,
-    borderRadius: theme.borderRadius.l,
-    backgroundColor: theme.colors.figmaSurface,
+  // Inner content padding (the MBottomSheet primitive owns the surface, top
+  // radius, grab handle, scrim and motion).
+  body: {
     paddingHorizontal: theme.spacing.m,
-    paddingTop: theme.spacing.l,
+    paddingTop: theme.spacing.s,
     paddingBottom: theme.spacing.m,
-    ...theme.ds.shadow.sheet,
   },
   title: {
     ...theme.typography.aliases.uacBodyMdSemibold,
