@@ -26,6 +26,7 @@ import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
 import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
+import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
 import {
   LEGACY_COACHMARK_STORAGE_KEY,
   SwipeCoachMark,
@@ -207,6 +208,11 @@ export const HomeScreen = () => {
     AsyncStorage.setItem(AI_NOTICE_DISMISSED_KEY, 'true').catch(() => {});
   }, []);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
+  // "You've explored most combinations" sheet — shown when the user reaches the
+  // end of the available outfits (pool depleted). `shownRef` keeps it to once
+  // per depletion episode so repeated end-swipes don't re-pop it.
+  const [limitSheetVisible, setLimitSheetVisible] = useState(false);
+  const limitSheetShownRef = useRef(false);
   const unfavoritedSwipeCountRef = useRef(0);
   const listOutfitsRef = useRef<OutfitSheet[]>([]);
   const saveStateByHashRef = useRef<Record<string, SaveState>>({});
@@ -373,6 +379,7 @@ export const HomeScreen = () => {
         activeIndexRef.current = 0;
         unfavoritedSwipeCountRef.current = 0;
         poolDepletedRef.current = false;
+        limitSheetShownRef.current = false;
         if (addedCount > 0) {
           setHasCycled(false);
           setIsWardrobeGap(false);
@@ -466,6 +473,7 @@ export const HomeScreen = () => {
       resetV05Session();
       fetchGenerationRef.current += 1;
       poolDepletedRef.current = false;
+      limitSheetShownRef.current = false;
       isFirstLoadRef.current = true;
       requestRecommendation(
         {
@@ -491,6 +499,7 @@ export const HomeScreen = () => {
     resetV05Session();
     fetchGenerationRef.current += 1;
     poolDepletedRef.current = false;
+    limitSheetShownRef.current = false;
     isFirstLoadRef.current = true;
     requestRecommendation(
       {
@@ -982,14 +991,45 @@ export const HomeScreen = () => {
     });
   }, []);
 
+  // Surface the "explored most combinations" sheet once per depletion episode,
+  // unless the Refine sheet is already up.
+  const openLimitSheet = useCallback(() => {
+    if (limitSheetShownRef.current || refineIsOpen) {
+      return;
+    }
+    limitSheetShownRef.current = true;
+    setLimitSheetVisible(true);
+    track('outfit_limit_reached');
+  }, [refineIsOpen]);
+
   const advanceDeck = useCallback(() => {
     const next = activeIndexRef.current + 1;
     if (next < listOutfitsRef.current.length) {
       activeIndexRef.current = next;
       setActiveIndex(next);
+      ensureBuffer();
+      return;
+    }
+    // Already on the last card. If the backend has no more combinations for the
+    // current selections, inform the user instead of a dead-end swipe;
+    // otherwise keep buffering ahead.
+    if (poolDepletedRef.current) {
+      openLimitSheet();
+      return;
     }
     ensureBuffer();
-  }, [ensureBuffer]);
+  }, [ensureBuffer, openLimitSheet]);
+
+  const handleLimitRefine = useCallback(() => {
+    setLimitSheetVisible(false);
+    track('outfit_limit_refine_tapped');
+    openRefine('explore_limit');
+  }, [openRefine]);
+
+  const handleLimitKeepBrowsing = useCallback(() => {
+    setLimitSheetVisible(false);
+    track('outfit_limit_keep_browsing');
+  }, []);
 
   // Swipe RIGHT = step back to the previous suggestion. No favouriting here —
   // the heart button / "Wear this" own that — and the deck blocks this gesture
@@ -1069,6 +1109,7 @@ export const HomeScreen = () => {
       resetV05Session();
       fetchGenerationRef.current += 1;
       poolDepletedRef.current = false;
+      limitSheetShownRef.current = false;
       isFirstLoadRef.current = true;
       requestRecommendation(
         {
@@ -1438,6 +1479,12 @@ export const HomeScreen = () => {
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
         onSkip={refine.onSkip}
+      />
+
+      <OutfitLimitSheet
+        visible={limitSheetVisible}
+        onRefine={handleLimitRefine}
+        onKeepBrowsing={handleLimitKeepBrowsing}
       />
 
       <PinConfirmModal
