@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingHorizontal: 22,
     paddingTop: 6,
     paddingBottom: 36,
   },
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     gap: 48,
   },
   title: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
+    ...theme.typography.aliases.poppinsBody,
     color: theme.colors.figmaText,
     textAlign: 'left',
   },

@@ -103,10 +103,11 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingHorizontal: theme.spacing.l,
   },
   quote: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
+    ...theme.typography.aliases.uacH1Bold,
+    letterSpacing: -0.72,
     color: theme.colors.uacTextBase,
   },
   sheet: {

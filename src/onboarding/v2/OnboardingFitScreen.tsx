@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.uacBackgroundNeutral50 },
   content: {
     flex: 1,
-    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingHorizontal: theme.spacing.m,
     paddingTop: theme.spacing.s,
     paddingBottom: theme.spacing.xl,
   },

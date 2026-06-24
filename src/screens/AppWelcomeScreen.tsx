@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingHorizontal: 22,
     paddingBottom: 28,
     justifyContent: 'space-between',
   },
@@ -80,13 +80,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
+    ...theme.typography.aliases.uacH1Bold,
+    // Figma H1 letter-spacing −0.72 (not baked into the alias — applied inline).
+    letterSpacing: -0.72,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
     marginBottom: 16,
   },
   subtitle: {
-    ...theme.typography.aliases.uacBodyMdRegular,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
   },

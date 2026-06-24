@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.uacBackgroundNeutral50 },
   content: {
     flex: 1,
-    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingHorizontal: theme.spacing.m,
     paddingTop: theme.spacing.s,
   },
   textBlock: {
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingHorizontal: theme.spacing.m,
     paddingTop: theme.spacing.l,
     paddingBottom: theme.spacing.xl,
     overflow: 'hidden',
