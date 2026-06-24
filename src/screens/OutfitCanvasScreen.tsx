@@ -27,8 +27,10 @@ import { seedCanvasLayout } from '../components/features/collage-seed-layout';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { getImageUrl } from '../utils/url';
+import { useSidebar } from '../context/SidebarContext';
 import { track } from '../services/analytics';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
+import IconMenu from '../assets/images/icon_menu.svg';
 import IconCanvasUndo from '../assets/images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../assets/images/canvas-icons/redo.svg';
 import IconCanvasAdd from '../assets/images/canvas-icons/add.svg';
@@ -314,6 +316,7 @@ const ToolbarBtn = ({
 export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<RouteProp<AppStackParamList, 'OutfitCanvas'>>();
   const { t } = useTranslation();
+  const { open: openSidebar } = useSidebar();
   // Seed from the real outfit passed by Home's Remix button, reusing the shared
   // collage layout so pieces land in the SAME overlapping positions/sizes the
   // user just saw in Home's collage view (scaled to this canvas width). Fall
@@ -550,12 +553,12 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <Pressable
-            testID="canvas-header-back"
-            onPress={() => navigation.goBack()}
-            accessibilityLabel={t('common.a11y_go_back')}
+            testID="canvas-header-menu"
+            onPress={openSidebar}
+            accessibilityLabel={t('home.a11y_open_menu')}
             style={styles.headerIconBtn}
           >
-            <IconChevronLeft width={24} height={24} />
+            <IconMenu width={24} height={24} />
           </Pressable>
 
           <View style={styles.headerActions}>
