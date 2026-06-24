@@ -39,7 +39,10 @@ export const ComponentsSection: React.FC = () => (
     </Stage>
 
     {/* 3 — Selection */}
-    <SubHead label="Selection controls" tag="switch · checkbox · radio · checkmenu" />
+    <SubHead
+      label="Selection controls"
+      tag="switch · checkbox · radio · checkmenu"
+    />
     <Stage column>
       <DsSelectionShowcase />
     </Stage>
@@ -63,7 +66,10 @@ export const ComponentsSection: React.FC = () => (
     </Stage>
 
     {/* 7 — Tabs / segments */}
-    <SubHead label="Tabs & segments" tag="segmented · underline · dark bar · pill" />
+    <SubHead
+      label="Tabs & segments"
+      tag="segmented · underline · dark bar · pill"
+    />
     <Caption>Segmented control</Caption>
     <Stage>
       <DsSegmented />
@@ -84,8 +90,19 @@ export const ComponentsSection: React.FC = () => (
     {/* 8 — Cards / tiles */}
     <SubHead label="Cards & tiles" tag="item · outfit · pin" />
     <Stage>
-      <DsTile caption="Linen overshirt" sub="Tops · Ecru" tag="item" pinnable fill={color.p200} />
-      <DsTile caption="Quiet Monday" sub="3 items · Balanced" tag="outfit" fill={color.n200} />
+      <DsTile
+        caption="Linen overshirt"
+        sub="Tops · Ecru"
+        tag="item"
+        pinnable
+        fill={color.p200}
+      />
+      <DsTile
+        caption="Quiet Monday"
+        sub="3 items · Balanced"
+        tag="outfit"
+        fill={color.n200}
+      />
     </Stage>
 
     {/* 9 — Avatar */}
@@ -101,7 +118,10 @@ export const ComponentsSection: React.FC = () => (
     </Stage>
 
     {/* 11 — Overlays */}
-    <SubHead label="Overlays" tag="dialog · sheet · snackbar · action-sheet · toast" />
+    <SubHead
+      label="Overlays"
+      tag="dialog · sheet · snackbar · action-sheet · toast"
+    />
     <Stage>
       <DsDialog />
       <DsSheet />

@@ -8,11 +8,41 @@ import { color, radius, role, shadow, space, type } from './ds-tokens';
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 // A 5×7 month grid: leading blanks then 1..31.
 const GRID: Array<number | null> = [
-  null, null, 1, 2, 3, 4, 5,
-  6, 7, 8, 9, 10, 11, 12,
-  13, 14, 15, 16, 17, 18, 19,
-  20, 21, 22, 23, 24, 25, 26,
-  27, 28, 29, 30, 31, null, null,
+  null,
+  null,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19,
+  20,
+  21,
+  22,
+  23,
+  24,
+  25,
+  26,
+  27,
+  28,
+  29,
+  30,
+  31,
+  null,
+  null,
 ];
 
 export const DsCalendar: React.FC = () => {
@@ -37,12 +67,19 @@ export const DsCalendar: React.FC = () => {
             <Pressable
               key={i}
               onPress={() => setSel(day)}
-              style={[styles.dayCell, styles.day, isSel && styles.daySel, isToday && !isSel && styles.dayToday]}
+              style={[
+                styles.dayCell,
+                styles.day,
+                isSel && styles.daySel,
+                isToday && !isSel && styles.dayToday,
+              ]}
               testID={`ds-calendar-day-${day}${isSel ? '-selected' : ''}`}
               accessibilityRole="button"
               accessibilityState={{ selected: isSel }}
             >
-              <Text style={[styles.dayText, isSel && styles.daySelText]}>{day}</Text>
+              <Text style={[styles.dayText, isSel && styles.daySelText]}>
+                {day}
+              </Text>
             </Pressable>
           );
         })}
@@ -68,7 +105,9 @@ export const DsTimePicker: React.FC = () => {
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
             >
-              <Text style={[styles.periodText, on && styles.periodTextOn]}>{p}</Text>
+              <Text style={[styles.periodText, on && styles.periodTextOn]}>
+                {p}
+              </Text>
             </Pressable>
           );
         })}
@@ -117,22 +156,50 @@ const styles = StyleSheet.create({
   },
   calHead: { ...type.h3, color: role.ink, marginBottom: space.s3 },
   calRow: { flexDirection: 'row' },
-  dow: { ...type.caption, color: role.ink3, width: `${100 / 7}%`, textAlign: 'center' },
+  dow: {
+    ...type.caption,
+    color: role.ink3,
+    width: `${100 / 7}%`,
+    textAlign: 'center',
+  },
   calGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 },
-  dayCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  dayCell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   day: { borderRadius: radius.full },
   daySel: { backgroundColor: role.ink },
-  dayToday: { borderWidth: 1, borderColor: color.n300, borderRadius: radius.full },
+  dayToday: {
+    borderWidth: 1,
+    borderColor: color.n300,
+    borderRadius: radius.full,
+  },
   dayText: { ...type.bodySm, color: role.ink },
   daySelText: { color: color.p50 },
   timepick: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   clock: { fontFamily: type.display.fontFamily, fontSize: 46, color: role.ink },
   ampm: { gap: space.s2 },
-  period: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: radius.md, borderWidth: 1.5, borderColor: role.line },
+  period: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: role.line,
+  },
   periodOn: { backgroundColor: role.ink, borderColor: role.ink },
   periodText: { ...type.bodySm, color: role.ink },
   periodTextOn: { color: color.p50 },
-  kbd: { width: 340, backgroundColor: color.n300, borderRadius: radius.md, paddingHorizontal: 4, paddingTop: 7, paddingBottom: 8, gap: 6 },
+  kbd: {
+    width: 340,
+    backgroundColor: color.n300,
+    borderRadius: radius.md,
+    paddingHorizontal: 4,
+    paddingTop: 7,
+    paddingBottom: 8,
+    gap: 6,
+  },
   kbdRow: { flexDirection: 'row', justifyContent: 'center', gap: 4 },
   key: {
     flex: 1,

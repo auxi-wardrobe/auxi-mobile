@@ -17,8 +17,9 @@ export const PrinciplesSection: React.FC = () => (
     <SubHead label="Principles" tag="warm · calm · deliberate" />
     <NoteCard>
       <NoteBold>One family. </NoteBold>
-      Poppins across the whole UI. The mono face is reserved for overlines / spec
-      labels (it is a platform monospace fallback, not bundled JetBrains Mono).
+      Poppins across the whole UI. The mono face is reserved for overlines /
+      spec labels (it is a platform monospace fallback, not bundled JetBrains
+      Mono).
     </NoteCard>
     <NoteCard>
       <NoteBold>Generous radius. </NoteBold>

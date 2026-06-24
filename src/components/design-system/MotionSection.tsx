@@ -7,7 +7,14 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useReducedMotion } from '../../theme/motion';
 import { color, role, type } from './ds-tokens';
-import { Caption, NoteBold, NoteCard, SectionHeader, Stage, SubHead } from './dsShared';
+import {
+  Caption,
+  NoteBold,
+  NoteCard,
+  SectionHeader,
+  Stage,
+  SubHead,
+} from './dsShared';
 import { DsButton } from './DsButtons';
 import { DsSwitch } from './DsControls';
 import { DsTile } from './DsCardsAvatar';
@@ -32,7 +39,10 @@ export const MotionSection: React.FC = () => {
           : 'Toggle iOS Settings → Accessibility → Motion to preview the fallback.'}
       </NoteCard>
 
-      <SubHead label="Button press + loading" tag="scale .96 spring · 3-dot loader" />
+      <SubHead
+        label="Button press + loading"
+        tag="scale .96 spring · 3-dot loader"
+      />
       <Caption>Press → scale(.96) · spring.confident</Caption>
       <Stage>
         <DsButton label="Press me" testID="ds-motion-press" />
@@ -47,13 +57,24 @@ export const MotionSection: React.FC = () => {
           testID="ds-motion-switch"
           accessibilityLabel="Motion switch demo"
         />
-        <Text style={styles.hint}>Knob slides left ↔ right; track fades gray ↔ teal.</Text>
+        <Text style={styles.hint}>
+          Knob slides left ↔ right; track fades gray ↔ teal.
+        </Text>
       </Stage>
 
       <SubHead label="Tile pin" tag="press scale 1.06 · status slide-in" />
-      <Caption>Tap the pin: scale(1.06) press, then 'Pinned' slides in (translateY -3→0)</Caption>
+      <Caption>
+        Tap the pin: scale(1.06) press, then 'Pinned' slides in (translateY
+        -3→0)
+      </Caption>
       <Stage>
-        <DsTile caption="Linen overshirt" sub="Tops · Ecru" tag="item" pinnable fill={color.p200} />
+        <DsTile
+          caption="Linen overshirt"
+          sub="Tops · Ecru"
+          tag="item"
+          pinnable
+          fill={color.p200}
+        />
       </Stage>
 
       <SubHead label="Snackbar & toast" tag="opacity + scale(.9→1) · spinner" />
@@ -64,7 +85,9 @@ export const MotionSection: React.FC = () => {
       </Stage>
 
       <SubHead label="Floating pill footer" tag="spring overshoot · .34s" />
-      <Caption>The signature springy nav — thumb overshoots on x + width</Caption>
+      <Caption>
+        The signature springy nav — thumb overshoots on x + width
+      </Caption>
       <Stage>
         <DsFloatingPill />
       </Stage>

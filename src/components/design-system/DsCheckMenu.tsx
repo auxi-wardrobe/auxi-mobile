@@ -18,7 +18,9 @@ export const DsCheckMenu: React.FC = () => {
             key={o}
             onPress={() => setSel(s => ({ ...s, [o]: !s[o] }))}
             style={[styles.row, i > 0 && styles.divider, on && styles.selected]}
-            testID={`ds-checkmenu-${o.split(' ')[0].toLowerCase()}${on ? '-on' : ''}`}
+            testID={`ds-checkmenu-${o.split(' ')[0].toLowerCase()}${
+              on ? '-on' : ''
+            }`}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: on }}
           >

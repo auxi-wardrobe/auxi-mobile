@@ -105,7 +105,10 @@ const Dot: React.FC<{ delay: number; tint: string; reduce: boolean }> = ({
   const scale = v.interpolate({ inputRange: [0, 1], outputRange: [0.72, 1] });
   return (
     <Animated.View
-      style={[styles.dot, { backgroundColor: tint, opacity, transform: [{ scale }] }]}
+      style={[
+        styles.dot,
+        { backgroundColor: tint, opacity, transform: [{ scale }] },
+      ]}
     />
   );
 };

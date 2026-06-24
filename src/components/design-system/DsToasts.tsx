@@ -21,7 +21,9 @@ export const DsSnackbar: React.FC<{ mint?: boolean }> = ({ mint }) => {
         accessibilityRole="button"
         accessibilityLabel="Replay snackbar"
       >
-        <Text style={styles.triggerText}>{shown ? 'Hide' : 'Show'} snackbar</Text>
+        <Text style={styles.triggerText}>
+          {shown ? 'Hide' : 'Show'} snackbar
+        </Text>
       </Pressable>
       <Animated.View
         style={[
@@ -35,7 +37,9 @@ export const DsSnackbar: React.FC<{ mint?: boolean }> = ({ mint }) => {
         <Text style={[styles.snackText, mint && styles.snackTextMint]}>
           {mint ? 'Outfit saved' : 'Item moved to archive'}
         </Text>
-        <Text style={[styles.snackAction, mint && styles.snackActionMint]}>UNDO</Text>
+        <Text style={[styles.snackAction, mint && styles.snackActionMint]}>
+          UNDO
+        </Text>
       </Animated.View>
     </View>
   );
@@ -93,7 +97,11 @@ const styles = StyleSheet.create({
   snackbarMint: { backgroundColor: color.mint },
   snackText: { ...type.bodySm, color: color.p50, flex: 1 },
   snackTextMint: { color: color.n900 },
-  snackAction: { ...type.bodySm, fontFamily: type.h3.fontFamily, color: color.su200 },
+  snackAction: {
+    ...type.bodySm,
+    fontFamily: type.h3.fontFamily,
+    color: color.su200,
+  },
   snackActionMint: { color: color.n900 },
   toast: {
     alignItems: 'center',

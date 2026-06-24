@@ -157,7 +157,12 @@ const styles = StyleSheet.create({
     backgroundColor: color.white,
     borderRadius: radius.md,
   },
-  iconStage: { flexDirection: 'row', flexWrap: 'wrap', gap: 28, alignItems: 'flex-end' },
+  iconStage: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 28,
+    alignItems: 'flex-end',
+  },
   iconCell: { alignItems: 'center', gap: 8 },
   iconCaption: { fontFamily: MONO, fontSize: 10.5, color: role.ink3 },
 });

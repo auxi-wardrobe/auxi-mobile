@@ -31,7 +31,10 @@ const Row: React.FC<{
   chevron?: boolean;
   danger?: boolean;
 }> = ({ label, value, chevron, danger }) => (
-  <View style={styles.row} testID={`ds-listrow-${label.toLowerCase().replace(/\s+/g, '-')}`}>
+  <View
+    style={styles.row}
+    testID={`ds-listrow-${label.toLowerCase().replace(/\s+/g, '-')}`}
+  >
     <Text style={[styles.rowLabel, danger && styles.rowDanger]}>{label}</Text>
     {!!value && <Text style={styles.rowValue}>{value}</Text>}
     {danger ? (
@@ -115,11 +118,7 @@ export const DsTabBar: React.FC = () => {
             accessibilityRole="tab"
             accessibilityState={{ selected: sel }}
           >
-            <Icon
-              width={24}
-              height={24}
-              color={sel ? color.p50 : color.n400}
-            />
+            <Icon width={24} height={24} color={sel ? color.p50 : color.n400} />
             <Text style={[styles.tbLabel, sel && styles.tbLabelOn]}>{key}</Text>
           </Pressable>
         );
@@ -156,11 +155,20 @@ const styles = StyleSheet.create({
     padding: 4,
     gap: 2,
   },
-  segBtn: { paddingVertical: 9, paddingHorizontal: 20, borderRadius: radius.full },
+  segBtn: {
+    paddingVertical: 9,
+    paddingHorizontal: 20,
+    borderRadius: radius.full,
+  },
   segBtnOn: { backgroundColor: color.white, ...shadow.card },
   segText: { ...type.bodySm, color: role.ink3 },
   segTextOn: { color: role.ink, fontFamily: type.h3.fontFamily },
-  tabs: { flexDirection: 'row', gap: space.s5, borderBottomWidth: 1, borderBottomColor: role.line },
+  tabs: {
+    flexDirection: 'row',
+    gap: space.s5,
+    borderBottomWidth: 1,
+    borderBottomColor: role.line,
+  },
   tab: { paddingBottom: 10, alignItems: 'center' },
   tabText: { ...type.bodySm, color: role.ink3 },
   tabTextOn: { color: role.ink, fontFamily: type.h3.fontFamily },
@@ -185,6 +193,11 @@ const styles = StyleSheet.create({
     width: 300,
   },
   tbItem: { alignItems: 'center', gap: 4 },
-  tbLabel: { fontFamily: type.caption.fontFamily, fontSize: 10, color: color.n400, textTransform: 'capitalize' },
+  tbLabel: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 10,
+    color: color.n400,
+    textTransform: 'capitalize',
+  },
   tbLabelOn: { color: color.p50 },
 });

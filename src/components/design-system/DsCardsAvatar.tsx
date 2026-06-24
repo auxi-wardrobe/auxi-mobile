@@ -31,7 +31,10 @@ export const DsTile: React.FC<{
   });
 
   return (
-    <View style={styles.tile} testID={`ds-tile-${caption.toLowerCase().replace(/\s+/g, '-')}`}>
+    <View
+      style={styles.tile}
+      testID={`ds-tile-${caption.toLowerCase().replace(/\s+/g, '-')}`}
+    >
       <View style={[styles.tileImg, { backgroundColor: fill }]}>
         {pinnable && (
           <PinButton pinned={pinned} onPress={() => setPinned(p => !p)} />
@@ -161,8 +164,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     ...shadow.card,
   },
-  pinStatusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.su200 },
-  pinStatusText: { fontFamily: type.caption.fontFamily, fontSize: 10.5, color: role.ink },
+  pinStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: color.su200,
+  },
+  pinStatusText: {
+    fontFamily: type.caption.fontFamily,
+    fontSize: 10.5,
+    color: role.ink,
+  },
   tileTag: {
     position: 'absolute',
     bottom: 8,
@@ -180,7 +192,11 @@ const styles = StyleSheet.create({
     color: role.ink2,
   },
   tileCap: { paddingHorizontal: 11, paddingTop: 9, paddingBottom: 11 },
-  tileCapText: { ...type.bodySm, fontFamily: type.h3.fontFamily, color: role.ink },
+  tileCapText: {
+    ...type.bodySm,
+    fontFamily: type.h3.fontFamily,
+    color: role.ink,
+  },
   tileSub: { ...type.caption, color: role.ink3, marginTop: 2 },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: space.s4 },
   avLg: {
@@ -214,6 +230,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.s3,
     paddingVertical: space.s2,
   },
-  topIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  topIcon: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   topTitle: { ...type.h3, color: role.ink },
 });

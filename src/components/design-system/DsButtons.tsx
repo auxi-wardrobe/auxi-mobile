@@ -15,7 +15,10 @@ const IconPlus = Icons.Plus;
 type Variant = 'primary' | 'outline' | 'text' | 'danger' | 'danger-outline';
 type Size = 'lg' | 'md' | 'sm';
 
-const SIZE: Record<Size, { height: number; px: number; r: number; fs: number }> = {
+const SIZE: Record<
+  Size,
+  { height: number; px: number; r: number; fs: number }
+> = {
   lg: { height: 56, px: 28, r: radius['2xl'], fs: 16 },
   md: { height: 44, px: 22, r: radius.xl, fs: 15 },
   sm: { height: 32, px: 14, r: radius.lg, fs: 13 },
@@ -28,7 +31,14 @@ export const DsButton: React.FC<{
   disabled?: boolean;
   loading?: boolean;
   testID: string;
-}> = ({ label, variant = 'primary', size = 'lg', disabled, loading, testID }) => {
+}> = ({
+  label,
+  variant = 'primary',
+  size = 'lg',
+  disabled,
+  loading,
+  testID,
+}) => {
   const sz = SIZE[size];
   const isOutline = variant === 'outline' || variant === 'danger-outline';
   const bg =
@@ -45,8 +55,7 @@ export const DsButton: React.FC<{
       : variant === 'danger-outline'
       ? color.da400
       : role.ink;
-  const borderColor =
-    variant === 'danger-outline' ? color.da400 : role.ink;
+  const borderColor = variant === 'danger-outline' ? color.da400 : role.ink;
 
   return (
     <PressScale
@@ -83,7 +92,8 @@ export const DsIconButton: React.FC<{
   size?: Size;
 }> = ({ testID, accessibilityLabel, size = 'md' }) => {
   const dim = size === 'lg' ? 56 : size === 'sm' ? 32 : 44;
-  const r = size === 'lg' ? radius['2xl'] : size === 'sm' ? radius.lg : radius.xl;
+  const r =
+    size === 'lg' ? radius['2xl'] : size === 'sm' ? radius.lg : radius.xl;
   return (
     <PressScale
       testID={testID}
@@ -110,10 +120,7 @@ export const DsButtonShowcase: React.FC = () => (
         variant="danger-outline"
         testID="ds-btn-danger-outline"
       />
-      <DsIconButton
-        testID="ds-btn-icon"
-        accessibilityLabel="Add item"
-      />
+      <DsIconButton testID="ds-btn-icon" accessibilityLabel="Add item" />
     </View>
     <View style={styles.row}>
       <DsButton label="Large" size="lg" testID="ds-btn-lg" />
@@ -129,7 +136,12 @@ export const DsButtonShowcase: React.FC = () => (
 
 const styles = StyleSheet.create({
   wrap: { gap: space.s3, width: '100%' },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s3, alignItems: 'center' },
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.s3,
+    alignItems: 'center',
+  },
   btn: { alignItems: 'center', justifyContent: 'center', minWidth: 96 },
   outline: { borderWidth: 1.5 },
   label: { fontFamily: type.h3.fontFamily, lineHeight: 24 },

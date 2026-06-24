@@ -36,7 +36,12 @@ const Field: React.FC<{
 
 export const DsInputs: React.FC = () => (
   <View style={styles.colWrap}>
-    <Field label="Email" value="macgie@auxi.app" state="default" hint="We never share this." />
+    <Field
+      label="Email"
+      value="macgie@auxi.app"
+      state="default"
+      hint="We never share this."
+    />
     <Field label="Search wardrobe" value="Linen overshirt" state="focus" />
     <Field label="Password" value="••••" state="error" hint="Too short" />
   </View>
@@ -62,7 +67,9 @@ export const DsChips: React.FC = () => {
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
             >
-              <Text style={[styles.chipText, on && styles.chipTextOn]}>{f}</Text>
+              <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                {f}
+              </Text>
             </Pressable>
           );
         })}
@@ -111,10 +118,17 @@ const Badge: React.FC<{ label: string; variant: 'cream' | 'tan' | 'soft' }> = ({
   variant,
 }) => {
   const bg =
-    variant === 'cream' ? color.p100 : variant === 'tan' ? color.p200 : color.n100;
+    variant === 'cream'
+      ? color.p100
+      : variant === 'tan'
+      ? color.p200
+      : color.n100;
   const fg = variant === 'soft' ? role.ink2 : color.p600;
   return (
-    <View style={[styles.badge, { backgroundColor: bg }]} testID={`ds-badge-${variant}`}>
+    <View
+      style={[styles.badge, { backgroundColor: bg }]}
+      testID={`ds-badge-${variant}`}
+    >
       <Text style={[styles.badgeText, { color: fg }]}>{label}</Text>
     </View>
   );
@@ -133,7 +147,10 @@ const Status: React.FC<{ label: string; tone: keyof typeof TONE }> = ({
 }) => {
   const t = TONE[tone];
   return (
-    <View style={[styles.status, { backgroundColor: t.bg }]} testID={`ds-status-${tone}`}>
+    <View
+      style={[styles.status, { backgroundColor: t.bg }]}
+      testID={`ds-status-${tone}`}
+    >
       <View style={[styles.statusDot, { backgroundColor: t.dot }]} />
       <Text style={[styles.statusText, { color: t.fg }]}>{label}</Text>
     </View>
@@ -159,7 +176,12 @@ const styles = StyleSheet.create({
   inputText: { ...type.bodySm, color: role.ink },
   hint: { ...type.caption, color: role.ink3 },
   hintErr: { color: color.da400 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s2, alignItems: 'center' },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.s2,
+    alignItems: 'center',
+  },
   chip: {
     paddingVertical: 9,
     paddingHorizontal: space.s4,
@@ -171,7 +193,12 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: color.p500 },
   chipRemovable: { paddingLeft: 11 },
-  chipText: { ...type.bodySm, fontFamily: type.h3.fontFamily, color: color.p600, fontSize: 13.5 },
+  chipText: {
+    ...type.bodySm,
+    fontFamily: type.h3.fontFamily,
+    color: color.p600,
+    fontSize: 13.5,
+  },
   chipTextOn: { color: color.p50 },
   chipX: { fontSize: 15, color: color.p600, opacity: 0.7 },
   tag: {
@@ -181,7 +208,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(29,31,35,0.82)',
   },
   tagText: { fontFamily: type.h3.fontFamily, fontSize: 11.5, color: color.p50 },
-  badge: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: radius.full },
+  badge: {
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: radius.full,
+  },
   badgeText: { fontFamily: type.h3.fontFamily, fontSize: 11.5 },
   status: {
     flexDirection: 'row',

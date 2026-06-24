@@ -45,7 +45,12 @@ export const DsFloatingPill: React.FC = () => {
       return;
     }
     // Overshoot spring ≈ cubic-bezier(.34,1.32,.5,1): low damping → bounce.
-    const cfg = { stiffness: 320, damping: 16, mass: 1, useNativeDriver: false };
+    const cfg = {
+      stiffness: 320,
+      damping: 16,
+      mass: 1,
+      useNativeDriver: false,
+    };
     Animated.spring(x, { toValue: targetX, ...cfg }).start();
     Animated.spring(w, { toValue: targetW, ...cfg }).start();
   };
@@ -59,7 +64,9 @@ export const DsFloatingPill: React.FC = () => {
           onLayout={onLayout(i)}
           onPress={() => move(i)}
           style={styles.fitem}
-          testID={`ds-floating-pill-${tb.toLowerCase()}${i === idx ? '-active' : ''}`}
+          testID={`ds-floating-pill-${tb.toLowerCase()}${
+            i === idx ? '-active' : ''
+          }`}
           accessibilityRole="tab"
           accessibilityState={{ selected: i === idx }}
         >

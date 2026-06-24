@@ -18,10 +18,16 @@ export const DsDialog: React.FC = () => (
       Auxi will revert to day one. This cannot be undone.
     </Text>
     <View style={styles.dialogActions}>
-      <View style={[styles.dlgBtn, styles.dlgBtnOutline]} testID="ds-dialog-cancel">
+      <View
+        style={[styles.dlgBtn, styles.dlgBtnOutline]}
+        testID="ds-dialog-cancel"
+      >
         <Text style={styles.dlgBtnOutlineText}>Cancel</Text>
       </View>
-      <View style={[styles.dlgBtn, styles.dlgBtnDanger]} testID="ds-dialog-delete">
+      <View
+        style={[styles.dlgBtn, styles.dlgBtnDanger]}
+        testID="ds-dialog-delete"
+      >
         <Text style={styles.dlgBtnDangerText}>Delete</Text>
       </View>
     </View>
@@ -33,15 +39,19 @@ export const DsSheet: React.FC = () => (
   <View style={[styles.sheet, shadow.sheet]} testID="ds-sheet">
     <View style={styles.grab} />
     <SheetOpt Icon={IconCamera} label="Take a photo" testID="ds-sheet-camera" />
-    <SheetOpt Icon={IconGrid} label="Upload from gallery" testID="ds-sheet-gallery" />
+    <SheetOpt
+      Icon={IconGrid}
+      label="Upload from gallery"
+      testID="ds-sheet-gallery"
+    />
   </View>
 );
 
-const SheetOpt: React.FC<{ Icon: React.FC<any>; label: string; testID: string }> = ({
-  Icon,
-  label,
-  testID,
-}) => (
+const SheetOpt: React.FC<{
+  Icon: React.FC<any>;
+  label: string;
+  testID: string;
+}> = ({ Icon, label, testID }) => (
   <View style={styles.sheetOpt} testID={testID}>
     <Icon width={20} height={20} color={role.ink} />
     <Text style={styles.sheetLabel}>{label}</Text>
@@ -81,7 +91,13 @@ const styles = StyleSheet.create({
   dialogTitle: { ...type.h3, color: role.ink, marginBottom: space.s2 },
   dialogBody: { ...type.bodySm, color: role.ink2, marginBottom: space.s5 },
   dialogActions: { flexDirection: 'row', gap: space.s3 },
-  dlgBtn: { flex: 1, height: 48, borderRadius: radius.xl, alignItems: 'center', justifyContent: 'center' },
+  dlgBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dlgBtnOutline: { borderWidth: 1.5, borderColor: role.ink },
   dlgBtnOutlineText: { ...type.bodySm, color: role.ink },
   dlgBtnDanger: { backgroundColor: color.da400 },
@@ -95,7 +111,14 @@ const styles = StyleSheet.create({
     paddingBottom: space.s3,
     overflow: 'hidden',
   },
-  grab: { width: 36, height: 4, borderRadius: 2, backgroundColor: color.n300, alignSelf: 'center', marginVertical: 8 },
+  grab: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: color.n300,
+    alignSelf: 'center',
+    marginVertical: 8,
+  },
   sheetOpt: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -113,7 +136,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingBottom: space.s2,
   },
-  aHead: { ...type.caption, color: role.ink3, textAlign: 'center', paddingVertical: space.s3 },
+  aHead: {
+    ...type.caption,
+    color: role.ink3,
+    textAlign: 'center',
+    paddingVertical: space.s3,
+  },
   aRow: {
     paddingVertical: space.s4,
     paddingHorizontal: space.s5,
@@ -130,5 +158,9 @@ const styles = StyleSheet.create({
     backgroundColor: color.n50,
     alignItems: 'center',
   },
-  aCancelText: { ...type.body, fontFamily: type.h3.fontFamily, color: role.ink },
+  aCancelText: {
+    ...type.body,
+    fontFamily: type.h3.fontFamily,
+    color: role.ink,
+  },
 });

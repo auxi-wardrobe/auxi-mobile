@@ -19,7 +19,11 @@ const WEIGHTS: Array<{ name: string; family: string }> = [
 type ScaleRow = { meta: string; sample: string; style: object };
 
 const SCALE: ScaleRow[] = [
-  { meta: 'display · 40 / Bold', sample: 'See this on me', style: type.display },
+  {
+    meta: 'display · 40 / Bold',
+    sample: 'See this on me',
+    style: type.display,
+  },
   { meta: 'h1 · 32 / Bold', sample: 'The Auxi look', style: type.h1 },
   { meta: 'h2 · 24 / SemiBold', sample: 'Style direction', style: type.h2 },
   { meta: 'h3 · 20 / SemiBold', sample: 'Notification time', style: type.h3 },
@@ -33,8 +37,16 @@ const SCALE: ScaleRow[] = [
     sample: 'Weekdays · Everydays',
     style: type.bodySm,
   },
-  { meta: 'caption · 12 / Regular', sample: '3 items · Stay balanced', style: type.caption },
-  { meta: 'overline · 10 / mono', sample: 'STYLE DIRECTION', style: type.overline },
+  {
+    meta: 'caption · 12 / Regular',
+    sample: '3 items · Stay balanced',
+    style: type.caption,
+  },
+  {
+    meta: 'overline · 10 / mono',
+    sample: 'STYLE DIRECTION',
+    style: type.overline,
+  },
 ];
 
 export const TypeSection: React.FC = () => (

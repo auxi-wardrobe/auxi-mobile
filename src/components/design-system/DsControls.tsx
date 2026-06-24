@@ -131,7 +131,13 @@ export const DsSelectionShowcase: React.FC = () => {
           onPress={() => setPeriod('PM')}
           testID="ds-radio-pm"
         />
-        <DsRadio label="Disabled" selected={false} onPress={() => {}} disabled testID="ds-radio-disabled" />
+        <DsRadio
+          label="Disabled"
+          selected={false}
+          onPress={() => {}}
+          disabled
+          testID="ds-radio-disabled"
+        />
       </View>
       <View style={styles.groupRow}>
         <DsCheckbox
@@ -154,13 +160,22 @@ export const DsSelectionShowcase: React.FC = () => {
 
 const styles = StyleSheet.create({
   wrap: { width: '100%', gap: space.s4 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   switchLabel: { ...type.body, color: role.ink },
   groupRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.s2 },
   label: { ...type.bodySm, color: role.ink },
   muted: { color: role.ink3 },
-  track: { width: 52, height: 32, borderRadius: radius.full, justifyContent: 'center' },
+  track: {
+    width: 52,
+    height: 32,
+    borderRadius: radius.full,
+    justifyContent: 'center',
+  },
   knob: {
     position: 'absolute',
     top: 4,

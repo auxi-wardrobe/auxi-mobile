@@ -12,7 +12,14 @@
  *                  (which intentionally DIVERGE from theme.ts).
  */
 import React from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../types/navigation';
@@ -94,7 +101,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: role.line,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  backBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   topbarTitle: { ...type.h3, color: role.ink },
   topbarSpacer: { width: 40 },
   scroll: { flex: 1 },
