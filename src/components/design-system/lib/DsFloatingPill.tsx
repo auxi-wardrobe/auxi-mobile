@@ -1,10 +1,14 @@
 /**
- * Design System — Floating-pill footer (NEW showcase, the signature springy nav).
- * Motion: the active thumb springs with an OVERSHOOT on x + width
- * (cubic-bezier(.34,1.32,.5,1) ≈ a low-damping spring, ~340ms). Honors
- * useReducedMotion() by jumping straight to the target.
+ * DsFloatingPill — self-contained springy floating-pill nav (signature motion).
+ *
+ *   import { DsFloatingPill } from '../components/design-system/lib';
+ *   <DsFloatingPill tabs={['Today','Browse','You']} value={v} onChange={setV} />
+ *
+ * The active thumb springs with an OVERSHOOT on x + width (low-damping spring ≈
+ * cubic-bezier(.34,1.32,.5,1)). Tokens + motion encapsulated INSIDE. Honors
+ * reduce-motion (jumps to target).
  */
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import {
   Animated,
   LayoutChangeEvent,
@@ -13,13 +17,26 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useReducedMotion } from '../../theme/motion';
-import { color, radius, role, shadow, type } from './ds-tokens';
+import { useReducedMotion } from '../../../theme/motion';
+import { color, radius, role, shadow, type } from '../ds-tokens';
 
-export const DsFloatingPill: React.FC = () => {
+const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
+
+export interface DsFloatingPillProps {
+  tabs: string[];
+  value: string;
+  onChange: (value: string) => void;
+  testID?: string;
+}
+
+export const DsFloatingPill: React.FC<DsFloatingPillProps> = ({
+  tabs,
+  value,
+  onChange,
+  testID,
+}) => {
   const reduce = useReducedMotion();
-  const tabs = ['Today', 'Browse', 'You'];
-  const [idx, setIdx] = useState(0);
+  const idx = Math.max(0, tabs.indexOf(value));
   const x = useRef(new Animated.Value(0)).current;
   const w = useRef(new Animated.Value(0)).current;
   const widths = useRef<number[]>([]);
@@ -35,8 +52,8 @@ export const DsFloatingPill: React.FC = () => {
     }
   };
 
-  const move = (i: number) => {
-    setIdx(i);
+  const move = (i: number, tab: string) => {
+    onChange(tab);
     const targetX = xs.current[i] ?? 0;
     const targetW = widths.current[i] ?? 0;
     if (reduce) {
@@ -56,23 +73,28 @@ export const DsFloatingPill: React.FC = () => {
   };
 
   return (
-    <View style={styles.fbar} testID="ds-floating-pill">
+    <View style={styles.fbar} testID={testID}>
       <Animated.View style={[styles.fthumb, { left: x, width: w }]} />
-      {tabs.map((tb, i) => (
-        <Pressable
-          key={tb}
-          onLayout={onLayout(i)}
-          onPress={() => move(i)}
-          style={styles.fitem}
-          testID={`ds-floating-pill-${tb.toLowerCase()}${
-            i === idx ? '-active' : ''
-          }`}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: i === idx }}
-        >
-          <Text style={[styles.ftext, i === idx && styles.ftextOn]}>{tb}</Text>
-        </Pressable>
-      ))}
+      {tabs.map((tb, i) => {
+        const sel = tb === value;
+        return (
+          <Pressable
+            key={tb}
+            onLayout={onLayout(i)}
+            onPress={() => move(i, tb)}
+            style={styles.fitem}
+            testID={
+              testID
+                ? `${testID}-${slug(tb)}${sel ? '-active' : ''}`
+                : undefined
+            }
+            accessibilityRole="tab"
+            accessibilityState={{ selected: sel }}
+          >
+            <Text style={[styles.ftext, sel && styles.ftextOn]}>{tb}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 };

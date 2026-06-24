@@ -21,7 +21,7 @@ export const PressScale: React.FC<{
   children: React.ReactNode;
   onPress?: () => void;
   disabled?: boolean;
-  testID: string;
+  testID?: string;
   accessibilityLabel?: string;
   accessibilityRole?: 'button';
   style?: any;
