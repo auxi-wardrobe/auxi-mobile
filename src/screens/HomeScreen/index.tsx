@@ -153,9 +153,6 @@ export const HomeScreen = () => {
   const [tierViewedCount, setTierViewedCount] = useState(0);
   // Session counter — how many times the user deferred the refine gate.
   const refinementSkippedRef = useRef(0);
-  // True while the open Refine sheet was triggered by the after-6 gate (vs the
-  // manual "edit context" button) — drives the Skip affordance + copy.
-  const [refineGated, setRefineGated] = useState(false);
   const [saveStateByHash, setSaveStateByHash] = useState<
     Record<string, SaveState>
   >({});
@@ -457,7 +454,6 @@ export const HomeScreen = () => {
   const resetRefineTier = useCallback(() => {
     tierViewedHashesRef.current.clear();
     setTierViewedCount(0);
-    setRefineGated(false);
   }, []);
 
   const onSubmitFeedback = useCallback(
@@ -552,7 +548,6 @@ export const HomeScreen = () => {
     if (tierViewedCount < REFINE_AFTER_OUTFITS) {
       return;
     }
-    setRefineGated(true);
     openRefine('viewed_threshold');
   }, [tierViewedCount, refineIsOpen, openRefine]);
 
@@ -1312,7 +1307,6 @@ export const HomeScreen = () => {
               testID="home-action-row"
               onRemix={handleRemix}
               onRefine={() => {
-                setRefineGated(false);
                 refine.open('refine_button');
               }}
               dotCount={OUTFITS_PER_SET}
@@ -1443,9 +1437,9 @@ export const HomeScreen = () => {
         onChangeText={refine.onChangeText}
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
-        onSkip={refineGated ? refine.onSkip : undefined}
-        title={refineGated ? t('contextChips.refine_title') : undefined}
-        subtitle={refineGated ? t('contextChips.refine_subtitle') : undefined}
+        onSkip={refine.onSkip}
+        title={t('contextChips.refine_title')}
+        subtitle={t('contextChips.refine_subtitle')}
       />
 
       <PinConfirmModal

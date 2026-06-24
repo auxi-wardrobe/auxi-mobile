@@ -27,6 +27,7 @@ export const theme = {
     figmaCaptionPillBg: '#eee6df', // color/primary/100 — caption pill bg (Frame 2036)
     figmaInsightPillBg: '#e0d2c4', // color/primary/200 — insight icon pill bg (Frame 2037)
     figmaCtaLabel: '#262421', // border/primary/bold_600 — "Wear this" CTA label
+    figmaPrimary600: '#1C1A19', // color/primary/600 — refine sheet "Skip for now" text button
     figmaFooterActivePill: '#eee6df', // background/primary/subtle_200 — footer active-tab pill
     figmaTooltipBg: '#322f35', // Schemes/Inverse Surface — Plain Tooltip bg
     figmaTooltipText: '#f5eff7', // Schemes/Inverse On Surface — Plain Tooltip text

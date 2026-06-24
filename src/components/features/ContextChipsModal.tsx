@@ -250,7 +250,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
               disabled={isSubmitting}
               onPress={onSkip ?? onCancel}
             >
-              <Text style={styles.cancelText}>
+              <Text style={onSkip ? styles.skipText : styles.cancelText}>
                 {onSkip ? t('contextChips.skip') : t('common.cancel')}
               </Text>
             </TouchableOpacity>
@@ -372,6 +372,11 @@ const styles = StyleSheet.create({
   cancelText: {
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaRed,
+  },
+  // "Skip for now" on the unified refine sheet — text button, color/primary/600.
+  skipText: {
+    ...theme.typography.aliases.archivoBody,
+    color: theme.colors.figmaPrimary600,
   },
   confirmButton: {
     minWidth: 124,
