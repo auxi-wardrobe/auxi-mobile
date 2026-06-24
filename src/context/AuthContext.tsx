@@ -11,6 +11,7 @@ import { authService } from '../services/auth';
 import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { registerSessionExpiredListener } from '../services/apiClient';
 import { identifyUser, resetAnalytics, track } from '../services/analytics';
+import { getForcedFirstLogin } from '../services/reviewOverrides';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
 
 /**
@@ -80,8 +81,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshUser = useCallback(async (): Promise<User | null> => {
     const userData = await authService.getCurrentUser();
-    setUser(userData);
-    return userData;
+    // Web-review sandbox only: when a shared link requests an onboarding
+    // screen, force is_first_login so AppNavigator mounts the onboarding
+    // stack. The override flag is only ever set from the web entry
+    // (index.web.tsx), so this is a no-op on native / in production.
+    const resolved =
+      userData && getForcedFirstLogin()
+        ? { ...userData, is_first_login: true }
+        : userData;
+    setUser(resolved);
+    return resolved;
   }, []);
 
   const updateCurrentUser = useCallback(
