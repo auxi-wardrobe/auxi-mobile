@@ -199,9 +199,11 @@ const styles = StyleSheet.create({
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chip: {
-    paddingVertical: 8,
+    minHeight: 44, // chip size M (14px font)
     paddingHorizontal: 15,
     borderRadius: ds.radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chipOn: { backgroundColor: ds.color.ink },
   chipOff: {

@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   labelPill: {
     minWidth: 69,
-    height: 19,
+    height: 24, // chip size SM
     paddingHorizontal: 12,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
@@ -180,9 +180,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(39, 42, 50, 0.85)',
   },
   labelText: {
+    // Chip size SM (24px height) → 10px font per chip sizing spec.
     fontFamily: 'Poppins-Medium',
-    fontSize: 8,
-    lineHeight: 10,
+    fontSize: 10,
+    lineHeight: 12,
     color: '#87898B',
     textAlign: 'center',
   },

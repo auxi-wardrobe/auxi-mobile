@@ -558,16 +558,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   badge: {
-    paddingVertical: 6,
+    height: 24, // chip size SM
     paddingHorizontal: 13,
     borderRadius: ds.radius.full,
     backgroundColor: ds.color.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badgeSoft: { backgroundColor: ds.color.cream },
   badgeTan: { backgroundColor: ds.color.tan },
   badgeText: {
+    // Chip size SM (24px height) → 10px font per chip sizing spec.
     fontFamily: ROBOTO,
-    fontSize: 12,
+    fontSize: 10,
+    lineHeight: 12,
     color: ds.color.cream,
   },
   badgeTextSoft: { color: ds.color.ink },
@@ -576,12 +580,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 4,
+    height: 24, // chip size SM
     paddingHorizontal: 11,
     borderRadius: ds.radius.full,
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: {
+    // Chip size SM (24px height) → 10px font per chip sizing spec.
     ...theme.typography.aliases.uacBodyXsMedium,
+    fontSize: 10,
+    lineHeight: 12,
   },
 });

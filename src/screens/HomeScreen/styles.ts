@@ -243,13 +243,18 @@ export const styles = StyleSheet.create({
     position: 'absolute',
     top: theme.spacing.s,
     left: theme.spacing.s,
+    height: 24, // chip size SM
     paddingHorizontal: theme.spacing.s,
-    paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaCardTag,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   yourPieceBadgeText: {
+    // Chip size SM (24px height) → 10px font per chip sizing spec.
     ...theme.typography.aliases.interSemiboldXs,
+    fontSize: 10,
+    lineHeight: 12,
     color: theme.colors.uacTextPrimaryBase,
   },
   loadingPillRow: {
@@ -309,7 +314,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardTagPill: {
-    height: 19,
+    height: 24, // chip size SM
     paddingHorizontal: 12,
     borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaCardTag,
