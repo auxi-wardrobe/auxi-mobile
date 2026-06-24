@@ -21,12 +21,20 @@
 #   distribution cert via `apple-actions/import-codesign-certs@v3` before the
 #   build step and store it + its password as secrets.
 #
-# Trigger: manual only. A TestFlight upload should be deliberate, and the lane
-# creates a `v<version>-build<n>` git tag each run.
+# Trigger: push a `release-*` tag (deliberate auto), or run manually.
+#   ship → git tag release-1.0.5 && git push --follow-tags
+# ⚠️ The lane itself creates a `v<version>-build<n>` tag every run. The trigger
+# pattern is deliberately `release-*` (NOT `v*`) so the build's own tag can never
+# re-trigger this workflow — that would be an infinite loop. (Tags pushed by the
+# default GITHUB_TOKEN also don't re-trigger workflows, but distinct patterns
+# make the safety explicit.)
 
 name: auxi → TestFlight (beta)
 
 on:
+  push:
+    tags:
+      - 'release-*'
   workflow_dispatch:
 
 concurrency:
