@@ -115,7 +115,13 @@ export const FeedbackSheet: React.FC<FeedbackSheetProps> = ({
             <TopIconButton
               testID="feedback-sheet-close"
               accessibilityLabel={t('common.close')}
-              icon={<Icons.CloseThin width={24} height={24} />}
+              icon={
+                <Icons.CloseThin
+                  width={24}
+                  height={24}
+                  color={theme.colors.figmaTextDark}
+                />
+              }
               onPress={onClose}
               style={styles.closeButton}
             />
