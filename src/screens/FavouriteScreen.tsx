@@ -23,7 +23,7 @@ import {
   HomeView,
   HomeViewToggleFooter,
 } from '../components/features/HomeViewToggleFooter';
-import IconHomeMenu from '../assets/images/icon_home_menu.svg';
+import IconMenu from '../assets/images/icon_menu.svg';
 import { track } from '../services/analytics';
 import { Favourite, favouriteService } from '../services/favouriteService';
 import { FavouriteEmptyState } from './favourite/EmptyState';
@@ -242,7 +242,7 @@ export const FavouriteScreen: React.FC = () => {
           accessibilityLabel={t('favourite.open_menu')}
           onPress={openSidebar}
           style={styles.menuButton}
-          icon={<IconHomeMenu width={24} height={24} />}
+          icon={<IconMenu width={24} height={24} />}
         />
       </View>
 
