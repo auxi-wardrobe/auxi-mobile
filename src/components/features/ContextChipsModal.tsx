@@ -103,9 +103,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
       >
         <View style={styles.card}>
           <View style={styles.header}>
-            <Text style={styles.title}>
-              {title ?? t('contextChips.title')}
-            </Text>
+            <Text style={styles.title}>{title ?? t('contextChips.title')}</Text>
             <Text style={styles.subtitle}>
               {subtitle ?? t('contextChips.subtitle')}
             </Text>
@@ -189,7 +187,9 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
 
           <View style={styles.actionsRow}>
             <TouchableOpacity
-              testID={onSkip ? 'context-chips-skip' : 'context-chips-modal-close'}
+              testID={
+                onSkip ? 'context-chips-skip' : 'context-chips-modal-close'
+              }
               activeOpacity={0.82}
               style={styles.cancelButton}
               disabled={isSubmitting}

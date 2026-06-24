@@ -15,13 +15,7 @@
 // reducer flips `outfit==='generating'`.
 
 import React, { useEffect, useState } from 'react';
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import IconHomePin from '../../assets/images/icon_home_pin.svg';
 import { theme } from '../../theme/theme';
@@ -93,78 +87,78 @@ export const PinConfirmModal: React.FC<PinConfirmModalProps> = ({
       {/* MBottomSheet owns surface, top radius, grab handle, scrim + motion. */}
       <View style={styles.body}>
         <View style={styles.headerBlock}>
-            <Text style={styles.title} testID="pin-confirm-modal-title">
-              {t(titleKey)}
-            </Text>
-            <Text style={styles.subtitle} testID="pin-confirm-modal-subtitle">
-              {t('pin.modal_subtitle')}
-            </Text>
-          </View>
+          <Text style={styles.title} testID="pin-confirm-modal-title">
+            {t(titleKey)}
+          </Text>
+          <Text style={styles.subtitle} testID="pin-confirm-modal-subtitle">
+            {t('pin.modal_subtitle')}
+          </Text>
+        </View>
 
-          <View style={styles.itemPreview}>
-            {itemImageUrl ? (
-              <Image
-                testID="pin-confirm-modal-image"
-                source={{ uri: itemImageUrl }}
-                style={styles.itemImage}
-                resizeMode="cover"
-                accessibilityLabel={itemLabel}
-              />
-            ) : (
-              <View style={[styles.itemImage, styles.itemImagePlaceholder]} />
-            )}
-            {isCommonItem ? (
-              <View style={styles.commonBadge} accessibilityElementsHidden>
-                <Text style={styles.commonBadgeText} numberOfLines={1}>
-                  {t('common.badge_common')}
-                </Text>
-              </View>
+        <View style={styles.itemPreview}>
+          {itemImageUrl ? (
+            <Image
+              testID="pin-confirm-modal-image"
+              source={{ uri: itemImageUrl }}
+              style={styles.itemImage}
+              resizeMode="cover"
+              accessibilityLabel={itemLabel}
+            />
+          ) : (
+            <View style={[styles.itemImage, styles.itemImagePlaceholder]} />
+          )}
+          {isCommonItem ? (
+            <View style={styles.commonBadge} accessibilityElementsHidden>
+              <Text style={styles.commonBadgeText} numberOfLines={1}>
+                {t('common.badge_common')}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Single full-width "Pin & build" CTA (CEO decision 2). */}
+        <TouchableOpacity
+          testID="pin-confirm-modal-confirm"
+          accessibilityRole="button"
+          accessibilityLabel={t('pin.build_cta')}
+          activeOpacity={0.85}
+          disabled={isPressed}
+          style={[
+            styles.confirmButton,
+            isPressed && styles.confirmButtonDisabled,
+          ]}
+          onPress={handleConfirm}
+        >
+          <Text style={styles.confirmText}>{t('pin.build_cta')}</Text>
+          <IconHomePin
+            width={20}
+            height={20}
+            color={theme.colors.uacTextPrimaryBase}
+          />
+        </TouchableOpacity>
+
+        {/* "Don't show this popup again" checkbox row. */}
+        <TouchableOpacity
+          testID="pin-confirm-modal-dont-show-again"
+          accessibilityRole="checkbox"
+          accessibilityLabel={t('pin.dont_show_again')}
+          accessibilityState={{ checked: dontShowAgain }}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.checkboxRow}
+          onPress={onToggleDontShowAgain}
+        >
+          <View
+            style={[styles.checkbox, dontShowAgain && styles.checkboxChecked]}
+          >
+            {dontShowAgain ? (
+              <Text style={styles.checkMark} allowFontScaling={false}>
+                ✓
+              </Text>
             ) : null}
           </View>
-
-          {/* Single full-width "Pin & build" CTA (CEO decision 2). */}
-          <TouchableOpacity
-            testID="pin-confirm-modal-confirm"
-            accessibilityRole="button"
-            accessibilityLabel={t('pin.build_cta')}
-            activeOpacity={0.85}
-            disabled={isPressed}
-            style={[styles.confirmButton, isPressed && styles.confirmButtonDisabled]}
-            onPress={handleConfirm}
-          >
-            <Text style={styles.confirmText}>{t('pin.build_cta')}</Text>
-            <IconHomePin
-              width={20}
-              height={20}
-              color={theme.colors.uacTextPrimaryBase}
-            />
-          </TouchableOpacity>
-
-          {/* "Don't show this popup again" checkbox row. */}
-          <TouchableOpacity
-            testID="pin-confirm-modal-dont-show-again"
-            accessibilityRole="checkbox"
-            accessibilityLabel={t('pin.dont_show_again')}
-            accessibilityState={{ checked: dontShowAgain }}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={styles.checkboxRow}
-            onPress={onToggleDontShowAgain}
-          >
-            <View
-              style={[
-                styles.checkbox,
-                dontShowAgain && styles.checkboxChecked,
-              ]}
-            >
-              {dontShowAgain ? (
-                <Text style={styles.checkMark} allowFontScaling={false}>
-                  ✓
-                </Text>
-              ) : null}
-            </View>
-            <Text style={styles.checkboxLabel}>{t('pin.dont_show_again')}</Text>
-          </TouchableOpacity>
+          <Text style={styles.checkboxLabel}>{t('pin.dont_show_again')}</Text>
+        </TouchableOpacity>
       </View>
     </MBottomSheet>
   );

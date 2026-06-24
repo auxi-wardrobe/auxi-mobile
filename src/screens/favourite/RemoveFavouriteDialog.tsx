@@ -62,58 +62,58 @@ export const RemoveFavouriteDialog: React.FC<Props> = ({
             { paddingBottom: insets.bottom + theme.spacing.l },
           ]}
         >
-            <BlurView
-              style={StyleSheet.absoluteFill}
-              blurType="light"
-              blurAmount={4}
-              reducedTransparencyFallbackColor={theme.colors.white}
-              pointerEvents="none"
-            />
-            <View style={styles.buttonTint} pointerEvents="none" />
+          <BlurView
+            style={StyleSheet.absoluteFill}
+            blurType="light"
+            blurAmount={4}
+            reducedTransparencyFallbackColor={theme.colors.white}
+            pointerEvents="none"
+          />
+          <View style={styles.buttonTint} pointerEvents="none" />
 
-            <View style={styles.actions}>
-              {/* Destructive "Yes" on the LEFT — red-text ghost + trash icon. */}
-              <TouchableOpacity
-                testID="favourite-remove-confirm"
-                accessibilityRole="button"
-                accessibilityLabel={t('favourite.remove_confirm')}
-                activeOpacity={0.82}
-                disabled={isBusy}
-                style={[
-                  styles.action,
-                  styles.ghostAction,
-                  isBusy && styles.disabledAction,
-                ]}
-                onPress={onConfirm}
-              >
-                <Text style={styles.dangerLabel}>
-                  {t('favourite.remove_confirm')}
-                </Text>
-                <Icons.Trash
-                  width={24}
-                  height={24}
-                  color={theme.colors.figmaItemDetailDanger}
-                />
-              </TouchableOpacity>
+          <View style={styles.actions}>
+            {/* Destructive "Yes" on the LEFT — red-text ghost + trash icon. */}
+            <TouchableOpacity
+              testID="favourite-remove-confirm"
+              accessibilityRole="button"
+              accessibilityLabel={t('favourite.remove_confirm')}
+              activeOpacity={0.82}
+              disabled={isBusy}
+              style={[
+                styles.action,
+                styles.ghostAction,
+                isBusy && styles.disabledAction,
+              ]}
+              onPress={onConfirm}
+            >
+              <Text style={styles.dangerLabel}>
+                {t('favourite.remove_confirm')}
+              </Text>
+              <Icons.Trash
+                width={24}
+                height={24}
+                color={theme.colors.figmaItemDetailDanger}
+              />
+            </TouchableOpacity>
 
-              {/* "Cancel" on the RIGHT — outlined secondary. */}
-              <TouchableOpacity
-                testID="favourite-remove-cancel"
-                accessibilityRole="button"
-                accessibilityLabel={t('favourite.remove_cancel')}
-                activeOpacity={0.82}
-                disabled={isBusy}
-                style={[
-                  styles.action,
-                  styles.outlinedAction,
-                  isBusy && styles.disabledAction,
-                ]}
-                onPress={onCancel}
-              >
-                <Text style={styles.cancelLabel}>
-                  {t('favourite.remove_cancel')}
-                </Text>
-              </TouchableOpacity>
+            {/* "Cancel" on the RIGHT — outlined secondary. */}
+            <TouchableOpacity
+              testID="favourite-remove-cancel"
+              accessibilityRole="button"
+              accessibilityLabel={t('favourite.remove_cancel')}
+              activeOpacity={0.82}
+              disabled={isBusy}
+              style={[
+                styles.action,
+                styles.outlinedAction,
+                isBusy && styles.disabledAction,
+              ]}
+              onPress={onCancel}
+            >
+              <Text style={styles.cancelLabel}>
+                {t('favourite.remove_cancel')}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
