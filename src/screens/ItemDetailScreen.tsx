@@ -2,13 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { MBottomSheet } from '../components/design-system/lib';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1052,33 +1052,31 @@ export const ItemDetailScreen = () => {
         )}
       </BottomSheetSurface>
 
-      <Modal
+      <MBottomSheet
         visible={!!pickerField}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPickerField(null)}
+        onDismiss={() => setPickerField(null)}
+        testID="item-detail-picker-sheet"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {t('wardrobe.itemDetail.picker_title', {
-                  field: pickerField ? getPickerFieldLabel(pickerField) : '',
-                })}
+        <View style={styles.modalBody}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {t('wardrobe.itemDetail.picker_title', {
+                field: pickerField ? getPickerFieldLabel(pickerField) : '',
+              })}
+            </Text>
+            <TouchableOpacity
+              testID="item-detail-picker-close-btn"
+              onPress={() => setPickerField(null)}
+            >
+              <Text style={styles.modalClose}>
+                {t('wardrobe.itemDetail.picker_close')}
               </Text>
-              <TouchableOpacity
-                testID="item-detail-picker-close-btn"
-                onPress={() => setPickerField(null)}
-              >
-                <Text style={styles.modalClose}>
-                  {t('wardrobe.itemDetail.picker_close')}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
+          </View>
 
-            <ScrollView>
-              {(pickerField ? getPickerOptions(pickerField) : []).map(
-                option => {
+          <ScrollView>
+            {(pickerField ? getPickerOptions(pickerField) : []).map(
+              option => {
                   const isSelected =
                     (pickerField === 'category' && draftCategory === option) ||
                     (pickerField === 'color' && draftColor === option) ||
@@ -1118,10 +1116,9 @@ export const ItemDetailScreen = () => {
                   );
                 },
               )}
-            </ScrollView>
-          </View>
+          </ScrollView>
         </View>
-      </Modal>
+      </MBottomSheet>
     </View>
   );
 };
@@ -1333,15 +1330,9 @@ const styles = StyleSheet.create({
   disabledText: {
     opacity: 0.5,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  // MBottomSheet provides the scrim + rounded surface; this just caps the
+  // picker list height and pads the bottom (home-indicator zone).
+  modalBody: {
     maxHeight: '55%',
     paddingBottom: 36,
   },

@@ -6,13 +6,29 @@
  *             confirmLabel="Delete" destructive
  *             onConfirm={wipe} onCancel={() => setOpen(false)} />
  *
- * Renders an absolute-fill scrim into the nearest positioned parent (wrap in a
- * full-screen container for a true app dialog; the showcase frames it). ENTER
- * = scale .92→1 + fade spring; CLOSE = faster exit. Tokens + motion + the two
- * action buttons (MButton) encapsulated INSIDE. Honors reduce-motion.
+ * Renders through a real RN <Modal> so the scrim portals to root and always
+ * overlays full-screen above everything, regardless of where it is mounted in
+ * the tree. Modal uses animationType="none" — our spring/timing drives the
+ * motion. ENTER = scale .92→1 + fade spring; CLOSE = faster exit. Tokens +
+ * motion + the two action buttons (MButton) encapsulated INSIDE. Honors
+ * reduce-motion.
+ *
+ * Optional `children` render BETWEEN the body text and the action row (e.g. a
+ * radio list, a time picker, a privacy-policy link row). `isBusy` disables both
+ * actions and shows a spinner on the primary action (in-flight save). Each
+ * action in the {confirm,cancel} pair can carry its own `testID` (via the
+ * `confirmTestID` / `cancelTestID` props) — falls back to the derived
+ * `${testID}-confirm` / `${testID}-cancel`.
  */
 import React from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { radius, role, shadow, space, type } from '../m-tokens';
 import { useOverlayProgress } from './useOverlayProgress';
 import { MButton } from './MButton';
@@ -27,6 +43,14 @@ export interface MDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   testID?: string;
+  /** Content rendered between the body text and the action row. */
+  children?: React.ReactNode;
+  /** Disables both actions + shows a spinner on the primary action. */
+  isBusy?: boolean;
+  /** Explicit testID for the primary action (default `${testID}-confirm`). */
+  confirmTestID?: string;
+  /** Explicit testID for the cancel action (default `${testID}-cancel`). */
+  cancelTestID?: string;
 }
 
 export const MDialog: React.FC<MDialogProps> = ({
@@ -39,56 +63,75 @@ export const MDialog: React.FC<MDialogProps> = ({
   onConfirm,
   onCancel,
   testID,
+  children,
+  isBusy,
+  confirmTestID,
+  cancelTestID,
 }) => {
   const { progress, mounted } = useOverlayProgress(visible);
-  if (!mounted) return null;
   const scale = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [0.92, 1],
   });
+  const resolvedCancelTestID =
+    cancelTestID ?? (testID ? `${testID}-cancel` : undefined);
+  const resolvedConfirmTestID =
+    confirmTestID ?? (testID ? `${testID}-confirm` : undefined);
   return (
-    <View style={styles.scrim} testID={testID}>
-      <Animated.View
-        style={[styles.backdrop, { opacity: progress }]}
-        pointerEvents="none"
-      />
-      <Pressable
-        style={styles.anchor}
-        onPress={onCancel}
-        testID={testID ? `${testID}-backdrop` : undefined}
-        accessibilityRole="button"
-        accessibilityLabel="Dismiss"
-      >
+    <Modal
+      transparent
+      visible={mounted}
+      onRequestClose={onCancel}
+      animationType="none"
+      statusBarTranslucent
+    >
+      <View style={styles.scrim} testID={testID}>
         <Animated.View
-          style={[
-            styles.dialog,
-            shadow.dialog,
-            { opacity: progress, transform: [{ scale }] },
-          ]}
+          style={[styles.backdrop, { opacity: progress }]}
+          pointerEvents="none"
+        />
+        <Pressable
+          style={styles.anchor}
+          onPress={onCancel}
+          testID={testID ? `${testID}-backdrop` : undefined}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
         >
-          <Text style={styles.dialogTitle}>{title}</Text>
-          {!!message && <Text style={styles.dialogBody}>{message}</Text>}
-          <View style={styles.dialogActions}>
-            <MButton
-              variant="secondary"
-              size="md"
-              onPress={onCancel}
-              testID={testID ? `${testID}-cancel` : undefined}
-            >
-              {cancelLabel}
-            </MButton>
-            <MButton
-              variant={destructive ? 'danger' : 'primary'}
-              size="md"
-              onPress={onConfirm}
-              testID={testID ? `${testID}-confirm` : undefined}
-            >
-              {confirmLabel}
-            </MButton>
-          </View>
-        </Animated.View>
-      </Pressable>
-    </View>
+          <Animated.View
+            style={[
+              styles.dialog,
+              shadow.dialog,
+              { opacity: progress, transform: [{ scale }] },
+            ]}
+          >
+            <Text style={styles.dialogTitle}>{title}</Text>
+            {!!message && <Text style={styles.dialogBody}>{message}</Text>}
+            {children}
+            <View style={styles.dialogActions}>
+              <MButton
+                variant="secondary"
+                size="md"
+                disabled={isBusy}
+                onPress={onCancel}
+                testID={resolvedCancelTestID}
+              >
+                {cancelLabel}
+              </MButton>
+              <MButton
+                variant={destructive ? 'danger' : 'primary'}
+                size="md"
+                disabled={isBusy}
+                loading={isBusy}
+                onPress={onConfirm}
+                testID={resolvedConfirmTestID}
+              >
+                {confirmLabel}
+              </MButton>
+            </View>
+          </Animated.View>
+        </Pressable>
+      </View>
+    </Modal>
   );
 };
 

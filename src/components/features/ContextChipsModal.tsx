@@ -1,12 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
-  Animated,
-  Dimensions,
   KeyboardAvoidingView,
-  Modal,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,13 +11,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
-import { motion } from '../../theme/motion';
 import { useBackgroundScale } from '../../context/BackgroundScaleContext';
+import { MBottomSheet } from '../design-system/lib';
 import { Input } from '../atoms/Input';
 import { track } from '../../services/analytics';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const MODAL_WIDTH = Math.min(screenWidth - 16, 414);
 
 export type ContextChipId =
   | 'more_casual'
@@ -86,7 +79,6 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
   onSkip,
 }) => {
   const { t } = useTranslation();
-  const [shouldRender, setShouldRender] = useState(visible);
   const { pushSheet, popSheet } = useBackgroundScale();
   useEffect(() => {
     if (!visible) {
@@ -95,72 +87,23 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
     pushSheet();
     return () => popSheet();
   }, [visible, pushSheet, popSheet]);
-  const slideAnim = useRef(new Animated.Value(screenHeight)).current;
 
-  useEffect(() => {
-    if (visible && !shouldRender) {
-      setShouldRender(true);
-      return;
-    }
-
-    if (visible) {
-      slideAnim.setValue(screenHeight);
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: motion.duration.medium,
-        easing: motion.easing.enter,
-        useNativeDriver: true,
-      }).start();
-      return;
-    }
-
-    if (!shouldRender) {
-      return;
-    }
-
-    Animated.timing(slideAnim, {
-      toValue: screenHeight,
-      duration: motion.duration.normal,
-      easing: motion.easing.exit,
-      useNativeDriver: true,
-    }).start(() => {
-      setShouldRender(false);
-    });
-  }, [shouldRender, slideAnim, visible]);
-
-  if (!shouldRender) {
-    return null;
-  }
+  // Dismiss routes through Skip when offered, else Cancel; suppressed while
+  // submitting (mirrors the prior backdrop / onRequestClose guards).
+  const handleDismiss = isSubmitting ? () => {} : onSkip ?? onCancel;
 
   return (
-    <Modal
-      transparent
-      visible={shouldRender}
-      animationType="none"
-      onRequestClose={isSubmitting ? undefined : onSkip ?? onCancel}
+    <MBottomSheet
+      visible={visible}
+      onDismiss={handleDismiss}
+      testID="context-chips-modal-root"
     >
       <KeyboardAvoidingView
-        style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Pressable
-          style={StyleSheet.absoluteFillObject}
-          onPress={isSubmitting ? undefined : onSkip ?? onCancel}
-        />
-
-        <Animated.View
-          testID="context-chips-modal-root"
-          style={[
-            styles.card,
-            {
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
+        <View style={styles.card}>
           <View style={styles.header}>
-            <Text style={styles.title}>
-              {title ?? t('contextChips.title')}
-            </Text>
+            <Text style={styles.title}>{title ?? t('contextChips.title')}</Text>
             <Text style={styles.subtitle}>
               {subtitle ?? t('contextChips.subtitle')}
             </Text>
@@ -244,7 +187,9 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
 
           <View style={styles.actionsRow}>
             <TouchableOpacity
-              testID={onSkip ? 'context-chips-skip' : 'context-chips-modal-close'}
+              testID={
+                onSkip ? 'context-chips-skip' : 'context-chips-modal-close'
+              }
               activeOpacity={0.82}
               style={styles.cancelButton}
               disabled={isSubmitting}
@@ -279,34 +224,18 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
               )}
             </TouchableOpacity>
           </View>
-        </Animated.View>
+        </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </MBottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  // Dim tier — RN <Modal> host carries the scrim (see docs/Z_INDEX_LAYERING.md §1).
-  overlay: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
+  // Inner content padding (MBottomSheet owns the surface, top radius, grab
+  // handle, scrim and motion).
   card: {
-    // Modal tier — content sits above the dim/dismiss layer.
-    zIndex: theme.zIndex.modal,
-    width: MODAL_WIDTH,
-    marginBottom: 8,
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaSurface,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    shadowColor: theme.ds.color.shadow,
-    shadowOffset: { width: 0, height: 19 },
-    shadowOpacity: 0.22,
-    shadowRadius: 24,
-    elevation: 16,
   },
   header: {
     marginBottom: theme.spacing.m,

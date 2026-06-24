@@ -40,6 +40,15 @@ export {
   type MRadioMenuProps,
 } from './MMenu';
 
+// Typography
+export {
+  MText,
+  type MTextProps,
+  type MTextVariant,
+  type MTextWeight,
+  type MTextColor,
+} from './MText';
+
 // Inputs
 export { MInput, type MInputProps } from './MInput';
 
