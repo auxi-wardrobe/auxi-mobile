@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.s,
     paddingBottom: theme.spacing.xl,
   },
-  body: { flex: 1, paddingTop: theme.spacing.xl, gap: theme.spacing.xl },
+  body: { flex: 1, paddingTop: theme.spacing.uacDimension12, gap: theme.spacing.xl },
   textBlock: { gap: theme.spacing.xs, alignItems: 'center' },
   title: {
     ...theme.typography.aliases.uacBodyMdSemibold,
