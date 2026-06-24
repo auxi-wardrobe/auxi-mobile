@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Dimensions,
   Image,
+  LayoutChangeEvent,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -114,16 +114,6 @@ const Tile: React.FC<{
   );
 };
 
-// Collage surface is full content width (screen minus the list's horizontal
-// padding, `FavouriteScreen.scrollContent` = spacing.m each side) and 3:4 tall,
-// matching the Home collage sheet (`COLLAGE_SURFACE_*`). Measured once at module
-// load like the Home constants — the card is full-bleed within the list.
-const COLLAGE_SURFACE_WIDTH =
-  Dimensions.get('window').width - theme.spacing.m * 2;
-const COLLAGE_SURFACE_HEIGHT = Math.round(
-  COLLAGE_SURFACE_WIDTH * COLLAGE_ASPECT,
-);
-
 // Collage view for a saved outfit: the SAME overlapping, hand-placed
 // arrangement as the Home collage view, not a denser grid. Reuses the shared,
 // `Item`-decoupled `seedCanvasLayout` (the seed table lifted from Figma section
@@ -131,30 +121,50 @@ const COLLAGE_SURFACE_HEIGHT = Math.round(
 // Home's drag-to-play surface this is a static review render — tiles stay
 // tappable (open ItemDetail) but aren't draggable, which also avoids fighting
 // the list's snap-scroll. Rarity badges are omitted to mirror the Home collage.
+//
+// The surface sizes to its CONTAINER via `onLayout` (full content width, locked
+// 3:4 via aspectRatio) — NOT a module-level `Dimensions.get()` read, which is
+// unreliable on react-native-web (can be 0 at module-eval, collapsing the
+// surface) and ignores container width / resize. Items are seeded from the
+// measured width and re-seeded when it changes.
 const CollageView: React.FC<{
   items: FavouriteItem[];
   testIDPrefix: string;
   onItemPress?: (itemId: string) => void;
 }> = ({ items, testIDPrefix, onItemPress }) => {
   const { t } = useTranslation();
+  const [surfaceWidth, setSurfaceWidth] = useState(0);
+
   const seeded = useMemo(
     () =>
-      seedCanvasLayout(
-        items.map(item => ({
-          id: item.id,
-          imageUri: resolveItemImage(item) || '',
-        })),
-        COLLAGE_SURFACE_WIDTH,
-      ),
-    [items],
+      surfaceWidth > 0
+        ? seedCanvasLayout(
+            items.map(item => ({
+              id: item.id,
+              imageUri: resolveItemImage(item) || '',
+            })),
+            surfaceWidth,
+          )
+        : [],
+    [items, surfaceWidth],
   );
 
-  if (seeded.length === 0) {
+  const handleLayout = (e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    // Re-seed only on a real width change (onLayout can fire repeatedly).
+    setSurfaceWidth(prev => (Math.abs(prev - w) > 0.5 ? w : prev));
+  };
+
+  if (items.length === 0) {
     return null;
   }
 
   return (
-    <View style={styles.collageSurface} testID={`${testIDPrefix}-collage`}>
+    <View
+      style={styles.collageSurface}
+      testID={`${testIDPrefix}-collage`}
+      onLayout={handleLayout}
+    >
       {seeded.map(node => (
         <TouchableOpacity
           key={node.id}
@@ -376,11 +386,12 @@ const styles = StyleSheet.create({
   },
   // Collage surface — mirrors `OutfitCanvasSurface`: cream tile, 12px radius,
   // overflow hidden so items hand-placed to bleed past the edge are clipped
-  // (matching the Home collage view). Centred within the card content width.
+  // (matching the Home collage view). Full container width with a locked 3:4
+  // aspect (aspectRatio = width/height = 1 / COLLAGE_ASPECT) so it sizes from
+  // layout, not a module-level Dimensions read.
   collageSurface: {
-    width: COLLAGE_SURFACE_WIDTH,
-    height: COLLAGE_SURFACE_HEIGHT,
-    alignSelf: 'center',
+    width: '100%',
+    aspectRatio: 1 / COLLAGE_ASPECT,
     backgroundColor: theme.colors.figmaCardSurface,
     borderRadius: theme.borderRadius.figmaTile,
     overflow: 'hidden',
