@@ -74,7 +74,6 @@ import {
   repTempCFor,
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
-import { useAiReport } from '../../components/features/AiContentDisclosure';
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import {
@@ -193,7 +192,6 @@ export const HomeScreen = () => {
   const [hasCycled, setHasCycled] = useState(false);
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
   const [aiNoticeDismissed, setAiNoticeDismissed] = useState(false);
-  const handleReportAi = useAiReport('recommendation');
   // Persist the AI notice dismissal so the toast appears only the first time;
   // the floating feedback button remains as the ongoing affordance.
   useEffect(() => {
@@ -1404,15 +1402,16 @@ export const HomeScreen = () => {
         </View>
       ) : null}
 
-      {/* AI feedback affordance — 44px floating button, bottom-left of the
-          footer, Home only. Opens the same prefilled AI report. */}
+      {/* Feedback affordance — 44px floating button, bottom-left of the
+          footer, Home only. Opens the in-app Feedback form. AI-result feedback
+          now lives on the try-on result (see OutfitPreview). */}
       {optionSets.length > 0 ? (
         <TouchableOpacity
-          testID="home-ai-feedback-fab"
+          testID="home-feedback-fab"
           accessibilityRole="button"
-          accessibilityLabel={t('aiDisclosure.report')}
+          accessibilityLabel={t('feedback.title')}
           activeOpacity={0.85}
-          onPress={handleReportAi}
+          onPress={() => navigation.navigate('Feedback')}
           style={styles.aiFeedbackFab}
         >
           <IconFeedback
