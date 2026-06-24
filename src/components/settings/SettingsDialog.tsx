@@ -1,14 +1,6 @@
 import React from 'react';
-import {
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { theme } from '../../theme/theme';
+import { MDialog } from '../design-system/lib';
 
 type PrimaryVariant = 'default' | 'danger';
 
@@ -26,12 +18,14 @@ type SettingsDialogProps = {
   children?: React.ReactNode;
 };
 
-// Shared Modal scaffold for all three Settings dialogs (style-direction,
-// change-time, delete-data). Structure: fade Modal → overlay Touchable
-// (tap-to-close) → modalOverlay → inner Touchable (stop-propagation) →
-// modalCard → title → optional body → children slot → actions row.
-// The danger variant drives both the primary button color AND the title
-// style (delete dialog title is 16/20 inter-semibold, not body-md-semibold).
+// Shared confirm dialog for all three Settings dialogs (style-direction,
+// change-time, delete-data). GH-364 Wave 1.5: migrated onto the design-system
+// MDialog primitive — it owns the scrim, card, enter/close motion, the
+// title/body, the action row, and tap-outside dismiss. Consumers pass radio
+// lists / a time picker via `children` (rendered between body and actions).
+// `isBusy` disables both actions and spins the primary; `primaryVariant`
+// 'danger' drives MDialog's destructive (red) primary button. Per-button
+// testIDs are threaded through verbatim so Maestro selectors are preserved.
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   visible,
   onClose,
@@ -46,132 +40,22 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   children,
 }) => {
   const { t } = useTranslation();
-  const isDanger = primaryVariant === 'danger';
 
   return (
-    <Modal
-      transparent
-      animationType="fade"
+    <MDialog
       visible={visible}
-      onRequestClose={onClose}
+      title={title}
+      message={body}
+      confirmLabel={primaryLabel}
+      cancelLabel={t('common.cancel')}
+      destructive={primaryVariant === 'danger'}
+      isBusy={isBusy}
+      onConfirm={onPrimary}
+      onCancel={onClose}
+      cancelTestID={cancelTestID}
+      confirmTestID={primaryTestID}
     >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.modalOverlay}>
-          <TouchableWithoutFeedback>
-            <View style={styles.modalCard}>
-              <Text
-                style={isDanger ? styles.deleteModalTitle : styles.modalTitle}
-              >
-                {title}
-              </Text>
-              {body ? <Text style={styles.modalBody}>{body}</Text> : null}
-
-              {children}
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  testID={cancelTestID}
-                  activeOpacity={0.82}
-                  disabled={isBusy}
-                  style={[
-                    styles.modalAction,
-                    styles.modalTextAction,
-                    isBusy && styles.disabledAction,
-                  ]}
-                  onPress={onClose}
-                >
-                  <Text style={styles.modalTextActionLabel}>
-                    {t('common.cancel')}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  testID={primaryTestID}
-                  activeOpacity={0.82}
-                  disabled={isBusy}
-                  style={[
-                    styles.modalAction,
-                    isDanger
-                      ? styles.modalDangerAction
-                      : styles.modalPrimaryAction,
-                    isBusy && styles.disabledAction,
-                  ]}
-                  onPress={onPrimary}
-                >
-                  <Text style={styles.modalPrimaryActionLabel}>
-                    {primaryLabel}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
+      {children}
+    </MDialog>
   );
 };
-
-const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(25, 27, 34, 0.3)',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  // modalCard + deleteModalCard were byte-identical per review — collapsed to one.
-  modalCard: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.uacPanel,
-    paddingTop: 24,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  modalTitle: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.uacTextBase,
-  },
-  // Delete-data dialog title is 16/20 (line-height 20), not 24 (artifact §5).
-  deleteModalTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.uacTextBase,
-  },
-  modalBody: {
-    ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.uacTextBase,
-    marginTop: 16,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-  },
-  modalAction: {
-    flex: 1,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalTextAction: {
-    borderRadius: 16,
-  },
-  modalPrimaryAction: {
-    borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.figmaButtonDark,
-  },
-  modalDangerAction: {
-    borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.figmaDestructive,
-  },
-  modalTextActionLabel: {
-    ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.uacTextBase,
-  },
-  modalPrimaryActionLabel: {
-    ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.white,
-  },
-  disabledAction: {
-    opacity: 0.55,
-  },
-});

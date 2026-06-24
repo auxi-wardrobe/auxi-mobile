@@ -12,6 +12,13 @@
  * motion. ENTER = scale .92→1 + fade spring; CLOSE = faster exit. Tokens +
  * motion + the two action buttons (MButton) encapsulated INSIDE. Honors
  * reduce-motion.
+ *
+ * Optional `children` render BETWEEN the body text and the action row (e.g. a
+ * radio list, a time picker, a privacy-policy link row). `isBusy` disables both
+ * actions and shows a spinner on the primary action (in-flight save). Each
+ * action in the {confirm,cancel} pair can carry its own `testID` (via the
+ * `confirmTestID` / `cancelTestID` props) — falls back to the derived
+ * `${testID}-confirm` / `${testID}-cancel`.
  */
 import React from 'react';
 import {
@@ -36,6 +43,14 @@ export interface MDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   testID?: string;
+  /** Content rendered between the body text and the action row. */
+  children?: React.ReactNode;
+  /** Disables both actions + shows a spinner on the primary action. */
+  isBusy?: boolean;
+  /** Explicit testID for the primary action (default `${testID}-confirm`). */
+  confirmTestID?: string;
+  /** Explicit testID for the cancel action (default `${testID}-cancel`). */
+  cancelTestID?: string;
 }
 
 export const MDialog: React.FC<MDialogProps> = ({
@@ -48,12 +63,20 @@ export const MDialog: React.FC<MDialogProps> = ({
   onConfirm,
   onCancel,
   testID,
+  children,
+  isBusy,
+  confirmTestID,
+  cancelTestID,
 }) => {
   const { progress, mounted } = useOverlayProgress(visible);
   const scale = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [0.92, 1],
   });
+  const resolvedCancelTestID =
+    cancelTestID ?? (testID ? `${testID}-cancel` : undefined);
+  const resolvedConfirmTestID =
+    confirmTestID ?? (testID ? `${testID}-confirm` : undefined);
   return (
     <Modal
       transparent
@@ -83,20 +106,24 @@ export const MDialog: React.FC<MDialogProps> = ({
           >
             <Text style={styles.dialogTitle}>{title}</Text>
             {!!message && <Text style={styles.dialogBody}>{message}</Text>}
+            {children}
             <View style={styles.dialogActions}>
               <MButton
                 variant="secondary"
                 size="md"
+                disabled={isBusy}
                 onPress={onCancel}
-                testID={testID ? `${testID}-cancel` : undefined}
+                testID={resolvedCancelTestID}
               >
                 {cancelLabel}
               </MButton>
               <MButton
                 variant={destructive ? 'danger' : 'primary'}
                 size="md"
+                disabled={isBusy}
+                loading={isBusy}
                 onPress={onConfirm}
-                testID={testID ? `${testID}-confirm` : undefined}
+                testID={resolvedConfirmTestID}
               >
                 {confirmLabel}
               </MButton>

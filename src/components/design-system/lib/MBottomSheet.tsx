@@ -14,11 +14,18 @@
  * included), regardless of where the component is mounted in the tree. Modal
  * uses animationType="none" — our spring/timing drives the motion. Tokens +
  * motion encapsulated INSIDE. Honors reduce-motion.
+ *
+ * `swipeToDismiss` (default true) adds a swipe-down gesture gated to the
+ * grab-handle area only — the PanResponder lives on the handle wrapper, so it
+ * never fights a scrollable body below it. Past a distance/velocity threshold
+ * it calls `onDismiss`, otherwise the sheet snaps back. `backdropTestID` lets a
+ * consumer name the dismiss-backdrop explicitly (default `${testID}-backdrop`).
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Animated,
   Modal,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -28,6 +35,8 @@ import { color, radius, role, shadow, space, type } from '../m-tokens';
 import { useOverlayProgress } from './useOverlayProgress';
 
 const SHEET_TRAVEL = 320;
+const SWIPE_DISMISS_DISTANCE = 90;
+const SWIPE_DISMISS_VELOCITY = 0.8;
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
 export interface MBottomSheetProps {
@@ -35,6 +44,10 @@ export interface MBottomSheetProps {
   onDismiss: () => void;
   children?: React.ReactNode;
   testID?: string;
+  /** Explicit testID for the dismiss-backdrop (default `${testID}-backdrop`). */
+  backdropTestID?: string;
+  /** Swipe-down-to-dismiss on the grab-handle area (default true). */
+  swipeToDismiss?: boolean;
 }
 
 export const MBottomSheet: React.FC<MBottomSheetProps> = ({
@@ -42,12 +55,52 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
   onDismiss,
   children,
   testID,
+  backdropTestID,
+  swipeToDismiss = true,
 }) => {
   const { progress, mounted } = useOverlayProgress(visible);
   const translateY = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [SHEET_TRAVEL, 0],
   });
+  // Finger-driven drag offset, composed on top of the entry translateY so the
+  // sheet follows a swipe-down without disturbing the open/close motion.
+  const dragY = useRef(new Animated.Value(0)).current;
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
+  const snapBack = () => {
+    Animated.spring(dragY, {
+      toValue: 0,
+      useNativeDriver: true,
+      bounciness: 0,
+    }).start();
+  };
+
+  // Gated to the grab-handle wrapper only — never intercepts a scrollable body.
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gs) =>
+        gs.dy > 6 && Math.abs(gs.dy) > Math.abs(gs.dx),
+      onPanResponderMove: (_evt, gs) => {
+        if (gs.dy > 0) {
+          dragY.setValue(gs.dy);
+        }
+      },
+      onPanResponderRelease: (_evt, gs) => {
+        if (gs.dy > SWIPE_DISMISS_DISTANCE || gs.vy > SWIPE_DISMISS_VELOCITY) {
+          onDismissRef.current();
+        } else {
+          snapBack();
+        }
+      },
+      onPanResponderTerminate: () => snapBack(),
+    }),
+  ).current;
+
+  const resolvedBackdropTestID =
+    backdropTestID ?? (testID ? `${testID}-backdrop` : undefined);
+
   return (
     <Modal
       transparent
@@ -64,7 +117,7 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
         <Pressable
           style={styles.sheetAnchor}
           onPress={onDismiss}
-          testID={testID ? `${testID}-backdrop` : undefined}
+          testID={resolvedBackdropTestID}
           accessibilityRole="button"
           accessibilityLabel="Dismiss"
         >
@@ -72,10 +125,15 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
             style={[
               styles.sheet,
               shadow.sheet,
-              { transform: [{ translateY }] },
+              { transform: [{ translateY }, { translateY: dragY }] },
             ]}
           >
-            <View style={styles.grab} />
+            <View
+              style={styles.grabArea}
+              {...(swipeToDismiss ? panResponder.panHandlers : {})}
+            >
+              <View style={styles.grab} />
+            </View>
             {children}
           </Animated.View>
         </Pressable>
@@ -241,13 +299,18 @@ const styles = StyleSheet.create({
     paddingBottom: space.s3,
     overflow: 'hidden',
   },
+  // Wraps the grab handle so the swipe-down PanResponder is gated to this
+  // area only (never the scrollable body). Hit-slop comes from the padding.
+  grabArea: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
   grab: {
     width: 36,
     height: 4,
     borderRadius: 2,
     backgroundColor: color.n300,
     alignSelf: 'center',
-    marginVertical: 8,
   },
   sheetOpt: {
     flexDirection: 'row',
