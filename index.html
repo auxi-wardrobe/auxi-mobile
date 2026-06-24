@@ -4,7 +4,23 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>auxi · web review</title>
-    <style> html, body, #root { height: 100%; margin: 0; } #root { display: flex; } </style>
+    <style>
+      html, body, #root { height: 100%; margin: 0; }
+      #root { display: flex; }
+      /*
+       * Web scroll fix. Every screen roots in a SafeAreaView (RN's and
+       * react-native-safe-area-context's web builds both emit `min-height: 100%`
+       * via react-native-web's deterministic atomic class `.r-2llsf`). Inside the
+       * bounded navigation card, that non-shrinking wrapper grows to its content
+       * height instead of the viewport, which collapses the flex height chain so
+       * inner ScrollViews can't scroll (scrollHeight === clientHeight). Resetting
+       * the safe-area wrappers to shrink-to-fit re-bounds them to the card and
+       * restores scrolling on every tall screen. `min-height: 100%` is used only
+       * by these wrappers, so the override is precisely scoped. Web-only (this
+       * file is the web entry); native is untouched.
+       */
+      .r-2llsf { min-height: 0 !important; flex-shrink: 1 !important; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
