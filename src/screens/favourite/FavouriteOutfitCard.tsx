@@ -1,10 +1,21 @@
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo } from 'react';
+import {
+  Dimensions,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { resolveItemImage } from '../../utils/url';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
+import {
+  COLLAGE_ASPECT,
+  seedCanvasLayout,
+} from '../../components/features/collage-seed-layout';
 import { MOOD_CHIPS } from '../../components/features/mood-chips';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
 import IconSparkle from '../../assets/images/icon_sparkle.svg';
@@ -103,6 +114,78 @@ const Tile: React.FC<{
   );
 };
 
+// Collage surface is full content width (screen minus the list's horizontal
+// padding, `FavouriteScreen.scrollContent` = spacing.m each side) and 3:4 tall,
+// matching the Home collage sheet (`COLLAGE_SURFACE_*`). Measured once at module
+// load like the Home constants — the card is full-bleed within the list.
+const COLLAGE_SURFACE_WIDTH =
+  Dimensions.get('window').width - theme.spacing.m * 2;
+const COLLAGE_SURFACE_HEIGHT = Math.round(
+  COLLAGE_SURFACE_WIDTH * COLLAGE_ASPECT,
+);
+
+// Collage view for a saved outfit: the SAME overlapping, hand-placed
+// arrangement as the Home collage view, not a denser grid. Reuses the shared,
+// `Item`-decoupled `seedCanvasLayout` (the seed table lifted from Figma section
+// 2850:13589) so the favourite and Home collages render identically. Unlike
+// Home's drag-to-play surface this is a static review render — tiles stay
+// tappable (open ItemDetail) but aren't draggable, which also avoids fighting
+// the list's snap-scroll. Rarity badges are omitted to mirror the Home collage.
+const CollageView: React.FC<{
+  items: FavouriteItem[];
+  testIDPrefix: string;
+  onItemPress?: (itemId: string) => void;
+}> = ({ items, testIDPrefix, onItemPress }) => {
+  const { t } = useTranslation();
+  const seeded = useMemo(
+    () =>
+      seedCanvasLayout(
+        items.map(item => ({
+          id: item.id,
+          imageUri: resolveItemImage(item) || '',
+        })),
+        COLLAGE_SURFACE_WIDTH,
+      ),
+    [items],
+  );
+
+  if (seeded.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.collageSurface} testID={`${testIDPrefix}-collage`}>
+      {seeded.map(node => (
+        <TouchableOpacity
+          key={node.id}
+          testID={`${testIDPrefix}-tile-${node.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={t('favourite.view_item_a11y')}
+          activeOpacity={0.86}
+          disabled={!onItemPress}
+          onPress={onItemPress ? () => onItemPress(node.id) : undefined}
+          style={[
+            styles.collageItem,
+            {
+              left: node.x,
+              top: node.y,
+              width: node.width,
+              height: node.height,
+              zIndex: node.zIndex,
+            },
+          ]}
+        >
+          <Image
+            source={node.imageSource}
+            style={styles.collageImage}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+};
+
 export const FavouriteOutfitCard: React.FC<Props> = ({
   favourite,
   view,
@@ -125,14 +208,13 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
   const firstMoodId = favourite.mood_tags?.[0];
   const moodTagLabel = firstMoodId ? moodLabel(firstMoodId, t) : null;
 
-  // Chunk items into rows of 2 (grid) or 3 (collage). Collage isn't separately
-  // specced for the favourite tile (extraction Open-Q), so it reuses the same
-  // 3:4 tiles in a denser flow — matching the Home footer's documented
-  // pending-alt-view behaviour.
-  const perRow = view === 'collage' ? 3 : 2;
+  // Grid view chunks items into rows of 2 fixed 3:4 tiles. Collage view renders
+  // the overlapping arrangement instead (see `CollageView` below), matching the
+  // Home collage view — the favourite collage is no longer a denser grid.
+  const PER_ROW = 2;
   const rows: FavouriteItem[][] = [];
-  for (let i = 0; i < items.length; i += perRow) {
-    rows.push(items.slice(i, i + perRow));
+  for (let i = 0; i < items.length; i += PER_ROW) {
+    rows.push(items.slice(i, i + PER_ROW));
   }
 
   return (
@@ -169,30 +251,38 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
         </View>
       ) : null}
 
-      <View style={styles.grid}>
-        {rows.map((row, rowIndex) => (
-          <View key={`row-${favourite.id}-${rowIndex}`} style={styles.row}>
-            {row.map(item => (
-              <Tile
-                key={`${favourite.id}-${item.id}`}
-                item={item}
-                testIDPrefix={testIDPrefix}
-                onItemPress={onItemPress}
-              />
-            ))}
-            {/* Pad the final row so a lone tile keeps its column width
-                instead of stretching full-bleed. */}
-            {row.length < perRow
-              ? Array.from({ length: perRow - row.length }).map((_, i) => (
-                  <View
-                    key={`pad-${favourite.id}-${rowIndex}-${i}`}
-                    style={styles.tileSpacer}
-                  />
-                ))
-              : null}
-          </View>
-        ))}
-      </View>
+      {view === 'collage' ? (
+        <CollageView
+          items={items}
+          testIDPrefix={testIDPrefix}
+          onItemPress={onItemPress}
+        />
+      ) : (
+        <View style={styles.grid}>
+          {rows.map((row, rowIndex) => (
+            <View key={`row-${favourite.id}-${rowIndex}`} style={styles.row}>
+              {row.map(item => (
+                <Tile
+                  key={`${favourite.id}-${item.id}`}
+                  item={item}
+                  testIDPrefix={testIDPrefix}
+                  onItemPress={onItemPress}
+                />
+              ))}
+              {/* Pad the final row so a lone tile keeps its column width
+                  instead of stretching full-bleed. */}
+              {row.length < PER_ROW
+                ? Array.from({ length: PER_ROW - row.length }).map((_, i) => (
+                    <View
+                      key={`pad-${favourite.id}-${rowIndex}-${i}`}
+                      style={styles.tileSpacer}
+                    />
+                  ))
+                : null}
+            </View>
+          ))}
+        </View>
+      )}
 
       <View style={styles.actionRow}>
         <TouchableOpacity
@@ -283,6 +373,24 @@ const styles = StyleSheet.create({
   },
   grid: {
     gap: theme.spacing.xs,
+  },
+  // Collage surface — mirrors `OutfitCanvasSurface`: cream tile, 12px radius,
+  // overflow hidden so items hand-placed to bleed past the edge are clipped
+  // (matching the Home collage view). Centred within the card content width.
+  collageSurface: {
+    width: COLLAGE_SURFACE_WIDTH,
+    height: COLLAGE_SURFACE_HEIGHT,
+    alignSelf: 'center',
+    backgroundColor: theme.colors.figmaCardSurface,
+    borderRadius: theme.borderRadius.figmaTile,
+    overflow: 'hidden',
+  },
+  collageItem: {
+    position: 'absolute',
+  },
+  collageImage: {
+    width: '100%',
+    height: '100%',
   },
   row: {
     flexDirection: 'row',
