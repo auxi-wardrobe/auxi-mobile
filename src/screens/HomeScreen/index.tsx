@@ -26,10 +26,7 @@ import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
 import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
-import {
-  LEGACY_COACHMARK_STORAGE_KEY,
-  SwipeCoachMark,
-} from '../../components/features/SwipeCoachMark';
+import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
 import { FeedbackSheet } from '../../components/features/FeedbackSheet';
 import { useMoodFeedback } from '../../hooks/use-mood-feedback';
@@ -257,11 +254,6 @@ export const HomeScreen = () => {
   useEffect(() => {
     activeIndexRef.current = activeIndex;
   }, [activeIndex]);
-
-  useEffect(() => {
-    AsyncStorage.removeItem(LEGACY_COACHMARK_STORAGE_KEY).catch(() => {});
-    AsyncStorage.removeItem('@auxi/coachmark/swipe-set').catch(() => {});
-  }, []);
 
   useEffect(() => {
     saveStateByHashRef.current = saveStateByHash;
@@ -1461,7 +1453,7 @@ export const HomeScreen = () => {
         onCancel={() => pinDispatch({ type: 'CANCEL_MODAL' })}
       />
 
-      <SwipeCoachMark variant="horizontal" enabled={optionSets.length > 0} />
+      <WelcomeDialog enabled={optionSets.length > 0} />
 
       <MoodFeedbackSheet {...moodSheetProps} />
 

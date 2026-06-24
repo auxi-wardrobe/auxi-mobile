@@ -674,6 +674,11 @@
       "report": "Signaler",
       "report_subject": "Signaler du contenu généré par IA",
       "report_body": "Je souhaite signaler un problème avec un résultat généré par IA dans l'application. Veuillez décrire ce qui n'a pas fonctionné :"
+    },
+    "welcome": {
+      "title": "Bienvenue sur Macgie",
+      "body": "Ces tenues utilisent notre garde-robe de départ. Ajoutez la vôtre pour les personnaliser.",
+      "cta": "Compris"
     }
   }
 }
