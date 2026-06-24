@@ -285,7 +285,6 @@ export const DeviceFrame: React.FC = () => {
         justifyContent: 'center',
         padding: 16,
         boxSizing: 'border-box',
-        overflow: 'auto',
       }}
     >
       {toggle}
