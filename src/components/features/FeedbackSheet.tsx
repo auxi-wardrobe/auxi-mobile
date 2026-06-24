@@ -117,6 +117,7 @@ export const FeedbackSheet: React.FC<FeedbackSheetProps> = ({
               accessibilityLabel={t('common.close')}
               icon={<Icons.CloseThin width={24} height={24} />}
               onPress={onClose}
+              style={styles.closeButton}
             />
           </View>
 
@@ -156,5 +157,9 @@ const styles = StyleSheet.create({
   title: {
     ...theme.typography.aliases.uacBodyMdSemibold,
     color: theme.colors.figmaTextDark,
+  },
+  // Drop the shared TopIconButton gray surface — plain X, no chip background.
+  closeButton: {
+    backgroundColor: 'transparent',
   },
 });
