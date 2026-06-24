@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.uacBackgroundNeutral50 },
   content: {
     flex: 1,
-    paddingHorizontal: theme.spacing.m,
+    paddingHorizontal: theme.spacing.uacDimension12,
     paddingTop: theme.spacing.s,
     paddingBottom: theme.spacing.xl,
   },
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.uacBodyMdRegular,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
   },

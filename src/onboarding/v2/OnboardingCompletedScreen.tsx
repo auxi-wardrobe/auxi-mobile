@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.figmaCaptionPillBg },
   content: {
     flexGrow: 1,
-    paddingHorizontal: theme.spacing.l,
+    paddingHorizontal: theme.spacing.uacDimension12,
     paddingTop: theme.spacing.xxl,
     paddingBottom: theme.spacing.xl,
     gap: theme.spacing.m,
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextBase,
   },
   headline: {
-    ...theme.typography.aliases.poppinsTimeLg,
+    ...theme.typography.aliases.uacBodyMdSemibold,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
   },
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextBase,
   },
   footerBar: {
-    paddingHorizontal: theme.spacing.l,
+    paddingHorizontal: theme.spacing.uacDimension12,
     paddingBottom: theme.spacing.xl,
   },
   cta: { alignSelf: 'stretch' },
