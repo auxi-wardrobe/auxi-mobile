@@ -39,13 +39,17 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaSurface,
     ...theme.ds.shadow.floatingButton,
   },
-  heartButtonSaved: {
-    borderWidth: 1.5,
-    borderColor: theme.colors.figmaAction,
-  },
-  heartButtonError: {
-    borderWidth: 1.5,
-    borderColor: theme.colors.figmaRed,
+  // 12×12 mint indicator dot over the top-right lobe of the header favourites
+  // heart — signals "you have saved looks" without a count. Positioned within
+  // the 44×44 button so it overlaps the 24×24 heart's upper-right curve.
+  favDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: theme.colors.figmaFavouriteDot,
   },
   scrollContent: {
     paddingTop: 4,
@@ -90,9 +94,6 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
-  },
-  deckCueLike: {
-    right: 24,
   },
   deckCueSkip: {
     left: 24,

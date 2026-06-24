@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { SidebarProvider } from './src/context/SidebarContext';
+import { FavouritesSeenProvider } from './src/context/FavouritesSeenContext';
 import { RootDrawer } from './src/components/layout/RootDrawer';
 import { BackgroundScaleProvider } from './src/context/BackgroundScaleContext';
 import { ErrorBoundary } from './src/components/common/ErrorBoundary';
@@ -76,19 +77,21 @@ function App() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <SidebarProvider>
-              {/* Root error boundary — placed inside the providers so the
-                  fallback has theme/i18n available, and high enough to catch
-                  an unexpected render error anywhere in the navigator tree
-                  (recoverable fallback instead of a white screen on review). */}
-              <ErrorBoundary>
-                <BackgroundScaleProvider>
-                  <RootDrawer>
-                    <AppNavigator />
-                  </RootDrawer>
-                </BackgroundScaleProvider>
-              </ErrorBoundary>
-            </SidebarProvider>
+            <FavouritesSeenProvider>
+              <SidebarProvider>
+                {/* Root error boundary — placed inside the providers so the
+                    fallback has theme/i18n available, and high enough to catch
+                    an unexpected render error anywhere in the navigator tree
+                    (recoverable fallback instead of a white screen on review). */}
+                <ErrorBoundary>
+                  <BackgroundScaleProvider>
+                    <RootDrawer>
+                      <AppNavigator />
+                    </RootDrawer>
+                  </BackgroundScaleProvider>
+                </ErrorBoundary>
+              </SidebarProvider>
+            </FavouritesSeenProvider>
           </AuthProvider>
           <Toast />
         </QueryClientProvider>

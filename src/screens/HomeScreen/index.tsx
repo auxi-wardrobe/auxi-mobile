@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useNavigation,
   useRoute,
@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
+import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
 import {
   LEGACY_COACHMARK_STORAGE_KEY,
@@ -37,7 +38,6 @@ import {
 } from '../../components/primitives/FigmaPrimitives';
 import IconHomeMenu from '../../assets/images/icon_home_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
-import IconHomeHeartFilled from '../../assets/images/icon_home_heart_filled.svg';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -131,7 +131,10 @@ export const HomeScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute<RouteProp<AppStackParamList, 'Home'>>();
+  const queryClient = useQueryClient();
   const { open: openSidebar } = useSidebar();
+  const { hasUnseen: hasUnseenFavourites, markSaved: markFavouriteSaved } =
+    useFavouritesSeen();
   const [homeView, setHomeView] = useState<HomeView>('grid');
   const [collageDragActive, setCollageDragActive] = useState(false);
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -770,18 +773,23 @@ export const HomeScreen = () => {
             item_count: items.length,
             source: 'home',
           });
+          // Light the header "unseen saved looks" dot and keep the Favourite
+          // list cache fresh for when the user opens it.
+          markFavouriteSaved();
+          queryClient.invalidateQueries({ queryKey: ['favourites'] });
         })
         .catch(error => {
           console.warn('saveFavourite failed', error);
           setSaveStateByHash(current => ({ ...current, [hash]: 'error' }));
         });
     },
-    [],
+    [queryClient, markFavouriteSaved],
   );
 
-  const handleHeartTapActive = useCallback(() => {
-    handleHeartTapForOutfit(activeOutfit);
-  }, [activeOutfit, handleHeartTapForOutfit]);
+  const handleOpenFavourites = useCallback(() => {
+    track('home_favourites_shortcut_tapped', { had_unseen: hasUnseenFavourites });
+    navigation.navigate('Favourite');
+  }, [navigation, hasUnseenFavourites]);
 
   const { t } = useTranslation();
   const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
@@ -801,8 +809,12 @@ export const HomeScreen = () => {
       showMoodBanner(
         t(updated ? 'mood.moodUpdatedBanner' : 'mood.savedBanner'),
       );
+      // "Wear this" with a mood saved a look → light the unseen dot and keep
+      // the Favourite list cache fresh.
+      markFavouriteSaved();
+      queryClient.invalidateQueries({ queryKey: ['favourites'] });
     },
-    [showMoodBanner, t],
+    [showMoodBanner, t, queryClient, markFavouriteSaved],
   );
 
   const { onWearThisPress, sheetProps: moodSheetProps } =
@@ -898,10 +910,11 @@ export const HomeScreen = () => {
           method: 'gesture',
         });
       }
-      handleHeartTapForOutfit(outfit);
+      // Swiping no longer saves the look — saving is exclusively the "Wear this"
+      // button now. Both swipe directions simply browse to the next outfit.
       advanceDeck();
     },
-    [handleHeartTapForOutfit, advanceDeck],
+    [advanceDeck],
   );
 
   const handleSkip = useCallback(
@@ -1056,37 +1069,25 @@ export const HomeScreen = () => {
         )}
 
         <TouchableOpacity
-          testID={
-            activeSaveState === 'saved'
-              ? 'home-heart-toggle-saved'
-              : 'home-heart-toggle'
-          }
+          testID="home-favourites-shortcut"
           accessibilityRole="button"
           accessibilityLabel={
-            activeSaveState === 'saved'
-              ? t('home.a11y_saved_fav')
-              : t('home.a11y_fav_this')
+            hasUnseenFavourites
+              ? t('home.a11y_open_favourites_new')
+              : t('home.a11y_open_favourites')
           }
           activeOpacity={0.82}
-          style={[
-            styles.headerIconButton,
-            activeSaveState === 'saved' && styles.heartButtonSaved,
-            activeSaveState === 'error' && styles.heartButtonError,
-          ]}
-          disabled={
-            !activeOutfit ||
-            activeSaveState === 'saving' ||
-            activeSaveState === 'saved'
-          }
-          onPress={handleHeartTapActive}
+          style={styles.headerIconButton}
+          onPress={handleOpenFavourites}
         >
-          {activeSaveState === 'saving' ? (
-            <ActivityIndicator size="small" color={theme.colors.figmaAction} />
-          ) : activeSaveState === 'saved' ? (
-            <IconHomeHeartFilled width={24} height={24} />
-          ) : (
-            <IconHomeHeartOutline width={24} height={24} />
-          )}
+          <IconHomeHeartOutline width={24} height={24} />
+          {hasUnseenFavourites ? (
+            <View
+              testID="home-favourites-badge"
+              style={styles.favDot}
+              pointerEvents="none"
+            />
+          ) : null}
         </TouchableOpacity>
       </View>
 
@@ -1191,31 +1192,22 @@ export const HomeScreen = () => {
                 insightActive={isOverrideActive}
               />
             )}
-            renderCue={(likeOpacity, skipOpacity) => (
-              <>
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.deckCue,
-                    styles.deckCueLike,
-                    { opacity: likeOpacity },
-                  ]}
-                >
-                  <IconHomeHeartFilled width={28} height={28} />
-                </Animated.View>
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.deckCue,
-                    styles.deckCueSkip,
-                    { opacity: skipOpacity },
-                  ]}
-                >
-                  <Text style={styles.deckCueSkipText}>
-                    {t('home.skip_label')}
-                  </Text>
-                </Animated.View>
-              </>
+            renderCue={(_likeOpacity, skipOpacity) => (
+              // Swiping only browses now (saving is "Wear this"-only), so there
+              // is no "like"/favourite cue — just the skip affordance on the
+              // dismiss (left) direction.
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.deckCue,
+                  styles.deckCueSkip,
+                  { opacity: skipOpacity },
+                ]}
+              >
+                <Text style={styles.deckCueSkipText}>
+                  {t('home.skip_label')}
+                </Text>
+              </Animated.View>
             )}
           />
         </View>
