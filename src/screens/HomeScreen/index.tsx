@@ -1438,8 +1438,6 @@ export const HomeScreen = () => {
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
         onSkip={refine.onSkip}
-        title={t('contextChips.refine_title')}
-        subtitle={t('contextChips.refine_subtitle')}
       />
 
       <PinConfirmModal
