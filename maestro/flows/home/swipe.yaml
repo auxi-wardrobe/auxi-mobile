@@ -1,14 +1,19 @@
 # auxi/maestro/flows/home/swipe.yaml
 # Home flow — Tinder-style swipe deck (supersedes the AU-303 two-axis flow).
 # Spec: auxi/docs/superpowers/specs/2026-06-12-home-tinder-swipe-design.md
-#   1. Header heart quick-save (deterministic like — does NOT advance the deck)
-#   2. Swipe LEFT  = skip  → next card
-#   3. Swipe RIGHT = like  → next card
+#   1. Header favourites shortcut present (heart → Favourite page, saved dot)
+#   2. Swipe LEFT  = next card
+#   3. Swipe RIGHT = next card
 #   4. Remix button present
+#
+# The header heart is a quick-access shortcut to the Favourite page (mint dot
+# when looks are saved), not an inline save toggle. Swiping (either direction)
+# only browses to the next outfit — saving is exclusively the "Wear this"
+# footer button now.
 #
 # Selector note: per-card testIDs are now keyed by the dynamic `outfitHash`
 # (`home-outfit-sheet-<hash>`), so this flow asserts only on STABLE selectors:
-# `home-swipe-deck`, `home-heart-toggle[-saved]`, `home-remix`. Richer
+# `home-swipe-deck`, `home-favourites-shortcut`, `home-remix`. Richer
 # per-card / save-confirmation assertions need stable card testIDs (follow-up).
 # Swipe-gesture fidelity (finger-follow, ±6° tilt, no-bounce spring) is verified
 # by the iOS sim walk in the spec §8 — Maestro covers structure + regression.
@@ -33,29 +38,23 @@ env:
       id: home-swipe-deck
     timeout: ${RECOMMENDATION_TIMEOUT_MS}
 
-# --- 1. Header heart quick-save (like, no advance) ---
-# The header heart saves the ACTIVE card without advancing the deck, so the
-# saved state is deterministically observable in the header.
+# --- 1. Header favourites shortcut present ---
+# The header heart is a quick-access shortcut to the Favourite page, not an
+# inline save toggle. Assert it is present; tapping it would leave Home, so the
+# swipe steps below cover the browse gestures.
 - assertVisible:
-    id: home-heart-toggle
-- tapOn:
-    id: home-heart-toggle
-- extendedWaitUntil:
-    visible:
-      id: home-heart-toggle-saved
-    timeout: ${FAVOURITE_TIMEOUT_MS}
+    id: home-favourites-shortcut
 
-# --- 2. Swipe LEFT = skip → next card ---
+# --- 2. Swipe LEFT = next card ---
 - swipe:
     direction: LEFT
 - waitForAnimationToEnd
 - assertVisible:
     id: home-swipe-deck
 
-# --- 3. Swipe RIGHT = like → next card ---
-# After a right-swipe the liked card flings off and the deck advances, so the
-# header reflects the NEW active card (not the saved one) — we assert the deck
-# survived the gesture rather than a per-card saved state.
+# --- 3. Swipe RIGHT = next card ---
+# Swiping no longer saves — both directions just advance the deck. Assert the
+# deck survived the gesture.
 - swipe:
     direction: RIGHT
 - waitForAnimationToEnd
