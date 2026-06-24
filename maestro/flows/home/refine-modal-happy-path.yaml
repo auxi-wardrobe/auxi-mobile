@@ -73,12 +73,14 @@ env:
     timeout: ${MODAL_TIMEOUT_MS}
 
 # --- 3. Select a vibe chip ---
-# "more_polished" matches AC #1 example. Selection is local state
-# (selectedChipId) and enables the OK button (confirmDisabled = false).
-- assertVisible:
-    id: context-chip-more_polished
+# The sheet renders a RANDOM 3–5 chip subset of the pool, so we can't pin a
+# specific chip id. Tap the first refine chip by position instead. The regex
+# `context-chip-<id>` matches only the real chips — the shuffle/edit/confirm
+# controls are `context-chips-*` (plural), so they're excluded. Selection is
+# local state (selectedChipId) and enables the OK button (confirmDisabled=false).
 - tapOn:
-    id: context-chip-more_polished
+    id: "context-chip-[a-z_]+"
+    index: 0
 
 # --- 4. Confirm — submits chip as styleFeedback, fetches a new outfit ---
 # tapOn home-context-chips-confirm -> handleSubmitContext ->

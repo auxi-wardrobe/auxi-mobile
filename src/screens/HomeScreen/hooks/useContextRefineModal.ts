@@ -6,7 +6,7 @@ import {
   ContextChipId,
   ContextChipOption,
 } from '../../../components/features/ContextChipsModal';
-import { CONTEXT_CHIP_LABEL_KEYS, CONTEXT_CHIP_SETS } from '../context-chips';
+import { CONTEXT_CHIP_LABEL_KEYS, pickContextChips } from '../context-chips';
 
 type UseContextRefineModalParams = {
   onSubmitFeedback: (payload: string) => void;
@@ -22,15 +22,17 @@ export const useContextRefineModal = ({
 }: UseContextRefineModalParams) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [suggestionSetIndex, setSuggestionSetIndex] = useState(0);
+  // The 3–5 chip subset currently on screen. Re-rolled on every open and on
+  // each shuffle so the sheet shows a fresh random slice of the pool.
+  const [activeChipOptions, setActiveChipOptions] = useState<
+    ContextChipOption[]
+  >(() => pickContextChips());
   const [selectedChipId, setSelectedChipId] = useState<ContextChipId | null>(
     null,
   );
   const [isEditing, setIsEditing] = useState(false);
   const [customText, setCustomText] = useState('');
 
-  const activeChipOptions =
-    CONTEXT_CHIP_SETS[suggestionSetIndex] ?? CONTEXT_CHIP_SETS[0];
   const trimmedCustomText = customText.trim();
   const confirmDisabled = !selectedChipId && trimmedCustomText.length === 0;
 
@@ -46,7 +48,8 @@ export const useContextRefineModal = ({
   );
 
   const resetDraft = useCallback(() => {
-    setSuggestionSetIndex(0);
+    // Re-roll the visible chips so the next open starts from a fresh subset.
+    setActiveChipOptions(pickContextChips());
     setSelectedChipId(null);
     setIsEditing(false);
     setCustomText('');
@@ -60,18 +63,23 @@ export const useContextRefineModal = ({
 
   const open = useCallback((source: string) => {
     Keyboard.dismiss();
+    // Show a fresh random subset each time the sheet opens.
+    setActiveChipOptions(pickContextChips());
     setIsOpen(true);
     track('refine_modal_opened', { source });
   }, []);
 
   const onShuffle = useCallback(() => {
     Keyboard.dismiss();
-    setSuggestionSetIndex(
-      currentIndex => (currentIndex + 1) % CONTEXT_CHIP_SETS.length,
+    // Swap in a new random subset, deprioritising the chips just shown so the
+    // shuffle visibly reveals other options.
+    setActiveChipOptions(current =>
+      pickContextChips(current.map(chip => chip.id)),
     );
     setSelectedChipId(null);
     setIsEditing(false);
     setCustomText('');
+    track('refine_chips_shuffled');
   }, []);
 
   const onSelectChip = useCallback((chipId: ContextChipId) => {
