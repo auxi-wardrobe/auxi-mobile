@@ -13,10 +13,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import {
-  MBottomSheet,
-  MSheetOption,
-} from '../components/design-system/lib';
+import { MBottomSheet, MSheetOption } from '../components/design-system/lib';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';

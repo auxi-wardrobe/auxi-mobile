@@ -6,10 +6,7 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import {
-  MBottomSheet,
-  MSheetOption,
-} from '../../components/design-system/lib';
+import { MBottomSheet, MSheetOption } from '../../components/design-system/lib';
 import { TopIconButton } from '../../components/primitives/FigmaPrimitives';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';

@@ -74,73 +74,73 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
         </Text>
 
         <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={onScroll}
-            contentOffset={{ x: initialIndex * screenWidth, y: 0 }}
-            style={styles.carousel}
-          >
-            {BODY_SHAPE_OPTIONS.map(option => (
-              <View
-                key={option.id}
-                style={styles.page}
-                testID={`stom-shape-page-${option.id}`}
-              >
-                <View style={styles.shapeCard}>
-                  <Text style={styles.shapeLabel}>
-                    {t(`seeThisOnMe.shapes.${option.labelKey}`)}
-                  </Text>
-                </View>
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={onScroll}
+          contentOffset={{ x: initialIndex * screenWidth, y: 0 }}
+          style={styles.carousel}
+        >
+          {BODY_SHAPE_OPTIONS.map(option => (
+            <View
+              key={option.id}
+              style={styles.page}
+              testID={`stom-shape-page-${option.id}`}
+            >
+              <View style={styles.shapeCard}>
+                <Text style={styles.shapeLabel}>
+                  {t(`seeThisOnMe.shapes.${option.labelKey}`)}
+                </Text>
               </View>
-            ))}
-          </ScrollView>
-
-          <View style={styles.dots}>
-            {BODY_SHAPE_OPTIONS.map((option, i) => (
-              <View
-                key={option.id}
-                style={[
-                  styles.dot,
-                  i === index ? styles.dotActive : styles.dotInactive,
-                ]}
-              />
-            ))}
-          </View>
-
-          <TouchableOpacity
-            testID="stom-optin"
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: optIn }}
-            accessibilityLabel={t('seeThisOnMe.optIn')}
-            activeOpacity={0.8}
-            style={styles.optInRow}
-            onPress={onToggleOptIn}
-          >
-            <View style={[styles.checkbox, optIn && styles.checkboxChecked]}>
-              {optIn ? (
-                <Icons.Plus width={14} height={14} color={theme.colors.white} />
-              ) : null}
             </View>
-            <Text style={styles.optInLabel}>{t('seeThisOnMe.optIn')}</Text>
-          </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-          <View style={styles.actions}>
-            <PillButton
-              testID="stom-shape-retake"
-              title={t('seeThisOnMe.retake')}
-              variant="text"
-              onPress={onRetake}
+        <View style={styles.dots}>
+          {BODY_SHAPE_OPTIONS.map((option, i) => (
+            <View
+              key={option.id}
+              style={[
+                styles.dot,
+                i === index ? styles.dotActive : styles.dotInactive,
+              ]}
             />
-            <PillButton
-              testID="stom-generate"
-              title={t('seeThisOnMe.useThisPhoto')}
-              variant="filled"
-              onPress={() => onUse(current.id)}
-              style={styles.useButton}
-            />
-          </View>
+          ))}
         </View>
+
+        <TouchableOpacity
+          testID="stom-optin"
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: optIn }}
+          accessibilityLabel={t('seeThisOnMe.optIn')}
+          activeOpacity={0.8}
+          style={styles.optInRow}
+          onPress={onToggleOptIn}
+        >
+          <View style={[styles.checkbox, optIn && styles.checkboxChecked]}>
+            {optIn ? (
+              <Icons.Plus width={14} height={14} color={theme.colors.white} />
+            ) : null}
+          </View>
+          <Text style={styles.optInLabel}>{t('seeThisOnMe.optIn')}</Text>
+        </TouchableOpacity>
+
+        <View style={styles.actions}>
+          <PillButton
+            testID="stom-shape-retake"
+            title={t('seeThisOnMe.retake')}
+            variant="text"
+            onPress={onRetake}
+          />
+          <PillButton
+            testID="stom-generate"
+            title={t('seeThisOnMe.useThisPhoto')}
+            variant="filled"
+            onPress={() => onUse(current.id)}
+            style={styles.useButton}
+          />
+        </View>
+      </View>
     </MBottomSheet>
   );
 };

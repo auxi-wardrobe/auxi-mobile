@@ -1075,47 +1075,45 @@ export const ItemDetailScreen = () => {
           </View>
 
           <ScrollView>
-            {(pickerField ? getPickerOptions(pickerField) : []).map(
-              option => {
-                  const isSelected =
-                    (pickerField === 'category' && draftCategory === option) ||
-                    (pickerField === 'color' && draftColor === option) ||
-                    (pickerField === 'fit' && draftFit === option) ||
-                    (pickerField === 'style' && draftStyle === option);
+            {(pickerField ? getPickerOptions(pickerField) : []).map(option => {
+              const isSelected =
+                (pickerField === 'category' && draftCategory === option) ||
+                (pickerField === 'color' && draftColor === option) ||
+                (pickerField === 'fit' && draftFit === option) ||
+                (pickerField === 'style' && draftStyle === option);
 
-                  return (
-                    <TouchableOpacity
-                      key={option}
-                      testID={`item-detail-option-${option}`}
-                      style={styles.optionItem}
-                      onPress={() => handleSelectOption(option)}
-                    >
-                      <View style={styles.optionLeft}>
-                        {pickerField === 'color' ? (
-                          <View
-                            style={[
-                              styles.optionColorDot,
-                              { backgroundColor: findColorHex(option) },
-                            ]}
-                          />
-                        ) : null}
-                        <Text style={styles.optionText}>
-                          {pickerField
-                            ? getOptionDisplayLabel(pickerField, option)
-                            : option}
-                        </Text>
-                      </View>
-                      {isSelected ? (
-                        <Icons.ChevronRight
-                          width={18}
-                          height={18}
-                          color={theme.colors.figmaAction}
-                        />
-                      ) : null}
-                    </TouchableOpacity>
-                  );
-                },
-              )}
+              return (
+                <TouchableOpacity
+                  key={option}
+                  testID={`item-detail-option-${option}`}
+                  style={styles.optionItem}
+                  onPress={() => handleSelectOption(option)}
+                >
+                  <View style={styles.optionLeft}>
+                    {pickerField === 'color' ? (
+                      <View
+                        style={[
+                          styles.optionColorDot,
+                          { backgroundColor: findColorHex(option) },
+                        ]}
+                      />
+                    ) : null}
+                    <Text style={styles.optionText}>
+                      {pickerField
+                        ? getOptionDisplayLabel(pickerField, option)
+                        : option}
+                    </Text>
+                  </View>
+                  {isSelected ? (
+                    <Icons.ChevronRight
+                      width={18}
+                      height={18}
+                      color={theme.colors.figmaAction}
+                    />
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
       </MBottomSheet>
