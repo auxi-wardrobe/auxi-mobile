@@ -19,6 +19,12 @@ TS=$(date +%y%m%d-%H%M%S)
 # preview URL stays unique even when the (decorative) slug gets truncated.
 BR="web-preview/${TS}-${SLUG}"
 git checkout -q -b "$BR"
+# Strip iOS-only toolchain files from this disposable preview branch so Cloudflare
+# does NOT detect Ruby. Otherwise CF spends ~2.5 min compiling Ruby from source
+# (asdf, not cached) + running `bundle install` (cocoapods/activesupport) that the
+# web build never uses. Safe: web-preview/* is throwaway and never builds iOS; the
+# Gemfile stays intact on main for the iOS toolchain.
+git rm -q --ignore-unmatch Gemfile Gemfile.lock .ruby-version .tool-versions >/dev/null 2>&1 || true
 git add -A
 git commit -q --allow-empty -m "preview: ${SLUG} (${TS})"
 git push -q origin "$BR"

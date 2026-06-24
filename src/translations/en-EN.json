@@ -378,6 +378,8 @@
       "a11y_open_menu": "Open menu",
       "a11y_saved_fav": "Saved to favourites",
       "a11y_fav_this": "Favourite this look",
+      "a11y_open_favourites": "Open favourites",
+      "a11y_open_favourites_new": "Open favourites, new saved looks",
       "clear": "Clear",
       "seen_all_hint": "You've seen them all — suggestions will repeat",
       "skip_label": "Next",
