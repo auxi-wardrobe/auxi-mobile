@@ -125,9 +125,7 @@ export const MChip: React.FC<MChipProps> = ({
         >
           {children}
         </Text>
-        {removable && (
-          <Text style={[styles.chipX, { fontSize: sz.x }]}>×</Text>
-        )}
+        {removable && <Text style={[styles.chipX, { fontSize: sz.x }]}>×</Text>}
       </Animated.View>
     </Pressable>
   );
