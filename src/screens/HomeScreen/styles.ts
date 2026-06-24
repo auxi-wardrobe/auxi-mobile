@@ -47,7 +47,7 @@ export const styles = StyleSheet.create({
     bottom: (HOME_VIEW_TOGGLE_FOOTER_HEIGHT - 44) / 2,
     width: 44,
     height: 44,
-    borderRadius: 16,
+    borderRadius: theme.borderRadius.l,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.figmaSurface,

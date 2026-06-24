@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     // group reads lower in the bar, closer to the screen edge).
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingBottom: 24,
+    paddingBottom: theme.spacing.l,
     overflow: 'hidden',
   },
   // Oversized backdrop-blur slab (Figma 3227:13480: 430×100, centred). Bar

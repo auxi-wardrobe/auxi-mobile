@@ -68,7 +68,6 @@ export const COLLAGE_SURFACE_HEIGHT = Math.round(
   COLLAGE_SURFACE_WIDTH * COLLAGE_ASPECT,
 );
 
-export const UNFAVORITED_SWIPE_THRESHOLD = 3;
 export const TARGET_AHEAD = OUTFITS_PER_SET;
 
 // Progressive refinement: after this many distinct outfits are viewed within a

@@ -98,7 +98,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `outfit_swiped` | Swipe left → next suggestion / swipe right → previous (navigation only; favouriting moved to "Wear this"). Right-swipe is blocked on the first card, so `previous` only fires from index ≥ 1. | `HomeScreen/index.tsx` (`handleSkip`, `handleSwipeBack`) | `outfit_hash`, `direction` (`next`/`previous`), `method` (`gesture`) |
 | `outfit_card_tapped` | Tap on outfit card | `HomeScreen.tsx:1386` | `outfit_hash`, `position` |
 | `context_chip_changed` | Mode chip change (wired defensively — UI parked behind AU-221) | `HomeScreen.tsx:1137` | `chip_type` (`mode`), `value` |
-| `refine_modal_opened` (pre-existing) | Refine sheet opens — manual ("edit context" button) or the after-6 progressive gate | `HomeScreen/index.tsx` | `source` (`card_button` / `viewed_threshold`; legacy `unfavorited_swipe` removed) |
+| `refine_modal_opened` (pre-existing) | Refine sheet opens — manual ("Refine" action-row button) or the after-6 progressive gate | `HomeScreen/index.tsx` | `source` (`refine_button` / `viewed_threshold`; legacy `unfavorited_swipe` removed) |
 | `refine_chip_selected` / `refine_chip_deselected` | ContextChipsModal chip toggle | `ContextChipsModal.tsx:152` | `chip_type` (`style_feedback`), `value` |
 | `refine_submitted` (pre-existing) | Refine confirm | `HomeScreen.tsx:1246` | `occasion`, `time_of_day`, `weather_condition` |
 | `refine_cancelled` (pre-existing) | Refine dismiss | `HomeScreen.tsx:1589` | `source` |
