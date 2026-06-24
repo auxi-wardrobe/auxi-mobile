@@ -28,7 +28,7 @@ import { CategoryTabs } from '../components/features/CategoryTabs';
 import { Header } from '../components/layout/Header';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
-import { MBottomSheet, MButton } from '../components/design-system/lib';
+import { MBottomSheet, MButton, MText } from '../components/design-system/lib';
 import { useSidebar } from '../context/SidebarContext';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
@@ -524,12 +524,17 @@ export const WardrobeScreen = () => {
           // F7: failed load → dedicated error state with Retry, distinct from
           // the genuine empty-wardrobe copy below.
           <View style={styles.errorState} testID="wardrobe-error-state">
-            <Text style={styles.errorTitle}>
+            <MText variant="h3" color="ink" align="center">
               {t('common.load_wardrobe_failed_title')}
-            </Text>
-            <Text style={styles.errorBody}>
+            </MText>
+            <MText
+              variant="bodySm"
+              color="ink2"
+              align="center"
+              style={styles.errorBody}
+            >
               {t('wardrobe.list.error_body')}
-            </Text>
+            </MText>
             <View style={styles.errorRetryWrap}>
               <MButton
                 variant="secondary"
@@ -547,16 +552,21 @@ export const WardrobeScreen = () => {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>
+            <MText variant="h3" color="ink" align="center">
               {selectedTab === 'All'
                 ? t('wardrobe.list.empty_first_title')
                 : t('wardrobe.list.empty_filtered_title')}
-            </Text>
-            <Text style={styles.emptySubtitle}>
+            </MText>
+            <MText
+              variant="bodySm"
+              color="ink2"
+              align="center"
+              style={styles.emptySubtitle}
+            >
               {selectedTab === 'All'
                 ? t('wardrobe.list.empty_first_body')
                 : t('wardrobe.list.empty_filtered_body')}
-            </Text>
+            </MText>
             <View style={styles.emptyCtaWrap}>
               <MButton
                 variant="primary"
@@ -585,12 +595,12 @@ export const WardrobeScreen = () => {
         testID="wardrobe-add-sheet"
       >
         <View style={[styles.addSheetBody, { paddingBottom: insets.bottom }]}>
-          <Text style={styles.addSheetTitle}>
+          <MText variant="h3" color="ink">
             {t('wardrobe.list.add_item_sheet_title')}
-          </Text>
-          <Text style={styles.addSheetSubtitle}>
+          </MText>
+          <MText variant="body" color="ink" style={styles.addSheetSubtitle}>
             {t('wardrobe.list.add_item_sheet_subtitle')}
-          </Text>
+          </MText>
 
           <AddMethodRow
             icon={
@@ -640,17 +650,17 @@ export const WardrobeScreen = () => {
               size={40}
               testID="wardrobe-preparing-macgie"
             />
-            <Text style={styles.preparingTitle}>
+            <MText variant="h3" color="ink" style={styles.preparingTitle}>
               {t('wardrobe.list.preparing_title')}
-            </Text>
-            <Text style={styles.preparingStep}>
+            </MText>
+            <MText variant="bodySm" color="ink2" align="center">
               {'• '}
               {t('wardrobe.list.preparing_step1')}
-            </Text>
-            <Text style={styles.preparingStep}>
+            </MText>
+            <MText variant="bodySm" color="ink2" align="center">
               {'• '}
               {t('wardrobe.list.preparing_step2')}
-            </Text>
+            </MText>
           </View>
         </View>
       </Modal>
@@ -702,8 +712,12 @@ const AddMethodRow: React.FC<AddMethodRowProps> = ({
   >
     <View style={styles.methodIcon}>{icon}</View>
     <View style={styles.methodTexts}>
-      <Text style={styles.methodTitle}>{title}</Text>
-      <Text style={styles.methodDescription}>{description}</Text>
+      <MText variant="h3" color="ink">
+        {title}
+      </MText>
+      <MText variant="bodySm" color="ink2" style={styles.methodDescription}>
+        {description}
+      </MText>
     </View>
   </PressableScale>
 );
@@ -837,15 +851,9 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     alignItems: 'center',
   },
-  emptyTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-    textAlign: 'center',
-  },
+  // Layout-only now — typography (size/family/color) is owned by the MText
+  // variant; this just adds the spacing + max line width on the screen.
   emptySubtitle: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
     marginTop: 8,
     maxWidth: 280,
   },
@@ -861,15 +869,8 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     alignItems: 'center',
   },
-  errorTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-    textAlign: 'center',
-  },
+  // Layout-only — MText variant owns the typography.
   errorBody: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
     marginTop: 8,
     maxWidth: 280,
   },
@@ -886,13 +887,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 36,
   },
-  addSheetTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-  },
+  // Layout-only — MText variant owns the typography.
   addSheetSubtitle: {
-    ...theme.typography.aliases.interBodyMd,
-    color: theme.colors.figmaTextPrimary,
     marginTop: 2,
     marginBottom: 8,
   },
@@ -915,13 +911,8 @@ const styles = StyleSheet.create({
   methodTexts: {
     flex: 1,
   },
-  methodTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-  },
+  // Layout-only — MText variant owns the typography.
   methodDescription: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
     marginTop: 2,
   },
   // AI processing overlay
@@ -949,14 +940,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  // Layout-only — MText variant owns the typography.
   preparingTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
     marginTop: 4,
-  },
-  preparingStep: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
   },
 });

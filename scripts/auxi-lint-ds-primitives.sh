@@ -24,6 +24,7 @@ check() {
     total=$((total+n))
   fi
 }
+check "raw <Text>"                '<Text[ />]'        'MText (variant=…)'
 check "raw <TextInput>"           '<TextInput'        'MInput'
 check "raw <Switch>"              '<Switch'           'MSwitch'
 check "raw <Modal>"               '<Modal'           'MDialog / MBottomSheet'
