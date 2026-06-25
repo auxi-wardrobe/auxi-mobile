@@ -199,6 +199,7 @@ export const PillButton: React.FC<PillButtonProps> = ({
   return (
     <AnimatedTouchable
       testID={testID}
+      accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       activeOpacity={0.85}
       onPress={onPress}
