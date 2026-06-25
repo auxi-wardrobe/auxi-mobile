@@ -103,6 +103,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `refine_submitted` (pre-existing) | Refine confirm | `HomeScreen.tsx:1246` | `occasion`, `time_of_day`, `weather_condition` |
 | `refine_cancelled` (pre-existing) | Refine dismiss | `HomeScreen.tsx:1589` | `source` |
 | `refine_skipped` | "Skip for now" on the after-6 progressive-refinement gate — defers feedback and resumes generation of the next tier | `HomeScreen/index.tsx` (`onSkipRefinement`) | `skipped_count` (running per-session skip tally) |
+| `home_view_toggled` | Tap on the Home footer view-toggle pill (DS `MFloatingPill`, icon mode) — swaps the outfit sheet's middle region between the grid and collage layouts | `HomeViewToggleFooter.tsx` (`handleChange`) | `view` (`grid` / `collage`) |
 
 ### 5.4 Wardrobe + ItemDetail
 
@@ -345,6 +346,8 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 - **App-feedback submission funnel:** `screen_viewed` (`screen_name = Feedback`) → `feedback_submitted` (vs `feedback_submit_failed`, broken down by `error_code`) — measures completion rate of the feedback form and surfaces rate-limit / validation friction.
 - **Temperature-override funnel (AU-362):** `temperature_modal_opened` → `temperature_apply_clicked` → `temperature_override_active` → `recommendation_generated_by_temperature` — answers the ticket's analytics goal: do users actually adopt a temperature override vs stay on live weather? Break down by `option` / `bucket` to see which ranges are used. `temperature_override_removed` is the return-to-weather branch; `temperature_option_selected` ÷ `temperature_apply_clicked` measures browse-vs-commit on the radios.
 
+- **Home view-toggle adoption:** `home_view_toggled` broken down by `view` measures how often users switch the outfit sheet to the collage layout vs stay on the grid — a low collage rate flags weak discoverability or low value of the alternate layout (informs the AU-253 collage seed-layout investment). Denominator: `screen_viewed` (`screen_name = Home`).
+
 - **Notification-settings engagement (AU-316):** `notifications_toggle_changed` / `notifications_schedule_changed` / `notifications_reset` measure how users tune the daily reminder; `notifications_reset` ÷ `notifications_reset_undone` is the regret rate on the reset action (a high undo rate signals the reset is too easy to trigger or its defaults are wrong — relevant to the pending UAC 07:30 vs constant 06:15 default discrepancy). Break down `notifications_schedule_changed` by `frequency`/`period` to see preferred cadence.
 
-Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`. Super properties (`platform`, `app_environment`) are available globally.
+Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`. Super properties (`platform`, `app_environment`) are available globally.
