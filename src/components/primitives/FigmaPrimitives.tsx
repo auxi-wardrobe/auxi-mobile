@@ -42,7 +42,9 @@ interface DividerRowProps {
 }
 
 interface PillButtonProps {
-  title: string;
+  // Optional so the same component renders an icon-only secondary button: pass
+  // `leading`/`trailing` with no `title` (provide `accessibilityLabel` for a11y).
+  title?: string;
   onPress?: (event: GestureResponderEvent) => void;
   variant?: PillVariant;
   disabled?: boolean;
@@ -176,6 +178,24 @@ export const PillButton: React.FC<PillButtonProps> = ({
     ],
   };
 
+  // Single source of truth for the secondary-button icon tint: filled buttons
+  // get the light on-dark label tone, danger gets red, and every bordered/no-fill
+  // variant (outline/soft/text) gets color/primary/700 (#0C0B0B). The tint is
+  // injected into whatever icon node the caller passes so call sites never have
+  // to repeat the colour — keeping all secondary icons on-spec centrally.
+  const iconColor =
+    variant === 'filled'
+      ? theme.colors.uacTextPrimaryBase
+      : variant === 'danger'
+      ? theme.colors.figmaRed
+      : theme.colors.iconPrimary700;
+  const tintIcon = (node: React.ReactNode): React.ReactNode =>
+    React.isValidElement(node)
+      ? React.cloneElement(node as React.ReactElement<{ color?: string }>, {
+          color: iconColor,
+        })
+      : node;
+
   return (
     <AnimatedTouchable
       testID={testID}
@@ -198,19 +218,22 @@ export const PillButton: React.FC<PillButtonProps> = ({
       ]}
     >
       <Animated.View style={[styles.pillContent, contentStyle]}>
-        {leading}
-        <Text
-          style={[
-            styles.pillText,
-            variant === 'filled' && styles.filledText,
-            variant === 'danger' && styles.dangerText,
-            variant === 'text' && styles.textOnly,
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
-        {trailing}
+        {tintIcon(leading)}
+        {title ? (
+          <Text
+            style={[
+              styles.pillText,
+              variant === 'outline' && styles.outlineText,
+              variant === 'filled' && styles.filledText,
+              variant === 'danger' && styles.dangerText,
+              variant === 'text' && styles.textOnly,
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+        ) : null}
+        {tintIcon(trailing)}
       </Animated.View>
       {loading ? (
         <Animated.View
@@ -319,6 +342,9 @@ const styles = StyleSheet.create({
   pillText: {
     ...theme.typography.aliases.poppinsButton,
     color: theme.colors.figmaTextDark, // secondary/text button label #070707
+  },
+  outlineText: {
+    color: theme.colors.uacTextBase, // secondary (outline) button label #1D1F23
   },
   filledText: {
     color: theme.colors.uacTextPrimaryBase, // primary button label #F2EFEC

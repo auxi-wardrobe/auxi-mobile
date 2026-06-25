@@ -272,7 +272,10 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.uacButtonCta,
     borderWidth: 1.5,
     borderColor: theme.colors.uacBorderBase,
-    backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
+    // Secondary button is no-fill; transparent lets the screen surface show
+    // through (was uacBackgroundNeutralSubtlest, identical on this screen but
+    // off-spec for the shared secondary-button definition).
+    backgroundColor: theme.colors.transparent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

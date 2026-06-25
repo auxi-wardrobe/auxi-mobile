@@ -347,7 +347,7 @@ export const styles = StyleSheet.create({
     borderColor: theme.colors.uacBorderBase,
   },
   primaryActionLabel: {
-    color: theme.colors.figmaCtaLabel,
+    color: theme.colors.uacTextBase, // secondary button label #1D1F23
   },
   saveErrorText: {
     ...theme.typography.aliases.manropeCaption,

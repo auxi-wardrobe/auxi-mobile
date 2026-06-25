@@ -138,6 +138,10 @@ export const theme = {
     // the tile pin badge. Was an inline literal in `pinBadge`; promoted to a
     // token so the loading-state pin reuses the same value (DRY).
     figmaOverlayLight30: 'rgba(255, 255, 255, 0.3)',
+    // color/primary/700 (#0C0B0B) — icon tint for the secondary button
+    // (bordered, no-fill). Distinct from figmaTextDark (#070707, the text label
+    // tone); per design the secondary-button icon is one step warmer/darker.
+    iconPrimary700: '#0C0B0B',
   },
   spacing: {
     xs: 4,
@@ -402,6 +406,7 @@ export const theme = {
       // Ink & neutrals
       ink: '#1d1f23', // primary text / primary button (alias: uacBackgroundBase, uacBorderBase, uacTextBase)
       black: '#070707', // control fills / radio dot (alias: figmaTextDark)
+      primary700: '#0c0b0b', // color/primary/700 — secondary-button icon tint (alias: iconPrimary700)
       slate: '#272a32', // deep slate (alias: figmaText, figmaButton)
       onVariant: '#49454f', // MD3 on-surface-variant (alias: uacOnSurfaceVariant, figmaTextMuted)
       warm700: '#5b5550', // warm gray stroke (alias: figmaChipBg)

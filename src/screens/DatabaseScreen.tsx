@@ -332,18 +332,4 @@ const styles = StyleSheet.create({
     lineHeight: 12,
     color: theme.colors.white,
   },
-  emptyCta: {
-    marginTop: 18,
-    minHeight: 44,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacTextBase,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyCtaText: {
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaAction,
-  },
 });
