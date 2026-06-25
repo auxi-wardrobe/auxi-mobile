@@ -28,12 +28,12 @@ import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useNavigation,
   useRoute,
@@ -43,6 +43,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 
 import { MButton, MInput } from '../../components/design-system/lib';
+import { AuthHeader } from '../../components/auth/AuthHeader';
 import { useForgotPasswordMutation } from '../../hooks/auth/useAuthMutations';
 import { isGoogleEmail } from '../../utils/email-provider';
 import { track } from '../../services/analytics';
@@ -113,20 +114,13 @@ export const ForgotPasswordRequestScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.screen}>
-      {/* Header */}
-      <View style={styles.header} testID="forgot-request-header">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('uac.common.back') as string}
-          testID="forgot-request-back"
-          onPress={() => navigation.goBack()}
-          style={styles.headerBackHit}
-          hitSlop={8}
-        >
-          <Text style={styles.headerBackChevron}>‹</Text>
-        </Pressable>
-      </View>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      {/* Canonical auth header — shared back glyph + safe-area row. */}
+      <AuthHeader
+        testID="forgot-request-header"
+        onBack={() => navigation.goBack()}
+        backTestID="forgot-request-back"
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -193,7 +187,7 @@ export const ForgotPasswordRequestScreen: React.FC = () => {
           </MButton>
         </View>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -203,23 +197,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
   },
   flex: { flex: 1 },
-  header: {
-    height: theme.spacing.uacHeaderHeight,
-    paddingHorizontal: theme.spacing.uacBodyPadding,
-    justifyContent: 'flex-end',
-    paddingBottom: theme.spacing.uacDimension16,
-  },
-  headerBackHit: {
-    width: 45,
-    height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerBackChevron: {
-    fontSize: 32,
-    lineHeight: 32,
-    color: theme.colors.uacTextBase,
-  },
   body: {
     paddingHorizontal: theme.spacing.uacBodyPadding,
     paddingTop: theme.spacing.uacDimension8,
@@ -249,8 +226,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: theme.spacing.uacBodyPadding,
-    paddingBottom:
-      theme.spacing.uacSafeAreaBottom + theme.spacing.uacDimension16,
+    paddingBottom: theme.spacing.uacDimension16,
     paddingTop: theme.spacing.uacDimension8,
   },
 });

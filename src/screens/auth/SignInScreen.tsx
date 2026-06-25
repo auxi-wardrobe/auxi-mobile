@@ -48,12 +48,13 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 
 import { theme } from '../../theme/theme';
-import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import { MButton, MInput } from '../../components/design-system/lib';
+import { AuthHeader } from '../../components/auth/AuthHeader';
 import { useLoginMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
 import {
@@ -157,20 +158,13 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <View style={styles.screen} testID="signin-screen">
-      <View style={styles.header} pointerEvents="box-none">
-        <Pressable
-          onPress={onBackPress}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel={t('uac.common.back')}
-          testID="signin-back"
-          style={styles.backHit}
-        >
-          <IconChevronLeft width={24} height={24} />
-        </Pressable>
-        <View style={styles.headerTrailingSlot} />
-      </View>
+    <SafeAreaView
+      style={styles.screen}
+      edges={['top', 'bottom']}
+      testID="signin-screen"
+    >
+      {/* Canonical auth header — shared back glyph + safe-area row. */}
+      <AuthHeader onBack={onBackPress} backTestID="signin-back" />
 
       <KeyboardAvoidingView
         style={styles.kbAvoider}
@@ -197,26 +191,24 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
 
           {/* Password — DS field with built-in eye toggle. */}
-          <View style={styles.fieldBlock}>
-            <MInput
-              value={password}
-              onChangeText={next => {
-                setPassword(next);
-                if (inlineError) setInlineError(null);
-              }}
-              placeholder={tr.passwordPlaceholder}
-              accessibilityLabel={tr.passwordPlaceholder}
-              secureTextEntry
-              showPasswordLabel={tr.showPassword}
-              hidePasswordLabel={tr.hidePassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="go"
-              onSubmitEditing={onSubmit}
-              testID="signin-password-input"
-              editable={!submitting}
-            />
-          </View>
+          <MInput
+            value={password}
+            onChangeText={next => {
+              setPassword(next);
+              if (inlineError) setInlineError(null);
+            }}
+            placeholder={tr.passwordPlaceholder}
+            accessibilityLabel={tr.passwordPlaceholder}
+            secureTextEntry
+            showPasswordLabel={tr.showPassword}
+            hidePasswordLabel={tr.hidePassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="go"
+            onSubmitEditing={onSubmit}
+            testID="signin-password-input"
+            editable={!submitting}
+          />
 
           {inlineError ? (
             <Text style={styles.errorText} testID="signin-error">
@@ -249,62 +241,32 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const FIELD_HEIGHT = 56;
-const BODY_INNER_WIDTH = 360;
-const FORGOT_BLOCK_WIDTH = 327;
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
   },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: theme.spacing.uacHeaderHeight,
-    paddingTop: 45,
-    paddingHorizontal: theme.spacing.uacBodyPadding,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: theme.zIndex.sticky,
-  },
-  backHit: {
-    width: 45,
-    height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTrailingSlot: {
-    width: 47,
-    height: 47,
-  },
   kbAvoider: {
     flex: 1,
   },
   body: {
-    paddingTop: theme.spacing.uacSafeAreaTop,
+    paddingTop: theme.spacing.uacDimension8,
     paddingHorizontal: theme.spacing.uacBodyPadding,
-    paddingBottom: theme.spacing.uacSafeAreaBottom,
-    alignItems: 'center',
+    paddingBottom: theme.spacing.uacDimension24,
   },
   sectionHeading: {
     ...theme.typography.aliases.uacBodyMdSemibold,
     color: theme.colors.uacTextBase,
-    width: BODY_INNER_WIDTH,
-    maxWidth: '100%',
     paddingVertical: theme.spacing.uacDimension4,
     marginBottom: theme.spacing.uacDimension16,
   },
   emailField: {
-    width: BODY_INNER_WIDTH,
-    maxWidth: '100%',
     height: FIELD_HEIGHT,
     paddingHorizontal: theme.spacing.uacDimension16,
     backgroundColor: theme.colors.uacColorNeutral100,
@@ -316,25 +278,16 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.uacM3BodyLarge,
     color: theme.colors.uacTextSubtle100,
   },
-  fieldBlock: {
-    width: BODY_INNER_WIDTH,
-    maxWidth: '100%',
-  },
   ctaBlock: {
-    width: BODY_INNER_WIDTH,
-    maxWidth: '100%',
     marginTop: theme.spacing.uacDimension16,
   },
   errorText: {
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.uacTextDangerBase,
-    width: BODY_INNER_WIDTH,
-    maxWidth: '100%',
     marginTop: theme.spacing.uacDimension8,
   },
   forgotWrapper: {
-    width: FORGOT_BLOCK_WIDTH,
-    maxWidth: '100%',
+    alignSelf: 'center',
     alignItems: 'center',
     marginTop: theme.spacing.uacDimension16,
   },

@@ -117,7 +117,9 @@ export const MInput: React.FC<MInputProps> = ({
             onPress={() => setRevealed(prev => !prev)}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={revealed ? hidePasswordLabel : showPasswordLabel}
+            accessibilityLabel={
+              revealed ? hidePasswordLabel : showPasswordLabel
+            }
             testID={testID ? `${testID}-visibility` : undefined}
             style={styles.toggle}
           >

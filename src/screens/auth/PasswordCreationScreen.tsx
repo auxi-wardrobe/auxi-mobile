@@ -33,7 +33,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -47,10 +46,10 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import Svg, { Path } from 'react-native-svg';
 
 import { theme } from '../../theme/theme';
 import { MButton, MInput } from '../../components/design-system/lib';
+import { AuthHeader } from '../../components/auth/AuthHeader';
 import { useAuth } from '../../context/AuthContext';
 import { useRegisterMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
@@ -63,18 +62,6 @@ type Navigation = NativeStackNavigationProp<
   'PasswordCreation'
 >;
 type Route = RouteProp<AuthStackParamList, 'PasswordCreation'>;
-
-const ChevronLeftGlyph = () => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M15 6 9 12l6 6"
-      stroke={theme.colors.uacTextBase}
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
 
 export const PasswordCreationScreen = () => {
   const navigation = useNavigation<Navigation>();
@@ -201,19 +188,11 @@ export const PasswordCreationScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex1}
       >
-        <View style={styles.header}>
-          <Pressable
-            testID="password-back-button"
-            accessibilityRole="button"
-            accessibilityLabel={t('uac.common.back')}
-            onPress={() => navigation.goBack()}
-            style={({ pressed }) => [styles.iconHit, pressed && styles.pressed]}
-            hitSlop={8}
-          >
-            <ChevronLeftGlyph />
-          </Pressable>
-          <View style={styles.headerSlot} />
-        </View>
+        {/* Canonical auth header — shared back glyph + safe-area row. */}
+        <AuthHeader
+          onBack={() => navigation.goBack()}
+          backTestID="password-back-button"
+        />
 
         <View style={styles.bodyContainer}>
           {/* Email label + read-only filled field (specs §1+§2) */}
@@ -284,20 +263,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
   },
   flex1: { flex: 1 },
-  header: {
-    height: theme.spacing.uacHeaderHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.uacBodyPadding,
-  },
-  iconHit: {
-    width: 45,
-    height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerSlot: { width: 47, height: 47 },
   bodyContainer: {
     flex: 1,
     paddingHorizontal: theme.spacing.uacBodyPadding,
@@ -331,8 +296,5 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.uacM3BodySmall,
     color: theme.colors.uacTextDangerBase,
     marginTop: theme.spacing.uacDimension16,
-  },
-  pressed: {
-    opacity: 0.7,
   },
 });
