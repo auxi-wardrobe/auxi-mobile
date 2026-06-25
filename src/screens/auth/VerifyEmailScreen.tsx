@@ -40,6 +40,7 @@ import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
 import { theme } from '../../theme/theme';
+import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { useAuth } from '../../context/AuthContext';
 import { useResendVerificationMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
@@ -222,25 +223,19 @@ export const VerifyEmailScreen = () => {
               {t('uac.verify_email.open_mail_app_cta')}
             </Text>
           </Pressable>
-          <Pressable
+          <PillButton
             testID={
               resendDisabled
                 ? 'verify-resend-button-cooldown'
                 : 'verify-resend-button'
             }
-            accessibilityRole="button"
             accessibilityLabel={resendLabel}
+            title={resendLabel}
+            variant="outline"
             onPress={onResend}
             disabled={resendDisabled}
-            style={({ pressed }) => [
-              styles.buttonBase,
-              styles.buttonSecondary,
-              resendDisabled && styles.buttonDisabled,
-              pressed && !resendDisabled && styles.pressed,
-            ]}
-          >
-            <Text style={styles.buttonLabelDark}>{resendLabel}</Text>
-          </Pressable>
+            style={styles.buttonBase}
+          />
         </View>
 
         {/* Polling status row */}
@@ -322,21 +317,9 @@ const styles = StyleSheet.create({
   buttonPrimary: {
     backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
-  buttonSecondary: {
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacBorderBase,
-    backgroundColor: 'transparent',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
   buttonLabelLight: {
     ...theme.typography.aliases.uacBodyMdMedium,
     color: theme.colors.figmaPrimaryButtonText,
-  },
-  buttonLabelDark: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextBase,
   },
   statusRow: {
     flexDirection: 'row',

@@ -29,6 +29,7 @@ import { Header } from '../components/layout/Header';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
 import { MBottomSheet, MButton } from '../components/design-system/lib';
+import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { useSidebar } from '../context/SidebarContext';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
@@ -531,14 +532,13 @@ export const WardrobeScreen = () => {
               {t('wardrobe.list.error_body')}
             </Text>
             <View style={styles.errorRetryWrap}>
-              <MButton
-                variant="secondary"
+              <PillButton
+                title={t('common.retry')}
+                variant="outline"
                 onPress={handleRetryLoad}
                 testID="wardrobe-error-retry"
                 accessibilityLabel={t('common.a11y_retry_load')}
-              >
-                {t('common.retry')}
-              </MButton>
+              />
             </View>
           </View>
         ) : hasItems ? (
