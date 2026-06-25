@@ -534,6 +534,7 @@
       "a11y_remove_tag": "Xóa thẻ {{label}}",
       "a11y_redo": "Làm lại",
       "a11y_undo": "Hoàn tác",
+      "a11y_my_creations": "Tác phẩm của tôi",
       "a11y_bring_forward": "Đưa lên trước",
       "a11y_send_backward": "Đưa ra sau",
       "a11y_duplicate": "Nhân đôi món",
@@ -542,7 +543,18 @@
       "tag_placeholder": "Tên thẻ",
       "a11y_tag_input": "Ô nhập tên thẻ",
       "a11y_add_tag": "Thêm thẻ",
-      "a11y_save_outfit": "Lưu bộ đồ"
+      "a11y_save_outfit": "Lưu bộ đồ",
+      "saved_body": "Đã lưu vào Tác phẩm của tôi",
+      "discard_title": "Bỏ tác phẩm này?",
+      "discard_body": "Các thay đổi của bạn chưa được lưu.",
+      "discard_save": "Lưu",
+      "discard_discard": "Bỏ"
+    },
+    "myCreations": {
+      "title": "Tác phẩm của tôi",
+      "open_menu": "Mở menu",
+      "empty_body": "Lưu một tác phẩm từ canvas để xem ở đây.",
+      "remove_a11y": "Xóa tác phẩm"
     },
     "locationPermission": {
       "denied_title": "Quyền bị từ chối",

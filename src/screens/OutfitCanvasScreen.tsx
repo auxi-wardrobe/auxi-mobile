@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   Image,
+  ImageSourcePropType,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -14,8 +15,14 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import {
+  NavigationAction,
+  RouteProp,
+  useRoute,
+} from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
 import { motion } from '../theme/motion';
@@ -30,8 +37,16 @@ import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { getImageUrl } from '../utils/url';
 import { useSidebar } from '../context/SidebarContext';
 import { track } from '../services/analytics';
+import {
+  CREATIONS_QUERY_KEY,
+  CreationItem,
+  creationsService,
+} from '../services/creationsService';
+import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
+import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
+import IconMyCreation from '../assets/images/icon_my_creation.svg';
 import IconCanvasUndo from '../assets/images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../assets/images/canvas-icons/redo.svg';
 import IconCanvasAdd from '../assets/images/canvas-icons/add.svg';
@@ -53,6 +68,25 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.uacDimension12;
 const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
 const ITEM_DEFAULT_SIZE = 160;
+
+// How long the "Saved to My Creations" success snackbar stays up (mirrors
+// Wardrobe's READY_SNACKBAR_MS).
+const SAVED_SNACKBAR_MS = 4000;
+
+// Pull a serializable URI out of a canvas item's imageSource for persistence.
+// Remote/picked items are `{ uri }`; require()'d mock assets are numbers (no
+// URI) and return undefined so the caller can skip them.
+const extractUri = (source: ImageSourcePropType): string | undefined => {
+  if (
+    source &&
+    typeof source === 'object' &&
+    !Array.isArray(source) &&
+    typeof (source as { uri?: unknown }).uri === 'string'
+  ) {
+    return (source as { uri: string }).uri;
+  }
+  return undefined;
+};
 
 const PICKER_COLUMNS = 3;
 const PICKER_GAP = 4;
@@ -318,6 +352,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<RouteProp<AppStackParamList, 'OutfitCanvas'>>();
   const { t } = useTranslation();
   const { open: openSidebar } = useSidebar();
+  const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   // Entered via Home's Remix button → show a back chevron (goes back to Home).
   // Entered from the sidebar drawer → show the hamburger that re-opens it.
   const fromRemix = route.params?.entry === 'remix';
@@ -343,6 +379,45 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const [tagInput, setTagInput] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
 
+  // Unsaved-changes guard: any edit (item move/add/delete/layer, tag change)
+  // flips this true; Save clears it. Drives the "Discard this creation?" sheet
+  // shown when the user tries to leave with pending edits.
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [discardVisible, setDiscardVisible] = useState(false);
+  // The navigation action we intercepted (back / goBack), replayed verbatim
+  // once the user resolves the sheet. `proceedRef` lets that replay through the
+  // beforeRemove guard without re-prompting (a ref so the live listener reads it).
+  const [pendingAction, setPendingAction] = useState<NavigationAction | null>(
+    null,
+  );
+  const proceedRef = useRef(false);
+
+  // Self-controlled success snackbar (mint M3 ItemReadySnackbar, same component
+  // as Wardrobe's "item ready"): the library Toast render path is unused here,
+  // so we mount it as a bottom overlay and auto-dismiss.
+  const [savedSnackbarVisible, setSavedSnackbarVisible] = useState(false);
+  const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showSavedSnackbar = useCallback(() => {
+    if (snackbarTimerRef.current) {
+      clearTimeout(snackbarTimerRef.current);
+    }
+    setSavedSnackbarVisible(true);
+    snackbarTimerRef.current = setTimeout(() => {
+      setSavedSnackbarVisible(false);
+      snackbarTimerRef.current = null;
+    }, SAVED_SNACKBAR_MS);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (snackbarTimerRef.current) {
+        clearTimeout(snackbarTimerRef.current);
+      }
+    },
+    [],
+  );
+
   // Undo / redo
   const history = useRef<HistorySnapshot[]>([initialItems]);
   const historyIndex = useRef(0);
@@ -352,6 +427,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     newHistory.push(snapshot);
     history.current = newHistory;
     historyIndex.current = newHistory.length - 1;
+    // Every history push is a user edit → mark the canvas dirty.
+    setHasUnsavedChanges(true);
   }, []);
 
   const canUndo = historyIndex.current > 0;
@@ -533,62 +610,141 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   // Tag actions
   const handleRemoveTag = useCallback((tag: string) => {
     setTags(prev => prev.filter(existing => existing !== tag));
+    setHasUnsavedChanges(true);
   }, []);
 
   const handleConfirmTag = useCallback(() => {
     const trimmed = tagInput.trim();
     if (trimmed && !tags.includes(trimmed)) {
       setTags(prev => [...prev, trimmed]);
+      setHasUnsavedChanges(true);
     }
     setTagInput('');
     setAddingTag(false);
   }, [tagInput, tags]);
 
+  // Persist the current canvas arrangement to the local My Creations store and
+  // confirm with a toast that says WHERE it went. Returns whether anything was
+  // saved (false when there's nothing URI-backed to persist). Does NOT navigate
+  // — the user stays on the canvas; the toast points them at My Creations.
+  const persistCreation = useCallback(async (): Promise<boolean> => {
+    // Only items backed by a real image URI persist — mock require()'d assets
+    // (the deep-link/dev fallback) aren't serializable and are skipped.
+    const savedItems = items.reduce<CreationItem[]>((acc, it) => {
+      const uri = extractUri(it.imageSource);
+      if (uri) {
+        acc.push({
+          id: it.id,
+          imageUri: uri,
+          x: it.x,
+          y: it.y,
+          width: it.width,
+          height: it.height,
+          zIndex: it.zIndex,
+          scale: it.scale,
+          rotation: it.rotation,
+        });
+      }
+      return acc;
+    }, []);
+
+    if (savedItems.length === 0) {
+      return false;
+    }
+
+    await creationsService.saveCreation({
+      items: savedItems,
+      tags,
+      canvasWidth: CANVAS_WIDTH,
+    });
+    queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
+    track('creation_saved', { item_count: savedItems.length });
+    setHasUnsavedChanges(false);
+    showSavedSnackbar();
+    return true;
+  }, [items, tags, queryClient, showSavedSnackbar]);
+
   const handleSave = useCallback(() => {
-    // TODO: persist outfit canvas to backend
-    navigation.goBack();
+    persistCreation();
+  }, [persistCreation]);
+
+  const handleOpenCreations = useCallback(() => {
+    // "My Creations" lists everything the user has saved from the canvas
+    // (new canvases, remixed outfits, …).
+    track('canvas_my_creations_opened');
+    navigation.navigate('MyCreations');
   }, [navigation]);
+
+  // Intercept leaving the canvas (back chevron / hardware back) while there are
+  // unsaved edits → show the "Discard this creation?" sheet instead. The
+  // intercepted action is replayed once the user picks Save or Discard.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', e => {
+      if (proceedRef.current || !hasUnsavedChanges) {
+        return;
+      }
+      e.preventDefault();
+      setPendingAction(e.data.action);
+      setDiscardVisible(true);
+    });
+    return unsubscribe;
+  }, [navigation, hasUnsavedChanges]);
+
+  const leaveWithPendingAction = useCallback(() => {
+    proceedRef.current = true;
+    setDiscardVisible(false);
+    if (pendingAction) {
+      navigation.dispatch(pendingAction);
+    } else {
+      navigation.goBack();
+    }
+  }, [navigation, pendingAction]);
+
+  // Discard sheet — "Save" persists then continues leaving.
+  const handleDiscardSave = useCallback(async () => {
+    await persistCreation();
+    leaveWithPendingAction();
+  }, [persistCreation, leaveWithPendingAction]);
+
+  // "Discard" leaves without saving.
+  const handleDiscardConfirm = useCallback(() => {
+    track('creation_discarded');
+    leaveWithPendingAction();
+  }, [leaveWithPendingAction]);
+
+  // Backdrop / back dismiss — stay on the canvas.
+  const handleDiscardCancel = useCallback(() => {
+    setDiscardVisible(false);
+    setPendingAction(null);
+  }, []);
 
   const actionDisabled = !selectedId;
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-        {/* Header */}
+        {/* Header — left group: menu/back + undo + redo. Right: My Creations. */}
         <View style={styles.header}>
-          {fromRemix ? (
-            <Pressable
-              testID="canvas-header-back"
-              onPress={() => navigation.goBack()}
-              accessibilityLabel={t('common.a11y_go_back')}
-              style={styles.headerIconBtn}
-            >
-              <IconChevronLeft width={24} height={24} />
-            </Pressable>
-          ) : (
-            <Pressable
-              testID="canvas-header-menu"
-              onPress={openSidebar}
-              accessibilityLabel={t('home.a11y_open_menu')}
-              style={styles.headerIconBtn}
-            >
-              <IconMenu width={24} height={24} />
-            </Pressable>
-          )}
-
           <View style={styles.headerActions}>
-            <Pressable
-              testID="canvas-header-redo"
-              onPress={handleRedo}
-              disabled={!canRedo}
-              accessibilityLabel={t('outfitCanvas.a11y_redo')}
-              style={[
-                styles.headerIconBtn,
-                !canRedo && styles.headerIconBtnDisabled,
-              ]}
-            >
-              <IconCanvasRedo width={18} height={18} />
-            </Pressable>
+            {fromRemix ? (
+              <Pressable
+                testID="canvas-header-back"
+                onPress={() => navigation.goBack()}
+                accessibilityLabel={t('common.a11y_go_back')}
+                style={styles.headerIconBtn}
+              >
+                <IconChevronLeft width={24} height={24} />
+              </Pressable>
+            ) : (
+              <Pressable
+                testID="canvas-header-menu"
+                onPress={openSidebar}
+                accessibilityLabel={t('home.a11y_open_menu')}
+                style={styles.headerIconBtn}
+              >
+                <IconMenu width={24} height={24} />
+              </Pressable>
+            )}
             <Pressable
               testID="canvas-header-undo"
               onPress={handleUndo}
@@ -601,7 +757,28 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             >
               <IconCanvasUndo width={18} height={18} />
             </Pressable>
+            <Pressable
+              testID="canvas-header-redo"
+              onPress={handleRedo}
+              disabled={!canRedo}
+              accessibilityLabel={t('outfitCanvas.a11y_redo')}
+              style={[
+                styles.headerIconBtn,
+                !canRedo && styles.headerIconBtnDisabled,
+              ]}
+            >
+              <IconCanvasRedo width={18} height={18} />
+            </Pressable>
           </View>
+
+          <Pressable
+            testID="canvas-header-my-creations"
+            onPress={handleOpenCreations}
+            accessibilityLabel={t('outfitCanvas.a11y_my_creations')}
+            style={styles.headerIconBtn}
+          >
+            <IconMyCreation width={24} height={24} />
+          </Pressable>
         </View>
 
         {/* Body — Figma justify-between: canvas card / add-row / tags grouped at
@@ -742,6 +919,26 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         onClose={() => setPickerVisible(false)}
         onConfirm={handlePickerConfirm}
       />
+
+      {/* Unsaved-changes guard sheet (shown on leave with pending edits) */}
+      <DiscardCreationDialog
+        visible={discardVisible}
+        onCancel={handleDiscardCancel}
+        onSave={handleDiscardSave}
+        onDiscard={handleDiscardConfirm}
+      />
+
+      {/* Success snackbar overlay — "Saved to My Creations" (mint M3 snackbar,
+          same component as Wardrobe). Informational, so it never blocks touches. */}
+      {savedSnackbarVisible ? (
+        <View
+          style={[styles.savedSnackbarOverlay, { bottom: insets.bottom + 24 }]}
+          pointerEvents="none"
+          testID="canvas-saved-snackbar-overlay"
+        >
+          <ItemReadySnackbar message={t('outfitCanvas.saved_body')} />
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -751,6 +948,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     overflow: 'hidden',
+  },
+  // Bottom-anchored, centred overlay for the "Saved to My Creations" snackbar
+  // (`bottom` supplied inline to respect the home-indicator safe area).
+  savedSnackbarOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: theme.zIndex.toast,
+    elevation: 1000,
   },
   // Header
   header: {

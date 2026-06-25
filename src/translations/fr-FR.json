@@ -535,6 +535,7 @@
       "a11y_remove_tag": "Supprimer l'étiquette {{label}}",
       "a11y_redo": "Rétablir",
       "a11y_undo": "Annuler",
+      "a11y_my_creations": "Mes créations",
       "a11y_bring_forward": "Avancer",
       "a11y_send_backward": "Reculer",
       "a11y_duplicate": "Dupliquer l'article",
@@ -543,7 +544,18 @@
       "tag_placeholder": "Nom de l'étiquette",
       "a11y_tag_input": "Champ nom d'étiquette",
       "a11y_add_tag": "Ajouter une étiquette",
-      "a11y_save_outfit": "Enregistrer la tenue"
+      "a11y_save_outfit": "Enregistrer la tenue",
+      "saved_body": "Enregistrée dans Mes créations",
+      "discard_title": "Abandonner cette création ?",
+      "discard_body": "Vos modifications n'ont pas été enregistrées.",
+      "discard_save": "Enregistrer",
+      "discard_discard": "Abandonner"
+    },
+    "myCreations": {
+      "title": "Mes créations",
+      "open_menu": "Ouvrir le menu",
+      "empty_body": "Enregistrez une création depuis le canevas pour la retrouver ici.",
+      "remove_a11y": "Supprimer la création"
     },
     "locationPermission": {
       "denied_title": "Autorisation refusée",

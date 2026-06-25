@@ -149,6 +149,10 @@ export type AppStackParamList = {
         entry?: 'remix' | 'menu';
       }
     | undefined;
+  // "My Creations" — the saved-canvas list. Reached from the OutfitCanvas
+  // header's My Creations icon; saving a creation also lands here. Local
+  // (AsyncStorage) store, no params.
+  MyCreations: undefined;
   // In-app legal docs (Terms of Service / Privacy Policy) — App Store blocker
   // B5. Reachable from Settings while authenticated; the auth stack registers
   // the same route+param shape for the Welcome-screen (unauth) entry point.
