@@ -533,6 +533,7 @@
       "a11y_remove_tag": "Remove tag {{label}}",
       "a11y_redo": "Redo",
       "a11y_undo": "Undo",
+      "a11y_my_creations": "My Creations",
       "a11y_bring_forward": "Bring forward",
       "a11y_send_backward": "Send backward",
       "a11y_duplicate": "Duplicate item",

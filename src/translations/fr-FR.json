@@ -533,6 +533,7 @@
       "a11y_remove_tag": "Supprimer l'étiquette {{label}}",
       "a11y_redo": "Rétablir",
       "a11y_undo": "Annuler",
+      "a11y_my_creations": "Mes créations",
       "a11y_bring_forward": "Avancer",
       "a11y_send_backward": "Reculer",
       "a11y_duplicate": "Dupliquer l'article",

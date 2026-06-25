@@ -31,6 +31,7 @@ import { useSidebar } from '../context/SidebarContext';
 import { track } from '../services/analytics';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
+import IconMyCreation from '../assets/images/icon_my_creation.svg';
 import IconCanvasUndo from '../assets/images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../assets/images/canvas-icons/redo.svg';
 import IconCanvasAdd from '../assets/images/canvas-icons/add.svg';
@@ -548,46 +549,41 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     navigation.goBack();
   }, [navigation]);
 
+  const handleOpenCreations = useCallback(() => {
+    // "My Creations" collects everything the user has made in the canvas
+    // (new canvases, remixed outfits, …). The destination screen is not built
+    // yet — track intent so we can wire it up once persistence lands.
+    track('canvas_my_creations_opened');
+    // TODO: navigation.navigate('MyCreations') once the screen exists.
+  }, []);
+
   const actionDisabled = !selectedId;
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
-        {/* Header */}
+        {/* Header — left group: menu/back + undo + redo. Right: My Creations. */}
         <View style={styles.header}>
-          {fromRemix ? (
-            <Pressable
-              testID="canvas-header-back"
-              onPress={() => navigation.goBack()}
-              accessibilityLabel={t('common.a11y_go_back')}
-              style={styles.headerIconBtn}
-            >
-              <IconChevronLeft width={24} height={24} />
-            </Pressable>
-          ) : (
-            <Pressable
-              testID="canvas-header-menu"
-              onPress={openSidebar}
-              accessibilityLabel={t('home.a11y_open_menu')}
-              style={styles.headerIconBtn}
-            >
-              <IconMenu width={24} height={24} />
-            </Pressable>
-          )}
-
           <View style={styles.headerActions}>
-            <Pressable
-              testID="canvas-header-redo"
-              onPress={handleRedo}
-              disabled={!canRedo}
-              accessibilityLabel={t('outfitCanvas.a11y_redo')}
-              style={[
-                styles.headerIconBtn,
-                !canRedo && styles.headerIconBtnDisabled,
-              ]}
-            >
-              <IconCanvasRedo width={18} height={18} />
-            </Pressable>
+            {fromRemix ? (
+              <Pressable
+                testID="canvas-header-back"
+                onPress={() => navigation.goBack()}
+                accessibilityLabel={t('common.a11y_go_back')}
+                style={styles.headerIconBtn}
+              >
+                <IconChevronLeft width={24} height={24} />
+              </Pressable>
+            ) : (
+              <Pressable
+                testID="canvas-header-menu"
+                onPress={openSidebar}
+                accessibilityLabel={t('home.a11y_open_menu')}
+                style={styles.headerIconBtn}
+              >
+                <IconMenu width={24} height={24} />
+              </Pressable>
+            )}
             <Pressable
               testID="canvas-header-undo"
               onPress={handleUndo}
@@ -600,7 +596,28 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             >
               <IconCanvasUndo width={18} height={18} />
             </Pressable>
+            <Pressable
+              testID="canvas-header-redo"
+              onPress={handleRedo}
+              disabled={!canRedo}
+              accessibilityLabel={t('outfitCanvas.a11y_redo')}
+              style={[
+                styles.headerIconBtn,
+                !canRedo && styles.headerIconBtnDisabled,
+              ]}
+            >
+              <IconCanvasRedo width={18} height={18} />
+            </Pressable>
           </View>
+
+          <Pressable
+            testID="canvas-header-my-creations"
+            onPress={handleOpenCreations}
+            accessibilityLabel={t('outfitCanvas.a11y_my_creations')}
+            style={styles.headerIconBtn}
+          >
+            <IconMyCreation width={24} height={24} />
+          </Pressable>
         </View>
 
         {/* Body — Figma justify-between: canvas card / add-row / tags grouped at
