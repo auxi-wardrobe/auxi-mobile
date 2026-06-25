@@ -252,13 +252,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Canonical header icon chip (left or right): 44×44 white square, radius 8,
+  // with the design-system header-icon drop-shadow. Per-screen overrides should
+  // not change size/radius/fill — only positioning.
   topIconButton: {
-    width: 45,
-    height: 45,
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaIconSurface,
+    width: 44,
+    height: 44,
+    borderRadius: theme.borderRadius.m,
+    backgroundColor: theme.colors.white,
     justifyContent: 'center',
     alignItems: 'center',
+    ...theme.ds.shadow.headerIcon,
   },
   topIconLabel: {
     fontFamily: 'Poppins-Medium',

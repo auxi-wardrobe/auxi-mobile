@@ -10,6 +10,7 @@ import IconArchive from '../images/icon_archive.svg';
 import IconTrash from '../images/icon_trash.svg';
 import IconLogout from '../images/icon_logout.svg';
 import IconClose from '../images/icon_close.svg';
+import IconCloseThin from '../images/icon_close_thin.svg';
 import IconGetDressed from '../images/icon_get_dressed.svg';
 import IconFeedback from '../images/feedback.svg';
 import IconSend from '../images/send_icon.svg';
@@ -41,6 +42,7 @@ import IconFaceId from '../images/icon_face_id.svg';
 import IconBodyOutline from '../images/icon_body_outline.svg';
 import IconSparkle from '../images/icon_sparkle.svg';
 import IconCheckCircle from '../images/icon_check_circle.svg';
+import IconOutfitCanvas from '../images/icon_outfit_canvas.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -55,6 +57,7 @@ export const Icons = {
   Trash: IconTrash,
   Logout: IconLogout,
   Close: IconClose,
+  CloseThin: IconCloseThin,
   GetDressed: IconGetDressed,
   Feedback: IconFeedback,
   Send: IconSend,
@@ -86,6 +89,7 @@ export const Icons = {
   BodyOutline: IconBodyOutline,
   Sparkle: IconSparkle,
   CheckCircle: IconCheckCircle,
+  OutfitCanvas: IconOutfitCanvas,
 };
 
 export {
@@ -101,6 +105,7 @@ export {
   IconTrash,
   IconLogout,
   IconClose,
+  IconCloseThin,
   IconGetDressed,
   IconFeedback,
   IconSend,

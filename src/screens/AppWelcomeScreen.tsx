@@ -4,7 +4,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
-import { MacgieLogo } from '../components/macgie';
+import { MacgieNod } from '../components/macgie';
 import { theme } from '../theme/theme';
 import { WELCOME_COPY } from '../onboarding/config';
 import { AppStackParamList } from '../types/navigation';
@@ -34,7 +34,7 @@ export const AppWelcomeScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.centerContent}>
-          <MacgieLogo size={120} style={styles.logo} />
+          <MacgieNod size={96} style={styles.logo} />
 
           <View style={styles.textContainer}>
             <Text style={styles.title}>{WELCOME_COPY.title}</Text>

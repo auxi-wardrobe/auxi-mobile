@@ -40,13 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
                         onPress={onBack}
                         style={leftIconStyle}
                         icon={
-                            leftIcon || (
-                                <View style={styles.menuIconPlaceholder}>
-                                    <View style={styles.hamburgerLine} />
-                                    <View style={styles.hamburgerLine} />
-                                    <View style={styles.hamburgerLine} />
-                                </View>
-                            )
+                            leftIcon || <Icons.Menu width={24} height={24} />
                         }
                     />
                 )}
@@ -96,24 +90,17 @@ const styles = StyleSheet.create({
         color: theme.colors.figmaAction, // Dark color
     },
     rightButton: {
-        width: 32,
-        height: 32,
+        width: 44,
+        height: 44,
+        borderRadius: theme.borderRadius.m,
+        backgroundColor: theme.colors.white,
         alignItems: 'center',
         justifyContent: 'center',
+        ...theme.ds.shadow.headerIcon,
     },
     icon: {
         width: 24,
         height: 24,
         resizeMode: 'contain',
     },
-    menuIconPlaceholder: {
-        width: 24,
-        height: 18,
-        justifyContent: 'space-between',
-    },
-    hamburgerLine: {
-        width: '100%',
-        height: 2,
-        backgroundColor: theme.colors.figmaButton,
-    }
 });

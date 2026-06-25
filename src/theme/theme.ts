@@ -470,6 +470,17 @@ export const theme = {
         shadowRadius: 12,
         elevation: 4,
       },
+      // Header icon chips (menu / back / action buttons, left or right).
+      // Figma drop-shadow(5.921px 11.842px 23.684px rgba(130,113,55,0.10)) —
+      // tint = background/overlay/dark/10 (#827137 @10%). Paired with a 44×44
+      // white (#FFF) surface at radius 8 on every TopIconButton.
+      headerIcon: {
+        shadowColor: '#827137',
+        shadowOffset: { width: 5.921, height: 11.842 },
+        shadowOpacity: 0.1,
+        shadowRadius: 23.684,
+        elevation: 6,
+      },
       dialog: {
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: -4 },

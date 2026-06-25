@@ -2,14 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Dimensions,
   Image,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import {
@@ -29,19 +27,18 @@ import {
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { Header } from '../components/layout/Header';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
-import { BottomSheetSurface } from '../components/primitives/FigmaPrimitives';
 import { PressableScale } from '../components/primitives/PressableScale';
+import { MBottomSheet, MButton } from '../components/design-system/lib';
 import { useSidebar } from '../context/SidebarContext';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
-import { motion, useReducedMotion } from '../theme/motion';
 import { useAuth } from '../context/AuthContext';
 import { AppStackParamList } from '../types/navigation';
 import { resolveItemImage } from '../utils/url';
 import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
 // Wardrobe filter chips — design order (node 3234:17793).
 const FILTER_TABS = [
@@ -114,7 +111,6 @@ export const WardrobeScreen = () => {
   const { open: openSidebar } = useSidebar();
 
   const insets = useSafeAreaInsets();
-  const reducedMotion = useReducedMotion();
 
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,52 +123,11 @@ export const WardrobeScreen = () => {
     null,
   );
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
+  // Add-item sheet visibility. The slide/fade ENTER + faster CLOSE motion +
+  // reduce-motion fallback are now encapsulated inside MBottomSheet (it keeps
+  // itself mounted through the close animation), so the screen only tracks the
+  // boolean.
   const [addSheetVisible, setAddSheetVisible] = useState(false);
-  // F1: drive the add-item sheet with the canonical asymmetric motion (OPEN
-  // medium/enter, CLOSE normal/exit) + reduce-motion fallback, mirroring
-  // ContextChipsModal / MoodFeedbackSheet. `addSheetMounted` keeps the Modal
-  // rendered through the close animation; `addSheetSlide` is the translateY.
-  const [addSheetMounted, setAddSheetMounted] = useState(false);
-  const addSheetSlide = useRef(new Animated.Value(screenHeight)).current;
-
-  useEffect(() => {
-    if (addSheetVisible && !addSheetMounted) {
-      setAddSheetMounted(true);
-      return;
-    }
-
-    if (addSheetVisible) {
-      if (reducedMotion) {
-        addSheetSlide.setValue(0);
-        return;
-      }
-      addSheetSlide.setValue(screenHeight);
-      Animated.timing(addSheetSlide, {
-        toValue: 0,
-        duration: motion.duration.medium,
-        easing: motion.easing.enter,
-        useNativeDriver: true,
-      }).start();
-      return;
-    }
-
-    if (!addSheetMounted) {
-      return;
-    }
-
-    if (reducedMotion) {
-      setAddSheetMounted(false);
-      return;
-    }
-    Animated.timing(addSheetSlide, {
-      toValue: screenHeight,
-      duration: motion.duration.normal,
-      easing: motion.easing.exit,
-      useNativeDriver: true,
-    }).start(() => {
-      setAddSheetMounted(false);
-    });
-  }, [addSheetVisible, addSheetMounted, addSheetSlide, reducedMotion]);
 
   // AU-361: item-ready snackbar. `preparingIdsRef` holds IDs that were still
   // preparing on the previous fetch; `readyToastedIdsRef` dedups so an item
@@ -575,16 +530,16 @@ export const WardrobeScreen = () => {
             <Text style={styles.errorBody}>
               {t('wardrobe.list.error_body')}
             </Text>
-            <PressableScale
-              style={styles.errorRetry}
-              activeOpacity={0.82}
-              onPress={handleRetryLoad}
-              testID="wardrobe-error-retry"
-              accessibilityRole="button"
-              accessibilityLabel={t('common.a11y_retry_load')}
-            >
-              <Text style={styles.errorRetryLabel}>{t('common.retry')}</Text>
-            </PressableScale>
+            <View style={styles.errorRetryWrap}>
+              <MButton
+                variant="secondary"
+                onPress={handleRetryLoad}
+                testID="wardrobe-error-retry"
+                accessibilityLabel={t('common.a11y_retry_load')}
+              >
+                {t('common.retry')}
+              </MButton>
+            </View>
           </View>
         ) : hasItems ? (
           <View testID="wardrobe-grid-root" style={styles.grid}>
@@ -602,84 +557,70 @@ export const WardrobeScreen = () => {
                 ? t('wardrobe.list.empty_first_body')
                 : t('wardrobe.list.empty_filtered_body')}
             </Text>
-            <PressableScale
-              style={styles.emptyCta}
-              activeOpacity={0.85}
-              onPress={() => openAddSheet('empty_state')}
-              testID="wardrobe-empty-add-btn"
-              accessibilityLabel={t('common.a11y_add_item')}
-            >
-              <Text style={styles.emptyCtaText}>
+            <View style={styles.emptyCtaWrap}>
+              <MButton
+                variant="primary"
+                onPress={() => openAddSheet('empty_state')}
+                testID="wardrobe-empty-add-btn"
+                accessibilityLabel={t('common.a11y_add_item')}
+              >
                 {t('wardrobe.list.add_an_item')}
-              </Text>
-            </PressableScale>
+              </MButton>
+            </View>
           </View>
         )}
       </ScrollView>
 
-      {/* Add item — bottom sheet (Figma node 2852:19750). F1: canonical
-          asymmetric motion (OPEN medium/enter, CLOSE normal/exit) +
-          reduce-motion fallback via addSheetSlide, mirroring
-          ContextChipsModal / MoodFeedbackSheet. `animationType="none"` —
-          the slide is driven by Animated, not the platform. */}
-      <Modal
-        accessibilityLabel="add-item-modal"
-        visible={addSheetMounted}
-        onRequestClose={() => setAddSheetVisible(false)}
-        animationType="none"
-        transparent
+      {/* Add item — bottom sheet (Figma node 2852:19750), migrated to the DS
+          MBottomSheet primitive (GH-364): the slide/fade ENTER + faster CLOSE +
+          reduce-motion fallback + scrim/backdrop-dismiss are now encapsulated
+          inside the primitive (replaces the bespoke Modal + Animated +
+          BottomSheetSurface). The two methods stay as the Wardrobe-only
+          AddMethodRow composite because they carry a title + description
+          two-line layout that no generic M* row primitive (MSheetOption /
+          MListRow are single-line) expresses — keeping content faithful. */}
+      <MBottomSheet
+        visible={addSheetVisible}
+        onDismiss={() => setAddSheetVisible(false)}
+        testID="wardrobe-add-sheet"
       >
-        <TouchableWithoutFeedback onPress={() => setAddSheetVisible(false)}>
-          <View style={styles.sheetOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <Animated.View
-                style={[
-                  styles.addSheetAnim,
-                  { paddingBottom: insets.bottom },
-                  { transform: [{ translateY: addSheetSlide }] },
-                ]}
-              >
-                <BottomSheetSurface style={styles.addSheet}>
-                  <Text style={styles.addSheetTitle}>
-                    {t('wardrobe.list.add_item_sheet_title')}
-                  </Text>
-                  <Text style={styles.addSheetSubtitle}>
-                    {t('wardrobe.list.add_item_sheet_subtitle')}
-                  </Text>
+        <View style={[styles.addSheetBody, { paddingBottom: insets.bottom }]}>
+          <Text style={styles.addSheetTitle}>
+            {t('wardrobe.list.add_item_sheet_title')}
+          </Text>
+          <Text style={styles.addSheetSubtitle}>
+            {t('wardrobe.list.add_item_sheet_subtitle')}
+          </Text>
 
-                  <AddMethodRow
-                    icon={
-                      <Icons.Database
-                        width={24}
-                        height={24}
-                        color={theme.colors.uacBackgroundBase}
-                      />
-                    }
-                    title={t('wardrobe.list.method_search_title')}
-                    description={t('wardrobe.list.method_search_desc')}
-                    onPress={handleSearchDatabase}
-                    testID="wardrobe-add-search"
-                  />
-                  <AddMethodRow
-                    icon={
-                      <Icons.Camera
-                        width={24}
-                        height={24}
-                        color={theme.colors.uacBackgroundBase}
-                      />
-                    }
-                    title={t('common.take_photo')}
-                    description={t('wardrobe.list.method_photo_desc')}
-                    onPress={handleTakePhoto}
-                    testID="wardrobe-add-photo"
-                    isLast
-                  />
-                </BottomSheetSurface>
-              </Animated.View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+          <AddMethodRow
+            icon={
+              <Icons.Database
+                width={24}
+                height={24}
+                color={theme.colors.uacBackgroundBase}
+              />
+            }
+            title={t('wardrobe.list.method_search_title')}
+            description={t('wardrobe.list.method_search_desc')}
+            onPress={handleSearchDatabase}
+            testID="wardrobe-add-search"
+          />
+          <AddMethodRow
+            icon={
+              <Icons.Camera
+                width={24}
+                height={24}
+                color={theme.colors.uacBackgroundBase}
+              />
+            }
+            title={t('common.take_photo')}
+            description={t('wardrobe.list.method_photo_desc')}
+            onPress={handleTakePhoto}
+            testID="wardrobe-add-photo"
+            isLast
+          />
+        </View>
+      </MBottomSheet>
 
       {/* AI processing overlay (Figma node 2852:20021) */}
       <Modal visible={uploading} transparent animationType="fade">
@@ -790,14 +731,15 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaTextPrimary,
   },
   plusButton: {
-    width: 45,
-    height: 45,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerIconButton: {
-    backgroundColor: theme.colors.figmaSurface,
-    borderRadius: 16,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.m,
+    ...theme.ds.shadow.headerIcon,
   },
   scrollContent: {
     paddingTop: 12,
@@ -844,8 +786,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
+    height: 24, // chip size SM
     paddingHorizontal: theme.spacing.uacDimension8,
-    paddingVertical: 3,
     borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaAction,
     justifyContent: 'center',
@@ -856,8 +798,8 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
   },
   tileBadge: {
+    height: 24, // chip size SM
     paddingHorizontal: 12,
-    paddingVertical: 3,
     borderRadius: 9999,
     // F5: reuse the existing token instead of re-inlining the rgba duplicate
     // (figmaCardTag === rgba(18,18,18,0.75), theme.ts:23). DRY.
@@ -908,18 +850,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     maxWidth: 280,
   },
-  emptyCta: {
+  // Wraps the migrated MButton so the marginTop spacing lives on the screen,
+  // not the primitive (MButton owns its own height/radius/colour via m-tokens).
+  emptyCtaWrap: {
     marginTop: 20,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaPrimaryButtonBg,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyCtaText: {
-    ...theme.typography.aliases.interMediumSm,
-    color: theme.colors.figmaPrimaryButtonText,
   },
   // F7: error state — distinct from empty, with a Retry CTA. Mirrors the
   // HomeScreen error-state layout/tokens for cross-screen consistency.
@@ -940,35 +874,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     maxWidth: 280,
   },
-  errorRetry: {
+  // Wraps the migrated MButton (secondary/outline variant) so the marginTop
+  // spacing stays on the screen, not the primitive.
+  errorRetryWrap: {
     marginTop: 20,
-    height: 48,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacTextBase,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  errorRetryLabel: {
-    ...theme.typography.aliases.interMediumSm,
-    color: theme.colors.figmaText,
-  },
-  // Add-item bottom sheet
-  sheetOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(18, 18, 18, 0.4)',
-  },
-  // F1/F6: wraps BottomSheetSurface so the slide transform + safe-area bottom
-  // inset live outside the surface's own padding.
-  addSheetAnim: {
-    width: '100%',
-  },
-  addSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 24,
+  // Add-item bottom sheet body — MBottomSheet provides the surface, top radius,
+  // scrim, grab handle and slide motion; this is just the content padding.
+  // The safe-area bottom inset is applied inline.
+  addSheetBody: {
+    paddingTop: 8,
     paddingHorizontal: 24,
     paddingBottom: 36,
   },

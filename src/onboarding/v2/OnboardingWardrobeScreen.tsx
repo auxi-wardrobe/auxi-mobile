@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.s,
     paddingBottom: theme.spacing.xl,
   },
-  body: { flex: 1, paddingTop: theme.spacing.xl, gap: theme.spacing.xl },
+  body: { flex: 1, paddingTop: theme.spacing.l, gap: theme.spacing.l },
   textBlock: { gap: theme.spacing.xs, alignItems: 'center' },
   title: {
     ...theme.typography.aliases.uacBodyMdSemibold,
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.uacBodyMdRegular,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
   },

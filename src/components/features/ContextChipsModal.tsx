@@ -348,7 +348,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   chipText: {
+    // Chip size M (44px height) → 14px font per chip sizing spec.
     ...theme.typography.aliases.archivoBody,
+    fontSize: 14,
+    lineHeight: 20,
     color: theme.colors.figmaText,
   },
   selectedChipText: {
