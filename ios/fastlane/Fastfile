@@ -56,19 +56,22 @@ platform :ios do
 
     increment_build_number(xcodeproj: PROJECT, build_number: new_build)
 
-    # Both the ARCHIVE (xcodebuild archive) and the EXPORT (-exportArchive) need
-    # -allowProvisioningUpdates + the ASC API key. A clean CI runner has NO
-    # provisioning profiles cached, so the archive itself can't sign and dies with
-    # "No profiles for 'com.auxi2026.app' were found ... pass -allowProvisioningUpdates"
-    # — that's why a local Mac (with cached profiles) archived fine but CI didn't.
-    # gym routes `xcargs:` → the archive invocation and `export_xcargs:` → the
-    # export invocation, so the same flags must be on BOTH. (gym has no `api_key:`
-    # option; auth is passed via xcodebuild's -authenticationKey* flags.)
+    # The ARCHIVE (xcodebuild archive) needs -allowProvisioningUpdates + the ASC
+    # API key: a clean CI runner has NO provisioning profiles cached, so the
+    # archive can't sign and dies with "No profiles for 'com.auxi2026.app' were
+    # found ... pass -allowProvisioningUpdates" (a local Mac with cached profiles
+    # archived fine, which is why this only bit on CI).
+    #
+    # Pass these ONLY via `xcargs:` — gym appends `xcargs` to BOTH the archive AND
+    # the export commands. Setting `export_xcargs:` to the same string makes the
+    # export command carry the flags twice → "xcodebuild: error: option
+    # '-authenticationKeyPath' may only be provided once". So xcargs alone covers
+    # both steps. (gym has no `api_key:` option; auth rides the -authenticationKey*
+    # flags.)
     signing_xcargs = "-allowProvisioningUpdates -authenticationKeyPath #{key_path} -authenticationKeyID #{key_id} -authenticationKeyIssuerID #{issuer_id}"
 
     build_app(
       xcargs: signing_xcargs,
-      export_xcargs: signing_xcargs,
       workspace: WORKSPACE,
       scheme: SCHEME,
       configuration: "Release",
