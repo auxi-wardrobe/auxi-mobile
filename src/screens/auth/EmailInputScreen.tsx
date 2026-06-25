@@ -35,7 +35,7 @@
  *       * signin mode, 'none' → inform via Toast + bounce to Welcome.
  *       * signin mode, otherwise → `SignIn` (returning user logs in).
  *   - 429 RATE_LIMITED → error_rate_limited copy.
- *   - NETWORK_ERROR → toast.
+ *   - NETWORK_ERROR → inline error (error_network copy, NOT "invalid email").
  *
  * AU-356 fix: previously a 'password' precheck result unconditionally routed
  * to `SignIn`, which (because of enumeration safety) blocked EVERY new signup
@@ -48,10 +48,8 @@ import React, { useCallback, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -63,10 +61,10 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import Svg, { Path } from 'react-native-svg';
 
-import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { theme } from '../../theme/theme';
+import { MButton, MInput } from '../../components/design-system/lib';
+import { AuthHeader } from '../../components/auth/AuthHeader';
 import { useEmailPrecheckMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
@@ -76,23 +74,6 @@ type Route = RouteProp<AuthStackParamList, 'EmailInput'>;
 
 // Lightweight RFC-5322 subset — KISS, enough for UI gate; backend re-validates.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const ChevronLeftGlyph = ({
-  color = theme.colors.uacTextBase,
-}: {
-  color?: string;
-}) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M15 6 9 12l6 6"
-      stroke={color}
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-
 
 export const EmailInputScreen = () => {
   const navigation = useNavigation<Navigation>();
@@ -104,8 +85,6 @@ export const EmailInputScreen = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const precheck = useEmailPrecheckMutation();
-
-  const isValid = EMAIL_RE.test(email.trim());
 
   const handleChange = useCallback(
     (text: string) => {
@@ -183,11 +162,11 @@ export const EmailInputScreen = () => {
             return;
           }
           if (err.code === 'NETWORK_ERROR') {
-            Toast.show({
-              type: 'error',
-              text1: t('uac.email_input.error_invalid'),
-              position: 'bottom',
-            });
+            // Connection / backend failure — surface INLINE via MInput.error
+            // (the screen stays mounted here, so no Toast is needed). Must NOT
+            // reuse the "invalid email" copy — that misleads the user into
+            // thinking their address is wrong when it's really the network.
+            setError(t('uac.email_input.error_network'));
             return;
           }
           // Validation / unknown: surface inline.
@@ -208,73 +187,42 @@ export const EmailInputScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex1}
       >
-        {/* Header — back chevron left, empty trailing slot (spec) */}
-        <View style={styles.header}>
-          <Pressable
-            testID="email-back-button"
-            accessibilityRole="button"
-            accessibilityLabel={t('uac.common.back')}
-            onPress={onBack}
-            style={({ pressed }) => [styles.iconHit, pressed && styles.pressed]}
-            hitSlop={8}
-          >
-            <ChevronLeftGlyph />
-          </Pressable>
-          <View style={styles.headerSlot} />
-        </View>
+        {/* Canonical auth header — shared back glyph + safe-area row. */}
+        <AuthHeader onBack={onBack} backTestID="email-back-button" />
 
         <View style={styles.bodyContainer}>
           <Text style={styles.label} testID="email-input-label">
             {t('uac.email_input.label')}
           </Text>
 
-          <View style={styles.formRow}>
-            <View style={[styles.fieldWrap, hasError && styles.fieldWrapError]}>
-              <TextInput
-                testID="email-input-field"
-                value={email}
-                onChangeText={handleChange}
-                placeholder={t('uac.email_input.placeholder')}
-                placeholderTextColor={theme.colors.uacTextSubtle200}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="emailAddress"
-                returnKeyType="go"
-                onSubmitEditing={handleSubmit}
-                style={styles.input}
-              />
-            </View>
-            <Pressable
+          {/* DS field — inline error routed into MInput.error (spec 08). */}
+          <MInput
+            testID="email-input-field"
+            accessibilityLabel={t('uac.email_input.label')}
+            value={email}
+            onChangeText={handleChange}
+            placeholder={t('uac.email_input.placeholder')}
+            error={hasError ? (error as string) : undefined}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            textContentType="emailAddress"
+            returnKeyType="go"
+            onSubmitEditing={handleSubmit}
+          />
+
+          {/* Full-width CTA below the field (replaces the inline chevron). */}
+          <View style={styles.ctaWrap}>
+            <MButton
               testID="email-submit-button"
-              accessibilityRole="button"
               accessibilityLabel={t('uac.email_input.submit_a11y')}
               onPress={handleSubmit}
+              loading={precheck.isPending}
               disabled={submitDisabled}
-              style={({ pressed }) => [
-                styles.submitBtn,
-                submitDisabled && styles.submitBtnDisabled,
-                pressed && !submitDisabled && styles.pressed,
-              ]}
             >
-              <IconChevronRight
-                width={20}
-                height={20}
-                color={
-                  isValid
-                    ? theme.colors.figmaPrimaryButtonIcon
-                    : theme.colors.uacTextSubtle200
-                }
-              />
-            </Pressable>
+              {t('uac.email_input.submit_a11y')}
+            </MButton>
           </View>
-
-          {/* Supporting error text (spec 08) */}
-          {hasError && (
-            <Text testID="email-input-error" style={styles.errorText}>
-              {error}
-            </Text>
-          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -287,20 +235,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
   },
   flex1: { flex: 1 },
-  header: {
-    height: theme.spacing.uacHeaderHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.uacBodyPadding,
-  },
-  iconHit: {
-    width: 45,
-    height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerSlot: { width: 47, height: 47 },
   bodyContainer: {
     flex: 1,
     paddingHorizontal: theme.spacing.uacBodyPadding,
@@ -310,50 +244,7 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextBase,
     paddingVertical: theme.spacing.uacDimension8 + 4, // 12px per spec
   },
-  formRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.uacDimension16,
-  },
-  fieldWrap: {
-    flex: 1,
-    height: theme.spacing.uacButtonHeight,
-    borderWidth: 1,
-    borderColor: theme.colors.uacBorderBold200,
-    borderRadius: theme.borderRadius.uacTextField,
-    paddingHorizontal: theme.spacing.uacDimension16,
-    justifyContent: 'center',
-    backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
-  },
-  fieldWrapError: {
-    // Spec note: Figma keeps neutral border in error state. Default to
-    // option (1): neutral border + red supporting text only.
-    // (We intentionally do NOT switch border to danger to match Figma.)
-  },
-  input: {
-    ...theme.typography.aliases.uacM3BodyLarge,
-    color: theme.colors.uacTextBase,
-    padding: 0,
-    margin: 0,
-  },
-  submitBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.figmaPrimaryButtonBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitBtnDisabled: {
-    opacity: 0.5,
-  },
-  errorText: {
-    ...theme.typography.aliases.uacM3BodySmall,
-    color: theme.colors.uacTextDangerBase,
-    marginTop: theme.spacing.uacDimension4,
-    paddingHorizontal: theme.spacing.uacDimension16,
-  },
-  pressed: {
-    opacity: 0.7,
+  ctaWrap: {
+    marginTop: theme.spacing.uacDimension24,
   },
 });

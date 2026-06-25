@@ -97,10 +97,11 @@
         "label": "What is your email",
         "placeholder": "youremail@mail.com",
         "submit_a11y": "Continue",
-        "error_invalid": "Please enter a valid email adress",
+        "error_invalid": "Please enter a valid email address",
         "error_required": "Email is required",
         "error_no_account": "No account found for this email. Please sign in or create one.",
-        "error_rate_limited": "Too many attempts. Please try again later."
+        "error_rate_limited": "Too many attempts. Please try again later.",
+        "error_network": "No connection. Please try again."
       },
       "password_creation": {
         "email_label": "What is your email",

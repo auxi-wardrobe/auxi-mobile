@@ -29,13 +29,12 @@ import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useNavigation,
   useRoute,
@@ -44,11 +43,12 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 
+import { MButton, MInput } from '../../components/design-system/lib';
+import { AuthHeader } from '../../components/auth/AuthHeader';
 import { useResetPasswordMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 import { theme } from '../../theme/theme';
-import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { PasswordCriteriaChecklist } from '../../components/auth/PasswordCriteriaChecklist';
 import { validatePassword } from '../../utils/password-rules';
 
@@ -67,7 +67,6 @@ export const ResetNewPasswordScreen: React.FC = () => {
   const carriedEmail = route.params?.email;
 
   const [password, setPassword] = useState<string>('');
-  const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [tokenInvalid, setTokenInvalid] = useState<boolean>(false);
 
@@ -124,19 +123,12 @@ export const ResetNewPasswordScreen: React.FC = () => {
   // Token error panel — replaces the body when the token is rejected.
   if (tokenInvalid) {
     return (
-      <View style={styles.screen}>
-        <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('uac.common.back') as string}
-            testID="reset-password-back"
-            onPress={() => navigation.goBack()}
-            style={styles.headerBackHit}
-            hitSlop={8}
-          >
-            <Text style={styles.headerBackChevron}>‹</Text>
-          </Pressable>
-        </View>
+      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+        {/* Canonical auth header — shared back glyph + safe-area row. */}
+        <AuthHeader
+          onBack={() => navigation.goBack()}
+          backTestID="reset-password-back"
+        />
 
         <ScrollView contentContainerStyle={styles.body}>
           <View style={styles.headingBlock}>
@@ -156,40 +148,29 @@ export const ResetNewPasswordScreen: React.FC = () => {
         </ScrollView>
 
         <View style={styles.footer}>
-          <Pressable
+          <MButton
             testID="reset-password-request-new-link"
-            accessibilityRole="button"
             accessibilityLabel={t('uac.forgot_request.submit_cta') as string}
             onPress={() =>
               navigation.navigate('ForgotPasswordRequest', {
                 email: carriedEmail ?? '',
               })
             }
-            style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
           >
-            <Text style={styles.ctaLabel}>
-              {t('uac.forgot_request.submit_cta')}
-            </Text>
-          </Pressable>
+            {t('uac.forgot_request.submit_cta') as string}
+          </MButton>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('uac.common.back') as string}
-          testID="reset-password-back"
-          onPress={() => navigation.goBack()}
-          style={styles.headerBackHit}
-          hitSlop={8}
-        >
-          <Text style={styles.headerBackChevron}>‹</Text>
-        </Pressable>
-      </View>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      {/* Canonical auth header — shared back glyph + safe-area row. */}
+      <AuthHeader
+        onBack={() => navigation.goBack()}
+        backTestID="reset-password-back"
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -208,77 +189,31 @@ export const ResetNewPasswordScreen: React.FC = () => {
             </Text>
           </View>
 
-          {/* Password field row: outlined input + circular submit chevron */}
+          {/* Password — DS field with built-in eye toggle. */}
           <View style={styles.fieldRow}>
-            <View
-              style={[
-                styles.passwordField,
-                submissionError && styles.passwordFieldError,
-              ]}
-            >
-              <TextInput
-                testID="reset-password-input"
-                accessibilityLabel={
-                  t('uac.reset_new_password.password_label') as string
-                }
-                style={styles.input}
-                value={password}
-                onChangeText={text => {
-                  setPassword(text);
-                  if (submissionError) setSubmissionError(null);
-                }}
-                secureTextEntry={!passwordVisible}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="done"
-                editable={!isSubmitting}
-                onSubmitEditing={handleSubmit}
-              />
-              <Pressable
-                testID={
-                  passwordVisible
-                    ? 'reset-password-toggle-visible'
-                    : 'reset-password-toggle-hidden'
-                }
-                accessibilityRole="button"
-                accessibilityLabel={
-                  passwordVisible
-                    ? (t('uac.reset_new_password.hide_password') as string)
-                    : (t('uac.reset_new_password.show_password') as string)
-                }
-                onPress={() => setPasswordVisible(v => !v)}
-                hitSlop={8}
-                style={styles.eyeToggle}
-              >
-                <Text style={styles.eyeToggleLabel}>
-                  {passwordVisible
-                    ? t('uac.reset_new_password.hide_password')
-                    : t('uac.reset_new_password.show_password')}
-                </Text>
-              </Pressable>
-            </View>
-
-            <Pressable
-              testID="reset-password-submit"
-              accessibilityRole="button"
+            <MInput
+              testID="reset-password-input"
               accessibilityLabel={
-                t('uac.reset_new_password.submit_a11y') as string
+                t('uac.reset_new_password.password_label') as string
               }
-              accessibilityState={{ disabled: !canSubmit, busy: isSubmitting }}
-              onPress={handleSubmit}
-              disabled={!canSubmit}
-              style={({ pressed }) => [
-                styles.submitChevron,
-                !canSubmit && styles.submitChevronDisabled,
-                pressed && canSubmit && styles.submitChevronPressed,
-              ]}
-            >
-              <IconChevronRight
-                width={24}
-                height={24}
-                color={theme.colors.figmaPrimaryButtonIcon}
-              />
-            </Pressable>
+              value={password}
+              onChangeText={text => {
+                setPassword(text);
+                if (submissionError) setSubmissionError(null);
+              }}
+              secureTextEntry
+              showPasswordLabel={
+                t('uac.reset_new_password.show_password') as string
+              }
+              hidePasswordLabel={
+                t('uac.reset_new_password.hide_password') as string
+              }
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="done"
+              editable={!isSubmitting}
+              onSubmitEditing={handleSubmit}
+            />
           </View>
 
           {/* Password criteria checklist — shared with PasswordCreation */}
@@ -295,9 +230,24 @@ export const ResetNewPasswordScreen: React.FC = () => {
               {submissionError}
             </Text>
           ) : null}
+
+          {/* Full-width CTA below the criteria (replaces the inline chevron). */}
+          <View style={styles.ctaWrap}>
+            <MButton
+              testID="reset-password-submit"
+              accessibilityLabel={
+                t('uac.reset_new_password.submit_a11y') as string
+              }
+              onPress={handleSubmit}
+              loading={isSubmitting}
+              disabled={!canSubmit}
+            >
+              {t('uac.reset_new_password.submit_a11y') as string}
+            </MButton>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -307,23 +257,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
   },
   flex: { flex: 1 },
-  header: {
-    height: theme.spacing.uacHeaderHeight,
-    paddingHorizontal: theme.spacing.uacBodyPadding,
-    justifyContent: 'flex-end',
-    paddingBottom: theme.spacing.uacDimension16,
-  },
-  headerBackHit: {
-    width: 45,
-    height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerBackChevron: {
-    fontSize: 32,
-    lineHeight: 32,
-    color: theme.colors.uacTextBase,
-  },
   body: {
     paddingHorizontal: theme.spacing.uacBodyPadding,
     paddingTop: theme.spacing.uacDimension8,
@@ -345,60 +278,9 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextDangerBase,
   },
   fieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.uacDimension16,
     marginBottom: theme.spacing.uacDimension16,
   },
-  passwordField: {
-    flex: 1,
-    height: theme.spacing.uacButtonHeight,
-    borderRadius: theme.borderRadius.uacTextField,
-    borderWidth: 1,
-    borderColor: theme.colors.uacBorderBold200,
-    paddingLeft: theme.spacing.uacDimension16,
-    paddingRight: theme.spacing.uacDimension8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.uacDimension4,
-  },
-  passwordFieldError: {
-    borderColor: theme.colors.uacTextDangerBase,
-  },
-  input: {
-    flex: 1,
-    ...theme.typography.aliases.uacM3BodyLarge,
-    color: theme.colors.uacTextBase,
-    padding: 0,
-  },
-  eyeToggle: {
-    minWidth: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.uacDimension8,
-  },
-  eyeToggleLabel: {
-    ...theme.typography.aliases.uacBodyXsMedium,
-    color: theme.colors.uacTextSubtle100,
-  },
-  submitChevron: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaPrimaryButtonBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitChevronDisabled: {
-    opacity: 0.5,
-  },
-  submitChevronPressed: {
-    opacity: 0.85,
-  },
   checklist: {
-    width: 327,
-    alignSelf: 'center',
     gap: theme.spacing.uacDimension8,
   },
   errorText: {
@@ -406,26 +288,13 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextDangerBase,
     marginTop: theme.spacing.uacDimension16,
   },
+  ctaWrap: {
+    marginTop: theme.spacing.uacDimension24,
+  },
   footer: {
     paddingHorizontal: theme.spacing.uacBodyPadding,
-    paddingBottom:
-      theme.spacing.uacSafeAreaBottom + theme.spacing.uacDimension16,
+    paddingBottom: theme.spacing.uacDimension16,
     paddingTop: theme.spacing.uacDimension8,
-  },
-  cta: {
-    height: theme.spacing.uacButtonHeight,
-    borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.figmaPrimaryButtonBg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaPressed: {
-    opacity: 0.85,
-  },
-  ctaLabel: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.figmaPrimaryButtonText,
   },
 });
 

@@ -100,7 +100,8 @@
         "error_invalid": "Vui lòng nhập địa chỉ email hợp lệ",
         "error_required": "Vui lòng nhập email",
         "error_no_account": "Không tìm thấy tài khoản với email này. Vui lòng đăng nhập hoặc tạo tài khoản mới.",
-        "error_rate_limited": "Quá nhiều lần thử. Vui lòng thử lại sau."
+        "error_rate_limited": "Quá nhiều lần thử. Vui lòng thử lại sau.",
+        "error_network": "Không có kết nối. Vui lòng thử lại."
       },
       "password_creation": {
         "email_label": "Email của bạn là gì",

@@ -43,6 +43,8 @@ import IconBodyOutline from '../images/icon_body_outline.svg';
 import IconSparkle from '../images/icon_sparkle.svg';
 import IconCheckCircle from '../images/icon_check_circle.svg';
 import IconOutfitCanvas from '../images/icon_outfit_canvas.svg';
+import IconEye from '../images/icon_eye.svg';
+import IconEyeOff from '../images/icon_eye_off.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -90,6 +92,8 @@ export const Icons = {
   Sparkle: IconSparkle,
   CheckCircle: IconCheckCircle,
   OutfitCanvas: IconOutfitCanvas,
+  Eye: IconEye,
+  EyeOff: IconEyeOff,
 };
 
 export {
@@ -128,4 +132,6 @@ export {
   IconLoading,
   IconSeeOutfit,
   IconSwipeHand,
+  IconEye,
+  IconEyeOff,
 };

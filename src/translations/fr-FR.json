@@ -100,7 +100,8 @@
         "error_invalid": "Veuillez entrer une adresse email valide",
         "error_required": "L'email est requis",
         "error_no_account": "Aucun compte trouvé pour cet email. Veuillez vous connecter ou en créer un.",
-        "error_rate_limited": "Trop de tentatives. Veuillez réessayer plus tard."
+        "error_rate_limited": "Trop de tentatives. Veuillez réessayer plus tard.",
+        "error_network": "Pas de connexion. Veuillez réessayer."
       },
       "password_creation": {
         "email_label": "Quel est votre email",

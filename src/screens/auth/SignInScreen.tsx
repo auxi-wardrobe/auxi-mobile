@@ -46,14 +46,15 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 
 import { theme } from '../../theme/theme';
-import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
+import { MButton, MInput } from '../../components/design-system/lib';
+import { AuthHeader } from '../../components/auth/AuthHeader';
 import { useLoginMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
 import {
@@ -63,7 +64,6 @@ import {
 } from '../../services/authTypes';
 import type { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
-import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignIn'>;
 
@@ -72,7 +72,6 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   const { email } = route.params;
 
   const [password, setPassword] = useState('');
-  const [passwordVisible, setPasswordVisible] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
 
   const loginMutation = useLoginMutation();
@@ -158,25 +157,14 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
     if (navigation.canGoBack()) navigation.goBack();
   };
 
-  const passwordBorderColor = inlineError
-    ? theme.colors.uacTextDangerBase
-    : theme.colors.uacBorderBold200;
-
   return (
-    <View style={styles.screen} testID="signin-screen">
-      <View style={styles.header} pointerEvents="box-none">
-        <Pressable
-          onPress={onBackPress}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel={t('uac.common.back')}
-          testID="signin-back"
-          style={styles.backHit}
-        >
-          <IconChevronLeft width={24} height={24} />
-        </Pressable>
-        <View style={styles.headerTrailingSlot} />
-      </View>
+    <SafeAreaView
+      style={styles.screen}
+      edges={['top', 'bottom']}
+      testID="signin-screen"
+    >
+      {/* Canonical auth header — shared back glyph + safe-area row. */}
+      <AuthHeader onBack={onBackPress} backTestID="signin-back" />
 
       <KeyboardAvoidingView
         style={styles.kbAvoider}
@@ -202,77 +190,44 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
             </Text>
           </View>
 
-          {/* Password row — outlined field + circular submit arrow. */}
-          <View style={styles.passwordRow}>
-            <View
-              style={[
-                styles.passwordField,
-                { borderColor: passwordBorderColor },
-              ]}
-            >
-              <TextInput
-                value={password}
-                onChangeText={next => {
-                  setPassword(next);
-                  if (inlineError) setInlineError(null);
-                }}
-                placeholder={tr.passwordPlaceholder}
-                placeholderTextColor={theme.colors.uacTextSubtle200}
-                secureTextEntry={!passwordVisible}
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={styles.passwordInput}
-                onSubmitEditing={onSubmit}
-                returnKeyType="go"
-                testID="signin-password-input"
-                editable={!submitting}
-              />
-              <Pressable
-                onPress={() => setPasswordVisible(prev => !prev)}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  passwordVisible ? tr.hidePassword : tr.showPassword
-                }
-                testID={
-                  passwordVisible
-                    ? 'signin-password-toggle-hide'
-                    : 'signin-password-toggle-show'
-                }
-                style={styles.eyeToggle}
-              >
-                <Text style={styles.eyeGlyph}>
-                  {passwordVisible ? tr.hidePassword : tr.showPassword}
-                </Text>
-              </Pressable>
-            </View>
-
-            <Pressable
-              onPress={onSubmit}
-              disabled={!canSubmit}
-              accessibilityRole="button"
-              accessibilityLabel={tr.submitA11y}
-              accessibilityState={{ disabled: !canSubmit, busy: submitting }}
-              testID="signin-submit"
-              style={({ pressed }) => [
-                styles.submitButton,
-                !canSubmit && styles.submitButtonDisabled,
-                pressed && canSubmit && styles.submitButtonPressed,
-              ]}
-            >
-              <IconChevronRight
-                width={24}
-                height={24}
-                color={theme.colors.figmaPrimaryButtonIcon}
-              />
-            </Pressable>
-          </View>
+          {/* Password — DS field with built-in eye toggle. */}
+          <MInput
+            value={password}
+            onChangeText={next => {
+              setPassword(next);
+              if (inlineError) setInlineError(null);
+            }}
+            placeholder={tr.passwordPlaceholder}
+            accessibilityLabel={tr.passwordPlaceholder}
+            secureTextEntry
+            showPasswordLabel={tr.showPassword}
+            hidePasswordLabel={tr.hidePassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="go"
+            onSubmitEditing={onSubmit}
+            testID="signin-password-input"
+            editable={!submitting}
+          />
 
           {inlineError ? (
             <Text style={styles.errorText} testID="signin-error">
               {inlineError}
             </Text>
           ) : null}
+
+          {/* Full-width CTA below the field (replaces the circular arrow). */}
+          <View style={styles.ctaBlock}>
+            <MButton
+              onPress={onSubmit}
+              disabled={!canSubmit}
+              loading={submitting}
+              accessibilityLabel={tr.submitA11y}
+              testID="signin-submit"
+            >
+              {tr.submitA11y}
+            </MButton>
+          </View>
 
           <Pressable
             onPress={onForgotPress}
@@ -286,63 +241,32 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const FIELD_HEIGHT = 56;
-const SUBMIT_SIZE = 56;
-const BODY_INNER_WIDTH = 360;
-const FORGOT_BLOCK_WIDTH = 327;
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
   },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: theme.spacing.uacHeaderHeight,
-    paddingTop: 45,
-    paddingHorizontal: theme.spacing.uacBodyPadding,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: theme.zIndex.sticky,
-  },
-  backHit: {
-    width: 45,
-    height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTrailingSlot: {
-    width: 47,
-    height: 47,
-  },
   kbAvoider: {
     flex: 1,
   },
   body: {
-    paddingTop: theme.spacing.uacSafeAreaTop,
+    paddingTop: theme.spacing.uacDimension8,
     paddingHorizontal: theme.spacing.uacBodyPadding,
-    paddingBottom: theme.spacing.uacSafeAreaBottom,
-    alignItems: 'center',
+    paddingBottom: theme.spacing.uacDimension24,
   },
   sectionHeading: {
     ...theme.typography.aliases.uacBodyMdSemibold,
     color: theme.colors.uacTextBase,
-    width: BODY_INNER_WIDTH,
-    maxWidth: '100%',
     paddingVertical: theme.spacing.uacDimension4,
     marginBottom: theme.spacing.uacDimension16,
   },
   emailField: {
-    width: BODY_INNER_WIDTH,
-    maxWidth: '100%',
     height: FIELD_HEIGHT,
     paddingHorizontal: theme.spacing.uacDimension16,
     backgroundColor: theme.colors.uacColorNeutral100,
@@ -354,64 +278,16 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.uacM3BodyLarge,
     color: theme.colors.uacTextSubtle100,
   },
-  passwordRow: {
-    width: BODY_INNER_WIDTH,
-    maxWidth: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.uacDimension16,
-  },
-  passwordField: {
-    flex: 1,
-    height: FIELD_HEIGHT,
-    paddingLeft: theme.spacing.uacDimension16,
-    paddingRight: theme.spacing.uacDimension4,
-    borderRadius: theme.borderRadius.uacTextField,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
-  },
-  passwordInput: {
-    flex: 1,
-    ...theme.typography.aliases.uacM3BodyLarge,
-    color: theme.colors.uacTextBase,
-    padding: 0,
-  },
-  eyeToggle: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  eyeGlyph: {
-    ...theme.typography.aliases.uacBodyXsMedium,
-    color: theme.colors.uacTextSubtle100,
-  },
-  submitButton: {
-    width: SUBMIT_SIZE,
-    height: SUBMIT_SIZE,
-    borderRadius: SUBMIT_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.figmaPrimaryButtonBg,
-  },
-  submitButtonDisabled: {
-    opacity: 0.5,
-  },
-  submitButtonPressed: {
-    opacity: 0.85,
+  ctaBlock: {
+    marginTop: theme.spacing.uacDimension16,
   },
   errorText: {
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.uacTextDangerBase,
-    width: BODY_INNER_WIDTH,
-    maxWidth: '100%',
     marginTop: theme.spacing.uacDimension8,
   },
   forgotWrapper: {
-    width: FORGOT_BLOCK_WIDTH,
-    maxWidth: '100%',
+    alignSelf: 'center',
     alignItems: 'center',
     marginTop: theme.spacing.uacDimension16,
   },
