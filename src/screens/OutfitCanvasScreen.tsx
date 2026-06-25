@@ -22,7 +22,7 @@ import {
 } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import Toast from 'react-native-toast-message';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
 import { motion } from '../theme/motion';
@@ -42,6 +42,7 @@ import {
   creationsService,
 } from '../services/creationsService';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
+import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
@@ -66,6 +67,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.uacDimension12;
 const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
 const ITEM_DEFAULT_SIZE = 160;
+
+// How long the "Saved to My Creations" success snackbar stays up (mirrors
+// Wardrobe's READY_SNACKBAR_MS).
+const SAVED_SNACKBAR_MS = 4000;
 
 // Pull a serializable URI out of a canvas item's imageSource for persistence.
 // Remote/picked items are `{ uri }`; require()'d mock assets are numbers (no
@@ -347,6 +352,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const { open: openSidebar } = useSidebar();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   // Entered via Home's Remix button → show a back chevron (goes back to Home).
   // Entered from the sidebar drawer → show the hamburger that re-opens it.
   const fromRemix = route.params?.entry === 'remix';
@@ -384,6 +390,32 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     null,
   );
   const proceedRef = useRef(false);
+
+  // Self-controlled success snackbar (mint M3 ItemReadySnackbar, same component
+  // as Wardrobe's "item ready"): the library Toast render path is unused here,
+  // so we mount it as a bottom overlay and auto-dismiss.
+  const [savedSnackbarVisible, setSavedSnackbarVisible] = useState(false);
+  const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showSavedSnackbar = useCallback(() => {
+    if (snackbarTimerRef.current) {
+      clearTimeout(snackbarTimerRef.current);
+    }
+    setSavedSnackbarVisible(true);
+    snackbarTimerRef.current = setTimeout(() => {
+      setSavedSnackbarVisible(false);
+      snackbarTimerRef.current = null;
+    }, SAVED_SNACKBAR_MS);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (snackbarTimerRef.current) {
+        clearTimeout(snackbarTimerRef.current);
+      }
+    },
+    [],
+  );
 
   // Undo / redo
   const history = useRef<HistorySnapshot[]>([initialItems]);
@@ -627,14 +659,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
     track('creation_saved', { item_count: savedItems.length });
     setHasUnsavedChanges(false);
-    Toast.show({
-      type: 'success',
-      text1: t('outfitCanvas.saved_title'),
-      text2: t('outfitCanvas.saved_body'),
-      position: 'bottom',
-    });
+    showSavedSnackbar();
     return true;
-  }, [items, tags, queryClient, t]);
+  }, [items, tags, queryClient, showSavedSnackbar]);
 
   const handleSave = useCallback(() => {
     persistCreation();
@@ -903,6 +930,18 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         onSave={handleDiscardSave}
         onDiscard={handleDiscardConfirm}
       />
+
+      {/* Success snackbar overlay — "Saved to My Creations" (mint M3 snackbar,
+          same component as Wardrobe). Informational, so it never blocks touches. */}
+      {savedSnackbarVisible ? (
+        <View
+          style={[styles.savedSnackbarOverlay, { bottom: insets.bottom + 24 }]}
+          pointerEvents="none"
+          testID="canvas-saved-snackbar-overlay"
+        >
+          <ItemReadySnackbar message={t('outfitCanvas.saved_body')} />
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -912,6 +951,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     overflow: 'hidden',
+  },
+  // Bottom-anchored, centred overlay for the "Saved to My Creations" snackbar
+  // (`bottom` supplied inline to respect the home-indicator safe area).
+  savedSnackbarOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: theme.zIndex.toast,
+    elevation: 1000,
   },
   // Header
   header: {
