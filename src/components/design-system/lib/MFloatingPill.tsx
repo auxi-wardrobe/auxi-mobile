@@ -7,6 +7,20 @@
  * The active thumb springs with an OVERSHOOT on x + width (low-damping spring ≈
  * cubic-bezier(.34,1.32,.5,1)). Tokens + motion encapsulated INSIDE. Honors
  * reduce-motion (jumps to target).
+ *
+ * ICON MODE (optional, backward-compatible): pass `renderIcon` to draw an icon
+ * centered in each item INSTEAD of the text label. The active flag lets the
+ * caller swap colors. Per-item `testID` / `accessibilityLabel` can be supplied
+ * via `itemTestID` / `itemAccessibilityLabel`; when given they OVERRIDE the
+ * default `${testID}-${slug}` derivation (icon labels are not meaningful slugs).
+ *   <MFloatingPill
+ *     tabs={['grid','collage']} value={v} onChange={setV}
+ *     renderIcon={(t, on) => <Icon color={on ? ink : muted} />}
+ *     itemTestID={(t) => `footer-${t}`}
+ *     itemAccessibilityLabel={(t) => a11y[t]}
+ *   />
+ * Text mode and icon mode share the SAME springy thumb, tokens, and
+ * reduce-motion behavior — only the item body (text vs icon) differs.
  */
 import React, { useRef } from 'react';
 import {
@@ -27,6 +41,12 @@ export interface MFloatingPillProps {
   value: string;
   onChange: (value: string) => void;
   testID?: string;
+  /** Icon mode: render an icon (centered) instead of the text label. */
+  renderIcon?: (tab: string, active: boolean) => React.ReactNode;
+  /** Override the per-item testID (default `${testID}-${slug(tab)}[-active]`). */
+  itemTestID?: (tab: string, active: boolean) => string;
+  /** Per-item accessibilityLabel (recommended in icon mode). */
+  itemAccessibilityLabel?: (tab: string) => string;
 }
 
 export const MFloatingPill: React.FC<MFloatingPillProps> = ({
@@ -34,6 +54,9 @@ export const MFloatingPill: React.FC<MFloatingPillProps> = ({
   value,
   onChange,
   testID,
+  renderIcon,
+  itemTestID,
+  itemAccessibilityLabel,
 }) => {
   const reduce = useReducedMotion();
   const idx = Math.max(0, tabs.indexOf(value));
@@ -77,21 +100,27 @@ export const MFloatingPill: React.FC<MFloatingPillProps> = ({
       <Animated.View style={[styles.fthumb, { left: x, width: w }]} />
       {tabs.map((tb, i) => {
         const sel = tb === value;
+        const itemId = itemTestID
+          ? itemTestID(tb, sel)
+          : testID
+          ? `${testID}-${slug(tb)}${sel ? '-active' : ''}`
+          : undefined;
         return (
           <Pressable
             key={tb}
             onLayout={onLayout(i)}
             onPress={() => move(i, tb)}
             style={styles.fitem}
-            testID={
-              testID
-                ? `${testID}-${slug(tb)}${sel ? '-active' : ''}`
-                : undefined
-            }
+            testID={itemId}
             accessibilityRole="tab"
+            accessibilityLabel={itemAccessibilityLabel?.(tb)}
             accessibilityState={{ selected: sel }}
           >
-            <Text style={[styles.ftext, sel && styles.ftextOn]}>{tb}</Text>
+            {renderIcon ? (
+              renderIcon(tb, sel)
+            ) : (
+              <Text style={[styles.ftext, sel && styles.ftextOn]}>{tb}</Text>
+            )}
           </Pressable>
         );
       })}
