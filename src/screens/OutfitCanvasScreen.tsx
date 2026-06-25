@@ -26,6 +26,7 @@ import {
 import { seedCanvasLayout } from '../components/features/collage-seed-layout';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { CategoryTabs } from '../components/features/CategoryTabs';
+import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { getImageUrl } from '../utils/url';
 import { useSidebar } from '../context/SidebarContext';
 import { track } from '../services/analytics';
@@ -721,19 +722,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               </ScrollView>
             </View>
 
-            {/* Save button */}
+            {/* Save button — canonical secondary button. */}
             <View style={styles.saveRow}>
-              <Pressable
+              <PillButton
                 testID="canvas-save"
                 onPress={handleSave}
                 accessibilityLabel={t('outfitCanvas.a11y_save_outfit')}
-                style={({ pressed }) => [
-                  styles.saveBtn,
-                  pressed && styles.saveBtnPressed,
-                ]}
-              >
-                <Text style={styles.saveBtnLabel}>{t('common.save')}</Text>
-              </Pressable>
+                title={t('common.save')}
+                variant="outline"
+              />
             </View>
           </View>
         </Pressable>
@@ -796,18 +793,6 @@ const styles = StyleSheet.create({
   // 12px horizontal inset; gap handled by topGroup).
   addRow: {
     flexDirection: 'row',
-  },
-  addItemBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: theme.borderRadius.round,
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacBorderBase,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addItemBtnPressed: {
-    backgroundColor: theme.colors.figmaCardSurface,
   },
   // Toolbar
   toolbar: {
@@ -890,22 +875,6 @@ const styles = StyleSheet.create({
   saveRow: {
     paddingBottom: theme.spacing.m,
     paddingTop: theme.spacing.s,
-  },
-  saveBtn: {
-    backgroundColor: theme.colors.transparent,
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacBorderBase,
-    borderRadius: theme.borderRadius.l,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveBtnPressed: {
-    backgroundColor: theme.colors.figmaCardSurface,
-  },
-  saveBtnLabel: {
-    ...theme.typography.aliases.poppinsButton, // Poppins Medium 16/24
-    color: theme.colors.figmaCtaLabel,
   },
 });
 

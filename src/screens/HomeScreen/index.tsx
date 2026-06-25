@@ -8,12 +8,12 @@ import React, {
 import {
   ActivityIndicator,
   Animated,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useNavigation,
@@ -1166,7 +1166,11 @@ export const HomeScreen = () => {
   );
 
   return (
-    <SafeAreaView testID="home-screen-root" style={styles.container}>
+    <SafeAreaView
+      testID="home-screen-root"
+      style={styles.container}
+      edges={['top']}
+    >
       <View style={styles.header}>
         <TopIconButton
           testID="home-menu-button"

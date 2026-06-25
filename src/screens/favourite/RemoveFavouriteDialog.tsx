@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { motion, useReducedMotion } from '../../theme/motion';
 import { Icons } from '../../assets/icons';
+import { PillButton } from '../../components/primitives/FigmaPrimitives';
 
 type Props = {
   visible: boolean;
@@ -168,24 +169,16 @@ export const RemoveFavouriteDialog: React.FC<Props> = ({
                 />
               </TouchableOpacity>
 
-              {/* "Cancel" on the RIGHT — outlined secondary. */}
-              <TouchableOpacity
+              {/* "Cancel" on the RIGHT — the canonical secondary button. */}
+              <PillButton
                 testID="favourite-remove-cancel"
-                accessibilityRole="button"
                 accessibilityLabel={t('favourite.remove_cancel')}
-                activeOpacity={0.82}
+                title={t('favourite.remove_cancel')}
+                variant="outline"
                 disabled={isBusy}
-                style={[
-                  styles.action,
-                  styles.outlinedAction,
-                  isBusy && styles.disabledAction,
-                ]}
+                style={styles.action}
                 onPress={onCancel}
-              >
-                <Text style={styles.cancelLabel}>
-                  {t('favourite.remove_cancel')}
-                </Text>
-              </TouchableOpacity>
+              />
             </View>
           </View>
         </Animated.View>
@@ -255,19 +248,9 @@ const styles = StyleSheet.create({
   ghostAction: {
     borderRadius: theme.borderRadius.round,
   },
-  // "Cancel" outlined secondary: 1.5px neutral border, 16 radius.
-  outlinedAction: {
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacTextBase,
-    borderRadius: theme.borderRadius.uacButtonCta,
-  },
   dangerLabel: {
     ...theme.typography.aliases.poppinsButton,
     color: theme.colors.figmaItemDetailDanger,
-  },
-  cancelLabel: {
-    ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.uacTextBase,
   },
   disabledAction: {
     opacity: 0.55,
