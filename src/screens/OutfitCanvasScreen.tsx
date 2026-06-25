@@ -15,9 +15,14 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import {
+  NavigationAction,
+  RouteProp,
+  useRoute,
+} from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
+import Toast from 'react-native-toast-message';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
 import { motion } from '../theme/motion';
@@ -36,6 +41,7 @@ import {
   CreationItem,
   creationsService,
 } from '../services/creationsService';
+import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
@@ -366,6 +372,19 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const [tagInput, setTagInput] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
 
+  // Unsaved-changes guard: any edit (item move/add/delete/layer, tag change)
+  // flips this true; Save clears it. Drives the "Discard this creation?" sheet
+  // shown when the user tries to leave with pending edits.
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [discardVisible, setDiscardVisible] = useState(false);
+  // The navigation action we intercepted (back / goBack), replayed verbatim
+  // once the user resolves the sheet. `proceedRef` lets that replay through the
+  // beforeRemove guard without re-prompting (a ref so the live listener reads it).
+  const [pendingAction, setPendingAction] = useState<NavigationAction | null>(
+    null,
+  );
+  const proceedRef = useRef(false);
+
   // Undo / redo
   const history = useRef<HistorySnapshot[]>([initialItems]);
   const historyIndex = useRef(0);
@@ -375,6 +394,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     newHistory.push(snapshot);
     history.current = newHistory;
     historyIndex.current = newHistory.length - 1;
+    // Every history push is a user edit → mark the canvas dirty.
+    setHasUnsavedChanges(true);
   }, []);
 
   const canUndo = historyIndex.current > 0;
@@ -556,21 +577,26 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   // Tag actions
   const handleRemoveTag = useCallback((tag: string) => {
     setTags(prev => prev.filter(existing => existing !== tag));
+    setHasUnsavedChanges(true);
   }, []);
 
   const handleConfirmTag = useCallback(() => {
     const trimmed = tagInput.trim();
     if (trimmed && !tags.includes(trimmed)) {
       setTags(prev => [...prev, trimmed]);
+      setHasUnsavedChanges(true);
     }
     setTagInput('');
     setAddingTag(false);
   }, [tagInput, tags]);
 
-  const handleSave = useCallback(async () => {
-    // Snapshot the current canvas arrangement into a saveable creation. Only
-    // items backed by a real image URI persist — mock require()'d assets (the
-    // deep-link/dev fallback) aren't serializable and are skipped.
+  // Persist the current canvas arrangement to the local My Creations store and
+  // confirm with a toast that says WHERE it went. Returns whether anything was
+  // saved (false when there's nothing URI-backed to persist). Does NOT navigate
+  // — the user stays on the canvas; the toast points them at My Creations.
+  const persistCreation = useCallback(async (): Promise<boolean> => {
+    // Only items backed by a real image URI persist — mock require()'d assets
+    // (the deep-link/dev fallback) aren't serializable and are skipped.
     const savedItems = items.reduce<CreationItem[]>((acc, it) => {
       const uri = extractUri(it.imageSource);
       if (uri) {
@@ -589,18 +615,30 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
       return acc;
     }, []);
 
-    if (savedItems.length > 0) {
-      await creationsService.saveCreation({
-        items: savedItems,
-        tags,
-        canvasWidth: CANVAS_WIDTH,
-      });
-      queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
-      track('creation_saved', { item_count: savedItems.length });
+    if (savedItems.length === 0) {
+      return false;
     }
-    // Land on My Creations so the user sees the saved result.
-    navigation.navigate('MyCreations');
-  }, [items, tags, navigation, queryClient]);
+
+    await creationsService.saveCreation({
+      items: savedItems,
+      tags,
+      canvasWidth: CANVAS_WIDTH,
+    });
+    queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
+    track('creation_saved', { item_count: savedItems.length });
+    setHasUnsavedChanges(false);
+    Toast.show({
+      type: 'success',
+      text1: t('outfitCanvas.saved_title'),
+      text2: t('outfitCanvas.saved_body'),
+      position: 'bottom',
+    });
+    return true;
+  }, [items, tags, queryClient, t]);
+
+  const handleSave = useCallback(() => {
+    persistCreation();
+  }, [persistCreation]);
 
   const handleOpenCreations = useCallback(() => {
     // "My Creations" lists everything the user has saved from the canvas
@@ -608,6 +646,49 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     track('canvas_my_creations_opened');
     navigation.navigate('MyCreations');
   }, [navigation]);
+
+  // Intercept leaving the canvas (back chevron / hardware back) while there are
+  // unsaved edits → show the "Discard this creation?" sheet instead. The
+  // intercepted action is replayed once the user picks Save or Discard.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', e => {
+      if (proceedRef.current || !hasUnsavedChanges) {
+        return;
+      }
+      e.preventDefault();
+      setPendingAction(e.data.action);
+      setDiscardVisible(true);
+    });
+    return unsubscribe;
+  }, [navigation, hasUnsavedChanges]);
+
+  const leaveWithPendingAction = useCallback(() => {
+    proceedRef.current = true;
+    setDiscardVisible(false);
+    if (pendingAction) {
+      navigation.dispatch(pendingAction);
+    } else {
+      navigation.goBack();
+    }
+  }, [navigation, pendingAction]);
+
+  // Discard sheet — "Save" persists then continues leaving.
+  const handleDiscardSave = useCallback(async () => {
+    await persistCreation();
+    leaveWithPendingAction();
+  }, [persistCreation, leaveWithPendingAction]);
+
+  // "Discard" leaves without saving.
+  const handleDiscardConfirm = useCallback(() => {
+    track('creation_discarded');
+    leaveWithPendingAction();
+  }, [leaveWithPendingAction]);
+
+  // Backdrop / back dismiss — stay on the canvas.
+  const handleDiscardCancel = useCallback(() => {
+    setDiscardVisible(false);
+    setPendingAction(null);
+  }, []);
 
   const actionDisabled = !selectedId;
 
@@ -813,6 +894,14 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
         onConfirm={handlePickerConfirm}
+      />
+
+      {/* Unsaved-changes guard sheet (shown on leave with pending edits) */}
+      <DiscardCreationDialog
+        visible={discardVisible}
+        onCancel={handleDiscardCancel}
+        onSave={handleDiscardSave}
+        onDiscard={handleDiscardConfirm}
       />
     </View>
   );

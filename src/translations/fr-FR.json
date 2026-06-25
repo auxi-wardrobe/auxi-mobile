@@ -542,7 +542,13 @@
       "tag_placeholder": "Nom de l'étiquette",
       "a11y_tag_input": "Champ nom d'étiquette",
       "a11y_add_tag": "Ajouter une étiquette",
-      "a11y_save_outfit": "Enregistrer la tenue"
+      "a11y_save_outfit": "Enregistrer la tenue",
+      "saved_title": "Création enregistrée",
+      "saved_body": "Enregistrée dans Mes créations",
+      "discard_title": "Abandonner cette création ?",
+      "discard_body": "Vos modifications n'ont pas été enregistrées.",
+      "discard_save": "Enregistrer",
+      "discard_discard": "Abandonner"
     },
     "myCreations": {
       "title": "Mes créations",
