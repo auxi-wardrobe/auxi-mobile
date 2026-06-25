@@ -36,7 +36,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,8 +49,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
-import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { theme } from '../../theme/theme';
+import { MButton, MInput } from '../../components/design-system/lib';
 import { useAuth } from '../../context/AuthContext';
 import { useRegisterMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
@@ -77,32 +76,6 @@ const ChevronLeftGlyph = () => (
   </Svg>
 );
 
-const EyeOpenGlyph = () => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"
-      stroke={theme.colors.uacTextSubtle200}
-      strokeWidth={1.5}
-    />
-    <Path
-      d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
-      stroke={theme.colors.uacTextSubtle200}
-      strokeWidth={1.5}
-    />
-  </Svg>
-);
-
-const EyeClosedGlyph = () => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M3 3l18 18M10.6 6.1A11 11 0 0 1 22 12s-1 2-3 4M2 12s3.5-7 10-7c1.7 0 3.2.4 4.5 1M6 17a11 11 0 0 1-4-5"
-      stroke={theme.colors.uacTextSubtle200}
-      strokeWidth={1.5}
-      strokeLinecap="round"
-    />
-  </Svg>
-);
-
 export const PasswordCreationScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<Route>();
@@ -112,7 +85,6 @@ export const PasswordCreationScreen = () => {
 
   const email = route.params?.email ?? '';
   const [password, setPassword] = useState('');
-  const [visible, setVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const criteriaLabels = useMemo(
@@ -222,9 +194,6 @@ export const PasswordCreationScreen = () => {
   ]);
 
   const submitDisabled = !allMet || register.isPending;
-  const submitIconColor = submitDisabled
-    ? theme.colors.uacTextSubtle200
-    : theme.colors.figmaPrimaryButtonIcon;
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -257,63 +226,23 @@ export const PasswordCreationScreen = () => {
             </Text>
           </View>
 
-          {/* Password row */}
-          <View style={[styles.formRow, styles.formRowSpacing]}>
-            <View style={styles.fieldWrap}>
-              <TextInput
-                testID="password-input-field"
-                value={password}
-                onChangeText={handleChange}
-                placeholder={t('uac.password_creation.password_label')}
-                placeholderTextColor={theme.colors.uacTextSubtle200}
-                secureTextEntry={!visible}
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="newPassword"
-                returnKeyType="go"
-                onSubmitEditing={handleSubmit}
-                style={styles.input}
-              />
-              <Pressable
-                testID={
-                  visible
-                    ? 'password-visibility-hide'
-                    : 'password-visibility-show'
-                }
-                accessibilityRole="button"
-                accessibilityLabel={
-                  visible
-                    ? t('uac.password_creation.hide_password')
-                    : t('uac.password_creation.show_password')
-                }
-                onPress={() => setVisible(v => !v)}
-                style={({ pressed }) => [
-                  styles.eyeBtn,
-                  pressed && styles.pressed,
-                ]}
-                hitSlop={8}
-              >
-                {visible ? <EyeOpenGlyph /> : <EyeClosedGlyph />}
-              </Pressable>
-            </View>
-            <Pressable
-              testID="password-submit-button"
-              accessibilityRole="button"
-              accessibilityLabel={t('uac.password_creation.submit_a11y')}
-              onPress={handleSubmit}
-              disabled={submitDisabled}
-              style={({ pressed }) => [
-                styles.submitBtn,
-                submitDisabled && styles.submitBtnDisabled,
-                pressed && !submitDisabled && styles.pressed,
-              ]}
-            >
-              <IconChevronRight
-                width={20}
-                height={20}
-                color={submitIconColor}
-              />
-            </Pressable>
+          {/* Password — DS field with built-in eye toggle. */}
+          <View style={styles.fieldSpacing}>
+            <MInput
+              testID="password-input-field"
+              accessibilityLabel={t('uac.password_creation.password_label')}
+              value={password}
+              onChangeText={handleChange}
+              placeholder={t('uac.password_creation.password_label')}
+              secureTextEntry
+              showPasswordLabel={t('uac.password_creation.show_password')}
+              hidePasswordLabel={t('uac.password_creation.hide_password')}
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="newPassword"
+              returnKeyType="go"
+              onSubmitEditing={handleSubmit}
+            />
           </View>
 
           {/* Criteria checklist (specs §4) — shared with ResetNewPassword */}
@@ -330,6 +259,19 @@ export const PasswordCreationScreen = () => {
               {error}
             </Text>
           )}
+
+          {/* Full-width CTA below the criteria (replaces the inline chevron). */}
+          <View style={styles.ctaWrap}>
+            <MButton
+              testID="password-submit-button"
+              accessibilityLabel={t('uac.password_creation.submit_a11y')}
+              onPress={handleSubmit}
+              loading={register.isPending}
+              disabled={submitDisabled}
+            >
+              {t('uac.password_creation.submit_a11y')}
+            </MButton>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -376,50 +318,11 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.uacM3BodyLarge,
     color: theme.colors.uacTextSubtle100,
   },
-  formRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.uacDimension16,
-  },
-  formRowSpacing: {
+  fieldSpacing: {
     marginTop: theme.spacing.uacDimension16,
   },
-  fieldWrap: {
-    flex: 1,
-    height: theme.spacing.uacButtonHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.uacBorderBold200,
-    borderRadius: theme.borderRadius.uacTextField,
-    paddingLeft: theme.spacing.uacDimension16,
-    paddingRight: theme.spacing.uacDimension4,
-    backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
-  },
-  input: {
-    flex: 1,
-    ...theme.typography.aliases.uacM3BodyLarge,
-    color: theme.colors.uacTextBase,
-    padding: 0,
-    margin: 0,
-  },
-  eyeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.uacRadioPill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.figmaPrimaryButtonBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitBtnDisabled: {
-    opacity: 0.5,
+  ctaWrap: {
+    marginTop: theme.spacing.uacDimension24,
   },
   criteriaList: {
     marginTop: theme.spacing.uacDimension16 + 4, // 20px

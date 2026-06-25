@@ -51,7 +51,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -65,8 +64,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
-import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { theme } from '../../theme/theme';
+import { MButton, MInput } from '../../components/design-system/lib';
 import { useEmailPrecheckMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
@@ -104,8 +103,6 @@ export const EmailInputScreen = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const precheck = useEmailPrecheckMutation();
-
-  const isValid = EMAIL_RE.test(email.trim());
 
   const handleChange = useCallback(
     (text: string) => {
@@ -228,53 +225,34 @@ export const EmailInputScreen = () => {
             {t('uac.email_input.label')}
           </Text>
 
-          <View style={styles.formRow}>
-            <View style={[styles.fieldWrap, hasError && styles.fieldWrapError]}>
-              <TextInput
-                testID="email-input-field"
-                value={email}
-                onChangeText={handleChange}
-                placeholder={t('uac.email_input.placeholder')}
-                placeholderTextColor={theme.colors.uacTextSubtle200}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="emailAddress"
-                returnKeyType="go"
-                onSubmitEditing={handleSubmit}
-                style={styles.input}
-              />
-            </View>
-            <Pressable
+          {/* DS field — inline error routed into MInput.error (spec 08). */}
+          <MInput
+            testID="email-input-field"
+            accessibilityLabel={t('uac.email_input.label')}
+            value={email}
+            onChangeText={handleChange}
+            placeholder={t('uac.email_input.placeholder')}
+            error={hasError ? (error as string) : undefined}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            textContentType="emailAddress"
+            returnKeyType="go"
+            onSubmitEditing={handleSubmit}
+          />
+
+          {/* Full-width CTA below the field (replaces the inline chevron). */}
+          <View style={styles.ctaWrap}>
+            <MButton
               testID="email-submit-button"
-              accessibilityRole="button"
               accessibilityLabel={t('uac.email_input.submit_a11y')}
               onPress={handleSubmit}
+              loading={precheck.isPending}
               disabled={submitDisabled}
-              style={({ pressed }) => [
-                styles.submitBtn,
-                submitDisabled && styles.submitBtnDisabled,
-                pressed && !submitDisabled && styles.pressed,
-              ]}
             >
-              <IconChevronRight
-                width={20}
-                height={20}
-                color={
-                  isValid
-                    ? theme.colors.figmaPrimaryButtonIcon
-                    : theme.colors.uacTextSubtle200
-                }
-              />
-            </Pressable>
+              {t('uac.email_input.submit_a11y')}
+            </MButton>
           </View>
-
-          {/* Supporting error text (spec 08) */}
-          {hasError && (
-            <Text testID="email-input-error" style={styles.errorText}>
-              {error}
-            </Text>
-          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -310,48 +288,8 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextBase,
     paddingVertical: theme.spacing.uacDimension8 + 4, // 12px per spec
   },
-  formRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.uacDimension16,
-  },
-  fieldWrap: {
-    flex: 1,
-    height: theme.spacing.uacButtonHeight,
-    borderWidth: 1,
-    borderColor: theme.colors.uacBorderBold200,
-    borderRadius: theme.borderRadius.uacTextField,
-    paddingHorizontal: theme.spacing.uacDimension16,
-    justifyContent: 'center',
-    backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
-  },
-  fieldWrapError: {
-    // Spec note: Figma keeps neutral border in error state. Default to
-    // option (1): neutral border + red supporting text only.
-    // (We intentionally do NOT switch border to danger to match Figma.)
-  },
-  input: {
-    ...theme.typography.aliases.uacM3BodyLarge,
-    color: theme.colors.uacTextBase,
-    padding: 0,
-    margin: 0,
-  },
-  submitBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.figmaPrimaryButtonBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitBtnDisabled: {
-    opacity: 0.5,
-  },
-  errorText: {
-    ...theme.typography.aliases.uacM3BodySmall,
-    color: theme.colors.uacTextDangerBase,
-    marginTop: theme.spacing.uacDimension4,
-    paddingHorizontal: theme.spacing.uacDimension16,
+  ctaWrap: {
+    marginTop: theme.spacing.uacDimension24,
   },
   pressed: {
     opacity: 0.7,
