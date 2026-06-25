@@ -992,8 +992,8 @@ const pickerStyles = StyleSheet.create({
     borderTopColor: theme.colors.figmaDivider,
   },
   confirmBtn: {
-    backgroundColor: theme.colors.figmaButton,
-    borderRadius: theme.borderRadius.round,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
+    borderRadius: 16,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1002,9 +1002,9 @@ const pickerStyles = StyleSheet.create({
     opacity: 0.5,
   },
   confirmBtnLabel: {
-    fontFamily: 'Poppins-SemiBold',
+    fontFamily: 'Poppins-Medium',
     fontSize: 16,
-    color: theme.colors.white,
+    color: theme.colors.figmaPrimaryButtonText,
     letterSpacing: 0.15,
   },
 });

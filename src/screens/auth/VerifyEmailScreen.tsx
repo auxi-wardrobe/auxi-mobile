@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonPrimary: {
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   buttonSecondary: {
     borderWidth: 1.5,
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   },
   buttonLabelLight: {
     ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextPrimaryBase,
+    color: theme.colors.figmaPrimaryButtonText,
   },
   buttonLabelDark: {
     ...theme.typography.aliases.uacBodyMdMedium,

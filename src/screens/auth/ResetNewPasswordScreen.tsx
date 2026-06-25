@@ -48,6 +48,7 @@ import { useResetPasswordMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 import { theme } from '../../theme/theme';
+import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { PasswordCriteriaChecklist } from '../../components/auth/PasswordCriteriaChecklist';
 import { validatePassword } from '../../utils/password-rules';
 
@@ -272,7 +273,11 @@ export const ResetNewPasswordScreen: React.FC = () => {
                 pressed && canSubmit && styles.submitChevronPressed,
               ]}
             >
-              <Text style={styles.submitChevronIcon}>›</Text>
+              <IconChevronRight
+                width={24}
+                height={24}
+                color={theme.colors.figmaPrimaryButtonIcon}
+              />
             </Pressable>
           </View>
 
@@ -381,7 +386,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -390,11 +395,6 @@ const styles = StyleSheet.create({
   },
   submitChevronPressed: {
     opacity: 0.85,
-  },
-  submitChevronIcon: {
-    fontSize: 26,
-    lineHeight: 28,
-    color: theme.colors.uacTextPrimaryBase,
   },
   checklist: {
     width: 327,
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   cta: {
     height: theme.spacing.uacButtonHeight,
     borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   },
   ctaLabel: {
     ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextPrimaryBase,
+    color: theme.colors.figmaPrimaryButtonText,
   },
 });
 

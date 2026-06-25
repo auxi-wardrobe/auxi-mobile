@@ -27,6 +27,7 @@ export const theme = {
     figmaCaptionPillBg: '#eee6df', // color/primary/100 — caption pill bg (Frame 2036)
     figmaInsightPillBg: '#e0d2c4', // color/primary/200 — insight icon pill bg (Frame 2037)
     figmaCtaLabel: '#262421', // border/primary/bold_600 — "Wear this" CTA label
+    figmaPrimary600: '#1C1A19', // color/primary/600 — refine sheet "Skip for now" text button
     figmaFooterActivePill: '#eee6df', // background/primary/subtle_200 — footer active-tab pill
     figmaTooltipBg: '#322f35', // Schemes/Inverse Surface — Plain Tooltip bg
     figmaTooltipText: '#f5eff7', // Schemes/Inverse On Surface — Plain Tooltip text
@@ -48,6 +49,17 @@ export const theme = {
     figmaDividerSubtle: '#f2f4f7',
     figmaAction: '#272A32',
     figmaButton: '#272A32',
+    // Canonical primary (solid) button tokens — the ONE source of truth for
+    // every solid-dark primary CTA. Fill = color/neutral/800, label =
+    // color/primary/100, paired with the `poppinsButton` (Poppins-Medium)
+    // alias and a 16px radius. Don't reintroduce figmaAction/figmaButton/
+    // figmaButtonDark or white as a primary-button fill/label.
+    figmaPrimaryButtonBg: '#1D1F23', // color/neutral/800 — primary button fill
+    figmaPrimaryButtonText: '#EFE9E3', // color/primary/100 — primary button label
+    // Primary ICON button: same fill as the primary button, but the icon uses
+    // color/primary/50 (NOT the /100 text tone). For icon-only CTAs (submit
+    // chevrons / arrows).
+    figmaPrimaryButtonIcon: '#F2EFEC', // color/primary/50 — primary icon-button icon
     figmaRed: '#CC4C3E',
     figmaIconSurface: '#E3E3EC',
     figmaDestructive: '#bb251a', // red for Cancel/delete actions — aliased by uacTextDangerBase below

@@ -63,6 +63,7 @@ import {
 } from '../../services/authTypes';
 import type { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
+import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignIn'>;
 
@@ -259,9 +260,11 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
                 pressed && canSubmit && styles.submitButtonPressed,
               ]}
             >
-              <View style={styles.submitArrow}>
-                <IconChevronLeft width={24} height={24} />
-              </View>
+              <IconChevronRight
+                width={24}
+                height={24}
+                color={theme.colors.figmaPrimaryButtonIcon}
+              />
             </Pressable>
           </View>
 
@@ -391,16 +394,13 @@ const styles = StyleSheet.create({
     borderRadius: SUBMIT_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   submitButtonDisabled: {
     opacity: 0.5,
   },
   submitButtonPressed: {
     opacity: 0.85,
-  },
-  submitArrow: {
-    transform: [{ rotate: '180deg' }],
   },
   errorText: {
     ...theme.typography.aliases.uacBodyXsRegular,

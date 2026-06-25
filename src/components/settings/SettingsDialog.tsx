@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   },
   modalPrimaryAction: {
     borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.figmaButtonDark,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   modalDangerAction: {
     borderRadius: theme.borderRadius.uacButtonCta,
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   modalPrimaryActionLabel: {
     ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.white,
+    color: theme.colors.figmaPrimaryButtonText,
   },
   disabledAction: {
     opacity: 0.55,

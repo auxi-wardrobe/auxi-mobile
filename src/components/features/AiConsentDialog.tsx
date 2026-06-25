@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   },
   primaryAction: {
     borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.figmaButtonDark,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   textActionLabel: {
     ...theme.typography.aliases.poppinsButton,
@@ -156,6 +156,6 @@ const styles = StyleSheet.create({
   },
   primaryActionLabel: {
     ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.white,
+    color: theme.colors.figmaPrimaryButtonText,
   },
 });
