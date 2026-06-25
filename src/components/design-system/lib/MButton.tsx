@@ -11,7 +11,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Icons } from '../../../assets/icons';
-import { color, radius, role, type } from '../m-tokens';
+import { button, color, radius, role, FONT } from '../m-tokens';
 import { DotsLoader, PressScale } from '../MMotion';
 
 const IconPlus = Icons.Plus;
@@ -28,7 +28,9 @@ const SIZE: Record<
   MButtonSize,
   { height: number; px: number; r: number; fs: number }
 > = {
-  lg: { height: 56, px: 28, r: radius['2xl'], fs: 16 },
+  // `lg` is the full-width sheet CTA — exact PR #138 geometry
+  // (height 56, radius 16, paddingHorizontal 32, label Poppins-Medium 16/24).
+  lg: { height: button.primaryHeight, px: button.px, r: button.radius, fs: 16 },
   md: { height: 44, px: 22, r: radius.xl, fs: 15 },
   sm: { height: 32, px: 14, r: radius.lg, fs: 13 },
 };
@@ -66,17 +68,28 @@ export const MButton: React.FC<MButtonProps> = ({
       : 'transparent';
   const fg =
     variant === 'primary'
-      ? color.p50
+      ? role.primaryBtnLabel // color/primary/100 (#EFE9E3) — PR #138 truth
       : variant === 'danger'
       ? color.white
       : variant === 'dangerOutline'
       ? color.da400
       : variant === 'secondary'
       ? role.ink
+      : variant === 'text'
+      ? role.secondaryBtnLabel // color/primary/600 (#1C1A19) — "Skip for now"
       : role.ink;
   const borderColor = variant === 'dangerOutline' ? color.da400 : role.ink;
   const isSecondary = variant === 'secondary';
   const label = typeof children === 'string' ? children : accessibilityLabel;
+  // Label face per PR #138: primary solid CTA = `poppinsButton` (Poppins-Medium,
+  // tracking 0); the borderless `text` button = `archivoBody` (Poppins-Regular,
+  // tracking 0.15). Other variants keep the DS SemiBold treatment.
+  const labelFont =
+    variant === 'primary'
+      ? { fontFamily: button.labelFont, letterSpacing: 0 }
+      : variant === 'text'
+      ? { fontFamily: FONT.regular, letterSpacing: 0.15 }
+      : { fontFamily: FONT.semibold, letterSpacing: 0 };
 
   return (
     <PressScale
@@ -105,7 +118,7 @@ export const MButton: React.FC<MButtonProps> = ({
       ) : (
         <View style={styles.inner}>
           {LeftIcon && <LeftIcon width={18} height={18} color={fg} />}
-          <Text style={[styles.label, { color: fg, fontSize: sz.fs }]}>
+          <Text style={[styles.label, labelFont, { color: fg, fontSize: sz.fs }]}>
             {children}
           </Text>
         </View>
@@ -137,7 +150,10 @@ export const MIconButton: React.FC<MIconButtonProps> = ({
       testID={testID}
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={[styles.iconBtn, { width: dim, height: dim, borderRadius: r }]}
+      style={[
+        styles.iconBtn,
+        { width: dim, height: dim, borderRadius: r },
+      ]}
     >
       <Icon width={20} height={20} color={role.ink} />
     </PressScale>
@@ -148,7 +164,7 @@ const styles = StyleSheet.create({
   btn: { alignItems: 'center', justifyContent: 'center', minWidth: 96 },
   inner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   outline: { borderWidth: 1.5 },
-  label: { fontFamily: type.h3.fontFamily, lineHeight: 24 },
+  label: { lineHeight: 24 },
   iconBtn: {
     alignItems: 'center',
     justifyContent: 'center',
