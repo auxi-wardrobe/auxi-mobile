@@ -35,7 +35,7 @@
  *       * signin mode, 'none' → inform via Toast + bounce to Welcome.
  *       * signin mode, otherwise → `SignIn` (returning user logs in).
  *   - 429 RATE_LIMITED → error_rate_limited copy.
- *   - NETWORK_ERROR → toast.
+ *   - NETWORK_ERROR → inline error (error_network copy, NOT "invalid email").
  *
  * AU-356 fix: previously a 'password' precheck result unconditionally routed
  * to `SignIn`, which (because of enumeration safety) blocked EVERY new signup
@@ -162,11 +162,11 @@ export const EmailInputScreen = () => {
             return;
           }
           if (err.code === 'NETWORK_ERROR') {
-            Toast.show({
-              type: 'error',
-              text1: t('uac.email_input.error_invalid'),
-              position: 'bottom',
-            });
+            // Connection / backend failure — surface INLINE via MInput.error
+            // (the screen stays mounted here, so no Toast is needed). Must NOT
+            // reuse the "invalid email" copy — that misleads the user into
+            // thinking their address is wrong when it's really the network.
+            setError(t('uac.email_input.error_network'));
             return;
           }
           // Validation / unknown: surface inline.
