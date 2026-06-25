@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   },
   buttonStack: {
     width: '100%',
-    marginTop: theme.spacing.uacDimension24,
+    marginTop: 'auto', // bottom-anchor the action stack (Figma 3910:23056 — CTAs at y546)
     gap: theme.spacing.uacDimension8 + 4, // 12px (Figma Frame 2109 gap)
   },
   statusRow: {
