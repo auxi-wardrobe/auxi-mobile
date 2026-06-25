@@ -1183,7 +1183,11 @@ export const HomeScreen = () => {
             onPress={openTempSheet}
           />
         ) : (
-          <WeatherWidget tempC={weather.tempC} iconCode={weather.iconCode} />
+          <WeatherWidget
+            tempC={weather.tempC}
+            iconCode={weather.iconCode}
+            onPress={openTempSheet}
+          />
         )}
 
         <TouchableOpacity
@@ -1297,8 +1301,6 @@ export const HomeScreen = () => {
                 isGenerating={
                   role !== 'peek' && pinState.outfit === 'generating'
                 }
-                onPressInsight={openTempSheet}
-                insightActive={isOverrideActive}
               />
             )}
             renderCue={(backOpacity, nextOpacity) => (
