@@ -108,6 +108,17 @@ export const role = {
   line: color.n200,
   lineCream: color.p100,
   borderSubtle: color.n100,
+
+  // Canonical scrim — pure black @ 45% (Figma color/black + PR #138 house
+  // pattern: OutfitLimitSheet.overlay / ContextChipsModal). Supersedes the
+  // earlier n800-tinted scrim (drift fixed DOWN to Figma's pure black). All
+  // dim overlays (dialog, bottom sheet, action sheet) consume this.
+  scrim: 'rgba(0,0,0,0.45)',
+
+  // ── Primary-button role (canonicalised from PR #138 / Figma) ──────────────
+  // Fill is n800 (#1D1F23 = color/neutral/800) — re-uses `ink`, already exact.
+  primaryBtnLabel: '#EFE9E3', // color/primary/100 — solid primary button label
+  secondaryBtnLabel: '#1C1A19', // color/primary/600 — secondary text-button label
 } as const;
 
 // ── Radius (new scale) ──────────────────────────────────────────────────────
@@ -167,6 +178,16 @@ export const shadow = {
     shadowOffset: { width: 0, height: -4 },
     elevation: 12,
   },
+  // Floating-card sheet shadow — the PR #138 "house pattern"
+  // (OutfitLimitSheet.sheet). Downward, tighter, denser than the edge-to-edge
+  // `sheet` above. Used by the floating bottom-sheet card (MBottomSheet).
+  sheetCard: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 19 },
+    elevation: 16,
+  },
 } as const;
 
 // ── Icon sizes ──────────────────────────────────────────────────────────────
@@ -190,6 +211,29 @@ export const type = {
   },
 } as const;
 
+// ── Component specs (canonicalised from PR #138 / Figma) ─────────────────────
+// Encodes the exact geometry the PR primary CTA + house-pattern sheet ship, so
+// an M* primitive reproduces them with zero visual shift.
+export const button = {
+  // Full-width sheet CTA (OutfitLimitSheet.refineButton / ContextChipsModal
+  // .confirmButton): height 56, radius 16, paddingHorizontal 32.
+  primaryHeight: 56,
+  // Compact CTA variant seen elsewhere: height 48, radius 16.
+  compactHeight: 48,
+  px: space.s8, // 32 — paddingHorizontal
+  radius: radius['2xl'], // 16
+  labelFont: FONT.medium, // Poppins-Medium === `poppinsButton`
+} as const;
+
+export const sheetCardSpec = {
+  // OutfitLimitSheet.sheet — radius 16, pad 16, marginBottom spacing.s (8),
+  // horizontal gutter 8/side (PR SHEET_WIDTH = screenWidth − 16).
+  radius: radius['2xl'], // 16
+  pad: space.s4, // 16 — both axes
+  marginBottom: space.s2, // 8 (=== theme.spacing.s)
+  gutter: space.s2, // 8 each side === 16px total
+} as const;
+
 export const mTokens = {
   FONT,
   MONO,
@@ -200,6 +244,8 @@ export const mTokens = {
   shadow,
   icon,
   type,
+  button,
+  sheetCardSpec,
 } as const;
 
 export type MTokens = typeof mTokens;
