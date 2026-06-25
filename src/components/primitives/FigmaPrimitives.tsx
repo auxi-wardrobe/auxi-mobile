@@ -42,7 +42,9 @@ interface DividerRowProps {
 }
 
 interface PillButtonProps {
-  title: string;
+  // Optional so the same component renders an icon-only secondary button: pass
+  // `leading`/`trailing` with no `title` (provide `accessibilityLabel` for a11y).
+  title?: string;
   onPress?: (event: GestureResponderEvent) => void;
   variant?: PillVariant;
   disabled?: boolean;
@@ -176,9 +178,28 @@ export const PillButton: React.FC<PillButtonProps> = ({
     ],
   };
 
+  // Single source of truth for the secondary-button icon tint: filled buttons
+  // get the light on-dark label tone, danger gets red, and every bordered/no-fill
+  // variant (outline/soft/text) gets color/primary/700 (#0C0B0B). The tint is
+  // injected into whatever icon node the caller passes so call sites never have
+  // to repeat the colour — keeping all secondary icons on-spec centrally.
+  const iconColor =
+    variant === 'filled'
+      ? theme.colors.uacTextPrimaryBase
+      : variant === 'danger'
+      ? theme.colors.figmaRed
+      : theme.colors.iconPrimary700;
+  const tintIcon = (node: React.ReactNode): React.ReactNode =>
+    React.isValidElement(node)
+      ? React.cloneElement(node as React.ReactElement<{ color?: string }>, {
+          color: iconColor,
+        })
+      : node;
+
   return (
     <AnimatedTouchable
       testID={testID}
+      accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       activeOpacity={0.85}
       onPress={onPress}
@@ -198,19 +219,22 @@ export const PillButton: React.FC<PillButtonProps> = ({
       ]}
     >
       <Animated.View style={[styles.pillContent, contentStyle]}>
-        {leading}
-        <Text
-          style={[
-            styles.pillText,
-            variant === 'filled' && styles.filledText,
-            variant === 'danger' && styles.dangerText,
-            variant === 'text' && styles.textOnly,
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
-        {trailing}
+        {tintIcon(leading)}
+        {title ? (
+          <Text
+            style={[
+              styles.pillText,
+              variant === 'outline' && styles.outlineText,
+              variant === 'filled' && styles.filledText,
+              variant === 'danger' && styles.dangerText,
+              variant === 'text' && styles.textOnly,
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+        ) : null}
+        {tintIcon(trailing)}
       </Animated.View>
       {loading ? (
         <Animated.View
@@ -222,7 +246,7 @@ export const PillButton: React.FC<PillButtonProps> = ({
             size="small"
             color={
               variant === 'filled'
-                ? theme.colors.white
+                ? theme.colors.figmaPrimaryButtonText
                 : theme.colors.figmaAction
             }
           />
@@ -252,13 +276,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Canonical header icon chip (left or right): 44×44 white square, radius 8,
+  // with the design-system header-icon drop-shadow. Per-screen overrides should
+  // not change size/radius/fill — only positioning.
   topIconButton: {
-    width: 45,
-    height: 45,
-    borderRadius: 16,
-    backgroundColor: theme.colors.figmaIconSurface,
+    width: 44,
+    height: 44,
+    borderRadius: theme.borderRadius.m,
+    backgroundColor: theme.colors.white,
     justifyContent: 'center',
     alignItems: 'center',
+    ...theme.ds.shadow.headerIcon,
   },
   topIconLabel: {
     fontFamily: 'Poppins-Medium',
@@ -297,8 +325,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   filledButton: {
-    backgroundColor: theme.colors.uacTextBase,
-    borderColor: theme.colors.uacTextBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
+    borderColor: theme.colors.figmaPrimaryButtonBg,
   },
   outlineButton: {
     backgroundColor: 'transparent',
@@ -320,8 +348,11 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.poppinsButton,
     color: theme.colors.figmaTextDark, // secondary/text button label #070707
   },
+  outlineText: {
+    color: theme.colors.uacTextBase, // secondary (outline) button label #1D1F23
+  },
   filledText: {
-    color: theme.colors.uacTextPrimaryBase, // primary button label #F2EFEC
+    color: theme.colors.figmaPrimaryButtonText, // primary button label color/primary/100
   },
   dangerText: {
     color: theme.colors.figmaRed,

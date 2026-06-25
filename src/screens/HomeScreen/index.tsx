@@ -26,17 +26,16 @@ import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
 import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
-import {
-  LEGACY_COACHMARK_STORAGE_KEY,
-  SwipeCoachMark,
-} from '../../components/features/SwipeCoachMark';
+import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
+import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
+import { FeedbackSheet } from '../../components/features/FeedbackSheet';
 import { useMoodFeedback } from '../../hooks/use-mood-feedback';
 import {
   PillButton,
   TopIconButton,
 } from '../../components/primitives/FigmaPrimitives';
-import IconHomeMenu from '../../assets/images/icon_home_menu.svg';
+import IconMenu from '../../assets/images/icon_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
 import IconFeedback from '../../assets/images/feedback.svg';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
@@ -74,7 +73,6 @@ import {
   repTempCFor,
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
-import { useAiReport } from '../../components/features/AiContentDisclosure';
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import {
@@ -153,9 +151,6 @@ export const HomeScreen = () => {
   const [tierViewedCount, setTierViewedCount] = useState(0);
   // Session counter — how many times the user deferred the refine gate.
   const refinementSkippedRef = useRef(0);
-  // True while the open Refine sheet was triggered by the after-6 gate (vs the
-  // manual "edit context" button) — drives the Skip affordance + copy.
-  const [refineGated, setRefineGated] = useState(false);
   const [saveStateByHash, setSaveStateByHash] = useState<
     Record<string, SaveState>
   >({});
@@ -193,7 +188,7 @@ export const HomeScreen = () => {
   const [hasCycled, setHasCycled] = useState(false);
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
   const [aiNoticeDismissed, setAiNoticeDismissed] = useState(false);
-  const handleReportAi = useAiReport('recommendation');
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
   // Persist the AI notice dismissal so the toast appears only the first time;
   // the floating feedback button remains as the ongoing affordance.
   useEffect(() => {
@@ -210,6 +205,11 @@ export const HomeScreen = () => {
     AsyncStorage.setItem(AI_NOTICE_DISMISSED_KEY, 'true').catch(() => {});
   }, []);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
+  // "You've explored most combinations" sheet — shown when the user reaches the
+  // end of the available outfits (pool depleted). `shownRef` keeps it to once
+  // per depletion episode so repeated end-swipes don't re-pop it.
+  const [limitSheetVisible, setLimitSheetVisible] = useState(false);
+  const limitSheetShownRef = useRef(false);
   const unfavoritedSwipeCountRef = useRef(0);
   const listOutfitsRef = useRef<OutfitSheet[]>([]);
   const saveStateByHashRef = useRef<Record<string, SaveState>>({});
@@ -257,11 +257,6 @@ export const HomeScreen = () => {
   useEffect(() => {
     activeIndexRef.current = activeIndex;
   }, [activeIndex]);
-
-  useEffect(() => {
-    AsyncStorage.removeItem(LEGACY_COACHMARK_STORAGE_KEY).catch(() => {});
-    AsyncStorage.removeItem('@auxi/coachmark/swipe-set').catch(() => {});
-  }, []);
 
   useEffect(() => {
     saveStateByHashRef.current = saveStateByHash;
@@ -376,6 +371,7 @@ export const HomeScreen = () => {
         activeIndexRef.current = 0;
         unfavoritedSwipeCountRef.current = 0;
         poolDepletedRef.current = false;
+        limitSheetShownRef.current = false;
         if (addedCount > 0) {
           setHasCycled(false);
           setIsWardrobeGap(false);
@@ -457,7 +453,6 @@ export const HomeScreen = () => {
   const resetRefineTier = useCallback(() => {
     tierViewedHashesRef.current.clear();
     setTierViewedCount(0);
-    setRefineGated(false);
   }, []);
 
   const onSubmitFeedback = useCallback(
@@ -470,6 +465,7 @@ export const HomeScreen = () => {
       resetV05Session();
       fetchGenerationRef.current += 1;
       poolDepletedRef.current = false;
+      limitSheetShownRef.current = false;
       isFirstLoadRef.current = true;
       requestRecommendation(
         {
@@ -495,6 +491,7 @@ export const HomeScreen = () => {
     resetV05Session();
     fetchGenerationRef.current += 1;
     poolDepletedRef.current = false;
+    limitSheetShownRef.current = false;
     isFirstLoadRef.current = true;
     requestRecommendation(
       {
@@ -552,7 +549,6 @@ export const HomeScreen = () => {
     if (tierViewedCount < REFINE_AFTER_OUTFITS) {
       return;
     }
-    setRefineGated(true);
     openRefine('viewed_threshold');
   }, [tierViewedCount, refineIsOpen, openRefine]);
 
@@ -987,14 +983,45 @@ export const HomeScreen = () => {
     });
   }, []);
 
+  // Surface the "explored most combinations" sheet once per depletion episode,
+  // unless the Refine sheet is already up.
+  const openLimitSheet = useCallback(() => {
+    if (limitSheetShownRef.current || refineIsOpen) {
+      return;
+    }
+    limitSheetShownRef.current = true;
+    setLimitSheetVisible(true);
+    track('outfit_limit_reached');
+  }, [refineIsOpen]);
+
   const advanceDeck = useCallback(() => {
     const next = activeIndexRef.current + 1;
     if (next < listOutfitsRef.current.length) {
       activeIndexRef.current = next;
       setActiveIndex(next);
+      ensureBuffer();
+      return;
+    }
+    // Already on the last card. If the backend has no more combinations for the
+    // current selections, inform the user instead of a dead-end swipe;
+    // otherwise keep buffering ahead.
+    if (poolDepletedRef.current) {
+      openLimitSheet();
+      return;
     }
     ensureBuffer();
-  }, [ensureBuffer]);
+  }, [ensureBuffer, openLimitSheet]);
+
+  const handleLimitRefine = useCallback(() => {
+    setLimitSheetVisible(false);
+    track('outfit_limit_refine_tapped');
+    openRefine('explore_limit');
+  }, [openRefine]);
+
+  const handleLimitKeepBrowsing = useCallback(() => {
+    setLimitSheetVisible(false);
+    track('outfit_limit_keep_browsing');
+  }, []);
 
   // Swipe RIGHT = step back to the previous suggestion. No favouriting here —
   // the heart button / "Wear this" own that — and the deck blocks this gesture
@@ -1074,6 +1101,7 @@ export const HomeScreen = () => {
       resetV05Session();
       fetchGenerationRef.current += 1;
       poolDepletedRef.current = false;
+      limitSheetShownRef.current = false;
       isFirstLoadRef.current = true;
       requestRecommendation(
         {
@@ -1103,7 +1131,10 @@ export const HomeScreen = () => {
         id: it.id,
         imageUrl: resolveItemImage(it) || it.image_url,
       }));
-    navigation.navigate('OutfitCanvas', items.length ? { items } : undefined);
+    navigation.navigate(
+      'OutfitCanvas',
+      items.length ? { items, entry: 'remix' } : { entry: 'remix' },
+    );
   }, [navigation, pinState.outfit]);
 
   const handleOpenItemDetail = useCallback(
@@ -1142,7 +1173,7 @@ export const HomeScreen = () => {
           accessibilityRole="button"
           accessibilityLabel={t('home.a11y_open_menu')}
           onPress={handleLeadingAction}
-          icon={<IconHomeMenu width={24} height={24} />}
+          icon={<IconMenu width={24} height={24} />}
           style={styles.headerIconButton}
         />
 
@@ -1312,7 +1343,6 @@ export const HomeScreen = () => {
               testID="home-action-row"
               onRemix={handleRemix}
               onRefine={() => {
-                setRefineGated(false);
                 refine.open('refine_button');
               }}
               dotCount={OUTFITS_PER_SET}
@@ -1404,15 +1434,16 @@ export const HomeScreen = () => {
         </View>
       ) : null}
 
-      {/* AI feedback affordance — 44px floating button, bottom-left of the
-          footer, Home only. Opens the same prefilled AI report. */}
+      {/* Feedback affordance — 44px floating button, bottom-left of the
+          footer, Home only. Opens the in-app Feedback bottom sheet. AI-result
+          feedback now lives on the try-on result (see OutfitPreview). */}
       {optionSets.length > 0 ? (
         <TouchableOpacity
-          testID="home-ai-feedback-fab"
+          testID="home-feedback-fab"
           accessibilityRole="button"
-          accessibilityLabel={t('aiDisclosure.report')}
+          accessibilityLabel={t('feedback.title')}
           activeOpacity={0.85}
-          onPress={handleReportAi}
+          onPress={() => setFeedbackVisible(true)}
           style={styles.aiFeedbackFab}
         >
           <IconFeedback
@@ -1443,9 +1474,13 @@ export const HomeScreen = () => {
         onChangeText={refine.onChangeText}
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
-        onSkip={refineGated ? refine.onSkip : undefined}
-        title={refineGated ? t('contextChips.refine_title') : undefined}
-        subtitle={refineGated ? t('contextChips.refine_subtitle') : undefined}
+        onSkip={refine.onSkip}
+      />
+
+      <OutfitLimitSheet
+        visible={limitSheetVisible}
+        onRefine={handleLimitRefine}
+        onKeepBrowsing={handleLimitKeepBrowsing}
       />
 
       <PinConfirmModal
@@ -1460,7 +1495,7 @@ export const HomeScreen = () => {
         onCancel={() => pinDispatch({ type: 'CANCEL_MODAL' })}
       />
 
-      <SwipeCoachMark variant="horizontal" enabled={optionSets.length > 0} />
+      <WelcomeDialog enabled={optionSets.length > 0} />
 
       <MoodFeedbackSheet {...moodSheetProps} />
 
@@ -1473,6 +1508,11 @@ export const HomeScreen = () => {
         onApply={applyTemperature}
         onSelect={handleTempSelect}
         onCancel={closeTempSheet}
+      />
+
+      <FeedbackSheet
+        visible={feedbackVisible}
+        onClose={() => setFeedbackVisible(false)}
       />
 
       {moodBannerText ? (

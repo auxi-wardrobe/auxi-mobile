@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   scrim: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(29,31,35,0.45)',
+    backgroundColor: role.scrim, // rgba(0,0,0,0.45) — canonical scrim (PR #138)
   },
   anchor: {
     ...StyleSheet.absoluteFillObject,

@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
         marginVertical: theme.spacing.xs,
     },
     primaryButton: {
-        backgroundColor: theme.colors.primary,
+        backgroundColor: theme.colors.figmaPrimaryButtonBg,
     },
     secondaryButton: {
         backgroundColor: theme.colors.secondary,
@@ -123,7 +123,8 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
     },
     primaryText: {
-        color: theme.colors.white,
+        color: theme.colors.figmaPrimaryButtonText,
+        fontWeight: theme.typography.weights.medium as any,
     },
     secondaryText: {
         color: theme.colors.white,

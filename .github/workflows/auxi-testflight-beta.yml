@@ -21,12 +21,26 @@
 #   distribution cert via `apple-actions/import-codesign-certs@v3` before the
 #   build step and store it + its password as secrets.
 #
-# Trigger: manual only. A TestFlight upload should be deliberate, and the lane
-# creates a `v<version>-build<n>` git tag each run.
+# Trigger: push a `release-*` tag (deliberate auto), or run manually.
+#   ship → git tag release-1.0.5 && git push --follow-tags
+# ⚠️ The lane itself creates a `v<version>-build<n>` tag every run. The trigger
+# pattern is deliberately `release-*` (NOT `v*`) so the build's own tag can never
+# re-trigger this workflow — that would be an infinite loop. (Tags pushed by the
+# default GITHUB_TOKEN also don't re-trigger workflows, but distinct patterns
+# make the safety explicit.)
 
 name: auxi → TestFlight (beta)
 
 on:
+  schedule:
+    # Nightly TestFlight build for internal testers — 06:00 Asia/Saigon (UTC+7)
+    # daily = 23:00 UTC the previous day. GitHub may delay cron under load.
+    # NOTE: scheduled runs ALWAYS use the workflow file on the default branch
+    # (main). macOS runners bill ~26 min × the 10× multiplier per run, every day.
+    - cron: '0 23 * * *'
+  push:
+    tags:
+      - 'release-*'
   workflow_dispatch:
 
 concurrency:
@@ -106,6 +120,14 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           # gym can time out reading build settings on a cold runner; bump it.
           FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: "180"
+          # Auto-chain (scripts/post-testflight-release.sh): Slack notify + GitHub
+          # Release. A clean CI runner has no wardrobe-backend/.env, so the Slack
+          # creds must come from secrets; `gh release create` needs GH_TOKEN.
+          # The script is fire-and-forget (always exits 0) — a notify failure
+          # never fails a build that's already on Apple's servers.
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_DEFAULT_CHANNEL: ${{ secrets.SLACK_DEFAULT_CHANNEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bundle exec fastlane beta
 
       - name: Push release tag

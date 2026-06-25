@@ -39,6 +39,7 @@ import Toast from 'react-native-toast-message';
 
 import { theme } from '../../theme/theme';
 import { MacgieLoader } from '../../components/macgie';
+import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import type { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -91,16 +92,22 @@ const AppleGlyph = () => (
   </Svg>
 );
 
-const EnvelopeGlyph = () => (
+// `color` defaults to the secondary-button icon tint (color/primary/700) and is
+// injected by PillButton, so the envelope stays on-spec via the shared button.
+const EnvelopeGlyph = ({
+  color = theme.colors.iconPrimary700,
+}: {
+  color?: string;
+}) => (
   <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
     <Path
       d="M3 6.5A2.5 2.5 0 0 1 5.5 4h13A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-11Z"
-      stroke={theme.colors.uacTextBase}
+      stroke={color}
       strokeWidth={1.5}
     />
     <Path
       d="m4 7 7.4 5.55a1 1 0 0 0 1.2 0L20 7"
-      stroke={theme.colors.uacTextBase}
+      stroke={color}
       strokeWidth={1.5}
       strokeLinecap="round"
     />
@@ -393,25 +400,17 @@ export const WelcomeScreen = () => {
               <View style={styles.orDividerLine} />
             </View>
 
-            {/* 3c. Email entry */}
-            <Pressable
+            {/* 3c. Email entry — canonical secondary button. */}
+            <PillButton
               testID="welcome-cta-email"
-              accessibilityRole="button"
               accessibilityLabel={t('uac.welcome.email_cta')}
-              accessibilityState={{ disabled: isBusy }}
+              title={t('uac.welcome.email_cta')}
+              variant="outline"
               disabled={isBusy}
               onPress={onPressEmail}
-              style={({ pressed }) => [
-                styles.buttonBase,
-                styles.buttonSecondary,
-                (pressed || isBusy) && styles.pressed,
-              ]}
-            >
-              <Text style={styles.buttonLabelDark}>
-                {t('uac.welcome.email_cta')}
-              </Text>
-              <EnvelopeGlyph />
-            </Pressable>
+              style={styles.buttonBase}
+              trailing={<EnvelopeGlyph />}
+            />
           </View>
 
           {/* Legal footer — the "Terms of Service" + "Privacy Policy"
@@ -510,7 +509,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.uacDimension8,
   },
   buttonPrimary: {
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   buttonSecondary: {
     borderWidth: 1.5,
@@ -523,7 +522,7 @@ const styles = StyleSheet.create({
   },
   buttonLabelLight: {
     ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextPrimaryBase,
+    color: theme.colors.figmaPrimaryButtonText,
   },
   // "or" divider: line · label · line (Figma Frame 2135, M3 dividers).
   orDivider: {

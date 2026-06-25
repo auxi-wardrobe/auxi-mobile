@@ -56,15 +56,22 @@ platform :ios do
 
     increment_build_number(xcodeproj: PROJECT, build_number: new_build)
 
+    # The ARCHIVE (xcodebuild archive) needs -allowProvisioningUpdates + the ASC
+    # API key: a clean CI runner has NO provisioning profiles cached, so the
+    # archive can't sign and dies with "No profiles for 'com.auxi2026.app' were
+    # found ... pass -allowProvisioningUpdates" (a local Mac with cached profiles
+    # archived fine, which is why this only bit on CI).
+    #
+    # Pass these ONLY via `xcargs:` — gym appends `xcargs` to BOTH the archive AND
+    # the export commands. Setting `export_xcargs:` to the same string makes the
+    # export command carry the flags twice → "xcodebuild: error: option
+    # '-authenticationKeyPath' may only be provided once". So xcargs alone covers
+    # both steps. (gym has no `api_key:` option; auth rides the -authenticationKey*
+    # flags.)
+    signing_xcargs = "-allowProvisioningUpdates -authenticationKeyPath #{key_path} -authenticationKeyID #{key_id} -authenticationKeyIssuerID #{issuer_id}"
+
     build_app(
-      # The export step (-exportArchive) authenticates to Apple with the ASC API
-      # key and allows provisioning updates, so Xcode can use cloud-managed
-      # distribution signing. This machine only has "Apple Development" certs
-      # (no local Apple Distribution cert), so without these flags gym fails
-      # instantly at export with "no provisioning profile mapping was provided".
-      # Note: build_app/gym has no `api_key:` option — auth is passed to the
-      # export via export_xcargs (xcodebuild's -authenticationKey* flags).
-      export_xcargs: "-allowProvisioningUpdates -authenticationKeyPath #{key_path} -authenticationKeyID #{key_id} -authenticationKeyIssuerID #{issuer_id}",
+      xcargs: signing_xcargs,
       workspace: WORKSPACE,
       scheme: SCHEME,
       configuration: "Release",

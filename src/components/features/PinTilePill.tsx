@@ -120,9 +120,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: theme.spacing.xs,
+    height: 24, // chip size SM
     paddingHorizontal: theme.spacing.m - 4, // 12 — Figma pill horizontal pad
-    paddingVertical: 7,
     borderRadius: theme.borderRadius.round,
     // Soft floating shadow so the pill lifts off the garment.
     ...theme.ds.shadow.floatingButton,

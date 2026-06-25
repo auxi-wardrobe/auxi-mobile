@@ -383,6 +383,14 @@
       "a11y_open_favourites_new": "Ouvrir les favoris, nouveaux looks enregistrés",
       "clear": "Effacer",
       "seen_all_hint": "Vous avez tout vu — les suggestions se répètent",
+      "explore_limit_title": "Vous avez exploré la plupart des combinaisons",
+      "explore_limit_body": "Nous avons montré presque toutes les tenues disponibles avec vos sélections actuelles.",
+      "explore_limit_tips_intro": "Pour découvrir plus de looks :",
+      "explore_limit_tip_occasion": "Essayez une autre occasion",
+      "explore_limit_tip_unpin": "Désépinglez un ou plusieurs articles",
+      "explore_limit_tip_wardrobe": "Ajoutez plus de vêtements à votre garde-robe",
+      "explore_limit_refine": "Affiner les suggestions",
+      "explore_limit_keep_browsing": "Continuer à parcourir",
       "skip_label": "Suivant",
       "back_label": "Retour",
       "saved_to_favourite": "Enregistré dans les favoris",
@@ -675,6 +683,11 @@
       "report": "Signaler",
       "report_subject": "Signaler du contenu généré par IA",
       "report_body": "Je souhaite signaler un problème avec un résultat généré par IA dans l'application. Veuillez décrire ce qui n'a pas fonctionné :"
+    },
+    "welcome": {
+      "title": "Bienvenue sur Macgie",
+      "body": "Ces premières tenues proviennent de notre garde-robe de départ.\nAjoutez vos propres vêtements pour obtenir des recommandations adaptées à ce que vous possédez vraiment.",
+      "cta": "Compris"
     }
   }
 }

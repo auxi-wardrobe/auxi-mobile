@@ -14,7 +14,15 @@
  */
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, radius, role, shadow, space, type } from '../m-tokens';
+import {
+  color,
+  radius,
+  role,
+  shadow,
+  sheetCardSpec,
+  space,
+  type,
+} from '../m-tokens';
 import { useOverlayProgress } from './useOverlayProgress';
 
 const SHEET_TRAVEL = 320;
@@ -53,7 +61,11 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
         accessibilityLabel="Dismiss"
       >
         <Animated.View
-          style={[styles.sheet, shadow.sheet, { transform: [{ translateY }] }]}
+          style={[
+            styles.sheet,
+            shadow.sheetCard,
+            { transform: [{ translateY }] },
+          ]}
         >
           <View style={styles.grab} />
           {children}
@@ -198,15 +210,18 @@ const styles = StyleSheet.create({
   scrim: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(29,31,35,0.45)',
+    backgroundColor: role.scrim, // rgba(0,0,0,0.45) — PR #138 / Figma scrim
   },
   sheetAnchor: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
+  // Floating-card sheet — PR #138 house pattern (OutfitLimitSheet.sheet):
+  // all-corner radius 16, padding 16 both axes, 8px gutter + 8px bottom margin.
   sheet: {
     backgroundColor: role.surface2,
-    borderTopLeftRadius: radius['3xl'],
-    borderTopRightRadius: radius['3xl'],
-    paddingTop: 10,
-    paddingBottom: space.s3,
+    borderRadius: sheetCardSpec.radius, // 16, all corners
+    paddingHorizontal: sheetCardSpec.pad, // 16
+    paddingVertical: sheetCardSpec.pad, // 16
+    marginHorizontal: sheetCardSpec.gutter, // 8 each side
+    marginBottom: sheetCardSpec.marginBottom, // 8 (=== theme.spacing.s)
     overflow: 'hidden',
   },
   grab: {

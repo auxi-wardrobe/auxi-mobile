@@ -76,12 +76,13 @@ const styles = StyleSheet.create({
   retryButton: {
     paddingHorizontal: theme.spacing.m,
     paddingVertical: theme.spacing.xs,
-    borderRadius: 999,
-    backgroundColor: theme.colors.figmaAction,
+    borderRadius: 16,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   retryLabel: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaSurface,
+    fontFamily: 'Poppins-Medium',
+    color: theme.colors.figmaPrimaryButtonText,
   },
 });
 

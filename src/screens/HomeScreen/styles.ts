@@ -33,11 +33,11 @@ export const styles = StyleSheet.create({
   headerIconButton: {
     width: 44,
     height: 44,
-    borderRadius: 16,
+    borderRadius: theme.borderRadius.m,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.figmaSurface,
-    ...theme.ds.shadow.floatingButton,
+    backgroundColor: theme.colors.white,
+    ...theme.ds.shadow.headerIcon,
   },
   // AI feedback affordance — 44px floating button, bottom-left of the footer,
   // vertically centred against the view-toggle footer.
@@ -243,13 +243,18 @@ export const styles = StyleSheet.create({
     position: 'absolute',
     top: theme.spacing.s,
     left: theme.spacing.s,
+    height: 24, // chip size SM
     paddingHorizontal: theme.spacing.s,
-    paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaCardTag,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   yourPieceBadgeText: {
+    // Chip size SM (24px height) → 10px font per chip sizing spec.
     ...theme.typography.aliases.interSemiboldXs,
+    fontSize: 10,
+    lineHeight: 12,
     color: theme.colors.uacTextPrimaryBase,
   },
   loadingPillRow: {
@@ -309,7 +314,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardTagPill: {
-    height: 19,
+    height: 24, // chip size SM
     paddingHorizontal: 12,
     borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaCardTag,
@@ -342,7 +347,7 @@ export const styles = StyleSheet.create({
     borderColor: theme.colors.uacBorderBase,
   },
   primaryActionLabel: {
-    color: theme.colors.figmaCtaLabel,
+    color: theme.colors.uacTextBase, // secondary button label #1D1F23
   },
   saveErrorText: {
     ...theme.typography.aliases.manropeCaption,
@@ -466,11 +471,12 @@ export const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.m,
     paddingVertical: theme.spacing.xs,
     borderRadius: 16,
-    backgroundColor: theme.colors.figmaAction,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   pinGuestCtaText: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.white,
+    fontFamily: 'Poppins-Medium',
+    color: theme.colors.figmaPrimaryButtonText,
   },
   moodBanner: {
     position: 'absolute',

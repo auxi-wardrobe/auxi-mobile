@@ -50,6 +50,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
+import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useRegisterMutation } from '../../hooks/auth/useAuthMutations';
@@ -70,18 +71,6 @@ const ChevronLeftGlyph = () => (
       d="M15 6 9 12l6 6"
       stroke={theme.colors.uacTextBase}
       strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-const ChevronRightGlyph = ({ color }: { color: string }) => (
-  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M9 6l6 6-6 6"
-      stroke={color}
-      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
     />
@@ -235,7 +224,7 @@ export const PasswordCreationScreen = () => {
   const submitDisabled = !allMet || register.isPending;
   const submitIconColor = submitDisabled
     ? theme.colors.uacTextSubtle200
-    : theme.colors.uacTextPrimaryBase;
+    : theme.colors.figmaPrimaryButtonIcon;
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -319,7 +308,11 @@ export const PasswordCreationScreen = () => {
                 pressed && !submitDisabled && styles.pressed,
               ]}
             >
-              <ChevronRightGlyph color={submitIconColor} />
+              <IconChevronRight
+                width={20}
+                height={20}
+                color={submitIconColor}
+              />
             </Pressable>
           </View>
 
@@ -421,7 +414,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
     alignItems: 'center',
     justifyContent: 'center',
   },

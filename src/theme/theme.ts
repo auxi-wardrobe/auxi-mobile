@@ -27,6 +27,7 @@ export const theme = {
     figmaCaptionPillBg: '#eee6df', // color/primary/100 — caption pill bg (Frame 2036)
     figmaInsightPillBg: '#e0d2c4', // color/primary/200 — insight icon pill bg (Frame 2037)
     figmaCtaLabel: '#262421', // border/primary/bold_600 — "Wear this" CTA label
+    figmaPrimary600: '#1C1A19', // color/primary/600 — refine sheet "Skip for now" text button
     figmaFooterActivePill: '#eee6df', // background/primary/subtle_200 — footer active-tab pill
     figmaTooltipBg: '#322f35', // Schemes/Inverse Surface — Plain Tooltip bg
     figmaTooltipText: '#f5eff7', // Schemes/Inverse On Surface — Plain Tooltip text
@@ -48,6 +49,17 @@ export const theme = {
     figmaDividerSubtle: '#f2f4f7',
     figmaAction: '#272A32',
     figmaButton: '#272A32',
+    // Canonical primary (solid) button tokens — the ONE source of truth for
+    // every solid-dark primary CTA. Fill = color/neutral/800, label =
+    // color/primary/100, paired with the `poppinsButton` (Poppins-Medium)
+    // alias and a 16px radius. Don't reintroduce figmaAction/figmaButton/
+    // figmaButtonDark or white as a primary-button fill/label.
+    figmaPrimaryButtonBg: '#1D1F23', // color/neutral/800 — primary button fill
+    figmaPrimaryButtonText: '#EFE9E3', // color/primary/100 — primary button label
+    // Primary ICON button: same fill as the primary button, but the icon uses
+    // color/primary/50 (NOT the /100 text tone). For icon-only CTAs (submit
+    // chevrons / arrows).
+    figmaPrimaryButtonIcon: '#F2EFEC', // color/primary/50 — primary icon-button icon
     figmaRed: '#CC4C3E',
     figmaIconSurface: '#E3E3EC',
     figmaDestructive: '#bb251a', // red for Cancel/delete actions — aliased by uacTextDangerBase below
@@ -142,6 +154,10 @@ export const theme = {
     // the tile pin badge. Was an inline literal in `pinBadge`; promoted to a
     // token so the loading-state pin reuses the same value (DRY).
     figmaOverlayLight30: 'rgba(255, 255, 255, 0.3)',
+    // color/primary/700 (#0C0B0B) — icon tint for the secondary button
+    // (bordered, no-fill). Distinct from figmaTextDark (#070707, the text label
+    // tone); per design the secondary-button icon is one step warmer/darker.
+    iconPrimary700: '#0C0B0B',
   },
   spacing: {
     xs: 4,
@@ -406,6 +422,7 @@ export const theme = {
       // Ink & neutrals
       ink: '#1d1f23', // primary text / primary button (alias: uacBackgroundBase, uacBorderBase, uacTextBase)
       black: '#070707', // control fills / radio dot (alias: figmaTextDark)
+      primary700: '#0c0b0b', // color/primary/700 — secondary-button icon tint (alias: iconPrimary700)
       slate: '#272a32', // deep slate (alias: figmaText, figmaButton)
       onVariant: '#49454f', // MD3 on-surface-variant (alias: uacOnSurfaceVariant, figmaTextMuted)
       warm700: '#5b5550', // warm gray stroke (alias: figmaChipBg)
@@ -461,6 +478,17 @@ export const theme = {
         shadowOpacity: 0.12,
         shadowRadius: 12,
         elevation: 4,
+      },
+      // Header icon chips (menu / back / action buttons, left or right).
+      // Figma drop-shadow(5.921px 11.842px 23.684px rgba(130,113,55,0.10)) —
+      // tint = background/overlay/dark/10 (#827137 @10%). Paired with a 44×44
+      // white (#FFF) surface at radius 8 on every TopIconButton.
+      headerIcon: {
+        shadowColor: '#827137',
+        shadowOffset: { width: 5.921, height: 11.842 },
+        shadowOpacity: 0.1,
+        shadowRadius: 23.684,
+        elevation: 6,
       },
       dialog: {
         shadowColor: '#000000',

@@ -29,6 +29,7 @@ import { Header } from '../components/layout/Header';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
 import { MBottomSheet, MButton } from '../components/design-system/lib';
+import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { useSidebar } from '../context/SidebarContext';
 import {
   wardrobeService,
@@ -596,14 +597,13 @@ export const WardrobeScreen = () => {
               {t('wardrobe.list.error_body')}
             </Text>
             <View style={styles.errorRetryWrap}>
-              <MButton
-                variant="secondary"
+              <PillButton
+                title={t('common.retry')}
+                variant="outline"
                 onPress={handleRetryLoad}
                 testID="wardrobe-error-retry"
                 accessibilityLabel={t('common.a11y_retry_load')}
-              >
-                {t('common.retry')}
-              </MButton>
+              />
             </View>
           </View>
         ) : hasItems ? (
@@ -796,14 +796,15 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaTextPrimary,
   },
   plusButton: {
-    width: 45,
-    height: 45,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerIconButton: {
-    backgroundColor: theme.colors.figmaSurface,
-    borderRadius: 16,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.m,
+    ...theme.ds.shadow.headerIcon,
   },
   scrollContent: {
     paddingTop: 12,
@@ -849,8 +850,8 @@ const styles = StyleSheet.create({
   // F5: reuse the existing token instead of re-inlining the rgba duplicate
   // (figmaCardTag === rgba(18,18,18,0.75), theme.ts:23). DRY.
   tileBadge: {
+    height: 24, // chip size SM
     paddingHorizontal: 12,
-    paddingVertical: 3,
     borderRadius: 9999,
     backgroundColor: theme.colors.figmaCardTag,
     justifyContent: 'center',

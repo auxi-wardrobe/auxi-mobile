@@ -26,9 +26,12 @@ import {
 import { seedCanvasLayout } from '../components/features/collage-seed-layout';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { CategoryTabs } from '../components/features/CategoryTabs';
+import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { getImageUrl } from '../utils/url';
+import { useSidebar } from '../context/SidebarContext';
 import { track } from '../services/analytics';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
+import IconMenu from '../assets/images/icon_menu.svg';
 import IconCanvasUndo from '../assets/images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../assets/images/canvas-icons/redo.svg';
 import IconCanvasAdd from '../assets/images/canvas-icons/add.svg';
@@ -314,6 +317,10 @@ const ToolbarBtn = ({
 export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<RouteProp<AppStackParamList, 'OutfitCanvas'>>();
   const { t } = useTranslation();
+  const { open: openSidebar } = useSidebar();
+  // Entered via Home's Remix button → show a back chevron (goes back to Home).
+  // Entered from the sidebar drawer → show the hamburger that re-opens it.
+  const fromRemix = route.params?.entry === 'remix';
   // Seed from the real outfit passed by Home's Remix button, reusing the shared
   // collage layout so pieces land in the SAME overlapping positions/sizes the
   // user just saw in Home's collage view (scaled to this canvas width). Fall
@@ -549,14 +556,25 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
       <SafeAreaView style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
-          <Pressable
-            testID="canvas-header-back"
-            onPress={() => navigation.goBack()}
-            accessibilityLabel={t('common.a11y_go_back')}
-            style={styles.headerIconBtn}
-          >
-            <IconChevronLeft width={24} height={24} />
-          </Pressable>
+          {fromRemix ? (
+            <Pressable
+              testID="canvas-header-back"
+              onPress={() => navigation.goBack()}
+              accessibilityLabel={t('common.a11y_go_back')}
+              style={styles.headerIconBtn}
+            >
+              <IconChevronLeft width={24} height={24} />
+            </Pressable>
+          ) : (
+            <Pressable
+              testID="canvas-header-menu"
+              onPress={openSidebar}
+              accessibilityLabel={t('home.a11y_open_menu')}
+              style={styles.headerIconBtn}
+            >
+              <IconMenu width={24} height={24} />
+            </Pressable>
+          )}
 
           <View style={styles.headerActions}>
             <Pressable
@@ -704,19 +722,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               </ScrollView>
             </View>
 
-            {/* Save button */}
+            {/* Save button — canonical secondary button. */}
             <View style={styles.saveRow}>
-              <Pressable
+              <PillButton
                 testID="canvas-save"
                 onPress={handleSave}
                 accessibilityLabel={t('outfitCanvas.a11y_save_outfit')}
-                style={({ pressed }) => [
-                  styles.saveBtn,
-                  pressed && styles.saveBtnPressed,
-                ]}
-              >
-                <Text style={styles.saveBtnLabel}>{t('common.save')}</Text>
-              </Pressable>
+                title={t('common.save')}
+                variant="outline"
+              />
             </View>
           </View>
         </Pressable>
@@ -748,11 +762,13 @@ const styles = StyleSheet.create({
     height: 56,
   },
   headerIconBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.borderRadius.m,
+    backgroundColor: theme.colors.white,
+    ...theme.ds.shadow.headerIcon,
   },
   headerIconBtnDisabled: {
     opacity: 0.5,
@@ -777,18 +793,6 @@ const styles = StyleSheet.create({
   // 12px horizontal inset; gap handled by topGroup).
   addRow: {
     flexDirection: 'row',
-  },
-  addItemBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: theme.borderRadius.round,
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacBorderBase,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addItemBtnPressed: {
-    backgroundColor: theme.colors.figmaCardSurface,
   },
   // Toolbar
   toolbar: {
@@ -871,22 +875,6 @@ const styles = StyleSheet.create({
   saveRow: {
     paddingBottom: theme.spacing.m,
     paddingTop: theme.spacing.s,
-  },
-  saveBtn: {
-    backgroundColor: theme.colors.transparent,
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacBorderBase,
-    borderRadius: theme.borderRadius.l,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveBtnPressed: {
-    backgroundColor: theme.colors.figmaCardSurface,
-  },
-  saveBtnLabel: {
-    ...theme.typography.aliases.poppinsButton, // Poppins Medium 16/24
-    color: theme.colors.figmaCtaLabel,
   },
 });
 
@@ -973,8 +961,8 @@ const pickerStyles = StyleSheet.create({
     borderTopColor: theme.colors.figmaDivider,
   },
   confirmBtn: {
-    backgroundColor: theme.colors.figmaButton,
-    borderRadius: theme.borderRadius.round,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
+    borderRadius: 16,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
@@ -983,9 +971,9 @@ const pickerStyles = StyleSheet.create({
     opacity: 0.5,
   },
   confirmBtnLabel: {
-    fontFamily: 'Poppins-SemiBold',
+    fontFamily: 'Poppins-Medium',
     fontSize: 16,
-    color: theme.colors.white,
+    color: theme.colors.figmaPrimaryButtonText,
     letterSpacing: 0.15,
   },
 });

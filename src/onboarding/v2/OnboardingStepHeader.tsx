@@ -62,9 +62,10 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   backButton: {
-    backgroundColor: theme.colors.figmaSurface,
-    borderRadius: theme.borderRadius.figmaTile,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.m,
     marginBottom: theme.spacing.l,
+    ...theme.ds.shadow.headerIcon,
   },
   progressRow: {
     flexDirection: 'row',

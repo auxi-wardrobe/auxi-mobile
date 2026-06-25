@@ -1,10 +1,21 @@
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  Image,
+  LayoutChangeEvent,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { resolveItemImage } from '../../utils/url';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
+import {
+  COLLAGE_ASPECT,
+  seedCanvasLayout,
+} from '../../components/features/collage-seed-layout';
 import { MOOD_CHIPS } from '../../components/features/mood-chips';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
 import IconSparkle from '../../assets/images/icon_sparkle.svg';
@@ -103,6 +114,88 @@ const Tile: React.FC<{
   );
 };
 
+// Collage view for a saved outfit: the SAME overlapping, hand-placed
+// arrangement as the Home collage view, not a denser grid. Reuses the shared,
+// `Item`-decoupled `seedCanvasLayout` (the seed table lifted from Figma section
+// 2850:13589) so the favourite and Home collages render identically. Unlike
+// Home's drag-to-play surface this is a static review render — tiles stay
+// tappable (open ItemDetail) but aren't draggable, which also avoids fighting
+// the list's snap-scroll. Rarity badges are omitted to mirror the Home collage.
+//
+// The surface sizes to its CONTAINER via `onLayout` (full content width, locked
+// 3:4 via aspectRatio) — NOT a module-level `Dimensions.get()` read, which is
+// unreliable on react-native-web (can be 0 at module-eval, collapsing the
+// surface) and ignores container width / resize. Items are seeded from the
+// measured width and re-seeded when it changes.
+const CollageView: React.FC<{
+  items: FavouriteItem[];
+  testIDPrefix: string;
+  onItemPress?: (itemId: string) => void;
+}> = ({ items, testIDPrefix, onItemPress }) => {
+  const { t } = useTranslation();
+  const [surfaceWidth, setSurfaceWidth] = useState(0);
+
+  const seeded = useMemo(
+    () =>
+      surfaceWidth > 0
+        ? seedCanvasLayout(
+            items.map(item => ({
+              id: item.id,
+              imageUri: resolveItemImage(item) || '',
+            })),
+            surfaceWidth,
+          )
+        : [],
+    [items, surfaceWidth],
+  );
+
+  const handleLayout = (e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    // Re-seed only on a real width change (onLayout can fire repeatedly).
+    setSurfaceWidth(prev => (Math.abs(prev - w) > 0.5 ? w : prev));
+  };
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <View
+      style={styles.collageSurface}
+      testID={`${testIDPrefix}-collage`}
+      onLayout={handleLayout}
+    >
+      {seeded.map(node => (
+        <TouchableOpacity
+          key={node.id}
+          testID={`${testIDPrefix}-tile-${node.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={t('favourite.view_item_a11y')}
+          activeOpacity={0.86}
+          disabled={!onItemPress}
+          onPress={onItemPress ? () => onItemPress(node.id) : undefined}
+          style={[
+            styles.collageItem,
+            {
+              left: node.x,
+              top: node.y,
+              width: node.width,
+              height: node.height,
+              zIndex: node.zIndex,
+            },
+          ]}
+        >
+          <Image
+            source={node.imageSource}
+            style={styles.collageImage}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+};
+
 export const FavouriteOutfitCard: React.FC<Props> = ({
   favourite,
   view,
@@ -125,14 +218,13 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
   const firstMoodId = favourite.mood_tags?.[0];
   const moodTagLabel = firstMoodId ? moodLabel(firstMoodId, t) : null;
 
-  // Chunk items into rows of 2 (grid) or 3 (collage). Collage isn't separately
-  // specced for the favourite tile (extraction Open-Q), so it reuses the same
-  // 3:4 tiles in a denser flow — matching the Home footer's documented
-  // pending-alt-view behaviour.
-  const perRow = view === 'collage' ? 3 : 2;
+  // Grid view chunks items into rows of 2 fixed 3:4 tiles. Collage view renders
+  // the overlapping arrangement instead (see `CollageView` below), matching the
+  // Home collage view — the favourite collage is no longer a denser grid.
+  const PER_ROW = 2;
   const rows: FavouriteItem[][] = [];
-  for (let i = 0; i < items.length; i += perRow) {
-    rows.push(items.slice(i, i + perRow));
+  for (let i = 0; i < items.length; i += PER_ROW) {
+    rows.push(items.slice(i, i + PER_ROW));
   }
 
   return (
@@ -169,30 +261,38 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
         </View>
       ) : null}
 
-      <View style={styles.grid}>
-        {rows.map((row, rowIndex) => (
-          <View key={`row-${favourite.id}-${rowIndex}`} style={styles.row}>
-            {row.map(item => (
-              <Tile
-                key={`${favourite.id}-${item.id}`}
-                item={item}
-                testIDPrefix={testIDPrefix}
-                onItemPress={onItemPress}
-              />
-            ))}
-            {/* Pad the final row so a lone tile keeps its column width
-                instead of stretching full-bleed. */}
-            {row.length < perRow
-              ? Array.from({ length: perRow - row.length }).map((_, i) => (
-                  <View
-                    key={`pad-${favourite.id}-${rowIndex}-${i}`}
-                    style={styles.tileSpacer}
-                  />
-                ))
-              : null}
-          </View>
-        ))}
-      </View>
+      {view === 'collage' ? (
+        <CollageView
+          items={items}
+          testIDPrefix={testIDPrefix}
+          onItemPress={onItemPress}
+        />
+      ) : (
+        <View style={styles.grid}>
+          {rows.map((row, rowIndex) => (
+            <View key={`row-${favourite.id}-${rowIndex}`} style={styles.row}>
+              {row.map(item => (
+                <Tile
+                  key={`${favourite.id}-${item.id}`}
+                  item={item}
+                  testIDPrefix={testIDPrefix}
+                  onItemPress={onItemPress}
+                />
+              ))}
+              {/* Pad the final row so a lone tile keeps its column width
+                  instead of stretching full-bleed. */}
+              {row.length < PER_ROW
+                ? Array.from({ length: PER_ROW - row.length }).map((_, i) => (
+                    <View
+                      key={`pad-${favourite.id}-${rowIndex}-${i}`}
+                      style={styles.tileSpacer}
+                    />
+                  ))
+                : null}
+            </View>
+          ))}
+        </View>
+      )}
 
       <View style={styles.actionRow}>
         <TouchableOpacity
@@ -284,6 +384,25 @@ const styles = StyleSheet.create({
   grid: {
     gap: theme.spacing.xs,
   },
+  // Collage surface — mirrors `OutfitCanvasSurface`: cream tile, 12px radius,
+  // overflow hidden so items hand-placed to bleed past the edge are clipped
+  // (matching the Home collage view). Full container width with a locked 3:4
+  // aspect (aspectRatio = width/height = 1 / COLLAGE_ASPECT) so it sizes from
+  // layout, not a module-level Dimensions read.
+  collageSurface: {
+    width: '100%',
+    aspectRatio: 1 / COLLAGE_ASPECT,
+    backgroundColor: theme.colors.figmaCardSurface,
+    borderRadius: theme.borderRadius.figmaTile,
+    overflow: 'hidden',
+  },
+  collageItem: {
+    position: 'absolute',
+  },
+  collageImage: {
+    width: '100%',
+    height: '100%',
+  },
   row: {
     flexDirection: 'row',
     gap: theme.spacing.xs,
@@ -316,7 +435,7 @@ const styles = StyleSheet.create({
     bottom: 7,
     minWidth: 59,
     paddingHorizontal: theme.spacing.uacDimension12,
-    height: 15,
+    height: 24, // chip size SM
     borderRadius: theme.borderRadius.m,
     backgroundColor: theme.colors.figmaCardTag,
     alignItems: 'center',

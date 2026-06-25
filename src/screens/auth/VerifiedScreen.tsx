@@ -137,13 +137,13 @@ const styles = StyleSheet.create({
   ctaBtn: {
     height: theme.spacing.uacButtonHeight,
     borderRadius: theme.borderRadius.uacButtonCta,
-    backgroundColor: theme.colors.uacBackgroundBase,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaLabel: {
     ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextPrimaryBase,
+    color: theme.colors.figmaPrimaryButtonText,
   },
   pressed: {
     opacity: 0.7,

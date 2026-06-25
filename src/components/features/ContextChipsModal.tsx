@@ -250,7 +250,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
               disabled={isSubmitting}
               onPress={onSkip ?? onCancel}
             >
-              <Text style={styles.cancelText}>
+              <Text style={onSkip ? styles.skipText : styles.cancelText}>
                 {onSkip ? t('contextChips.skip') : t('common.cancel')}
               </Text>
             </TouchableOpacity>
@@ -348,7 +348,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   chipText: {
+    // Chip size M (44px height) → 14px font per chip sizing spec.
     ...theme.typography.aliases.archivoBody,
+    fontSize: 14,
+    lineHeight: 20,
     color: theme.colors.figmaText,
   },
   selectedChipText: {
@@ -373,6 +376,11 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.archivoBody,
     color: theme.colors.figmaRed,
   },
+  // "Skip for now" on the unified refine sheet — text button, color/primary/600.
+  skipText: {
+    ...theme.typography.aliases.archivoBody,
+    color: theme.colors.figmaPrimary600,
+  },
   confirmButton: {
     minWidth: 124,
     height: 56,
@@ -380,7 +388,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.figmaAction,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   confirmButtonDisabled: {
     backgroundColor: '#EEF1F6',
@@ -388,8 +396,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.figmaDivider,
   },
   confirmText: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.white,
+    ...theme.typography.aliases.poppinsButton,
+    color: theme.colors.figmaPrimaryButtonText,
   },
   confirmTextDisabled: {
     color: '#B4BBC6',
