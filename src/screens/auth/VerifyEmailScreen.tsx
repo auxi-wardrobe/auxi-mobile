@@ -40,6 +40,8 @@ import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
 import { theme } from '../../theme/theme';
+import { MButton } from '../../components/design-system/lib';
+import { MacgieLogo } from '../../components/macgie';
 import { useAuth } from '../../context/AuthContext';
 import { useResendVerificationMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
@@ -185,11 +187,12 @@ export const VerifyEmailScreen = () => {
       </View>
 
       <View style={styles.body}>
-        {/* Brand mark placeholder — same Group42 asset as Welcome.
-            For batch B we render a sized box so layout matches Figma;
-            real asset import lands when batch-D consolidates the
-            shared logo component. */}
-        <View style={styles.heroIllustration} testID="verify-hero-mark" />
+        {/* Brand mascot — Figma "Macgie Animate 2" (103×126); MacgieLogo is the
+            image-semantics, Reduce-Motion-aware variant. Replaces the old gray
+            placeholder box (Figma node 3910:23074). */}
+        <View style={styles.heroIllustration} testID="verify-hero-mark">
+          <MacgieLogo size={126} testID="verify-hero-macgie" />
+        </View>
 
         <Text style={styles.title} testID="verify-title">
           {t('uac.verify_email.title')}
@@ -205,42 +208,29 @@ export const VerifyEmailScreen = () => {
           {t('uac.verify_email.body_line_c')}
         </Text>
 
-        {/* Button stack */}
+        {/* Button stack — DS primitives (Figma Primary/Enable + Secondary). */}
         <View style={styles.buttonStack}>
-          <Pressable
+          <MButton
             testID="verify-open-mail-button"
-            accessibilityRole="button"
             accessibilityLabel={t('uac.verify_email.open_mail_app_cta')}
             onPress={onOpenMail}
-            style={({ pressed }) => [
-              styles.buttonBase,
-              styles.buttonPrimary,
-              pressed && styles.pressed,
-            ]}
           >
-            <Text style={styles.buttonLabelLight}>
-              {t('uac.verify_email.open_mail_app_cta')}
-            </Text>
-          </Pressable>
-          <Pressable
+            {t('uac.verify_email.open_mail_app_cta')}
+          </MButton>
+          <MButton
+            variant="secondary"
             testID={
               resendDisabled
                 ? 'verify-resend-button-cooldown'
                 : 'verify-resend-button'
             }
-            accessibilityRole="button"
             accessibilityLabel={resendLabel}
             onPress={onResend}
             disabled={resendDisabled}
-            style={({ pressed }) => [
-              styles.buttonBase,
-              styles.buttonSecondary,
-              resendDisabled && styles.buttonDisabled,
-              pressed && !resendDisabled && styles.pressed,
-            ]}
+            loading={resend.isPending}
           >
-            <Text style={styles.buttonLabelDark}>{resendLabel}</Text>
-          </Pressable>
+            {resendLabel}
+          </MButton>
         </View>
 
         {/* Polling status row */}
@@ -284,59 +274,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroIllustration: {
-    width: 130,
-    height: 90,
-    marginBottom: theme.spacing.uacDimension24,
-    backgroundColor: theme.colors.uacColorNeutral100,
-    borderRadius: theme.borderRadius.uacPanel,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.uacDimension8 - 1, // 7px (Figma Frame 2203 gap)
   },
   title: {
     ...theme.typography.aliases.uacH4Bold,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
-    marginBottom: theme.spacing.uacDimension24,
+    marginBottom: theme.spacing.uacDimension8 - 1, // 7px — Figma Frame 2203 gap
   },
   bodyLine: {
     ...theme.typography.aliases.uacBodyMdRegular,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
+    marginBottom: theme.spacing.uacDimension8 - 1, // 7px — Figma Frame 2203 gap
   },
   emailLine: {
     ...theme.typography.aliases.uacBodyMdSemibold,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
+    marginBottom: theme.spacing.uacDimension8 - 1, // 7px — Figma Frame 2203 gap
   },
   buttonStack: {
     width: '100%',
     marginTop: theme.spacing.uacDimension24,
-    gap: theme.spacing.uacDimension8 + 4, // 12px
-  },
-  buttonBase: {
-    height: theme.spacing.uacButtonHeight,
-    borderRadius: theme.borderRadius.uacButtonCta,
-    paddingHorizontal: theme.spacing.uacButtonPaddingX,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonPrimary: {
-    backgroundColor: theme.colors.figmaPrimaryButtonBg,
-  },
-  buttonSecondary: {
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacBorderBase,
-    backgroundColor: 'transparent',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonLabelLight: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.figmaPrimaryButtonText,
-  },
-  buttonLabelDark: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextBase,
+    gap: theme.spacing.uacDimension8 + 4, // 12px (Figma Frame 2109 gap)
   },
   statusRow: {
     flexDirection: 'row',
