@@ -731,14 +731,15 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaTextPrimary,
   },
   plusButton: {
-    width: 45,
-    height: 45,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerIconButton: {
-    backgroundColor: theme.colors.figmaSurface,
-    borderRadius: 16,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.m,
+    ...theme.ds.shadow.headerIcon,
   },
   scrollContent: {
     paddingTop: 12,

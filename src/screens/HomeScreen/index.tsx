@@ -34,7 +34,7 @@ import {
   PillButton,
   TopIconButton,
 } from '../../components/primitives/FigmaPrimitives';
-import IconHomeMenu from '../../assets/images/icon_home_menu.svg';
+import IconMenu from '../../assets/images/icon_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
 import IconFeedback from '../../assets/images/feedback.svg';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
@@ -1095,7 +1095,10 @@ export const HomeScreen = () => {
         id: it.id,
         imageUrl: resolveItemImage(it) || it.image_url,
       }));
-    navigation.navigate('OutfitCanvas', items.length ? { items } : undefined);
+    navigation.navigate(
+      'OutfitCanvas',
+      items.length ? { items, entry: 'remix' } : { entry: 'remix' },
+    );
   }, [navigation, pinState.outfit]);
 
   const handleOpenItemDetail = useCallback(
@@ -1134,7 +1137,7 @@ export const HomeScreen = () => {
           accessibilityRole="button"
           accessibilityLabel={t('home.a11y_open_menu')}
           onPress={handleLeadingAction}
-          icon={<IconHomeMenu width={24} height={24} />}
+          icon={<IconMenu width={24} height={24} />}
           style={styles.headerIconButton}
         />
 
