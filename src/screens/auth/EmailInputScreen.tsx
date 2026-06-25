@@ -13,12 +13,16 @@
  * Flow:
  *   - Validate email format locally (inline regex; no util module
  *     existed prior to this batch — see open Qs).
- *   - AU-313: a Gmail-domain address (gmail.com / googlemail.com) is steered
- *     straight to `EmailGoogleNotice` (the Google sign-in path that mirrors
- *     the Apple flow) BEFORE the precheck call — Gmail accounts authenticate
- *     via Google OAuth, not a password, and the precheck is enumeration-safe
- *     so it can't tell us "google" for an anonymous caller anyway.
- *   - Otherwise call `useEmailPrecheckMutation`. The precheck is
+ *   - AU-313 reverted: previously a Gmail-domain address was steered straight
+ *     to `EmailGoogleNotice` BEFORE the precheck. That domain heuristic was
+ *     wrong — it forced EVERY gmail.com user onto the Google sign-in path with
+ *     no way to use a password, even gmail accounts that have a password. The
+ *     DATABASE now decides at LOGIN time: `POST /api/login` returns
+ *     `403 OAUTH_ACCOUNT { provider: 'google' }` only for genuinely
+ *     Google-linked, password-less accounts, and `SignInScreen` catches that
+ *     and routes to `EmailGoogleNotice`. So gmail flows normally through the
+ *     password path here.
+ *   - Call `useEmailPrecheckMutation`. The precheck is
  *     enumeration-safe: ANONYMOUS callers (every public caller on this
  *     screen) ALWAYS get `provider: 'password'` regardless of real linkage —
  *     only authenticated admin/self lookups see the true value. So routing
@@ -64,7 +68,6 @@ import Svg, { Path } from 'react-native-svg';
 import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { theme } from '../../theme/theme';
 import { useEmailPrecheckMutation } from '../../hooks/auth/useAuthMutations';
-import { isGoogleEmail } from '../../utils/email-provider';
 import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 
@@ -120,15 +123,6 @@ export const EmailInputScreen = () => {
     }
     if (!EMAIL_RE.test(trimmed)) {
       setError(t('uac.email_input.error_invalid'));
-      return;
-    }
-
-    // AU-313: Gmail addresses go straight to the Google sign-in path
-    // (mirrors the Apple flow). Decided client-side on the domain — the
-    // precheck is enumeration-safe and won't report "google" to an
-    // anonymous caller, so this is the only reliable Gmail signal we have.
-    if (isGoogleEmail(trimmed)) {
-      navigation.navigate('EmailGoogleNotice', { email: trimmed });
       return;
     }
 
