@@ -131,6 +131,10 @@ export const theme = {
     // success surface. Source:
     // plans/260617-1743-au-361-item-ready-toast/figma-extraction-item-ready-toast.md §Snackbar visual spec
     figmaSnackbarSuccessBg: '#4cf4d3', // color/success/200 — snackbar surface
+    // Wardrobe grid "less use" tile badge fill — soft coral/salmon so the demoted
+    // tag reads distinctly from the mint "new" and dark "common" pills. Pairs
+    // with figmaItemDetailDanger (#c0392b) text. Source: wardrobe card status spec.
+    figmaTileLessUsedBadgeBg: '#f3a39e',
     // Home header favourites heart "you have saved looks" indicator dot. Same
     // DS color/success/200 mint as the item-ready snackbar.
     figmaFavouriteDot: '#4cf4d3',

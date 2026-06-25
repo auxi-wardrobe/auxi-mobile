@@ -267,6 +267,7 @@
         "add_item": "Add Item"
       },
       "new_badge": "New",
+      "less_used_badge": "less use",
       "options": {
         "category": {
           "Top": "Top",
