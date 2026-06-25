@@ -544,6 +544,12 @@
       "a11y_add_tag": "Ajouter une étiquette",
       "a11y_save_outfit": "Enregistrer la tenue"
     },
+    "myCreations": {
+      "title": "Mes créations",
+      "open_menu": "Ouvrir le menu",
+      "empty_body": "Enregistrez une création depuis le canevas pour la retrouver ici.",
+      "remove_a11y": "Supprimer la création"
+    },
     "locationPermission": {
       "denied_title": "Autorisation refusée",
       "denied_body": "Nous avons besoin de l'autorisation de localisation pour suggérer des tenues selon la météo locale. Veuillez l'activer dans les paramètres.",

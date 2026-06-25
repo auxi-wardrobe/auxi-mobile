@@ -27,6 +27,7 @@ import { SeeThisOnMeScreen } from '../screens/see-this-on-me/SeeThisOnMeScreen';
 import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
 import { OutfitCanvasScreen } from '../screens/OutfitCanvasScreen';
+import { MyCreationsScreen } from '../screens/MyCreationsScreen';
 import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
@@ -180,6 +181,10 @@ export const AppNavigator = () => {
                 name="OutfitCanvas"
                 component={OutfitCanvasScreen}
                 options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="MyCreations"
+                component={MyCreationsScreen}
               />
               {/* __DEV__-only Design System reference screen. Registering it
                   unconditionally is harmless — the only entry point (Settings

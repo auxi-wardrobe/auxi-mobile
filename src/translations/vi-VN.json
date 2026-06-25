@@ -543,6 +543,12 @@
       "a11y_add_tag": "Thêm thẻ",
       "a11y_save_outfit": "Lưu bộ đồ"
     },
+    "myCreations": {
+      "title": "Tác phẩm của tôi",
+      "open_menu": "Mở menu",
+      "empty_body": "Lưu một tác phẩm từ canvas để xem ở đây.",
+      "remove_a11y": "Xóa tác phẩm"
+    },
     "locationPermission": {
       "denied_title": "Quyền bị từ chối",
       "denied_body": "Chúng tôi cần quyền vị trí để gợi ý trang phục theo thời tiết địa phương. Vui lòng bật trong cài đặt.",

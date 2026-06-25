@@ -544,6 +544,12 @@
       "a11y_add_tag": "Add tag",
       "a11y_save_outfit": "Save outfit"
     },
+    "myCreations": {
+      "title": "My Creations",
+      "open_menu": "Open menu",
+      "empty_body": "Save a creation from the canvas to see it here.",
+      "remove_a11y": "Remove creation"
+    },
     "locationPermission": {
       "denied_title": "Permission Denied",
       "denied_body": "We need location permission to suggest outfits based on local weather. Please enable it in settings.",

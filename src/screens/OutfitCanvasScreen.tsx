@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   Image,
+  ImageSourcePropType,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -16,6 +17,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
 import { motion } from '../theme/motion';
@@ -29,6 +31,11 @@ import { CategoryTabs } from '../components/features/CategoryTabs';
 import { getImageUrl } from '../utils/url';
 import { useSidebar } from '../context/SidebarContext';
 import { track } from '../services/analytics';
+import {
+  CREATIONS_QUERY_KEY,
+  CreationItem,
+  creationsService,
+} from '../services/creationsService';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
@@ -53,6 +60,21 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.uacDimension12;
 const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
 const ITEM_DEFAULT_SIZE = 160;
+
+// Pull a serializable URI out of a canvas item's imageSource for persistence.
+// Remote/picked items are `{ uri }`; require()'d mock assets are numbers (no
+// URI) and return undefined so the caller can skip them.
+const extractUri = (source: ImageSourcePropType): string | undefined => {
+  if (
+    source &&
+    typeof source === 'object' &&
+    !Array.isArray(source) &&
+    typeof (source as { uri?: unknown }).uri === 'string'
+  ) {
+    return (source as { uri: string }).uri;
+  }
+  return undefined;
+};
 
 const PICKER_COLUMNS = 3;
 const PICKER_GAP = 4;
@@ -318,6 +340,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<RouteProp<AppStackParamList, 'OutfitCanvas'>>();
   const { t } = useTranslation();
   const { open: openSidebar } = useSidebar();
+  const queryClient = useQueryClient();
   // Entered via Home's Remix button → show a back chevron (goes back to Home).
   // Entered from the sidebar drawer → show the hamburger that re-opens it.
   const fromRemix = route.params?.entry === 'remix';
@@ -544,18 +567,47 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     setAddingTag(false);
   }, [tagInput, tags]);
 
-  const handleSave = useCallback(() => {
-    // TODO: persist outfit canvas to backend
-    navigation.goBack();
-  }, [navigation]);
+  const handleSave = useCallback(async () => {
+    // Snapshot the current canvas arrangement into a saveable creation. Only
+    // items backed by a real image URI persist — mock require()'d assets (the
+    // deep-link/dev fallback) aren't serializable and are skipped.
+    const savedItems = items.reduce<CreationItem[]>((acc, it) => {
+      const uri = extractUri(it.imageSource);
+      if (uri) {
+        acc.push({
+          id: it.id,
+          imageUri: uri,
+          x: it.x,
+          y: it.y,
+          width: it.width,
+          height: it.height,
+          zIndex: it.zIndex,
+          scale: it.scale,
+          rotation: it.rotation,
+        });
+      }
+      return acc;
+    }, []);
+
+    if (savedItems.length > 0) {
+      await creationsService.saveCreation({
+        items: savedItems,
+        tags,
+        canvasWidth: CANVAS_WIDTH,
+      });
+      queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
+      track('creation_saved', { item_count: savedItems.length });
+    }
+    // Land on My Creations so the user sees the saved result.
+    navigation.navigate('MyCreations');
+  }, [items, tags, navigation, queryClient]);
 
   const handleOpenCreations = useCallback(() => {
-    // "My Creations" collects everything the user has made in the canvas
-    // (new canvases, remixed outfits, …). The destination screen is not built
-    // yet — track intent so we can wire it up once persistence lands.
+    // "My Creations" lists everything the user has saved from the canvas
+    // (new canvases, remixed outfits, …).
     track('canvas_my_creations_opened');
-    // TODO: navigation.navigate('MyCreations') once the screen exists.
-  }, []);
+    navigation.navigate('MyCreations');
+  }, [navigation]);
 
   const actionDisabled = !selectedId;
 
