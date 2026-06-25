@@ -110,7 +110,7 @@ export const MFloatingPill: React.FC<MFloatingPillProps> = ({
             key={tb}
             onLayout={onLayout(i)}
             onPress={() => move(i, tb)}
-            style={styles.fitem}
+            style={[styles.fitem, renderIcon && styles.fitemIcon]}
             testID={itemId}
             accessibilityRole="tab"
             accessibilityLabel={itemAccessibilityLabel?.(tb)}
@@ -145,6 +145,9 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   fitem: { paddingVertical: 10, paddingHorizontal: 22, alignItems: 'center' },
+  // Icon mode: squarer ~48×48 tabs (icon 24 + 12 padding) — text-mode's wide
+  // label padding (22) reads too spread around a single glyph.
+  fitemIcon: { paddingVertical: 12, paddingHorizontal: 12 },
   ftext: { ...type.bodySm, color: role.ink3 },
   ftextOn: { color: role.ink, fontFamily: type.h3.fontFamily },
 });

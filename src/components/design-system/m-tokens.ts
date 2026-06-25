@@ -6,11 +6,14 @@
  *                  project "auxi", 2026-06-24). Poppins-only.
  *
  * IMPORTANT — these values INTENTIONALLY DIVERGE from src/theme/theme.ts.
- * They are the NEW target design system and are used ONLY by the in-app
+ * They are the NEW target design system. They originated with the in-app
  * Design System reference page (src/components/design-system/** +
- * src/screens/DesignSystemScreen.tsx). Do NOT import these into product
- * screens, and do NOT mutate theme.ts to match — product migration is a
- * separate, later task (see GH-364 spec "Unresolved").
+ * src/screens/DesignSystemScreen.tsx), but as of the GH-364 rollout the `M*`
+ * primitives that read these tokens MAY now be adopted by product screens too
+ * (CEO ruling 2026-06-25 — e.g. the Home footer's MFloatingPill). Prefer
+ * consuming them THROUGH an `M*` primitive rather than importing raw tokens
+ * into a screen. Don't mutate theme.ts to match — the migration moves product
+ * screens onto M*, not theme.ts onto m-tokens (see GH-364 spec).
  *
  * Token-lint note: this file is the DS page's own theme module — hex + font
  * literals live here by design (it sits under components/design-system/, which
