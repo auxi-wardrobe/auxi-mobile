@@ -24,10 +24,13 @@ const CELL_WIDTH = 52;
 const CELL_GAP = 8;
 const STRIP_PADDING = 16;
 
-// How many days the horizontal strip spans, anchored to the Monday of the
-// current week (matches Figma 4252:26702, which opens on the current week with
-// a few earlier days still visible).
-const STRIP_DAYS = 21;
+// The strip is a horizontal, swipeable rail. It spans a couple of weeks of
+// history (reachable by swiping right→left... i.e. dragging left) plus several
+// weeks ahead, anchored so today sits in the middle and the rail opens centred
+// on it (see handleStripLayout). Matches Figma 4252:26702, which opens on the
+// current week.
+const STRIP_DAYS_BEFORE = 14; // ~2 weeks of past days reachable by swiping
+const STRIP_TOTAL_DAYS = 49; // ~7 weeks total (history + upcoming)
 
 // Weekday abbreviations indexed by Date.getDay() (0 = Sunday). Matches the
 // exact (slightly irregular) labels in the design — "Wed" is three letters
@@ -58,8 +61,15 @@ const startOfWeek = (d: Date): Date => {
 
 const buildStripDays = (today: Date): ScheduleDay[] => {
   const todayKey = toDayKey(today);
-  const start = startOfWeek(today);
-  return Array.from({ length: STRIP_DAYS }, (_, i) => {
+  const sow = startOfWeek(today);
+  // Back up a couple of weeks from this week's Monday so past days are
+  // swipe-reachable to the left of today.
+  const start = new Date(
+    sow.getFullYear(),
+    sow.getMonth(),
+    sow.getDate() - STRIP_DAYS_BEFORE,
+  );
+  return Array.from({ length: STRIP_TOTAL_DAYS }, (_, i) => {
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     const key = toDayKey(d);
     return {
