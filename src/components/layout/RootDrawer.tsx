@@ -17,9 +17,13 @@ import { SidebarMenu } from './SidebarMenu';
 // dim scrim, the content stays bright, per Figma 2852:26393 and
 // docs/Z_INDEX_LAYERING.md §4.1: overlays live at one root host, not per screen).
 const { width: SCREEN_W } = Dimensions.get('window');
-const SIDEBAR_WIDTH = 317;
-// Push far enough to reveal the menu while leaving a tappable peek of content.
-const PUSH_X = Math.min(SIDEBAR_WIDTH, SCREEN_W - 88);
+// The menu spans 4/5 of the screen width (must match SidebarMenu's width).
+const SIDEBAR_WIDTH = SCREEN_W * (4 / 5);
+// 12px gap between the revealed menu and the pushed app content.
+const MENU_CONTENT_GAP = 12;
+// Push the content past the full menu width + the gap so the menu is fully
+// revealed and the two layers stay 12px apart.
+const PUSH_X = SIDEBAR_WIDTH + MENU_CONTENT_GAP;
 
 export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
   children,
