@@ -553,6 +553,7 @@
     "myCreations": {
       "title": "Tác phẩm của tôi",
       "open_menu": "Mở menu",
+      "back": "Quay lại",
       "empty_body": "Lưu một tác phẩm từ canvas để xem ở đây.",
       "remove_a11y": "Xóa tác phẩm"
     },

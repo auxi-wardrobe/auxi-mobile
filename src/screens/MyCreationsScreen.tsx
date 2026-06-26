@@ -2,13 +2,15 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
-import { useSidebar } from '../context/SidebarContext';
 import { MacgieLoader } from '../components/macgie';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
-import IconMenu from '../assets/images/icon_menu.svg';
+import { AppStackParamList } from '../types/navigation';
+import { Icons } from '../assets/icons';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
 import { track } from '../services/analytics';
 import {
@@ -26,7 +28,8 @@ export const MyCreationsScreen: React.FC = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { open: openSidebar } = useSidebar();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
   const { data, isLoading } = useQuery({
     queryKey: CREATIONS_QUERY_KEY,
@@ -95,13 +98,16 @@ export const MyCreationsScreen: React.FC = () => {
           pointerEvents="none"
         />
         <View style={styles.headerTint} pointerEvents="none" />
+        {/* Back chevron — My Creations is pushed from the canvas header, so the
+            leading control returns to the previous screen rather than opening
+            the sidebar. */}
         <TopIconButton
-          testID="my-creations-header-menu"
+          testID="my-creations-header-back"
           accessibilityRole="button"
-          accessibilityLabel={t('myCreations.open_menu')}
-          onPress={openSidebar}
+          accessibilityLabel={t('myCreations.back')}
+          onPress={() => navigation.goBack()}
           style={styles.menuButton}
-          icon={<IconMenu width={24} height={24} />}
+          icon={<Icons.ChevronLeft width={24} height={24} />}
         />
         {/* Centred screen title — matches the Wardrobe/Favourite header title
             (body/sm semibold). Absolutely centred + pointerEvents none so it
