@@ -173,17 +173,22 @@ export const FavouriteScreen: React.FC = () => {
       favorite_id: scheduleTarget.id,
       date: dayKey,
     });
-    Toast.show({
-      type: 'success',
-      text1: t('schedule.added_toast'),
-      position: 'bottom',
-    });
     setScheduleTarget(null);
     // Only return to Schedule when the user came from there (mid-planning).
     // Otherwise they're browsing favourites — stay put (toast confirms).
     if (returnToSchedule) {
       navigation.navigate('Schedule', { focusDate: dayKey });
     }
+    // Defer the toast until the date-picker Modal has dismissed — a toast shown
+    // while the Modal is still up renders behind it (the Toast host sits at app
+    // root, below native modals).
+    setTimeout(() => {
+      Toast.show({
+        type: 'success',
+        text1: t('schedule.added_toast'),
+        position: 'bottom',
+      });
+    }, 350);
   };
 
   const confirmRemove = () => {
