@@ -1581,13 +1581,16 @@ export const HomeScreen = () => {
       />
 
       {refineToastText ? (
-        <View
-          testID="home-refine-applied-toast"
-          accessibilityRole="alert"
-          pointerEvents="none"
-          style={styles.refineToast}
-        >
-          <Text style={styles.refineToastText}>{refineToastText}</Text>
+        <View pointerEvents="none" style={styles.refineToastWrap}>
+          <View
+            testID="home-refine-applied-toast"
+            accessibilityRole="alert"
+            style={styles.refineToast}
+          >
+            <Text style={styles.refineToastText} numberOfLines={1}>
+              {refineToastText}
+            </Text>
+          </View>
         </View>
       ) : null}
 
