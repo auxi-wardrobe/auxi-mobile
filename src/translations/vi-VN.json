@@ -571,10 +571,19 @@
       "see_outfits": "Xem bộ đồ của tôi",
       "wardrobe": "Tủ đồ",
       "favourite": "Yêu thích của tôi",
+      "schedule": "Lịch",
       "feedback": "Phản hồi",
       "setting": "Cài đặt",
       "outfit_canvas": "Canvas phối đồ",
       "logout": "Đăng xuất"
+    },
+    "schedule": {
+      "title": "Lịch",
+      "scheduled_outfit": "Bộ đồ đã lên lịch",
+      "empty_title": "Chưa có kế hoạch",
+      "empty_body": "Chạm [+] để thêm bộ đồ",
+      "a11y_open_menu": "Mở menu",
+      "a11y_add": "Thêm bộ đồ"
     },
     "outfitActions": {
       "a11y_remix": "Phối lại bộ đồ này",

@@ -109,6 +109,13 @@ export const SidebarMenu: React.FC = () => {
           onPress={() => go('Favourite', close)}
         />
         <MenuItem
+          label={t('sidebar.schedule')}
+          Icon={Icons.Calendar}
+          testID="sidebar-menu-schedule"
+          isActive={routeName === 'Schedule'}
+          onPress={() => go('Schedule', close)}
+        />
+        <MenuItem
           label={t('sidebar.feedback')}
           Icon={Icons.Feedback}
           testID="sidebar-menu-feedback"

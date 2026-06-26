@@ -17,6 +17,11 @@ interface HeaderProps {
     leftIcon?: React.ReactNode;
     titleTextStyle?: TextStyle;
     leftIconStyle?: ViewStyle;
+    // Optional selectors for the left (menu/back) chip so Maestro can tap it and
+    // VoiceOver can announce it. Header historically left the left button without
+    // a testID; these keep it opt-in so existing call sites are unaffected.
+    leftIconTestID?: string;
+    leftIconAccessibilityLabel?: string;
     onBack?: () => void;
     onFeedback?: () => void;
     rightComponent?: React.ReactNode;
@@ -28,6 +33,8 @@ export const Header: React.FC<HeaderProps> = ({
     leftIcon,
     titleTextStyle,
     leftIconStyle,
+    leftIconTestID,
+    leftIconAccessibilityLabel,
     onBack,
     onFeedback,
     rightComponent
@@ -39,6 +46,8 @@ export const Header: React.FC<HeaderProps> = ({
                     <TopIconButton
                         onPress={onBack}
                         style={leftIconStyle}
+                        testID={leftIconTestID}
+                        accessibilityLabel={leftIconAccessibilityLabel}
                         icon={
                             leftIcon || <Icons.Menu width={24} height={24} />
                         }

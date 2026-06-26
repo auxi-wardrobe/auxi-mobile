@@ -77,6 +77,10 @@ export type AppStackParamList = {
   Settings: undefined;
   Wardrobe: undefined;
   Favourite: undefined;
+  // Schedule — plan outfits per day. Reached from the sidebar menu (listed
+  // directly under "My Favourite"). Header mirrors Wardrobe (menu + title +
+  // add). Figma node 4252:26702.
+  Schedule: undefined;
   // In-app feedback form → POST /api/feedback. Reached from the sidebar menu.
   Feedback: undefined;
   // Discriminated union on `mode` so call sites are type-checked:

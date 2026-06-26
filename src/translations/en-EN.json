@@ -572,10 +572,19 @@
       "see_outfits": "See my outfits",
       "wardrobe": "Wardrobe",
       "favourite": "My Favourite",
+      "schedule": "Schedule",
       "feedback": "Feedback",
       "setting": "Setting",
       "outfit_canvas": "Outfit Canvas",
       "logout": "Log out"
+    },
+    "schedule": {
+      "title": "Schedule",
+      "scheduled_outfit": "Scheduled outfit",
+      "empty_title": "Nothing planned",
+      "empty_body": "Tap [+] to add an outfit",
+      "a11y_open_menu": "Open menu",
+      "a11y_add": "Add an outfit"
     },
     "outfitActions": {
       "a11y_remix": "Remix this outfit",
