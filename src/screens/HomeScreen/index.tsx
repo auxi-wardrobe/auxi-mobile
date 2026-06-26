@@ -92,7 +92,6 @@ import { PinnedItemUnavailableNotice } from '../../components/features/PinnedIte
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   MOOD_BANNER_DURATION_MS,
-  AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
   REFINE_AFTER_OUTFITS,
   TARGET_AHEAD,
@@ -187,23 +186,7 @@ export const HomeScreen = () => {
   const [styleFeedback, setStyleFeedback] = useState<string | null>(null);
   const [hasCycled, setHasCycled] = useState(false);
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
-  const [aiNoticeDismissed, setAiNoticeDismissed] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
-  // Persist the AI notice dismissal so the toast appears only the first time;
-  // the floating feedback button remains as the ongoing affordance.
-  useEffect(() => {
-    AsyncStorage.getItem(AI_NOTICE_DISMISSED_KEY)
-      .then(v => {
-        if (v === 'true') {
-          setAiNoticeDismissed(true);
-        }
-      })
-      .catch(() => {});
-  }, []);
-  const dismissAiNotice = useCallback(() => {
-    setAiNoticeDismissed(true);
-    AsyncStorage.setItem(AI_NOTICE_DISMISSED_KEY, 'true').catch(() => {});
-  }, []);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   // "You've explored most combinations" sheet — shown when the user reaches the
   // end of the available outfits (pool depleted). `shownRef` keeps it to once
@@ -1228,13 +1211,6 @@ export const HomeScreen = () => {
       {/* Floating toast layer (z-index tier 5) — sits on top of the grid,
           never stacks with the cards. */}
       <View style={styles.noticeStack} pointerEvents="box-none">
-        {optionSets.length > 0 && !aiNoticeDismissed ? (
-          <InfoSnackbar
-            message={t('aiDisclosure.label')}
-            onClose={dismissAiNotice}
-            testID="home-ai-disclosure"
-          />
-        ) : null}
         {hasCycled &&
         !isWardrobeGap &&
         optionSets.length > 0 &&
