@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
+import { MButton } from '../../components/design-system/lib';
 import { AppBottomSheet } from '../../components/features/AppBottomSheet';
 
 // "Add to Schedule" date picker — a month calendar (Figma: big selected-date
@@ -228,18 +229,14 @@ export const ScheduleDatePickerSheet: React.FC<Props> = ({
         >
           <Text style={styles.cancelText}>{t('schedule.picker.cancel')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        <MButton
+          variant="primary"
           onPress={() => onConfirm(selected)}
-          style={styles.confirmButton}
-          activeOpacity={0.85}
           testID={`${testID}-confirm`}
-          accessibilityRole="button"
           accessibilityLabel={t('schedule.picker.confirm')}
         >
-          <Text style={styles.confirmText}>
-            {t('schedule.picker.confirm')}
-          </Text>
-        </TouchableOpacity>
+          {t('schedule.picker.confirm')}
+        </MButton>
       </View>
     </AppBottomSheet>
   );
@@ -329,7 +326,7 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    justifyContent: 'space-between',
     marginTop: 16,
   },
   cancelButton: {
@@ -341,17 +338,5 @@ const styles = StyleSheet.create({
   cancelText: {
     ...theme.typography.aliases.poppinsButton,
     color: theme.colors.figmaTextPrimary,
-  },
-  confirmButton: {
-    flex: 1,
-    height: 56,
-    borderRadius: theme.borderRadius.m,
-    backgroundColor: theme.colors.uacTextBase,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmText: {
-    ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.white,
   },
 });
