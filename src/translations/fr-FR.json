@@ -587,6 +587,14 @@
       "a11y_open_menu": "Ouvrir le menu",
       "a11y_add": "Ajouter une tenue",
       "added_toast": "Ajouté à votre planning",
+      "add_sheet": {
+        "title": "Ajouter une tenue",
+        "subtitle": "Choisissez d'où l'ajouter.",
+        "favourite_title": "Mes favoris",
+        "favourite_desc": "Tenues enregistrées",
+        "creations_title": "Mes créations",
+        "creations_desc": "Designs et remix du canevas"
+      },
       "picker": {
         "title": "Ajouter au planning",
         "cancel": "Annuler",

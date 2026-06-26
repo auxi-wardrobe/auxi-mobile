@@ -587,6 +587,14 @@
       "a11y_open_menu": "Open menu",
       "a11y_add": "Add an outfit",
       "added_toast": "Added to your schedule",
+      "add_sheet": {
+        "title": "Add an outfit",
+        "subtitle": "Choose where to add it from.",
+        "favourite_title": "My Favourite",
+        "favourite_desc": "Saved outfits",
+        "creations_title": "My Creations",
+        "creations_desc": "Canvas designs & remixes"
+      },
       "picker": {
         "title": "Add to Schedule",
         "cancel": "Cancel",

@@ -23,6 +23,7 @@ import { AppStackParamList } from '../types/navigation';
 import { Favourite } from '../services/favouriteService';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
 import { CreationCollageCard } from './myCreations/CreationCollageCard';
+import { AddToScheduleSheet } from './schedule/AddToScheduleSheet';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -102,6 +103,8 @@ export const ScheduleScreen: React.FC = () => {
   const [selectedKey, setSelectedKey] = useState<string>(
     () => focusDate ?? toDayKey(today),
   );
+  // "Add an outfit" source-picker sheet (Favourite / My Creations).
+  const [addSheetVisible, setAddSheetVisible] = useState(false);
 
   // Re-focus when arriving again with a new `focusDate` (the screen may already
   // be mounted in the stack).
@@ -136,11 +139,16 @@ export const ScheduleScreen: React.FC = () => {
   };
 
   const handleAddOutfit = () => {
-    // Outfits are added to a day from the Favourite page (the calendar-add
-    // button on each saved outfit). The header "+" sends the user there to
-    // pick one; it also records intent for analytics.
+    // Open the source picker — the user chooses Favourite or My Creations,
+    // then adds an outfit from there (each page's calendar-add button).
     track('schedule_add_tapped', { date: selectedKey });
-    navigation.navigate('Favourite');
+    setAddSheetVisible(true);
+  };
+
+  const handlePickSource = (source: 'favourite' | 'creations') => {
+    setAddSheetVisible(false);
+    track('schedule_add_source_selected', { source });
+    navigation.navigate(source === 'favourite' ? 'Favourite' : 'MyCreations');
   };
 
   // Mirror the Favourite page's "See this on me" entry so a scheduled outfit
@@ -263,6 +271,13 @@ export const ScheduleScreen: React.FC = () => {
           </ScrollView>
         )}
       </View>
+
+      <AddToScheduleSheet
+        visible={addSheetVisible}
+        onDismiss={() => setAddSheetVisible(false)}
+        onSelectFavourite={() => handlePickSource('favourite')}
+        onSelectCreations={() => handlePickSource('creations')}
+      />
     </SafeAreaView>
   );
 };
