@@ -555,7 +555,8 @@
       "title": "Mes créations",
       "open_menu": "Ouvrir le menu",
       "empty_body": "Enregistrez une création depuis le canevas pour la retrouver ici.",
-      "remove_a11y": "Supprimer la création"
+      "remove_a11y": "Supprimer la création",
+      "add_to_schedule": "Ajouter au planning"
     },
     "locationPermission": {
       "denied_title": "Autorisation refusée",

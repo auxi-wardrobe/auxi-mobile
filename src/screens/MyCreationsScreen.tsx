@@ -1,21 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
 import { useSidebar } from '../context/SidebarContext';
+import { useSchedule } from '../context/ScheduleContext';
 import { MacgieLoader } from '../components/macgie';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
 import IconMenu from '../assets/images/icon_menu.svg';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
 import { track } from '../services/analytics';
+import { toDayKey } from '../utils/dateKey';
+import { AppStackParamList } from '../types/navigation';
 import {
   CREATIONS_QUERY_KEY,
   creationsService,
+  type Creation,
 } from '../services/creationsService';
 import { CreationCollageCard } from './myCreations/CreationCollageCard';
+import { ScheduleDatePickerSheet } from './schedule/ScheduleDatePickerSheet';
 
 // "My Creations" — the saved-canvas list reached from the canvas header's
 // My Creations icon. Structurally mirrors FavouriteScreen (blurred menu header
@@ -27,6 +34,11 @@ export const MyCreationsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { open: openSidebar } = useSidebar();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const { scheduleOutfit } = useSchedule();
+  // The creation awaiting a day in the "Add to Schedule" sheet (null = closed).
+  const [scheduleTarget, setScheduleTarget] = useState<Creation | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: CREATIONS_QUERY_KEY,
@@ -42,6 +54,26 @@ export const MyCreationsScreen: React.FC = () => {
   });
 
   const creations = data?.creations ?? [];
+
+  const handleSchedule = (creation: Creation) => {
+    // Open the "Add to Schedule" sheet so the user picks which day.
+    track('creation_schedule_opened', { creation_id: creation.id });
+    setScheduleTarget(creation);
+  };
+
+  const handleConfirmSchedule = (date: Date) => {
+    if (!scheduleTarget) {
+      return;
+    }
+    const dayKey = toDayKey(date);
+    scheduleOutfit(dayKey, { kind: 'creation', creation: scheduleTarget });
+    track('creation_added_to_schedule', {
+      creation_id: scheduleTarget.id,
+      date: dayKey,
+    });
+    setScheduleTarget(null);
+    navigation.navigate('Schedule', { focusDate: dayKey });
+  };
 
   const renderBody = () => {
     if (isLoading) {
@@ -76,6 +108,7 @@ export const MyCreationsScreen: React.FC = () => {
             key={creation.id}
             creation={creation}
             onRemove={id => removeMutation.mutate(id)}
+            onSchedule={handleSchedule}
           />
         ))}
       </ScrollView>
@@ -107,6 +140,12 @@ export const MyCreationsScreen: React.FC = () => {
       </View>
 
       <View style={styles.body}>{renderBody()}</View>
+
+      <ScheduleDatePickerSheet
+        visible={scheduleTarget !== null}
+        onCancel={() => setScheduleTarget(null)}
+        onConfirm={handleConfirmSchedule}
+      />
     </View>
   );
 };

@@ -160,7 +160,7 @@ export const FavouriteScreen: React.FC = () => {
       return;
     }
     const dayKey = toDayKey(date);
-    scheduleOutfit(dayKey, scheduleTarget);
+    scheduleOutfit(dayKey, { kind: 'favourite', favourite: scheduleTarget });
     track('favourite_added_to_schedule', {
       favorite_id: scheduleTarget.id,
       date: dayKey,

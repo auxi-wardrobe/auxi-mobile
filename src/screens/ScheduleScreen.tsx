@@ -22,6 +22,7 @@ import { toDayKey } from '../utils/dateKey';
 import { AppStackParamList } from '../types/navigation';
 import { Favourite } from '../services/favouriteService';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
+import { CreationCollageCard } from './myCreations/CreationCollageCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -236,20 +237,29 @@ export const ScheduleScreen: React.FC = () => {
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           >
-            {selectedDayOutfits.map(outfit => (
-              <FavouriteOutfitCard
-                key={outfit.id}
-                favourite={outfit}
-                view="grid"
-                // No `onSchedule` here — the calendar-add button is hidden once
-                // an outfit is already on the calendar. Remove = unschedule.
-                onRemove={id => unscheduleOutfit(selectedKey, id)}
-                onSelfVisualization={handleSelfVisualization}
-                onItemPress={itemId =>
-                  navigation.navigate('ItemDetail', { itemId })
-                }
-              />
-            ))}
+            {selectedDayOutfits.map(outfit =>
+              // No `onSchedule` on these cards — the calendar-add button is
+              // hidden once an item is already on the calendar; Remove here
+              // means unschedule.
+              outfit.kind === 'favourite' ? (
+                <FavouriteOutfitCard
+                  key={outfit.favourite.id}
+                  favourite={outfit.favourite}
+                  view="grid"
+                  onRemove={id => unscheduleOutfit(selectedKey, id)}
+                  onSelfVisualization={handleSelfVisualization}
+                  onItemPress={itemId =>
+                    navigation.navigate('ItemDetail', { itemId })
+                  }
+                />
+              ) : (
+                <CreationCollageCard
+                  key={outfit.creation.id}
+                  creation={outfit.creation}
+                  onRemove={id => unscheduleOutfit(selectedKey, id)}
+                />
+              ),
+            )}
           </ScrollView>
         )}
       </View>

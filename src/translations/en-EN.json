@@ -555,7 +555,8 @@
       "title": "My Creations",
       "open_menu": "Open menu",
       "empty_body": "Save a creation from the canvas to see it here.",
-      "remove_a11y": "Remove creation"
+      "remove_a11y": "Remove creation",
+      "add_to_schedule": "Add to schedule"
     },
     "locationPermission": {
       "denied_title": "Permission Denied",
