@@ -1194,7 +1194,11 @@ export const HomeScreen = () => {
             activeOpacity={0.82}
             onPress={openTempSheet}
           >
-            <WeatherWidget tempC={weather.tempC} iconCode={weather.iconCode} />
+            <WeatherWidget
+              tempC={weather.tempC}
+              iconCode={weather.iconCode}
+              showChevron
+            />
           </TouchableOpacity>
         )}
 
