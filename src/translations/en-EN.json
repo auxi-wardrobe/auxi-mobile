@@ -556,7 +556,11 @@
       "open_menu": "Open menu",
       "back": "Back",
       "empty_body": "Save a creation from the canvas to see it here.",
-      "remove_a11y": "Remove creation"
+      "remove_a11y": "Remove creation",
+      "remove_title": "Remove from your Creations",
+      "remove_body": "Are you sure to remove this outfit from your creation list?",
+      "remove_confirm": "Yes",
+      "remove_cancel": "Cancel"
     },
     "locationPermission": {
       "denied_title": "Permission Denied",

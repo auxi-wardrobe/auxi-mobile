@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ import {
   creationsService,
 } from '../services/creationsService';
 import { CreationCollageCard } from './myCreations/CreationCollageCard';
+import { RemoveCreationDialog } from './myCreations/RemoveCreationDialog';
 
 // "My Creations" — the saved-canvas list reached from the canvas header's
 // My Creations icon. Structurally mirrors FavouriteScreen (blurred menu header
@@ -32,6 +33,10 @@ export const MyCreationsScreen: React.FC = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { markSeen: markCreationsSeen } = useCreationsSeen();
+
+  // Deleting a creation is confirmed via a bottom sheet (same pattern as the
+  // Favourite list): the card's ⊖ stages the id, the sheet confirms the delete.
+  const [pendingRemovalId, setPendingRemovalId] = useState<string | null>(null);
 
   // Viewing the list clears the canvas header's "unseen saved creation" dot —
   // same pattern as the Favourite page clearing the saved-looks dot.
@@ -52,7 +57,14 @@ export const MyCreationsScreen: React.FC = () => {
       track('creation_removed', { creation_id: id });
       queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
     },
+    onSettled: () => setPendingRemovalId(null),
   });
+
+  const confirmRemove = () => {
+    if (pendingRemovalId) {
+      removeMutation.mutate(pendingRemovalId);
+    }
+  };
 
   const creations = data?.creations ?? [];
 
@@ -88,7 +100,7 @@ export const MyCreationsScreen: React.FC = () => {
           <CreationCollageCard
             key={creation.id}
             creation={creation}
-            onRemove={id => removeMutation.mutate(id)}
+            onRemove={setPendingRemovalId}
           />
         ))}
       </ScrollView>
@@ -132,6 +144,13 @@ export const MyCreationsScreen: React.FC = () => {
       </View>
 
       <View style={styles.body}>{renderBody()}</View>
+
+      <RemoveCreationDialog
+        visible={pendingRemovalId !== null}
+        isBusy={removeMutation.isPending}
+        onCancel={() => setPendingRemovalId(null)}
+        onConfirm={confirmRemove}
+      />
     </View>
   );
 };

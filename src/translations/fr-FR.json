@@ -556,7 +556,11 @@
       "open_menu": "Ouvrir le menu",
       "back": "Retour",
       "empty_body": "Enregistrez une création depuis le canevas pour la retrouver ici.",
-      "remove_a11y": "Supprimer la création"
+      "remove_a11y": "Supprimer la création",
+      "remove_title": "Retirer de vos créations",
+      "remove_body": "Voulez-vous vraiment retirer cette tenue de votre liste de créations ?",
+      "remove_confirm": "Oui",
+      "remove_cancel": "Annuler"
     },
     "locationPermission": {
       "denied_title": "Autorisation refusée",

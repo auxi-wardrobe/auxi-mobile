@@ -555,7 +555,11 @@
       "open_menu": "Mở menu",
       "back": "Quay lại",
       "empty_body": "Lưu một tác phẩm từ canvas để xem ở đây.",
-      "remove_a11y": "Xóa tác phẩm"
+      "remove_a11y": "Xóa tác phẩm",
+      "remove_title": "Xóa khỏi Tác phẩm của bạn",
+      "remove_body": "Bạn có chắc muốn xóa bộ trang phục này khỏi danh sách tác phẩm không?",
+      "remove_confirm": "Có",
+      "remove_cancel": "Hủy"
     },
     "locationPermission": {
       "denied_title": "Quyền bị từ chối",
