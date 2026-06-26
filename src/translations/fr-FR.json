@@ -584,7 +584,15 @@
       "empty_title": "Rien de prévu",
       "empty_body": "Touchez [+] pour ajouter une tenue",
       "a11y_open_menu": "Ouvrir le menu",
-      "a11y_add": "Ajouter une tenue"
+      "a11y_add": "Ajouter une tenue",
+      "picker": {
+        "title": "Ajouter au planning",
+        "cancel": "Annuler",
+        "confirm": "Planifier",
+        "prev_month": "Mois précédent",
+        "next_month": "Mois suivant",
+        "dismiss": "Fermer"
+      }
     },
     "outfitActions": {
       "a11y_remix": "Remixer cette tenue",

@@ -79,8 +79,9 @@ export type AppStackParamList = {
   Favourite: undefined;
   // Schedule — plan outfits per day. Reached from the sidebar menu (listed
   // directly under "My Favourite"). Header mirrors Wardrobe (menu + title +
-  // add). Figma node 4252:26702.
-  Schedule: undefined;
+  // add). Figma node 4252:26702. `focusDate` ("YYYY-MM-DD") preselects a day
+  // when arriving from the Favourite page's date-picker.
+  Schedule: { focusDate?: string } | undefined;
   // In-app feedback form → POST /api/feedback. Reached from the sidebar menu.
   Feedback: undefined;
   // Discriminated union on `mode` so call sites are type-checked:

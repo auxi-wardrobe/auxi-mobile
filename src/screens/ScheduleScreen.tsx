@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   ScrollView,
@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../components/layout/Header';
@@ -87,6 +87,8 @@ export const ScheduleScreen: React.FC = () => {
   const { open: openSidebar } = useSidebar();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const route = useRoute<RouteProp<AppStackParamList, 'Schedule'>>();
+  const focusDate = route.params?.focusDate;
   const { scheduledByDay, unscheduleOutfit } = useSchedule();
   const stripRef = useRef<ScrollView>(null);
 
@@ -95,7 +97,18 @@ export const ScheduleScreen: React.FC = () => {
   const today = useMemo(() => new Date(), []);
   const days = useMemo(() => buildStripDays(today), [today]);
 
-  const [selectedKey, setSelectedKey] = useState<string>(() => toDayKey(today));
+  // Start on the day passed from the Favourite date-picker (if any), else today.
+  const [selectedKey, setSelectedKey] = useState<string>(
+    () => focusDate ?? toDayKey(today),
+  );
+
+  // Re-focus when arriving again with a new `focusDate` (the screen may already
+  // be mounted in the stack).
+  useEffect(() => {
+    if (focusDate) {
+      setSelectedKey(focusDate);
+    }
+  }, [focusDate]);
 
   // Outfits planned for the selected day (from the local ScheduleContext store,
   // written by the Favourite page's "add to schedule" action).

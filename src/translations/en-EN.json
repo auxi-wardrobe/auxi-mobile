@@ -584,7 +584,15 @@
       "empty_title": "Nothing planned",
       "empty_body": "Tap [+] to add an outfit",
       "a11y_open_menu": "Open menu",
-      "a11y_add": "Add an outfit"
+      "a11y_add": "Add an outfit",
+      "picker": {
+        "title": "Add to Schedule",
+        "cancel": "Cancel",
+        "confirm": "Schedule",
+        "prev_month": "Previous month",
+        "next_month": "Next month",
+        "dismiss": "Dismiss"
+      }
     },
     "outfitActions": {
       "a11y_remix": "Remix this outfit",

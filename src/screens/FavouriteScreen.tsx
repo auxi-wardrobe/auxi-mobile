@@ -31,6 +31,7 @@ import { Favourite, favouriteService } from '../services/favouriteService';
 import { FavouriteEmptyState } from './favourite/EmptyState';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
 import { RemoveFavouriteDialog } from './favourite/RemoveFavouriteDialog';
+import { ScheduleDatePickerSheet } from './schedule/ScheduleDatePickerSheet';
 import {
   formatDateLabel,
   groupFavouritesByDate,
@@ -61,6 +62,8 @@ export const FavouriteScreen: React.FC = () => {
 
   const [view, setView] = useState<HomeView>('grid');
   const [pendingRemovalId, setPendingRemovalId] = useState<string | null>(null);
+  // The outfit awaiting a day in the "Add to Schedule" sheet (null = closed).
+  const [scheduleTarget, setScheduleTarget] = useState<Favourite | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: FAVOURITES_QUERY_KEY,
@@ -147,16 +150,24 @@ export const FavouriteScreen: React.FC = () => {
   };
 
   const handleSchedule = (favourite: Favourite) => {
-    // No date-picker yet — plan the outfit on TODAY, then open the Schedule
-    // page where it now appears under today. (A pick-a-day step can come later;
-    // the store already keys by arbitrary day.)
-    const dayKey = toDayKey(new Date());
-    scheduleOutfit(dayKey, favourite);
+    // Open the "Add to Schedule" sheet so the user picks which day.
+    track('favourite_schedule_opened', { favorite_id: favourite.id });
+    setScheduleTarget(favourite);
+  };
+
+  const handleConfirmSchedule = (date: Date) => {
+    if (!scheduleTarget) {
+      return;
+    }
+    const dayKey = toDayKey(date);
+    scheduleOutfit(dayKey, scheduleTarget);
     track('favourite_added_to_schedule', {
-      favorite_id: favourite.id,
+      favorite_id: scheduleTarget.id,
       date: dayKey,
     });
-    navigation.navigate('Schedule');
+    setScheduleTarget(null);
+    // Land on the Schedule page focused on the day just chosen.
+    navigation.navigate('Schedule', { focusDate: dayKey });
   };
 
   const confirmRemove = () => {
@@ -276,6 +287,12 @@ export const FavouriteScreen: React.FC = () => {
         isBusy={removeMutation.isPending}
         onCancel={() => setPendingRemovalId(null)}
         onConfirm={confirmRemove}
+      />
+
+      <ScheduleDatePickerSheet
+        visible={scheduleTarget !== null}
+        onCancel={() => setScheduleTarget(null)}
+        onConfirm={handleConfirmSchedule}
       />
     </View>
   );

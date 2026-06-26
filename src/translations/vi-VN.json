@@ -583,7 +583,15 @@
       "empty_title": "Chưa có kế hoạch",
       "empty_body": "Chạm [+] để thêm bộ đồ",
       "a11y_open_menu": "Mở menu",
-      "a11y_add": "Thêm bộ đồ"
+      "a11y_add": "Thêm bộ đồ",
+      "picker": {
+        "title": "Thêm vào lịch",
+        "cancel": "Hủy",
+        "confirm": "Lên lịch",
+        "prev_month": "Tháng trước",
+        "next_month": "Tháng sau",
+        "dismiss": "Đóng"
+      }
     },
     "outfitActions": {
       "a11y_remix": "Phối lại bộ đồ này",
