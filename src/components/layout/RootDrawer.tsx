@@ -1,26 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Dimensions,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { useSidebar } from '../../context/SidebarContext';
-import { SidebarMenu } from './SidebarMenu';
+import { SidebarMenu, SIDEBAR_WIDTH } from './SidebarMenu';
 
 // RootDrawer — app-level push-drawer host. The menu is a `base`-tier back layer;
 // the entire app content (the NavigationContainer) is the `content` tier and is
 // PUSHED to the right to REVEAL the menu (it does NOT overlay it — there is no
 // dim scrim, the content stays bright, per Figma 2852:26393 and
 // docs/Z_INDEX_LAYERING.md §4.1: overlays live at one root host, not per screen).
-const { width: SCREEN_W } = Dimensions.get('window');
-// The menu spans 4/5 of the screen width (must match SidebarMenu's width).
-const SIDEBAR_WIDTH = SCREEN_W * (4 / 5);
-// Push the content by the full menu width so the menu is exactly revealed with
-// no gap between the two layers.
+// Push the content by the full menu width (the single shared SIDEBAR_WIDTH from
+// SidebarMenu) so the menu is exactly revealed with no gap between the layers.
 const PUSH_X = SIDEBAR_WIDTH;
 
 export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
