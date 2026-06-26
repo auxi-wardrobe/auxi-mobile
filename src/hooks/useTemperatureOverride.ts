@@ -6,10 +6,11 @@
  * read from this hook, so they can NEVER disagree about the current mode
  * (named high-risk: "header/recommendation mismatch", "override not cleared").
  *
- * Persistence (D3): the active override survives same-day reloads via
- * AsyncStorage, keyed by `@auxi/temp_override` with the value
- * `{ bucketKey, dateISO }`. On mount we load it; if `dateISO` is not today the
- * override is expired and we fall back to `weather`.
+ * Lifetime: the override is **session-only / in-memory**. It is intentionally
+ * NOT persisted — quitting the app tears down the JS context and the next
+ * launch starts back on `weather` (live location temp). This is the requested
+ * behaviour: a manual temperature is a temporary, one-session tweak; closing
+ * the app returns the user to their real weather location automatically.
  *
  * `overrideTempC` is `null` while on `weather` (live temp) and the bucket's
  * representative midpoint while an override is active. Callers substitute it as
@@ -18,30 +19,12 @@
  * override without re-creating their callbacks.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DEFAULT_TEMPERATURE_BUCKET_KEY,
   isOverrideBucket,
-  isTemperatureBucketKey,
   repTempCFor,
   type TemperatureBucketKey,
 } from '../config/temperature-buckets';
-
-const STORAGE_KEY = '@auxi/temp_override';
-
-interface PersistedOverride {
-  bucketKey: TemperatureBucketKey;
-  dateISO: string;
-}
-
-/** Local calendar day stamp (YYYY-MM-DD) — used to expire the override. */
-const todayISO = (): string => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = `${now.getMonth() + 1}`.padStart(2, '0');
-  const d = `${now.getDate()}`.padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
 
 export interface UseTemperatureOverride {
   activeBucketKey: TemperatureBucketKey;
@@ -53,9 +36,9 @@ export interface UseTemperatureOverride {
   overrideTempCRef: React.MutableRefObject<number | null>;
   /** True when a non-default bucket is active. */
   isOverrideActive: boolean;
-  /** Persist + activate a bucket (any key, incl. `weather` to clear). */
+  /** Activate a bucket for this session (any key, incl. `weather` to clear). */
   apply: (key: TemperatureBucketKey) => void;
-  /** Reset to live weather and drop the persisted override. */
+  /** Reset to live weather. */
   clear: () => void;
 }
 
@@ -74,32 +57,6 @@ export const useTemperatureOverride = (): UseTemperatureOverride => {
     overrideTempCRef.current = repTempCFor(activeBucketKey);
   }, [activeBucketKey]);
 
-  // Load persisted override on mount; expire if not from today (D3).
-  useEffect(() => {
-    let mounted = true;
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then(raw => {
-        if (!mounted || !raw) {
-          return;
-        }
-        const parsed = JSON.parse(raw) as Partial<PersistedOverride>;
-        if (
-          isTemperatureBucketKey(parsed.bucketKey) &&
-          isOverrideBucket(parsed.bucketKey) &&
-          parsed.dateISO === todayISO()
-        ) {
-          setActiveBucketKey(parsed.bucketKey);
-        } else {
-          // Stale (yesterday) or malformed → clean up.
-          AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
-        }
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const apply = useCallback((key: TemperatureBucketKey) => {
     // Sync the refs SYNCHRONOUSLY here, not only via the effect above (which
     // runs post-commit): the Home Apply handler fires the recommendation
@@ -110,14 +67,9 @@ export const useTemperatureOverride = (): UseTemperatureOverride => {
     activeBucketKeyRef.current = key;
     overrideTempCRef.current = repTempCFor(key);
     setActiveBucketKey(key);
-    if (isOverrideBucket(key)) {
-      AsyncStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ bucketKey: key, dateISO: todayISO() }),
-      ).catch(() => {});
-    } else {
-      AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
-    }
+    // No persistence: the override is session-only. On the next app launch the
+    // hook re-mounts at DEFAULT_TEMPERATURE_BUCKET_KEY ('weather'), so the user
+    // is returned to their live weather location automatically.
   }, []);
 
   const clear = useCallback(() => {
