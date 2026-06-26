@@ -148,7 +148,12 @@ export const ScheduleScreen: React.FC = () => {
   const handlePickSource = (source: 'favourite' | 'creations') => {
     setAddSheetVisible(false);
     track('schedule_add_source_selected', { source });
-    navigation.navigate(source === 'favourite' ? 'Favourite' : 'MyCreations');
+    // returnToSchedule so the chosen page sends the user back here after they
+    // schedule an outfit (they're mid-planning), rather than staying there.
+    navigation.navigate(
+      source === 'favourite' ? 'Favourite' : 'MyCreations',
+      { returnToSchedule: true },
+    );
   };
 
   // Mirror the Favourite page's "See this on me" entry so a scheduled outfit

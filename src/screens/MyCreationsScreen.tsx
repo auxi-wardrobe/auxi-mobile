@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
@@ -37,6 +37,8 @@ export const MyCreationsScreen: React.FC = () => {
   const { open: openSidebar } = useSidebar();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const route = useRoute<RouteProp<AppStackParamList, 'MyCreations'>>();
+  const returnToSchedule = route.params?.returnToSchedule === true;
   const { scheduleOutfit } = useSchedule();
   // The creation awaiting a day in the "Add to Schedule" sheet (null = closed).
   const [scheduleTarget, setScheduleTarget] = useState<Creation | null>(null);
@@ -78,7 +80,11 @@ export const MyCreationsScreen: React.FC = () => {
       position: 'bottom',
     });
     setScheduleTarget(null);
-    navigation.navigate('Schedule', { focusDate: dayKey });
+    // Only return to Schedule when the user came from there (mid-planning).
+    // Otherwise they're managing creations — stay put (toast confirms).
+    if (returnToSchedule) {
+      navigation.navigate('Schedule', { focusDate: dayKey });
+    }
   };
 
   const renderBody = () => {

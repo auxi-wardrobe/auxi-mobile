@@ -7,7 +7,12 @@ import {
   View,
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +51,8 @@ export const FavouriteScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const route = useRoute<RouteProp<AppStackParamList, 'Favourite'>>();
+  const returnToSchedule = route.params?.returnToSchedule === true;
   const queryClient = useQueryClient();
   const reduced = useReducedMotion();
   const { open: openSidebar } = useSidebar();
@@ -172,8 +179,11 @@ export const FavouriteScreen: React.FC = () => {
       position: 'bottom',
     });
     setScheduleTarget(null);
-    // Land on the Schedule page focused on the day just chosen.
-    navigation.navigate('Schedule', { focusDate: dayKey });
+    // Only return to Schedule when the user came from there (mid-planning).
+    // Otherwise they're browsing favourites — stay put (toast confirms).
+    if (returnToSchedule) {
+      navigation.navigate('Schedule', { focusDate: dayKey });
+    }
   };
 
   const confirmRemove = () => {
