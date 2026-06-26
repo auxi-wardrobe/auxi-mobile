@@ -792,7 +792,7 @@ const styles = StyleSheet.create({
     elevation: 1000,
   },
   headerTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
   },
   plusButton: {

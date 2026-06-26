@@ -250,6 +250,9 @@ export const FavouriteScreen: React.FC = () => {
         <Text
           style={[styles.headerTitle, { top: insets.top + 8 }]}
           testID="favourite-header-title"
+          // Spans the full bar width to stay optically centred, so it must let
+          // touches through to the hamburger underneath it.
+          pointerEvents="none"
         >
           {t('favourite.title')}
         </Text>
@@ -301,7 +304,7 @@ const styles = StyleSheet.create({
   // (interSemiboldSm + primary). Absolutely centred across the bar so the
   // leading hamburger doesn't push it off-centre.
   headerTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     position: 'absolute',
     left: 0,

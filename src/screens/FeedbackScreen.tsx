@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextDark,
   },
   headerSpacer: {

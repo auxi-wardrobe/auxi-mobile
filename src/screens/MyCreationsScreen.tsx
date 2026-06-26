@@ -103,7 +103,16 @@ export const MyCreationsScreen: React.FC = () => {
           style={styles.menuButton}
           icon={<IconMenu width={24} height={24} />}
         />
-        <Text style={styles.headerTitle}>{t('myCreations.title')}</Text>
+        {/* Centred screen title — matches the Wardrobe/Favourite header title
+            (body/sm semibold). Absolutely centred + pointerEvents none so it
+            stays optically centred and never swallows the hamburger tap. */}
+        <Text
+          style={[styles.headerTitle, { top: insets.top + 8 }]}
+          testID="my-creations-header-title"
+          pointerEvents="none"
+        >
+          {t('myCreations.title')}
+        </Text>
       </View>
 
       <View style={styles.body}>{renderBody()}</View>
@@ -140,8 +149,16 @@ const styles = StyleSheet.create({
     ...theme.ds.shadow.headerIcon,
   },
   headerTitle: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    // `top` is supplied inline (insets.top + 8) to match the header paddingTop;
+    // height 44 + line centering aligns the title with the 44×44 hamburger.
+    height: 44,
+    lineHeight: 44,
+    textAlign: 'center',
   },
   body: {
     flex: 1,

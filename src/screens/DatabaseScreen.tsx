@@ -237,8 +237,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaBackground,
   },
   headerTitle: {
-    ...theme.typography.aliases.archivoBody,
-    fontWeight: '400',
+    ...theme.typography.aliases.interSemiboldXsSm,
   },
   plusButton: {
     width: 45,

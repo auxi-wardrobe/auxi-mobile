@@ -773,7 +773,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    ...theme.typography.aliases.playfairDisplaySection,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaAction,
   },
   topBarSpacer: {
