@@ -204,7 +204,8 @@ export const ScheduleScreen: React.FC = () => {
       >
         {days.map(day => {
           const isSelected = day.key === selectedKey;
-          const hasDot = (scheduledByDay[day.key]?.length ?? 0) > 0;
+          // One dot per outfit scheduled on this day (3 outfits → 3 dots).
+          const dotCount = scheduledByDay[day.key]?.length ?? 0;
           return (
             <TouchableOpacity
               key={day.key}
@@ -228,9 +229,17 @@ export const ScheduleScreen: React.FC = () => {
               >
                 {day.weekday}
               </Text>
-              {/* Reserve the dot's space on every cell so weekday baselines stay
-                  aligned whether or not a day has a scheduled outfit. */}
-              <View style={[styles.dayDot, hasDot && styles.dayDotActive]} />
+              {/* One dot per scheduled outfit. The row always renders (with a
+                  reserved min height) so weekday baselines stay aligned whether
+                  or not a day has outfits; it wraps if a day has many. */}
+              <View
+                style={styles.dayDots}
+                testID={`schedule-day-${day.key}-dots-${dotCount}`}
+              >
+                {Array.from({ length: dotCount }).map((_, idx) => (
+                  <View key={idx} style={styles.dayDot} />
+                ))}
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -338,14 +347,23 @@ const styles = StyleSheet.create({
   dayWeekdaySelected: {
     color: theme.colors.figmaTextPrimary,
   },
-  dayDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+  // Dots row under the weekday — centered, wraps if a day has many outfits.
+  // `minHeight` reserves the single-row space so days with no outfits keep the
+  // same cell height (weekday baselines stay aligned).
+  dayDots: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 3,
     marginTop: 6,
-    backgroundColor: 'transparent',
+    minHeight: 4,
+    maxWidth: CELL_WIDTH - 8,
   },
-  dayDotActive: {
+  dayDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: theme.colors.figmaTextPrimary,
   },
   sectionTitle: {
