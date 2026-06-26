@@ -7,6 +7,7 @@ import {
   moodPolicyService,
 } from '../services/moodPolicyService';
 import { track } from '../services/analytics';
+import { feedbackMoodsToIntentMoods } from '../services/mood/mood-vocabulary';
 
 /**
  * AU-318 "Wear this" mood feedback flow (Phase 4).
@@ -308,6 +309,11 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
             outfit_hash: pending.outfitHash,
             mood_ids: moodIds,
             mood_count: moodIds.length,
+            // Engine-vocab projection of the chosen feelings — the signal the
+            // recommender can consume to "wear the feeling you want" (see
+            // docs/strategy-mood-aware-recommendations.md). Recorded now so the
+            // mapping can be validated against real usage before backend wiring.
+            intent_moods: feedbackMoodsToIntentMoods(moodIds),
             saved: true,
             updated,
           });

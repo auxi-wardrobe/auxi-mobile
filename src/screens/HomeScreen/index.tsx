@@ -47,6 +47,7 @@ import {
   RecommendationMode,
 } from '../../services/recommendationService';
 import { recommendV05, resetV05Session } from '../../services/v05Api';
+import { moodForMode } from '../../services/mood/mood-vocabulary';
 import { favouriteService } from '../../services/favouriteService';
 import { wardrobeService } from '../../services/wardrobeService';
 import {
@@ -284,13 +285,10 @@ export const HomeScreen = () => {
       cycled?: boolean;
       wardrobeGap?: boolean;
     }> => {
-      const moodMap: Record<RecommendationMode, string | null> = {
-        safe: 'calm',
-        power: 'confident',
-        creative: 'playful',
-      };
       const mode = input.mode ?? DEFAULT_RECOMMENDATION_MODE;
-      const mood = moodMap[mode] ?? null;
+      // Mode pill → engine mood, via the shared mood-vocabulary bridge (single
+      // source of truth shared with the feedback→intent mapping).
+      const mood = moodForMode(mode);
       const occasion = mode || DEFAULT_RECOMMENDATION_MODE;
 
       const v05 = await recommendV05({
