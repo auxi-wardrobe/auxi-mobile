@@ -1,21 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
+import { AppBottomSheet } from '../../components/features/AppBottomSheet';
 
-// "Add to Schedule" date picker — a bottom sheet with a month calendar
-// (Figma: big selected-date header → month nav → day grid → Cancel / Schedule).
-// Self-contained: the consumer controls `visible` and gets the chosen Date back
-// via `onConfirm`. Sunday-first grid to match the design's "S M T W T F S".
+// "Add to Schedule" date picker — a month calendar (Figma: big selected-date
+// header → month nav → day grid → Cancel / Schedule). Self-contained: the
+// consumer controls `visible` and gets the chosen Date back via `onConfirm`.
+// Sunday-first grid to match the design's "S M T W T F S". The sheet shell
+// (motion / scrim / card) is the shared AppBottomSheet so it matches every
+// other bottom sheet.
 
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS_SHORT = [
@@ -90,7 +85,6 @@ export const ScheduleDatePickerSheet: React.FC<Props> = ({
   testID = 'schedule-date-picker',
 }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const today = useMemo(() => new Date(), []);
   const seed = initialDate ?? today;
 
@@ -139,159 +133,119 @@ export const ScheduleDatePickerSheet: React.FC<Props> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onCancel}
-    >
-      <View style={styles.root}>
-        <Pressable
-          style={styles.scrim}
-          onPress={onCancel}
-          testID={`${testID}-scrim`}
-          accessibilityRole="button"
-          accessibilityLabel={t('schedule.picker.dismiss')}
-        />
+    <AppBottomSheet visible={visible} onDismiss={onCancel} testID={testID}>
+      <Text style={styles.eyebrow}>{t('schedule.picker.title')}</Text>
+      <Text style={styles.selectedDate} testID={`${testID}-selected-label`}>
+        {formatSelected(selected)}
+      </Text>
 
-        <View
-          style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}
-          testID={testID}
-        >
-          <Text style={styles.eyebrow}>{t('schedule.picker.title')}</Text>
-          <Text style={styles.selectedDate} testID={`${testID}-selected-label`}>
-            {formatSelected(selected)}
-          </Text>
+      <View style={styles.divider} />
 
-          <View style={styles.divider} />
-
-          <View style={styles.monthRow}>
-            <Text style={styles.monthLabel}>
-              {`${MONTHS_FULL[viewMonth]} ${viewYear}`}
-            </Text>
-            <View style={styles.monthNav}>
-              <TouchableOpacity
-                onPress={goPrevMonth}
-                style={styles.navButton}
-                testID={`${testID}-prev-month`}
-                accessibilityRole="button"
-                accessibilityLabel={t('schedule.picker.prev_month')}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Icons.ChevronLeft
-                  width={24}
-                  height={24}
-                  color={theme.colors.figmaTextPrimary}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={goNextMonth}
-                style={styles.navButton}
-                testID={`${testID}-next-month`}
-                accessibilityRole="button"
-                accessibilityLabel={t('schedule.picker.next_month')}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Icons.ChevronRight
-                  width={24}
-                  height={24}
-                  color={theme.colors.figmaTextPrimary}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.dowRow}>
-            {DOW_LABELS.map((d, i) => (
-              <Text key={`dow-${i}`} style={styles.dowLabel}>
-                {d}
-              </Text>
-            ))}
-          </View>
-
-          <View style={styles.grid}>
-            {grid.map((day, i) => {
-              if (day === null) {
-                return <View key={`blank-${i}`} style={styles.dayCell} />;
-              }
-              const date = new Date(viewYear, viewMonth, day);
-              const isSelected = sameYMD(date, selected);
-              const isToday = sameYMD(date, today);
-              return (
-                <View key={`day-${day}`} style={styles.dayCell}>
-                  <TouchableOpacity
-                    onPress={() => setSelected(date)}
-                    style={[
-                      styles.dayCircle,
-                      isToday && !isSelected && styles.dayCircleToday,
-                      isSelected && styles.dayCircleSelected,
-                    ]}
-                    testID={`${testID}-day-${day}${
-                      isSelected ? '-selected' : ''
-                    }`}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={formatSelected(date)}
-                  >
-                    <Text
-                      style={[
-                        styles.dayText,
-                        isSelected && styles.dayTextSelected,
-                      ]}
-                    >
-                      {day}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-          </View>
-
-          <View style={styles.footer}>
-            <TouchableOpacity
-              onPress={onCancel}
-              style={styles.cancelButton}
-              testID={`${testID}-cancel`}
-              accessibilityRole="button"
-              accessibilityLabel={t('schedule.picker.cancel')}
-            >
-              <Text style={styles.cancelText}>{t('schedule.picker.cancel')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => onConfirm(selected)}
-              style={styles.confirmButton}
-              activeOpacity={0.85}
-              testID={`${testID}-confirm`}
-              accessibilityRole="button"
-              accessibilityLabel={t('schedule.picker.confirm')}
-            >
-              <Text style={styles.confirmText}>
-                {t('schedule.picker.confirm')}
-              </Text>
-            </TouchableOpacity>
-          </View>
+      <View style={styles.monthRow}>
+        <Text style={styles.monthLabel}>
+          {`${MONTHS_FULL[viewMonth]} ${viewYear}`}
+        </Text>
+        <View style={styles.monthNav}>
+          <TouchableOpacity
+            onPress={goPrevMonth}
+            style={styles.navButton}
+            testID={`${testID}-prev-month`}
+            accessibilityRole="button"
+            accessibilityLabel={t('schedule.picker.prev_month')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Icons.ChevronLeft
+              width={24}
+              height={24}
+              color={theme.colors.figmaTextPrimary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={goNextMonth}
+            style={styles.navButton}
+            testID={`${testID}-next-month`}
+            accessibilityRole="button"
+            accessibilityLabel={t('schedule.picker.next_month')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Icons.ChevronRight
+              width={24}
+              height={24}
+              color={theme.colors.figmaTextPrimary}
+            />
+          </TouchableOpacity>
         </View>
       </View>
-    </Modal>
+
+      <View style={styles.dowRow}>
+        {DOW_LABELS.map((d, i) => (
+          <Text key={`dow-${i}`} style={styles.dowLabel}>
+            {d}
+          </Text>
+        ))}
+      </View>
+
+      <View style={styles.grid}>
+        {grid.map((day, i) => {
+          if (day === null) {
+            return <View key={`blank-${i}`} style={styles.dayCell} />;
+          }
+          const date = new Date(viewYear, viewMonth, day);
+          const isSelected = sameYMD(date, selected);
+          const isToday = sameYMD(date, today);
+          return (
+            <View key={`day-${day}`} style={styles.dayCell}>
+              <TouchableOpacity
+                onPress={() => setSelected(date)}
+                style={[
+                  styles.dayCircle,
+                  isToday && !isSelected && styles.dayCircleToday,
+                  isSelected && styles.dayCircleSelected,
+                ]}
+                testID={`${testID}-day-${day}${isSelected ? '-selected' : ''}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                accessibilityLabel={formatSelected(date)}
+              >
+                <Text
+                  style={[styles.dayText, isSelected && styles.dayTextSelected]}
+                >
+                  {day}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </View>
+
+      <View style={styles.footer}>
+        <TouchableOpacity
+          onPress={onCancel}
+          style={styles.cancelButton}
+          testID={`${testID}-cancel`}
+          accessibilityRole="button"
+          accessibilityLabel={t('schedule.picker.cancel')}
+        >
+          <Text style={styles.cancelText}>{t('schedule.picker.cancel')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => onConfirm(selected)}
+          style={styles.confirmButton}
+          activeOpacity={0.85}
+          testID={`${testID}-confirm`}
+          accessibilityRole="button"
+          accessibilityLabel={t('schedule.picker.confirm')}
+        >
+          <Text style={styles.confirmText}>
+            {t('schedule.picker.confirm')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </AppBottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.dialogScrim,
-  },
-  sheet: {
-    backgroundColor: theme.colors.figmaSurface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-  },
   eyebrow: {
     ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,

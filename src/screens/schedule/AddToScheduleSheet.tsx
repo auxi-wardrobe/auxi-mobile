@@ -1,22 +1,15 @@
 import React from 'react';
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
 import IconMyCreation from '../../assets/images/icon_my_creation.svg';
+import { AppBottomSheet } from '../../components/features/AppBottomSheet';
 
 // "Add an outfit" source picker — the Schedule header "+" opens this so the
 // user chooses where to add an outfit from, then is routed to that page
-// (Favourite / My Creations) to pick one. Same edge-to-edge, top-rounded sheet
-// shell as ScheduleDatePickerSheet for visual consistency.
+// (Favourite / My Creations). Uses the shared AppBottomSheet shell so its
+// motion / scrim / card match every other bottom sheet.
 
 interface RowProps {
   Icon: React.FC<{ width?: number; height?: number; color?: string }>;
@@ -69,70 +62,32 @@ export const AddToScheduleSheet: React.FC<Props> = ({
   testID = 'schedule-add-source-sheet',
 }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onDismiss}
-    >
-      <View style={styles.root}>
-        <Pressable
-          style={styles.scrim}
-          onPress={onDismiss}
-          testID={`${testID}-scrim`}
-          accessibilityRole="button"
-          accessibilityLabel={t('schedule.picker.dismiss')}
-        />
+    <AppBottomSheet visible={visible} onDismiss={onDismiss} testID={testID}>
+      <Text style={styles.title}>{t('schedule.add_sheet.title')}</Text>
+      <Text style={styles.subtitle}>{t('schedule.add_sheet.subtitle')}</Text>
 
-        <View
-          style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}
-          testID={testID}
-        >
-          <Text style={styles.title}>{t('schedule.add_sheet.title')}</Text>
-          <Text style={styles.subtitle}>
-            {t('schedule.add_sheet.subtitle')}
-          </Text>
-
-          <SourceRow
-            Icon={Icons.Heart}
-            title={t('schedule.add_sheet.favourite_title')}
-            description={t('schedule.add_sheet.favourite_desc')}
-            onPress={onSelectFavourite}
-            testID={`${testID}-favourite`}
-          />
-          <SourceRow
-            Icon={IconMyCreation}
-            title={t('schedule.add_sheet.creations_title')}
-            description={t('schedule.add_sheet.creations_desc')}
-            onPress={onSelectCreations}
-            testID={`${testID}-creations`}
-            showDivider
-          />
-        </View>
-      </View>
-    </Modal>
+      <SourceRow
+        Icon={Icons.Heart}
+        title={t('schedule.add_sheet.favourite_title')}
+        description={t('schedule.add_sheet.favourite_desc')}
+        onPress={onSelectFavourite}
+        testID={`${testID}-favourite`}
+      />
+      <SourceRow
+        Icon={IconMyCreation}
+        title={t('schedule.add_sheet.creations_title')}
+        description={t('schedule.add_sheet.creations_desc')}
+        onPress={onSelectCreations}
+        testID={`${testID}-creations`}
+        showDivider
+      />
+    </AppBottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.dialogScrim,
-  },
-  sheet: {
-    backgroundColor: theme.colors.figmaSurface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-  },
   title: {
     fontFamily: 'Poppins-SemiBold',
     fontSize: 18,
