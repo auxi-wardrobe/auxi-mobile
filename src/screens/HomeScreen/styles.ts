@@ -494,4 +494,23 @@ export const styles = StyleSheet.create({
     color: theme.colors.figmaSurface,
     textAlign: 'center',
   },
+  // Refine confirmation toast ("Relaxed applied!"). Shares the bottom toast slot
+  // with the mood banner; the two never co-exist because any interaction that
+  // surfaces the mood banner also dismisses this toast first.
+  refineToast: {
+    position: 'absolute',
+    zIndex: theme.zIndex.toast,
+    left: theme.spacing.m,
+    right: theme.spacing.m,
+    bottom: HOME_VIEW_TOGGLE_FOOTER_HEIGHT + theme.spacing.l,
+    paddingVertical: theme.spacing.s,
+    paddingHorizontal: theme.spacing.m,
+    borderRadius: 12,
+    backgroundColor: theme.colors.figmaAction,
+  },
+  refineToastText: {
+    ...theme.typography.aliases.manropeCaption,
+    color: theme.colors.figmaSurface,
+    textAlign: 'center',
+  },
 });

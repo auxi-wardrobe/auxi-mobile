@@ -92,6 +92,7 @@ import { PinnedItemUnavailableNotice } from '../../components/features/PinnedIte
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   MOOD_BANNER_DURATION_MS,
+  REFINE_TOAST_DURATION_MS,
   AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
   REFINE_AFTER_OUTFITS,
@@ -227,6 +228,16 @@ export const HomeScreen = () => {
   const activeIndexRef = useRef(0);
   const styleFeedbackRef = useRef<string | null>(null);
   const recommendationSourceRef = useRef<'feed' | 'refine'>('feed');
+  // Refine feedback awaiting the next batch — set on submit, consumed in the
+  // mutation's onSuccess so the "applied" toast fires only once the refreshed
+  // outfits have actually loaded.
+  const pendingRefineToastRef = useRef<string | null>(null);
+  const refineToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  // onSuccess is declared before showRefineToast (which needs `t`), so reach the
+  // shower through a ref — same indirection the buffer trampoline uses.
+  const showRefineToastRef = useRef<(feedback: string) => void>(() => {});
 
   const { weather } = useWeather();
 
@@ -395,6 +406,9 @@ export const HomeScreen = () => {
 
       if (addedCount === 0) {
         poolDepletedRef.current = true;
+        // Nothing new surfaced — drop any queued refine toast so it can't fire
+        // against an unrelated batch later.
+        pendingRefineToastRef.current = null;
         if (flags?.wardrobeGap) {
           setIsWardrobeGap(true);
         }
@@ -407,6 +421,14 @@ export const HomeScreen = () => {
           tempBucket,
           addedCount,
         );
+      }
+
+      // The refreshed deck has landed — now confirm the refine that produced it
+      // so the user understands why the suggestions just changed.
+      const pendingToast = pendingRefineToastRef.current;
+      if (pendingToast) {
+        pendingRefineToastRef.current = null;
+        showRefineToastRef.current(pendingToast);
       }
 
       setTimeout(() => {
@@ -459,6 +481,8 @@ export const HomeScreen = () => {
     (payload: string) => {
       setStyleFeedback(payload);
       styleFeedbackRef.current = payload;
+      // Queue the confirmation toast; it fires once the new batch resolves.
+      pendingRefineToastRef.current = payload;
       unfavoritedSwipeCountRef.current = 0;
       resetRefineTier();
       recommendationSourceRef.current = 'refine';
@@ -555,6 +579,7 @@ export const HomeScreen = () => {
   useEffect(() => {
     return () => {
       clearTimeoutRef(snackbarTimeoutRef);
+      clearTimeoutRef(refineToastTimeoutRef);
     };
   }, []);
 
@@ -828,11 +853,22 @@ export const HomeScreen = () => {
     ensureBufferRef.current = ensureBuffer;
   }, [ensureBuffer]);
 
+  const [refineToastText, setRefineToastText] = useState<string | null>(null);
+
+  // Clears the refine toast early the moment the user starts interacting with
+  // the refreshed deck (swipe, like, …). Declared above the interaction
+  // handlers so they can depend on it without hitting the temporal dead zone.
+  const dismissRefineToast = useCallback(() => {
+    clearTimeoutRef(refineToastTimeoutRef);
+    setRefineToastText(current => (current === null ? current : null));
+  }, []);
+
   const handleHeartTapForOutfit = useCallback(
     (outfit: OutfitSheetWithGrid | OutfitSheet | undefined) => {
       if (!outfit) {
         return;
       }
+      dismissRefineToast();
 
       const hash = outfit.outfitHash;
       const items = outfit.items || [];
@@ -872,7 +908,7 @@ export const HomeScreen = () => {
           setSaveStateByHash(current => ({ ...current, [hash]: 'error' }));
         });
     },
-    [queryClient, markFavouriteSaved],
+    [queryClient, markFavouriteSaved, dismissRefineToast],
   );
 
   const handleOpenFavourites = useCallback(() => {
@@ -893,6 +929,25 @@ export const HomeScreen = () => {
       snackbarTimeoutRef.current = null;
     }, MOOD_BANNER_DURATION_MS);
   }, []);
+
+  // Refine confirmation toast ("Relaxed applied!") — builds the localized copy.
+  // Fired from the mutation's onSuccess (via showRefineToastRef) once the
+  // refreshed deck has loaded, then auto-dismisses after REFINE_TOAST_DURATION_MS.
+  const showRefineToast = useCallback(
+    (feedback: string) => {
+      clearTimeoutRef(refineToastTimeoutRef);
+      setRefineToastText(t('home.refineAppliedToast', { feedback }));
+      refineToastTimeoutRef.current = setTimeout(() => {
+        setRefineToastText(null);
+        refineToastTimeoutRef.current = null;
+      }, REFINE_TOAST_DURATION_MS);
+    },
+    [t],
+  );
+
+  useEffect(() => {
+    showRefineToastRef.current = showRefineToast;
+  }, [showRefineToast]);
 
   const handleMoodSaveSuccess = useCallback(
     (outfitHash: string, updated: boolean) => {
@@ -919,6 +974,7 @@ export const HomeScreen = () => {
       if (!outfit) {
         return;
       }
+      dismissRefineToast();
       unfavoritedSwipeCountRef.current = 0;
       onWearThisPress({
         outfitHash: outfit.outfitHash,
@@ -928,7 +984,7 @@ export const HomeScreen = () => {
         outfit,
       });
     },
-    [onWearThisPress],
+    [onWearThisPress, dismissRefineToast],
   );
 
   const handleToggleItemPin = useCallback(
@@ -1026,24 +1082,29 @@ export const HomeScreen = () => {
   // Swipe RIGHT = step back to the previous suggestion. No favouriting here —
   // the heart button / "Wear this" own that — and the deck blocks this gesture
   // at index 0, so by the time we run there is always a previous card.
-  const handleSwipeBack = useCallback((outfit: OutfitSheetWithGrid) => {
-    const prev = activeIndexRef.current - 1;
-    if (prev < 0) {
-      return;
-    }
-    if (outfit?.outfitHash) {
-      track('outfit_swiped', {
-        outfit_hash: outfit.outfitHash,
-        direction: 'previous',
-        method: 'gesture',
-      });
-    }
-    activeIndexRef.current = prev;
-    setActiveIndex(prev);
-  }, []);
+  const handleSwipeBack = useCallback(
+    (outfit: OutfitSheetWithGrid) => {
+      dismissRefineToast();
+      const prev = activeIndexRef.current - 1;
+      if (prev < 0) {
+        return;
+      }
+      if (outfit?.outfitHash) {
+        track('outfit_swiped', {
+          outfit_hash: outfit.outfitHash,
+          direction: 'previous',
+          method: 'gesture',
+        });
+      }
+      activeIndexRef.current = prev;
+      setActiveIndex(prev);
+    },
+    [dismissRefineToast],
+  );
 
   const handleSkip = useCallback(
     (outfit: OutfitSheetWithGrid) => {
+      dismissRefineToast();
       const fromHash = outfit?.outfitHash;
       console.info('home.swipe.miss', { from: activeIndexRef.current });
       if (fromHash) {
@@ -1057,7 +1118,7 @@ export const HomeScreen = () => {
       // (tierViewedCount), not a raw skip counter.
       advanceDeck();
     },
-    [advanceDeck],
+    [advanceDeck, dismissRefineToast],
   );
 
   const openTempSheet = useCallback(() => {
@@ -1518,6 +1579,17 @@ export const HomeScreen = () => {
         visible={feedbackVisible}
         onClose={() => setFeedbackVisible(false)}
       />
+
+      {refineToastText ? (
+        <View
+          testID="home-refine-applied-toast"
+          accessibilityRole="alert"
+          pointerEvents="none"
+          style={styles.refineToast}
+        >
+          <Text style={styles.refineToastText}>{refineToastText}</Text>
+        </View>
+      ) : null}
 
       {moodBannerText ? (
         <View
