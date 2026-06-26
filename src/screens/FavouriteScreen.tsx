@@ -232,10 +232,10 @@ export const FavouriteScreen: React.FC = () => {
         />
         <View style={styles.headerTint} pointerEvents="none" />
         {/* Hamburger (44×44) opens the app push-drawer — the conventional
-            entry point, same as Home. No title, no back chevron (CEO
-            2026-06-19); native-stack swipe-back still backs out of the
-            pushed screen. testID is the machine selector; accessibilityLabel
-            is the human VoiceOver string (intentionally different values). */}
+            entry point, same as Home. native-stack swipe-back still backs out
+            of the pushed screen. testID is the machine selector;
+            accessibilityLabel is the human VoiceOver string (intentionally
+            different values). */}
         <TopIconButton
           testID="favourite-header-menu"
           accessibilityRole="button"
@@ -244,6 +244,15 @@ export const FavouriteScreen: React.FC = () => {
           style={styles.menuButton}
           icon={<IconMenu width={24} height={24} />}
         />
+        {/* Centred screen title — matches the Wardrobe header title treatment
+            (interSemiboldSm / primary). Absolutely centred so it stays optically
+            centred regardless of the leading hamburger. */}
+        <Text
+          style={[styles.headerTitle, { top: insets.top + 8 }]}
+          testID="favourite-header-title"
+        >
+          {t('favourite.title')}
+        </Text>
       </View>
 
       <View style={styles.body}>{renderBody()}</View>
@@ -287,6 +296,21 @@ const styles = StyleSheet.create({
   headerTint: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: theme.colors.figmaItemDetailHeaderBg,
+  },
+  // Centred screen title — same type/colour as the Wardrobe header title
+  // (interSemiboldSm + primary). Absolutely centred across the bar so the
+  // leading hamburger doesn't push it off-centre.
+  headerTitle: {
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.figmaTextPrimary,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    // `top` is supplied inline (insets.top + 8) to match the header paddingTop;
+    // height 44 + line centering aligns the title with the 44×44 hamburger.
+    height: 44,
+    lineHeight: 44,
+    textAlign: 'center',
   },
   // Hamburger chip (44×44 Figma menu slot) — white surface, radius 8, with the
   // shared header-icon drop-shadow (matches every other header icon).
