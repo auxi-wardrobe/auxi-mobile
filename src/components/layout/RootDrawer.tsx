@@ -19,11 +19,9 @@ import { SidebarMenu } from './SidebarMenu';
 const { width: SCREEN_W } = Dimensions.get('window');
 // The menu spans 4/5 of the screen width (must match SidebarMenu's width).
 const SIDEBAR_WIDTH = SCREEN_W * (4 / 5);
-// 12px gap between the revealed menu and the pushed app content.
-const MENU_CONTENT_GAP = 12;
-// Push the content past the full menu width + the gap so the menu is fully
-// revealed and the two layers stay 12px apart.
-const PUSH_X = SIDEBAR_WIDTH + MENU_CONTENT_GAP;
+// Push the content by the full menu width so the menu is exactly revealed with
+// no gap between the two layers.
+const PUSH_X = SIDEBAR_WIDTH;
 
 export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
   children,

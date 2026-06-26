@@ -22,9 +22,8 @@ import { Icons } from '../../assets/icons';
 // slide animation here (that lived in the old per-screen Sidebar.tsx).
 // Navigation goes through `navigationRef` because this renders OUTSIDE the
 // NavigationContainer.
-// The open menu spans 4/5 of the screen width (Figma); the remaining 1/5 (minus
-// the 12px gap) is the peek of pushed app content. RootDrawer pushes the content
-// by this width + 12 so the two layers never touch.
+// The open menu spans 4/5 of the screen width (Figma); the remaining 1/5 is the
+// peek of pushed app content. RootDrawer pushes the content by this width.
 const SIDEBAR_WIDTH = Dimensions.get('window').width * (4 / 5);
 
 // Internal-only gate: the in-app Design System reference page is shown in the
