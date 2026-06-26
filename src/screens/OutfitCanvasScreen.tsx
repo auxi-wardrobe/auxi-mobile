@@ -36,6 +36,7 @@ import { CategoryTabs } from '../components/features/CategoryTabs';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { getImageUrl } from '../utils/url';
 import { useSidebar } from '../context/SidebarContext';
+import { useCreationsSeen } from '../context/CreationsSeenContext';
 import { track } from '../services/analytics';
 import {
   CREATIONS_QUERY_KEY,
@@ -352,6 +353,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<RouteProp<AppStackParamList, 'OutfitCanvas'>>();
   const { t } = useTranslation();
   const { open: openSidebar } = useSidebar();
+  const { hasUnseen: hasUnseenCreations, markSaved: markCreationSaved } =
+    useCreationsSeen();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   // Entered via Home's Remix button → show a back chevron (goes back to Home).
@@ -660,9 +663,12 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
     track('creation_saved', { item_count: savedItems.length });
     setHasUnsavedChanges(false);
+    // Light the My Creations header dot (same "unseen saved" feedback as the
+    // Home favourites "Wear this" mint dot); cleared when the list is opened.
+    markCreationSaved();
     showSavedSnackbar();
     return true;
-  }, [items, tags, queryClient, showSavedSnackbar]);
+  }, [items, tags, queryClient, showSavedSnackbar, markCreationSaved]);
 
   const handleSave = useCallback(() => {
     persistCreation();
@@ -778,6 +784,16 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.headerIconBtn}
           >
             <IconMyCreation width={24} height={24} />
+            {/* Mint "unseen saved creation" dot — same feedback as the Home
+                favourites "Wear this" dot. Lit on save, cleared when the My
+                Creations list is opened. */}
+            {hasUnseenCreations ? (
+              <View
+                testID="canvas-my-creations-badge"
+                style={styles.creationDot}
+                pointerEvents="none"
+              />
+            ) : null}
           </Pressable>
         </View>
 
@@ -976,6 +992,17 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.m,
     backgroundColor: theme.colors.white,
     ...theme.ds.shadow.headerIcon,
+  },
+  // Mint "unseen saved creation" dot — mirrors the Home favourites favDot
+  // (12×12, top/right 8, figmaFavouriteDot) for a consistent saved-feedback cue.
+  creationDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: theme.colors.figmaFavouriteDot,
   },
   headerIconBtnDisabled: {
     opacity: 0.5,

@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
+import { useCreationsSeen } from '../context/CreationsSeenContext';
 import { MacgieLoader } from '../components/macgie';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { AppStackParamList } from '../types/navigation';
@@ -30,6 +31,15 @@ export const MyCreationsScreen: React.FC = () => {
   const queryClient = useQueryClient();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const { markSeen: markCreationsSeen } = useCreationsSeen();
+
+  // Viewing the list clears the canvas header's "unseen saved creation" dot —
+  // same pattern as the Favourite page clearing the saved-looks dot.
+  useFocusEffect(
+    useCallback(() => {
+      markCreationsSeen();
+    }, [markCreationsSeen]),
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: CREATIONS_QUERY_KEY,
