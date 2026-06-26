@@ -88,6 +88,13 @@ export interface UseMoodFeedbackOptions<T extends MoodFeedbackOutfitRef> {
   saveDirectly: (outfit: T) => void;
   /** Fired after a successful mood-tagged save (create OR mood-update). */
   onSaveSuccess: (outfitHash: string, updated: boolean) => void;
+  /**
+   * Fired when the user submits a soft-negative ("not quite me"). The outfit is
+   * intentionally NOT saved to favourites — keeping the saved list to genuinely
+   * loved looks — so callers should surface a feedback-only acknowledgement here
+   * rather than a "saved" confirmation.
+   */
+  onRejected?: (outfitHash: string) => void;
 }
 
 export interface UseMoodFeedbackResult<T extends MoodFeedbackOutfitRef> {
@@ -99,6 +106,7 @@ export interface UseMoodFeedbackResult<T extends MoodFeedbackOutfitRef> {
 export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
   saveDirectly,
   onSaveSuccess,
+  onRejected,
 }: UseMoodFeedbackOptions<T>): UseMoodFeedbackResult<T> => {
   const { t } = useTranslation();
 
@@ -139,6 +147,8 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
   saveDirectlyRef.current = saveDirectly;
   const onSaveSuccessRef = useRef(onSaveSuccess);
   onSaveSuccessRef.current = onSaveSuccess;
+  const onRejectedRef = useRef(onRejected);
+  onRejectedRef.current = onRejected;
 
   // ── Policy cache ──────────────────────────────────────────────────────
   // Fetched once per session (single-flight), refetched after each
@@ -251,6 +261,30 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
         // Duplicate-POST guard — Done taps during an in-flight submit no-op.
         return;
       }
+
+      // Soft-negative ("not quite me") → do NOT add the outfit to favourites,
+      // so the saved list stays to genuinely loved looks. We record the
+      // feedback in analytics and close the sheet without a save (no
+      // outfit_mood_linked — nothing is persisted server-side). A mixed
+      // selection that includes the negative still counts as a rejection.
+      if (moodIds.includes(NEGATIVE_MOOD_ID)) {
+        setMoodState({ kind: 'closed' });
+        recommendationStateRef.current = 'idle';
+        lockRef.current = false;
+        track('mood_feedback_submitted', {
+          outfit_hash: pending.outfitHash,
+          mood_ids: moodIds,
+          mood_count: moodIds.length,
+          saved: false,
+        });
+        track('negative_mood_selected', {
+          outfit_hash: pending.outfitHash,
+          mood_ids: moodIds,
+        });
+        onRejectedRef.current?.(pending.outfitHash);
+        return;
+      }
+
       inFlightRef.current = true;
       setMoodState({ kind: 'submitting' });
 
@@ -274,6 +308,7 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
             outfit_hash: pending.outfitHash,
             mood_ids: moodIds,
             mood_count: moodIds.length,
+            saved: true,
             updated,
           });
           track('outfit_mood_linked', {
@@ -281,12 +316,6 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
             mood_ids: moodIds,
             updated,
           });
-          if (moodIds.includes(NEGATIVE_MOOD_ID)) {
-            track('negative_mood_selected', {
-              outfit_hash: pending.outfitHash,
-              mood_ids: moodIds,
-            });
-          }
           onSaveSuccessRef.current(pending.outfitHash, updated);
           // Tier thresholds may have advanced (e.g. every_save → occasional).
           refetchPolicy();

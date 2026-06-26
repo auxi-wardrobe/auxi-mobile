@@ -326,7 +326,8 @@
       "errorGeneric": "Unable to save your feedback. Please try again.",
       "errorTimeout": "Connection timed out. Please try again.",
       "savedBanner": "This look is now saved to your favorites.",
-      "moodUpdatedBanner": "Mood updated for this saved look."
+      "moodUpdatedBanner": "Mood updated for this saved look.",
+      "notLovedBanner": "Got it — we won't add this look to your favorites."
     },
     "common": {
       "error_title": "Error",

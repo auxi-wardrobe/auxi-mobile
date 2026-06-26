@@ -908,10 +908,17 @@ export const HomeScreen = () => {
     [showMoodBanner, t, queryClient, markFavouriteSaved],
   );
 
+  // "Not quite me" → the outfit is intentionally NOT saved; acknowledge the
+  // feedback without a "saved" confirmation and leave the save state untouched.
+  const handleMoodRejected = useCallback(() => {
+    showMoodBanner(t('mood.notLovedBanner'));
+  }, [showMoodBanner, t]);
+
   const { onWearThisPress, sheetProps: moodSheetProps } =
     useMoodFeedback<WearThisPayload>({
       saveDirectly: pending => handleHeartTapForOutfit(pending.outfit),
       onSaveSuccess: handleMoodSaveSuccess,
+      onRejected: handleMoodRejected,
     });
 
   const handleWearThisForOutfit = useCallback(
