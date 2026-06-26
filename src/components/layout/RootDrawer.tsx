@@ -94,10 +94,10 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    // Light base = the app surface (Figma 3438:22389 is all-light). The dark
-    // menu paints its own background when revealed, so the back layer must NOT
-    // be dark — a dark base bled through at the content's rounded edges.
-    backgroundColor: theme.colors.background,
+    // Back layer matches the menu background so the surface revealed behind the
+    // pushed content card (and at its rounded edges) is the same dark tone as
+    // the menu, not a light seam.
+    backgroundColor: theme.colors.uacBackgroundBase,
     zIndex: theme.zIndex.base,
   },
   menuLayer: {
