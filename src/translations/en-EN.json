@@ -586,6 +586,7 @@
       "empty_body": "Tap [+] to add an outfit",
       "a11y_open_menu": "Open menu",
       "a11y_add": "Add an outfit",
+      "added_toast": "Added to your schedule",
       "picker": {
         "title": "Add to Schedule",
         "cancel": "Cancel",

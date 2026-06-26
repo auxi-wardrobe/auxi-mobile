@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import Toast from 'react-native-toast-message';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
 import { useSidebar } from '../context/SidebarContext';
@@ -70,6 +71,11 @@ export const MyCreationsScreen: React.FC = () => {
     track('creation_added_to_schedule', {
       creation_id: scheduleTarget.id,
       date: dayKey,
+    });
+    Toast.show({
+      type: 'success',
+      text1: t('schedule.added_toast'),
+      position: 'bottom',
     });
     setScheduleTarget(null);
     navigation.navigate('Schedule', { focusDate: dayKey });

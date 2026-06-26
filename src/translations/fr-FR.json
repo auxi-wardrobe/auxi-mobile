@@ -586,6 +586,7 @@
       "empty_body": "Touchez [+] pour ajouter une tenue",
       "a11y_open_menu": "Ouvrir le menu",
       "a11y_add": "Ajouter une tenue",
+      "added_toast": "Ajouté à votre planning",
       "picker": {
         "title": "Ajouter au planning",
         "cancel": "Annuler",

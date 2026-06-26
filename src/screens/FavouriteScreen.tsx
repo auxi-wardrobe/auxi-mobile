@@ -11,6 +11,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import Toast from 'react-native-toast-message';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
 import { useReducedMotion } from '../theme/motion';
@@ -164,6 +165,11 @@ export const FavouriteScreen: React.FC = () => {
     track('favourite_added_to_schedule', {
       favorite_id: scheduleTarget.id,
       date: dayKey,
+    });
+    Toast.show({
+      type: 'success',
+      text1: t('schedule.added_toast'),
+      position: 'bottom',
     });
     setScheduleTarget(null);
     // Land on the Schedule page focused on the day just chosen.
