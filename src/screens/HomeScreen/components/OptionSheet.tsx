@@ -35,8 +35,6 @@ export const OptionSheet = React.memo(
     homeView,
     onCollageDragActiveChange,
     isGenerating = false,
-    onPressInsight,
-    insightActive = false,
   }: {
     cellKey: string;
     outfit: OutfitSheetWithGrid;
@@ -47,8 +45,6 @@ export const OptionSheet = React.memo(
     homeView: HomeView;
     onCollageDragActiveChange: (active: boolean) => void;
     isGenerating?: boolean;
-    onPressInsight?: () => void;
-    insightActive?: boolean;
   }) => {
     const { t } = useTranslation();
     const items = outfit.items;
@@ -270,8 +266,6 @@ export const OptionSheet = React.memo(
           <OutfitCardCaption
             testID={`home-card-caption-${cellKey}`}
             caption={outfit.caption}
-            onPressInsight={onPressInsight}
-            insightActive={insightActive}
           />
 
           <ScrollView
