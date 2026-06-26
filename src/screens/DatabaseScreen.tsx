@@ -188,16 +188,7 @@ export const DatabaseScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header
-        title={t('wardrobe.database.title')}
-        titleTextStyle={styles.headerTitle}
-        onBack={openSidebar}
-        rightComponent={
-          <TouchableOpacity>
-            <Text> </Text>
-          </TouchableOpacity>
-        }
-      />
+      <Header title={t('wardrobe.database.title')} onBack={openSidebar} />
 
       <View style={{ paddingHorizontal: 16, flex: 1 }}>
         <ScrollView
@@ -235,10 +226,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.archivoBody,
-    fontWeight: '400',
   },
   plusButton: {
     width: 45,

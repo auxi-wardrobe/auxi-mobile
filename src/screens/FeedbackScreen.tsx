@@ -1,12 +1,9 @@
 import React from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import {
-  BottomSheetSurface,
-  TopIconButton,
-} from '../components/primitives/FigmaPrimitives';
+import { BottomSheetSurface } from '../components/primitives/FigmaPrimitives';
+import { Header } from '../components/layout/Header';
 import { FeedbackForm } from '../components/features/FeedbackForm';
-import { Icons } from '../assets/icons';
 import { useSidebar } from '../context/SidebarContext';
 import { theme } from '../theme/theme';
 
@@ -17,19 +14,14 @@ export const FeedbackScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <BottomSheetSurface style={styles.sheet}>
-        {/* Header — hamburger-left + centered title (mirrors SettingsScreen). */}
-        <View style={styles.header}>
-          <TopIconButton
-            testID="feedback-menu-button"
-            accessibilityLabel={t('feedback.a11y_open_menu')}
-            icon={<Icons.Menu width={24} height={24} />}
-            onPress={openSidebar}
-          />
-          <View pointerEvents="none" style={styles.titleWrap}>
-            <Text style={styles.title}>{t('feedback.title')}</Text>
-          </View>
-          <View style={styles.headerSpacer} />
-        </View>
+        {/* Canonical header — hamburger-left + centred title (no right action). */}
+        <Header
+          title={t('feedback.title')}
+          background="transparent"
+          leftTestID="feedback-menu-button"
+          leftAccessibilityLabel={t('feedback.a11y_open_menu')}
+          onBack={openSidebar}
+        />
 
         <FeedbackForm fill />
       </BottomSheetSurface>
@@ -44,30 +36,5 @@ const styles = StyleSheet.create({
   },
   sheet: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: theme.spacing.l,
-    paddingHorizontal: theme.spacing.uacButtonPaddingX,
-    paddingBottom: theme.spacing.s,
-  },
-  titleWrap: {
-    position: 'absolute',
-    left: 84,
-    right: 84,
-    top: theme.spacing.l,
-    height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaTextDark,
-  },
-  headerSpacer: {
-    width: 45,
-    height: 45,
   },
 });

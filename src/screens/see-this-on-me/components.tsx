@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { TopIconButton } from '../../components/primitives/FigmaPrimitives';
+import { Header } from '../../components/layout/Header';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { ImageSource } from '../../hooks/use-image-picker';
@@ -30,17 +30,14 @@ interface StomHeaderProps {
  * FavouriteScreen header treatment (interMediumSm 14/20, blurred white bg).
  */
 export const StomHeader: React.FC<StomHeaderProps> = ({ title, onBack }) => (
-  <View style={styles.header}>
-    <TopIconButton
-      testID="stom-back"
-      accessibilityLabel="Go back"
-      onPress={onBack}
-      style={styles.headerBack}
-      icon={<Icons.ChevronLeft width={20} height={20} />}
-    />
-    <Text style={styles.headerTitle}>{title}</Text>
-    <View style={styles.headerSpacer} />
-  </View>
+  <Header
+    title={title}
+    background="tint"
+    leftIcon={<Icons.ChevronLeft width={24} height={24} />}
+    leftTestID="stom-back"
+    leftAccessibilityLabel="Go back"
+    onBack={onBack}
+  />
 );
 
 interface PromptBubbleProps {
@@ -181,28 +178,6 @@ export const PhotoSourceSheet: React.FC<PhotoSourceSheetProps> = ({
 };
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingVertical: theme.spacing.uacDimension12,
-    backgroundColor: theme.colors.figmaItemDetailHeaderBg,
-  },
-  headerBack: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.m,
-    ...theme.ds.shadow.headerIcon,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.interMediumSm,
-    color: theme.colors.uacTextBase,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 45,
-    height: 45,
-  },
   promptBubble: {
     flexDirection: 'row',
     alignItems: 'flex-start',

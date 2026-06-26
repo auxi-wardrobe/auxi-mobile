@@ -14,7 +14,7 @@
  * single source of truth).
  */
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -64,7 +64,6 @@ export const LegalDocumentScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Header
         title={document.title}
-        showBack
         leftIcon={
           <Icons.ChevronLeft
             width={24}
@@ -73,9 +72,7 @@ export const LegalDocumentScreen: React.FC = () => {
           />
         }
         leftIconStyle={styles.backButton}
-        titleTextStyle={styles.headerTitle}
         onBack={() => navigation.goBack()}
-        rightComponent={<View style={styles.headerRightSpacer} />}
       />
       <ScrollView
         testID={`legal-${documentType}-scroll`}
@@ -100,20 +97,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.ds.color.surface,
   },
-  // Override the canonical Header's warm bg so the chrome matches the
-  // legal screen surface (Figma background/primary/neutral_50, #fcfcfd).
+  // Borderless back chevron (no white chip) so it reads cleanly on the lighter
+  // legal-doc surface (#fcfcfd); all other header values stay canonical.
   backButton: {
     backgroundColor: theme.colors.transparent,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
-    color: theme.ds.color.ink,
-    fontSize: theme.typography.sizes.h3,
-  },
-  // Keep the title centred by balancing the 45px left back-button column.
-  headerRightSpacer: {
-    width: 32,
-    height: 32,
   },
   scroll: {
     flex: 1,

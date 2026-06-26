@@ -1,14 +1,11 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
 import { useSidebar } from '../context/SidebarContext';
 import { MacgieLoader } from '../components/macgie';
-import { TopIconButton } from '../components/primitives/FigmaPrimitives';
-import IconMenu from '../assets/images/icon_menu.svg';
+import { Header } from '../components/layout/Header';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
 import { track } from '../services/analytics';
 import {
@@ -24,7 +21,6 @@ import { CreationCollageCard } from './myCreations/CreationCollageCard';
 // as a saved outfit in collage mode.
 export const MyCreationsScreen: React.FC = () => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { open: openSidebar } = useSidebar();
 
@@ -84,27 +80,15 @@ export const MyCreationsScreen: React.FC = () => {
 
   return (
     <View style={styles.container} testID="my-creations-screen">
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        {/* Blurred bar background, same treatment as FavouriteScreen. Decorative
-            — must not capture touches or it swallows the hamburger tap. */}
-        <BlurView
-          style={styles.headerBlur}
-          blurType="light"
-          blurAmount={8}
-          reducedTransparencyFallbackColor={theme.colors.figmaItemDetailHeaderBg}
-          pointerEvents="none"
-        />
-        <View style={styles.headerTint} pointerEvents="none" />
-        <TopIconButton
-          testID="my-creations-header-menu"
-          accessibilityRole="button"
-          accessibilityLabel={t('myCreations.open_menu')}
-          onPress={openSidebar}
-          style={styles.menuButton}
-          icon={<IconMenu width={24} height={24} />}
-        />
-        <Text style={styles.headerTitle}>{t('myCreations.title')}</Text>
-      </View>
+      <Header
+        title={t('myCreations.title')}
+        titleAlign="left"
+        background="blur"
+        safeAreaTop
+        leftTestID="my-creations-header-menu"
+        leftAccessibilityLabel={t('myCreations.open_menu')}
+        onBack={openSidebar}
+      />
 
       <View style={styles.body}>{renderBody()}</View>
     </View>
@@ -115,33 +99,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: theme.spacing.uacDimension12,
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingBottom: theme.spacing.uacDimension12,
-    overflow: 'hidden',
-  },
-  headerBlur: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  headerTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.figmaItemDetailHeaderBg,
-  },
-  menuButton: {
-    width: 44,
-    height: 44,
-    borderRadius: theme.borderRadius.m,
-    backgroundColor: theme.colors.white,
-    ...theme.ds.shadow.headerIcon,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
-    color: theme.colors.uacTextBase,
   },
   body: {
     flex: 1,
