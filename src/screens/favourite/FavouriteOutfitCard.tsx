@@ -19,6 +19,7 @@ import {
 import { MOOD_CHIPS } from '../../components/features/mood-chips';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
 import IconSparkle from '../../assets/images/icon_sparkle.svg';
+import IconCalendarAdd from '../../assets/images/icon_calendar_add.svg';
 import { Favourite, FavouriteItem } from '../../services/favouriteService';
 
 type Props = {
@@ -30,6 +31,13 @@ type Props = {
   dateLabel?: string;
   onRemove: (id: string) => void;
   onSelfVisualization: (favourite: Favourite) => void;
+  /**
+   * Add this outfit to the Schedule (calendar) page. When provided, a
+   * calendar-add button renders between Remove and Self visualization. Omit it
+   * (e.g. when the card is itself rendered ON the Schedule page) to hide the
+   * button.
+   */
+  onSchedule?: (favourite: Favourite) => void;
   /** Open an item's detail. Omit to keep tiles non-interactive. */
   onItemPress?: (itemId: string) => void;
 };
@@ -202,6 +210,7 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
   dateLabel,
   onRemove,
   onSelfVisualization,
+  onSchedule,
   onItemPress,
 }) => {
   const { t } = useTranslation();
@@ -310,6 +319,27 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
             color={theme.colors.figmaItemDetailDanger}
           />
         </TouchableOpacity>
+
+        {/* Add-to-schedule (calendar-with-plus). Sits between Remove and Self
+            visualization; tapping it moves this outfit onto the Schedule page.
+            Rendered only when the screen supplies an `onSchedule` handler. */}
+        {onSchedule ? (
+          <TouchableOpacity
+            testID={`favourite-schedule-${favourite.id}`}
+            accessibilityRole="button"
+            accessibilityLabel={t('favourite.add_to_schedule')}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.scheduleButton}
+            onPress={() => onSchedule(favourite)}
+          >
+            <IconCalendarAdd
+              width={24}
+              height={24}
+              color={theme.colors.uacTextBase}
+            />
+          </TouchableOpacity>
+        ) : null}
 
         <TouchableOpacity
           testID={`favourite-self-visualization-${favourite.id}`}
@@ -453,6 +483,14 @@ const styles = StyleSheet.create({
     gap: theme.spacing.l,
   },
   removeButton: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Mirrors removeButton's 56×56 tap target so the calendar-add icon aligns
+  // with the other action-row controls.
+  scheduleButton: {
     width: 56,
     height: 56,
     alignItems: 'center',

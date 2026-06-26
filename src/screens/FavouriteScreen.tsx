@@ -16,6 +16,8 @@ import { theme } from '../theme/theme';
 import { useReducedMotion } from '../theme/motion';
 import { useSidebar } from '../context/SidebarContext';
 import { useFavouritesSeen } from '../context/FavouritesSeenContext';
+import { useSchedule } from '../context/ScheduleContext';
+import { toDayKey } from '../utils/dateKey';
 import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
@@ -46,6 +48,7 @@ export const FavouriteScreen: React.FC = () => {
   const reduced = useReducedMotion();
   const { open: openSidebar } = useSidebar();
   const { markSeen: markFavouritesSeen } = useFavouritesSeen();
+  const { scheduleOutfit } = useSchedule();
 
   // Viewing the saved list — by any route (header dot, sidebar, deep link) —
   // clears the Home "unseen saved looks" dot. useFocusEffect so a back-then-
@@ -143,6 +146,19 @@ export const FavouriteScreen: React.FC = () => {
     });
   };
 
+  const handleSchedule = (favourite: Favourite) => {
+    // No date-picker yet — plan the outfit on TODAY, then open the Schedule
+    // page where it now appears under today. (A pick-a-day step can come later;
+    // the store already keys by arbitrary day.)
+    const dayKey = toDayKey(new Date());
+    scheduleOutfit(dayKey, favourite);
+    track('favourite_added_to_schedule', {
+      favorite_id: favourite.id,
+      date: dayKey,
+    });
+    navigation.navigate('Schedule');
+  };
+
   const confirmRemove = () => {
     if (pendingRemovalId) {
       removeMutation.mutate(pendingRemovalId);
@@ -203,6 +219,7 @@ export const FavouriteScreen: React.FC = () => {
                   dateLabel={formatDateLabel(favourite.created_at)}
                   onRemove={setPendingRemovalId}
                   onSelfVisualization={handleSelfVisualization}
+                  onSchedule={handleSchedule}
                   onItemPress={itemId =>
                     navigation.navigate('ItemDetail', { itemId })
                   }

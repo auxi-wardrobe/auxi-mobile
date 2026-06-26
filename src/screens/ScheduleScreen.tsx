@@ -8,13 +8,20 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../components/layout/Header';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
 import { useSidebar } from '../context/SidebarContext';
+import { useSchedule } from '../context/ScheduleContext';
 import { theme } from '../theme/theme';
 import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
+import { toDayKey } from '../utils/dateKey';
+import { AppStackParamList } from '../types/navigation';
+import { Favourite } from '../services/favouriteService';
+import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -44,12 +51,6 @@ interface ScheduleDay {
   weekday: string;
   isToday: boolean;
 }
-
-const toDayKey = (d: Date): string => {
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day}`;
-};
 
 /** Monday 00:00 of the week containing `d`. */
 const startOfWeek = (d: Date): Date => {
@@ -84,6 +85,9 @@ const buildStripDays = (today: Date): ScheduleDay[] => {
 export const ScheduleScreen: React.FC = () => {
   const { t } = useTranslation();
   const { open: openSidebar } = useSidebar();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const { scheduledByDay, unscheduleOutfit } = useSchedule();
   const stripRef = useRef<ScrollView>(null);
 
   // `today` is captured once per mount so the strip and the default selection
@@ -93,13 +97,9 @@ export const ScheduleScreen: React.FC = () => {
 
   const [selectedKey, setSelectedKey] = useState<string>(() => toDayKey(today));
 
-  // Outfits scheduled per day. There is no scheduling backend yet, so this is
-  // empty: every day shows the "Nothing planned" empty state and no day shows a
-  // dot. It is data-driven (not hardcoded) so wiring a real source later only
-  // means populating this map. Keyed by "YYYY-MM-DD" → number of outfits.
-  const scheduledCountByDay = useMemo<Record<string, number>>(() => ({}), []);
-
-  const hasOutfitsForSelected = (scheduledCountByDay[selectedKey] ?? 0) > 0;
+  // Outfits planned for the selected day (from the local ScheduleContext store,
+  // written by the Favourite page's "add to schedule" action).
+  const selectedDayOutfits = scheduledByDay[selectedKey] ?? [];
 
   // Centre the selected day on first layout so today is in view even when it
   // sits a few cells into the strip.
@@ -122,10 +122,28 @@ export const ScheduleScreen: React.FC = () => {
   };
 
   const handleAddOutfit = () => {
-    // The add-to-schedule flow depends on a scheduling backend that does not
-    // exist yet (see the empty map above). For now this records intent so the
-    // demand is measurable; the picker/persistence lands with that backend.
+    // Outfits are added to a day from the Favourite page (the calendar-add
+    // button on each saved outfit). The header "+" sends the user there to
+    // pick one; it also records intent for analytics.
     track('schedule_add_tapped', { date: selectedKey });
+    navigation.navigate('Favourite');
+  };
+
+  // Mirror the Favourite page's "See this on me" entry so a scheduled outfit
+  // offers the same self-visualization action.
+  const handleSelfVisualization = (favourite: Favourite) => {
+    track('favourite_try_on_tapped', { favorite_id: favourite.id });
+    const items = favourite.outfit_items ?? [];
+    navigation.navigate('SeeThisOnMe', {
+      outfit: {
+        outfitHash: favourite.outfit_context?.outfit_hash ?? favourite.id,
+        itemIds: items.map(item => item.id),
+        itemImageUrls: items
+          .map(item => item.image_png ?? item.image_url)
+          .filter((url): url is string => !!url),
+        stylingNote: favourite.outfit_context?.reasoning_human ?? '',
+      },
+    });
   };
 
   return (
@@ -159,7 +177,7 @@ export const ScheduleScreen: React.FC = () => {
       >
         {days.map(day => {
           const isSelected = day.key === selectedKey;
-          const hasDot = (scheduledCountByDay[day.key] ?? 0) > 0;
+          const hasDot = (scheduledByDay[day.key]?.length ?? 0) > 0;
           return (
             <TouchableOpacity
               key={day.key}
@@ -194,11 +212,32 @@ export const ScheduleScreen: React.FC = () => {
       <Text style={styles.sectionTitle}>{t('schedule.scheduled_outfit')}</Text>
 
       <View style={styles.body}>
-        {hasOutfitsForSelected ? null : (
+        {selectedDayOutfits.length === 0 ? (
           <View style={styles.emptyState} testID="schedule-empty">
             <Text style={styles.emptyTitle}>{t('schedule.empty_title')}</Text>
             <Text style={styles.emptyBody}>{t('schedule.empty_body')}</Text>
           </View>
+        ) : (
+          <ScrollView
+            testID="schedule-outfit-list"
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {selectedDayOutfits.map(outfit => (
+              <FavouriteOutfitCard
+                key={outfit.id}
+                favourite={outfit}
+                view="grid"
+                // No `onSchedule` here — the calendar-add button is hidden once
+                // an outfit is already on the calendar. Remove = unschedule.
+                onRemove={id => unscheduleOutfit(selectedKey, id)}
+                onSelfVisualization={handleSelfVisualization}
+                onItemPress={itemId =>
+                  navigation.navigate('ItemDetail', { itemId })
+                }
+              />
+            ))}
+          </ScrollView>
         )}
       </View>
     </SafeAreaView>
@@ -276,6 +315,12 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: theme.spacing.m,
+    paddingTop: theme.spacing.l,
+    paddingBottom: theme.spacing.xl,
+    gap: theme.spacing.xl,
   },
   emptyState: {
     alignItems: 'center',
