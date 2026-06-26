@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { track } from '../../services/analytics';
 import { navigationRef } from '../../navigation/navigationRef';
+import { requestCanvasExit } from '../../navigation/canvasExitGuard';
 import { AppStackParamList } from '../../types/navigation';
 import { Icons } from '../../assets/icons';
 
@@ -25,14 +26,19 @@ const SIDEBAR_WIDTH = 317;
 const DS_EMAILS = ['duc2820@gmail.com', 'vietdesign81@gmail.com'];
 
 // Navigate via the shared ref + close the drawer. Guards on isReady so an early
-// tap (before the container mounts) is a no-op rather than a crash.
+// tap (before the container mounts) is a no-op rather than a crash. Routed
+// through requestCanvasExit so that leaving the Outfit Canvas with unsaved edits
+// surfaces the "Discard this creation?" sheet first (the canvas registers the
+// guard; when not on a dirty canvas this passes straight through).
 const go = (name: keyof AppStackParamList, close: () => void) => {
-  if (navigationRef.isReady()) {
-    // `as never` sidesteps navigate's per-route params overload — these are all
-    // no-param routes, navigated by name only.
-    navigationRef.navigate(name as never);
-  }
   close();
+  requestCanvasExit(() => {
+    if (navigationRef.isReady()) {
+      // `as never` sidesteps navigate's per-route params overload — these are
+      // all no-param routes, navigated by name only.
+      navigationRef.navigate(name as never);
+    }
+  });
 };
 
 export const SidebarMenu: React.FC = () => {

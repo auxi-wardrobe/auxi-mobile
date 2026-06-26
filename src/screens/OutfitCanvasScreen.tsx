@@ -18,6 +18,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   NavigationAction,
   RouteProp,
+  useFocusEffect,
   useRoute,
 } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +44,10 @@ import {
   CreationItem,
   creationsService,
 } from '../services/creationsService';
+import {
+  requestCanvasExit,
+  setCanvasExitGuard,
+} from '../navigation/canvasExitGuard';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
@@ -394,6 +399,11 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     null,
   );
   const proceedRef = useRef(false);
+  // A push-style exit intercepted by the canvas exit guard (My Creations icon,
+  // sidebar destinations that push rather than pop). Unlike `pendingAction`
+  // (a NavigationAction replayed via dispatch), this is a thunk that performs
+  // the navigation, replayed once the user resolves the discard sheet.
+  const pendingProceedRef = useRef<(() => void) | null>(null);
 
   // Self-controlled success snackbar (mint M3 ItemReadySnackbar, same component
   // as Wardrobe's "item ready"): the library Toast render path is unused here,
@@ -676,9 +686,13 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleOpenCreations = useCallback(() => {
     // "My Creations" lists everything the user has saved from the canvas
-    // (new canvases, remixed outfits, …).
-    track('canvas_my_creations_opened');
-    navigation.navigate('MyCreations');
+    // (new canvases, remixed outfits, …). Opening it PUSHES the screen, so it
+    // never trips beforeRemove — route through the exit guard so unsaved edits
+    // surface the discard sheet first (passes straight through when clean).
+    requestCanvasExit(() => {
+      track('canvas_my_creations_opened');
+      navigation.navigate('MyCreations');
+    });
   }, [navigation]);
 
   // Intercept leaving the canvas (back chevron / hardware back) while there are
@@ -690,16 +704,45 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
       e.preventDefault();
+      pendingProceedRef.current = null;
       setPendingAction(e.data.action);
       setDiscardVisible(true);
     });
     return unsubscribe;
   }, [navigation, hasUnsavedChanges]);
 
+  // Register the module-level exit guard so PUSH-style exits that never hit
+  // beforeRemove (the My Creations icon, sidebar destinations) also surface the
+  // discard sheet. Focus-gated: the guard is only armed while the canvas is the
+  // focused screen, so a sidebar tap from a screen pushed ON TOP of a still-
+  // mounted dirty canvas (e.g. My Creations) doesn't surface the canvas dialog.
+  // The focus callback also re-arms proceedRef (a push exit leaves the canvas
+  // mounted with it stuck true) so a later back/exit prompts again if dirty.
+  useFocusEffect(
+    useCallback(() => {
+      proceedRef.current = false;
+      if (hasUnsavedChanges) {
+        setCanvasExitGuard(proceed => {
+          pendingProceedRef.current = proceed;
+          setPendingAction(null);
+          setDiscardVisible(true);
+        });
+      } else {
+        setCanvasExitGuard(null);
+      }
+      return () => setCanvasExitGuard(null);
+    }, [hasUnsavedChanges]),
+  );
+
   const leaveWithPendingAction = useCallback(() => {
     proceedRef.current = true;
     setDiscardVisible(false);
-    if (pendingAction) {
+    const proceed = pendingProceedRef.current;
+    pendingProceedRef.current = null;
+    if (proceed) {
+      // Push-style exit (My Creations icon / sidebar) — run the navigation thunk.
+      proceed();
+    } else if (pendingAction) {
       navigation.dispatch(pendingAction);
     } else {
       navigation.goBack();
@@ -722,6 +765,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const handleDiscardCancel = useCallback(() => {
     setDiscardVisible(false);
     setPendingAction(null);
+    pendingProceedRef.current = null;
   }, []);
 
   const actionDisabled = !selectedId;
