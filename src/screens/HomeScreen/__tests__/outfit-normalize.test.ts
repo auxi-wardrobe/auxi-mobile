@@ -1,7 +1,9 @@
 import {
   buildGridOutfitSheet,
   buildGridOutfitSheetWithPin,
+  classifyCategoryFamily,
   dedupeByCategory,
+  resolveOnePieceConflicts,
 } from '../outfit-normalize';
 import { Item } from '../../../types/item';
 import { OutfitSheet } from '../types';
@@ -60,6 +62,85 @@ describe('dedupeByCategory', () => {
 
     expect(dedupeByCategory([a, b])).toHaveLength(1);
   });
+
+  it('collapses a free-form wardrobe category against the canonical family (Jeans = Bottom)', () => {
+    // A pinned wardrobe item keeps its stored label ('Jeans'); the outfit's
+    // backend item is the canonical 'Bottom'. They must not both survive.
+    const pinnedJeans = item({ id: 'jeans', category: 'Jeans' });
+    const bottom = item({ id: 'bottom', category: 'Bottom' });
+
+    const result = dedupeByCategory([pinnedJeans, bottom], 'jeans');
+
+    expect(result.map(i => i.id)).toEqual(['jeans']);
+  });
+});
+
+describe('classifyCategoryFamily', () => {
+  it('maps free-form labels onto canonical families', () => {
+    expect(classifyCategoryFamily('Jeans')).toBe('bottom');
+    expect(classifyCategoryFamily('Pants')).toBe('bottom');
+    expect(classifyCategoryFamily('Skirt')).toBe('bottom');
+    expect(classifyCategoryFamily('Bottom')).toBe('bottom');
+    expect(classifyCategoryFamily('Blouse')).toBe('top');
+    expect(classifyCategoryFamily('Jumpsuit')).toBe('one_piece');
+    expect(classifyCategoryFamily('Dress')).toBe('one_piece');
+    // A 'shirt dress' is a one-piece, not a top.
+    expect(classifyCategoryFamily('Shirt dress')).toBe('one_piece');
+  });
+
+  it('returns empty for missing categories so they are never bucketed', () => {
+    expect(classifyCategoryFamily(undefined)).toBe('');
+    expect(classifyCategoryFamily('  ')).toBe('');
+  });
+});
+
+describe('resolveOnePieceConflicts', () => {
+  it('drops a one-piece when a Bottom is pinned (no pants + dress)', () => {
+    const pinnedBottom = item({ id: 'pants', category: 'Bottom' });
+    const dress = item({ id: 'dress', category: 'Dress' });
+    const shoes = item({ id: 'shoes', category: 'Shoes' });
+
+    const result = resolveOnePieceConflicts(
+      [pinnedBottom, dress, shoes],
+      'pants',
+    );
+
+    expect(result.map(i => i.id)).toEqual(['pants', 'shoes']);
+  });
+
+  it('drops separates when a one-piece is pinned', () => {
+    const pinnedDress = item({ id: 'dress', category: 'Dress' });
+    const top = item({ id: 'top', category: 'Top' });
+    const bottom = item({ id: 'bottom', category: 'Bottom' });
+    const shoes = item({ id: 'shoes', category: 'Shoes' });
+
+    const result = resolveOnePieceConflicts(
+      [pinnedDress, top, bottom, shoes],
+      'dress',
+    );
+
+    expect(result.map(i => i.id)).toEqual(['dress', 'shoes']);
+  });
+
+  it('keeps a complete Top+Bottom pair over a stray one-piece when nothing is pinned', () => {
+    const top = item({ id: 'top', category: 'Top' });
+    const bottom = item({ id: 'bottom', category: 'Bottom' });
+    const dress = item({ id: 'dress', category: 'Dress' });
+
+    const result = resolveOnePieceConflicts([top, bottom, dress]);
+
+    expect(result.map(i => i.id)).toEqual(['top', 'bottom']);
+  });
+
+  it('leaves a valid dress-only outfit untouched', () => {
+    const dress = item({ id: 'dress', category: 'Dress' });
+    const shoes = item({ id: 'shoes', category: 'Shoes' });
+
+    expect(resolveOnePieceConflicts([dress, shoes]).map(i => i.id)).toEqual([
+      'dress',
+      'shoes',
+    ]);
+  });
 });
 
 describe('buildGridOutfitSheet', () => {
@@ -109,5 +190,34 @@ describe('buildGridOutfitSheetWithPin', () => {
 
     expect(result.items[0].id).toBe('pin');
     expect(categories(result.gridItems)).toEqual(['Top', 'Bottom']);
+  });
+
+  it('never shows two bottoms when a wardrobe Bottom (free-form label) is pinned', () => {
+    // Pinned item resolved from the wardrobe keeps its stored 'Jeans' label;
+    // the outfit already carries a canonical 'Bottom'. Both are leg garments.
+    const pinnedJeans = item({ id: 'pin', category: 'Jeans' });
+    const outfitBottom = item({ id: 'outfit-bottom', category: 'Bottom' });
+    const top = item({ id: 'top', category: 'Top' });
+
+    const result = buildGridOutfitSheetWithPin(
+      sheet([top, outfitBottom]),
+      pinnedJeans,
+    );
+
+    expect(result.items.map(i => i.id)).toEqual(['pin', 'top']);
+  });
+
+  it('never pairs pinned pants with a one-piece (dress/jumpsuit)', () => {
+    const pinnedPants = item({ id: 'pin', category: 'Bottom' });
+    const dress = item({ id: 'dress', category: 'Dress' });
+    const shoes = item({ id: 'shoes', category: 'Shoes' });
+
+    const result = buildGridOutfitSheetWithPin(
+      sheet([dress, shoes]),
+      pinnedPants,
+    );
+
+    expect(result.items.map(i => i.id)).toEqual(['pin', 'shoes']);
+    expect(categories(result.gridItems)).not.toContain('Dress');
   });
 });
