@@ -936,6 +936,7 @@ export const HomeScreen = () => {
   const showRefineToast = useCallback(
     (feedback: string) => {
       clearTimeoutRef(refineToastTimeoutRef);
+      track('refine_confirmation_shown', { feedback });
       setRefineToastText(t('home.refineAppliedToast', { feedback }));
       refineToastTimeoutRef.current = setTimeout(() => {
         setRefineToastText(null);

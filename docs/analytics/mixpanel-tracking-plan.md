@@ -103,6 +103,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `refine_submitted` (pre-existing) | Refine confirm | `HomeScreen.tsx:1246` | `occasion`, `time_of_day`, `weather_condition` |
 | `refine_cancelled` (pre-existing) | Refine dismiss | `HomeScreen.tsx:1589` | `source` |
 | `refine_skipped` | "Skip for now" on the after-6 progressive-refinement gate — defers feedback and resumes generation of the next tier | `HomeScreen/index.tsx` (`onSkipRefinement`) | `skipped_count` (running per-session skip tally) |
+| `refine_confirmation_shown` | The "{feedback} applied!" confirmation toast surfaces once the refined deck has loaded — measures how often a refine submit actually produced a visible refreshed result | `HomeScreen/index.tsx` (`showRefineToast`) | `feedback` (applied chip label / custom text) |
 | `home_view_toggled` | Tap on the Home footer view-toggle pill (DS `MFloatingPill`, icon mode) — swaps the outfit sheet's middle region between the grid and collage layouts | `HomeViewToggleFooter.tsx` (`handleChange`) | `view` (`grid` / `collage`) |
 
 ### 5.4 Wardrobe + ItemDetail
