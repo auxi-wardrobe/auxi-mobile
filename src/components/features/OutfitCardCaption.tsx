@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
+import { MarqueeText } from '../atoms/MarqueeText';
 
 // Home | Grid View — title row (Figma Frame 2104).
 // Caption pill (color/primary/100 bg, HUG) holding the V05 `reasoning_human`
@@ -25,9 +26,7 @@ export const OutfitCardCaption: React.FC<Props> = ({ caption, testID }) => {
   return (
     <View testID={testID} style={styles.row}>
       <View style={styles.captionPill}>
-        <Text style={styles.captionText} numberOfLines={1}>
-          {text}
-        </Text>
+        <MarqueeText text={text} style={styles.captionText} />
       </View>
     </View>
   );
@@ -47,7 +46,10 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.s,
     borderRadius: theme.borderRadius.m, // chat bubble — 8px (border-radius/md)
     backgroundColor: theme.colors.figmaCaptionPillBg,
-    alignItems: 'center',
+    // `stretch` lets the marquee viewport fill the bubble width so it can clip
+    // and scroll overflowing text; `center` would keep it at its intrinsic
+    // (un-clipped) width. Vertical centering stays via justifyContent.
+    alignItems: 'stretch',
     justifyContent: 'center',
   },
   captionText: {
