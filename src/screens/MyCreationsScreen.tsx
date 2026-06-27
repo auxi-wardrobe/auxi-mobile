@@ -15,7 +15,7 @@ import { TopIconButton } from '../components/primitives/FigmaPrimitives';
 import IconMenu from '../assets/images/icon_menu.svg';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
 import { track } from '../services/analytics';
-import { toDayKey } from '../utils/dateKey';
+import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { AppStackParamList } from '../types/navigation';
 import {
   CREATIONS_QUERY_KEY,
@@ -39,6 +39,11 @@ export const MyCreationsScreen: React.FC = () => {
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute<RouteProp<AppStackParamList, 'MyCreations'>>();
   const returnToSchedule = route.params?.returnToSchedule === true;
+  // Day selected on Schedule (when reached via its "+"), so the date sheet opens
+  // pre-selected on it instead of today. Undefined when opened directly.
+  const scheduleInitialDate = route.params?.scheduleDate
+    ? dateFromKey(route.params.scheduleDate) ?? undefined
+    : undefined;
   const { scheduleOutfit } = useSchedule();
   // The creation awaiting a day in the "Add to Schedule" sheet (null = closed).
   const [scheduleTarget, setScheduleTarget] = useState<Creation | null>(null);
@@ -160,6 +165,7 @@ export const MyCreationsScreen: React.FC = () => {
 
       <ScheduleDatePickerSheet
         visible={scheduleTarget !== null}
+        initialDate={scheduleInitialDate}
         onCancel={() => setScheduleTarget(null)}
         onConfirm={handleConfirmSchedule}
       />

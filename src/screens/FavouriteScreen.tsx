@@ -23,7 +23,7 @@ import { useReducedMotion } from '../theme/motion';
 import { useSidebar } from '../context/SidebarContext';
 import { useFavouritesSeen } from '../context/FavouritesSeenContext';
 import { useSchedule } from '../context/ScheduleContext';
-import { toDayKey } from '../utils/dateKey';
+import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
@@ -53,6 +53,11 @@ export const FavouriteScreen: React.FC = () => {
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute<RouteProp<AppStackParamList, 'Favourite'>>();
   const returnToSchedule = route.params?.returnToSchedule === true;
+  // Day selected on Schedule (when reached via its "+"), so the date sheet opens
+  // pre-selected on it instead of today. Undefined when opened directly.
+  const scheduleInitialDate = route.params?.scheduleDate
+    ? dateFromKey(route.params.scheduleDate) ?? undefined
+    : undefined;
   const queryClient = useQueryClient();
   const reduced = useReducedMotion();
   const { open: openSidebar } = useSidebar();
@@ -312,6 +317,7 @@ export const FavouriteScreen: React.FC = () => {
 
       <ScheduleDatePickerSheet
         visible={scheduleTarget !== null}
+        initialDate={scheduleInitialDate}
         onCancel={() => setScheduleTarget(null)}
         onConfirm={handleConfirmSchedule}
       />

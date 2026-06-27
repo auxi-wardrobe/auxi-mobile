@@ -189,10 +189,11 @@ export const ScheduleScreen: React.FC = () => {
     setAddSheetVisible(false);
     track('schedule_add_source_selected', { source });
     // returnToSchedule so the chosen page sends the user back here after they
-    // schedule an outfit (they're mid-planning), rather than staying there.
+    // schedule an outfit (they're mid-planning); scheduleDate so the date sheet
+    // there opens pre-selected on the day currently selected here.
     navigation.navigate(
       source === 'favourite' ? 'Favourite' : 'MyCreations',
-      { returnToSchedule: true },
+      { returnToSchedule: true, scheduleDate: selectedKey },
     );
   };
 

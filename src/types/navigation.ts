@@ -78,8 +78,10 @@ export type AppStackParamList = {
   Wardrobe: undefined;
   // `returnToSchedule` is set when the user reached this page via the Schedule
   // "+" source picker — after scheduling an outfit we send them back to
-  // Schedule (focused on the chosen day) instead of staying here.
-  Favourite: { returnToSchedule?: boolean } | undefined;
+  // Schedule (focused on the chosen day) instead of staying here. `scheduleDate`
+  // ("YYYY-MM-DD") carries the day selected on Schedule so the date-picker sheet
+  // opens pre-selected on it (not today).
+  Favourite: { returnToSchedule?: boolean; scheduleDate?: string } | undefined;
   // Schedule — plan outfits per day. Reached from the sidebar menu (listed
   // directly under "My Favourite"). Header mirrors Wardrobe (menu + title +
   // add). Figma node 4252:26702. `focusDate` ("YYYY-MM-DD") preselects a day
@@ -160,9 +162,10 @@ export type AppStackParamList = {
   // "My Creations" — the saved-canvas list. Reached from the OutfitCanvas
   // header's My Creations icon; saving a creation also lands here. Local
   // (AsyncStorage) store, no params.
-  // `returnToSchedule` — see Favourite. Set when reached via the Schedule "+"
-  // source picker so scheduling a creation returns the user to Schedule.
-  MyCreations: { returnToSchedule?: boolean } | undefined;
+  // `returnToSchedule` / `scheduleDate` — see Favourite. Set when reached via
+  // the Schedule "+" source picker so scheduling a creation returns the user to
+  // Schedule and the date sheet opens on the day selected there.
+  MyCreations: { returnToSchedule?: boolean; scheduleDate?: string } | undefined;
   // In-app legal docs (Terms of Service / Privacy Policy) — App Store blocker
   // B5. Reachable from Settings while authenticated; the auth stack registers
   // the same route+param shape for the Welcome-screen (unauth) entry point.
