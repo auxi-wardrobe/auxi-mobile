@@ -1,6 +1,8 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,12 +23,13 @@ import { AppStackParamList } from '../types/navigation';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
 import {
   HomeView,
-  HomeViewToggleFooter,
+  HomeViewTogglePill,
 } from '../components/features/HomeViewToggleFooter';
 import IconMenu from '../assets/images/icon_menu.svg';
 import { track } from '../services/analytics';
 import { Favourite, favouriteService } from '../services/favouriteService';
 import { FavouriteEmptyState } from './favourite/EmptyState';
+import { FavouriteActionBar } from './favourite/FavouriteActionBar';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
 import { RemoveFavouriteDialog } from './favourite/RemoveFavouriteDialog';
 import {
@@ -125,6 +128,50 @@ export const FavouriteScreen: React.FC = () => {
     [recomputeSnap],
   );
 
+  // The remove / Self-visualization actions now live in one screen-level sticky
+  // bar (FavouriteActionBar) instead of repeating per card. The bar operates on
+  // whichever saved outfit is currently snapped into view, so we track the
+  // active outfit by matching the scroll offset to each card's measured Y.
+  const flatFavourites = useMemo(
+    () =>
+      groups.flatMap(group =>
+        group.favourites.map(fav => ({ fav, dayKey: group.dayKey })),
+      ),
+    [groups],
+  );
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Keep the active index in range when the list shrinks (e.g. after removal).
+  useEffect(() => {
+    setActiveIndex(prev =>
+      Math.min(prev, Math.max(0, flatFavourites.length - 1)),
+    );
+  }, [flatFavourites.length]);
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      let best = 0;
+      let bestDist = Infinity;
+      flatFavourites.forEach((entry, i) => {
+        const gy = groupYRef.current[entry.dayKey];
+        const cy = cardYRef.current[entry.fav.id];
+        if (gy == null || cy == null) {
+          return;
+        }
+        const dist = Math.abs(gy + cy - y);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = i;
+        }
+      });
+      setActiveIndex(prev => (prev === best ? prev : best));
+    },
+    [flatFavourites],
+  );
+
+  const activeFavourite = flatFavourites[activeIndex]?.fav;
+
   const handleSelfVisualization = (favourite: Favourite) => {
     track('favourite_try_on_tapped', { favorite_id: favourite.id });
     // Build the serializable TryOnOutfitContext the "See this on me" flow needs
@@ -182,6 +229,9 @@ export const FavouriteScreen: React.FC = () => {
         }
         disableIntervalMomentum
         decelerationRate="fast"
+        // Track which outfit is in view so the sticky action bar targets it.
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {groups.map(group => (
           <View
@@ -201,8 +251,6 @@ export const FavouriteScreen: React.FC = () => {
                   favourite={favourite}
                   view={view}
                   dateLabel={formatDateLabel(favourite.created_at)}
-                  onRemove={setPendingRemovalId}
-                  onSelfVisualization={handleSelfVisualization}
                   onItemPress={itemId =>
                     navigation.navigate('ItemDetail', { itemId })
                   }
@@ -244,15 +292,29 @@ export const FavouriteScreen: React.FC = () => {
           style={styles.menuButton}
           icon={<IconMenu width={24} height={24} />}
         />
+
+        {/* Grid/collage view toggle, hoisted from the old bottom footer to the
+            header's top-right (CEO 2026-06-27). Compact `size="sm"` (≈84×44)
+            so it fits the header bar. Its own testID stem keeps it from
+            colliding with the Home footer's maestro selectors. */}
+        <HomeViewTogglePill
+          testID="favourite-view-toggle"
+          itemTestIDStem="favourite-view-tab"
+          size="sm"
+          activeView={view}
+          onSelectView={setView}
+        />
       </View>
 
       <View style={styles.body}>{renderBody()}</View>
 
-      <HomeViewToggleFooter
-        testID="favourite-view-toggle"
-        activeView={view}
-        onSelectView={setView}
-      />
+      {activeFavourite ? (
+        <FavouriteActionBar
+          testID="favourite-action-bar"
+          onRemove={() => setPendingRemovalId(activeFavourite.id)}
+          onSelfVisualization={() => handleSelfVisualization(activeFavourite)}
+        />
+      ) : null}
 
       <RemoveFavouriteDialog
         visible={pendingRemovalId !== null}
@@ -272,7 +334,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    // Hamburger on the left, view-toggle pinned to the top-right.
+    justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.uacDimension12,
     paddingBottom: theme.spacing.uacDimension12,
     // Clip the oversized blur slab to the bar bounds.
