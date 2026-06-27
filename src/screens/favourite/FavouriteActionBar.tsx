@@ -1,9 +1,10 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
+import { MButton } from '../../components/design-system/lib';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
 import IconSparkle from '../../assets/images/icon_sparkle.svg';
 
@@ -64,23 +65,19 @@ export const FavouriteActionBar: React.FC<Props> = ({
           />
         </TouchableOpacity>
 
-        <TouchableOpacity
+        {/* Self-visualization = the shared DS secondary/outline button (MButton
+            variant="secondary": transparent fill, 1.5px ink border). The AI
+            sparkle keeps its purple accent via rightIcon + iconColor. */}
+        <MButton
+          variant="secondary"
           testID="favourite-self-visualization-active"
-          accessibilityRole="button"
           accessibilityLabel={t('favourite.self_visualization')}
-          activeOpacity={0.7}
-          style={styles.selfVizButton}
+          rightIcon={IconSparkle}
+          iconColor={theme.colors.figmaAiSparkle}
           onPress={onSelfVisualization}
         >
-          <Text style={styles.selfVizLabel} numberOfLines={1}>
-            {t('favourite.self_visualization')}
-          </Text>
-          <IconSparkle
-            width={24}
-            height={24}
-            color={theme.colors.figmaAiSparkle}
-          />
-        </TouchableOpacity>
+          {t('favourite.self_visualization')}
+        </MButton>
       </View>
     </View>
   );
@@ -100,6 +97,9 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    // ⊖ remove pinned left, self-visualization button right; the gap in the
+    // middle is where the "add to schedule" button lands (separate thread).
+    justifyContent: 'space-between',
     gap: theme.spacing.l,
   },
   removeButton: {
@@ -107,25 +107,5 @@ const styles = StyleSheet.create({
     height: 56,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  // White bordered pill (Figma favourite footer) — gives the action definition
-  // against the blurred bar now that it no longer sits on a card surface.
-  selfVizButton: {
-    flex: 1,
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.s,
-    paddingHorizontal: theme.spacing.l,
-    borderRadius: theme.borderRadius.round,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaTextDark,
-    backgroundColor: theme.colors.white,
-  },
-  selfVizLabel: {
-    ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.uacTextBase,
-    flexShrink: 1,
   },
 });
