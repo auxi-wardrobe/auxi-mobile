@@ -42,6 +42,10 @@ export interface MButtonProps {
   disabled?: boolean;
   loading?: boolean;
   leftIcon?: React.FC<{ width?: number; height?: number; color?: string }>;
+  /** Trailing icon (rendered after the label), e.g. the AI sparkle. */
+  rightIcon?: React.FC<{ width?: number; height?: number; color?: string }>;
+  /** Override the icon tint. Defaults to the label colour (`fg`). */
+  iconColor?: string;
   onPress?: () => void;
   testID?: string;
   accessibilityLabel?: string;
@@ -54,6 +58,8 @@ export const MButton: React.FC<MButtonProps> = ({
   disabled,
   loading,
   leftIcon: LeftIcon,
+  rightIcon: RightIcon,
+  iconColor,
   onPress,
   testID,
   accessibilityLabel,
@@ -117,10 +123,15 @@ export const MButton: React.FC<MButtonProps> = ({
         />
       ) : (
         <View style={styles.inner}>
-          {LeftIcon && <LeftIcon width={18} height={18} color={fg} />}
+          {LeftIcon && (
+            <LeftIcon width={18} height={18} color={iconColor ?? fg} />
+          )}
           <Text style={[styles.label, labelFont, { color: fg, fontSize: sz.fs }]}>
             {children}
           </Text>
+          {RightIcon && (
+            <RightIcon width={18} height={18} color={iconColor ?? fg} />
+          )}
         </View>
       )}
     </PressScale>
