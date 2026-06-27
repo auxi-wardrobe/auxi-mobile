@@ -523,6 +523,15 @@ export const seedCanvasLayout = (
     p.cy += dy;
   }
 
+  // ── Final per-role nudges, applied AFTER re-centring so they aren't damped by
+  // the centring shift. Shoes are pushed right of the bottom-left corner.
+  const SHOES_NUDGE_X = 0.2 * W;
+  for (const p of placed) {
+    if (p.role === 'SHOES') {
+      p.cx += SHOES_NUDGE_X;
+    }
+  }
+
   // ── z-order: base band, demoted beneath any tuck-under target, dense-ranked.
   const ranked = placed
     .map(p => ({
