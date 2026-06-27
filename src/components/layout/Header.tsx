@@ -49,6 +49,12 @@ interface HeaderProps {
     centerComponent?: React.ReactNode;
     /** Right slot content (e.g. an action chip). Defaults to an empty 44px spacer. */
     rightComponent?: React.ReactNode;
+    /**
+     * Override the right slot's style. The slot is a fixed 44×44 chip by default
+     * (sized for a single icon button); pass e.g. `{ width: 'auto' }` when the
+     * right content is wider than an icon (e.g. Favourite's view-toggle pill).
+     */
+    rightSlotStyle?: ViewStyle;
     /** Bar background treatment. 'blur' renders the frosted slab used by Favourite / My Creations. */
     background?: HeaderBackground;
     /** Pad the top by the device safe-area inset (for headers flush to the screen top). */
@@ -75,6 +81,7 @@ const HeaderBase: React.FC<HeaderProps> = ({
     onBack,
     centerComponent,
     rightComponent,
+    rightSlotStyle,
     background = 'solid',
     safeAreaTop = false,
     style,
@@ -138,7 +145,7 @@ const HeaderBase: React.FC<HeaderProps> = ({
 
             {/* Left-aligned titles have no trailing slot unless an action is given. */}
             {(!isLeft || rightComponent) && (
-                <View style={styles.slot}>{rightComponent}</View>
+                <View style={[styles.slot, rightSlotStyle]}>{rightComponent}</View>
             )}
         </View>
     );
