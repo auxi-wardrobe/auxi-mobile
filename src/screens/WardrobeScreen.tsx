@@ -549,6 +549,7 @@ export const WardrobeScreen = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header.MenuTitleAction
         title={t('wardrobe.list.title')}
+        leftTestID="wardrobe-menu-button"
         onBack={openSidebar}
         right={
           <PressableScale

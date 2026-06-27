@@ -64,6 +64,7 @@ export const LegalDocumentScreen: React.FC = () => {
       <Header.BackTitle
         title={document.title}
         leftIconStyle={styles.backButton}
+        leftTestID="legal-back"
         onBack={() => navigation.goBack()}
       />
       <ScrollView

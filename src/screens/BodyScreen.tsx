@@ -542,6 +542,7 @@ export const BodyScreen = () => {
     <SafeAreaView style={styles.container}>
       <Header.BackTitle
         title={isTryOnMode ? t('body.tryon_tab') : t('body.mybody_tab')}
+        leftTestID="body-back"
         onBack={() => navigation.goBack()}
       />
 
