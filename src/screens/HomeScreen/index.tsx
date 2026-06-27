@@ -1600,6 +1600,7 @@ export const HomeScreen = () => {
 
       <HomeViewToggleFooter
         testID="home-footer-view-toggle"
+        source="home"
         activeView={homeView}
         onSelectView={setHomeView}
       />

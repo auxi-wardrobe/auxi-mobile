@@ -1,6 +1,14 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,11 +27,12 @@ import { AppStackParamList } from '../types/navigation';
 import { Header } from '../components/layout/Header';
 import {
   HomeView,
-  HomeViewToggleFooter,
+  HomeViewTogglePill,
 } from '../components/features/HomeViewToggleFooter';
 import { track } from '../services/analytics';
 import { Favourite, favouriteService } from '../services/favouriteService';
 import { FavouriteEmptyState } from './favourite/EmptyState';
+import { FavouriteActionBar } from './favourite/FavouriteActionBar';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
 import { RemoveFavouriteDialog } from './favourite/RemoveFavouriteDialog';
 import {
@@ -31,6 +40,7 @@ import {
   groupFavouritesByDate,
 } from './favourite/group-by-date';
 import { computeSnapOffsets } from './favourite/snap-offsets';
+import { computeActiveIndex } from './favourite/active-index';
 
 const FAVOURITES_QUERY_KEY = ['favourites'] as const;
 
@@ -121,6 +131,48 @@ export const FavouriteScreen: React.FC = () => {
     [recomputeSnap],
   );
 
+  // The remove / Self-visualization actions now live in one screen-level sticky
+  // bar (FavouriteActionBar) instead of repeating per card. The bar operates on
+  // whichever saved outfit is currently snapped into view, so we track the
+  // active outfit by matching the scroll offset to each card's measured Y.
+  const flatFavourites = useMemo(
+    () =>
+      groups.flatMap(group =>
+        group.favourites.map(fav => ({ fav, dayKey: group.dayKey })),
+      ),
+    [groups],
+  );
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Lightweight {dayKey, id} view of the list for the pure active-index math
+  // (computeActiveIndex), memoized so scroll handling doesn't re-map per frame.
+  const activeIndexEntries = useMemo(
+    () => flatFavourites.map(({ fav, dayKey }) => ({ dayKey, id: fav.id })),
+    [flatFavourites],
+  );
+
+  // Keep the active index in range when the list shrinks (e.g. after removal).
+  useEffect(() => {
+    setActiveIndex(prev =>
+      Math.min(prev, Math.max(0, flatFavourites.length - 1)),
+    );
+  }, [flatFavourites.length]);
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const best = computeActiveIndex(
+        activeIndexEntries,
+        groupYRef.current,
+        cardYRef.current,
+        e.nativeEvent.contentOffset.y,
+      );
+      setActiveIndex(prev => (prev === best ? prev : best));
+    },
+    [activeIndexEntries],
+  );
+
+  const activeFavourite = flatFavourites[activeIndex]?.fav;
+
   const handleSelfVisualization = (favourite: Favourite) => {
     track('favourite_try_on_tapped', { favorite_id: favourite.id });
     // Build the serializable TryOnOutfitContext the "See this on me" flow needs
@@ -178,6 +230,9 @@ export const FavouriteScreen: React.FC = () => {
         }
         disableIntervalMomentum
         decelerationRate="fast"
+        // Track which outfit is in view so the sticky action bar targets it.
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {groups.map(group => (
           <View
@@ -197,8 +252,6 @@ export const FavouriteScreen: React.FC = () => {
                   favourite={favourite}
                   view={view}
                   dateLabel={formatDateLabel(favourite.created_at)}
-                  onRemove={setPendingRemovalId}
-                  onSelfVisualization={handleSelfVisualization}
                   onItemPress={itemId =>
                     navigation.navigate('ItemDetail', { itemId })
                   }
@@ -213,22 +266,44 @@ export const FavouriteScreen: React.FC = () => {
 
   return (
     <View style={styles.container} testID="favourite-screen">
-      {/* Hamburger-only blurred bar (no title, no back chevron — CEO
-          2026-06-19); native-stack swipe-back still backs out. testID is the
-          machine selector; accessibilityLabel is the human VoiceOver string. */}
-      <Header.MenuOnly
+      {/* Canonical blurred bar (#158 Header). Hamburger-only on the left (no
+          title, no back chevron — CEO 2026-06-19; native-stack swipe-back still
+          backs out). The grid/collage view-toggle is hoisted from the old bottom
+          footer into the header's top-right (CEO 2026-06-27). It rides a widened
+          right slot (`rightSlotStyle`) because the compact `size="sm"` toggle
+          pill (~76px) exceeds the Header's default 44px icon slot. Its own testID
+          stem keeps it from colliding with the Home footer's maestro selectors.
+          testID is the machine selector; accessibilityLabel is the human
+          VoiceOver string. */}
+      <Header
+        background="blur"
+        safeAreaTop
         leftTestID="favourite-header-menu"
         leftAccessibilityLabel={t('favourite.open_menu')}
         onBack={openSidebar}
+        title=""
+        rightSlotStyle={styles.toggleSlot}
+        rightComponent={
+          <HomeViewTogglePill
+            testID="favourite-view-toggle"
+            itemTestIDStem="favourite-view-tab"
+            size="sm"
+            source="favourite"
+            activeView={view}
+            onSelectView={setView}
+          />
+        }
       />
 
       <View style={styles.body}>{renderBody()}</View>
 
-      <HomeViewToggleFooter
-        testID="favourite-view-toggle"
-        activeView={view}
-        onSelectView={setView}
-      />
+      {activeFavourite ? (
+        <FavouriteActionBar
+          testID="favourite-action-bar"
+          onRemove={() => setPendingRemovalId(activeFavourite.id)}
+          onSelfVisualization={() => handleSelfVisualization(activeFavourite)}
+        />
+      ) : null}
 
       <RemoveFavouriteDialog
         visible={pendingRemovalId !== null}
@@ -244,6 +319,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
+  },
+  // The header's right slot holds the ~76px view-toggle pill instead of the
+  // canonical 44px icon chip, so widen it to fit (the Header's default slot is
+  // sized for single icon buttons). `width: 'auto'` lets it size to the pill.
+  toggleSlot: {
+    width: 'auto',
   },
   body: {
     flex: 1,
