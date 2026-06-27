@@ -395,6 +395,7 @@
       "skip_label": "Next",
       "back_label": "Back",
       "saved_to_favourite": "Saved to favourite",
+      "saved_open_favourites": "Outfit saved. Open Favourites to use See on Me.",
       "wear_this": "Wear this",
       "save_failed_retry": "Couldn’t save this look. Tap \"Wear this\" to retry.",
       "error_load_title": "Couldn't load your outfits",
