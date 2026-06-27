@@ -165,9 +165,17 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 > PII: all settings events carry bounded enums only (`period`, `frequency`, `direction`, `locale`, `granted`, `enabled`) — no raw text, no identifiers. The read-only hour value (`'06:15'`) is NOT tracked. `notifications_reset` props echo the constant defaults (so the dashboard can confirm what "default" was at fire time); `notifications_reset_undone` echoes the restored prior values for symmetry.
 
-### 5.8 Mood feedback (pre-existing, unchanged)
+### 5.8 Mood feedback
 
 8 events fired from `src/hooks/use-mood-feedback.ts`: `wear_this_clicked`, `mood_feedback_opened`, `mood_feedback_skipped`, `mood_feedback_submitted`, `outfit_mood_linked`, `negative_mood_selected`, `mood_feedback_submission_failed`, `mood_chip_selected`/`mood_chip_deselected`. See file for full property shapes.
+
+**Feeling-aware recommendations (AU-388) additions:**
+- `mood_feedback_submitted` now carries (on BOTH the saved and the soft-negative branch, so the event shape is uniform):
+  - `intent_moods: string[]` — engine-vocab projection of the chosen feeling chips (`feedbackMoodsToIntentMoods`, `services/mood/mood-vocabulary.ts`). Empty array when the selection maps to nothing.
+  - `saved: boolean` — `true` when the outfit was saved to favourites; `false` for a soft-negative (`not_quite_me`) submission, which is recorded as feedback only and **not** saved.
+  - `occasion?: string` — context for Feeling × Context analysis. **Omitted entirely when unknown** (no `null` per the no-null-props rule); fuller context (weather/temp/season/time) lands with the P1 capture schema.
+- `negative_mood_selected` now fires from the dedicated soft-negative branch (a mixed selection like `[confident, not_quite_me]` still counts as a rejection) and also carries the optional `occasion` property (same omit-when-unknown rule).
+- Funnel/analysis intent: validate the feedback→engine mood mapping (e.g. do users who pick `relaxed` favourite `confident`-mapped outfits?) before backend Feeling-Memory wiring. See `docs/strategy-mood-aware-recommendations.md`.
 
 ### 5.9 Global navigation
 
