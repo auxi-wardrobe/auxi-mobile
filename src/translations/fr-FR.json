@@ -264,7 +264,8 @@
       "database": {
         "title": "Base de données",
         "empty": "Aucun article à sélectionner",
-        "add_item": "Ajouter"
+        "add_item": "Ajouter",
+        "added_toast": "{{count}} article(s) ajouté(s) à votre garde-robe"
       },
       "new_badge": "Nouveau",
       "less_used_badge": "peu utilisé",

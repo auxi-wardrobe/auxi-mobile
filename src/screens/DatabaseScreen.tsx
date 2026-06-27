@@ -15,8 +15,8 @@ import Toast from 'react-native-toast-message';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Header } from '../components/layout/Header';
-import { useSidebar } from '../context/SidebarContext';
 import { theme } from '../theme/theme';
+import { Icons } from '../assets/icons';
 
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -71,7 +71,14 @@ type ScreenNavigation = NativeStackNavigationProp<
 export const DatabaseScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const { t } = useTranslation();
-  const { open: openSidebar } = useSidebar();
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Wardrobe');
+    }
+  };
 
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
@@ -176,8 +183,17 @@ export const DatabaseScreen = () => {
       });
     }
 
-    // Navigate back as long as at least one item landed in the wardrobe.
+    // Navigate back as long as at least one item landed in the wardrobe, and
+    // confirm with a success toast (persists across the navigation since Toast
+    // renders at the app root).
     if (succeededIds.length > 0) {
+      Toast.show({
+        type: 'success',
+        text1: t('wardrobe.database.added_toast', {
+          count: succeededIds.length,
+        }),
+        position: 'bottom',
+      });
       navigation.navigate('Wardrobe');
     }
   };
@@ -225,7 +241,15 @@ export const DatabaseScreen = () => {
       <Header
         title={t('wardrobe.database.title')}
         titleTextStyle={styles.headerTitle}
-        onBack={openSidebar}
+        showBack
+        leftIcon={
+          <Icons.ChevronLeft
+            width={24}
+            height={24}
+            color={theme.colors.figmaAction}
+          />
+        }
+        onBack={handleBack}
         rightComponent={
           <TouchableOpacity>
             <Text> </Text>
@@ -256,6 +280,7 @@ export const DatabaseScreen = () => {
           )}
         </ScrollView>
         <PillButton
+          testID="database-add-items-submit"
           title={t('wardrobe.database.add_item')}
           onPress={handleAddItems}
           disabled={selectedItems.length === 0 || submitting}
