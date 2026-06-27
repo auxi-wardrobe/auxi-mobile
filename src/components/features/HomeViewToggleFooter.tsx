@@ -6,6 +6,8 @@ import { track } from '../../services/analytics';
 import { theme } from '../../theme/theme';
 import IconGrid from '../../assets/images/icon_grid.svg';
 import IconGridAlt from '../../assets/images/icon_grid_alt.svg';
+import IconGridToggle from '../../assets/images/icon_grid_toggle.svg';
+import IconGridAltToggle from '../../assets/images/icon_grid_alt_toggle.svg';
 
 // Home | Grid View — bottom view-toggle (Figma footer 2464:17348).
 //
@@ -77,6 +79,13 @@ export const HomeViewTogglePill: React.FC<PillProps> = ({
     const iconColor = active
       ? theme.colors.figmaTextDark
       : theme.ds.color.tanStroke;
+    // sm (header chip): 16×16 glyph with a 1.3px-look stroke — dedicated
+    // *_toggle assets (stroke baked at 1.95 so it reads 1.3px once scaled into
+    // the 16px box). md (Home footer): the standard 24×24 / 1.5px icons.
+    if (size === 'sm') {
+      const Icon = tab === 'grid' ? IconGridToggle : IconGridAltToggle;
+      return <Icon width={16} height={16} color={iconColor} />;
+    }
     const Icon = tab === 'grid' ? IconGrid : IconGridAlt;
     return <Icon width={24} height={24} color={iconColor} />;
   };
