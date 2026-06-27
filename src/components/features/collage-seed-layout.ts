@@ -3,204 +3,235 @@ import { resolveItemImage } from '../../utils/url';
 import type { CanvasItemData } from './OutfitCanvasSurface';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Deterministic outfit-collage layout engine.
+// Deterministic editorial-flatlay collage engine.
 //
-// Replaces the old hand-placed Figma seed tables (one fixed arrangement per
-// item-count) with a rule-based system that derives every item's position from
-// its CATEGORY alone. Same input → identical output, no randomness.
+// The reference templates (1+1, 2+1, 3+2, 4+4, 5+1, …) are NOT an anatomical
+// body map — they're a layered flat-lay: garments form a left→right shelf
+// (outer → mid → base top), the bottom drops to the lower-right, shoes anchor
+// the bottom-left, and accessories fill the surrounding whitespace with the bag
+// acting as a left/right balancer. This module reverse-engineers those rules
+// rather than hardcoding pixel positions.
 //
-// The core invariant that buys "stable layout" (adding an item must not
-// rearrange the existing outfit): **an item's anchor is a pure function of its
-// own category/region, never of the set of items present.** A Top always snaps
-// to the TORSO anchor whether or not a jacket is also on the canvas, so adding
-// the jacket can't move the Top (beyond a bounded same-region fan — see below).
+// Composition pipeline (coordinates are the OUTPUT, never the starting point):
+//   classify roles → pick skeleton by garment signature → place skeleton
+//   → scale → distribute accessories into whitespace zones → balance the bag
+//   → resolve collisions → dense-rank z → emit coordinates
 //
-// Pipeline:  category → CategorySpec → semantic region → canvas anchor → frame
-//            size → collision-resolve (push, or tuck-under when dense) → z-order.
-//
-// Everything is expressed RELATIVE TO canvas width (normalized anchors, fractional
-// scales), so the identical composition renders at any surface size — the 382px
-// Home tile, the full Remix editor, or a favourite card.
+// Deterministic: identical input always yields identical output (no randomness).
+// Everything is normalized to canvas size, so the same composition renders at
+// the 382px Home tile, a favourite card, or the full Remix editor.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// 4:3 portrait — the "Image 3:4" container the collage is composed into. Kept as
-// a named export: HomeScreen constants, favourite + creations cards lock their
-// surface aspectRatio to it.
+// 4:3 portrait — the "Image 3:4" container. Named export: HomeScreen constants
+// and the favourite / creations cards lock their surface aspectRatio to it.
 export const COLLAGE_ASPECT = 4 / 3; // height / width
 
-// A 100%-scale garment frame spans this fraction of the canvas WIDTH. Because
-// every source PNG shares identical dimensions and identical negative padding,
-// the object footprint is a fixed fraction of its frame, so scaling the frame
-// scales the object predictably and the frame centre == the object centre.
-const BASE_FRAME_RATIO = 0.6;
+// A 100%-scale garment frame spans this fraction of canvas WIDTH. Identical PNG
+// dimensions + identical negative padding mean object footprint is a fixed
+// fraction of the frame, so scaling the frame scales the object predictably.
+const BASE_FRAME_RATIO = 0.58;
 
-// Every source PNG shares identical transparent negative padding, so the actual
-// garment occupies a fixed inner fraction of its frame. Collision tests run on
-// this CONTENT box (not the full frame) so neighbouring regions can render with
-// touching/overlapping frames — the transparent margins meeting — without the
-// engine treating that as a real garment collision. Rendering still uses the
-// full frame; only the collision geometry shrinks.
+// Collisions test an inner CONTENT box, not the full frame: every PNG shares the
+// same transparent padding, so frames can render touching/overlapping without
+// the engine treating the transparent margins as a real garment collision.
 const CONTENT_RATIO = 0.72;
 
-// ── Semantic body regions (anatomical anchors along a vertical spine) ──────────
-type BodyRegion =
-  | 'HEAD'
-  | 'FACE'
-  | 'NECK'
-  | 'TORSO'
-  | 'WAIST'
-  | 'LEGS'
-  | 'FEET'
-  | 'SIDE'
-  | 'WRIST';
+// ── Roles ─────────────────────────────────────────────────────────────────────
+// Garments form the skeleton; accessories balance the composition. Two "Top"
+// garments (sweater + tee) split into MID (knit layer) and TOP (base) so the
+// outer→inner shelf order is well defined.
+type GarmentRole = 'ONE_PIECE' | 'OUTER' | 'MID' | 'TOP' | 'BOTTOM';
+type AccessoryRole =
+  | 'SHOES'
+  | 'BAG'
+  | 'HEADWEAR'
+  | 'EYEWEAR'
+  | 'NECKWEAR'
+  | 'BELT'
+  | 'JEWELRY'
+  | 'WATCH';
+type Role = GarmentRole | AccessoryRole;
 
-// Skeleton = main garment, visual focus, never displaced by collision.
-// Accessory = supporting piece, may be pushed or tucked under to fit.
-type LayerKind = 'skeleton' | 'accessory';
+const GARMENT_ORDER: GarmentRole[] = ['ONE_PIECE', 'OUTER', 'MID', 'TOP', 'BOTTOM'];
+// Placement order for accessories. Shoes first (fixed anchor); bag LAST so the
+// balancer can read where every other weight already landed.
+const ACCESSORY_ORDER: AccessoryRole[] = [
+  'SHOES',
+  'NECKWEAR',
+  'HEADWEAR',
+  'EYEWEAR',
+  'BELT',
+  'JEWELRY',
+  'WATCH',
+  'BAG',
+];
 
-interface CategorySpec {
-  region: BodyRegion;
-  // Relative to a 100% garment frame (see BASE_FRAME_RATIO). Mirrors the agreed
-  // visual-hierarchy table: main garments dominate, accessories support.
-  scale: number;
-  // Higher = more important. Drives placement order, collision authority (the
-  // lower-priority item always yields) and the z-order base.
-  priority: number;
-  // Base layering band. Lower renders behind. Bottom < shoes < top/dress <
-  // outerwear < waist < bag < head/face/jewellery — the flat-lay stacking order.
-  zBand: number;
-  layer: LayerKind;
-  // Max fraction of THIS item's content box that may stay covered before
-  // collision pushes it out. Slight overlap (10–20%) is desirable; shoes keep a
-  // small tolerance so a hem grazing them isn't treated as a real collision.
-  overlap: number;
-  // How far (fraction of canvas width) this item may travel to dodge a collision
-  // before it gives up and tucks UNDER the obstacle instead. Skeleton barely
-  // moves; accessories get a small budget; dense outfits trip the tuck-under.
-  maxTravel: number;
-}
+const isGarment = (r: Role): r is GarmentRole =>
+  (GARMENT_ORDER as string[]).includes(r);
 
-// ── 1. Category definitions ───────────────────────────────────────────────────
-// Add a future category = add one row here. The engine reads these fields
-// generically and never special-cases a category by name.
-const CATEGORY_TABLE: Record<string, CategorySpec> = {
-  // Skeleton — the main silhouette.
-  Dress: { region: 'TORSO', scale: 1.0, priority: 100, zBand: 20, layer: 'skeleton', overlap: 0.15, maxTravel: 0.04 },
-  Outerwear: { region: 'TORSO', scale: 1.0, priority: 95, zBand: 30, layer: 'skeleton', overlap: 0.2, maxTravel: 0.04 },
-  Top: { region: 'TORSO', scale: 0.95, priority: 90, zBand: 22, layer: 'skeleton', overlap: 0.2, maxTravel: 0.04 },
-  Bottom: { region: 'LEGS', scale: 0.95, priority: 90, zBand: 12, layer: 'skeleton', overlap: 0.2, maxTravel: 0.04 },
-  Shoes: { region: 'FEET', scale: 0.5, priority: 80, zBand: 15, layer: 'skeleton', overlap: 0.12, maxTravel: 0.06 },
-
-  // Accessories — supporting pieces.
-  Bag: { region: 'SIDE', scale: 0.4, priority: 50, zBand: 40, layer: 'accessory', overlap: 0.1, maxTravel: 0.12 },
-  Scarf: { region: 'NECK', scale: 0.4, priority: 45, zBand: 35, layer: 'accessory', overlap: 0.3, maxTravel: 0.1 },
-  Hat: { region: 'HEAD', scale: 0.35, priority: 45, zBand: 50, layer: 'accessory', overlap: 0.2, maxTravel: 0.1 },
-  Belt: { region: 'WAIST', scale: 0.35, priority: 40, zBand: 36, layer: 'accessory', overlap: 0.3, maxTravel: 0.1 },
-  Eyewear: { region: 'FACE', scale: 0.28, priority: 35, zBand: 52, layer: 'accessory', overlap: 0.2, maxTravel: 0.1 },
-  Jewelry: { region: 'FACE', scale: 0.22, priority: 30, zBand: 54, layer: 'accessory', overlap: 0.2, maxTravel: 0.1 },
-  Watch: { region: 'WRIST', scale: 0.18, priority: 25, zBand: 55, layer: 'accessory', overlap: 0.2, maxTravel: 0.1 },
-
-  // Generic fallback for the backend's collapsed 'Accessory' family (and any
-  // unknown accessory). Behaves like a balancing side piece.
-  Accessory: { region: 'SIDE', scale: 0.4, priority: 50, zBand: 40, layer: 'accessory', overlap: 0.1, maxTravel: 0.12 },
+// ── 5. Scale relationships (relative to a 100% garment frame) ─────────────────
+const ROLE_SCALE: Record<Role, number> = {
+  ONE_PIECE: 1.0,
+  OUTER: 0.95,
+  MID: 0.82,
+  TOP: 0.74,
+  BOTTOM: 0.9,
+  SHOES: 0.42,
+  BAG: 0.4,
+  NECKWEAR: 0.4,
+  HEADWEAR: 0.34,
+  BELT: 0.32,
+  EYEWEAR: 0.27,
+  JEWELRY: 0.22,
+  WATCH: 0.18,
 };
 
-// Deterministic tie-break order when two items share a priority. Independent of
-// input array order, so the layout is identical however the items arrive.
-const CATEGORY_ORDER = Object.keys(CATEGORY_TABLE);
+// ── z layering (flat-lay stack): bottom behind, outer in front, accessories on
+// top, shoes between garments and small accessories. Dense-ranked at the end. ──
+const ROLE_ZBAND: Record<Role, number> = {
+  BOTTOM: 10,
+  ONE_PIECE: 16,
+  MID: 20,
+  TOP: 26,
+  OUTER: 30,
+  SHOES: 34,
+  BAG: 38,
+  BELT: 42,
+  NECKWEAR: 44,
+  HEADWEAR: 50,
+  EYEWEAR: 52,
+  JEWELRY: 54,
+  WATCH: 55,
+};
 
-const DEFAULT_SPEC = CATEGORY_TABLE.Top;
+// ── 3/4. Skeleton templates: garment signature → normalized anchor per role ───
+// Different garment combinations produce different skeletons. The signature is
+// the SORTED set of present garment roles, so the same structure always maps to
+// the same shelf regardless of input order. Anchors are normalized centres
+// (x of width, y of height). Unseen signatures fall back to a procedural shelf.
+type Anchor = { x: number; y: number };
 
-// ── 3. Canvas zones: body region → normalized anchor + fan rule ────────────────
-// Anchor is the normalized (0–1, origin top-left, y-down) centre an item snaps
-// to. The spine HEAD→FACE→NECK→TORSO→WAIST→LEGS→FEET also defines the flat-lay
-// reading order. SIDE / WRIST are pulled off-centre so the bag balances the
-// composition. `fanAxis`/`fanStep` spread multiple items sharing a region.
-interface Zone {
-  anchor: { x: number; y: number };
-  fanAxis: { x: number; y: number };
-  fanStep: number; // normalized spacing between fanned siblings
-}
+const SKELETONS: Record<string, Partial<Record<GarmentRole, Anchor>>> = {
+  // Dress alone — right-of-centre, large, leaving the left column open (1+x).
+  ONE_PIECE: { ONE_PIECE: { x: 0.6, y: 0.5 } },
+  // Top + Bottom — tee upper-left, jeans lower-right (2+1).
+  'BOTTOM|TOP': {
+    TOP: { x: 0.4, y: 0.34 },
+    BOTTOM: { x: 0.66, y: 0.5 },
+  },
+  // Outerwear + Top + Bottom — jacket left, tee upper-right, jeans right (3+x).
+  'BOTTOM|OUTER|TOP': {
+    OUTER: { x: 0.3, y: 0.34 },
+    TOP: { x: 0.6, y: 0.32 },
+    BOTTOM: { x: 0.74, y: 0.52 },
+  },
+  // Outer + Mid + Top + Bottom — four-garment shelf (4+x, 5+x).
+  'BOTTOM|MID|OUTER|TOP': {
+    OUTER: { x: 0.26, y: 0.36 },
+    MID: { x: 0.5, y: 0.34 },
+    TOP: { x: 0.7, y: 0.32 },
+    BOTTOM: { x: 0.8, y: 0.54 },
+  },
+};
 
-const ZONES: Record<BodyRegion, Zone> = {
-  HEAD: { anchor: { x: 0.5, y: 0.1 }, fanAxis: { x: 1, y: 0 }, fanStep: 0.14 },
-  FACE: { anchor: { x: 0.5, y: 0.16 }, fanAxis: { x: 1, y: 0 }, fanStep: 0.12 },
-  NECK: { anchor: { x: 0.5, y: 0.23 }, fanAxis: { x: 1, y: 0 }, fanStep: 0.1 },
-  TORSO: { anchor: { x: 0.5, y: 0.37 }, fanAxis: { x: 1, y: 0 }, fanStep: 0.16 },
-  WAIST: { anchor: { x: 0.5, y: 0.55 }, fanAxis: { x: 1, y: 0 }, fanStep: 0.0 },
-  LEGS: { anchor: { x: 0.5, y: 0.68 }, fanAxis: { x: 1, y: 0 }, fanStep: 0.0 },
-  FEET: { anchor: { x: 0.5, y: 0.9 }, fanAxis: { x: 1, y: 0 }, fanStep: 0.16 },
-  SIDE: { anchor: { x: 0.82, y: 0.6 }, fanAxis: { x: 0, y: 1 }, fanStep: 0.16 },
-  WRIST: { anchor: { x: 0.78, y: 0.5 }, fanAxis: { x: 0, y: 1 }, fanStep: 0.12 },
+// ── Whitespace zones for accessories (normalized centres). Negative space the
+// skeleton deliberately leaves open; multiple items in one zone stack downward.
+const ZONES: Record<string, Anchor> = {
+  SHOES: { x: 0.2, y: 0.82 }, // bottom-left anchor
+  MID_LEFT: { x: 0.23, y: 0.5 }, // cap / sunglasses / shoulder-bag column
+  TOP_LEFT: { x: 0.18, y: 0.17 }, // scarf / headwear in upper whitespace
+  BOTTOM_RIGHT: { x: 0.8, y: 0.82 }, // briefcase bag (balances bottom-left shoes)
+  MID_RIGHT: { x: 0.67, y: 0.66 }, // belt by the lower torso
+  BOTTOM_MID: { x: 0.48, y: 0.88 }, // jewellery / watch fill remaining space
+};
+const ZONE_STACK_STEP = 0.12; // normalized-height offset per stacked item
+
+// Preferred whitespace zone per accessory role (bag is decided by balance).
+const ACCESSORY_ZONE: Record<Exclude<AccessoryRole, 'BAG'>, string> = {
+  SHOES: 'SHOES',
+  NECKWEAR: 'TOP_LEFT',
+  HEADWEAR: 'MID_LEFT',
+  EYEWEAR: 'MID_LEFT',
+  BELT: 'MID_RIGHT',
+  JEWELRY: 'BOTTOM_MID',
+  WATCH: 'BOTTOM_MID',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// A pre-resolved collage item: id + already-resolved image URI + its category.
-// Decouples the layout math from the full `Item` shape so the Home collage view
-// and the Remix canvas (which only receive lightweight nav params) can seed the
-// identical arrangement. `category` is optional for back-compat — absent/unknown
-// categories fall back to DEFAULT_SPEC.
+// A pre-resolved collage item: id + already-resolved image URI + raw category.
+// `category` is optional for back-compat; absent/unknown → a sensible default.
 export type CollageSeedItem = { id: string; imageUri: string; category?: string };
 
-// Map a free-form stored category string to a canonical engine category. Mirrors
-// the keyword families in outfit-normalize.ts but resolves the finer accessory
-// types (bag / hat / belt / …) when the source string carries them. Most
-// specific silhouettes are tested first (one-piece before top, outer before top,
-// skirt before shirt).
-const resolveCategory = (raw?: string): CategorySpec => {
+// ── 1. Classify a free-form category string into a layout role ────────────────
+const classifyRole = (raw?: string): Role => {
   const c = raw?.trim().toLowerCase() ?? '';
   if (!c) {
-    return DEFAULT_SPEC;
+    return 'TOP';
   }
-  const has = (...keys: string[]) => keys.some(k => c.includes(k));
+  const has = (...k: string[]) => k.some(s => c.includes(s));
 
-  if (has('dress', 'jumpsuit', 'one-piece', 'one piece', 'romper', 'overall')) {
-    return CATEGORY_TABLE.Dress;
+  if (has('dress', 'jumpsuit', 'one-piece', 'one piece', 'romper', 'overall', 'gown')) {
+    return 'ONE_PIECE';
   }
-  if (has('outer', 'coat', 'jacket', 'blazer')) {
-    return CATEGORY_TABLE.Outerwear;
+  if (has('outer', 'coat', 'jacket', 'blazer', 'parka', 'trench', 'windbreaker')) {
+    return 'OUTER';
   }
-  if (has('shoe', 'sneaker', 'boot', 'heel', 'sandal', 'loafer', 'footwear')) {
-    return CATEGORY_TABLE.Shoes;
+  if (has('shoe', 'sneaker', 'boot', 'heel', 'sandal', 'loafer', 'footwear', 'trainer')) {
+    return 'SHOES';
   }
-  if (has('bag', 'purse', 'tote', 'clutch', 'backpack')) {
-    return CATEGORY_TABLE.Bag;
+  if (has('bag', 'purse', 'tote', 'clutch', 'backpack', 'satchel', 'briefcase')) {
+    return 'BAG';
   }
   if (has('sunglass', 'eyewear', 'glasses')) {
-    return CATEGORY_TABLE.Eyewear;
+    return 'EYEWEAR';
   }
-  if (has('hat', 'cap', 'beanie')) {
-    return CATEGORY_TABLE.Hat;
+  if (has('hat', 'cap', 'beanie', 'beret')) {
+    return 'HEADWEAR';
   }
-  if (has('scarf')) {
-    return CATEGORY_TABLE.Scarf;
+  if (has('scarf', 'shawl', 'bandana')) {
+    return 'NECKWEAR';
   }
   if (has('belt')) {
-    return CATEGORY_TABLE.Belt;
+    return 'BELT';
   }
   if (has('watch')) {
-    return CATEGORY_TABLE.Watch;
+    return 'WATCH';
   }
-  if (has('jewel', 'ring', 'necklace', 'earring', 'bracelet')) {
-    return CATEGORY_TABLE.Jewelry;
+  if (has('jewel', 'ring', 'necklace', 'earring', 'bracelet', 'pendant')) {
+    return 'JEWELRY';
   }
-  if (has('bottom', 'pant', 'jean', 'skirt', 'short', 'trouser', 'legging')) {
-    return CATEGORY_TABLE.Bottom;
+  if (has('bottom', 'pant', 'jean', 'skirt', 'short', 'trouser', 'legging', 'chino')) {
+    return 'BOTTOM';
   }
-  if (has('top', 'shirt', 'tee', 'blouse', 'sweater', 'hoodie', 'knit')) {
-    return CATEGORY_TABLE.Top;
+  if (has('sweater', 'knit', 'hoodie', 'cardigan', 'pullover', 'jumper')) {
+    return 'MID';
   }
+  if (has('top', 'shirt', 'tee', 't-shirt', 'blouse', 'tank', 'cami', 'polo')) {
+    return 'TOP';
+  }
+  // Generic 'Accessory' (backend collapses bag/hat/belt/… into one) → treat as
+  // the bag balancer, the most useful single supporting piece.
   if (has('accessor')) {
-    return CATEGORY_TABLE.Accessory;
+    return 'BAG';
   }
-  return DEFAULT_SPEC;
+  return 'TOP';
 };
 
-// ── 4. Scaling: relative to canvas width (adaptive by construction) ────────────
-const frameSize = (spec: CategorySpec, canvasW: number): number =>
-  canvasW * BASE_FRAME_RATIO * spec.scale;
+// ── Geometry helpers ──────────────────────────────────────────────────────────
+interface Node {
+  id: string;
+  imageUri: string;
+  role: Role;
+}
 
-// ── 5/6. Collision geometry ────────────────────────────────────────────────────
+interface Placed extends Node {
+  cx: number;
+  cy: number;
+  size: number; // full frame size (px) — rendered width/height
+  baseZ: number;
+  tuckUnderZ?: number;
+}
+
 interface Box {
   cx: number;
   cy: number;
@@ -208,7 +239,13 @@ interface Box {
   h: number;
 }
 
-// Overlap extents (px) of two centre-boxes, or null when disjoint.
+const contentBox = (p: { cx: number; cy: number; size: number }): Box => ({
+  cx: p.cx,
+  cy: p.cy,
+  w: p.size * CONTENT_RATIO,
+  h: p.size * CONTENT_RATIO,
+});
+
 const overlap = (a: Box, b: Box): { ox: number; oy: number } | null => {
   const ox =
     Math.min(a.cx + a.w / 2, b.cx + b.w / 2) -
@@ -219,31 +256,115 @@ const overlap = (a: Box, b: Box): { ox: number; oy: number } | null => {
   return ox > 0 && oy > 0 ? { ox, oy } : null;
 };
 
-interface Node {
-  id: string;
-  imageUri: string;
-  spec: CategorySpec;
-  sortKey: number; // index in CATEGORY_ORDER, for deterministic tie-break
-}
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-interface Placed extends Node {
-  cx: number;
-  cy: number;
-  size: number;
-  baseZ: number;
-  tuckUnderZ?: number; // when set, render just beneath this z (dense tuck-under)
-}
+const frameSize = (role: Role, W: number) => BASE_FRAME_RATIO * W * ROLE_SCALE[role];
 
-// ── 2. Placement order: priority DESC, then deterministic category, then id ────
-const order = (a: Node, b: Node): number =>
-  b.spec.priority - a.spec.priority ||
-  a.sortKey - b.sortKey ||
-  (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+const place = (node: Node, a: Anchor, W: number, H: number): Placed => ({
+  ...node,
+  cx: a.x * W,
+  cy: a.y * H,
+  size: frameSize(node.role, W),
+  baseZ: ROLE_ZBAND[node.role] * 100,
+});
+
+// ── 4. Garment skeleton: signature → template, or a procedural shelf ──────────
+const buildSkeleton = (garments: Node[], W: number, H: number): Placed[] => {
+  // One item per garment role (deterministic: nodes arrive pre-sorted by role).
+  const byRole = new Map<GarmentRole, Node>();
+  for (const g of garments) {
+    if (!byRole.has(g.role as GarmentRole)) {
+      byRole.set(g.role as GarmentRole, g);
+    }
+  }
+  const roles = [...byRole.keys()];
+  const signature = [...roles].sort().join('|');
+  const template = SKELETONS[signature];
+
+  const anchorFor = (role: GarmentRole): Anchor => {
+    if (template?.[role]) {
+      return template[role]!;
+    }
+    // Procedural fallback for unseen garment combinations: lay the upper layers
+    // left→right (outer→mid→top), drop the bottom to the lower-right, place a
+    // lone dress right-of-centre.
+    const uppers = (['OUTER', 'MID', 'TOP'] as GarmentRole[]).filter(r =>
+      roles.includes(r),
+    );
+    if (role === 'ONE_PIECE') {
+      return { x: 0.6, y: 0.5 };
+    }
+    if (role === 'BOTTOM') {
+      const lastUpperX = uppers.length ? 0.3 + (uppers.length - 1) * 0.2 : 0.5;
+      return { x: clamp(lastUpperX + 0.16, 0.45, 0.82), y: 0.52 };
+    }
+    const i = Math.max(0, uppers.indexOf(role));
+    return { x: clamp(0.3 + i * 0.2, 0.2, 0.78), y: 0.33 };
+  };
+
+  return roles.map(role => place(byRole.get(role)!, anchorFor(role), W, H));
+};
+
+// ── 6. Distribute accessories into whitespace; bag balances left/right ────────
+const sideWeight = (items: Placed[], W: number): { left: number; right: number } => {
+  let left = 0;
+  let right = 0;
+  for (const p of items) {
+    const w = ROLE_SCALE[p.role];
+    if (p.cx < W / 2) {
+      left += w;
+    } else {
+      right += w;
+    }
+  }
+  return { left, right };
+};
+
+// ── 7. Collision: push an accessory out of overlaps (content box, min move).
+// When it can't escape within budget it tucks UNDER the obstacle (lower z).
+const resolveCollision = (p: Placed, others: Placed[], W: number, H: number) => {
+  const budget = 0.16 * W;
+  let travel = 0;
+  let box = contentBox(p);
+  for (const o of others) {
+    const ob = contentBox(o);
+    const ov = overlap(box, ob);
+    if (!ov) {
+      continue;
+    }
+    const allowed = 0.12;
+    const tolX = Math.min(box.w, ob.w) * allowed;
+    const tolY = Math.min(box.h, ob.h) * allowed;
+    if (ov.ox <= tolX && ov.oy <= tolY) {
+      continue;
+    }
+    const needX = ov.ox - tolX;
+    const needY = ov.oy - tolY;
+    let dx = 0;
+    let dy = 0;
+    if (needX < needY) {
+      dx = (box.cx >= ob.cx ? 1 : -1) * needX;
+    } else {
+      dy = (box.cy >= ob.cy ? 1 : -1) * needY;
+    }
+    const next: Box = { ...box, cx: box.cx + dx, cy: box.cy + dy };
+    const mag = Math.hypot(dx, dy);
+    const escapes = next.cx < 0 || next.cx > W || next.cy < 0 || next.cy > H;
+    if (travel + mag > budget || escapes) {
+      p.tuckUnderZ = Math.min(p.tuckUnderZ ?? Infinity, o.baseZ);
+      continue;
+    }
+    travel += mag;
+    box = next;
+  }
+  p.cx = box.cx;
+  p.cy = box.cy;
+};
 
 /**
- * Core engine. Map pre-resolved items to overlapping canvas positions using the
- * category → region → anchor → collision pipeline. Deterministic: identical
- * input always yields identical output.
+ * Core engine. Compose a deterministic editorial flat-lay from pre-resolved
+ * items: skeleton first, accessories into whitespace, bag balanced, collisions
+ * resolved, z dense-ranked. Identical input always yields identical output.
  */
 export const seedCanvasLayout = (
   items: CollageSeedItem[],
@@ -255,128 +376,64 @@ export const seedCanvasLayout = (
   const W = surfaceWidth;
   const H = surfaceWidth * COLLAGE_ASPECT;
 
-  const nodes: Node[] = items.map(it => {
-    const spec = resolveCategory(it.category);
-    return {
-      id: it.id,
-      imageUri: it.imageUri,
-      spec,
-      sortKey: Math.max(0, CATEGORY_ORDER.indexOf(specKey(spec))),
-    };
-  });
+  // Classify and sort into a deterministic, input-order-independent order.
+  const nodes: Node[] = items.map(it => ({
+    id: it.id,
+    imageUri: it.imageUri,
+    role: classifyRole(it.category),
+  }));
+  const garmentRank = (r: Role) =>
+    isGarment(r) ? GARMENT_ORDER.indexOf(r) : 99;
+  const accessoryRank = (r: Role) =>
+    isGarment(r) ? 99 : ACCESSORY_ORDER.indexOf(r as AccessoryRole);
+  const idCmp = (a: Node, b: Node) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
-  // Group by region for fanning. Within a region, the highest-priority item
-  // holds the anchor (offset 0) and siblings fan outward — so adding a lower
-  // sibling never moves the region's primary garment.
-  const byRegion = new Map<BodyRegion, Node[]>();
-  for (const n of nodes) {
-    const list = byRegion.get(n.spec.region) ?? [];
-    list.push(n);
-    byRegion.set(n.spec.region, list);
-  }
-  for (const list of byRegion.values()) {
-    list.sort(order);
-  }
+  const garments = nodes
+    .filter(n => isGarment(n.role))
+    .sort((a, b) => garmentRank(a.role) - garmentRank(b.role) || idCmp(a, b));
+  const accessories = nodes
+    .filter(n => !isGarment(n.role))
+    .sort((a, b) => accessoryRank(a.role) - accessoryRank(b.role) || idCmp(a, b));
 
-  const anchorOf = (n: Node): { cx: number; cy: number } => {
-    const zone = ZONES[n.spec.region];
-    const peers = byRegion.get(n.spec.region)!;
-    const i = peers.indexOf(n);
-    // Fan from the primary: 0, +1, -1, +2, -2, … (primary stays at anchor).
-    const rung = i === 0 ? 0 : Math.ceil(i / 2) * (i % 2 === 1 ? 1 : -1);
-    const off = rung * zone.fanStep;
-    return {
-      cx: (zone.anchor.x + off * zone.fanAxis.x) * W,
-      cy: (zone.anchor.y + off * zone.fanAxis.y) * H,
-    };
+  // 4. Skeleton.
+  const placed: Placed[] = buildSkeleton(garments, W, H);
+
+  // 6. Accessories into whitespace zones (stacking within a zone).
+  const zoneUsed = new Map<string, number>();
+  const zoneAnchor = (zone: string): Anchor => {
+    const n = zoneUsed.get(zone) ?? 0;
+    zoneUsed.set(zone, n + 1);
+    const base = ZONES[zone];
+    return { x: base.x, y: base.y + n * ZONE_STACK_STEP };
   };
 
-  // ── 6. Progressive placement: place high→low, resolve each new item only
-  // against already-placed (higher-priority) items. Same-region siblings are
-  // intentional layering/fan — never collision-resolved against each other.
-  const placed: Placed[] = [];
-  for (const n of [...nodes].sort(order)) {
-    const { cx, cy } = anchorOf(n);
-    const size = frameSize(n.spec, W);
-    const content = size * CONTENT_RATIO;
-    let box: Box = { cx, cy, w: content, h: content };
-    let travel = 0;
-    const budget = n.spec.maxTravel * W;
-    const isShoe = n.spec.region === 'FEET';
-    let tuckUnderZ: number | undefined;
-
-    for (const other of placed) {
-      if (other.spec.region === n.spec.region) {
-        continue; // same region: layered/fanned, not collided
-      }
-      const otherContent = other.size * CONTENT_RATIO;
-      const otherBox: Box = {
-        cx: other.cx,
-        cy: other.cy,
-        w: otherContent,
-        h: otherContent,
-      };
-      const o = overlap(box, otherBox);
-      if (!o) {
-        continue;
-      }
-      const allowed = Math.min(n.spec.overlap, other.spec.overlap);
-      const tolX = Math.min(box.w, otherBox.w) * allowed;
-      const tolY = Math.min(box.h, otherBox.h) * allowed;
-      if (o.ox <= tolX && o.oy <= tolY) {
-        continue; // within the desirable-overlap margin
-      }
-
-      // Minimum-translation dodge. Shoes may only move DOWN (stay at the feet).
-      const needX = o.ox - tolX;
-      const needY = o.oy - tolY;
-      let dx = 0;
-      let dy = 0;
-      if (!isShoe && needX < needY) {
-        dx = (box.cx >= otherBox.cx ? 1 : -1) * needX;
-      } else {
-        dy = (isShoe ? 1 : box.cy >= otherBox.cy ? 1 : -1) * needY;
-      }
-
-      const next: Box = { ...box, cx: box.cx + dx, cy: box.cy + dy };
-      const mag = Math.hypot(dx, dy);
-      const escapesCanvas =
-        next.cx < 0 || next.cx > W || next.cy < 0 || next.cy > H;
-
-      if (travel + mag > budget || escapesCanvas) {
-        // Dense outfit: stop shoving. Keep the item near its anchor and let it
-        // tuck UNDER the obstacle (lower z, partial overlap) — e.g. shoes
-        // peeking out beneath a long coat hem instead of dropping off-canvas.
-        tuckUnderZ = Math.min(tuckUnderZ ?? Infinity, other.baseZ);
-        continue;
-      }
-      travel += mag;
-      box = next;
+  for (const node of accessories) {
+    let zone: string;
+    if (node.role === 'BAG') {
+      // The bag balances the lighter side. Left already heavy (shoes + left
+      // accessories) → bottom-right; otherwise tuck it into the left column.
+      const { left, right } = sideWeight(placed, W);
+      zone = left >= right ? 'BOTTOM_RIGHT' : 'MID_LEFT';
+    } else {
+      // Non-garment, non-bag (bag handled above) → its preferred whitespace zone.
+      zone = ACCESSORY_ZONE[node.role as Exclude<AccessoryRole, 'BAG'>];
     }
-
-    placed.push({
-      ...n,
-      cx: box.cx,
-      cy: box.cy,
-      size,
-      baseZ: n.spec.zBand * 100 + n.spec.priority,
-      tuckUnderZ,
-    });
+    const p = place(node, zoneAnchor(zone), W, H);
+    resolveCollision(p, placed, W, H); // 7. only the accessory moves
+    placed.push(p);
   }
 
-  // ── z-order: base band, demoted just beneath any tuck-under target, then
-  // dense-ranked to a gap-free 1..n the renderer can use directly.
-  const withZ = placed.map(p => ({
-    p,
-    z: p.tuckUnderZ != null ? Math.min(p.baseZ, p.tuckUnderZ - 1) : p.baseZ,
-  }));
-  withZ.sort((a, b) => a.z - b.z || (a.p.id < b.p.id ? -1 : 1));
-
+  // ── z-order: base band, demoted beneath any tuck-under target, dense-ranked.
+  const ranked = placed
+    .map(p => ({
+      p,
+      z: p.tuckUnderZ != null ? Math.min(p.baseZ, p.tuckUnderZ - 1) : p.baseZ,
+    }))
+    .sort((a, b) => a.z - b.z || (a.p.id < b.p.id ? -1 : 1));
   const rank = new Map<string, number>();
-  withZ.forEach((e, i) => rank.set(e.p.id, i + 1));
+  ranked.forEach((e, i) => rank.set(e.p.id, i + 1));
 
-  // ── 8. Output: top-left x/y (matching CanvasItemData), size baked into
-  // width/height, rotation 0 (deterministic, no jitter), z = dense rank.
+  // 8. Emit coordinates (top-left x/y, frame size, dense-ranked z).
   return placed.map(p => ({
     id: p.id,
     imageSource: { uri: p.imageUri },
@@ -387,18 +444,6 @@ export const seedCanvasLayout = (
     zIndex: rank.get(p.id)!,
   }));
 };
-
-// Reverse-lookup a spec's canonical key for the deterministic tie-break. Specs
-// are shared object refs in CATEGORY_TABLE, so identity comparison is exact
-// (Accessory + Bag share field values but are distinct entries).
-function specKey(spec: CategorySpec): string {
-  for (const key of CATEGORY_ORDER) {
-    if (CATEGORY_TABLE[key] === spec) {
-      return key;
-    }
-  }
-  return 'Top';
-}
 
 /**
  * Map an outfit's items to seeded canvas positions for the collage-play view.

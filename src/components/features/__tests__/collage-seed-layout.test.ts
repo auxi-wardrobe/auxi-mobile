@@ -1,9 +1,7 @@
-import {
-  seedCanvasLayout,
-  CollageSeedItem,
-} from '../collage-seed-layout';
+import { seedCanvasLayout, CollageSeedItem } from '../collage-seed-layout';
 
 const W = 382; // Home collage tile width
+const H = W * (4 / 3);
 
 const mk = (id: string, category: string): CollageSeedItem => ({
   id,
@@ -11,137 +9,155 @@ const mk = (id: string, category: string): CollageSeedItem => ({
   category,
 });
 
-const byId = (out: ReturnType<typeof seedCanvasLayout>) =>
-  new Map(out.map(o => [o.id, o]));
+type Out = ReturnType<typeof seedCanvasLayout>;
+const byId = (out: Out) => new Map(out.map(o => [o.id, o]));
+const cx = (o: Out[number]) => o.x + o.width / 2;
+const cy = (o: Out[number]) => o.y + o.height / 2;
 
-describe('seedCanvasLayout — deterministic outfit collage engine', () => {
-  it('returns an empty layout for no items / zero width', () => {
+describe('seedCanvasLayout — editorial flat-lay engine', () => {
+  it('returns empty for no items / zero width', () => {
     expect(seedCanvasLayout([], W)).toEqual([]);
     expect(seedCanvasLayout([mk('a', 'Top')], 0)).toEqual([]);
   });
 
-  it('is deterministic: identical input → identical output', () => {
-    const items = [
-      mk('top', 'Top'),
-      mk('bot', 'Bottom'),
-      mk('shoe', 'Shoes'),
-      mk('bag', 'Bag'),
-    ];
-    expect(seedCanvasLayout(items, W)).toEqual(seedCanvasLayout(items, W));
-  });
-
-  it('is independent of input order (sorted by priority/category/id)', () => {
-    const a = [mk('top', 'Top'), mk('bot', 'Bottom'), mk('shoe', 'Shoes')];
-    const shuffled = [a[2], a[0], a[1]];
+  it('is deterministic and input-order independent', () => {
+    const a = [mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans'), mk('sh', 'Shoes')];
+    const shuffled = [a[3], a[1], a[0], a[2]];
+    expect(seedCanvasLayout(a, W)).toEqual(seedCanvasLayout(a, W));
     expect(seedCanvasLayout(shuffled, W)).toEqual(seedCanvasLayout(a, W));
   });
 
-  it('scales accessories down and keeps main garments dominant', () => {
+  it('lays the garment shelf outer→inner, left→right (3+1)', () => {
     const out = byId(
       seedCanvasLayout(
-        [mk('top', 'Top'), mk('shoe', 'Shoes'), mk('bag', 'Bag'), mk('watch', 'Watch')],
+        [mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans'), mk('sh', 'Shoes')],
         W,
       ),
     );
-    const top = out.get('top')!;
-    const shoe = out.get('shoe')!;
-    const bag = out.get('bag')!;
-    const watch = out.get('watch')!;
-    // Hierarchy: top (95%) > shoe (50%) > bag (40%) > watch (18%).
-    expect(top.width).toBeGreaterThan(shoe.width);
-    expect(shoe.width).toBeGreaterThan(bag.width);
-    expect(bag.width).toBeGreaterThan(watch.width);
+    // Outerwear sits left of the base top.
+    expect(cx(out.get('jkt')!)).toBeLessThan(cx(out.get('tee')!));
+    // Bottom drops to the right of and below the top.
+    expect(cx(out.get('jean')!)).toBeGreaterThan(cx(out.get('tee')!));
+    expect(cy(out.get('jean')!)).toBeGreaterThan(cy(out.get('tee')!));
   });
 
-  it('places items along the body spine (head→torso→legs→feet)', () => {
+  it('anchors shoes in the bottom-left', () => {
+    const out = byId(
+      seedCanvasLayout([mk('tee', 'Top'), mk('jean', 'Jeans'), mk('sh', 'Shoes')], W),
+    );
+    const sh = out.get('sh')!;
+    expect(cx(sh)).toBeLessThan(W * 0.4);
+    expect(cy(sh)).toBeGreaterThan(H * 0.6);
+  });
+
+  it('places a lone dress right-of-centre, leaving the left column open', () => {
+    const out = byId(seedCanvasLayout([mk('dress', 'Dress'), mk('sh', 'Shoes')], W));
+    expect(cx(out.get('dress')!)).toBeGreaterThan(W * 0.5);
+    expect(cx(out.get('sh')!)).toBeLessThan(W * 0.4); // shoes still bottom-left
+  });
+
+  it('scales main garments large and accessories small', () => {
     const out = byId(
       seedCanvasLayout(
-        [mk('hat', 'Hat'), mk('top', 'Top'), mk('bot', 'Bottom'), mk('shoe', 'Shoes')],
+        [mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('sh', 'Shoes'), mk('gl', 'Sunglasses')],
         W,
       ),
     );
-    const cy = (id: string) => out.get(id)!.y + out.get(id)!.height / 2;
-    expect(cy('hat')).toBeLessThan(cy('top'));
-    expect(cy('top')).toBeLessThan(cy('bot'));
-    expect(cy('bot')).toBeLessThan(cy('shoe'));
+    expect(out.get('jkt')!.width).toBeGreaterThan(out.get('tee')!.width);
+    expect(out.get('tee')!.width).toBeGreaterThan(out.get('sh')!.width);
+    expect(out.get('sh')!.width).toBeGreaterThan(out.get('gl')!.width);
   });
 
-  it('layers garments bottom→top: bottom < shoes < top via zIndex', () => {
+  it('stacks cap and sunglasses in the same left column (cap above)', () => {
     const out = byId(
-      seedCanvasLayout([mk('top', 'Top'), mk('bot', 'Bottom'), mk('shoe', 'Shoes')], W),
+      seedCanvasLayout(
+        [mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans'), mk('sh', 'Shoes'),
+         mk('cap', 'Hat'), mk('gl', 'Sunglasses')],
+        W,
+      ),
     );
-    expect(out.get('bot')!.zIndex).toBeLessThan(out.get('shoe')!.zIndex);
-    expect(out.get('shoe')!.zIndex).toBeLessThan(out.get('top')!.zIndex);
+    const cap = out.get('cap')!;
+    const gl = out.get('gl')!;
+    // Same column (close x), sunglasses below the cap.
+    expect(Math.abs(cx(cap) - cx(gl))).toBeLessThan(W * 0.12);
+    expect(cy(gl)).toBeGreaterThan(cy(cap));
   });
 
-  it('STABILITY: adding an item in another region leaves the rest untouched', () => {
+  it('BALANCE: bag goes opposite the heavy accessory side', () => {
+    // Left is loaded with cap + sunglasses + shoes → bag balances to the right.
+    const heavyLeft = byId(
+      seedCanvasLayout(
+        [mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans'), mk('sh', 'Shoes'),
+         mk('cap', 'Hat'), mk('gl', 'Sunglasses'), mk('bag', 'Bag')],
+        W,
+      ),
+    );
+    expect(cx(heavyLeft.get('bag')!)).toBeGreaterThan(W * 0.5);
+
+    // Dress weights the right with no left accessories → bag tucks left.
+    const dress = byId(
+      seedCanvasLayout([mk('dress', 'Dress'), mk('sh', 'Shoes'), mk('bag', 'Bag')], W),
+    );
+    expect(cx(dress.get('bag')!)).toBeLessThan(W * 0.5);
+  });
+
+  it('STABILITY: adding an accessory leaves every garment fixed', () => {
     const base = byId(
-      seedCanvasLayout([mk('top', 'Top'), mk('bot', 'Bottom'), mk('shoe', 'Shoes')], W),
+      seedCanvasLayout([mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans')], W),
     );
-    const withBag = byId(
+    const withAcc = byId(
       seedCanvasLayout(
-        [mk('top', 'Top'), mk('bot', 'Bottom'), mk('shoe', 'Shoes'), mk('bag', 'Bag')],
+        [mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans'), mk('cap', 'Hat'), mk('sh', 'Shoes')],
         W,
       ),
     );
-    // Bag is SIDE-region and lower priority: existing pieces keep their x/y.
-    for (const id of ['top', 'bot', 'shoe']) {
-      expect(withBag.get(id)!.x).toBeCloseTo(base.get(id)!.x, 5);
-      expect(withBag.get(id)!.y).toBeCloseTo(base.get(id)!.y, 5);
+    for (const id of ['jkt', 'tee', 'jean']) {
+      expect(cx(withAcc.get(id)!)).toBeCloseTo(cx(base.get(id)!), 5);
+      expect(cy(withAcc.get(id)!)).toBeCloseTo(cy(base.get(id)!), 5);
     }
   });
 
-  it('STABILITY: adding a jacket keeps the lower body (bottom/shoes) fixed', () => {
-    const base = byId(
-      seedCanvasLayout([mk('top', 'Top'), mk('bot', 'Bottom'), mk('shoe', 'Shoes')], W),
-    );
-    const withJacket = byId(
-      seedCanvasLayout(
-        [mk('top', 'Top'), mk('bot', 'Bottom'), mk('shoe', 'Shoes'), mk('jkt', 'Outerwear')],
-        W,
-      ),
-    );
-    // Outerwear shares the TORSO region with Top, so Top may fan aside — but the
-    // skeleton outside that region must not move.
-    for (const id of ['bot', 'shoe']) {
-      expect(withJacket.get(id)!.x).toBeCloseTo(base.get(id)!.x, 5);
-      expect(withJacket.get(id)!.y).toBeCloseTo(base.get(id)!.y, 5);
-    }
-  });
-
-  it('renders an outerwear layer above the top it overlaps', () => {
-    const out = byId(
-      seedCanvasLayout([mk('top', 'Top'), mk('jkt', 'Outerwear')], W),
-    );
-    expect(out.get('jkt')!.zIndex).toBeGreaterThan(out.get('top')!.zIndex);
-  });
-
-  it('classifies free-form wardrobe categories (pinned items)', () => {
-    // A pinned item carries its raw stored category, not the canonical label.
-    const out = byId(
-      seedCanvasLayout([mk('a', 'Blue Denim Jacket'), mk('b', 'Skinny Jeans')], W),
-    );
-    // Jacket → TORSO (upper), Jeans → LEGS (lower).
-    const cyA = out.get('a')!.y + out.get('a')!.height / 2;
-    const cyB = out.get('b')!.y + out.get('b')!.height / 2;
-    expect(cyA).toBeLessThan(cyB);
+  it('renders outerwear above the base top it overlaps', () => {
+    const out = byId(seedCanvasLayout([mk('jkt', 'Jacket'), mk('tee', 'Top')], W));
+    expect(out.get('jkt')!.zIndex).toBeGreaterThan(out.get('tee')!.zIndex);
   });
 
   it('adapts to canvas size: doubling width doubles the geometry', () => {
-    const items = [mk('top', 'Top'), mk('shoe', 'Shoes')];
+    const items = [mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('sh', 'Shoes')];
     const small = byId(seedCanvasLayout(items, W));
     const large = byId(seedCanvasLayout(items, W * 2));
-    for (const id of ['top', 'shoe']) {
+    for (const id of ['jkt', 'tee', 'sh']) {
       expect(large.get(id)!.width).toBeCloseTo(small.get(id)!.width * 2, 5);
       expect(large.get(id)!.x).toBeCloseTo(small.get(id)!.x * 2, 5);
       expect(large.get(id)!.y).toBeCloseTo(small.get(id)!.y * 2, 5);
     }
-    expect(large.get('top')!.zIndex).toBe(small.get('top')!.zIndex);
   });
 
-  it('unknown category falls back without crashing', () => {
-    const out = seedCanvasLayout([mk('x', 'Mystery Gadget')], W);
-    expect(out).toHaveLength(1);
-    expect(out[0].width).toBeGreaterThan(0);
+  it('generalizes to an unseen combination without crashing or leaving bounds', () => {
+    const out = seedCanvasLayout(
+      [mk('parka', 'Parka'), mk('knit', 'Sweater'), mk('tee', 'Top'), mk('jean', 'Jeans'),
+       mk('sh', 'Boots'), mk('bag', 'Tote'), mk('belt', 'Belt'), mk('w', 'Watch'),
+       mk('scarf', 'Scarf')],
+      W,
+    );
+    expect(out).toHaveLength(9);
+    const z = out.map(o => o.zIndex).sort((a, b) => a - b);
+    expect(z).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]); // dense, gap-free
+    for (const o of out) {
+      expect(cx(o)).toBeGreaterThan(0);
+      expect(cx(o)).toBeLessThan(W);
+      expect(o.width).toBeGreaterThan(0);
+    }
+  });
+
+  it('classifies free-form / pinned categories', () => {
+    const out = byId(
+      seedCanvasLayout(
+        [mk('a', 'Blue Denim Jacket'), mk('b', 'Slim Trousers'), mk('c', 'Leather Sneakers')],
+        W,
+      ),
+    );
+    expect(cx(out.get('a')!)).toBeLessThan(cx(out.get('b')!)); // jacket left of trousers
+    expect(cy(out.get('c')!)).toBeGreaterThan(H * 0.6); // sneakers bottom
   });
 });
