@@ -962,6 +962,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               <PillButton
                 testID="canvas-save"
                 onPress={handleSave}
+                disabled={!hasUnsavedChanges}
                 accessibilityLabel={t('outfitCanvas.a11y_save_outfit')}
                 title={t('common.save')}
                 trailing={<IconMyCreation width={24} height={24} />}
