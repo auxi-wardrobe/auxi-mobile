@@ -115,8 +115,21 @@ describe('seedCanvasLayout — editorial flat-lay engine', () => {
       const minY = Math.min(...out.map(o => o.y + o.height * 0.14));
       const maxY = Math.max(...out.map(o => o.y + o.height * 0.86));
       const fill = Math.max((maxX - minX) / W, (maxY - minY) / H);
-      expect(fill).toBeGreaterThan(0.65); // not an island of whitespace
-      expect(fill).toBeLessThan(0.95); // not bleeding hard off-canvas
+      expect(fill).toBeGreaterThan(0.8); // strong canvas presence
+      expect(fill).toBeLessThan(1.05); // object content stays roughly on-canvas
+    }
+  });
+
+  it('one-piece (dress / jumpsuit) is always the largest item', () => {
+    const out = byId(
+      seedCanvasLayout(
+        [mk('dress', 'Dress'), mk('coat', 'Trench'), mk('sh', 'Shoes'), mk('bag', 'Bag')],
+        W,
+      ),
+    );
+    const dressW = out.get('dress')!.width;
+    for (const id of ['coat', 'sh', 'bag']) {
+      expect(dressW).toBeGreaterThan(out.get(id)!.width);
     }
   });
 
