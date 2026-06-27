@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
 import IconMyCreation from '../../assets/images/icon_my_creation.svg';
-import { AppBottomSheet } from '../../components/features/AppBottomSheet';
+import { AppBottomSheet, sheetText } from '../../components/features/AppBottomSheet';
 
 // "Add an outfit" source picker — the Schedule header "+" opens this so the
 // user chooses where to add an outfit from, then is routed to that page
@@ -89,14 +89,10 @@ export const AddToScheduleSheet: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   title: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: theme.colors.figmaTextPrimary,
+    ...sheetText.title,
   },
   subtitle: {
-    ...theme.typography.aliases.interBodyMd,
-    color: theme.colors.figmaTextSecondary,
+    ...sheetText.body,
     marginTop: 4,
     marginBottom: 8,
   },
@@ -122,12 +118,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
+    ...sheetText.title,
   },
   rowDescription: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    ...sheetText.body,
     marginTop: 2,
   },
 });

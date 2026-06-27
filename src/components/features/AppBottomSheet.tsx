@@ -23,6 +23,22 @@ import { useBackgroundScale } from '../../context/BackgroundScaleContext';
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const SHEET_WIDTH = Math.min(screenWidth - 16, 414);
 
+// Canonical bottom-sheet typography — one spec so every sheet's title/body
+// reads identically. Plain objects (not StyleSheet.create) so consumers can
+// spread them and add layout (margins) on top.
+//   title — 14px SemiBold, text/primary
+//   body  — 14px Regular,  text/secondary
+export const sheetText = {
+  title: {
+    ...theme.typography.aliases.interSemiboldXsSm,
+    color: theme.colors.figmaTextPrimary,
+  },
+  body: {
+    ...theme.typography.aliases.interBodySm,
+    color: theme.colors.figmaTextSecondary,
+  },
+} as const;
+
 interface Props {
   visible: boolean;
   onDismiss: () => void;

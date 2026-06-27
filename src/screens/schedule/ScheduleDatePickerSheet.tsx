@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
 import { MButton } from '../../components/design-system/lib';
-import { AppBottomSheet } from '../../components/features/AppBottomSheet';
+import { AppBottomSheet, sheetText } from '../../components/features/AppBottomSheet';
 
 // "Add to Schedule" date picker — a month calendar (Figma: big selected-date
 // header → month nav → day grid → Cancel / Schedule). Self-contained: the
@@ -244,8 +244,7 @@ export const ScheduleDatePickerSheet: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   eyebrow: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    ...sheetText.title,
   },
   selectedDate: {
     ...theme.typography.aliases.poppinsBodyBold,
