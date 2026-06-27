@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   // sm: tighter 6px frame so a 2-icon toggle lands at ~84×44 (header chip).
   fbarSm: {
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     padding: 6,
   },
   fthumb: {
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   fthumbSm: {
     top: 6,
     bottom: 6,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
   },
   fitem: { paddingVertical: 10, paddingHorizontal: 22, alignItems: 'center' },
   // Icon mode: squarer ~48×48 tabs (icon 24 + 12 padding) — text-mode's wide
