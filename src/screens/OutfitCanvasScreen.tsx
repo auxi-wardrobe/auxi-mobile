@@ -367,6 +367,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           route.params.items.map(it => ({
             id: it.id,
             imageUri: it.imageUrl,
+            category: it.category,
           })),
           CANVAS_WIDTH,
         )

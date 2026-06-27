@@ -142,6 +142,7 @@ const CollageView: React.FC<{
             items.map(item => ({
               id: item.id,
               imageUri: resolveItemImage(item) || '',
+              category: item.category,
             })),
             surfaceWidth,
           )
