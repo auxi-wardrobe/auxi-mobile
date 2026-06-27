@@ -1,4 +1,9 @@
-import { seedCanvasLayout, CollageSeedItem } from '../collage-seed-layout';
+import {
+  addSeededItems,
+  seedCanvasLayout,
+  CollageSeedItem,
+} from '../collage-seed-layout';
+import type { CanvasItemData } from '../OutfitCanvasSurface';
 
 const W = 382; // Home collage tile width
 const H = W * (4 / 3);
@@ -222,6 +227,28 @@ describe('seedCanvasLayout — editorial flat-lay engine', () => {
     expect(byId(out).get('tee1')!.x).not.toBe(byId(out).get('tee2')!.x);
   });
 
+  it('NO-DROP invariant: output length == input length, every id present', () => {
+    // The core data-loss guard: each input garment appears in the output exactly
+    // once — no role-based dedupe/drop — across same-role garments AND same-role
+    // accessories, so a whole-canvas re-seed can never delete an existing item.
+    const outfits: CollageSeedItem[][] = [
+      [mk('t1', 'Top'), mk('t2', 'Top'), mk('t3', 'Top')], // three of one role
+      [mk('o1', 'Coat'), mk('o2', 'Jacket'), mk('m', 'Sweater'), mk('t', 'Top'), mk('b', 'Jeans')],
+      [mk('sh1', 'Shoes'), mk('sh2', 'Boots'), mk('bg1', 'Tote'), mk('bg2', 'Clutch')], // dup accessories
+      [mk('d1', 'Dress'), mk('d2', 'Jumpsuit'), mk('h', 'Heels')], // two one-pieces
+    ];
+    for (const items of outfits) {
+      const out = seedCanvasLayout(items, W);
+      expect(out).toHaveLength(items.length); // nothing dropped
+      expect(new Set(out.map(o => o.id))).toEqual(new Set(items.map(i => i.id)));
+      const z = out.map(o => o.zIndex).sort((a, b) => a - b);
+      expect(z).toEqual(items.map((_, i) => i + 1)); // dense, gap-free z
+      for (const o of out) {
+        expect(o.width).toBeGreaterThan(0); // every item is actually placed
+      }
+    }
+  });
+
   it('FALLBACK: missing / undefined category is placed, not dropped', () => {
     const out = seedCanvasLayout(
       [
@@ -241,9 +268,10 @@ describe('seedCanvasLayout — editorial flat-lay engine', () => {
     expect(seedCanvasLayout(seeds, W)).toEqual(seedCanvasLayout(seeds, W));
   });
 
-  it('carries category through the output so the editor can re-seed on add', () => {
-    // The editor maps existing canvas items back to seeds via their category;
-    // adding an item re-seeds the whole set so the new item follows the rule.
+  it('carries category through the output so a newly-added item can be seeded', () => {
+    // The output carries each item's raw category; the editor reuses it to seed a
+    // freshly-added item on the canvas rule (existing items keep their transform —
+    // see the addSeededItems suite below).
     const first = seedCanvasLayout([mk('jean', 'Jeans')], W);
     expect(first[0].category).toBe('Jeans');
 
@@ -270,5 +298,71 @@ describe('seedCanvasLayout — editorial flat-lay engine', () => {
     );
     expect(cx(out.get('a')!)).toBeLessThan(cx(out.get('b')!)); // jacket left of trousers
     expect(cy(out.get('c')!)).toBeGreaterThan(H * 0.6); // sneakers bottom
+  });
+});
+
+describe('addSeededItems — preserve-on-add', () => {
+  // Build an "already arranged" canvas: seed three garments, then simulate the
+  // user hand-editing each one's transform (nudge x/y, pinch scale, rotate).
+  const arrangedCanvas = (): CanvasItemData[] =>
+    seedCanvasLayout([mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans')], W).map(
+      (c, i) => ({
+        ...c,
+        imageSource: { uri: `https://img/${c.id}.png` },
+        x: c.x + 5,
+        y: c.y - 7,
+        scale: 1.3 + i * 0.2,
+        rotation: 0.15 * (i + 1),
+      }),
+    );
+
+  it('leaves EVERY existing item transform untouched when an item is added', () => {
+    const existing = arrangedCanvas();
+    // Snapshot only the transform fields before the add (value compare).
+    const before = existing.map(c => ({
+      id: c.id,
+      x: c.x,
+      y: c.y,
+      width: c.width,
+      height: c.height,
+      scale: c.scale,
+      rotation: c.rotation,
+      zIndex: c.zIndex,
+    }));
+
+    const out = addSeededItems(existing, [mk('sh', 'Shoes')], W);
+
+    for (const e of before) {
+      const o = out.find(item => item.id === e.id)!;
+      expect(o.x).toBe(e.x);
+      expect(o.y).toBe(e.y);
+      expect(o.width).toBe(e.width);
+      expect(o.height).toBe(e.height);
+      expect(o.scale).toBe(e.scale);
+      expect(o.rotation).toBe(e.rotation);
+      expect(o.zIndex).toBe(e.zIndex);
+    }
+  });
+
+  it('preserves the existing image source and adds the new item, none dropped', () => {
+    const existing = arrangedCanvas();
+    const out = addSeededItems(existing, [mk('sh', 'Shoes'), mk('bag', 'Bag')], W);
+
+    expect(out).toHaveLength(existing.length + 2);
+    expect(new Set(out.map(o => o.id)).size).toBe(out.length); // no id collisions
+    // Existing image sources survive (engine would have set { uri: '' }).
+    expect(out.find(o => o.id === 'jkt')!.imageSource).toEqual({
+      uri: 'https://img/jkt.png',
+    });
+    // New items stack ABOVE the existing arrangement.
+    const maxExistingZ = Math.max(...existing.map(e => e.zIndex));
+    for (const id of ['sh', 'bag']) {
+      expect(out.find(o => o.id === id)!.zIndex).toBeGreaterThan(maxExistingZ);
+    }
+  });
+
+  it('returns the existing canvas unchanged when nothing is added', () => {
+    const existing = arrangedCanvas();
+    expect(addSeededItems(existing, [], W)).toBe(existing); // same reference, no-op
   });
 });

@@ -30,7 +30,10 @@ import {
   CanvasItemData,
   OutfitCanvasSurface,
 } from '../components/features/OutfitCanvasSurface';
-import { seedCanvasLayout } from '../components/features/collage-seed-layout';
+import {
+  addSeededItems,
+  seedCanvasLayout,
+} from '../components/features/collage-seed-layout';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -47,7 +50,9 @@ import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
-import IconPlus from '../assets/images/icon_plus.svg';
+// Footer "new blank canvas" affordance — a canvas/frame glyph, deliberately
+// distinct from the toolbar's "+" add-item icon so the two aren't ambiguous.
+import IconNewCanvas from '../assets/images/icon_outfit_canvas.svg';
 import IconCanvasUndo from '../assets/images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../assets/images/canvas-icons/redo.svg';
 import IconCanvasAdd from '../assets/images/canvas-icons/add.svg';
@@ -585,30 +590,28 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
       setItems(prev => {
-        // Preserve each item's image source by id — the collage engine computes
-        // geometry from category only, so we re-attach the real (possibly
-        // require()'d) source afterwards.
-        const srcById = new Map<string, ImageSourcePropType>();
-        prev.forEach(it => srcById.set(it.id, it.imageSource));
-
+        // Real image source for each NEW item, keyed by its generated id — the
+        // collage engine computes geometry from category only, so we re-attach
+        // the actual (possibly require()'d) source afterwards.
+        const srcByNewId = new Map<string, ImageSourcePropType>();
         const newSeeds = picked.map((item, i) => {
           const id = `item-${item.id}-${Date.now()}-${i}`;
           const uri = getImageUrl(item.image_png ?? item.image_url);
-          srcById.set(id, uri ? { uri } : testJeansImg);
+          srcByNewId.set(id, uri ? { uri } : testJeansImg);
           return { id, imageUri: uri ?? '', category: item.category };
         });
 
-        // Re-seed the WHOLE canvas through the collage engine so every item —
-        // existing and newly added — follows the canvas rule (default position
-        // + scale), so the user needs minimal manual editing. Undoable.
-        const seeds = [
-          ...prev.map(it => ({ id: it.id, imageUri: '', category: it.category })),
-          ...newSeeds,
-        ];
-        const next = seedCanvasLayout(seeds, CANVAS_WIDTH).map(c => ({
-          ...c,
-          imageSource: srcById.get(c.id) ?? c.imageSource,
-        }));
+        // Lay out ONLY the new item(s) through the collage engine; every item
+        // already on the canvas keeps its current (possibly hand-edited)
+        // position, scale and rotation. (CEO decision: adding an item must NOT
+        // wipe manual edits — previously the whole canvas was re-seeded.) New
+        // items stack above the existing arrangement. Undoable. Existing items
+        // are returned by reference, so re-attach the source only for new ids.
+        const next = addSeededItems(prev, newSeeds, CANVAS_WIDTH).map(c =>
+          srcByNewId.has(c.id)
+            ? { ...c, imageSource: srcByNewId.get(c.id)! }
+            : c,
+        );
         pushHistory(next);
         return next;
       });
@@ -946,8 +949,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               </ScrollView>
             </View>
 
-            {/* Footer — 56×56 outline "+" (start a new blank canvas, enabled
-              only with unsaved changes) ahead of the primary Save button, which
+            {/* Footer — 56×56 outline "new canvas" button (canvas glyph, distinct
+              from the toolbar add "+"; starts a new blank canvas, enabled only
+              with unsaved changes) ahead of the primary FILLED Save button, which
               carries the My Creations icon. */}
             <View style={styles.saveRow}>
               <PillButton
@@ -955,7 +959,13 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 onPress={handleNewBlankCanvas}
                 disabled={!hasUnsavedChanges}
                 accessibilityLabel={t('outfitCanvas.a11y_new_canvas')}
-                leading={<IconPlus width={24} height={24} />}
+                leading={
+                  <IconNewCanvas
+                    width={24}
+                    height={24}
+                    color={theme.colors.figmaText}
+                  />
+                }
                 variant="outline"
                 style={styles.newCanvasButton}
               />

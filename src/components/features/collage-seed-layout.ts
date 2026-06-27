@@ -573,6 +573,36 @@ export const seedCanvasLayout = (
 };
 
 /**
+ * Add newly-picked items to an existing canvas WITHOUT re-seeding it.
+ *
+ * (PR #162 / CEO decision) Re-seeding the WHOLE canvas on every add wiped each
+ * existing item's manual transform (x/y/scale/rotation) — a destructive
+ * surprise. Preserve-on-add fixes that: items already on the canvas are returned
+ * untouched (same object reference, same transform); only `newItems` are run
+ * through the collage engine for an auto-layout, and they stack ABOVE everything
+ * already placed. Adding an item therefore never moves — let alone deletes — an
+ * existing piece, while new items still land on the canvas rule rather than at
+ * (0, 0).
+ */
+export const addSeededItems = (
+  existing: CanvasItemData[],
+  newItems: CollageSeedItem[],
+  surfaceWidth: number,
+): CanvasItemData[] => {
+  if (newItems.length === 0) {
+    return existing;
+  }
+  // Stack the additions above the current highest layer so they read as "newly
+  // dropped on top", not buried under the existing arrangement.
+  const maxZ = existing.reduce((m, it) => Math.max(m, it.zIndex), 0);
+  const additions = seedCanvasLayout(newItems, surfaceWidth).map(c => ({
+    ...c,
+    zIndex: maxZ + c.zIndex,
+  }));
+  return [...existing, ...additions];
+};
+
+/**
  * Map an outfit's items to seeded canvas positions for the collage-play view.
  * Thin wrapper over `seedCanvasLayout` that resolves each `Item`'s image URI and
  * forwards its category to the layout engine.
