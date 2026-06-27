@@ -32,6 +32,7 @@ import { theme } from '../theme/theme';
 import { AppStackParamList, TryOnOutfitContext } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
 import { Icons } from '../assets/icons';
+import { Header } from '../components/layout/Header';
 
 const { width: screenWidth } = Dimensions.get('window');
 const IMAGE_GAP = 8;
@@ -427,7 +428,7 @@ export const BodyScreen = () => {
             <TopIconButton
               testID="body-detail-back"
               onPress={() => navigation.goBack()}
-              icon={<Icons.ChevronLeft width={20} height={20} />}
+              icon={<Icons.ChevronLeft width={24} height={24} />}
             />
           </View>
         </View>
@@ -539,16 +540,11 @@ export const BodyScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <TopIconButton
-          onPress={() => navigation.goBack()}
-          icon={<Icons.ChevronLeft width={20} height={20} />}
-        />
-        <Text style={styles.title}>
-          {isTryOnMode ? t('body.tryon_tab') : t('body.mybody_tab')}
-        </Text>
-        <View style={styles.topBarSpacer} />
-      </View>
+      <Header.BackTitle
+        title={isTryOnMode ? t('body.tryon_tab') : t('body.mybody_tab')}
+        leftTestID="body-back"
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         {isTryOnMode && tryOnOutfit ? (
@@ -763,22 +759,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
-  },
-  topBar: {
-    paddingHorizontal: 22,
-    paddingTop: 8,
-    paddingBottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    ...theme.typography.aliases.playfairDisplaySection,
-    color: theme.colors.figmaAction,
-  },
-  topBarSpacer: {
-    width: 45,
-    height: 45,
   },
   content: {
     paddingHorizontal: 22,

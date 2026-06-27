@@ -19,10 +19,8 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useAuth } from '../context/AuthContext';
 import { useSidebar } from '../context/SidebarContext';
-import {
-  BottomSheetSurface,
-  TopIconButton,
-} from '../components/primitives/FigmaPrimitives';
+import { BottomSheetSurface } from '../components/primitives/FigmaPrimitives';
+import { Header } from '../components/layout/Header';
 import { SettingsDialog } from '../components/settings/SettingsDialog';
 import { Radio, RadioOptionList } from '../components/settings/RadioOptionList';
 import { SettingsSwitch } from '../components/settings/SettingsSwitch';
@@ -676,18 +674,14 @@ export const SettingsScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <BottomSheetSurface style={styles.sheet}>
-        {/* Header — hamburger-left + centered title only (no right icon, qa-ui C1). */}
-        <View style={styles.header}>
-          <TopIconButton
-            testID="settings-menu-button"
-            icon={<Icons.Menu width={24} height={24} />}
-            onPress={openSidebar}
-          />
-          <View pointerEvents="none" style={styles.titleWrap}>
-            <Text style={styles.title}>{t('settings.title')}</Text>
-          </View>
-          <View style={styles.headerSpacer} />
-        </View>
+        {/* Canonical header — hamburger-left + centred title only (no right
+            icon, qa-ui C1). Same height/spacing as every other header. */}
+        <Header.MenuTitle
+          title={t('settings.title')}
+          background="transparent"
+          leftTestID="settings-menu-button"
+          onBack={openSidebar}
+        />
 
         <View style={styles.content}>
           {/* Daily Time block */}
@@ -1032,38 +1026,9 @@ const styles = StyleSheet.create({
   sheet: {
     flex: 1,
   },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: theme.zIndex.sticky,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 45,
-    paddingHorizontal: 22,
-  },
-  titleWrap: {
-    position: 'absolute',
-    left: 84,
-    right: 84,
-    top: 45,
-    height: 47,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaTextDark,
-  },
-  headerSpacer: {
-    width: 45,
-    height: 45,
-  },
   content: {
     flex: 1,
-    paddingTop: 112,
+    paddingTop: 8,
     paddingHorizontal: 27,
     paddingBottom: 24,
   },

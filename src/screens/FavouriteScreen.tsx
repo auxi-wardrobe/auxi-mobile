@@ -6,10 +6,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
@@ -18,12 +16,11 @@ import { useSidebar } from '../context/SidebarContext';
 import { useFavouritesSeen } from '../context/FavouritesSeenContext';
 import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
-import { TopIconButton } from '../components/primitives/FigmaPrimitives';
+import { Header } from '../components/layout/Header';
 import {
   HomeView,
   HomeViewToggleFooter,
 } from '../components/features/HomeViewToggleFooter';
-import IconMenu from '../assets/images/icon_menu.svg';
 import { track } from '../services/analytics';
 import { Favourite, favouriteService } from '../services/favouriteService';
 import { FavouriteEmptyState } from './favourite/EmptyState';
@@ -39,7 +36,6 @@ const FAVOURITES_QUERY_KEY = ['favourites'] as const;
 
 export const FavouriteScreen: React.FC = () => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const queryClient = useQueryClient();
@@ -217,34 +213,14 @@ export const FavouriteScreen: React.FC = () => {
 
   return (
     <View style={styles.container} testID="favourite-screen">
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        {/* Blurred bar background (Figma header @90% white + blur-7.5),
-            same treatment as HomeViewToggleFooter. Decorative — must not
-            capture touches or it swallows the hamburger tap. */}
-        <BlurView
-          style={styles.headerBlur}
-          blurType="light"
-          blurAmount={8}
-          reducedTransparencyFallbackColor={
-            theme.colors.figmaItemDetailHeaderBg
-          }
-          pointerEvents="none"
-        />
-        <View style={styles.headerTint} pointerEvents="none" />
-        {/* Hamburger (44×44) opens the app push-drawer — the conventional
-            entry point, same as Home. No title, no back chevron (CEO
-            2026-06-19); native-stack swipe-back still backs out of the
-            pushed screen. testID is the machine selector; accessibilityLabel
-            is the human VoiceOver string (intentionally different values). */}
-        <TopIconButton
-          testID="favourite-header-menu"
-          accessibilityRole="button"
-          accessibilityLabel={t('favourite.open_menu')}
-          onPress={openSidebar}
-          style={styles.menuButton}
-          icon={<IconMenu width={24} height={24} />}
-        />
-      </View>
+      {/* Hamburger-only blurred bar (no title, no back chevron — CEO
+          2026-06-19); native-stack swipe-back still backs out. testID is the
+          machine selector; accessibilityLabel is the human VoiceOver string. */}
+      <Header.MenuOnly
+        leftTestID="favourite-header-menu"
+        leftAccessibilityLabel={t('favourite.open_menu')}
+        onBack={openSidebar}
+      />
 
       <View style={styles.body}>{renderBody()}</View>
 
@@ -268,34 +244,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingBottom: theme.spacing.uacDimension12,
-    // Clip the oversized blur slab to the bar bounds.
-    overflow: 'hidden',
-  },
-  // Blur slab behind the header (Figma @90% white + blur-7.5). Oversized so
-  // the edges stay sharp once the bar clips overflow.
-  headerBlur: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  // @90% white tint over the blur (background/neutral/subtlest @90%).
-  headerTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.figmaItemDetailHeaderBg,
-  },
-  // Hamburger chip (44×44 Figma menu slot) — white surface, radius 8, with the
-  // shared header-icon drop-shadow (matches every other header icon).
-  menuButton: {
-    width: 44,
-    height: 44,
-    borderRadius: theme.borderRadius.m,
-    backgroundColor: theme.colors.white,
-    ...theme.ds.shadow.headerIcon,
   },
   body: {
     flex: 1,

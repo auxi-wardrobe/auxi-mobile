@@ -252,23 +252,10 @@ export const DatabaseScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header
+      <Header.MenuTitle
         title={t('wardrobe.database.title')}
-        titleTextStyle={styles.headerTitle}
-        showBack
-        leftIcon={
-          <Icons.ChevronLeft
-            width={24}
-            height={24}
-            color={theme.colors.figmaAction}
-          />
-        }
-        onBack={handleBack}
-        rightComponent={
-          <TouchableOpacity>
-            <Text> </Text>
-          </TouchableOpacity>
-        }
+        leftTestID="database-menu-button"
+        onBack={openSidebar}
       />
 
       <View style={{ paddingHorizontal: 16, flex: 1 }}>
@@ -309,10 +296,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.archivoBody,
-    fontWeight: '400',
   },
   plusButton: {
     width: 45,
