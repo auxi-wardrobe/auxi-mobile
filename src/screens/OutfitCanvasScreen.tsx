@@ -30,7 +30,10 @@ import {
   CanvasItemData,
   OutfitCanvasSurface,
 } from '../components/features/OutfitCanvasSurface';
-import { seedCanvasLayout } from '../components/features/collage-seed-layout';
+import {
+  addSeededItems,
+  seedCanvasLayout,
+} from '../components/features/collage-seed-layout';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -47,6 +50,9 @@ import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
+// Footer "new blank canvas" affordance — a canvas/frame glyph, deliberately
+// distinct from the toolbar's "+" add-item icon so the two aren't ambiguous.
+import IconNewCanvas from '../assets/images/icon_outfit_canvas.svg';
 import IconCanvasUndo from '../assets/images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../assets/images/canvas-icons/redo.svg';
 import IconCanvasAdd from '../assets/images/canvas-icons/add.svg';
@@ -67,7 +73,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // (theme.spacing.uacDimension12 each side), aspect 3:4 (height = width × 4/3).
 const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.uacDimension12;
 const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
-const ITEM_DEFAULT_SIZE = 160;
 
 // How long the "Saved to My Creations" success snackbar stays up (mirrors
 // Wardrobe's READY_SNACKBAR_MS).
@@ -367,6 +372,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           route.params.items.map(it => ({
             id: it.id,
             imageUri: it.imageUrl,
+            category: it.category,
           })),
           CANVAS_WIDTH,
         )
@@ -584,22 +590,28 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
       setItems(prev => {
-        let maxZ = prev.length > 0 ? Math.max(...prev.map(it => it.zIndex)) : 0;
-        const newItems: CanvasItemData[] = picked.map((item, i) => {
+        // Real image source for each NEW item, keyed by its generated id — the
+        // collage engine computes geometry from category only, so we re-attach
+        // the actual (possibly require()'d) source afterwards.
+        const srcByNewId = new Map<string, ImageSourcePropType>();
+        const newSeeds = picked.map((item, i) => {
+          const id = `item-${item.id}-${Date.now()}-${i}`;
           const uri = getImageUrl(item.image_png ?? item.image_url);
-          return {
-            id: `item-${item.id}-${Date.now()}-${i}`,
-            imageSource: uri ? { uri } : testJeansImg,
-            x: 40 + i * 20,
-            y: 40 + i * 20,
-            zIndex: ++maxZ,
-            width: ITEM_DEFAULT_SIZE,
-            height: ITEM_DEFAULT_SIZE,
-            scale: 1,
-            rotation: 0,
-          };
+          srcByNewId.set(id, uri ? { uri } : testJeansImg);
+          return { id, imageUri: uri ?? '', category: item.category };
         });
-        const next = [...prev, ...newItems];
+
+        // Lay out ONLY the new item(s) through the collage engine; every item
+        // already on the canvas keeps its current (possibly hand-edited)
+        // position, scale and rotation. (CEO decision: adding an item must NOT
+        // wipe manual edits — previously the whole canvas was re-seeded.) New
+        // items stack above the existing arrangement. Undoable. Existing items
+        // are returned by reference, so re-attach the source only for new ids.
+        const next = addSeededItems(prev, newSeeds, CANVAS_WIDTH).map(c =>
+          srcByNewId.has(c.id)
+            ? { ...c, imageSource: srcByNewId.get(c.id)! }
+            : c,
+        );
         pushHistory(next);
         return next;
       });
@@ -690,6 +702,12 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     return unsubscribe;
   }, [navigation, hasUnsavedChanges]);
 
+  // The unsaved-changes sheet is reused for two intents: leaving the screen
+  // (replay the intercepted nav action) and starting a NEW blank canvas (reset
+  // in place). A ref tracks which, so the shared Save/Discard handlers resolve
+  // correctly.
+  const sheetIntentRef = useRef<'leave' | 'new'>('leave');
+
   const leaveWithPendingAction = useCallback(() => {
     proceedRef.current = true;
     setDiscardVisible(false);
@@ -700,22 +718,54 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [navigation, pendingAction]);
 
-  // Discard sheet — "Save" persists then continues leaving.
+  // Reset to a fresh, empty canvas (clears items, selection and history) and
+  // mark it clean so the navigation guard and the "+" button settle.
+  const resetCanvasToBlank = useCallback(() => {
+    const blank: CanvasItemData[] = [];
+    history.current = [blank];
+    historyIndex.current = 0;
+    setItems(blank);
+    setSelectedId(null);
+    setHasUnsavedChanges(false);
+    track('canvas_reset');
+  }, []);
+
+  // Resolve the sheet per the active intent: start a blank canvas, or continue
+  // leaving the screen.
+  const resolveSheet = useCallback(() => {
+    setDiscardVisible(false);
+    if (sheetIntentRef.current === 'new') {
+      sheetIntentRef.current = 'leave';
+      resetCanvasToBlank();
+    } else {
+      leaveWithPendingAction();
+    }
+  }, [resetCanvasToBlank, leaveWithPendingAction]);
+
+  // Discard sheet — "Save" persists then resolves (leave or new canvas).
   const handleDiscardSave = useCallback(async () => {
     await persistCreation();
-    leaveWithPendingAction();
-  }, [persistCreation, leaveWithPendingAction]);
+    resolveSheet();
+  }, [persistCreation, resolveSheet]);
 
-  // "Discard" leaves without saving.
+  // "Discard" resolves without saving.
   const handleDiscardConfirm = useCallback(() => {
     track('creation_discarded');
-    leaveWithPendingAction();
-  }, [leaveWithPendingAction]);
+    resolveSheet();
+  }, [resolveSheet]);
 
-  // Backdrop / back dismiss — stay on the canvas.
+  // Backdrop / back dismiss — stay on the canvas, reset the intent.
   const handleDiscardCancel = useCallback(() => {
     setDiscardVisible(false);
     setPendingAction(null);
+    sheetIntentRef.current = 'leave';
+  }, []);
+
+  // "+" new-blank-canvas button. It is only enabled while there are unsaved
+  // changes, so always route through the save/discard sheet before clearing.
+  const handleNewBlankCanvas = useCallback(() => {
+    sheetIntentRef.current = 'new';
+    setDiscardVisible(true);
   }, []);
 
   const actionDisabled = !selectedId;
@@ -899,14 +949,35 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               </ScrollView>
             </View>
 
-            {/* Save button — canonical secondary button. */}
+            {/* Footer — 56×56 outline "new canvas" button (canvas glyph, distinct
+              from the toolbar add "+"; starts a new blank canvas, enabled only
+              with unsaved changes) ahead of the primary FILLED Save button, which
+              carries the My Creations icon. */}
             <View style={styles.saveRow}>
+              <PillButton
+                testID="canvas-new-blank"
+                onPress={handleNewBlankCanvas}
+                disabled={!hasUnsavedChanges}
+                accessibilityLabel={t('outfitCanvas.a11y_new_canvas')}
+                leading={
+                  <IconNewCanvas
+                    width={24}
+                    height={24}
+                    color={theme.colors.figmaText}
+                  />
+                }
+                variant="outline"
+                style={styles.newCanvasButton}
+              />
               <PillButton
                 testID="canvas-save"
                 onPress={handleSave}
+                disabled={!hasUnsavedChanges}
                 accessibilityLabel={t('outfitCanvas.a11y_save_outfit')}
                 title={t('common.save')}
-                variant="outline"
+                trailing={<IconMyCreation width={24} height={24} />}
+                variant="filled"
+                style={styles.saveButton}
               />
             </View>
           </View>
@@ -1080,8 +1151,21 @@ const styles = StyleSheet.create({
   // Side inset = 12px (theme.spacing.uacDimension12), supplied by the body padding so the
   // button aligns flush with the canvas card edges.
   saveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.uacDimension12,
     paddingBottom: theme.spacing.m,
     paddingTop: theme.spacing.s,
+  },
+  // 56×56 outline icon button: override the PillButton's text padding so it's a
+  // square, sitting ahead of the Save button.
+  newCanvasButton: {
+    width: 56,
+    paddingHorizontal: 0,
+  },
+  // Primary Save button fills the remaining row width.
+  saveButton: {
+    flex: 1,
   },
 });
 

@@ -34,6 +34,9 @@ export type CanvasItemData = {
   height: number;
   scale?: number;
   rotation?: number;
+  // Raw item category, carried so the editor can re-seed the layout via the
+  // collage engine when items are added (newly added items follow the same rule).
+  category?: string;
 };
 
 // --- Grid background (graph-paper) ---
