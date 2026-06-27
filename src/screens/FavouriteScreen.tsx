@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   LayoutChangeEvent,
   NativeScrollEvent,
@@ -34,6 +40,7 @@ import {
   groupFavouritesByDate,
 } from './favourite/group-by-date';
 import { computeSnapOffsets } from './favourite/snap-offsets';
+import { computeActiveIndex } from './favourite/active-index';
 
 const FAVOURITES_QUERY_KEY = ['favourites'] as const;
 
@@ -137,6 +144,13 @@ export const FavouriteScreen: React.FC = () => {
   );
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // Lightweight {dayKey, id} view of the list for the pure active-index math
+  // (computeActiveIndex), memoized so scroll handling doesn't re-map per frame.
+  const activeIndexEntries = useMemo(
+    () => flatFavourites.map(({ fav, dayKey }) => ({ dayKey, id: fav.id })),
+    [flatFavourites],
+  );
+
   // Keep the active index in range when the list shrinks (e.g. after removal).
   useEffect(() => {
     setActiveIndex(prev =>
@@ -146,24 +160,15 @@ export const FavouriteScreen: React.FC = () => {
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const y = e.nativeEvent.contentOffset.y;
-      let best = 0;
-      let bestDist = Infinity;
-      flatFavourites.forEach((entry, i) => {
-        const gy = groupYRef.current[entry.dayKey];
-        const cy = cardYRef.current[entry.fav.id];
-        if (gy == null || cy == null) {
-          return;
-        }
-        const dist = Math.abs(gy + cy - y);
-        if (dist < bestDist) {
-          bestDist = dist;
-          best = i;
-        }
-      });
+      const best = computeActiveIndex(
+        activeIndexEntries,
+        groupYRef.current,
+        cardYRef.current,
+        e.nativeEvent.contentOffset.y,
+      );
       setActiveIndex(prev => (prev === best ? prev : best));
     },
-    [flatFavourites],
+    [activeIndexEntries],
   );
 
   const activeFavourite = flatFavourites[activeIndex]?.fav;
@@ -283,6 +288,7 @@ export const FavouriteScreen: React.FC = () => {
             testID="favourite-view-toggle"
             itemTestIDStem="favourite-view-tab"
             size="sm"
+            source="favourite"
             activeView={view}
             onSelectView={setView}
           />

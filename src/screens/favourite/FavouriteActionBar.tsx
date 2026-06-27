@@ -49,6 +49,11 @@ export const FavouriteActionBar: React.FC<Props> = ({
       <View style={styles.tint} pointerEvents="none" />
 
       <View style={styles.row}>
+        {/* Raw TouchableOpacity (not MIconButton) is intentional: this is a
+            borderless 24px danger-RED glyph, and MIconButton hardcodes a 1.5px
+            outline + role.ink tint + a 20px icon (no color/size/border props) —
+            it cannot express this variant. Revisit if MIconButton gains a
+            borderless danger variant. */}
         <TouchableOpacity
           testID="favourite-remove-active"
           accessibilityRole="button"

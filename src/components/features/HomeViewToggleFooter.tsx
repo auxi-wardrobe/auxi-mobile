@@ -43,6 +43,14 @@ type PillProps = {
   itemTestIDStem?: string;
   /** Forwarded to MFloatingPill — `'sm'` for the compact header chip. */
   size?: 'md' | 'sm';
+  /**
+   * Which surface this toggle is mounted on. Tags the `home_view_toggled`
+   * event so the Home collage-adoption funnel (tracking-plan §10) can isolate
+   * Home-footer taps from the Favourite header's copy of the same pill —
+   * without it both mounts fire the identical event and corrupt the funnel
+   * denominator. Required, so a new mount can't silently pollute the funnel.
+   */
+  source: 'home' | 'favourite';
 };
 
 type Props = Omit<PillProps, 'itemTestIDStem'>;
@@ -59,6 +67,7 @@ export const HomeViewTogglePill: React.FC<PillProps> = ({
   testID,
   itemTestIDStem = 'home-footer-tab',
   size = 'md',
+  source,
 }) => {
   const { t } = useTranslation();
 
@@ -93,8 +102,10 @@ export const HomeViewTogglePill: React.FC<PillProps> = ({
   const handleChange = (next: string) => {
     const view = next as HomeView;
     // Tap is a real interaction even before the collage seed layout ships
-    // (AU-253) — the toggle swaps the sheet's middle region today.
-    track('home_view_toggled', { view });
+    // (AU-253) — the toggle swaps the sheet's middle region today. `source`
+    // tags the surface (home | favourite) so the Home collage-adoption funnel
+    // stays uncontaminated by the Favourite header's copy of this pill.
+    track('home_view_toggled', { view, source });
     onSelectView?.(view);
   };
 
@@ -117,6 +128,7 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
   onSelectView,
   testID,
   size,
+  source,
 }) => {
   return (
     <View testID={testID} style={styles.bar}>
@@ -124,6 +136,7 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
         activeView={activeView}
         onSelectView={onSelectView}
         size={size}
+        source={source}
       />
     </View>
   );
