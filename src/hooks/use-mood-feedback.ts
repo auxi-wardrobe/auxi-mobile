@@ -9,6 +9,7 @@ import {
 import { submitFeedback } from '../services/v05Api';
 import { moodFeedbackText } from '../components/features/mood-chips';
 import { track } from '../services/analytics';
+import { feedbackMoodsToIntentMoods } from '../services/mood/mood-vocabulary';
 
 /**
  * AU-318 "Wear this" mood feedback flow (Phase 4).
@@ -90,6 +91,13 @@ export interface UseMoodFeedbackOptions<T extends MoodFeedbackOutfitRef> {
   saveDirectly: (outfit: T) => void;
   /** Fired after a successful mood-tagged save (create OR mood-update). */
   onSaveSuccess: (outfitHash: string, updated: boolean) => void;
+  /**
+   * Fired when the user submits a soft-negative ("not quite me"). The outfit is
+   * intentionally NOT saved to favourites — keeping the saved list to genuinely
+   * loved looks — so callers should surface a feedback-only acknowledgement here
+   * rather than a "saved" confirmation.
+   */
+  onRejected?: (outfitHash: string) => void;
 }
 
 export interface UseMoodFeedbackResult<T extends MoodFeedbackOutfitRef> {
@@ -101,6 +109,7 @@ export interface UseMoodFeedbackResult<T extends MoodFeedbackOutfitRef> {
 export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
   saveDirectly,
   onSaveSuccess,
+  onRejected,
 }: UseMoodFeedbackOptions<T>): UseMoodFeedbackResult<T> => {
   const { t } = useTranslation();
 
@@ -141,6 +150,8 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
   saveDirectlyRef.current = saveDirectly;
   const onSaveSuccessRef = useRef(onSaveSuccess);
   onSaveSuccessRef.current = onSaveSuccess;
+  const onRejectedRef = useRef(onRejected);
+  onRejectedRef.current = onRejected;
 
   // ── Policy cache ──────────────────────────────────────────────────────
   // Fetched once per session (single-flight), refetched after each
@@ -253,6 +264,40 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
         // Duplicate-POST guard — Done taps during an in-flight submit no-op.
         return;
       }
+
+      // Soft-negative ("not quite me") → do NOT add the outfit to favourites,
+      // so the saved list stays to genuinely loved looks. We record the
+      // feedback in analytics and close the sheet without a save (no
+      // outfit_mood_linked — nothing is persisted server-side). A mixed
+      // selection that includes the negative still counts as a rejection.
+      if (moodIds.includes(NEGATIVE_MOOD_ID)) {
+        setMoodState({ kind: 'closed' });
+        recommendationStateRef.current = 'idle';
+        lockRef.current = false;
+        track('mood_feedback_submitted', {
+          outfit_hash: pending.outfitHash,
+          mood_ids: moodIds,
+          mood_count: moodIds.length,
+          // Emit on the negative branch too (empty when nothing maps) so the
+          // event's shape matches the positive branch + tracking-plan §5.8. A
+          // MIXED selection like [confident, not_quite_me] still carries its
+          // [confident] signal — exactly what AU-388 exists to validate.
+          intent_moods: feedbackMoodsToIntentMoods(moodIds),
+          // Context for Feeling × Context learning (see strategy spec). More
+          // context (weather/temp/season/time) lands with the P1 capture schema.
+          // Omit `occasion` entirely when unknown (analytics rule: no null props).
+          ...(pending.occasion ? { occasion: pending.occasion } : {}),
+          saved: false,
+        });
+        track('negative_mood_selected', {
+          outfit_hash: pending.outfitHash,
+          mood_ids: moodIds,
+          ...(pending.occasion ? { occasion: pending.occasion } : {}),
+        });
+        onRejectedRef.current?.(pending.outfitHash);
+        return;
+      }
+
       inFlightRef.current = true;
       setMoodState({ kind: 'submitting' });
 
@@ -276,6 +321,14 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
             outfit_hash: pending.outfitHash,
             mood_ids: moodIds,
             mood_count: moodIds.length,
+            // Engine-vocab projection of the chosen feelings — the signal the
+            // recommender can consume to "wear the feeling you want" (see
+            // docs/strategy-mood-aware-recommendations.md). Recorded now so the
+            // mapping can be validated against real usage before backend wiring.
+            intent_moods: feedbackMoodsToIntentMoods(moodIds),
+            // Omit when unknown (analytics rule: no null props).
+            ...(pending.occasion ? { occasion: pending.occasion } : {}),
+            saved: true,
             updated,
           });
           track('outfit_mood_linked', {
@@ -283,12 +336,6 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
             mood_ids: moodIds,
             updated,
           });
-          if (moodIds.includes(NEGATIVE_MOOD_ID)) {
-            track('negative_mood_selected', {
-              outfit_hash: pending.outfitHash,
-              mood_ids: moodIds,
-            });
-          }
           onSaveSuccessRef.current(pending.outfitHash, updated);
           // Feed the mood into the engine's ranking signals. `/v05/feedback`
           // runs LLM-2 over the text and persists decay-weighted L4 signals

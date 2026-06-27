@@ -39,6 +39,12 @@ jest.mock('@react-navigation/native', () => {
 jest.mock('../../services/v05Api', () => ({
   recommendV05: jest.fn(),
   resetV05Session: jest.fn(),
+  submitFeedback: jest.fn(),
+  // Mirror the real engine vocab so the mood-vocabulary bridge's __DEV__ mapping
+  // guard (reached via use-mood-feedback → mood-vocabulary) validates against a
+  // real MOODS set instead of `undefined`. Kept inline (not requireActual) so
+  // the real v05Api network code never loads in this unit test.
+  MOODS: ['calm', 'confident', 'playful', 'low_energy', 'grounded'],
 }));
 
 jest.mock('../../services/weatherService', () => ({

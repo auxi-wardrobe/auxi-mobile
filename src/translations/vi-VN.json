@@ -328,7 +328,8 @@
       "errorGeneric": "Chưa thể lưu phản hồi của bạn. Vui lòng thử lại.",
       "errorTimeout": "Kết nối quá thời gian chờ. Vui lòng thử lại.",
       "savedBanner": "Bộ đồ này đã được lưu vào mục yêu thích của bạn.",
-      "moodUpdatedBanner": "Đã cập nhật cảm xúc cho bộ đồ đã lưu này."
+      "moodUpdatedBanner": "Đã cập nhật cảm xúc cho bộ đồ đã lưu này.",
+      "notLovedBanner": "Đã hiểu — chúng tôi sẽ không thêm bộ đồ này vào mục yêu thích."
     },
     "common": {
       "error_title": "Lỗi",
@@ -565,6 +566,10 @@
       "back": "Quay lại",
       "empty_body": "Lưu một tác phẩm từ canvas để xem ở đây.",
       "remove_a11y": "Xóa tác phẩm",
+      "remove_title": "Xóa khỏi Tác phẩm của bạn",
+      "remove_body": "Bạn có chắc muốn xóa bộ đồ này khỏi danh sách tác phẩm không?",
+      "remove_confirm": "Có",
+      "remove_cancel": "Hủy",
       "add_to_schedule": "Thêm vào lịch"
     },
     "locationPermission": {
