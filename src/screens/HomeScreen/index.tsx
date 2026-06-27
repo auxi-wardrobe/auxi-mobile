@@ -75,6 +75,7 @@ import {
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
+import { MSnackbar } from '../../components/design-system/lib';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import {
   HomeView,
@@ -93,6 +94,7 @@ import { PinnedItemUnavailableNotice } from '../../components/features/PinnedIte
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   MOOD_BANNER_DURATION_MS,
+  TEMP_TOAST_DURATION_MS,
   REFINE_TOAST_DURATION_MS,
   AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
@@ -257,6 +259,17 @@ export const HomeScreen = () => {
   } = useTemperatureOverride();
   const [isTempSheetOpen, setIsTempSheetOpen] = useState(false);
   const [isApplyingTemp, setIsApplyingTemp] = useState(false);
+  // Transient toast shown once a temperature change actually takes effect
+  // (recommendations regenerated). Fired from the recommendation onSuccess via
+  // a ref so it can reach the later-declared `t`/timeout helpers.
+  const [tempToastText, setTempToastText] = useState('');
+  const [tempToastVisible, setTempToastVisible] = useState(false);
+  const tempToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const showTempToastRef = useRef<(key: TemperatureBucketKey) => void>(
+    () => {},
+  );
   const [tempErrorKey, setTempErrorKey] =
     useState<TemperatureSheetErrorKey | null>(null);
   const tempApplyIdRef = useRef(0);
@@ -367,6 +380,7 @@ export const HomeScreen = () => {
           } else if (isOverrideBucket(ctx.previousBucket)) {
             trackTemperatureOverrideRemoved(ctx.previousBucket);
           }
+          showTempToastRef.current(ctx.key);
           pendingTempApplyRef.current = null;
         }
       }
@@ -588,7 +602,7 @@ export const HomeScreen = () => {
   useEffect(() => {
     return () => {
       clearTimeoutRef(snackbarTimeoutRef);
-      clearTimeoutRef(refineToastTimeoutRef);
+      clearTimeoutRef(tempToastTimeoutRef);
     };
   }, []);
 
@@ -973,6 +987,27 @@ export const HomeScreen = () => {
   useEffect(() => {
     showRefineToastRef.current = showRefineToast;
   }, [showRefineToast]);
+
+  const showTempToast = useCallback(
+    (key: TemperatureBucketKey) => {
+      clearTimeoutRef(tempToastTimeoutRef);
+      setTempToastText(
+        isOverrideBucket(key)
+          ? t('home.temp_toast_override', { temp: repTempCFor(key) ?? 0 })
+          : t('home.temp_toast_current'),
+      );
+      setTempToastVisible(true);
+      tempToastTimeoutRef.current = setTimeout(() => {
+        setTempToastVisible(false);
+        tempToastTimeoutRef.current = null;
+      }, TEMP_TOAST_DURATION_MS);
+    },
+    [t],
+  );
+
+  useEffect(() => {
+    showTempToastRef.current = showTempToast;
+  }, [showTempToast]);
 
   const handleMoodSaveSuccess = useCallback(
     (outfitHash: string, updated: boolean) => {
@@ -1647,6 +1682,18 @@ export const HomeScreen = () => {
           <Text style={styles.moodBannerText}>{moodBannerText}</Text>
         </View>
       ) : null}
+
+      <View
+        accessibilityRole="alert"
+        pointerEvents="none"
+        style={styles.tempToast}
+      >
+        <MSnackbar
+          visible={tempToastVisible}
+          message={tempToastText}
+          testID="home-temp-toast"
+        />
+      </View>
     </SafeAreaView>
   );
 };

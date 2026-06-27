@@ -429,7 +429,9 @@
       "temp_error_offline": "Không có kết nối Internet. Vui lòng thử lại.",
       "temp_override_a11y": "Đang ghi đè nhiệt độ trang phục: {{range}}. Chạm để thay đổi.",
       "a11y_temp_idle": "Điều chỉnh nhiệt độ trang phục",
-      "a11y_temp_active": "Đang ghi đè nhiệt độ trang phục. Chạm để thay đổi."
+      "a11y_temp_active": "Đang ghi đè nhiệt độ trang phục. Chạm để thay đổi.",
+      "temp_toast_override": "Đang dùng {{temp}}°C để gợi ý trang phục",
+      "temp_toast_current": "Đang dùng thời tiết hiện tại để gợi ý trang phục"
     },
     "pin": {
       "modal_title": "Giữ món đồ này",
