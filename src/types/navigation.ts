@@ -142,7 +142,7 @@ export type AppStackParamList = {
   OutfitCanvas:
     | {
         outfitId?: string;
-        items?: Array<{ id: string; imageUrl: string }>;
+        items?: Array<{ id: string; imageUrl: string; category?: string }>;
         // How the canvas was entered. 'remix' (from Home's Remix button) shows
         // a back chevron; 'menu' / undefined (from the sidebar drawer) shows the
         // hamburger that re-opens the drawer.

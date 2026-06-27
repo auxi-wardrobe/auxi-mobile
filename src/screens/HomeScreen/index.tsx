@@ -1251,6 +1251,7 @@ export const HomeScreen = () => {
       .map(it => ({
         id: it.id,
         imageUrl: resolveItemImage(it) || it.image_url,
+        category: it.category,
       }));
     navigation.navigate(
       'OutfitCanvas',
