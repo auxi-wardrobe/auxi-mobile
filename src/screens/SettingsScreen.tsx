@@ -675,16 +675,13 @@ export const SettingsScreen = () => {
     <SafeAreaView style={styles.container}>
       <BottomSheetSurface style={styles.sheet}>
         {/* Canonical header — hamburger-left + centred title only (no right
-            icon, qa-ui C1). Kept sticky/absolute so the content scrolls under
-            it; the wrapper reproduces the original 45px status-bar offset. */}
-        <View style={styles.headerSticky}>
-          <Header
-            title={t('settings.title')}
-            background="transparent"
-            leftTestID="settings-menu-button"
-            onBack={openSidebar}
-          />
-        </View>
+            icon, qa-ui C1). Same height/spacing as every other header. */}
+        <Header
+          title={t('settings.title')}
+          background="transparent"
+          leftTestID="settings-menu-button"
+          onBack={openSidebar}
+        />
 
         <View style={styles.content}>
           {/* Daily Time block */}
@@ -1029,19 +1026,9 @@ const styles = StyleSheet.create({
   sheet: {
     flex: 1,
   },
-  headerSticky: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: theme.zIndex.sticky,
-    // Header has 12px of its own top padding; +33 reproduces the original
-    // 45px status-bar offset to the title.
-    paddingTop: 33,
-  },
   content: {
     flex: 1,
-    paddingTop: 112,
+    paddingTop: 8,
     paddingHorizontal: 27,
     paddingBottom: 24,
   },
