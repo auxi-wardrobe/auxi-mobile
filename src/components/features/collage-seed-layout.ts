@@ -31,6 +31,11 @@ export const COLLAGE_ASPECT = 4 / 3; // height / width
 // fraction of the frame, so scaling the frame scales the object predictably.
 const BASE_FRAME_RATIO = 0.58;
 
+// Global size multiplier applied to EVERY item. Item anchors (centres) stay
+// fixed, so raising this grows items into the surrounding whitespace and tightens
+// the composition without rearranging it. 1.0 = original size; 1.5 = +50%.
+const GLOBAL_SCALE = 1.5;
+
 // Collisions test an inner CONTENT box, not the full frame: every PNG shares the
 // same transparent padding, so frames can render touching/overlapping without
 // the engine treating the transparent margins as a real garment collision.
@@ -258,7 +263,8 @@ const overlap = (a: Box, b: Box): { ox: number; oy: number } | null => {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-const frameSize = (role: Role, W: number) => BASE_FRAME_RATIO * W * ROLE_SCALE[role];
+const frameSize = (role: Role, W: number) =>
+  BASE_FRAME_RATIO * W * ROLE_SCALE[role] * GLOBAL_SCALE;
 
 const place = (node: Node, a: Anchor, W: number, H: number): Placed => ({
   ...node,
