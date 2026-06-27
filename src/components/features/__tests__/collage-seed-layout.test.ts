@@ -184,6 +184,26 @@ describe('seedCanvasLayout — editorial flat-lay engine', () => {
     }
   });
 
+  it('carries category through the output so the editor can re-seed on add', () => {
+    // The editor maps existing canvas items back to seeds via their category;
+    // adding an item re-seeds the whole set so the new item follows the rule.
+    const first = seedCanvasLayout([mk('jean', 'Jeans')], W);
+    expect(first[0].category).toBe('Jeans');
+
+    const reseeded = byId(
+      seedCanvasLayout(
+        [
+          { id: 'jean', imageUri: 'x', category: first[0].category },
+          mk('sh', 'Shoes'),
+        ],
+        W,
+      ),
+    );
+    // The newly added shoes land at the canonical bottom area, not at (0,0).
+    expect(cy(reseeded.get('sh')!)).toBeGreaterThan(H * 0.55);
+    expect(reseeded.get('jean')).toBeTruthy();
+  });
+
   it('classifies free-form / pinned categories', () => {
     const out = byId(
       seedCanvasLayout(
