@@ -173,9 +173,9 @@ const styles = StyleSheet.create({
   // Icon mode: squarer ~48×48 tabs (icon 24 + 12 padding) — text-mode's wide
   // label padding (22) reads too spread around a single glyph.
   fitemIcon: { paddingVertical: 12, paddingHorizontal: 12 },
-  // sm icon tab: icon 24 + (4 padV / 6 padH) → 32×36 tabs; with the 6px frame
-  // two of them measure 84 wide × 44 tall.
-  fitemIconSm: { paddingVertical: 4, paddingHorizontal: 6 },
+  // sm icon tab: 16px icon + 8px padding → a 32×32 square thumb; with the 6px
+  // frame two of them measure 76 wide × 44 tall.
+  fitemIconSm: { paddingVertical: 8, paddingHorizontal: 8 },
   ftext: { ...type.bodySm, color: role.ink3 },
   ftextOn: { color: role.ink, fontFamily: type.h3.fontFamily },
 });
