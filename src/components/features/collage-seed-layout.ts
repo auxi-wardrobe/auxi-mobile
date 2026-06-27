@@ -38,11 +38,11 @@ const BASE_FRAME_RATIO = 0.58;
 // than an island of items in whitespace. Density is the lever that makes few
 // items large and many items slightly smaller (more items already span more of
 // the box, so they need less scaling to reach the target).
-const FILL_TARGET = 0.82; // desired dominant-axis fill (centre of the 65–80%+ band)
-const FILL_LO = 0.74;
-const FILL_HI = 0.9; // upper guard so the composition doesn't bleed off-canvas
+const FILL_TARGET = 0.96; // desired dominant-axis fill — items fill the canvas
+const FILL_LO = 0.9;
+const FILL_HI = 1.0; // cap at the canvas edge: object content fills, frame padding bleeds
 const SCALE_MIN = 0.6;
-const SCALE_MAX = 3.0;
+const SCALE_MAX = 4.0;
 const OPTIMIZE_PASSES = 8;
 
 // Collisions test an inner CONTENT box, not the full frame: every PNG shares the
@@ -85,7 +85,7 @@ const isGarment = (r: Role): r is GarmentRole =>
 
 // ── 5. Scale relationships (relative to a 100% garment frame) ─────────────────
 const ROLE_SCALE: Record<Role, number> = {
-  ONE_PIECE: 1.0,
+  ONE_PIECE: 1.15, // dress / jumpsuit — always the largest piece
   OUTER: 0.95,
   MID: 0.82,
   TOP: 0.74,
