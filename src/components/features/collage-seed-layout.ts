@@ -31,10 +31,19 @@ export const COLLAGE_ASPECT = 4 / 3; // height / width
 // fraction of the frame, so scaling the frame scales the object predictably.
 const BASE_FRAME_RATIO = 0.58;
 
-// Global size multiplier applied to EVERY item. Item anchors (centres) stay
-// fixed, so raising this grows items into the surrounding whitespace and tightens
-// the composition without rearranging it. 1.0 = original size; 1.5 = +50%.
-const GLOBAL_SCALE = 1.5;
+// ── Composition-density targets (the optimization phase) ──────────────────────
+// After the skeleton + accessories are placed, the engine measures the outfit's
+// overall content bounding box and scales the whole composition until its
+// dominant axis fills TARGET of the canvas — a strong editorial presence rather
+// than an island of items in whitespace. Density is the lever that makes few
+// items large and many items slightly smaller (more items already span more of
+// the box, so they need less scaling to reach the target).
+const FILL_TARGET = 0.82; // desired dominant-axis fill (centre of the 65–80%+ band)
+const FILL_LO = 0.74;
+const FILL_HI = 0.9; // upper guard so the composition doesn't bleed off-canvas
+const SCALE_MIN = 0.6;
+const SCALE_MAX = 3.0;
+const OPTIMIZE_PASSES = 8;
 
 // Collisions test an inner CONTENT box, not the full frame: every PNG shares the
 // same transparent padding, so frames can render touching/overlapping without
@@ -116,40 +125,44 @@ const ROLE_ZBAND: Record<Role, number> = {
 // (x of width, y of height). Unseen signatures fall back to a procedural shelf.
 type Anchor = { x: number; y: number };
 
+// Anchors are clustered so garment frames OVERLAP (outer over top, top over
+// bottom) and read as one connected outfit; the density optimizer then scales
+// the whole cluster up to fill the canvas. Tighter spacing here = stronger
+// single-skeleton silhouette.
 const SKELETONS: Record<string, Partial<Record<GarmentRole, Anchor>>> = {
-  // Dress alone — right-of-centre, large, leaving the left column open (1+x).
-  ONE_PIECE: { ONE_PIECE: { x: 0.6, y: 0.5 } },
-  // Top + Bottom — tee upper-left, jeans lower-right (2+1).
+  // Dress alone — centred, large; left column stays open for accessories (1+x).
+  ONE_PIECE: { ONE_PIECE: { x: 0.52, y: 0.46 } },
+  // Top + Bottom — tee over the waistband of the jeans, slight right drop (2+1).
   'BOTTOM|TOP': {
-    TOP: { x: 0.4, y: 0.34 },
-    BOTTOM: { x: 0.66, y: 0.5 },
+    TOP: { x: 0.46, y: 0.4 },
+    BOTTOM: { x: 0.56, y: 0.56 },
   },
-  // Outerwear + Top + Bottom — jacket left, tee upper-right, jeans right (3+x).
+  // Outerwear + Top + Bottom — jacket overlaps tee, tee overlaps jeans (3+x).
   'BOTTOM|OUTER|TOP': {
-    OUTER: { x: 0.3, y: 0.34 },
-    TOP: { x: 0.6, y: 0.32 },
-    BOTTOM: { x: 0.74, y: 0.52 },
+    OUTER: { x: 0.4, y: 0.4 },
+    TOP: { x: 0.56, y: 0.38 },
+    BOTTOM: { x: 0.6, y: 0.56 },
   },
-  // Outer + Mid + Top + Bottom — four-garment shelf (4+x, 5+x).
+  // Outer + Mid + Top + Bottom — four-layer shelf, each overlapping (4+x, 5+x).
   'BOTTOM|MID|OUTER|TOP': {
-    OUTER: { x: 0.26, y: 0.36 },
-    MID: { x: 0.5, y: 0.34 },
-    TOP: { x: 0.7, y: 0.32 },
-    BOTTOM: { x: 0.8, y: 0.54 },
+    OUTER: { x: 0.38, y: 0.41 },
+    MID: { x: 0.5, y: 0.39 },
+    TOP: { x: 0.62, y: 0.38 },
+    BOTTOM: { x: 0.6, y: 0.57 },
   },
 };
 
 // ── Whitespace zones for accessories (normalized centres). Negative space the
 // skeleton deliberately leaves open; multiple items in one zone stack downward.
 const ZONES: Record<string, Anchor> = {
-  SHOES: { x: 0.2, y: 0.82 }, // bottom-left anchor
-  MID_LEFT: { x: 0.23, y: 0.5 }, // cap / sunglasses / shoulder-bag column
-  TOP_LEFT: { x: 0.18, y: 0.17 }, // scarf / headwear in upper whitespace
-  BOTTOM_RIGHT: { x: 0.8, y: 0.82 }, // briefcase bag (balances bottom-left shoes)
-  MID_RIGHT: { x: 0.67, y: 0.66 }, // belt by the lower torso
-  BOTTOM_MID: { x: 0.48, y: 0.88 }, // jewellery / watch fill remaining space
+  SHOES: { x: 0.28, y: 0.78 }, // bottom-left anchor, kept near the outfit
+  MID_LEFT: { x: 0.3, y: 0.5 }, // cap / sunglasses / shoulder-bag column
+  TOP_LEFT: { x: 0.28, y: 0.2 }, // scarf / headwear in upper whitespace
+  BOTTOM_RIGHT: { x: 0.72, y: 0.78 }, // briefcase bag (balances bottom-left shoes)
+  MID_RIGHT: { x: 0.66, y: 0.62 }, // belt by the lower torso
+  BOTTOM_MID: { x: 0.5, y: 0.82 }, // jewellery / watch fill remaining space
 };
-const ZONE_STACK_STEP = 0.12; // normalized-height offset per stacked item
+const ZONE_STACK_STEP = 0.11; // normalized-height offset per stacked item
 
 // Preferred whitespace zone per accessory role (bag is decided by balance).
 const ACCESSORY_ZONE: Record<Exclude<AccessoryRole, 'BAG'>, string> = {
@@ -263,19 +276,30 @@ const overlap = (a: Box, b: Box): { ox: number; oy: number } | null => {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-const frameSize = (role: Role, W: number) =>
-  BASE_FRAME_RATIO * W * ROLE_SCALE[role] * GLOBAL_SCALE;
+const frameSize = (role: Role, W: number, scale: number) =>
+  BASE_FRAME_RATIO * W * ROLE_SCALE[role] * scale;
 
-const place = (node: Node, a: Anchor, W: number, H: number): Placed => ({
+const place = (
+  node: Node,
+  a: Anchor,
+  W: number,
+  H: number,
+  scale: number,
+): Placed => ({
   ...node,
   cx: a.x * W,
   cy: a.y * H,
-  size: frameSize(node.role, W),
+  size: frameSize(node.role, W, scale),
   baseZ: ROLE_ZBAND[node.role] * 100,
 });
 
 // ── 4. Garment skeleton: signature → template, or a procedural shelf ──────────
-const buildSkeleton = (garments: Node[], W: number, H: number): Placed[] => {
+const buildSkeleton = (
+  garments: Node[],
+  W: number,
+  H: number,
+  scale: number,
+): Placed[] => {
   // One item per garment role (deterministic: nodes arrive pre-sorted by role).
   const byRole = new Map<GarmentRole, Node>();
   for (const g of garments) {
@@ -308,7 +332,23 @@ const buildSkeleton = (garments: Node[], W: number, H: number): Placed[] => {
     return { x: clamp(0.3 + i * 0.2, 0.2, 0.78), y: 0.33 };
   };
 
-  return roles.map(role => place(byRole.get(role)!, anchorFor(role), W, H));
+  return roles.map(role => place(byRole.get(role)!, anchorFor(role), W, H, scale));
+};
+
+// Union content bounding box of a placed composition (visible-object footprint).
+const contentBounds = (placed: Placed[]) => {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of placed) {
+    const half = (p.size * CONTENT_RATIO) / 2;
+    minX = Math.min(minX, p.cx - half);
+    maxX = Math.max(maxX, p.cx + half);
+    minY = Math.min(minY, p.cy - half);
+    maxY = Math.max(maxY, p.cy + half);
+  }
+  return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
 };
 
 // ── 6. Distribute accessories into whitespace; bag balances left/right ────────
@@ -369,8 +409,9 @@ const resolveCollision = (p: Placed, others: Placed[], W: number, H: number) => 
 
 /**
  * Core engine. Compose a deterministic editorial flat-lay from pre-resolved
- * items: skeleton first, accessories into whitespace, bag balanced, collisions
- * resolved, z dense-ranked. Identical input always yields identical output.
+ * items, then run a density-optimization pass so the outfit fills the canvas:
+ *   classify → skeleton → accessories → measure density → rescale to target
+ *   → re-centre → dense-rank z. Identical input always yields identical output.
  */
 export const seedCanvasLayout = (
   items: CollageSeedItem[],
@@ -401,32 +442,66 @@ export const seedCanvasLayout = (
     .filter(n => !isGarment(n.role))
     .sort((a, b) => accessoryRank(a.role) - accessoryRank(b.role) || idCmp(a, b));
 
-  // 4. Skeleton.
-  const placed: Placed[] = buildSkeleton(garments, W, H);
-
-  // 6. Accessories into whitespace zones (stacking within a zone).
-  const zoneUsed = new Map<string, number>();
-  const zoneAnchor = (zone: string): Anchor => {
-    const n = zoneUsed.get(zone) ?? 0;
-    zoneUsed.set(zone, n + 1);
-    const base = ZONES[zone];
-    return { x: base.x, y: base.y + n * ZONE_STACK_STEP };
+  // ── Build one full composition at a given size scale (skeleton first, then
+  // accessories into whitespace). Pure function of `scale` → re-runnable by the
+  // optimizer. The garment skeleton is built before any accessory is placed.
+  const compose = (scale: number): Placed[] => {
+    const placed: Placed[] = buildSkeleton(garments, W, H, scale); // 4. skeleton
+    const zoneUsed = new Map<string, number>();
+    const zoneAnchor = (zone: string): Anchor => {
+      const n = zoneUsed.get(zone) ?? 0;
+      zoneUsed.set(zone, n + 1);
+      const base = ZONES[zone];
+      return { x: base.x, y: base.y + n * ZONE_STACK_STEP };
+    };
+    for (const node of accessories) {
+      let zone: string;
+      if (node.role === 'BAG') {
+        // The bag balances the lighter side. Left already heavy (shoes + left
+        // accessories) → bottom-right; otherwise tuck it into the left column.
+        const { left, right } = sideWeight(placed, W);
+        zone = left >= right ? 'BOTTOM_RIGHT' : 'MID_LEFT';
+      } else {
+        zone = ACCESSORY_ZONE[node.role as Exclude<AccessoryRole, 'BAG'>];
+      }
+      const p = place(node, zoneAnchor(zone), W, H, scale);
+      resolveCollision(p, placed, W, H); // 7. only the accessory moves
+      placed.push(p);
+    }
+    return placed;
   };
 
-  for (const node of accessories) {
-    let zone: string;
-    if (node.role === 'BAG') {
-      // The bag balances the lighter side. Left already heavy (shoes + left
-      // accessories) → bottom-right; otherwise tuck it into the left column.
-      const { left, right } = sideWeight(placed, W);
-      zone = left >= right ? 'BOTTOM_RIGHT' : 'MID_LEFT';
-    } else {
-      // Non-garment, non-bag (bag handled above) → its preferred whitespace zone.
-      zone = ACCESSORY_ZONE[node.role as Exclude<AccessoryRole, 'BAG'>];
+  // ── 5. Optimization pass: measure the composition's dominant-axis fill and
+  // rescale toward the density target, iterating until it lands in the band
+  // (or scale clamps). Fewer items need more scaling to reach the target, so
+  // this naturally makes sparse outfits larger and busy ones slightly smaller.
+  let scale = 1.2;
+  let placed = compose(scale);
+  for (let pass = 0; pass < OPTIMIZE_PASSES; pass++) {
+    const b = contentBounds(placed);
+    const fill = Math.max(b.w / W, b.h / H);
+    if (fill >= FILL_LO && fill <= FILL_HI) {
+      break;
     }
-    const p = place(node, zoneAnchor(zone), W, H);
-    resolveCollision(p, placed, W, H); // 7. only the accessory moves
-    placed.push(p);
+    const next = clamp(
+      scale * clamp(FILL_TARGET / Math.max(fill, 0.01), 0.7, 1.4),
+      SCALE_MIN,
+      SCALE_MAX,
+    );
+    if (next === scale) {
+      break; // clamped — no further movement possible
+    }
+    scale = next;
+    placed = compose(scale);
+  }
+
+  // ── Re-centre the whole composition in the canvas (editorial framing).
+  const bounds = contentBounds(placed);
+  const dx = W / 2 - (bounds.minX + bounds.maxX) / 2;
+  const dy = H / 2 - (bounds.minY + bounds.maxY) / 2;
+  for (const p of placed) {
+    p.cx += dx;
+    p.cy += dy;
   }
 
   // ── z-order: base band, demoted beneath any tuck-under target, dense-ranked.

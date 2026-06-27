@@ -101,20 +101,41 @@ describe('seedCanvasLayout — editorial flat-lay engine', () => {
     expect(cx(dress.get('bag')!)).toBeLessThan(W * 0.5);
   });
 
-  it('STABILITY: adding an accessory leaves every garment fixed', () => {
-    const base = byId(
-      seedCanvasLayout([mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans')], W),
-    );
-    const withAcc = byId(
+  it('DENSITY: the composition fills a strong share of the canvas', () => {
+    const outfits = [
+      [mk('dress', 'Dress'), mk('sh', 'Shoes')], // sparse → scaled up large
+      [mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans'), mk('sh', 'Shoes')],
+      [mk('coat', 'Trench'), mk('knit', 'Sweater'), mk('tee', 'Top'), mk('jean', 'Jeans'),
+       mk('sh', 'Shoes'), mk('bag', 'Bag'), mk('belt', 'Belt')],
+    ];
+    for (const items of outfits) {
+      const out = seedCanvasLayout(items, W);
+      const minX = Math.min(...out.map(o => o.x + o.width * 0.14));
+      const maxX = Math.max(...out.map(o => o.x + o.width * 0.86));
+      const minY = Math.min(...out.map(o => o.y + o.height * 0.14));
+      const maxY = Math.max(...out.map(o => o.y + o.height * 0.86));
+      const fill = Math.max((maxX - minX) / W, (maxY - minY) / H);
+      expect(fill).toBeGreaterThan(0.65); // not an island of whitespace
+      expect(fill).toBeLessThan(0.95); // not bleeding hard off-canvas
+    }
+  });
+
+  it('count-relative scale: a 2-item outfit out-scales a 7-item one', () => {
+    const few = byId(seedCanvasLayout([mk('dress', 'Dress'), mk('sh', 'Shoes')], W));
+    const many = byId(
       seedCanvasLayout(
-        [mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans'), mk('cap', 'Hat'), mk('sh', 'Shoes')],
+        [mk('coat', 'Trench'), mk('knit', 'Sweater'), mk('tee', 'Top'), mk('jean', 'Jeans'),
+         mk('sh', 'Shoes'), mk('bag', 'Bag'), mk('belt', 'Belt')],
         W,
       ),
     );
-    for (const id of ['jkt', 'tee', 'jean']) {
-      expect(cx(withAcc.get(id)!)).toBeCloseTo(cx(base.get(id)!), 5);
-      expect(cy(withAcc.get(id)!)).toBeCloseTo(cy(base.get(id)!), 5);
-    }
+    // The lone dress is scaled up far larger than a tee inside a busy outfit.
+    expect(few.get('dress')!.width).toBeGreaterThan(many.get('tee')!.width);
+  });
+
+  it('is still deterministic after the optimization pass', () => {
+    const items = [mk('jkt', 'Jacket'), mk('tee', 'Top'), mk('jean', 'Jeans'), mk('cap', 'Hat'), mk('sh', 'Shoes')];
+    expect(seedCanvasLayout(items, W)).toEqual(seedCanvasLayout(items, W));
   });
 
   it('renders outerwear above the base top it overlaps', () => {
