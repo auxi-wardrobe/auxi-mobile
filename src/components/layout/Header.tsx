@@ -86,9 +86,9 @@ const HeaderBase: React.FC<HeaderProps> = ({
         backgroundColor: BACKGROUND_COLOR[background],
         paddingTop: PAD + (safeAreaTop ? insets.top : 0),
         justifyContent: isLeft ? 'flex-start' : 'space-between',
-        // Clip the oversized blur slab to the bar bounds. Only for blur — on
-        // solid bars it would cut off the icon chips' drop-shadows.
-        overflow: background === 'blur' ? 'hidden' : 'visible',
+        // NOTE: never clip overflow here. The blur slab is absoluteFill (exactly
+        // the bar bounds, so it can't bleed), and overflow:hidden would cut off
+        // the icon chips' drop-shadow — which extends ~23px past the bar.
     };
 
     return (
