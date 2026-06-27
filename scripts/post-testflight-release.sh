@@ -40,6 +40,24 @@ else
   echo ">>> gh CLI not installed — skipping GitHub Release"
 fi
 
+# ---------- 1b. "What's in this build" — PR list from the release notes ----------
+# Pull the GitHub-generated notes (PR titles + numbers) so the Slack post shows
+# the actual changelog, not just a bare link. API-based (gh release view) so it
+# works on CI's shallow checkout, where `git log <prev>..<tag>` has no history.
+CHANGES=""
+if command -v gh >/dev/null 2>&1; then
+  NOTES="$(gh release view "$TAG" -R "$REPO" --json body -q '.body' 2>/dev/null || true)"
+  # "* <title> by @<user> in <url>/pull/<n>"  ->  "• <title> (#<n>)"
+  ALL_CHANGES="$(printf '%s\n' "$NOTES" \
+    | sed -nE 's|^\* (.+) by @[^ ]+ in https://github\.com/[^ ]+/pull/([0-9]+)$|• \1 (#\2)|p')"
+  CHANGES="$(printf '%s\n' "$ALL_CHANGES" | head -30)"
+  N_TOTAL=$(printf '%s' "$ALL_CHANGES" | grep -c '^•' || true)
+  if [ "${N_TOTAL:-0}" -gt 30 ]; then
+    CHANGES="${CHANGES}
+• …and $((N_TOTAL - 30)) more — see the release"
+  fi
+fi
+
 # ---------- 2. Slack notification ----------
 BE_ENV="../wardrobe-backend/.env"
 if [ -z "${SLACK_BOT_TOKEN:-}" ] && [ -f "$BE_ENV" ]; then
@@ -53,6 +71,12 @@ if [ -n "${SLACK_BOT_TOKEN:-}" ] && [ -n "${SLACK_DEFAULT_CHANNEL:-}" ] && comma
   TEXT=":rocket: *Auxi ${MARKETING_VERSION:-?} (build ${BUILD_NUMBER:-?}) — TestFlight*
 Release: <${RELEASE_URL}|${TAG}>
 :hourglass_flowing_sand: Apple processing — internal testers get it shortly."
+  if [ -n "$CHANGES" ]; then
+    TEXT="${TEXT}
+
+*What's in this build:*
+${CHANGES}"
+  fi
   PAYLOAD="$(CH="$SLACK_DEFAULT_CHANNEL" TXT="$TEXT" python3 -c 'import json,os;print(json.dumps({"channel":os.environ["CH"],"text":os.environ["TXT"],"unfurl_links":False}))')"
   curl -sS -X POST https://slack.com/api/chat.postMessage \
     -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
