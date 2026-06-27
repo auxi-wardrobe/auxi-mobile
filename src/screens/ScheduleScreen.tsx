@@ -13,10 +13,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../components/layout/Header';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
+import { MButton } from '../components/design-system/lib';
 import { useSidebar } from '../context/SidebarContext';
 import { useSchedule } from '../context/ScheduleContext';
 import { theme } from '../theme/theme';
 import { Icons } from '../assets/icons';
+import IconMinusCircle from '../assets/images/icon_minus_circle.svg';
+import IconSparkle from '../assets/images/icon_sparkle.svg';
 import { track } from '../services/analytics';
 import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { AppStackParamList } from '../types/navigation';
@@ -218,19 +221,19 @@ export const ScheduleScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']} testID="schedule-screen">
-      <Header
+      {/* Canonical Header (#158) — Menu + centred title + a right action
+          ("+" opens the source picker). The preset owns title typography and
+          the 44px white icon chip, so no per-screen style overrides. */}
+      <Header.MenuTitleAction
         title={t('schedule.title')}
-        titleTextStyle={styles.headerTitle}
-        leftIconStyle={styles.headerIconButton}
-        leftIconTestID="schedule-header-menu"
-        leftIconAccessibilityLabel={t('schedule.a11y_open_menu')}
+        leftTestID="schedule-header-menu"
+        leftAccessibilityLabel={t('schedule.a11y_open_menu')}
         onBack={openSidebar}
-        rightComponent={
+        right={
           <TopIconButton
             testID="schedule-header-add"
             accessibilityLabel={t('schedule.a11y_add')}
             onPress={handleAddOutfit}
-            style={styles.headerIconButton}
             icon={<Icons.Plus width={24} height={24} />}
           />
         }
@@ -307,20 +310,56 @@ export const ScheduleScreen: React.FC = () => {
             showsVerticalScrollIndicator={false}
           >
             {selectedDayOutfits.map(outfit =>
-              // No `onSchedule` on these cards — the calendar-add button is
-              // hidden once an item is already on the calendar; Remove here
-              // means unschedule.
               outfit.kind === 'favourite' ? (
-                <FavouriteOutfitCard
-                  key={outfit.favourite.id}
-                  favourite={outfit.favourite}
-                  view="grid"
-                  onRemove={id => unscheduleOutfit(selectedKey, id)}
-                  onSelfVisualization={handleSelfVisualization}
-                  onItemPress={itemId =>
-                    navigation.navigate('ItemDetail', { itemId })
-                  }
-                />
+                // #164 hoisted per-card actions off FavouriteOutfitCard (now
+                // display-only). The Favourite screen replaced them with one
+                // sticky bar acting on the snapped outfit, but Schedule lists
+                // several outfits per day — each needs its own controls — so a
+                // compact per-card Remove (unschedule) + See-on-me row sits
+                // beneath the card here (feature-specific, not the snap-one
+                // Favourite pattern). The calendar-add button is intentionally
+                // absent: the outfit is already on the calendar.
+                <View key={outfit.favourite.id} style={styles.scheduledItem}>
+                  <FavouriteOutfitCard
+                    favourite={outfit.favourite}
+                    view="grid"
+                    onItemPress={itemId =>
+                      navigation.navigate('ItemDetail', { itemId })
+                    }
+                  />
+                  <View style={styles.scheduledActions}>
+                    {/* Borderless 24px danger glyph — same reason as the
+                        Favourite action bar's remove: no MIconButton variant
+                        expresses it. Here Remove means unschedule. */}
+                    <TouchableOpacity
+                      testID={`schedule-remove-${outfit.favourite.id}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('schedule.remove_a11y')}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={styles.scheduledRemove}
+                      onPress={() =>
+                        unscheduleOutfit(selectedKey, outfit.favourite.id)
+                      }
+                    >
+                      <IconMinusCircle
+                        width={24}
+                        height={24}
+                        color={theme.colors.figmaItemDetailDanger}
+                      />
+                    </TouchableOpacity>
+                    <MButton
+                      variant="secondary"
+                      testID={`schedule-self-visualization-${outfit.favourite.id}`}
+                      accessibilityLabel={t('favourite.self_visualization')}
+                      rightIcon={IconSparkle}
+                      iconColor={theme.colors.figmaAiSparkle}
+                      onPress={() => handleSelfVisualization(outfit.favourite)}
+                    >
+                      {t('favourite.self_visualization')}
+                    </MButton>
+                  </View>
+                </View>
               ) : (
                 <CreationCollageCard
                   key={outfit.creation.id}
@@ -347,15 +386,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-  },
-  headerIconButton: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.m,
-    ...theme.ds.shadow.headerIcon,
   },
   strip: {
     flexGrow: 0,
@@ -438,6 +468,22 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.l,
     paddingBottom: theme.spacing.xl,
     gap: theme.spacing.xl,
+  },
+  // A scheduled favourite = the display-only card + its own action row.
+  scheduledItem: {
+    gap: theme.spacing.m,
+  },
+  scheduledActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing.l,
+  },
+  scheduledRemove: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyState: {
     alignItems: 'center',

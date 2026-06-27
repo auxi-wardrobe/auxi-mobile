@@ -259,13 +259,13 @@ The Schedule screen (sidebar → Schedule) lets the user plan saved outfits / ca
 
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
-| **`favourite_schedule_opened`** | "Add to schedule" (calendar-add) tapped on a saved outfit — opens the date picker. | `FavouriteScreen.tsx:162` (`handleSchedule`) | `favorite_id` (internal id) |
-| **`favourite_added_to_schedule`** | Date picker confirmed for a favourite — outfit scheduled to the chosen day. | `FavouriteScreen.tsx:172` (`handleConfirmSchedule`) | `favorite_id`, `date` (`YYYY-MM-DD`) |
-| **`creation_schedule_opened`** | "Add to schedule" tapped on a saved creation — opens the date picker. | `MyCreationsScreen.tsx:63` (`handleSchedule`) | `creation_id` (internal id) |
-| **`creation_added_to_schedule`** | Date picker confirmed for a creation — creation scheduled to the chosen day. | `MyCreationsScreen.tsx:73` (`handleConfirmSchedule`) | `creation_id`, `date` (`YYYY-MM-DD`) |
-| **`schedule_add_tapped`** | Schedule header "+" tapped — opens the "Add an outfit" source picker. | `ScheduleScreen.tsx:144` (`handleAddOutfit`) | `date` (`YYYY-MM-DD`, the selected day) |
-| **`schedule_add_source_selected`** | A source chosen in the "Add an outfit" picker — routes to that page. | `ScheduleScreen.tsx:150` (`handlePickSource`) | `source` (`favourite` / `creations`) |
-| **`schedule_day_selected`** | A day tapped on the week strip. | `ScheduleScreen.tsx:138` (`handleSelectDay`) | `date` (`YYYY-MM-DD`), `is_today` (bool) |
+| **`favourite_schedule_opened`** | "Add to schedule" (calendar-add) tapped on a saved outfit (Favourite sticky action bar) — opens the date picker. | `FavouriteScreen.tsx:218` (`handleSchedule`) | `favorite_id` (internal id) |
+| **`favourite_added_to_schedule`** | Date picker confirmed for a favourite — outfit scheduled to the chosen day. | `FavouriteScreen.tsx:224` (`handleConfirmSchedule`) | `favorite_id`, `date` (`YYYY-MM-DD`) |
+| **`creation_schedule_opened`** | "Add to schedule" tapped on a saved creation — opens the date picker. | `MyCreationsScreen.tsx:66` (`handleSchedule`) | `creation_id` (internal id) |
+| **`creation_added_to_schedule`** | Date picker confirmed for a creation — creation scheduled to the chosen day. | `MyCreationsScreen.tsx:72` (`handleConfirmSchedule`) | `creation_id`, `date` (`YYYY-MM-DD`) |
+| **`schedule_add_tapped`** | Schedule header "+" tapped — opens the "Add an outfit" source picker. | `ScheduleScreen.tsx:186` (`handleAddOutfit`) | `date` (`YYYY-MM-DD`, the selected day) |
+| **`schedule_add_source_selected`** | A source chosen in the "Add an outfit" picker — routes to that page. | `ScheduleScreen.tsx:193` (`handlePickSource`) | `source` (`favourite` / `creations`) |
+| **`schedule_day_selected`** | A day tapped on the week strip. | `ScheduleScreen.tsx:181` (`handleSelectDay`) | `date` (`YYYY-MM-DD`), `is_today` (bool) |
 
 > Funnel intent: `*_schedule_opened` → `*_added_to_schedule` measures add-to-schedule completion per source (favourite vs creation); `schedule_add_tapped` → `schedule_add_source_selected` measures the in-Schedule "+" entry. `schedule_day_selected` is engagement with the rail.
 >

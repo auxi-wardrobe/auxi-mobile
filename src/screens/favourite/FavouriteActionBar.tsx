@@ -12,8 +12,12 @@ import IconCalendarAdd from '../../assets/images/icon_calendar_add.svg';
 type Props = {
   /** Remove the currently-viewed outfit (opens the confirm dialog). */
   onRemove: () => void;
-  /** Open the "Add to Schedule" sheet for the currently-viewed outfit. */
-  onSchedule: () => void;
+  /**
+   * Open the "Add to Schedule" sheet for the currently-viewed outfit. When
+   * provided, the calendar-add button renders between Remove and Self
+   * visualization; omit it to hide the button.
+   */
+  onSchedule?: () => void;
   /** Open the "See this on me" flow for the currently-viewed outfit. */
   onSelfVisualization: () => void;
   testID?: string;
@@ -79,21 +83,23 @@ export const FavouriteActionBar: React.FC<Props> = ({
             sheet to plan the snapped outfit onto a day. Raw TouchableOpacity for
             the same reason as remove: a borderless 24px glyph MIconButton can't
             express (it hardcodes a 1.5px outline + 20px icon). */}
-        <TouchableOpacity
-          testID="favourite-schedule-active"
-          accessibilityRole="button"
-          accessibilityLabel={t('favourite.add_to_schedule')}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={styles.scheduleButton}
-          onPress={onSchedule}
-        >
-          <IconCalendarAdd
-            width={24}
-            height={24}
-            color={theme.colors.uacTextBase}
-          />
-        </TouchableOpacity>
+        {onSchedule ? (
+          <TouchableOpacity
+            testID="favourite-schedule-active"
+            accessibilityRole="button"
+            accessibilityLabel={t('favourite.add_to_schedule')}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.scheduleButton}
+            onPress={onSchedule}
+          >
+            <IconCalendarAdd
+              width={24}
+              height={24}
+              color={theme.colors.uacTextBase}
+            />
+          </TouchableOpacity>
+        ) : null}
 
         {/* Self-visualization = the shared DS secondary/outline button (MButton
             variant="secondary": transparent fill, 1.5px ink border). The AI
