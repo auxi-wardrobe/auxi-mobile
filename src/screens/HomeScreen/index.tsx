@@ -230,14 +230,21 @@ export const HomeScreen = () => {
   const recommendationSourceRef = useRef<'feed' | 'refine'>('feed');
   // Refine feedback awaiting the next batch — set on submit, consumed in the
   // mutation's onSuccess so the "applied" toast fires only once the refreshed
-  // outfits have actually loaded.
-  const pendingRefineToastRef = useRef<string | null>(null);
+  // outfits have actually loaded. `isChip` is carried so analytics can ship the
+  // label for chips only and never the custom free-text (PII), mirroring
+  // `refine_submitted`.
+  const pendingRefineToastRef = useRef<{
+    text: string;
+    isChip: boolean;
+  } | null>(null);
   const refineToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
   // onSuccess is declared before showRefineToast (which needs `t`), so reach the
   // shower through a ref — same indirection the buffer trampoline uses.
-  const showRefineToastRef = useRef<(feedback: string) => void>(() => {});
+  const showRefineToastRef = useRef<(text: string, isChip: boolean) => void>(
+    () => {},
+  );
 
   const { weather } = useWeather();
 
@@ -428,7 +435,7 @@ export const HomeScreen = () => {
       const pendingToast = pendingRefineToastRef.current;
       if (pendingToast) {
         pendingRefineToastRef.current = null;
-        showRefineToastRef.current(pendingToast);
+        showRefineToastRef.current(pendingToast.text, pendingToast.isChip);
       }
 
       setTimeout(() => {
@@ -478,11 +485,12 @@ export const HomeScreen = () => {
   }, []);
 
   const onSubmitFeedback = useCallback(
-    (payload: string) => {
+    (payload: string, isChip: boolean) => {
       setStyleFeedback(payload);
       styleFeedbackRef.current = payload;
       // Queue the confirmation toast; it fires once the new batch resolves.
-      pendingRefineToastRef.current = payload;
+      // `isChip` gates whether the label is safe to ship to analytics.
+      pendingRefineToastRef.current = { text: payload, isChip };
       unfavoritedSwipeCountRef.current = 0;
       resetRefineTier();
       recommendationSourceRef.current = 'refine';
@@ -934,9 +942,16 @@ export const HomeScreen = () => {
   // Fired from the mutation's onSuccess (via showRefineToastRef) once the
   // refreshed deck has loaded, then auto-dismisses after REFINE_TOAST_DURATION_MS.
   const showRefineToast = useCallback(
-    (feedback: string) => {
+    (feedback: string, isChip: boolean) => {
       clearTimeoutRef(refineToastTimeoutRef);
-      track('refine_confirmation_shown', { feedback });
+      // Ship `mode` always; the label only for chips. Custom refine text is
+      // free-form user input (PII) and must never reach analytics — same gate
+      // as the sibling `refine_submitted` event.
+      track('refine_confirmation_shown', {
+        mode: isChip ? 'chip' : 'custom',
+        ...(isChip ? { value: feedback } : {}),
+      });
+      // The toast itself still shows the user's own words back to them.
       setRefineToastText(t('home.refineAppliedToast', { feedback }));
       refineToastTimeoutRef.current = setTimeout(() => {
         setRefineToastText(null);
