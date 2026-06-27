@@ -79,6 +79,15 @@ const SAVED_SNACKBAR_MS = 4000;
 // the cache for snappy placement, but never block the UI on the network.
 const ADD_IMAGE_TIMEOUT_MS = 6000;
 
+// Minimum time the "Adding…" feedback (picker button spinner + canvas status)
+// stays up, even when images are already cached and load instantly. Without this
+// floor the feedback can flash by unseen (common on web, where the cache hit is
+// immediate); it also smooths the fast path so the spinner never just flickers.
+const MIN_ADD_FEEDBACK_MS = 700;
+
+const delay = (ms: number): Promise<void> =>
+  new Promise(resolve => setTimeout(resolve, ms));
+
 // Prefetch a remote image into the cache, resolving on success, failure, OR a
 // timeout — whichever comes first. Always resolves (never rejects) so a single
 // bad URL can't reject the whole Promise.all in the add flow.
@@ -437,10 +446,14 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const [tagInput, setTagInput] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
   // IDs of items just added from the picker whose remote images haven't finished
-  // loading yet. Drives the on-canvas "Adding…" status; each id clears on its
-  // image's onLoadEnd (and a safety timeout clears the rest).
+  // loading yet. Each id clears on its image's onLoadEnd (and a safety timeout
+  // clears the rest).
   const [addingIds, setAddingIds] = useState<string[]>([]);
-  const isAdding = addingIds.length > 0;
+  // The on-canvas "Adding…" status is its own flag (not just `addingIds > 0`) so
+  // it can stay up for a minimum perceptible window even when cached images load
+  // instantly — see the hide effect below. `addShownAtRef` stamps when it opened.
+  const [addStatusVisible, setAddStatusVisible] = useState(false);
+  const addShownAtRef = useRef(0);
 
   // Unsaved-changes guard: any edit (item move/add/delete/layer, tag change)
   // flips this true; Save clears it. Drives the "Discard this creation?" sheet
@@ -660,10 +673,14 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
 
       // Warm the cache (bounded) so pieces land already-decoded rather than
       // popping in one-by-one. The picker's "Add" button stays in its loading
-      // state for this await.
-      await Promise.all(
-        prepared.map(p => (p.uri ? prefetchWithTimeout(p.uri) : Promise.resolve())),
-      );
+      // state for this await — floored at MIN_ADD_FEEDBACK_MS so a cache hit
+      // doesn't make the spinner flash by.
+      await Promise.all([
+        delay(MIN_ADD_FEEDBACK_MS),
+        ...prepared.map(p =>
+          p.uri ? prefetchWithTimeout(p.uri) : Promise.resolve(),
+        ),
+      ]);
 
       setItems(prev => {
         let maxZ = prev.length > 0 ? Math.max(...prev.map(it => it.zIndex)) : 0;
@@ -683,10 +700,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         return next;
       });
 
-      // Keep the canvas "Adding…" status up until each new remote image reports
-      // loaded (onLoadEnd) — the safety net for anything the prefetch didn't
-      // fully warm. URI-less mock items need no status.
-      setAddingIds(prepared.filter(p => p.uri).map(p => p.id));
+      // Track each new remote image until it reports loaded (onLoadEnd) — the
+      // safety net for anything the prefetch didn't fully warm — and open the
+      // canvas status. URI-less mock items need no status.
+      const pendingIds = prepared.filter(p => p.uri).map(p => p.id);
+      if (pendingIds.length > 0) {
+        addShownAtRef.current = Date.now();
+        setAddingIds(pendingIds);
+        setAddStatusVisible(true);
+      }
       setPickerVisible(false);
     },
     [pushHistory],
@@ -698,8 +720,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     setAddingIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : prev));
   }, []);
 
-  // Safety net: never leave the "Adding…" status stuck if an image's onLoadEnd
-  // never arrives (e.g. a dead URL on web). Clears whatever's left after the cap.
+  // Safety net: never leave a marker stuck if an image's onLoadEnd never arrives
+  // (e.g. a dead URL on web). Clears whatever's left after the cap.
   useEffect(() => {
     if (addingIds.length === 0) {
       return;
@@ -707,6 +729,22 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     const timer = setTimeout(() => setAddingIds([]), ADD_IMAGE_TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [addingIds]);
+
+  // Hide the canvas "Adding…" status once every new image has loaded, but not
+  // before MIN_ADD_FEEDBACK_MS has passed since it opened — so a cache hit (which
+  // empties `addingIds` almost immediately) still shows the status long enough to
+  // register.
+  useEffect(() => {
+    if (!addStatusVisible || addingIds.length > 0) {
+      return;
+    }
+    const remaining = Math.max(
+      0,
+      MIN_ADD_FEEDBACK_MS - (Date.now() - addShownAtRef.current),
+    );
+    const timer = setTimeout(() => setAddStatusVisible(false), remaining);
+    return () => clearTimeout(timer);
+  }, [addStatusVisible, addingIds]);
 
   // Tag actions
   const handleRemoveTag = useCallback((tag: string) => {
@@ -915,7 +953,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               />
               {/* Adding-items status — shown while freshly-added images load.
                   Informational, so it never blocks canvas touches. */}
-              {isAdding ? (
+              {addStatusVisible ? (
                 <View
                   style={styles.addingStatusWrap}
                   pointerEvents="none"
