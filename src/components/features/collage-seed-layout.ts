@@ -132,36 +132,33 @@ type Anchor = { x: number; y: number };
 const SKELETONS: Record<string, Partial<Record<GarmentRole, Anchor>>> = {
   // Dress alone — centred, large; left column stays open for accessories (1+x).
   ONE_PIECE: { ONE_PIECE: { x: 0.52, y: 0.46 } },
-  // Top + Bottom — tee over the waistband of the jeans, slight right drop (2+1).
+  // Top + Bottom — tee over the waistband, jeans dropping to the right-bottom (2+1).
   'BOTTOM|TOP': {
-    TOP: { x: 0.46, y: 0.4 },
-    BOTTOM: { x: 0.56, y: 0.56 },
+    TOP: { x: 0.44, y: 0.39 },
+    BOTTOM: { x: 0.64, y: 0.61 },
   },
-  // Outerwear + Top + Bottom — jacket overlaps tee, tee overlaps jeans (3+x).
+  // Outerwear + Top + Bottom — jacket overlaps tee; jeans to the right-bottom (3+x).
   'BOTTOM|OUTER|TOP': {
-    OUTER: { x: 0.4, y: 0.4 },
-    TOP: { x: 0.56, y: 0.38 },
-    BOTTOM: { x: 0.6, y: 0.56 },
+    OUTER: { x: 0.38, y: 0.39 },
+    TOP: { x: 0.54, y: 0.37 },
+    BOTTOM: { x: 0.68, y: 0.62 },
   },
-  // Outer + Mid + Top + Bottom — four-layer shelf, each overlapping (4+x, 5+x).
+  // Outer + Mid + Top + Bottom — four-layer shelf; jeans to the right-bottom (4+x, 5+x).
   'BOTTOM|MID|OUTER|TOP': {
-    OUTER: { x: 0.38, y: 0.41 },
-    MID: { x: 0.5, y: 0.39 },
-    TOP: { x: 0.62, y: 0.38 },
-    BOTTOM: { x: 0.6, y: 0.57 },
+    OUTER: { x: 0.36, y: 0.4 },
+    MID: { x: 0.48, y: 0.38 },
+    TOP: { x: 0.6, y: 0.37 },
+    BOTTOM: { x: 0.7, y: 0.63 },
   },
 };
 
 // ── Whitespace zones for accessories (normalized centres). Negative space the
 // skeleton deliberately leaves open; multiple items in one zone stack downward.
-const ZONES: Record<string, Anchor> = {
-  SHOES: { x: 0.28, y: 0.78 }, // bottom-left anchor, kept near the outfit
-  MID_LEFT: { x: 0.3, y: 0.5 }, // cap / sunglasses / shoulder-bag column
-  TOP_LEFT: { x: 0.28, y: 0.2 }, // scarf / headwear in upper whitespace
-  BOTTOM_RIGHT: { x: 0.72, y: 0.78 }, // briefcase bag (balances bottom-left shoes)
-  MID_RIGHT: { x: 0.66, y: 0.62 }, // belt by the lower torso
-  BOTTOM_MID: { x: 0.5, y: 0.82 }, // jewellery / watch fill remaining space
-};
+// Accessory whitespace zones are computed per-composition from the garment
+// bounding box (see `compose`), not fixed here. Roles map to a zone name:
+//   SHOES → bottom-left · MID_LEFT → cap/sunglasses/shoulder-bag column ·
+//   TOP_LEFT → scarf/headwear · BOTTOM_RIGHT → briefcase bag · MID_RIGHT → belt ·
+//   BOTTOM_MID → jewellery/watch.
 const ZONE_STACK_STEP = 0.11; // normalized-height offset per stacked item
 
 // Preferred whitespace zone per accessory role (bag is decided by balance).
@@ -326,7 +323,8 @@ const buildSkeleton = (
     }
     if (role === 'BOTTOM') {
       const lastUpperX = uppers.length ? 0.3 + (uppers.length - 1) * 0.2 : 0.5;
-      return { x: clamp(lastUpperX + 0.16, 0.45, 0.82), y: 0.52 };
+      // Drop the bottom toward the right-bottom of the cluster.
+      return { x: clamp(lastUpperX + 0.2, 0.5, 0.84), y: 0.62 };
     }
     const i = Math.max(0, uppers.indexOf(role));
     return { x: clamp(0.3 + i * 0.2, 0.2, 0.78), y: 0.33 };
@@ -447,12 +445,33 @@ export const seedCanvasLayout = (
   // optimizer. The garment skeleton is built before any accessory is placed.
   const compose = (scale: number): Placed[] => {
     const placed: Placed[] = buildSkeleton(garments, W, H, scale); // 4. skeleton
+
+    // Anchor accessory zones to the GARMENT skeleton's bounding box, so they
+    // always land in the real whitespace beside/below the cluster regardless of
+    // how large the density pass scaled it (a fixed column would collide once
+    // the garments grow). Left column hugs the cluster's left edge, the bag
+    // balances off the right edge, shoes/jewellery sit just below.
+    const gb = contentBounds(placed);
+    const leftX = clamp(gb.minX - 0.05 * W, 0.06 * W, 0.32 * W);
+    const rightX = clamp(gb.maxX + 0.05 * W, 0.68 * W, 0.94 * W);
+    const midY = (gb.minY + gb.maxY) / 2;
+    const botY = clamp(gb.maxY + 0.03 * H, 0.55 * H, 0.92 * H);
+    const zonesPx: Record<string, Anchor> = {
+      SHOES: { x: clamp(gb.minX + 0.04 * W, 0.1 * W, 0.4 * W), y: botY },
+      MID_LEFT: { x: leftX, y: midY },
+      TOP_LEFT: { x: leftX, y: clamp(gb.minY + 0.04 * H, 0.08 * H, midY) },
+      BOTTOM_RIGHT: { x: rightX, y: botY },
+      MID_RIGHT: { x: clamp(gb.maxX - 0.04 * W, 0.55 * W, 0.92 * W), y: midY + 0.14 * H },
+      BOTTOM_MID: { x: (gb.minX + gb.maxX) / 2, y: botY },
+    };
+
     const zoneUsed = new Map<string, number>();
     const zoneAnchor = (zone: string): Anchor => {
       const n = zoneUsed.get(zone) ?? 0;
       zoneUsed.set(zone, n + 1);
-      const base = ZONES[zone];
-      return { x: base.x, y: base.y + n * ZONE_STACK_STEP };
+      const base = zonesPx[zone];
+      // Stack extra items in a zone downward; return normalized for `place`.
+      return { x: base.x / W, y: (base.y + n * ZONE_STACK_STEP * H) / H };
     };
     for (const node of accessories) {
       let zone: string;
