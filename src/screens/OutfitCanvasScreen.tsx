@@ -719,6 +719,12 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   const actionDisabled = !selectedId;
+  // Save is only meaningful once the user has actually built or altered
+  // something: a fresh canvas (nothing added yet) and a remix opened but left
+  // untouched both start with `hasUnsavedChanges === false`. Any edit
+  // (add/move/delete/layer/duplicate via pushHistory, or a tag change) flips it
+  // true; a successful save resets it. So gate Save on it directly.
+  const saveDisabled = !hasUnsavedChanges;
 
   return (
     <View style={styles.container}>
@@ -902,8 +908,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             {/* Save button — canonical secondary button. */}
             <View style={styles.saveRow}>
               <PillButton
-                testID="canvas-save"
+                testID={saveDisabled ? 'canvas-save-disabled' : 'canvas-save'}
                 onPress={handleSave}
+                disabled={saveDisabled}
                 accessibilityLabel={t('outfitCanvas.a11y_save_outfit')}
                 title={t('common.save')}
                 variant="outline"
