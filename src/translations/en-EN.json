@@ -264,7 +264,9 @@
       "database": {
         "title": "Database",
         "empty": "No items to select yet",
-        "add_item": "Add Item"
+        "add_item": "Add Item",
+        "added_toast": "Added {{count}} item(s) to your wardrobe",
+        "added_partial_toast": "Added {{added}}, {{failed}} couldn't be added"
       },
       "new_badge": "New",
       "less_used_badge": "less use",
@@ -345,6 +347,7 @@
       "badge_common": "common",
       "action_cannot_undo": "This action cannot be undone.",
       "pick_image_failed": "Failed to pick image",
+      "add_items_failed_title": "Couldn't add items",
       "load_wardrobe_failed_title": "Unable to load wardrobe",
       "try_again_moment": "Please try again in a moment.",
       "a11y_add_item": "Add item",

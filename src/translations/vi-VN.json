@@ -264,7 +264,9 @@
       "database": {
         "title": "Cơ sở dữ liệu",
         "empty": "Chưa có món nào để chọn",
-        "add_item": "Thêm món"
+        "add_item": "Thêm món",
+        "added_toast": "Đã thêm {{count}} món vào tủ đồ",
+        "added_partial_toast": "Đã thêm {{added}}, {{failed}} không thể thêm"
       },
       "new_badge": "Mới",
       "less_used_badge": "ít dùng",
@@ -345,6 +347,7 @@
       "badge_common": "món chung",
       "action_cannot_undo": "Hành động này không thể hoàn tác.",
       "pick_image_failed": "Không thể chọn ảnh",
+      "add_items_failed_title": "Không thể thêm món đồ",
       "load_wardrobe_failed_title": "Không thể tải tủ đồ",
       "try_again_moment": "Vui lòng thử lại sau giây lát.",
       "a11y_add_item": "Thêm món",
