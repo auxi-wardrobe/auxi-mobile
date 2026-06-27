@@ -76,3 +76,8 @@ export const TARGET_AHEAD = OUTFITS_PER_SET;
 export const REFINE_AFTER_OUTFITS = 6;
 
 export const MOOD_BANNER_DURATION_MS = 3000;
+
+// "Relaxed applied!" confirmation shown after a refine request resolves, so the
+// user understands why the deck just changed. Auto-dismisses after this window
+// or as soon as they start interacting with the new suggestions.
+export const REFINE_TOAST_DURATION_MS = 5000;

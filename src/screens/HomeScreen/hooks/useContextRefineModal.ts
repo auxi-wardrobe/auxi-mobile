@@ -9,7 +9,9 @@ import {
 import { CONTEXT_CHIP_LABEL_KEYS, pickContextChips } from '../context-chips';
 
 type UseContextRefineModalParams = {
-  onSubmitFeedback: (payload: string) => void;
+  // `isChip` is true when the payload is a fixed chip label (safe for
+  // analytics); false when it's custom free-text (must not be shipped).
+  onSubmitFeedback: (payload: string, isChip: boolean) => void;
   // Invoked when the user defers the progressive-refinement gate ("Skip for
   // now"). The parent resumes generation + records the skip; the hook only
   // closes the sheet.
@@ -133,7 +135,7 @@ export const useContextRefineModal = ({
     });
 
     close();
-    onSubmitFeedback(payload);
+    onSubmitFeedback(payload, !!chipLabel);
   }, [
     selectedChipId,
     activeChipOptions,

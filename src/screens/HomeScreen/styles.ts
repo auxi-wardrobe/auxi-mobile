@@ -349,6 +349,23 @@ export const styles = StyleSheet.create({
   primaryActionLabel: {
     color: theme.colors.uacTextBase, // secondary button label #1D1F23
   },
+  // Saved-state CTA: replaces the disabled "Saved to favourite" button with a
+  // tappable row that deep-links into Favourites (where "See on Me" lives).
+  // Min-height matches the PillButton so the footer doesn't jump on save.
+  savedFavouritesCta: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.s,
+    paddingHorizontal: theme.spacing.m,
+  },
+  savedFavouritesCtaText: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
+    textAlign: 'center',
+    flexShrink: 1,
+  },
   saveErrorText: {
     ...theme.typography.aliases.manropeCaption,
     color: theme.colors.figmaRed,
@@ -493,5 +510,36 @@ export const styles = StyleSheet.create({
     ...theme.typography.aliases.manropeCaption,
     color: theme.colors.figmaSurface,
     textAlign: 'center',
+  },
+  // Refine confirmation toast ("Relaxed applied!"). An informational toast
+  // (dark surface) — distinct from the turquoise success toast — that tells the
+  // user something new happened. The wrapper centres the fixed-width toast and
+  // shares the bottom slot with the mood banner; the two never co-exist because
+  // any interaction that surfaces the mood banner dismisses this toast first.
+  refineToastWrap: {
+    position: 'absolute',
+    zIndex: theme.zIndex.toast,
+    left: 0,
+    right: 0,
+    bottom: HOME_VIEW_TOGGLE_FOOTER_HEIGHT + theme.spacing.l,
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.m,
+  },
+  refineToast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 344,
+    maxWidth: '100%',
+    height: 48,
+    paddingLeft: theme.spacing.m, // 16
+    paddingRight: 12,
+    borderRadius: theme.borderRadius.s, // 4
+    backgroundColor: theme.colors.figmaToastInfoBg, // #070707
+    ...theme.ds.shadow.toast,
+  },
+  refineToastText: {
+    flex: 1,
+    ...theme.typography.aliases.poppinsBodySm,
+    color: theme.colors.white,
   },
 });

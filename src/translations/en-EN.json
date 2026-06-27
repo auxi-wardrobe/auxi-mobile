@@ -264,7 +264,9 @@
       "database": {
         "title": "Database",
         "empty": "No items to select yet",
-        "add_item": "Add Item"
+        "add_item": "Add Item",
+        "added_toast": "Added {{count}} item(s) to your wardrobe",
+        "added_partial_toast": "Added {{added}}, {{failed}} couldn't be added"
       },
       "new_badge": "New",
       "less_used_badge": "less use",
@@ -345,6 +347,7 @@
       "badge_common": "common",
       "action_cannot_undo": "This action cannot be undone.",
       "pick_image_failed": "Failed to pick image",
+      "add_items_failed_title": "Couldn't add items",
       "load_wardrobe_failed_title": "Unable to load wardrobe",
       "try_again_moment": "Please try again in a moment.",
       "a11y_add_item": "Add item",
@@ -377,6 +380,7 @@
       "chip_weather_cold": "Weather feels too cold",
       "chip_bolder": "Bolder choice",
       "chip_simpler": "Simpler look",
+      "refineAppliedToast": "{{feedback}} applied!",
       "a11y_open_menu": "Open menu",
       "a11y_saved_fav": "Saved to favourites",
       "a11y_fav_this": "Favourite this look",
@@ -395,6 +399,7 @@
       "skip_label": "Next",
       "back_label": "Back",
       "saved_to_favourite": "Saved to favourite",
+      "saved_open_favourites": "Outfit saved. Open Favourites to use See on Me.",
       "wear_this": "Wear this",
       "save_failed_retry": "Couldn’t save this look. Tap \"Wear this\" to retry.",
       "error_load_title": "Couldn't load your outfits",
@@ -605,7 +610,7 @@
       "empty_a11y": "No saved outfits yet",
       "common_badge": "common",
       "view_item_a11y": "View item details",
-      "self_visualization": "Self visualization",
+      "self_visualization": "See on me",
       "remove_a11y": "Remove this outfit from favourites",
       "remove_title": "Remove from your favourite",
       "remove_body": "Are you sure to remove this outfit from your favourite list",
