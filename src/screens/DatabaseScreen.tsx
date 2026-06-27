@@ -173,7 +173,29 @@ export const DatabaseScreen = () => {
 
     setSubmitting(false);
 
-    if (failedCount > 0) {
+    const addedCount = succeededIds.length;
+
+    // Show exactly ONE toast. react-native-toast-message only renders the most
+    // recent call, so firing a success and an error back-to-back would let the
+    // success clobber the failure notice — on a partial batch the user would
+    // never learn some items failed. Pick a single honest message instead.
+    if (addedCount > 0 && failedCount > 0) {
+      console.error(`Failed to clone ${failedCount} of ${ids.length} item(s)`);
+      Toast.show({
+        type: 'success',
+        text1: t('wardrobe.database.added_partial_toast', {
+          added: addedCount,
+          failed: failedCount,
+        }),
+        position: 'bottom',
+      });
+    } else if (addedCount > 0) {
+      Toast.show({
+        type: 'success',
+        text1: t('wardrobe.database.added_toast', { count: addedCount }),
+        position: 'bottom',
+      });
+    } else if (failedCount > 0) {
       console.error(`Failed to clone ${failedCount} of ${ids.length} item(s)`);
       Toast.show({
         type: 'error',
@@ -183,17 +205,9 @@ export const DatabaseScreen = () => {
       });
     }
 
-    // Navigate back as long as at least one item landed in the wardrobe, and
-    // confirm with a success toast (persists across the navigation since Toast
-    // renders at the app root).
-    if (succeededIds.length > 0) {
-      Toast.show({
-        type: 'success',
-        text1: t('wardrobe.database.added_toast', {
-          count: succeededIds.length,
-        }),
-        position: 'bottom',
-      });
+    // Navigate back as long as at least one item landed in the wardrobe. The
+    // toast renders at the app root, so it persists across the navigation.
+    if (addedCount > 0) {
       navigation.navigate('Wardrobe');
     }
   };

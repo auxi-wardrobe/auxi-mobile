@@ -265,7 +265,8 @@
         "title": "Database",
         "empty": "No items to select yet",
         "add_item": "Add Item",
-        "added_toast": "Added {{count}} item(s) to your wardrobe"
+        "added_toast": "Added {{count}} item(s) to your wardrobe",
+        "added_partial_toast": "Added {{added}}, {{failed}} couldn't be added"
       },
       "new_badge": "New",
       "less_used_badge": "less use",

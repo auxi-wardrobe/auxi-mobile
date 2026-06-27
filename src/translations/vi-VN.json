@@ -265,7 +265,8 @@
         "title": "Cơ sở dữ liệu",
         "empty": "Chưa có món nào để chọn",
         "add_item": "Thêm món",
-        "added_toast": "Đã thêm {{count}} món vào tủ đồ"
+        "added_toast": "Đã thêm {{count}} món vào tủ đồ",
+        "added_partial_toast": "Đã thêm {{added}}, {{failed}} không thể thêm"
       },
       "new_badge": "Mới",
       "less_used_badge": "ít dùng",

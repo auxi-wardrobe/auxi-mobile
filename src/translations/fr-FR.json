@@ -265,7 +265,8 @@
         "title": "Base de données",
         "empty": "Aucun article à sélectionner",
         "add_item": "Ajouter",
-        "added_toast": "{{count}} article(s) ajouté(s) à votre garde-robe"
+        "added_toast": "{{count}} article(s) ajouté(s) à votre garde-robe",
+        "added_partial_toast": "{{added}} ajouté(s), {{failed}} n'ont pas pu être ajouté(s)"
       },
       "new_badge": "Nouveau",
       "less_used_badge": "peu utilisé",
