@@ -562,8 +562,10 @@
     "myCreations": {
       "title": "Tác phẩm của tôi",
       "open_menu": "Mở menu",
+      "back": "Quay lại",
       "empty_body": "Lưu một tác phẩm từ canvas để xem ở đây.",
-      "remove_a11y": "Xóa tác phẩm"
+      "remove_a11y": "Xóa tác phẩm",
+      "add_to_schedule": "Thêm vào lịch"
     },
     "locationPermission": {
       "denied_title": "Quyền bị từ chối",
@@ -580,10 +582,36 @@
       "see_outfits": "Xem bộ đồ của tôi",
       "wardrobe": "Tủ đồ",
       "favourite": "Yêu thích của tôi",
+      "schedule": "Lịch",
       "feedback": "Phản hồi",
       "setting": "Cài đặt",
       "outfit_canvas": "Canvas phối đồ",
       "logout": "Đăng xuất"
+    },
+    "schedule": {
+      "title": "Lịch",
+      "scheduled_outfit": "Bộ đồ đã lên lịch",
+      "empty_title": "Chưa có kế hoạch",
+      "empty_body": "Chạm [+] để thêm bộ đồ",
+      "a11y_open_menu": "Mở menu",
+      "a11y_add": "Thêm bộ đồ",
+      "added_toast": "Đã thêm vào lịch của bạn",
+      "add_sheet": {
+        "title": "Thêm bộ đồ",
+        "subtitle": "Chọn nơi để thêm từ đó.",
+        "favourite_title": "Yêu thích của tôi",
+        "favourite_desc": "Bộ đồ đã lưu",
+        "creations_title": "Tác phẩm của tôi",
+        "creations_desc": "Thiết kế & phối lại trên canvas"
+      },
+      "picker": {
+        "title": "Thêm vào lịch",
+        "cancel": "Hủy",
+        "confirm": "Lên lịch",
+        "prev_month": "Tháng trước",
+        "next_month": "Tháng sau",
+        "dismiss": "Đóng"
+      }
     },
     "outfitActions": {
       "a11y_remix": "Phối lại bộ đồ này",
@@ -614,6 +642,7 @@
       "common_badge": "phổ biến",
       "view_item_a11y": "Xem chi tiết món đồ",
       "self_visualization": "Tự hình dung",
+      "add_to_schedule": "Thêm vào lịch",
       "remove_a11y": "Xóa trang phục này khỏi mục yêu thích",
       "remove_title": "Xóa khỏi mục yêu thích",
       "remove_body": "Bạn có chắc muốn xóa trang phục này khỏi danh sách yêu thích không",

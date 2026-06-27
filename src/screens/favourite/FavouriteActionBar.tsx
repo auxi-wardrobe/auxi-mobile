@@ -7,10 +7,13 @@ import { theme } from '../../theme/theme';
 import { MButton } from '../../components/design-system/lib';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
 import IconSparkle from '../../assets/images/icon_sparkle.svg';
+import IconCalendarAdd from '../../assets/images/icon_calendar_add.svg';
 
 type Props = {
   /** Remove the currently-viewed outfit (opens the confirm dialog). */
   onRemove: () => void;
+  /** Open the "Add to Schedule" sheet for the currently-viewed outfit. */
+  onSchedule: () => void;
   /** Open the "See this on me" flow for the currently-viewed outfit. */
   onSelfVisualization: () => void;
   testID?: string;
@@ -26,6 +29,7 @@ type Props = {
 // "Self visualization"; the row is laid out left→right to leave that gap.
 export const FavouriteActionBar: React.FC<Props> = ({
   onRemove,
+  onSchedule,
   onSelfVisualization,
   testID,
 }) => {
@@ -70,6 +74,27 @@ export const FavouriteActionBar: React.FC<Props> = ({
           />
         </TouchableOpacity>
 
+        {/* Add-to-schedule (calendar-with-plus) — the slot this bar reserves
+            between ⊖ remove and Self visualization. Tapping it opens the date
+            sheet to plan the snapped outfit onto a day. Raw TouchableOpacity for
+            the same reason as remove: a borderless 24px glyph MIconButton can't
+            express (it hardcodes a 1.5px outline + 20px icon). */}
+        <TouchableOpacity
+          testID="favourite-schedule-active"
+          accessibilityRole="button"
+          accessibilityLabel={t('favourite.add_to_schedule')}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.scheduleButton}
+          onPress={onSchedule}
+        >
+          <IconCalendarAdd
+            width={24}
+            height={24}
+            color={theme.colors.uacTextBase}
+          />
+        </TouchableOpacity>
+
         {/* Self-visualization = the shared DS secondary/outline button (MButton
             variant="secondary": transparent fill, 1.5px ink border). The AI
             sparkle keeps its purple accent via rightIcon + iconColor. */}
@@ -108,6 +133,14 @@ const styles = StyleSheet.create({
     gap: theme.spacing.l,
   },
   removeButton: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Mirrors removeButton's 56×56 tap target so the calendar-add glyph aligns
+  // with the other action-row controls.
+  scheduleButton: {
     width: 56,
     height: 56,
     alignItems: 'center',

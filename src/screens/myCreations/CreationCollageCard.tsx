@@ -11,12 +11,19 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { COLLAGE_ASPECT } from '../../components/features/collage-seed-layout';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
+import IconCalendarAdd from '../../assets/images/icon_calendar_add.svg';
 import { Creation } from '../../services/creationsService';
 import { formatDateLabel } from '../favourite/group-by-date';
 
 type Props = {
   creation: Creation;
   onRemove: (id: string) => void;
+  /**
+   * Add this creation to the Schedule (calendar) page. When provided, a
+   * calendar-add button renders next to Remove. Omit it (e.g. when the card is
+   * itself rendered ON the Schedule page) to hide the button.
+   */
+  onSchedule?: (creation: Creation) => void;
 };
 
 // A saved creation rendered as a static collage card. Visually mirrors the
@@ -29,7 +36,11 @@ type Props = {
 // transforms verbatim, only rescaling by (surfaceWidth / canvasWidth) since the
 // card is narrower than the editor. scale/rotation are reapplied as the editor
 // did (RN transforms are centre-anchored), so the card matches what was saved.
-export const CreationCollageCard: React.FC<Props> = ({ creation, onRemove }) => {
+export const CreationCollageCard: React.FC<Props> = ({
+  creation,
+  onRemove,
+  onSchedule,
+}) => {
   const { t } = useTranslation();
   const [surfaceWidth, setSurfaceWidth] = useState(0);
   const testIDPrefix = `creation-card-${creation.id}`;
@@ -124,6 +135,26 @@ export const CreationCollageCard: React.FC<Props> = ({ creation, onRemove }) => 
             color={theme.colors.figmaItemDetailDanger}
           />
         </TouchableOpacity>
+
+        {/* Add this creation to the Schedule (calendar-with-plus). Rendered only
+            when the screen supplies an `onSchedule` handler. */}
+        {onSchedule ? (
+          <TouchableOpacity
+            testID={`creation-schedule-${creation.id}`}
+            accessibilityRole="button"
+            accessibilityLabel={t('myCreations.add_to_schedule')}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.scheduleButton}
+            onPress={() => onSchedule(creation)}
+          >
+            <IconCalendarAdd
+              width={24}
+              height={24}
+              color={theme.colors.uacTextBase}
+            />
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );
@@ -182,8 +213,15 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: theme.spacing.l,
   },
   removeButton: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scheduleButton: {
     width: 56,
     height: 56,
     alignItems: 'center',

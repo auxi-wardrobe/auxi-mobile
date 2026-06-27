@@ -846,7 +846,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     // "My Creations" lists everything the user has saved from the canvas
     // (new canvases, remixed outfits, …).
     track('canvas_my_creations_opened');
-    navigation.navigate('MyCreations');
+    // Back chevron (→ Outfit Canvas) instead of the hamburger — the user is in a
+    // sub-flow, not at a top-level destination.
+    navigation.navigate('MyCreations', { showBackButton: true });
   }, [navigation]);
 
   // Intercept leaving the canvas (back chevron / hardware back) while there are

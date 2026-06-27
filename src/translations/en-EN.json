@@ -563,8 +563,10 @@
     "myCreations": {
       "title": "My Creations",
       "open_menu": "Open menu",
+      "back": "Back",
       "empty_body": "Save a creation from the canvas to see it here.",
-      "remove_a11y": "Remove creation"
+      "remove_a11y": "Remove creation",
+      "add_to_schedule": "Add to schedule"
     },
     "locationPermission": {
       "denied_title": "Permission Denied",
@@ -581,10 +583,36 @@
       "see_outfits": "See my outfits",
       "wardrobe": "Wardrobe",
       "favourite": "My Favourite",
+      "schedule": "Schedule",
       "feedback": "Feedback",
       "setting": "Setting",
       "outfit_canvas": "Outfit Canvas",
       "logout": "Log out"
+    },
+    "schedule": {
+      "title": "Schedule",
+      "scheduled_outfit": "Scheduled outfit",
+      "empty_title": "Nothing planned",
+      "empty_body": "Tap [+] to add an outfit",
+      "a11y_open_menu": "Open menu",
+      "a11y_add": "Add an outfit",
+      "added_toast": "Added to your schedule",
+      "add_sheet": {
+        "title": "Add an outfit",
+        "subtitle": "Choose where to add it from.",
+        "favourite_title": "My Favourite",
+        "favourite_desc": "Saved outfits",
+        "creations_title": "My Creations",
+        "creations_desc": "Canvas designs & remixes"
+      },
+      "picker": {
+        "title": "Add to Schedule",
+        "cancel": "Cancel",
+        "confirm": "Schedule",
+        "prev_month": "Previous month",
+        "next_month": "Next month",
+        "dismiss": "Dismiss"
+      }
     },
     "outfitActions": {
       "a11y_remix": "Remix this outfit",
@@ -615,6 +643,7 @@
       "common_badge": "common",
       "view_item_a11y": "View item details",
       "self_visualization": "See on me",
+      "add_to_schedule": "Add to schedule",
       "remove_a11y": "Remove this outfit from favourites",
       "remove_title": "Remove from your favourite",
       "remove_body": "Are you sure to remove this outfit from your favourite list",

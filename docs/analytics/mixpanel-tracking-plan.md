@@ -253,6 +253,24 @@ The pin feature (AU-307) originally shipped with NO analytics (only `console.inf
 
 > PII: none. `source` values are a closed enum of UI-surface keys; `confirm_skipped` / `checked` are unquoted booleans. No item id, no garment name, no free text. Item identifiers are intentionally omitted (the funnel question is "does the pin feature get used", not "which garment").
 
+### 5.18 Schedule (outfit planning, mobile-local)
+
+The Schedule screen (sidebar → Schedule) lets the user plan saved outfits / canvas creations onto calendar days. The store is **local, per-user AsyncStorage** (`@auxi/schedule/<userId>`) — no backend route. Events capture the planning funnel: open the date picker → confirm a day; plus the in-Schedule add-source picker and day selection.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| **`favourite_schedule_opened`** | "Add to schedule" (calendar-add) tapped on a saved outfit — opens the date picker. | `FavouriteScreen.tsx:162` (`handleSchedule`) | `favorite_id` (internal id) |
+| **`favourite_added_to_schedule`** | Date picker confirmed for a favourite — outfit scheduled to the chosen day. | `FavouriteScreen.tsx:172` (`handleConfirmSchedule`) | `favorite_id`, `date` (`YYYY-MM-DD`) |
+| **`creation_schedule_opened`** | "Add to schedule" tapped on a saved creation — opens the date picker. | `MyCreationsScreen.tsx:63` (`handleSchedule`) | `creation_id` (internal id) |
+| **`creation_added_to_schedule`** | Date picker confirmed for a creation — creation scheduled to the chosen day. | `MyCreationsScreen.tsx:73` (`handleConfirmSchedule`) | `creation_id`, `date` (`YYYY-MM-DD`) |
+| **`schedule_add_tapped`** | Schedule header "+" tapped — opens the "Add an outfit" source picker. | `ScheduleScreen.tsx:144` (`handleAddOutfit`) | `date` (`YYYY-MM-DD`, the selected day) |
+| **`schedule_add_source_selected`** | A source chosen in the "Add an outfit" picker — routes to that page. | `ScheduleScreen.tsx:150` (`handlePickSource`) | `source` (`favourite` / `creations`) |
+| **`schedule_day_selected`** | A day tapped on the week strip. | `ScheduleScreen.tsx:138` (`handleSelectDay`) | `date` (`YYYY-MM-DD`), `is_today` (bool) |
+
+> Funnel intent: `*_schedule_opened` → `*_added_to_schedule` measures add-to-schedule completion per source (favourite vs creation); `schedule_add_tapped` → `schedule_add_source_selected` measures the in-Schedule "+" entry. `schedule_day_selected` is engagement with the rail.
+>
+> PII: none. `favorite_id` / `creation_id` are internal record ids (no garment names, no free text); `date` is a calendar day (`YYYY-MM-DD`, no time); `source` is a closed enum; `is_today` is an unquoted boolean. The store itself is on-device only and never sent to a backend.
+
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
 These hooks were spec'd but cannot fire today — the UI surface, control, or API doesn't exist yet. **No code shipped for these** (we don't fake events). Re-evaluate when the underlying surface lands.
