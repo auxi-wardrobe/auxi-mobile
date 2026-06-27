@@ -380,6 +380,7 @@
       "chip_weather_cold": "Weather feels too cold",
       "chip_bolder": "Bolder choice",
       "chip_simpler": "Simpler look",
+      "refineAppliedToast": "{{feedback}} applied!",
       "a11y_open_menu": "Open menu",
       "a11y_saved_fav": "Saved to favourites",
       "a11y_fav_this": "Favourite this look",

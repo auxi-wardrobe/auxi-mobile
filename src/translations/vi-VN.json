@@ -380,6 +380,7 @@
       "chip_weather_cold": "Thời tiết thấy hơi lạnh",
       "chip_bolder": "Táo bạo hơn",
       "chip_simpler": "Đơn giản hơn",
+      "refineAppliedToast": "Đã áp dụng {{feedback}}!",
       "a11y_open_menu": "Mở menu",
       "a11y_saved_fav": "Đã lưu vào yêu thích",
       "a11y_fav_this": "Lưu bộ đồ này",
