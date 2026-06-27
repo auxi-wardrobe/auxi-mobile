@@ -190,8 +190,10 @@ const styles = StyleSheet.create({
 interface PresetProps {
     title?: string;
     titleTextStyle?: TextStyle;
-    /** Bar surface. Defaults per preset (blur for the menu-only/left ones, else solid). */
+    /** Bar surface. Defaults per preset (blur for menu-only, else solid). */
     background?: HeaderBackground;
+    /** Pad the top by the safe-area inset — for headers flush to the screen top. */
+    safeAreaTop?: boolean;
     /** Press handler for the left (menu or back) button. */
     onBack?: () => void;
     leftTestID?: string;
@@ -221,9 +223,9 @@ const MenuTitleAction: React.FC<PresetProps & { right?: React.ReactNode }> = ({
 }) => <HeaderBase {...props} rightComponent={right} />;
 
 /** Menu only on a blurred bar, no title. e.g. Favourite. */
-const MenuOnly: React.FC<Omit<PresetProps, 'title' | 'titleTextStyle'> & {
-    safeAreaTop?: boolean;
-}> = ({ background = 'blur', safeAreaTop = true, ...props }) => (
+const MenuOnly: React.FC<
+    Omit<PresetProps, 'title' | 'titleTextStyle'>
+> = ({ background = 'blur', safeAreaTop = true, ...props }) => (
     <HeaderBase
         {...props}
         title=""
@@ -232,29 +234,14 @@ const MenuOnly: React.FC<Omit<PresetProps, 'title' | 'titleTextStyle'> & {
     />
 );
 
-/** Menu on the left, left-aligned title, blurred bar. e.g. My Creations. */
-const MenuTitleLeft: React.FC<PresetProps & { safeAreaTop?: boolean }> = ({
-    background = 'blur',
-    safeAreaTop = true,
-    ...props
-}) => (
-    <HeaderBase
-        {...props}
-        titleAlign="left"
-        background={background}
-        safeAreaTop={safeAreaTop}
-    />
-);
-
 /**
  * Canonical app header. Use a preset (`Header.MenuTitle`, `Header.BackTitle`,
- * `Header.MenuTitleAction`, `Header.MenuOnly`, `Header.MenuTitleLeft`) for the
- * common shapes; call `<Header>` directly only for a one-off layout.
+ * `Header.MenuTitleAction`, `Header.MenuOnly`) for the common shapes; call
+ * `<Header>` directly only for a one-off layout.
  */
 export const Header = Object.assign(HeaderBase, {
     MenuTitle,
     BackTitle,
     MenuTitleAction,
     MenuOnly,
-    MenuTitleLeft,
 });
