@@ -64,7 +64,6 @@ export const LegalDocumentScreen: React.FC = () => {
       <Header.BackTitle
         title={document.title}
         leftIconStyle={styles.backButton}
-        leftIconColor={theme.ds.color.ink}
         onBack={() => navigation.goBack()}
       />
       <ScrollView

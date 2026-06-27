@@ -428,7 +428,7 @@ export const BodyScreen = () => {
             <TopIconButton
               testID="body-detail-back"
               onPress={() => navigation.goBack()}
-              icon={<Icons.ChevronLeft width={20} height={20} />}
+              icon={<Icons.ChevronLeft width={24} height={24} />}
             />
           </View>
         </View>

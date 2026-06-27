@@ -203,15 +203,14 @@ interface PresetProps {
 const MenuTitle: React.FC<PresetProps> = props => <HeaderBase {...props} />;
 
 /** Back chevron on the left, centred title. e.g. My Body, See-this-on-me, Legal. */
-const BackTitle: React.FC<
-    PresetProps & { leftIconStyle?: ViewStyle; leftIconColor?: string }
-> = ({ leftIconStyle, leftIconColor, ...props }) => (
+const BackTitle: React.FC<PresetProps & { leftIconStyle?: ViewStyle }> = ({
+    leftIconStyle,
+    ...props
+}) => (
     <HeaderBase
         {...props}
         leftIconStyle={leftIconStyle}
-        leftIcon={
-            <Icons.ChevronLeft width={24} height={24} color={leftIconColor} />
-        }
+        leftIcon={<Icons.ChevronLeft width={24} height={24} />}
     />
 );
 
