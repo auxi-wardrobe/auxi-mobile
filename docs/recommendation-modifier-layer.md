@@ -334,8 +334,10 @@ negative decaying modifier over user-action / wear telemetry.
 > (`WardrobeItem.usage_frequency: 'NORMAL' | 'LESS_USED'`, `style_tags:
 > 'less-used'`). Per-item recommend counts and `last_recommended_at` timestamps
 > do **not** yet exist and are the prerequisite for Rotation and Freshness
-> (Phase 2). Recently-*shown* outfit hashes are available via the existing
-> `/recommendation/history` endpoint, which is sufficient for Phase 1 Cooldown.
+> (Phase 2). Recently-*shown* outfit hashes are already held in backend
+> **session state** (the engine's per-session recently-shown set), which is
+> sufficient for Phase 1 Cooldown without a new telemetry store. (This is
+> session-internal state, not a public REST endpoint.)
 
 ---
 
@@ -428,16 +430,23 @@ field becomes an optional LLM-polished fallback, not the source of truth.
 ### 5.3 Mobile contract (this repo)
 
 `auxi-mobile`'s only Phase 1 responsibility is rendering. When the backend
-contract is final, the outfit response (`Outfit` in
-`src/services/recommendationService.ts`, `V05Outfit` in
-`src/services/v05Api.ts`) gains:
+contract is final, the outfit response gains a `reason_tokens` field:
 
 ```ts
-reason_tokens: ReasonToken[];   // alongside existing styling_note / reasoning_human / fallback_flags
+reason_tokens: ReasonToken[];
 ```
 
-and the Home recommendation surface renders those tokens as "Because:" chips.
-No scoring, boosting, or cooldown logic ever runs on the client.
+added to whichever outfit struct the backend serializes. Note the two existing
+structs differ in what they already carry, so the new field must be added to
+both contracts that reach the client:
+
+- `V05Outfit` (`src/services/v05Api.ts`) currently exposes `reasoning_human`
+  (the free-text styling note) and `outfit_hash`.
+- the legacy `Outfit` (`src/services/recommendationService.ts`) exposes
+  `styling_note`, `outfit_hash`, and `fallback_flags`.
+
+The Home recommendation surface renders the tokens as "Because:" chips. No
+scoring, boosting, or cooldown logic ever runs on the client.
 
 > **Sequencing decision:** the mobile-side `ReasonToken` type + `reason_tokens`
 > stub is **postponed until the backend response contract is finalized**, to
@@ -494,7 +503,7 @@ accessory learning are guesses without this.
 
 - **Score Modifier Layer** (the framework + clamp + config surface)
 - **Recent User Action Boost** (Upload / Edit / Favorite)
-- **Outfit Cooldown** (uses existing `/recommendation/history`)
+- **Outfit Cooldown** (uses the backend's per-session recently-shown hashes)
 - **Reason Tokens** (+ mobile chip rendering)
 
 Rationale: largest user-visible improvement (post-upload "aha" + "stop showing
