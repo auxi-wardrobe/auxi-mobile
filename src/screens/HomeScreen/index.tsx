@@ -39,6 +39,7 @@ import IconMenu from '../../assets/images/icon_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
 import IconFeedback from '../../assets/images/feedback.svg';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
+import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -1419,27 +1420,35 @@ export const HomeScreen = () => {
 
       {optionSets.length > 0 ? (
         <View style={styles.wearThisFooter}>
-          <PillButton
-            testID="home-wear-this"
-            title={
-              activeSaveState === 'saved'
-                ? t('home.saved_to_favourite')
-                : t('home.wear_this')
-            }
-            variant="outline"
-            onPress={() =>
-              activeOutfit && handleWearThisForOutfit(activeOutfit)
-            }
-            disabled={
-              !activeOutfit ||
-              activeSaveState === 'saved' ||
-              pinState.outfit === 'generating'
-            }
-            loading={activeSaveState === 'saving'}
-            trailing={<IconHomeHeartOutline width={24} height={24} />}
-            style={styles.primaryActionFull}
-            textStyle={styles.primaryActionLabel}
-          />
+          {activeSaveState === 'saved' ? (
+            <TouchableOpacity
+              testID="home-wear-this-saved-favourites"
+              accessibilityRole="button"
+              accessibilityLabel={t('home.saved_open_favourites')}
+              activeOpacity={0.7}
+              style={styles.savedFavouritesCta}
+              onPress={handleOpenFavourites}
+            >
+              <Text style={styles.savedFavouritesCtaText} numberOfLines={2}>
+                {t('home.saved_open_favourites')}
+              </Text>
+              <IconChevronRight width={20} height={20} />
+            </TouchableOpacity>
+          ) : (
+            <PillButton
+              testID="home-wear-this"
+              title={t('home.wear_this')}
+              variant="outline"
+              onPress={() =>
+                activeOutfit && handleWearThisForOutfit(activeOutfit)
+              }
+              disabled={!activeOutfit || pinState.outfit === 'generating'}
+              loading={activeSaveState === 'saving'}
+              trailing={<IconHomeHeartOutline width={24} height={24} />}
+              style={styles.primaryActionFull}
+              textStyle={styles.primaryActionLabel}
+            />
+          )}
           {activeSaveState === 'error' ? (
             <Text style={styles.saveErrorText}>
               {t('home.save_failed_retry')}
