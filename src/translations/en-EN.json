@@ -539,6 +539,7 @@
       "no_items_found": "No items found",
       "add_count_one": "Add {{count}} item",
       "add_count_other": "Add {{count}} items",
+      "adding": "Adding…",
       "a11y_remove_tag": "Remove tag {{label}}",
       "a11y_redo": "Redo",
       "a11y_undo": "Undo",
