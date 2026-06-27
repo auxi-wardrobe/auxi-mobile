@@ -361,7 +361,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.m,
   },
   savedFavouritesCtaText: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
     flexShrink: 1,
