@@ -264,7 +264,9 @@
       "database": {
         "title": "Cơ sở dữ liệu",
         "empty": "Chưa có món nào để chọn",
-        "add_item": "Thêm món"
+        "add_item": "Thêm món",
+        "added_toast": "Đã thêm {{count}} món vào tủ đồ",
+        "added_partial_toast": "Đã thêm {{added}}, {{failed}} không thể thêm"
       },
       "new_badge": "Mới",
       "less_used_badge": "ít dùng",
@@ -345,6 +347,7 @@
       "badge_common": "món chung",
       "action_cannot_undo": "Hành động này không thể hoàn tác.",
       "pick_image_failed": "Không thể chọn ảnh",
+      "add_items_failed_title": "Không thể thêm món đồ",
       "load_wardrobe_failed_title": "Không thể tải tủ đồ",
       "try_again_moment": "Vui lòng thử lại sau giây lát.",
       "a11y_add_item": "Thêm món",
@@ -377,6 +380,7 @@
       "chip_weather_cold": "Thời tiết thấy hơi lạnh",
       "chip_bolder": "Táo bạo hơn",
       "chip_simpler": "Đơn giản hơn",
+      "refineAppliedToast": "Đã áp dụng {{feedback}}!",
       "a11y_open_menu": "Mở menu",
       "a11y_saved_fav": "Đã lưu vào yêu thích",
       "a11y_fav_this": "Lưu bộ đồ này",
@@ -395,6 +399,7 @@
       "skip_label": "Tiếp",
       "back_label": "Quay lại",
       "saved_to_favourite": "Đã lưu yêu thích",
+      "saved_open_favourites": "Đã lưu bộ đồ. Mở Yêu thích để dùng See on Me.",
       "wear_this": "Mặc bộ này",
       "save_failed_retry": "Không thể lưu bộ đồ này. Nhấn \"Mặc bộ này\" để thử lại.",
       "error_load_title": "Không thể tải bộ đồ của bạn",

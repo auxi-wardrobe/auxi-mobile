@@ -547,12 +547,11 @@ export const WardrobeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Header
+      <Header.MenuTitleAction
         title={t('wardrobe.list.title')}
-        titleTextStyle={styles.headerTitle}
-        leftIconStyle={styles.headerIconButton}
+        leftTestID="wardrobe-menu-button"
         onBack={openSidebar}
-        rightComponent={
+        right={
           <PressableScale
             onPress={() => openAddSheet('header')}
             disabled={uploading}
@@ -790,10 +789,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: theme.zIndex.toast,
     elevation: 1000,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
   },
   plusButton: {
     width: 44,

@@ -446,15 +446,4 @@ export const wardrobeService = {
       throw error;
     }
   },
-
-  cloneCommonItems: async (ids: string[]): Promise<void> => {
-    try {
-      await wardrobeApi.post(`/wardrobe/common-items/clone`, {
-        item_ids: ids,
-      });
-    } catch (error) {
-      console.error('Error cloning common items', error);
-      throw error;
-    }
-  },
 };

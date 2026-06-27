@@ -146,3 +146,60 @@ export const getMoodChipsForOccasion = (occasion?: string): MoodChipDef[] => {
     .map(id => CHIP_BY_ID.get(id))
     .filter((chip): chip is MoodChipDef => chip !== undefined);
 };
+
+/** Soft-negative chip id — a dislike signal, never a positive descriptor. */
+const NEGATIVE_MOOD_ID: MoodChipId = 'not_quite_me';
+
+/**
+ * English adjectives for each positive chip. These feed `POST /v05/feedback`,
+ * whose backend LLM-2 parses free TEXT into axis-level style signals — so the
+ * wording must be stable English regardless of the UI locale (the i18n
+ * `labelKey`s are for display only and must NOT be used here).
+ */
+const MOOD_ADJECTIVE: Record<Exclude<MoodChipId, 'not_quite_me'>, string> = {
+  feels_like_me: 'like myself',
+  confident: 'confident',
+  relaxed: 'relaxed',
+  polished: 'polished',
+  comfortable: 'comfortable',
+  sharp: 'sharp',
+  effortless: 'effortless',
+  elevated: 'elevated',
+  professional: 'professional',
+  prepared: 'prepared and put-together',
+  easy: 'easy and casual',
+  attractive: 'attractive',
+  expressive: 'expressive',
+  functional: 'functional',
+  lightweight: 'light and breezy',
+};
+
+const joinWithAnd = (parts: string[]): string =>
+  parts.length <= 1
+    ? parts.join('')
+    : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+
+/**
+ * Turn the user's selected mood chips into a natural-language sentence for
+ * `POST /v05/feedback`, so mood feedback feeds the engine's decay-weighted L4
+ * ranking signals (and thus future builds). Returns `null` when there is
+ * nothing meaningful to say. Positives become a "made me feel …" like; the
+ * soft-negative `not_quite_me` becomes an explicit dislike.
+ */
+export const moodFeedbackText = (moodIds: string[]): string | null => {
+  const positives = moodIds
+    .filter((id): id is Exclude<MoodChipId, 'not_quite_me'> =>
+      id !== NEGATIVE_MOOD_ID && id in MOOD_ADJECTIVE,
+    )
+    .map(id => MOOD_ADJECTIVE[id]);
+  const negative = moodIds.includes(NEGATIVE_MOOD_ID);
+
+  const parts: string[] = [];
+  if (positives.length > 0) {
+    parts.push(`This outfit made me feel ${joinWithAnd(positives)}.`);
+  }
+  if (negative) {
+    parts.push("It didn't quite feel like me, though.");
+  }
+  return parts.length > 0 ? parts.join(' ') : null;
+};

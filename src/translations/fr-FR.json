@@ -264,7 +264,9 @@
       "database": {
         "title": "Base de données",
         "empty": "Aucun article à sélectionner",
-        "add_item": "Ajouter"
+        "add_item": "Ajouter",
+        "added_toast": "{{count}} article(s) ajouté(s) à votre garde-robe",
+        "added_partial_toast": "{{added}} ajouté(s), {{failed}} n'ont pas pu être ajouté(s)"
       },
       "new_badge": "Nouveau",
       "less_used_badge": "peu utilisé",
@@ -345,6 +347,7 @@
       "badge_common": "commun",
       "action_cannot_undo": "Cette action est irréversible.",
       "pick_image_failed": "Échec de la sélection de l'image",
+      "add_items_failed_title": "Impossible d'ajouter les articles",
       "load_wardrobe_failed_title": "Impossible de charger la garde-robe",
       "try_again_moment": "Veuillez réessayer dans un instant.",
       "a11y_add_item": "Ajouter un article",
@@ -377,6 +380,7 @@
       "chip_weather_cold": "Il fait trop froid",
       "chip_bolder": "Choix plus audacieux",
       "chip_simpler": "Look plus simple",
+      "refineAppliedToast": "{{feedback}} appliqué !",
       "a11y_open_menu": "Ouvrir le menu",
       "a11y_saved_fav": "Enregistré dans les favoris",
       "a11y_fav_this": "Ajouter cette tenue aux favoris",
@@ -395,6 +399,7 @@
       "skip_label": "Suivant",
       "back_label": "Retour",
       "saved_to_favourite": "Enregistré dans les favoris",
+      "saved_open_favourites": "Tenue enregistrée. Ouvrez les favoris pour utiliser See on Me.",
       "wear_this": "Porter ceci",
       "save_failed_retry": "Impossible d'enregistrer cette tenue. Appuyez sur « Porter ceci » pour réessayer.",
       "error_load_title": "Impossible de charger vos tenues",

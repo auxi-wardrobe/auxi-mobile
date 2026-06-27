@@ -15,8 +15,8 @@ import Toast from 'react-native-toast-message';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Header } from '../components/layout/Header';
-import { useSidebar } from '../context/SidebarContext';
 import { theme } from '../theme/theme';
+import { Icons } from '../assets/icons';
 
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -71,12 +71,20 @@ type ScreenNavigation = NativeStackNavigationProp<
 export const DatabaseScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const { t } = useTranslation();
-  const { open: openSidebar } = useSidebar();
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Wardrobe');
+    }
+  };
 
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
   const [items, setItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const isFocused = useIsFocused();
 
   const fetchItems = useCallback(async () => {
@@ -125,15 +133,32 @@ export const DatabaseScreen = () => {
   };
 
   const handleAddItems = async () => {
+    if (submitting || selectedItems.length === 0) {
+      return;
+    }
+
     // Note: `wardrobe_search_initiated` is NOT fired here — DatabaseScreen has
     // no search-submit step today (grid-browse-and-pick UI). Event moved to
     // tracking-plan §6 as gap; wire when a real search box ships.
-    await wardrobeService.cloneCommonItems(selectedItems);
-    // Best-effort: emit a wardrobe_item_added per successfully cloned id. The
-    // service returns void so we use the user-selected ids (one event per id);
-    // category is omitted because the local list shape from getCommonItems
-    // doesn't carry a guaranteed category field on every result.
-    selectedItems.forEach(id => {
+    setSubmitting(true);
+
+    // Clone each selected item via the per-item endpoint
+    // (`POST /wardrobe/common-items/<id>/clone`) — that is the route the backend
+    // actually exposes. We fan out with allSettled so one bad id doesn't sink
+    // the whole batch, then report success/failure honestly.
+    const ids = selectedItems;
+    const results = await Promise.allSettled(
+      ids.map(id => wardrobeService.cloneCommonItem(id)),
+    );
+
+    const succeededIds = ids.filter(
+      (_, index) => results[index].status === 'fulfilled',
+    );
+    const failedCount = ids.length - succeededIds.length;
+
+    // Emit a wardrobe_item_added per successfully cloned id. Category is omitted
+    // when the local list shape from getCommonItems doesn't carry one.
+    succeededIds.forEach(id => {
       const matched = items.find(it => it.id === id);
       const props: Record<string, unknown> = {
         item_id: id,
@@ -145,7 +170,46 @@ export const DatabaseScreen = () => {
       }
       track('wardrobe_item_added', props);
     });
-    navigation.navigate('Wardrobe');
+
+    setSubmitting(false);
+
+    const addedCount = succeededIds.length;
+
+    // Show exactly ONE toast. react-native-toast-message only renders the most
+    // recent call, so firing a success and an error back-to-back would let the
+    // success clobber the failure notice — on a partial batch the user would
+    // never learn some items failed. Pick a single honest message instead.
+    if (addedCount > 0 && failedCount > 0) {
+      console.error(`Failed to clone ${failedCount} of ${ids.length} item(s)`);
+      Toast.show({
+        type: 'success',
+        text1: t('wardrobe.database.added_partial_toast', {
+          added: addedCount,
+          failed: failedCount,
+        }),
+        position: 'bottom',
+      });
+    } else if (addedCount > 0) {
+      Toast.show({
+        type: 'success',
+        text1: t('wardrobe.database.added_toast', { count: addedCount }),
+        position: 'bottom',
+      });
+    } else if (failedCount > 0) {
+      console.error(`Failed to clone ${failedCount} of ${ids.length} item(s)`);
+      Toast.show({
+        type: 'error',
+        text1: t('common.add_items_failed_title'),
+        text2: t('common.try_again_moment'),
+        position: 'bottom',
+      });
+    }
+
+    // Navigate back as long as at least one item landed in the wardrobe. The
+    // toast renders at the app root, so it persists across the navigation.
+    if (addedCount > 0) {
+      navigation.navigate('Wardrobe');
+    }
   };
 
   const renderGridTile = (item: WardrobeItem) => {
@@ -188,15 +252,10 @@ export const DatabaseScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header
+      <Header.MenuTitle
         title={t('wardrobe.database.title')}
-        titleTextStyle={styles.headerTitle}
+        leftTestID="database-menu-button"
         onBack={openSidebar}
-        rightComponent={
-          <TouchableOpacity>
-            <Text> </Text>
-          </TouchableOpacity>
-        }
       />
 
       <View style={{ paddingHorizontal: 16, flex: 1 }}>
@@ -222,9 +281,11 @@ export const DatabaseScreen = () => {
           )}
         </ScrollView>
         <PillButton
+          testID="database-add-items-submit"
           title={t('wardrobe.database.add_item')}
           onPress={handleAddItems}
-          disabled={selectedItems.length === 0}
+          disabled={selectedItems.length === 0 || submitting}
+          loading={submitting}
         />
       </View>
     </SafeAreaView>
@@ -235,10 +296,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
-  },
-  headerTitle: {
-    ...theme.typography.aliases.archivoBody,
-    fontWeight: '400',
   },
   plusButton: {
     width: 45,
