@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   ScrollView,
@@ -18,7 +18,7 @@ import { useSchedule } from '../context/ScheduleContext';
 import { theme } from '../theme/theme';
 import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
-import { toDayKey } from '../utils/dateKey';
+import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { AppStackParamList } from '../types/navigation';
 import { Favourite } from '../services/favouriteService';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
@@ -36,7 +36,7 @@ const STRIP_PADDING = 16;
 // The strip is a horizontal, swipeable rail. It spans a couple of weeks of
 // history (reachable by swiping right→left... i.e. dragging left) plus several
 // weeks ahead, anchored so today sits in the middle and the rail opens centred
-// on it (see handleStripLayout). Matches Figma 4252:26702, which opens on the
+// on it (see scrollToSelected). Matches Figma 4252:26702, which opens on the
 // current week.
 const STRIP_DAYS_BEFORE = 14; // ~2 weeks of past days reachable by swiping
 const STRIP_TOTAL_DAYS = 49; // ~7 weeks total (history + upcoming)
@@ -62,17 +62,46 @@ const startOfWeek = (d: Date): Date => {
   return date;
 };
 
-const buildStripDays = (today: Date): ScheduleDay[] => {
+const DAY_MS = 86400000;
+
+const buildStripDays = (today: Date, selectedKey?: string): ScheduleDay[] => {
   const todayKey = toDayKey(today);
   const sow = startOfWeek(today);
-  // Back up a couple of weeks from this week's Monday so past days are
-  // swipe-reachable to the left of today.
-  const start = new Date(
+  // Default window: back up a couple of weeks from this week's Monday so past
+  // days are swipe-reachable to the left of today.
+  let start = new Date(
     sow.getFullYear(),
     sow.getMonth(),
     sow.getDate() - STRIP_DAYS_BEFORE,
   );
-  return Array.from({ length: STRIP_TOTAL_DAYS }, (_, i) => {
+  let endExclusive = new Date(
+    start.getFullYear(),
+    start.getMonth(),
+    start.getDate() + STRIP_TOTAL_DAYS,
+  );
+  // Ensure a selected day outside the default window still gets a cell on the
+  // rail (e.g. a far-future date chosen in the picker) — otherwise the
+  // selection has no visible/highlightable cell. Expand by whole weeks so the
+  // grid stays week-aligned.
+  const sel = selectedKey ? dateFromKey(selectedKey) : null;
+  if (sel) {
+    const selWeekStart = startOfWeek(sel);
+    if (selWeekStart.getTime() < start.getTime()) {
+      start = selWeekStart;
+    }
+    const selWeekEnd = new Date(
+      selWeekStart.getFullYear(),
+      selWeekStart.getMonth(),
+      selWeekStart.getDate() + 7,
+    );
+    if (selWeekEnd.getTime() > endExclusive.getTime()) {
+      endExclusive = selWeekEnd;
+    }
+  }
+  const total = Math.round(
+    (endExclusive.getTime() - start.getTime()) / DAY_MS,
+  );
+  return Array.from({ length: total }, (_, i) => {
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     const key = toDayKey(d);
     return {
@@ -97,7 +126,6 @@ export const ScheduleScreen: React.FC = () => {
   // `today` is captured once per mount so the strip and the default selection
   // stay consistent through re-renders.
   const today = useMemo(() => new Date(), []);
-  const days = useMemo(() => buildStripDays(today), [today]);
 
   // Start on the day passed from the Favourite date-picker (if any), else today.
   const [selectedKey, setSelectedKey] = useState<string>(
@@ -114,13 +142,19 @@ export const ScheduleScreen: React.FC = () => {
     }
   }, [focusDate]);
 
+  // The strip window includes the selected day even when it falls outside the
+  // default ±-weeks range (far-future picks), so it always has a cell.
+  const days = useMemo(
+    () => buildStripDays(today, selectedKey),
+    [today, selectedKey],
+  );
+
   // Outfits planned for the selected day (from the local ScheduleContext store,
   // written by the Favourite page's "add to schedule" action).
   const selectedDayOutfits = scheduledByDay[selectedKey] ?? [];
 
-  // Centre the selected day on first layout so today is in view even when it
-  // sits a few cells into the strip.
-  const handleStripLayout = () => {
+  // Centre the selected day in the rail.
+  const scrollToSelected = useCallback(() => {
     const index = days.findIndex(d => d.key === selectedKey);
     if (index < 0) {
       return;
@@ -131,7 +165,13 @@ export const ScheduleScreen: React.FC = () => {
       index * cellStride - SCREEN_WIDTH / 2 + CELL_WIDTH / 2,
     );
     stripRef.current?.scrollTo({ x, animated: false });
-  };
+  }, [days, selectedKey]);
+
+  // Re-centre on first layout and whenever the selection changes (e.g.
+  // returning from the date-picker focused on a far-future day).
+  useEffect(() => {
+    scrollToSelected();
+  }, [scrollToSelected]);
 
   const handleSelectDay = (day: ScheduleDay) => {
     setSelectedKey(day.key);
@@ -197,7 +237,7 @@ export const ScheduleScreen: React.FC = () => {
         ref={stripRef}
         horizontal
         showsHorizontalScrollIndicator={false}
-        onLayout={handleStripLayout}
+        onLayout={scrollToSelected}
         contentContainerStyle={styles.stripContent}
         style={styles.strip}
         testID="schedule-week-strip"
@@ -328,9 +368,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaIconSurface,
   },
   dayNumber: {
-    fontFamily: 'Poppins-Bold',
+    ...theme.typography.aliases.poppinsBodyBold,
     fontSize: 18,
     lineHeight: 24,
+    letterSpacing: 0,
     color: theme.colors.figmaTextPrimary,
   },
   dayNumberSelected: {
@@ -338,8 +379,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
   },
   dayWeekday: {
-    fontFamily: 'Poppins-Regular',
-    fontSize: 14,
+    ...theme.typography.aliases.interBodySm,
     lineHeight: 18,
     marginTop: 2,
     color: theme.colors.figmaTextSecondary,
@@ -367,7 +407,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaTextPrimary,
   },
   sectionTitle: {
-    fontFamily: 'Poppins-SemiBold',
+    ...theme.typography.aliases.uacBodyMdSemibold,
     fontSize: 18,
     lineHeight: 24,
     color: theme.colors.figmaTextPrimary,

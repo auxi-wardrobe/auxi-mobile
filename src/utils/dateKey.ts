@@ -10,3 +10,15 @@ export const toDayKey = (d: Date): string => {
   const day = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${m}-${day}`;
 };
+
+/**
+ * Parse a "YYYY-MM-DD" day key back to a local-midnight Date. Returns null for
+ * malformed input. Local (not UTC) so it round-trips with `toDayKey`.
+ */
+export const dateFromKey = (key: string): Date | null => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!m) {
+    return null;
+  }
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+};

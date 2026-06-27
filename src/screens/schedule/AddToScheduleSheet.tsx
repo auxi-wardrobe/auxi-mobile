@@ -89,7 +89,7 @@ export const AddToScheduleSheet: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   title: {
-    fontFamily: 'Poppins-SemiBold',
+    ...theme.typography.aliases.uacBodyMdSemibold,
     fontSize: 18,
     lineHeight: 24,
     color: theme.colors.figmaTextPrimary,

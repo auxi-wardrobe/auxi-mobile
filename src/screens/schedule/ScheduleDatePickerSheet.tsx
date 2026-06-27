@@ -248,9 +248,10 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaTextSecondary,
   },
   selectedDate: {
-    fontFamily: 'Poppins-Bold',
+    ...theme.typography.aliases.poppinsBodyBold,
     fontSize: 28,
     lineHeight: 36,
+    letterSpacing: 0,
     color: theme.colors.figmaTextPrimary,
     marginTop: 8,
   },
