@@ -104,6 +104,10 @@ interface DraggableItemProps {
   // Fired true when a drag is armed/active, false when it ends. Lets the parent
   // disable its ScrollView so a native scroll can't steal the in-progress drag.
   onDragActiveChange?: (active: boolean) => void;
+  // Fired when this item's image finishes loading (success or failure). Lets the
+  // parent clear a per-item "adding…" status once freshly-added remote images
+  // have decoded onto the canvas.
+  onImageLoad?: (id: string) => void;
   enablePinchZoom?: boolean;
 }
 
@@ -117,6 +121,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   onScaleChange,
   onRotationChange,
   onDragActiveChange,
+  onImageLoad,
   enablePinchZoom = false,
 }) => {
   const dragOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -357,6 +362,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
         source={item.imageSource}
         style={{ width: item.width, height: item.height }}
         resizeMode="contain"
+        onLoadEnd={() => onImageLoad?.(item.id)}
       />
     </Animated.View>
   );
@@ -389,6 +395,8 @@ type SurfaceProps = {
   dragActivation?: DragActivation;
   // Notifies the parent when a drag is armed/active so it can freeze its scroll.
   onDragActiveChange?: (active: boolean) => void;
+  // Notifies the parent when an item's image has finished loading.
+  onImageLoad?: (id: string) => void;
   testID?: string;
   enablePinchZoom?: boolean;
 };
@@ -406,6 +414,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
   itemTestIDPrefix = 'canvas-item',
   dragActivation = 'immediate',
   onDragActiveChange,
+  onImageLoad,
   testID,
   enablePinchZoom = false,
 }) => {
@@ -429,6 +438,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
           onScaleChange={onScaleChange}
           onRotationChange={onRotationChange}
           onDragActiveChange={onDragActiveChange}
+          onImageLoad={onImageLoad}
           enablePinchZoom={enablePinchZoom}
         />
       ))}

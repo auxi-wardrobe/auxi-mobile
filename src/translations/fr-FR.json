@@ -532,6 +532,7 @@
       "no_items_found": "Aucun article trouvé",
       "add_count_one": "Ajouter {{count}} article",
       "add_count_other": "Ajouter {{count}} articles",
+      "adding": "Ajout…",
       "a11y_remove_tag": "Supprimer l'étiquette {{label}}",
       "a11y_redo": "Rétablir",
       "a11y_undo": "Annuler",

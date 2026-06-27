@@ -73,6 +73,33 @@ const ITEM_DEFAULT_SIZE = 160;
 // Wardrobe's READY_SNACKBAR_MS).
 const SAVED_SNACKBAR_MS = 4000;
 
+// Upper bound on how long we'll wait for picked images before showing the
+// canvas anyway. Caps the picker's "Adding…" button spinner and the canvas
+// "Adding…" status so a slow or broken image can never wedge either: we warm
+// the cache for snappy placement, but never block the UI on the network.
+const ADD_IMAGE_TIMEOUT_MS = 6000;
+
+// Prefetch a remote image into the cache, resolving on success, failure, OR a
+// timeout — whichever comes first. Always resolves (never rejects) so a single
+// bad URL can't reject the whole Promise.all in the add flow.
+const prefetchWithTimeout = (uri: string): Promise<void> =>
+  new Promise<void>(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (!settled) {
+        settled = true;
+        resolve();
+      }
+    };
+    const timer = setTimeout(finish, ADD_IMAGE_TIMEOUT_MS);
+    Image.prefetch(uri)
+      .catch(() => undefined)
+      .finally(() => {
+        clearTimeout(timer);
+        finish();
+      });
+  });
+
 // Pull a serializable URI out of a canvas item's imageSource for persistence.
 // Remote/picked items are `{ uri }`; require()'d mock assets are numbers (no
 // URI) and return undefined so the caller can skip them.
@@ -129,7 +156,9 @@ const INITIAL_MOCK_ITEMS: CanvasItemData[] = [];
 interface ItemPickerPanelProps {
   visible: boolean;
   onClose: () => void;
-  onConfirm: (items: WardrobeItem[]) => void;
+  // May be async: the panel keeps its "Add" button in a loading state until the
+  // promise settles (the parent warms the image cache before placing items).
+  onConfirm: (items: WardrobeItem[]) => void | Promise<void>;
 }
 
 const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
@@ -143,6 +172,9 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
   const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // True while the parent is warming the picked images / placing them on the
+  // canvas — drives the "Add" button's spinner.
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     Animated.timing(slideX, {
@@ -153,6 +185,7 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
     }).start();
     if (!visible) {
       setSelectedIds([]);
+      setConfirming(false);
     }
   }, [visible, slideX]);
 
@@ -191,9 +224,19 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
     );
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (confirming || selectedIds.length === 0) {
+      return;
+    }
     const chosen = wardrobeItems.filter(it => selectedIds.includes(it.id));
-    onConfirm(chosen);
+    setConfirming(true);
+    try {
+      await onConfirm(chosen);
+    } finally {
+      // Guard against a state update after the panel closed/unmounted: the
+      // visibility effect already resets `confirming`, so this is a no-op then.
+      setConfirming(false);
+    }
   };
 
   return (
@@ -270,22 +313,37 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
           </ScrollView>
         </View>
 
-        {/* Confirm button */}
+        {/* Confirm button — switches to a loading spinner while the picked
+            images are being warmed/placed (testID flips so Maestro can target
+            either state). */}
         <View style={pickerStyles.footer}>
           <TouchableOpacity
+            testID={
+              confirming ? 'canvas-picker-confirm-loading' : 'canvas-picker-confirm'
+            }
             style={[
               pickerStyles.confirmBtn,
-              selectedIds.length === 0 && pickerStyles.confirmBtnDisabled,
+              (selectedIds.length === 0 || confirming) &&
+                pickerStyles.confirmBtnDisabled,
             ]}
             onPress={handleConfirm}
-            disabled={selectedIds.length === 0}
+            disabled={selectedIds.length === 0 || confirming}
             activeOpacity={0.85}
           >
-            <Text style={pickerStyles.confirmBtnLabel}>
-              {selectedIds.length > 0
-                ? t('outfitCanvas.add_count', { count: selectedIds.length })
-                : t('outfitCanvas.add_to_canvas')}
-            </Text>
+            {confirming ? (
+              <View style={pickerStyles.confirmBtnLoadingRow}>
+                <ActivityIndicator color={theme.colors.figmaPrimaryButtonText} />
+                <Text style={pickerStyles.confirmBtnLabel}>
+                  {t('outfitCanvas.adding')}
+                </Text>
+              </View>
+            ) : (
+              <Text style={pickerStyles.confirmBtnLabel}>
+                {selectedIds.length > 0
+                  ? t('outfitCanvas.add_count', { count: selectedIds.length })
+                  : t('outfitCanvas.add_to_canvas')}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -378,6 +436,11 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
+  // IDs of items just added from the picker whose remote images haven't finished
+  // loading yet. Drives the on-canvas "Adding…" status; each id clears on its
+  // image's onLoadEnd (and a safety timeout clears the rest).
+  const [addingIds, setAddingIds] = useState<string[]>([]);
+  const isAdding = addingIds.length > 0;
 
   // Unsaved-changes guard: any edit (item move/add/delete/layer, tag change)
   // flips this true; Save clears it. Drives the "Discard this creation?" sheet
@@ -578,34 +641,72 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   const handlePickerConfirm = useCallback(
-    (picked: WardrobeItem[]) => {
-      setPickerVisible(false);
+    async (picked: WardrobeItem[]) => {
       if (picked.length === 0) {
+        setPickerVisible(false);
         return;
       }
+      // Build the canvas items up front so we know which URIs to warm. zIndex is
+      // assigned later inside the setItems updater against the freshest state.
+      const stamp = Date.now();
+      const prepared = picked.map((item, i) => {
+        const uri = getImageUrl(item.image_png ?? item.image_url);
+        return {
+          id: `item-${item.id}-${stamp}-${i}`,
+          uri,
+          imageSource: uri ? { uri } : testJeansImg,
+        };
+      });
+
+      // Warm the cache (bounded) so pieces land already-decoded rather than
+      // popping in one-by-one. The picker's "Add" button stays in its loading
+      // state for this await.
+      await Promise.all(
+        prepared.map(p => (p.uri ? prefetchWithTimeout(p.uri) : Promise.resolve())),
+      );
+
       setItems(prev => {
         let maxZ = prev.length > 0 ? Math.max(...prev.map(it => it.zIndex)) : 0;
-        const newItems: CanvasItemData[] = picked.map((item, i) => {
-          const uri = getImageUrl(item.image_png ?? item.image_url);
-          return {
-            id: `item-${item.id}-${Date.now()}-${i}`,
-            imageSource: uri ? { uri } : testJeansImg,
-            x: 40 + i * 20,
-            y: 40 + i * 20,
-            zIndex: ++maxZ,
-            width: ITEM_DEFAULT_SIZE,
-            height: ITEM_DEFAULT_SIZE,
-            scale: 1,
-            rotation: 0,
-          };
-        });
+        const newItems: CanvasItemData[] = prepared.map((p, i) => ({
+          id: p.id,
+          imageSource: p.imageSource,
+          x: 40 + i * 20,
+          y: 40 + i * 20,
+          zIndex: ++maxZ,
+          width: ITEM_DEFAULT_SIZE,
+          height: ITEM_DEFAULT_SIZE,
+          scale: 1,
+          rotation: 0,
+        }));
         const next = [...prev, ...newItems];
         pushHistory(next);
         return next;
       });
+
+      // Keep the canvas "Adding…" status up until each new remote image reports
+      // loaded (onLoadEnd) — the safety net for anything the prefetch didn't
+      // fully warm. URI-less mock items need no status.
+      setAddingIds(prepared.filter(p => p.uri).map(p => p.id));
+      setPickerVisible(false);
     },
     [pushHistory],
   );
+
+  // Clear an item's "adding…" marker once its image has loaded. Returns the same
+  // array reference for unrelated items so untracked image loads don't re-render.
+  const handleItemImageLoad = useCallback((id: string) => {
+    setAddingIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : prev));
+  }, []);
+
+  // Safety net: never leave the "Adding…" status stuck if an image's onLoadEnd
+  // never arrives (e.g. a dead URL on web). Clears whatever's left after the cap.
+  useEffect(() => {
+    if (addingIds.length === 0) {
+      return;
+    }
+    const timer = setTimeout(() => setAddingIds([]), ADD_IMAGE_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [addingIds]);
 
   // Tag actions
   const handleRemoveTag = useCallback((tag: string) => {
@@ -797,19 +898,41 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           {/* Top group — gap 16 (theme.spacing.m) between card / add-row / tags */}
           <View style={styles.topGroup}>
             {/* Canvas card — fixed-size inset rounded card (Figma "Image 3:4") */}
-            <OutfitCanvasSurface
-              items={items}
-              width={CANVAS_WIDTH}
-              height={CANVAS_HEIGHT}
-              selectedId={selectedId}
-              onSelect={handleSelect}
-              onPositionChange={handlePositionChange}
-              onScaleChange={handleScaleChange}
-              onRotationChange={handleRotationChange}
-              showGrid
-              itemTestIDPrefix="canvas-item"
-              enablePinchZoom
-            />
+            <View style={styles.canvasWrap}>
+              <OutfitCanvasSurface
+                items={items}
+                width={CANVAS_WIDTH}
+                height={CANVAS_HEIGHT}
+                selectedId={selectedId}
+                onSelect={handleSelect}
+                onPositionChange={handlePositionChange}
+                onScaleChange={handleScaleChange}
+                onRotationChange={handleRotationChange}
+                onImageLoad={handleItemImageLoad}
+                showGrid
+                itemTestIDPrefix="canvas-item"
+                enablePinchZoom
+              />
+              {/* Adding-items status — shown while freshly-added images load.
+                  Informational, so it never blocks canvas touches. */}
+              {isAdding ? (
+                <View
+                  style={styles.addingStatusWrap}
+                  pointerEvents="none"
+                  testID="canvas-adding-status"
+                >
+                  <View style={styles.addingStatus}>
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.colors.figmaTextDark}
+                    />
+                    <Text style={styles.addingStatusLabel}>
+                      {t('outfitCanvas.adding')}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
 
             {/* Toolbar */}
             <View style={styles.toolbar}>
@@ -1002,6 +1125,32 @@ const styles = StyleSheet.create({
   topGroup: {
     gap: theme.spacing.m,
   },
+  // Relative wrapper so the "Adding…" status can anchor over the canvas card.
+  canvasWrap: {
+    position: 'relative',
+  },
+  // Full-width band pinned near the top of the canvas; centres the status pill.
+  addingStatusWrap: {
+    position: 'absolute',
+    top: theme.spacing.m,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  addingStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.chip,
+    paddingVertical: theme.spacing.s,
+    paddingHorizontal: theme.spacing.uacDimension12,
+    ...theme.ds.shadow.headerIcon,
+  },
+  addingStatusLabel: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.figmaTextDark,
+  },
   // Add-item button (circular, below canvas — Figma Group 36, 48×48).
   // Left-aligned, flush to the canvas card's left edge (body provides the
   // 12px horizontal inset; gap handled by topGroup).
@@ -1183,6 +1332,11 @@ const pickerStyles = StyleSheet.create({
   },
   confirmBtnDisabled: {
     opacity: 0.5,
+  },
+  confirmBtnLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
   },
   confirmBtnLabel: {
     fontFamily: 'Poppins-Medium',
