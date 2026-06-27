@@ -538,6 +538,7 @@
       "add_to_canvas": "Thêm vào Canvas",
       "no_items_found": "Không tìm thấy món nào",
       "add_count_other": "Thêm {{count}} món",
+      "adding": "Đang thêm…",
       "a11y_remove_tag": "Xóa thẻ {{label}}",
       "a11y_redo": "Làm lại",
       "a11y_undo": "Hoàn tác",
