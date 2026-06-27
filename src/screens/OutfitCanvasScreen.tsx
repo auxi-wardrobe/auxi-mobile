@@ -724,7 +724,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     setItems(blank);
     setSelectedId(null);
     setHasUnsavedChanges(false);
-    track('canvas_new_blank');
+    track('canvas_reset');
   }, []);
 
   // Resolve the sheet per the active intent: start a blank canvas, or continue

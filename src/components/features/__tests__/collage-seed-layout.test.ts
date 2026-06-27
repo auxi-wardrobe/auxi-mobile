@@ -203,6 +203,25 @@ describe('seedCanvasLayout — editorial flat-lay engine', () => {
     expect(seedCanvasLayout([mk('coat', 'Trench')], W)).toHaveLength(1);
   });
 
+  it('never drops an input item, even two of the same garment role', () => {
+    // Two TOPs + two OUTERs (layered) must all appear — none silently dropped.
+    const items = [
+      mk('tee1', 'Top'),
+      mk('tee2', 'Top'),
+      mk('jkt1', 'Jacket'),
+      mk('jkt2', 'Jacket'),
+      mk('jean', 'Jeans'),
+      mk('sh', 'Shoes'),
+    ];
+    const out = seedCanvasLayout(items, W);
+    expect(out).toHaveLength(items.length);
+    expect(new Set(out.map(o => o.id)).size).toBe(items.length); // every id present
+    const z = out.map(o => o.zIndex).sort((a, b) => a - b);
+    expect(z).toEqual([1, 2, 3, 4, 5, 6]); // dense, gap-free, none collapsed
+    // Same-role extras don't sit exactly on top of the primary (layered offset).
+    expect(byId(out).get('tee1')!.x).not.toBe(byId(out).get('tee2')!.x);
+  });
+
   it('FALLBACK: missing / undefined category is placed, not dropped', () => {
     const out = seedCanvasLayout(
       [

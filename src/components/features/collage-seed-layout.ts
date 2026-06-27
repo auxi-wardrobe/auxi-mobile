@@ -298,12 +298,16 @@ const buildSkeleton = (
   H: number,
   scale: number,
 ): Placed[] => {
-  // One item per garment role (deterministic: nodes arrive pre-sorted by role).
-  const byRole = new Map<GarmentRole, Node>();
+  // Group garments by role, preserving input order. The first item of each role
+  // is the primary (anchored by the template / procedural shelf); any EXTRAS of
+  // the same role (e.g. two layered tops) are placed just off the anchor so no
+  // input item is ever dropped from the output.
+  const byRole = new Map<GarmentRole, Node[]>();
   for (const g of garments) {
-    if (!byRole.has(g.role as GarmentRole)) {
-      byRole.set(g.role as GarmentRole, g);
-    }
+    const role = g.role as GarmentRole;
+    const list = byRole.get(role) ?? [];
+    list.push(g);
+    byRole.set(role, list);
   }
   const roles = [...byRole.keys()];
   const signature = [...roles].sort().join('|');
@@ -331,7 +335,18 @@ const buildSkeleton = (
     return { x: clamp(0.3 + i * 0.2, 0.2, 0.78), y: 0.33 };
   };
 
-  return roles.map(role => place(byRole.get(role)!, anchorFor(role), W, H, scale));
+  const placed: Placed[] = [];
+  for (const role of roles) {
+    const anchor = anchorFor(role);
+    byRole.get(role)!.forEach((node, i) => {
+      // Extras of the same role layer just below-right of the primary so they
+      // overlap as a layered stack rather than vanishing.
+      const a =
+        i === 0 ? anchor : { x: anchor.x + i * 0.05, y: anchor.y + i * 0.05 };
+      placed.push(place(node, a, W, H, scale));
+    });
+  }
+  return placed;
 };
 
 // Union content bounding box of a placed composition (visible-object footprint).
