@@ -13,6 +13,7 @@ import { useSchedule } from '../context/ScheduleContext';
 import { MacgieLoader } from '../components/macgie';
 import { TopIconButton } from '../components/primitives/FigmaPrimitives';
 import IconMenu from '../assets/images/icon_menu.svg';
+import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
 import { track } from '../services/analytics';
 import { dateFromKey, toDayKey } from '../utils/dateKey';
@@ -44,6 +45,9 @@ export const MyCreationsScreen: React.FC = () => {
   const scheduleInitialDate = route.params?.scheduleDate
     ? dateFromKey(route.params.scheduleDate) ?? undefined
     : undefined;
+  // When reached from a sub-flow (Outfit Canvas, Schedule "+" picker, …), show a
+  // back chevron instead of the hamburger so the user can return there.
+  const showBackButton = route.params?.showBackButton === true;
   const { scheduleOutfit } = useSchedule();
   // The creation awaiting a day in the "Add to Schedule" sheet (null = closed).
   const [scheduleTarget, setScheduleTarget] = useState<Creation | null>(null);
@@ -151,12 +155,22 @@ export const MyCreationsScreen: React.FC = () => {
         />
         <View style={styles.headerTint} pointerEvents="none" />
         <TopIconButton
-          testID="my-creations-header-menu"
+          testID={
+            showBackButton ? 'my-creations-header-back' : 'my-creations-header-menu'
+          }
           accessibilityRole="button"
-          accessibilityLabel={t('myCreations.open_menu')}
-          onPress={openSidebar}
+          accessibilityLabel={
+            showBackButton ? t('myCreations.back') : t('myCreations.open_menu')
+          }
+          onPress={showBackButton ? () => navigation.goBack() : openSidebar}
           style={styles.menuButton}
-          icon={<IconMenu width={24} height={24} />}
+          icon={
+            showBackButton ? (
+              <IconChevronLeft width={24} height={24} />
+            ) : (
+              <IconMenu width={24} height={24} />
+            )
+          }
         />
         <Text style={styles.headerTitle}>{t('myCreations.title')}</Text>
       </View>

@@ -193,7 +193,7 @@ export const ScheduleScreen: React.FC = () => {
     // there opens pre-selected on the day currently selected here.
     navigation.navigate(
       source === 'favourite' ? 'Favourite' : 'MyCreations',
-      { returnToSchedule: true, scheduleDate: selectedKey },
+      { returnToSchedule: true, scheduleDate: selectedKey, showBackButton: true },
     );
   };
 

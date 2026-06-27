@@ -32,6 +32,7 @@ import {
   HomeViewToggleFooter,
 } from '../components/features/HomeViewToggleFooter';
 import IconMenu from '../assets/images/icon_menu.svg';
+import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import { track } from '../services/analytics';
 import { Favourite, favouriteService } from '../services/favouriteService';
 import { FavouriteEmptyState } from './favourite/EmptyState';
@@ -58,6 +59,9 @@ export const FavouriteScreen: React.FC = () => {
   const scheduleInitialDate = route.params?.scheduleDate
     ? dateFromKey(route.params.scheduleDate) ?? undefined
     : undefined;
+  // When reached from a sub-flow (Schedule "+" picker, …), show a back chevron
+  // instead of the hamburger so the user can return to that context.
+  const showBackButton = route.params?.showBackButton === true;
   const queryClient = useQueryClient();
   const reduced = useReducedMotion();
   const { open: openSidebar } = useSidebar();
@@ -291,12 +295,20 @@ export const FavouriteScreen: React.FC = () => {
             pushed screen. testID is the machine selector; accessibilityLabel
             is the human VoiceOver string (intentionally different values). */}
         <TopIconButton
-          testID="favourite-header-menu"
+          testID={showBackButton ? 'favourite-header-back' : 'favourite-header-menu'}
           accessibilityRole="button"
-          accessibilityLabel={t('favourite.open_menu')}
-          onPress={openSidebar}
+          accessibilityLabel={
+            showBackButton ? t('favourite.back') : t('favourite.open_menu')
+          }
+          onPress={showBackButton ? () => navigation.goBack() : openSidebar}
           style={styles.menuButton}
-          icon={<IconMenu width={24} height={24} />}
+          icon={
+            showBackButton ? (
+              <IconChevronLeft width={24} height={24} />
+            ) : (
+              <IconMenu width={24} height={24} />
+            )
+          }
         />
       </View>
 
