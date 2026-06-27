@@ -184,6 +184,44 @@ describe('seedCanvasLayout — editorial flat-lay engine', () => {
     }
   });
 
+  it('FALLBACK: an unseen garment signature uses the procedural shelf', () => {
+    // Jacket + Jeans (no top) → signature "BOTTOM|OUTER", which has no template,
+    // so the procedural shelf runs. Outer stays an upper layer, bottom drops to
+    // the lower-right, and everything is placed, in-bounds and densely z-ranked.
+    const out = byId(
+      seedCanvasLayout([mk('jkt', 'Jacket'), mk('jean', 'Jeans'), mk('sh', 'Shoes')], W),
+    );
+    expect(out.size).toBe(3);
+    expect(cy(out.get('jean')!)).toBeGreaterThan(cy(out.get('jkt')!)); // bottom below outer
+    expect(cx(out.get('jean')!)).toBeGreaterThan(cx(out.get('jkt')!)); // and to its right
+    for (const o of out.values()) {
+      expect(cx(o)).toBeGreaterThan(0);
+      expect(cx(o)).toBeLessThan(W);
+      expect(o.width).toBeGreaterThan(0);
+    }
+    // A second unseen signature (Outerwear alone) must also not crash.
+    expect(seedCanvasLayout([mk('coat', 'Trench')], W)).toHaveLength(1);
+  });
+
+  it('FALLBACK: missing / undefined category is placed, not dropped', () => {
+    const out = seedCanvasLayout(
+      [
+        { id: 'mystery', imageUri: 'x' }, // no category → default role
+        { id: 'sh', imageUri: 'x', category: 'Shoes' },
+      ],
+      W,
+    );
+    expect(out).toHaveLength(2);
+    for (const o of out) {
+      expect(o.width).toBeGreaterThan(0);
+      expect(cx(o)).toBeGreaterThan(0);
+      expect(cx(o)).toBeLessThan(W);
+    }
+    // Deterministic even with a missing category.
+    const seeds = [{ id: 'mystery', imageUri: 'x' }, { id: 'sh', imageUri: 'x', category: 'Shoes' }];
+    expect(seedCanvasLayout(seeds, W)).toEqual(seedCanvasLayout(seeds, W));
+  });
+
   it('carries category through the output so the editor can re-seed on add', () => {
     // The editor maps existing canvas items back to seeds via their category;
     // adding an item re-seeds the whole set so the new item follows the rule.
