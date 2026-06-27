@@ -929,14 +929,22 @@ export const HomeScreen = () => {
   const { t } = useTranslation();
   const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
 
-  const showMoodBanner = useCallback((text: string) => {
-    clearTimeoutRef(snackbarTimeoutRef);
-    setMoodBannerText(text);
-    snackbarTimeoutRef.current = setTimeout(() => {
-      setMoodBannerText(null);
-      snackbarTimeoutRef.current = null;
-    }, MOOD_BANNER_DURATION_MS);
-  }, []);
+  const showMoodBanner = useCallback(
+    (text: string) => {
+      // The mood banner and refine toast share the bottom slot. Every path that
+      // surfaces the banner already runs through an interaction handler that
+      // dismisses the toast, but clear it here too so mutual exclusion is
+      // structurally enforced rather than merely relied upon.
+      dismissRefineToast();
+      clearTimeoutRef(snackbarTimeoutRef);
+      setMoodBannerText(text);
+      snackbarTimeoutRef.current = setTimeout(() => {
+        setMoodBannerText(null);
+        snackbarTimeoutRef.current = null;
+      }, MOOD_BANNER_DURATION_MS);
+    },
+    [dismissRefineToast],
+  );
 
   // Refine confirmation toast ("Relaxed applied!") — builds the localized copy.
   // Fired from the mutation's onSuccess (via showRefineToastRef) once the
