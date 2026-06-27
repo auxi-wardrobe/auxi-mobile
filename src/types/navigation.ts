@@ -76,7 +76,22 @@ export type AppStackParamList = {
   Home: { pinFromDetail?: string } | undefined;
   Settings: undefined;
   Wardrobe: undefined;
-  Favourite: undefined;
+  // `returnToSchedule` is set when the user reached this page via the Schedule
+  // "+" source picker — after scheduling an outfit we send them back to
+  // Schedule (focused on the chosen day) instead of staying here. `scheduleDate`
+  // ("YYYY-MM-DD") carries the day selected on Schedule so the date-picker sheet
+  // opens pre-selected on it (not today).
+  // `showBackButton` swaps the header hamburger for a back chevron (→ goBack) so
+  // the user can return to the context they came from (Schedule "+" picker,
+  // Outfit Canvas, …) rather than the page reading as a top-level destination.
+  Favourite:
+    | { returnToSchedule?: boolean; scheduleDate?: string; showBackButton?: boolean }
+    | undefined;
+  // Schedule — plan outfits per day. Reached from the sidebar menu (listed
+  // directly under "My Favourite"). Header mirrors Wardrobe (menu + title +
+  // add). Figma node 4252:26702. `focusDate` ("YYYY-MM-DD") preselects a day
+  // when arriving from the Favourite page's date-picker.
+  Schedule: { focusDate?: string } | undefined;
   // In-app feedback form → POST /api/feedback. Reached from the sidebar menu.
   Feedback: undefined;
   // Discriminated union on `mode` so call sites are type-checked:
@@ -152,7 +167,12 @@ export type AppStackParamList = {
   // "My Creations" — the saved-canvas list. Reached from the OutfitCanvas
   // header's My Creations icon; saving a creation also lands here. Local
   // (AsyncStorage) store, no params.
-  MyCreations: undefined;
+  // `returnToSchedule` / `scheduleDate` — see Favourite. Set when reached via
+  // the Schedule "+" source picker so scheduling a creation returns the user to
+  // Schedule and the date sheet opens on the day selected there.
+  MyCreations:
+    | { returnToSchedule?: boolean; scheduleDate?: string; showBackButton?: boolean }
+    | undefined;
   // In-app legal docs (Terms of Service / Privacy Policy) — App Store blocker
   // B5. Reachable from Settings while authenticated; the auth stack registers
   // the same route+param shape for the Welcome-screen (unauth) entry point.

@@ -118,6 +118,20 @@ export const SidebarMenu: React.FC = () => {
           onPress={() => go('Favourite', close)}
         />
         <MenuItem
+          label={t('sidebar.schedule')}
+          Icon={Icons.Calendar}
+          testID="sidebar-menu-schedule"
+          isActive={routeName === 'Schedule'}
+          onPress={() => go('Schedule', close)}
+        />
+        <MenuItem
+          label={t('sidebar.outfit_canvas')}
+          Icon={Icons.OutfitCanvas}
+          testID="sidebar-menu-outfit-canvas"
+          isActive={routeName === 'OutfitCanvas'}
+          onPress={() => go('OutfitCanvas', close)}
+        />
+        <MenuItem
           label={t('sidebar.feedback')}
           Icon={Icons.Feedback}
           testID="sidebar-menu-feedback"
@@ -137,13 +151,6 @@ export const SidebarMenu: React.FC = () => {
         {/* "My account" row removed (App Store B3 / Guideline 2.1): no
             account screen exists, so the row only closed the drawer — a dead
             button. Account actions live under Settings (the row above). */}
-        <MenuItem
-          label={t('sidebar.outfit_canvas')}
-          Icon={Icons.OutfitCanvas}
-          testID="sidebar-menu-outfit-canvas"
-          isActive={routeName === 'OutfitCanvas'}
-          onPress={() => go('OutfitCanvas', close)}
-        />
         {showDesignSystem && (
           <MenuItem
             label="Design System"

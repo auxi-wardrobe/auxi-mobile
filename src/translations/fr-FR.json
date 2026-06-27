@@ -563,8 +563,10 @@
     "myCreations": {
       "title": "Mes créations",
       "open_menu": "Ouvrir le menu",
+      "back": "Retour",
       "empty_body": "Enregistrez une création depuis le canevas pour la retrouver ici.",
-      "remove_a11y": "Supprimer la création"
+      "remove_a11y": "Supprimer la création",
+      "add_to_schedule": "Ajouter au planning"
     },
     "locationPermission": {
       "denied_title": "Autorisation refusée",
@@ -581,10 +583,34 @@
       "see_outfits": "Voir mes tenues",
       "wardrobe": "Garde-robe",
       "favourite": "Mes favoris",
+      "schedule": "Planning",
       "feedback": "Commentaires",
       "setting": "Paramètres",
       "outfit_canvas": "Canevas de tenue",
       "logout": "Se déconnecter"
+    },
+    "schedule": {
+      "title": "Planning",
+      "scheduled_outfit": "Tenue planifiée",
+      "empty_title": "Rien de prévu",
+      "empty_body": "Touchez [+] pour ajouter une tenue",
+      "a11y_open_menu": "Ouvrir le menu",
+      "a11y_add": "Ajouter une tenue",
+      "added_toast": "Ajouté à votre planning",
+      "remove_a11y": "Retirer du planning",
+      "add_sheet": {
+        "title": "Ajouter une tenue",
+        "subtitle": "Choisissez d'où l'ajouter.",
+        "favourite_title": "Mes favoris",
+        "creations_title": "Mes créations"
+      },
+      "picker": {
+        "title": "Ajouter au planning",
+        "cancel": "Annuler",
+        "confirm": "Planifier",
+        "prev_month": "Mois précédent",
+        "next_month": "Mois suivant"
+      }
     },
     "outfitActions": {
       "a11y_remix": "Remixer cette tenue",
@@ -615,6 +641,7 @@
       "common_badge": "commun",
       "view_item_a11y": "Voir les détails de l’article",
       "self_visualization": "Auto-visualisation",
+      "add_to_schedule": "Ajouter au planning",
       "remove_a11y": "Retirer cette tenue des favoris",
       "remove_title": "Retirer de vos favoris",
       "remove_body": "Voulez-vous vraiment retirer cette tenue de votre liste de favoris",

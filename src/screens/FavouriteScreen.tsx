@@ -14,7 +14,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -22,9 +27,12 @@ import { theme } from '../theme/theme';
 import { useReducedMotion } from '../theme/motion';
 import { useSidebar } from '../context/SidebarContext';
 import { useFavouritesSeen } from '../context/FavouritesSeenContext';
+import { useSchedule } from '../context/ScheduleContext';
+import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
 import { Header } from '../components/layout/Header';
+import { Icons } from '../assets/icons';
 import {
   HomeView,
   HomeViewTogglePill,
@@ -35,6 +43,8 @@ import { FavouriteEmptyState } from './favourite/EmptyState';
 import { FavouriteActionBar } from './favourite/FavouriteActionBar';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
 import { RemoveFavouriteDialog } from './favourite/RemoveFavouriteDialog';
+import { ScheduleDatePickerSheet } from './schedule/ScheduleDatePickerSheet';
+import { useScheduleAddedToast } from './schedule/useScheduleAddedToast';
 import {
   formatDateLabel,
   groupFavouritesByDate,
@@ -48,10 +58,22 @@ export const FavouriteScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const route = useRoute<RouteProp<AppStackParamList, 'Favourite'>>();
+  const returnToSchedule = route.params?.returnToSchedule === true;
+  // Day selected on Schedule (when reached via its "+"), so the date sheet opens
+  // pre-selected on it instead of today. Undefined when opened directly.
+  const scheduleInitialDate = route.params?.scheduleDate
+    ? dateFromKey(route.params.scheduleDate) ?? undefined
+    : undefined;
+  // When reached from a sub-flow (Schedule "+" picker, …), show a back chevron
+  // instead of the hamburger so the user can return to that context.
+  const showBackButton = route.params?.showBackButton === true;
   const queryClient = useQueryClient();
   const reduced = useReducedMotion();
   const { open: openSidebar } = useSidebar();
   const { markSeen: markFavouritesSeen } = useFavouritesSeen();
+  const { scheduleOutfit } = useSchedule();
+  const showScheduleAddedToast = useScheduleAddedToast();
 
   // Viewing the saved list — by any route (header dot, sidebar, deep link) —
   // clears the Home "unseen saved looks" dot. useFocusEffect so a back-then-
@@ -64,6 +86,8 @@ export const FavouriteScreen: React.FC = () => {
 
   const [view, setView] = useState<HomeView>('grid');
   const [pendingRemovalId, setPendingRemovalId] = useState<string | null>(null);
+  // The outfit awaiting a day in the "Add to Schedule" sheet (null = closed).
+  const [scheduleTarget, setScheduleTarget] = useState<Favourite | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: FAVOURITES_QUERY_KEY,
@@ -191,6 +215,31 @@ export const FavouriteScreen: React.FC = () => {
     });
   };
 
+  const handleSchedule = (favourite: Favourite) => {
+    // Open the "Add to Schedule" sheet so the user picks which day.
+    track('favourite_schedule_opened', { favorite_id: favourite.id });
+    setScheduleTarget(favourite);
+  };
+
+  const handleConfirmSchedule = (date: Date) => {
+    if (!scheduleTarget) {
+      return;
+    }
+    const dayKey = toDayKey(date);
+    scheduleOutfit(dayKey, { kind: 'favourite', favourite: scheduleTarget });
+    track('favourite_added_to_schedule', {
+      favorite_id: scheduleTarget.id,
+      date: dayKey,
+    });
+    setScheduleTarget(null);
+    // Only return to Schedule when the user came from there (mid-planning).
+    // Otherwise they're browsing favourites — stay put (toast confirms).
+    if (returnToSchedule) {
+      navigation.navigate('Schedule', { focusDate: dayKey });
+    }
+    showScheduleAddedToast();
+  };
+
   const confirmRemove = () => {
     if (pendingRemovalId) {
       removeMutation.mutate(pendingRemovalId);
@@ -266,21 +315,32 @@ export const FavouriteScreen: React.FC = () => {
 
   return (
     <View style={styles.container} testID="favourite-screen">
-      {/* Canonical blurred bar (#158 Header). Hamburger-only on the left (no
-          title, no back chevron — CEO 2026-06-19; native-stack swipe-back still
-          backs out). The grid/collage view-toggle is hoisted from the old bottom
-          footer into the header's top-right (CEO 2026-06-27). It rides a widened
-          right slot (`rightSlotStyle`) because the compact `size="sm"` toggle
-          pill (~76px) exceeds the Header's default 44px icon slot. Its own testID
-          stem keeps it from colliding with the Home footer's maestro selectors.
-          testID is the machine selector; accessibilityLabel is the human
-          VoiceOver string. */}
+      {/* Canonical blurred bar (#158 Header). The grid/collage view-toggle is
+          hoisted from the old bottom footer into the header's top-right (CEO
+          2026-06-27). It rides a widened right slot (`rightSlotStyle`) because
+          the compact `size="sm"` toggle pill (~76px) exceeds the Header's
+          default 44px icon slot. Its own testID stem keeps it from colliding
+          with the Home footer's maestro selectors. The left button shows a back
+          chevron when Favourite is reached as a sub-flow (Schedule "+" picker)
+          so the user can return there; otherwise the hamburger opens the drawer
+          (CEO 2026-06-19; native-stack swipe-back still backs out). testID is
+          the machine selector; accessibilityLabel is the human VoiceOver
+          string. */}
       <Header
         background="blur"
         safeAreaTop
-        leftTestID="favourite-header-menu"
-        leftAccessibilityLabel={t('favourite.open_menu')}
-        onBack={openSidebar}
+        leftTestID={
+          showBackButton ? 'favourite-header-back' : 'favourite-header-menu'
+        }
+        leftAccessibilityLabel={
+          showBackButton ? t('favourite.back') : t('favourite.open_menu')
+        }
+        leftIcon={
+          showBackButton ? (
+            <Icons.ChevronLeft width={24} height={24} />
+          ) : undefined
+        }
+        onBack={showBackButton ? () => navigation.goBack() : openSidebar}
         title=""
         rightSlotStyle={styles.toggleSlot}
         rightComponent={
@@ -301,6 +361,7 @@ export const FavouriteScreen: React.FC = () => {
         <FavouriteActionBar
           testID="favourite-action-bar"
           onRemove={() => setPendingRemovalId(activeFavourite.id)}
+          onSchedule={() => handleSchedule(activeFavourite)}
           onSelfVisualization={() => handleSelfVisualization(activeFavourite)}
         />
       ) : null}
@@ -310,6 +371,13 @@ export const FavouriteScreen: React.FC = () => {
         isBusy={removeMutation.isPending}
         onCancel={() => setPendingRemovalId(null)}
         onConfirm={confirmRemove}
+      />
+
+      <ScheduleDatePickerSheet
+        visible={scheduleTarget !== null}
+        initialDate={scheduleInitialDate}
+        onCancel={() => setScheduleTarget(null)}
+        onConfirm={handleConfirmSchedule}
       />
     </View>
   );
