@@ -33,6 +33,25 @@ Every part of the system below must remain:
   feature silos.
 - **Bounded** — behavior reranks good outfits; it never rescues a bad one.
 
+### 0.1 Recommendation principles
+
+The product philosophy that future decisions must stay aligned with. When a new
+feature is proposed, it should be checkable against these:
+
+1. **Outfit correctness always comes before personalization.** A correct,
+   compatible outfit with no personalization beats a personalized but
+   incompatible one, every time.
+2. **User behavior adjusts ranking, not compatibility.** Behavior changes *which
+   valid outfit surfaces first* — never what counts as valid.
+3. **Personalization should feel gradual, not unpredictable.** Signals decay and
+   blend; the feed should drift, not lurch. No single action should swing the
+   recommendation violently.
+4. **The system should get smarter over time without getting less explainable.**
+   Every added signal must be nameable (a reason token) and bounded. Smarter is
+   never an excuse for opaque.
+5. **One extension point.** New behavioral intelligence is added as a modifier in
+   the Personalization Layer — never by editing the Core engine.
+
 ---
 
 ## 1. Overall recommendation architecture
@@ -60,6 +79,23 @@ layers never read from higher layers.
 │    → Compatibility Matching → Base Outfit Scoring             │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+### 1.0 Responsibilities at a glance
+
+Recommendation is **three distinct responsibilities**. This separation is
+deliberate and strict so that a future contributor can immediately tell *where a
+new feature belongs* — and, just as importantly, where it does **not**.
+
+| Layer | Does | Must never |
+|-------|------|------------|
+| **Core Recommendation Engine** | Builds the best outfit based on compatibility. Deterministic. No user behavior. | Read behavior, boosts, or history. Produce different output for the same inputs. |
+| **Personalization Layer** | Re-ranks already-valid outfits using behavioral signals. | Generate outfits. Change compatibility rules. Make an invalid outfit valid. |
+| **Presentation Layer** | Accessories, reason tokens, UI explanations. Presentation only. | Influence outfit construction, compatibility, or scoring. |
+
+If a proposed feature *builds or repairs an outfit*, it belongs in Core. If it
+*changes the order of valid outfits based on the user*, it belongs in
+Personalization. If it *only affects what the user sees about an already-final
+outfit*, it belongs in Presentation. There is no fourth place.
 
 ### 1.1 Core Recommendation Engine
 
@@ -115,6 +151,35 @@ tokens. It never feeds back into outfit construction or scoring.
 
 Behavioral signals are **not** implemented as separate features. They are
 modifiers in one layer with a single, uniform contract.
+
+### 2.0 Position in the recommendation flow (re-rank only — never create, remove, or repair)
+
+This is one of the most important constraints in this document. The modifier
+layer **only changes the order of already-compatible outfits.** The flow is
+strictly sequential:
+
+```
+Generate valid candidates        (Core: Safety Funnel + Candidate Generation)
+        ↓
+Score compatibility              (Core: Base Outfit Scoring)
+        ↓
+Apply behavioral modifiers       (Personalization: Σ bounded modifiers)
+        ↓
+Re-rank candidates               (sort by final_score)
+```
+
+The modifier layer operates on the **set of outfits the Core engine already
+declared valid and scored.** It therefore must never:
+
+- **create** an outfit combination the Core engine did not generate,
+- **remove** a valid outfit from consideration (a heavy enough negative modifier
+  may sink an outfit to the bottom of the ranking, but it stays a valid
+  candidate — it is not deleted), nor
+- **repair** an incompatible outfit into a compatible one.
+
+A behavioral modifier can never make an invalid outfit become valid. Validity is
+decided once, in Core, before any behavior is applied. Personalization changes
+*order*, nothing else.
 
 ### 2.1 Final score
 
@@ -274,6 +339,53 @@ negative decaying modifier over user-action / wear telemetry.
 
 ---
 
+## 4A. Item lifecycle (how the modifiers interact over time)
+
+The modifiers above are easier to reason about when viewed as **stages in a
+single item's life.** The same item moves through these states as the user
+interacts with it; each state is just a different modifier (or none) firing on
+that item. This is the mental model for how modifiers compose over time — not a
+separate mechanism.
+
+| Lifecycle stage | Trigger | Modifier | Polarity | Phase |
+|-----------------|---------|----------|----------|-------|
+| **New upload** | User adds the item (upload / edit / favorite) | `RECENT_ACTION_BOOST` (temporary) | `+` | 1 |
+| **Frequently recommended** | Item has been successfully recommended enough times | boost **decays to zero** (exposure-primary decay, §3.4) | → `neutral` | 1 |
+| **Recently worn** | Item appeared/was worn very recently | `COOLDOWN` | `−` | 1 |
+| **Long time unused** | Item not recommended for a long window | `FRESHNESS` | `+` | 2 |
+| **Highly preferred** | Behavior shows strong, stable preference | personalization boost (e.g. `ITEM_RELIABILITY`) | `+` | 3+ |
+
+```
+   upload/edit/favorite
+          │  RECENT_ACTION_BOOST (+, decaying)
+          ▼
+   [ surfaced often ] ──exposure──▶ boost expires (neutral)
+          │
+          ▼
+   worn / shown recently ──▶ COOLDOWN (−, decaying)
+          │
+          ▼ (time passes, not surfaced)
+   long unused ──▶ FRESHNESS (+)   ◀── prevents items being forgotten
+          │
+          ▼ (repeated positive behavior)
+   highly preferred ──▶ personalization boost (+)
+```
+
+Key properties this view makes obvious:
+
+- **Stages are not exclusive.** A freshly uploaded item the user also wore
+  yesterday is in *both* "new upload" and "recently worn" simultaneously — the
+  conflict-resolution rule (§3.3) decides the net effect (cooldown wins).
+- **Every transition is a decaying modifier, never a flag flip.** An item is
+  never permanently "boosted" or permanently "buried"; modifiers fade so the
+  item naturally returns to neutral. This is what keeps personalization
+  *gradual* (principle §0.1.3).
+- **Lifecycle never changes validity.** Every stage only adjusts ranking among
+  outfits the Core engine already deemed valid (§2.0). A buried item is still a
+  valid candidate; a boosted item is still only surfaced when context allows.
+
+---
+
 ## 5. Reason tokens (explainability)
 
 Explainability is **not** a separate system. Each modifier — and each hard
@@ -315,9 +427,10 @@ field becomes an optional LLM-polished fallback, not the source of truth.
 
 ### 5.3 Mobile contract (this repo)
 
-`auxi-mobile`'s only Phase 1 responsibility is rendering. When the backend is
-ready, the outfit response (`Outfit` in `src/services/recommendationService.ts`,
-`V05Outfit` in `src/services/v05Api.ts`) gains:
+`auxi-mobile`'s only Phase 1 responsibility is rendering. When the backend
+contract is final, the outfit response (`Outfit` in
+`src/services/recommendationService.ts`, `V05Outfit` in
+`src/services/v05Api.ts`) gains:
 
 ```ts
 reason_tokens: ReasonToken[];   // alongside existing styling_note / reasoning_human / fallback_flags
@@ -325,6 +438,12 @@ reason_tokens: ReasonToken[];   // alongside existing styling_note / reasoning_h
 
 and the Home recommendation surface renders those tokens as "Because:" chips.
 No scoring, boosting, or cooldown logic ever runs on the client.
+
+> **Sequencing decision:** the mobile-side `ReasonToken` type + `reason_tokens`
+> stub is **postponed until the backend response contract is finalized**, to
+> avoid the client and server drifting on field names/shape. The mobile work is
+> a fast follow once the backend emits the contract — not a blocker, and not
+> started speculatively.
 
 ---
 
@@ -399,8 +518,10 @@ later signal reuses.
 
 Almost all of the above is backend ("Valen"/V05) work. In `auxi-mobile` the only
 shippable Phase 1 surface is the **reason-token render contract + chip UI**
-(§5.3). Tickets should be split along that boundary so mobile rendering is not
-blocked on the engine, and vice-versa.
+(§5.3), and that is **deferred until the backend response contract is finalized**
+so the two don't drift. Backend implementation may begin now; the mobile stub is
+a fast follow once the contract lands. Tickets should be split along that
+boundary.
 
 ---
 
@@ -408,12 +529,15 @@ blocked on the engine, and vice-versa.
 
 1. The Core engine is deterministic and behavior-free.
 2. Behavior is applied only in the Score Modifier Layer, only after base scoring.
-3. `final = base + clamp(Σ modifiers)`; the clamp is smaller than the
+3. **Modifiers only re-rank already-valid outfits.** They never create, remove,
+   or repair an outfit combination, and never make an invalid outfit valid.
+   Validity is decided once, in Core, before any behavior is applied (§2.0).
+4. `final = base + clamp(Σ modifiers)`; the clamp is smaller than the
    good-vs-poor base-score gap, so behavior reranks but never rescues.
-4. Every non-null modifier and every hard filter emits a reason token; the
+5. Every non-null modifier and every hard filter emits a reason token; the
    explanation is their serialization — no second explanation path.
-5. Accessories are presentation-only and never touch construction, compatibility,
+6. Accessories are presentation-only and never touch construction, compatibility,
    scoring, or Try Another.
-6. Coverage is a metric, not an objective.
-7. New behavioral signals are added as modifiers in this layer — never by editing
+7. Coverage is a metric, not an objective.
+8. New behavioral signals are added as modifiers in this layer — never by editing
    the Core engine.
