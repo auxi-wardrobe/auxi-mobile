@@ -79,3 +79,6 @@ export const TARGET_AHEAD = OUTFITS_PER_SET;
 export const REFINE_AFTER_OUTFITS = 6;
 
 export const MOOD_BANNER_DURATION_MS = 3000;
+
+// Temperature-override toast ("Using …°C for outfit suggestions") auto-dismiss.
+export const TEMP_TOAST_DURATION_MS = 5000;

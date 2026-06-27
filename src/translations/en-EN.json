@@ -424,7 +424,9 @@
       "temp_error_offline": "No internet connection. Please try again.",
       "temp_override_a11y": "Outfit temperature override active: {{range}}. Tap to change.",
       "a11y_temp_idle": "Adjust outfit temperature",
-      "a11y_temp_active": "Outfit temperature override active. Tap to change."
+      "a11y_temp_active": "Outfit temperature override active. Tap to change.",
+      "temp_toast_override": "Using {{temp}}°C for outfit suggestions",
+      "temp_toast_current": "Using current weather for outfit suggestions"
     },
     "pin": {
       "modal_title": "Keep this item",

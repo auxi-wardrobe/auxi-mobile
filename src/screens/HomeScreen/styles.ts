@@ -494,4 +494,12 @@ export const styles = StyleSheet.create({
     color: theme.colors.figmaSurface,
     textAlign: 'center',
   },
+  tempToast: {
+    position: 'absolute',
+    zIndex: theme.zIndex.toast,
+    left: theme.spacing.m,
+    right: theme.spacing.m,
+    bottom: HOME_VIEW_TOGGLE_FOOTER_HEIGHT + theme.spacing.l,
+    alignItems: 'center',
+  },
 });

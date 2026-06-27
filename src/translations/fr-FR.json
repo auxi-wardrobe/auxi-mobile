@@ -424,7 +424,9 @@
       "temp_error_offline": "Pas de connexion Internet. Veuillez réessayer.",
       "temp_override_a11y": "Réglage de température actif : {{range}}. Touchez pour modifier.",
       "a11y_temp_idle": "Ajuster la température des tenues",
-      "a11y_temp_active": "Réglage de température actif. Touchez pour modifier."
+      "a11y_temp_active": "Réglage de température actif. Touchez pour modifier.",
+      "temp_toast_override": "Suggestions basées sur {{temp}}°C",
+      "temp_toast_current": "Suggestions basées sur la météo actuelle"
     },
     "pin": {
       "modal_title": "Garder cet article",
