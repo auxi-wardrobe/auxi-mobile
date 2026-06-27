@@ -216,10 +216,7 @@ export const FavouriteScreen: React.FC = () => {
       {/* Hamburger-only blurred bar (no title, no back chevron — CEO
           2026-06-19); native-stack swipe-back still backs out. testID is the
           machine selector; accessibilityLabel is the human VoiceOver string. */}
-      <Header
-        title=""
-        background="blur"
-        safeAreaTop
+      <Header.MenuOnly
         leftTestID="favourite-header-menu"
         leftAccessibilityLabel={t('favourite.open_menu')}
         onBack={openSidebar}

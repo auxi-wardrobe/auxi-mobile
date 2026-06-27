@@ -547,10 +547,10 @@ export const WardrobeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Header
+      <Header.MenuTitleAction
         title={t('wardrobe.list.title')}
         onBack={openSidebar}
-        rightComponent={
+        right={
           <PressableScale
             onPress={() => openAddSheet('header')}
             disabled={uploading}

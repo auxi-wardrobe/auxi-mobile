@@ -80,11 +80,8 @@ export const MyCreationsScreen: React.FC = () => {
 
   return (
     <View style={styles.container} testID="my-creations-screen">
-      <Header
+      <Header.MenuTitleLeft
         title={t('myCreations.title')}
-        titleAlign="left"
-        background="blur"
-        safeAreaTop
         leftTestID="my-creations-header-menu"
         leftAccessibilityLabel={t('myCreations.open_menu')}
         onBack={openSidebar}

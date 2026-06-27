@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/layout/Header';
-import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { ImageSource } from '../../hooks/use-image-picker';
 
@@ -30,10 +29,9 @@ interface StomHeaderProps {
  * FavouriteScreen header treatment (interMediumSm 14/20, blurred white bg).
  */
 export const StomHeader: React.FC<StomHeaderProps> = ({ title, onBack }) => (
-  <Header
+  <Header.BackTitle
     title={title}
     background="tint"
-    leftIcon={<Icons.ChevronLeft width={24} height={24} />}
     leftTestID="stom-back"
     leftAccessibilityLabel="Go back"
     onBack={onBack}

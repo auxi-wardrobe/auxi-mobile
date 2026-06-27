@@ -188,7 +188,7 @@ export const DatabaseScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title={t('wardrobe.database.title')} onBack={openSidebar} />
+      <Header.MenuTitle title={t('wardrobe.database.title')} onBack={openSidebar} />
 
       <View style={{ paddingHorizontal: 16, flex: 1 }}>
         <ScrollView

@@ -63,7 +63,7 @@ const BACKGROUND_COLOR: Record<HeaderBackground, string> = {
     transparent: theme.colors.transparent,
 };
 
-export const Header: React.FC<HeaderProps> = ({
+const HeaderBase: React.FC<HeaderProps> = ({
     title = 'Auxi',
     titleTextStyle,
     titleAlign = 'center',
@@ -178,4 +178,84 @@ const styles = StyleSheet.create({
     titleLeft: {
         textAlign: 'left',
     },
+});
+
+/* ------------------------------------------------------------------ *
+ * Presets — the named header "types" used across the app. Pick the one
+ * that matches the shape you need; each only exposes its relevant props
+ * so call sites stay short and can't drift from the canonical layout.
+ * Reach for the base <Header> only for a genuine one-off.
+ * ------------------------------------------------------------------ */
+
+interface PresetProps {
+    title?: string;
+    titleTextStyle?: TextStyle;
+    /** Bar surface. Defaults per preset (blur for the menu-only/left ones, else solid). */
+    background?: HeaderBackground;
+    /** Press handler for the left (menu or back) button. */
+    onBack?: () => void;
+    leftTestID?: string;
+    leftAccessibilityLabel?: string;
+    style?: ViewStyle;
+}
+
+/** Menu (hamburger) on the left, centred title. e.g. Settings, Feedback, Database. */
+const MenuTitle: React.FC<PresetProps> = props => <HeaderBase {...props} />;
+
+/** Back chevron on the left, centred title. e.g. My Body, See-this-on-me, Legal. */
+const BackTitle: React.FC<
+    PresetProps & { leftIconStyle?: ViewStyle; leftIconColor?: string }
+> = ({ leftIconStyle, leftIconColor, ...props }) => (
+    <HeaderBase
+        {...props}
+        leftIconStyle={leftIconStyle}
+        leftIcon={
+            <Icons.ChevronLeft width={24} height={24} color={leftIconColor} />
+        }
+    />
+);
+
+/** Menu on the left, centred title, action chip on the right. e.g. Wardrobe. */
+const MenuTitleAction: React.FC<PresetProps & { right?: React.ReactNode }> = ({
+    right,
+    ...props
+}) => <HeaderBase {...props} rightComponent={right} />;
+
+/** Menu only on a blurred bar, no title. e.g. Favourite. */
+const MenuOnly: React.FC<Omit<PresetProps, 'title' | 'titleTextStyle'> & {
+    safeAreaTop?: boolean;
+}> = ({ background = 'blur', safeAreaTop = true, ...props }) => (
+    <HeaderBase
+        {...props}
+        title=""
+        background={background}
+        safeAreaTop={safeAreaTop}
+    />
+);
+
+/** Menu on the left, left-aligned title, blurred bar. e.g. My Creations. */
+const MenuTitleLeft: React.FC<PresetProps & { safeAreaTop?: boolean }> = ({
+    background = 'blur',
+    safeAreaTop = true,
+    ...props
+}) => (
+    <HeaderBase
+        {...props}
+        titleAlign="left"
+        background={background}
+        safeAreaTop={safeAreaTop}
+    />
+);
+
+/**
+ * Canonical app header. Use a preset (`Header.MenuTitle`, `Header.BackTitle`,
+ * `Header.MenuTitleAction`, `Header.MenuOnly`, `Header.MenuTitleLeft`) for the
+ * common shapes; call `<Header>` directly only for a one-off layout.
+ */
+export const Header = Object.assign(HeaderBase, {
+    MenuTitle,
+    BackTitle,
+    MenuTitleAction,
+    MenuOnly,
+    MenuTitleLeft,
 });

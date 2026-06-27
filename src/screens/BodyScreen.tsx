@@ -540,9 +540,8 @@ export const BodyScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header
+      <Header.BackTitle
         title={isTryOnMode ? t('body.tryon_tab') : t('body.mybody_tab')}
-        leftIcon={<Icons.ChevronLeft width={24} height={24} />}
         onBack={() => navigation.goBack()}
       />
 

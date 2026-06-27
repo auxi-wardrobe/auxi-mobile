@@ -676,7 +676,7 @@ export const SettingsScreen = () => {
       <BottomSheetSurface style={styles.sheet}>
         {/* Canonical header — hamburger-left + centred title only (no right
             icon, qa-ui C1). Same height/spacing as every other header. */}
-        <Header
+        <Header.MenuTitle
           title={t('settings.title')}
           background="transparent"
           leftTestID="settings-menu-button"

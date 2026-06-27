@@ -15,7 +15,7 @@ export const FeedbackScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <BottomSheetSurface style={styles.sheet}>
         {/* Canonical header — hamburger-left + centred title (no right action). */}
-        <Header
+        <Header.MenuTitle
           title={t('feedback.title')}
           background="transparent"
           leftTestID="feedback-menu-button"

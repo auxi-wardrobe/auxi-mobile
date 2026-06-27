@@ -20,7 +20,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 
 import { Header } from '../../components/layout/Header';
-import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { getLegalDocument } from '../../content/legal';
 import type { LegalDocumentType } from '../../content/legal';
@@ -62,16 +61,10 @@ export const LegalDocumentScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <Header
+      <Header.BackTitle
         title={document.title}
-        leftIcon={
-          <Icons.ChevronLeft
-            width={24}
-            height={24}
-            color={theme.ds.color.ink}
-          />
-        }
         leftIconStyle={styles.backButton}
+        leftIconColor={theme.ds.color.ink}
         onBack={() => navigation.goBack()}
       />
       <ScrollView
