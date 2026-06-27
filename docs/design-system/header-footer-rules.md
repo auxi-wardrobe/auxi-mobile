@@ -43,8 +43,9 @@ host, not per-screen).
 
 | Spec | Value | Source |
 |---|---|---|
-| Menu width | **317px** (`SIDEBAR_WIDTH`) | `SidebarMenu.tsx:18`, `RootDrawer.tsx:20` |
-| Push distance | `min(317, SCREEN_W − 88)` — leaves an 88px tappable peek of content | `RootDrawer.tsx:22` |
+| Menu width | **4/5 of screen width** (`SIDEBAR_WIDTH = Dimensions.get('window').width * 4/5`) — exported once from `SidebarMenu`, imported by `RootDrawer` as the single source of truth (no drift) | `SidebarMenu.tsx`, `RootDrawer.tsx` |
+| Push distance | `PUSH_X = SIDEBAR_WIDTH` — content is pushed by the full menu width (no gap), leaving a **1/5-of-screen peek** (≈75–78px on a 390pt phone). The full-bleed tap-catcher covers the peek, so close-on-tap is unaffected. *(Was `min(317, SCREEN_W − 88)` — fixed 317px menu + 88px peek; replaced by the 4/5 ratio per Figma + product call.)* | `RootDrawer.tsx` |
+| Back-layer bg | `uacBackgroundBase` `#1d1f23` (dark) — the surface revealed behind the pushed content card matches the menu, so no light seam shows at the card's rounded edges. *(Was `theme.colors.background` light; flipped deliberately once the menu spans 4/5 and the full-width push exposes that surface.)* | `RootDrawer.tsx` (root style) |
 | **Open** | `motion.duration.medium` (350) + `motion.easing.enter` | `RootDrawer.tsx:40-42` |
 | **Close** | `motion.duration.normal` (250) + `motion.easing.exit` | `RootDrawer.tsx:40-42` |
 | Open chrome | content gets `borderRadius: 18`, shadow (offset `-4,0`, opacity 0.2, radius 16, elevation 12) | `RootDrawer.tsx:111-119` |

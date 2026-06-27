@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
@@ -16,7 +22,10 @@ import { Icons } from '../../assets/icons';
 // slide animation here (that lived in the old per-screen Sidebar.tsx).
 // Navigation goes through `navigationRef` because this renders OUTSIDE the
 // NavigationContainer.
-const SIDEBAR_WIDTH = 317;
+// The open menu spans 4/5 of the screen width (Figma); the remaining 1/5 is the
+// peek of pushed app content. Exported as the single source of truth so
+// RootDrawer pushes the content by exactly this width (no drift between files).
+export const SIDEBAR_WIDTH = Dimensions.get('window').width * (4 / 5);
 
 // Internal-only gate: the in-app Design System reference page is shown in the
 // sidebar ONLY for these accounts (CEO + designer). Compared case-insensitively

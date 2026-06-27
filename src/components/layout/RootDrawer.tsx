@@ -1,25 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Dimensions,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { useSidebar } from '../../context/SidebarContext';
-import { SidebarMenu } from './SidebarMenu';
+import { SidebarMenu, SIDEBAR_WIDTH } from './SidebarMenu';
 
 // RootDrawer — app-level push-drawer host. The menu is a `base`-tier back layer;
 // the entire app content (the NavigationContainer) is the `content` tier and is
 // PUSHED to the right to REVEAL the menu (it does NOT overlay it — there is no
 // dim scrim, the content stays bright, per Figma 2852:26393 and
 // docs/Z_INDEX_LAYERING.md §4.1: overlays live at one root host, not per screen).
-const { width: SCREEN_W } = Dimensions.get('window');
-const SIDEBAR_WIDTH = 317;
-// Push far enough to reveal the menu while leaving a tappable peek of content.
-const PUSH_X = Math.min(SIDEBAR_WIDTH, SCREEN_W - 88);
+// Push the content by the full menu width (the single shared SIDEBAR_WIDTH from
+// SidebarMenu) so the menu is exactly revealed with no gap between the layers.
+const PUSH_X = SIDEBAR_WIDTH;
 
 export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -92,10 +85,10 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    // Light base = the app surface (Figma 3438:22389 is all-light). The dark
-    // menu paints its own background when revealed, so the back layer must NOT
-    // be dark — a dark base bled through at the content's rounded edges.
-    backgroundColor: theme.colors.background,
+    // Back layer matches the menu background so the surface revealed behind the
+    // pushed content card (and at its rounded edges) is the same dark tone as
+    // the menu, not a light seam.
+    backgroundColor: theme.colors.uacBackgroundBase,
     zIndex: theme.zIndex.base,
   },
   menuLayer: {
