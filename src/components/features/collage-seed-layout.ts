@@ -237,6 +237,7 @@ interface Node {
   id: string;
   imageUri: string;
   role: Role;
+  category?: string; // raw category, carried through so the editor can re-seed
 }
 
 interface Placed extends Node {
@@ -426,6 +427,7 @@ export const seedCanvasLayout = (
     id: it.id,
     imageUri: it.imageUri,
     role: classifyRole(it.category),
+    category: it.category,
   }));
   const garmentRank = (r: Role) =>
     isGarment(r) ? GARMENT_ORDER.indexOf(r) : 99;
@@ -551,6 +553,7 @@ export const seedCanvasLayout = (
     width: p.size,
     height: p.size,
     zIndex: rank.get(p.id)!,
+    category: p.category,
   }));
 };
 

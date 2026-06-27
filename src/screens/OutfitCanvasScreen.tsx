@@ -67,7 +67,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // (theme.spacing.uacDimension12 each side), aspect 3:4 (height = width × 4/3).
 const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.uacDimension12;
 const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
-const ITEM_DEFAULT_SIZE = 160;
 
 // How long the "Saved to My Creations" success snackbar stays up (mirrors
 // Wardrobe's READY_SNACKBAR_MS).
@@ -585,22 +584,30 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
       setItems(prev => {
-        let maxZ = prev.length > 0 ? Math.max(...prev.map(it => it.zIndex)) : 0;
-        const newItems: CanvasItemData[] = picked.map((item, i) => {
+        // Preserve each item's image source by id — the collage engine computes
+        // geometry from category only, so we re-attach the real (possibly
+        // require()'d) source afterwards.
+        const srcById = new Map<string, ImageSourcePropType>();
+        prev.forEach(it => srcById.set(it.id, it.imageSource));
+
+        const newSeeds = picked.map((item, i) => {
+          const id = `item-${item.id}-${Date.now()}-${i}`;
           const uri = getImageUrl(item.image_png ?? item.image_url);
-          return {
-            id: `item-${item.id}-${Date.now()}-${i}`,
-            imageSource: uri ? { uri } : testJeansImg,
-            x: 40 + i * 20,
-            y: 40 + i * 20,
-            zIndex: ++maxZ,
-            width: ITEM_DEFAULT_SIZE,
-            height: ITEM_DEFAULT_SIZE,
-            scale: 1,
-            rotation: 0,
-          };
+          srcById.set(id, uri ? { uri } : testJeansImg);
+          return { id, imageUri: uri ?? '', category: item.category };
         });
-        const next = [...prev, ...newItems];
+
+        // Re-seed the WHOLE canvas through the collage engine so every item —
+        // existing and newly added — follows the canvas rule (default position
+        // + scale), so the user needs minimal manual editing. Undoable.
+        const seeds = [
+          ...prev.map(it => ({ id: it.id, imageUri: '', category: it.category })),
+          ...newSeeds,
+        ];
+        const next = seedCanvasLayout(seeds, CANVAS_WIDTH).map(c => ({
+          ...c,
+          imageSource: srcById.get(c.id) ?? c.imageSource,
+        }));
         pushHistory(next);
         return next;
       });
