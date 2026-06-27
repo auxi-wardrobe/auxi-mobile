@@ -34,6 +34,14 @@ export const COLLAGE_ASPECT = 4 / 3; // height / width
 // scales the object predictably and the frame centre == the object centre.
 const BASE_FRAME_RATIO = 0.6;
 
+// Every source PNG shares identical transparent negative padding, so the actual
+// garment occupies a fixed inner fraction of its frame. Collision tests run on
+// this CONTENT box (not the full frame) so neighbouring regions can render with
+// touching/overlapping frames — the transparent margins meeting — without the
+// engine treating that as a real garment collision. Rendering still uses the
+// full frame; only the collision geometry shrinks.
+const CONTENT_RATIO = 0.72;
+
 // ── Semantic body regions (anatomical anchors along a vertical spine) ──────────
 type BodyRegion =
   | 'HEAD'
@@ -62,8 +70,9 @@ interface CategorySpec {
   // outerwear < waist < bag < head/face/jewellery — the flat-lay stacking order.
   zBand: number;
   layer: LayerKind;
-  // Max fraction of THIS item that may stay covered before collision pushes it
-  // out. Slight overlap (10–20%) is desirable; shoes are pinned to 0.
+  // Max fraction of THIS item's content box that may stay covered before
+  // collision pushes it out. Slight overlap (10–20%) is desirable; shoes keep a
+  // small tolerance so a hem grazing them isn't treated as a real collision.
   overlap: number;
   // How far (fraction of canvas width) this item may travel to dodge a collision
   // before it gives up and tucks UNDER the obstacle instead. Skeleton barely
@@ -80,7 +89,7 @@ const CATEGORY_TABLE: Record<string, CategorySpec> = {
   Outerwear: { region: 'TORSO', scale: 1.0, priority: 95, zBand: 30, layer: 'skeleton', overlap: 0.2, maxTravel: 0.04 },
   Top: { region: 'TORSO', scale: 0.95, priority: 90, zBand: 22, layer: 'skeleton', overlap: 0.2, maxTravel: 0.04 },
   Bottom: { region: 'LEGS', scale: 0.95, priority: 90, zBand: 12, layer: 'skeleton', overlap: 0.2, maxTravel: 0.04 },
-  Shoes: { region: 'FEET', scale: 0.5, priority: 80, zBand: 15, layer: 'skeleton', overlap: 0.0, maxTravel: 0.06 },
+  Shoes: { region: 'FEET', scale: 0.5, priority: 80, zBand: 15, layer: 'skeleton', overlap: 0.12, maxTravel: 0.06 },
 
   // Accessories — supporting pieces.
   Bag: { region: 'SIDE', scale: 0.4, priority: 50, zBand: 40, layer: 'accessory', overlap: 0.1, maxTravel: 0.12 },
@@ -289,7 +298,8 @@ export const seedCanvasLayout = (
   for (const n of [...nodes].sort(order)) {
     const { cx, cy } = anchorOf(n);
     const size = frameSize(n.spec, W);
-    let box: Box = { cx, cy, w: size, h: size };
+    const content = size * CONTENT_RATIO;
+    let box: Box = { cx, cy, w: content, h: content };
     let travel = 0;
     const budget = n.spec.maxTravel * W;
     const isShoe = n.spec.region === 'FEET';
@@ -299,17 +309,18 @@ export const seedCanvasLayout = (
       if (other.spec.region === n.spec.region) {
         continue; // same region: layered/fanned, not collided
       }
+      const otherContent = other.size * CONTENT_RATIO;
       const otherBox: Box = {
         cx: other.cx,
         cy: other.cy,
-        w: other.size,
-        h: other.size,
+        w: otherContent,
+        h: otherContent,
       };
       const o = overlap(box, otherBox);
       if (!o) {
         continue;
       }
-      const allowed = isShoe ? 0 : Math.min(n.spec.overlap, other.spec.overlap);
+      const allowed = Math.min(n.spec.overlap, other.spec.overlap);
       const tolX = Math.min(box.w, otherBox.w) * allowed;
       const tolY = Math.min(box.h, otherBox.h) * allowed;
       if (o.ox <= tolX && o.oy <= tolY) {
