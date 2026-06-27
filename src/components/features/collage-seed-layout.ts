@@ -135,20 +135,20 @@ const SKELETONS: Record<string, Partial<Record<GarmentRole, Anchor>>> = {
   // Top + Bottom — tee over the waistband, jeans dropping to the right-bottom (2+1).
   'BOTTOM|TOP': {
     TOP: { x: 0.44, y: 0.39 },
-    BOTTOM: { x: 0.64, y: 0.61 },
+    BOTTOM: { x: 0.64, y: 0.71 },
   },
   // Outerwear + Top + Bottom — jacket overlaps tee; jeans to the right-bottom (3+x).
   'BOTTOM|OUTER|TOP': {
     OUTER: { x: 0.38, y: 0.39 },
     TOP: { x: 0.54, y: 0.37 },
-    BOTTOM: { x: 0.68, y: 0.62 },
+    BOTTOM: { x: 0.68, y: 0.72 },
   },
   // Outer + Mid + Top + Bottom — four-layer shelf; jeans to the right-bottom (4+x, 5+x).
   'BOTTOM|MID|OUTER|TOP': {
     OUTER: { x: 0.36, y: 0.4 },
     MID: { x: 0.48, y: 0.38 },
     TOP: { x: 0.6, y: 0.37 },
-    BOTTOM: { x: 0.7, y: 0.63 },
+    BOTTOM: { x: 0.7, y: 0.73 },
   },
 };
 
@@ -324,7 +324,7 @@ const buildSkeleton = (
     if (role === 'BOTTOM') {
       const lastUpperX = uppers.length ? 0.3 + (uppers.length - 1) * 0.2 : 0.5;
       // Drop the bottom toward the right-bottom of the cluster.
-      return { x: clamp(lastUpperX + 0.2, 0.5, 0.84), y: 0.62 };
+      return { x: clamp(lastUpperX + 0.2, 0.5, 0.84), y: 0.72 };
     }
     const i = Math.max(0, uppers.indexOf(role));
     return { x: clamp(0.3 + i * 0.2, 0.2, 0.78), y: 0.33 };
