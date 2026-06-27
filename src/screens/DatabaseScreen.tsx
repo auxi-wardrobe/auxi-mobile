@@ -77,6 +77,7 @@ export const DatabaseScreen = () => {
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
   const [items, setItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const isFocused = useIsFocused();
 
   const fetchItems = useCallback(async () => {
@@ -125,15 +126,32 @@ export const DatabaseScreen = () => {
   };
 
   const handleAddItems = async () => {
+    if (submitting || selectedItems.length === 0) {
+      return;
+    }
+
     // Note: `wardrobe_search_initiated` is NOT fired here — DatabaseScreen has
     // no search-submit step today (grid-browse-and-pick UI). Event moved to
     // tracking-plan §6 as gap; wire when a real search box ships.
-    await wardrobeService.cloneCommonItems(selectedItems);
-    // Best-effort: emit a wardrobe_item_added per successfully cloned id. The
-    // service returns void so we use the user-selected ids (one event per id);
-    // category is omitted because the local list shape from getCommonItems
-    // doesn't carry a guaranteed category field on every result.
-    selectedItems.forEach(id => {
+    setSubmitting(true);
+
+    // Clone each selected item via the per-item endpoint
+    // (`POST /wardrobe/common-items/<id>/clone`) — that is the route the backend
+    // actually exposes. We fan out with allSettled so one bad id doesn't sink
+    // the whole batch, then report success/failure honestly.
+    const ids = selectedItems;
+    const results = await Promise.allSettled(
+      ids.map(id => wardrobeService.cloneCommonItem(id)),
+    );
+
+    const succeededIds = ids.filter(
+      (_, index) => results[index].status === 'fulfilled',
+    );
+    const failedCount = ids.length - succeededIds.length;
+
+    // Emit a wardrobe_item_added per successfully cloned id. Category is omitted
+    // when the local list shape from getCommonItems doesn't carry one.
+    succeededIds.forEach(id => {
       const matched = items.find(it => it.id === id);
       const props: Record<string, unknown> = {
         item_id: id,
@@ -145,7 +163,23 @@ export const DatabaseScreen = () => {
       }
       track('wardrobe_item_added', props);
     });
-    navigation.navigate('Wardrobe');
+
+    setSubmitting(false);
+
+    if (failedCount > 0) {
+      console.error(`Failed to clone ${failedCount} of ${ids.length} item(s)`);
+      Toast.show({
+        type: 'error',
+        text1: t('common.add_items_failed_title'),
+        text2: t('common.try_again_moment'),
+        position: 'bottom',
+      });
+    }
+
+    // Navigate back as long as at least one item landed in the wardrobe.
+    if (succeededIds.length > 0) {
+      navigation.navigate('Wardrobe');
+    }
   };
 
   const renderGridTile = (item: WardrobeItem) => {
@@ -224,7 +258,8 @@ export const DatabaseScreen = () => {
         <PillButton
           title={t('wardrobe.database.add_item')}
           onPress={handleAddItems}
-          disabled={selectedItems.length === 0}
+          disabled={selectedItems.length === 0 || submitting}
+          loading={submitting}
         />
       </View>
     </SafeAreaView>

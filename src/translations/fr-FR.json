@@ -345,6 +345,7 @@
       "badge_common": "commun",
       "action_cannot_undo": "Cette action est irréversible.",
       "pick_image_failed": "Échec de la sélection de l'image",
+      "add_items_failed_title": "Impossible d'ajouter les articles",
       "load_wardrobe_failed_title": "Impossible de charger la garde-robe",
       "try_again_moment": "Veuillez réessayer dans un instant.",
       "a11y_add_item": "Ajouter un article",

@@ -345,6 +345,7 @@
       "badge_common": "món chung",
       "action_cannot_undo": "Hành động này không thể hoàn tác.",
       "pick_image_failed": "Không thể chọn ảnh",
+      "add_items_failed_title": "Không thể thêm món đồ",
       "load_wardrobe_failed_title": "Không thể tải tủ đồ",
       "try_again_moment": "Vui lòng thử lại sau giây lát.",
       "a11y_add_item": "Thêm món",
