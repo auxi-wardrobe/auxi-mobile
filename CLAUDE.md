@@ -12,6 +12,12 @@ a change at a URL (no simulator, no local build). It is NOT a generic
 security/container sandbox. To make one (works from any branch), follow the skill
 `deploy-auxi-web`. Designer guide: `docs/designer-quickstart.md`.
 
+**Vibe-edits must stay on-system.** The sandbox loop skips the design gates, so
+any UI change the designer vibes on must be on-system from the first edit (tokens,
+`M*` primitives, `motion.ts`, canonical header/footer) — not a throwaway mock. The
+approved sandbox should be the eventual PR. Checklist: `docs/web-preview-on-system.md`;
+rule: `.claude/rules/web-preview-on-system-required.md`.
+
 ## Stack at a glance
 - React Native 0.83.1, React 19.2, TypeScript 5.8
 - Navigation: `@react-navigation/native` 7 (native-stack)
