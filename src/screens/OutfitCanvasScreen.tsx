@@ -44,6 +44,7 @@ import {
 } from '../services/creationsService';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
+import { DotsLoader } from '../components/atoms/DotsLoader';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
@@ -341,7 +342,7 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
           >
             {confirming ? (
               <View style={pickerStyles.confirmBtnLoadingRow}>
-                <ActivityIndicator color={theme.colors.figmaPrimaryButtonText} />
+                <DotsLoader color={theme.colors.figmaPrimaryButtonText} />
                 <Text style={pickerStyles.confirmBtnLabel}>
                   {t('outfitCanvas.adding')}
                 </Text>
@@ -960,10 +961,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                   testID="canvas-adding-status"
                 >
                   <View style={styles.addingStatus}>
-                    <ActivityIndicator
-                      size="small"
-                      color={theme.colors.figmaTextDark}
-                    />
+                    <DotsLoader color={theme.colors.figmaTextDark} />
                     <Text style={styles.addingStatusLabel}>
                       {t('outfitCanvas.adding')}
                     </Text>
