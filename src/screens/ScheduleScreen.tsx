@@ -252,7 +252,11 @@ export const ScheduleScreen: React.FC = () => {
               key={day.key}
               activeOpacity={0.8}
               onPress={() => handleSelectDay(day)}
-              style={[styles.dayCell, isSelected && styles.dayCellSelected]}
+              style={[
+                styles.dayCell,
+                day.isToday && !isSelected && styles.dayCellToday,
+                isSelected && styles.dayCellSelected,
+              ]}
               testID={
                 isSelected ? `schedule-day-${day.key}-selected` : `schedule-day-${day.key}`
               }
@@ -364,6 +368,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderRadius: 16,
+    // Transparent border on every cell so the today-outline / selected-fill
+    // states don't shift the cell's content box by 1px.
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  // Today (when NOT the selected day) reads as an outline; the selected day is
+  // the solid fill below. If today IS selected it gets the fill, not the outline.
+  dayCellToday: {
+    borderColor: theme.colors.figmaDivider,
   },
   dayCellSelected: {
     backgroundColor: theme.colors.figmaIconSurface,
