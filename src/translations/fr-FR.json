@@ -602,17 +602,14 @@
         "title": "Ajouter une tenue",
         "subtitle": "Choisissez d'où l'ajouter.",
         "favourite_title": "Mes favoris",
-        "favourite_desc": "Tenues enregistrées",
-        "creations_title": "Mes créations",
-        "creations_desc": "Designs et remix du canevas"
+        "creations_title": "Mes créations"
       },
       "picker": {
         "title": "Ajouter au planning",
         "cancel": "Annuler",
         "confirm": "Planifier",
         "prev_month": "Mois précédent",
-        "next_month": "Mois suivant",
-        "dismiss": "Fermer"
+        "next_month": "Mois suivant"
       }
     },
     "outfitActions": {

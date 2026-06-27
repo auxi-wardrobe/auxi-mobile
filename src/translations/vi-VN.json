@@ -601,17 +601,14 @@
         "title": "Thêm bộ đồ",
         "subtitle": "Chọn nơi để thêm từ đó.",
         "favourite_title": "Yêu thích của tôi",
-        "favourite_desc": "Bộ đồ đã lưu",
-        "creations_title": "Tác phẩm của tôi",
-        "creations_desc": "Thiết kế & phối lại trên canvas"
+        "creations_title": "Tác phẩm của tôi"
       },
       "picker": {
         "title": "Thêm vào lịch",
         "cancel": "Hủy",
         "confirm": "Lên lịch",
         "prev_month": "Tháng trước",
-        "next_month": "Tháng sau",
-        "dismiss": "Đóng"
+        "next_month": "Tháng sau"
       }
     },
     "outfitActions": {

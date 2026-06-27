@@ -602,17 +602,14 @@
         "title": "Add an outfit",
         "subtitle": "Choose where to add it from.",
         "favourite_title": "My Favourite",
-        "favourite_desc": "Saved outfits",
-        "creations_title": "My Creations",
-        "creations_desc": "Canvas designs & remixes"
+        "creations_title": "My Creations"
       },
       "picker": {
         "title": "Add to Schedule",
         "cancel": "Cancel",
         "confirm": "Schedule",
         "prev_month": "Previous month",
-        "next_month": "Next month",
-        "dismiss": "Dismiss"
+        "next_month": "Next month"
       }
     },
     "outfitActions": {
