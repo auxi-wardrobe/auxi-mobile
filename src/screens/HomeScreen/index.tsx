@@ -39,6 +39,7 @@ import IconMenu from '../../assets/images/icon_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
 import IconFeedback from '../../assets/images/feedback.svg';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
+import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -92,6 +93,7 @@ import { PinnedItemUnavailableNotice } from '../../components/features/PinnedIte
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   MOOD_BANNER_DURATION_MS,
+  REFINE_TOAST_DURATION_MS,
   AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
   REFINE_AFTER_OUTFITS,
@@ -227,6 +229,23 @@ export const HomeScreen = () => {
   const activeIndexRef = useRef(0);
   const styleFeedbackRef = useRef<string | null>(null);
   const recommendationSourceRef = useRef<'feed' | 'refine'>('feed');
+  // Refine feedback awaiting the next batch — set on submit, consumed in the
+  // mutation's onSuccess so the "applied" toast fires only once the refreshed
+  // outfits have actually loaded. `isChip` is carried so analytics can ship the
+  // label for chips only and never the custom free-text (PII), mirroring
+  // `refine_submitted`.
+  const pendingRefineToastRef = useRef<{
+    text: string;
+    isChip: boolean;
+  } | null>(null);
+  const refineToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  // onSuccess is declared before showRefineToast (which needs `t`), so reach the
+  // shower through a ref — same indirection the buffer trampoline uses.
+  const showRefineToastRef = useRef<(text: string, isChip: boolean) => void>(
+    () => {},
+  );
 
   const { weather } = useWeather();
 
@@ -395,6 +414,9 @@ export const HomeScreen = () => {
 
       if (addedCount === 0) {
         poolDepletedRef.current = true;
+        // Nothing new surfaced — drop any queued refine toast so it can't fire
+        // against an unrelated batch later.
+        pendingRefineToastRef.current = null;
         if (flags?.wardrobeGap) {
           setIsWardrobeGap(true);
         }
@@ -407,6 +429,14 @@ export const HomeScreen = () => {
           tempBucket,
           addedCount,
         );
+      }
+
+      // The refreshed deck has landed — now confirm the refine that produced it
+      // so the user understands why the suggestions just changed.
+      const pendingToast = pendingRefineToastRef.current;
+      if (pendingToast) {
+        pendingRefineToastRef.current = null;
+        showRefineToastRef.current(pendingToast.text, pendingToast.isChip);
       }
 
       setTimeout(() => {
@@ -456,9 +486,12 @@ export const HomeScreen = () => {
   }, []);
 
   const onSubmitFeedback = useCallback(
-    (payload: string) => {
+    (payload: string, isChip: boolean) => {
       setStyleFeedback(payload);
       styleFeedbackRef.current = payload;
+      // Queue the confirmation toast; it fires once the new batch resolves.
+      // `isChip` gates whether the label is safe to ship to analytics.
+      pendingRefineToastRef.current = { text: payload, isChip };
       unfavoritedSwipeCountRef.current = 0;
       resetRefineTier();
       recommendationSourceRef.current = 'refine';
@@ -555,6 +588,7 @@ export const HomeScreen = () => {
   useEffect(() => {
     return () => {
       clearTimeoutRef(snackbarTimeoutRef);
+      clearTimeoutRef(refineToastTimeoutRef);
     };
   }, []);
 
@@ -828,11 +862,22 @@ export const HomeScreen = () => {
     ensureBufferRef.current = ensureBuffer;
   }, [ensureBuffer]);
 
+  const [refineToastText, setRefineToastText] = useState<string | null>(null);
+
+  // Clears the refine toast early the moment the user starts interacting with
+  // the refreshed deck (swipe, like, …). Declared above the interaction
+  // handlers so they can depend on it without hitting the temporal dead zone.
+  const dismissRefineToast = useCallback(() => {
+    clearTimeoutRef(refineToastTimeoutRef);
+    setRefineToastText(current => (current === null ? current : null));
+  }, []);
+
   const handleHeartTapForOutfit = useCallback(
     (outfit: OutfitSheetWithGrid | OutfitSheet | undefined) => {
       if (!outfit) {
         return;
       }
+      dismissRefineToast();
 
       const hash = outfit.outfitHash;
       const items = outfit.items || [];
@@ -872,7 +917,7 @@ export const HomeScreen = () => {
           setSaveStateByHash(current => ({ ...current, [hash]: 'error' }));
         });
     },
-    [queryClient, markFavouriteSaved],
+    [queryClient, markFavouriteSaved, dismissRefineToast],
   );
 
   const handleOpenFavourites = useCallback(() => {
@@ -885,14 +930,49 @@ export const HomeScreen = () => {
   const { t } = useTranslation();
   const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
 
-  const showMoodBanner = useCallback((text: string) => {
-    clearTimeoutRef(snackbarTimeoutRef);
-    setMoodBannerText(text);
-    snackbarTimeoutRef.current = setTimeout(() => {
-      setMoodBannerText(null);
-      snackbarTimeoutRef.current = null;
-    }, MOOD_BANNER_DURATION_MS);
-  }, []);
+  const showMoodBanner = useCallback(
+    (text: string) => {
+      // The mood banner and refine toast share the bottom slot. Every path that
+      // surfaces the banner already runs through an interaction handler that
+      // dismisses the toast, but clear it here too so mutual exclusion is
+      // structurally enforced rather than merely relied upon.
+      dismissRefineToast();
+      clearTimeoutRef(snackbarTimeoutRef);
+      setMoodBannerText(text);
+      snackbarTimeoutRef.current = setTimeout(() => {
+        setMoodBannerText(null);
+        snackbarTimeoutRef.current = null;
+      }, MOOD_BANNER_DURATION_MS);
+    },
+    [dismissRefineToast],
+  );
+
+  // Refine confirmation toast ("Relaxed applied!") — builds the localized copy.
+  // Fired from the mutation's onSuccess (via showRefineToastRef) once the
+  // refreshed deck has loaded, then auto-dismisses after REFINE_TOAST_DURATION_MS.
+  const showRefineToast = useCallback(
+    (feedback: string, isChip: boolean) => {
+      clearTimeoutRef(refineToastTimeoutRef);
+      // Ship `mode` always; the label only for chips. Custom refine text is
+      // free-form user input (PII) and must never reach analytics — same gate
+      // as the sibling `refine_submitted` event.
+      track('refine_confirmation_shown', {
+        mode: isChip ? 'chip' : 'custom',
+        ...(isChip ? { value: feedback } : {}),
+      });
+      // The toast itself still shows the user's own words back to them.
+      setRefineToastText(t('home.refineAppliedToast', { feedback }));
+      refineToastTimeoutRef.current = setTimeout(() => {
+        setRefineToastText(null);
+        refineToastTimeoutRef.current = null;
+      }, REFINE_TOAST_DURATION_MS);
+    },
+    [t],
+  );
+
+  useEffect(() => {
+    showRefineToastRef.current = showRefineToast;
+  }, [showRefineToast]);
 
   const handleMoodSaveSuccess = useCallback(
     (outfitHash: string, updated: boolean) => {
@@ -919,6 +999,7 @@ export const HomeScreen = () => {
       if (!outfit) {
         return;
       }
+      dismissRefineToast();
       unfavoritedSwipeCountRef.current = 0;
       onWearThisPress({
         outfitHash: outfit.outfitHash,
@@ -928,7 +1009,7 @@ export const HomeScreen = () => {
         outfit,
       });
     },
-    [onWearThisPress],
+    [onWearThisPress, dismissRefineToast],
   );
 
   const handleToggleItemPin = useCallback(
@@ -1026,24 +1107,29 @@ export const HomeScreen = () => {
   // Swipe RIGHT = step back to the previous suggestion. No favouriting here —
   // the heart button / "Wear this" own that — and the deck blocks this gesture
   // at index 0, so by the time we run there is always a previous card.
-  const handleSwipeBack = useCallback((outfit: OutfitSheetWithGrid) => {
-    const prev = activeIndexRef.current - 1;
-    if (prev < 0) {
-      return;
-    }
-    if (outfit?.outfitHash) {
-      track('outfit_swiped', {
-        outfit_hash: outfit.outfitHash,
-        direction: 'previous',
-        method: 'gesture',
-      });
-    }
-    activeIndexRef.current = prev;
-    setActiveIndex(prev);
-  }, []);
+  const handleSwipeBack = useCallback(
+    (outfit: OutfitSheetWithGrid) => {
+      dismissRefineToast();
+      const prev = activeIndexRef.current - 1;
+      if (prev < 0) {
+        return;
+      }
+      if (outfit?.outfitHash) {
+        track('outfit_swiped', {
+          outfit_hash: outfit.outfitHash,
+          direction: 'previous',
+          method: 'gesture',
+        });
+      }
+      activeIndexRef.current = prev;
+      setActiveIndex(prev);
+    },
+    [dismissRefineToast],
+  );
 
   const handleSkip = useCallback(
     (outfit: OutfitSheetWithGrid) => {
+      dismissRefineToast();
       const fromHash = outfit?.outfitHash;
       console.info('home.swipe.miss', { from: activeIndexRef.current });
       if (fromHash) {
@@ -1057,7 +1143,7 @@ export const HomeScreen = () => {
       // (tierViewedCount), not a raw skip counter.
       advanceDeck();
     },
-    [advanceDeck],
+    [advanceDeck, dismissRefineToast],
   );
 
   const openTempSheet = useCallback(() => {
@@ -1419,27 +1505,35 @@ export const HomeScreen = () => {
 
       {optionSets.length > 0 ? (
         <View style={styles.wearThisFooter}>
-          <PillButton
-            testID="home-wear-this"
-            title={
-              activeSaveState === 'saved'
-                ? t('home.saved_to_favourite')
-                : t('home.wear_this')
-            }
-            variant="outline"
-            onPress={() =>
-              activeOutfit && handleWearThisForOutfit(activeOutfit)
-            }
-            disabled={
-              !activeOutfit ||
-              activeSaveState === 'saved' ||
-              pinState.outfit === 'generating'
-            }
-            loading={activeSaveState === 'saving'}
-            trailing={<IconHomeHeartOutline width={24} height={24} />}
-            style={styles.primaryActionFull}
-            textStyle={styles.primaryActionLabel}
-          />
+          {activeSaveState === 'saved' ? (
+            <TouchableOpacity
+              testID="home-wear-this-saved-favourites"
+              accessibilityRole="button"
+              accessibilityLabel={t('home.saved_open_favourites')}
+              activeOpacity={0.7}
+              style={styles.savedFavouritesCta}
+              onPress={handleOpenFavourites}
+            >
+              <Text style={styles.savedFavouritesCtaText} numberOfLines={2}>
+                {t('home.saved_open_favourites')}
+              </Text>
+              <IconChevronRight width={20} height={20} />
+            </TouchableOpacity>
+          ) : (
+            <PillButton
+              testID="home-wear-this"
+              title={t('home.wear_this')}
+              variant="outline"
+              onPress={() =>
+                activeOutfit && handleWearThisForOutfit(activeOutfit)
+              }
+              disabled={!activeOutfit || pinState.outfit === 'generating'}
+              loading={activeSaveState === 'saving'}
+              trailing={<IconHomeHeartOutline width={24} height={24} />}
+              style={styles.primaryActionFull}
+              textStyle={styles.primaryActionLabel}
+            />
+          )}
           {activeSaveState === 'error' ? (
             <Text style={styles.saveErrorText}>
               {t('home.save_failed_retry')}
@@ -1528,6 +1622,20 @@ export const HomeScreen = () => {
         visible={feedbackVisible}
         onClose={() => setFeedbackVisible(false)}
       />
+
+      {refineToastText ? (
+        <View pointerEvents="none" style={styles.refineToastWrap}>
+          <View
+            testID="home-refine-applied-toast"
+            accessibilityRole="alert"
+            style={styles.refineToast}
+          >
+            <Text style={styles.refineToastText} numberOfLines={1}>
+              {refineToastText}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       {moodBannerText ? (
         <View

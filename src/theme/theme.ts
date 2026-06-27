@@ -142,6 +142,10 @@ export const theme = {
     // toasts that add UI complexity (AI-generated disclosure, "seen them all"
     // limited-suggestion notice) — black surface, white label, close button.
     figmaSnackbarInfoBg: '#1d1f23', // color/neutral/base — info snackbar surface
+    // Informational toast surface (background/primary/bold_700) — the "something
+    // new happened" toast (e.g. refine "Relaxed applied!"). Deliberately darker
+    // than figmaSnackbarInfoBg and distinct from the turquoise success toast.
+    figmaToastInfoBg: '#070707', // background/primary/bold_700
     // Glyph + text reuse existing tokens: icon = figmaTextDark (#070707,
     // icon/primary/bold_700), text = uacTextBase (#1d1f23, text/neutral/base).
     // Home-loading shimmer (AU-364, Figma node 2850:11205 "Home - loading").
@@ -496,6 +500,17 @@ export const theme = {
         shadowOpacity: 0.15,
         shadowRadius: 40,
         elevation: 12,
+      },
+      // Material "elevation/dialog" drop-shadow for floating toasts. RN can't
+      // stack two shadows, so this blends the DS pair
+      // (0 4px 8px 3px rgba(0,0,0,0.15) + 0 1px 3px rgba(0,0,0,0.30)) into one
+      // downward ambient shadow.
+      toast: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
+        elevation: 8,
       },
       sheet: {
         shadowColor: '#1d2646',
