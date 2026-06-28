@@ -41,7 +41,6 @@ import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { getImageUrl } from '../utils/url';
 import { useSidebar } from '../context/SidebarContext';
 import { useCreationsSeen } from '../context/CreationsSeenContext';
-import Toast from 'react-native-toast-message';
 import { track } from '../services/analytics';
 import {
   CREATIONS_QUERY_KEY,
@@ -55,6 +54,7 @@ import {
 } from '../navigation/canvasExitGuard';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
+import { InfoSnackbar } from '../components/feedback/InfoSnackbar';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
@@ -502,6 +502,11 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   // so we mount it as a bottom overlay and auto-dismiss.
   const [savedSnackbarVisible, setSavedSnackbarVisible] = useState(false);
   const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Self-controlled save-FAILURE snackbar (black InfoSnackbar). Mounted as a
+  // bottom overlay like the success one — deliberately NOT react-native-toast-
+  // message, which the toast migration (#177/#181) is removing.
+  const [saveErrorVisible, setSaveErrorVisible] = useState(false);
+  const saveErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks whether the screen is still mounted so async flows (the picker's
   // prefetch await) can skip their trailing setState if it unmounted mid-flight.
   const isMountedRef = useRef(true);
@@ -523,10 +528,32 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     }, SAVED_SNACKBAR_MS);
   }, []);
 
+  const dismissSaveError = useCallback(() => {
+    if (saveErrorTimerRef.current) {
+      clearTimeout(saveErrorTimerRef.current);
+      saveErrorTimerRef.current = null;
+    }
+    setSaveErrorVisible(false);
+  }, []);
+
+  const showSaveError = useCallback(() => {
+    if (saveErrorTimerRef.current) {
+      clearTimeout(saveErrorTimerRef.current);
+    }
+    setSaveErrorVisible(true);
+    saveErrorTimerRef.current = setTimeout(() => {
+      setSaveErrorVisible(false);
+      saveErrorTimerRef.current = null;
+    }, SAVED_SNACKBAR_MS);
+  }, []);
+
   useEffect(
     () => () => {
       if (snackbarTimerRef.current) {
         clearTimeout(snackbarTimerRef.current);
+      }
+      if (saveErrorTimerRef.current) {
+        clearTimeout(saveErrorTimerRef.current);
       }
     },
     [],
@@ -878,11 +905,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
       const isAuth =
         error instanceof CreationSaveError && error.kind === 'auth';
       if (!isAuth) {
-        Toast.show({
-          type: 'error',
-          text1: t('outfitCanvas.save_failed'),
-          position: 'bottom',
-        });
+        showSaveError();
       }
       track('creation_save_failed', {
         kind: error instanceof CreationSaveError ? error.kind : 'unknown',
@@ -891,7 +914,14 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     } finally {
       setIsSaving(false);
     }
-  }, [items, tags, queryClient, showSavedSnackbar, markCreationSaved, t]);
+  }, [
+    items,
+    tags,
+    queryClient,
+    showSavedSnackbar,
+    markCreationSaved,
+    showSaveError,
+  ]);
 
   const handleSave = useCallback(() => {
     persistCreation();
@@ -1306,6 +1336,22 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           <ItemReadySnackbar message={t('outfitCanvas.saved_body')} />
         </View>
       ) : null}
+
+      {/* Save-failure snackbar overlay — black InfoSnackbar (role="alert"),
+          dismissible + auto-dismissing. Interactive (close button), so it must
+          stay touchable (no pointerEvents="none"). */}
+      {saveErrorVisible ? (
+        <View
+          style={[styles.saveErrorOverlay, { bottom: insets.bottom + 24 }]}
+          testID="canvas-save-error-overlay"
+        >
+          <InfoSnackbar
+            testID="canvas-save-error-snackbar"
+            message={t('outfitCanvas.save_failed')}
+            onClose={dismissSaveError}
+          />
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -1323,6 +1369,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
+    zIndex: theme.zIndex.toast,
+    elevation: 1000,
+  },
+  // The InfoSnackbar stretches to its container width, so this overlay adds the
+  // side margins (vs the success overlay, which centres a fixed-width card).
+  saveErrorOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingHorizontal: theme.spacing.m,
     zIndex: theme.zIndex.toast,
     elevation: 1000,
   },

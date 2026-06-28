@@ -197,8 +197,11 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 |---|---|---|---|
 | `canvas_item_layer_reordered` | Selected canvas item moved one layer via the toolbar (AU-360 fix — z-index swap with adjacent item). Fires only on an actual move, not at the front/back edge. | `OutfitCanvasScreen.tsx:448` (`moveLayer`) | `direction` (`forward`/`backward`) |
 | `canvas_reset` | Canvas cleared to a blank state via the footer "+" new-canvas button (after the save/discard sheet resolves). | `OutfitCanvasScreen.tsx` (`resetCanvasToBlank`) | — |
+| `creation_saved` | A creation persisted successfully (`creationsService.saveCreation` resolved — server, or a local-store fallback when offline). | `OutfitCanvasScreen.tsx:892` (`persistCreation`) | `item_count` (number of persisted items) |
+| `creation_save_failed` | A save genuinely failed (the `creationsService.saveCreation` call threw). A true offline error never reaches here — the service falls back to a local save. | `OutfitCanvasScreen.tsx:910` (`persistCreation` catch) | `kind` — sanitized enum (`auth` session-expired / `server` other HTTP / `unknown`) |
+| `creation_self_visualization_opened` | "See on me" sparkle tapped on a saved creation card — launches the try-on (`SeeThisOnMe`) flow with the creation's wardrobe items. | `MyCreationsScreen.tsx:133` (`handleVisualize`) | `creation_id` (internal id) |
 
-> Gap: other canvas toolbar actions (add / duplicate / swap / delete / tag add-remove / save) are not yet instrumented — local-only editor state, no persistence wired. Track when the Save→backend persist step lands (`handleSave` is a TODO `goBack()` today). Logged in §6.6.
+> PII: `kind` is a closed enum, `creation_id` an internal record id — no garment names / free text. The Save→backend persist step now ships (`creation_saved`, §5.11 above is the success counterpart); other canvas toolbar actions (add / duplicate / swap / delete / tag add-remove) remain local-only editor state and are still uninstrumented (logged in §6.6).
 
 ### 5.12 App Feedback
 

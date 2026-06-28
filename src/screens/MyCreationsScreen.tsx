@@ -31,15 +31,28 @@ import { useScheduleAddedToast } from './schedule/useScheduleAddedToast';
 
 // A canvas item id looks like `item-<wardrobeId>-<stamp>-<index>` (see
 // OutfitCanvasScreen.handlePickerConfirm). Newer creations also store the raw
-// `wardrobeItemId`; for older ones we recover it from that synthetic id. Used to
-// feed the try-on flow, which needs real wardrobe item ids (deduped).
+// `wardrobeItemId`; for older ones we recover it from that synthetic id.
 const SYNTHETIC_ITEM_ID = /^item-(.+)-\d+-\d+$/;
 
-const resolveWardrobeItemIds = (creation: Creation): string[] => {
-  const ids = creation.items
-    .map(it => it.wardrobeItemId ?? SYNTHETIC_ITEM_ID.exec(it.id)?.[1] ?? null)
-    .filter((id): id is string => !!id);
-  return Array.from(new Set(ids));
+// The creation's items reduced to what try-on needs: a real wardrobe id paired
+// with its image url. Built as ONE list (id + url kept together, deduped by id)
+// so the parallel `itemIds` / `itemImageUrls` arrays handed to SeeThisOnMe can
+// never desync. Items with no recoverable wardrobe id are dropped.
+const resolveUsableItems = (
+  creation: Creation,
+): { id: string; imageUrl: string }[] => {
+  const seen = new Set<string>();
+  return creation.items.reduce<{ id: string; imageUrl: string }[]>(
+    (acc, it) => {
+      const id = it.wardrobeItemId ?? SYNTHETIC_ITEM_ID.exec(it.id)?.[1];
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        acc.push({ id, imageUrl: it.imageUri });
+      }
+      return acc;
+    },
+    [],
+  );
 };
 
 // "My Creations" — the saved-canvas list reached from the canvas header's
@@ -113,16 +126,16 @@ export const MyCreationsScreen: React.FC = () => {
   // items (real wardrobe ids + their image urls). Guarded against the no-id
   // case (the button is hidden then, but belt-and-braces here too).
   const handleVisualize = (creation: Creation) => {
-    const itemIds = resolveWardrobeItemIds(creation);
-    if (itemIds.length === 0) {
+    const usable = resolveUsableItems(creation);
+    if (usable.length === 0) {
       return;
     }
     track('creation_self_visualization_opened', { creation_id: creation.id });
     navigation.navigate('SeeThisOnMe', {
       outfit: {
         outfitHash: creation.id,
-        itemIds,
-        itemImageUrls: creation.items.map(it => it.imageUri).filter(Boolean),
+        itemIds: usable.map(u => u.id),
+        itemImageUrls: usable.map(u => u.imageUrl),
         stylingNote: '',
       },
     });
@@ -182,7 +195,7 @@ export const MyCreationsScreen: React.FC = () => {
             onRemove={setPendingRemovalId}
             onSchedule={handleSchedule}
             onVisualize={
-              resolveWardrobeItemIds(creation).length > 0
+              resolveUsableItems(creation).length > 0
                 ? handleVisualize
                 : undefined
             }
