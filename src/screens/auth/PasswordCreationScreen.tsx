@@ -38,7 +38,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from '../../components/design-system/lib';
 import {
   useNavigation,
   useRoute,
@@ -157,7 +157,7 @@ export const PasswordCreationScreen = () => {
               setError(t('uac.email_input.error_rate_limited'));
               return;
             case 'NETWORK_ERROR':
-              Toast.show({
+              toast.show({
                 type: 'error',
                 text1: t('uac.password_creation.error_generic'),
                 position: 'bottom',
