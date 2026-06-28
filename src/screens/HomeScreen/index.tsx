@@ -25,6 +25,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
 import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
+import { useAuth } from '../../context/AuthContext';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
 import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
 import { WelcomeDialog } from '../../components/features/WelcomeDialog';
@@ -140,8 +141,29 @@ export const HomeScreen = () => {
   const route = useRoute<RouteProp<AppStackParamList, 'Home'>>();
   const queryClient = useQueryClient();
   const { open: openSidebar } = useSidebar();
+  const { user } = useAuth();
   const { hasUnseen: hasUnseenFavourites, markSaved: markFavouriteSaved } =
     useFavouritesSeen();
+
+  // Persona preferences threaded into every `/build` `user` payload so the
+  // engine biases formality (style_direction) + statement level
+  // (confidence_level). Omit unset keys so the backend keeps its defaults.
+  // Mirrored into a ref for the pin-regenerate effect, which reads from refs.
+  const buildPersona = useMemo(() => {
+    const meta = user?.user_metadata;
+    return {
+      ...(meta?.style_direction
+        ? { style_direction: meta.style_direction }
+        : {}),
+      ...(meta?.confidence_level
+        ? { confidence_level: meta.confidence_level }
+        : {}),
+    };
+  }, [user?.user_metadata]);
+  const buildPersonaRef = useRef(buildPersona);
+  useEffect(() => {
+    buildPersonaRef.current = buildPersona;
+  }, [buildPersona]);
   const [homeView, setHomeView] = useState<HomeView>('grid');
   const [collageDragActive, setCollageDragActive] = useState(false);
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -312,7 +334,7 @@ export const HomeScreen = () => {
           temp_c: overrideTempCRef.current ?? weather.tempC,
           is_rainy: false,
         },
-        user: { gender: 'U', occasion },
+        user: { gender: 'U', occasion, ...buildPersona },
         intent: { mood: mood as never },
         count: 3,
         mode,
@@ -331,7 +353,7 @@ export const HomeScreen = () => {
         wardrobeGap: v05.wardrobeGap,
       };
     },
-    [weather.tempC, overrideTempCRef],
+    [weather.tempC, overrideTempCRef, buildPersona],
   );
 
   const {
@@ -616,7 +638,11 @@ export const HomeScreen = () => {
         temp_c: overrideTempCRef.current ?? weather.tempC,
         is_rainy: false,
       },
-      user: { gender: 'U' as const, occasion: selectedModeRef.current },
+      user: {
+        gender: 'U' as const,
+        occasion: selectedModeRef.current,
+        ...buildPersonaRef.current,
+      },
       count: 3,
       mode: selectedModeRef.current,
       pinned_item_id: pinState.pinnedItemId ?? undefined,
