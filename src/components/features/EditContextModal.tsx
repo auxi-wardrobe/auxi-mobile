@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -15,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
+import { MInput } from '../design-system/lib';
 import { EditContextSuggestion } from '../../screens/HomeScreen/context-chips';
 
 interface EditContextModalProps {
@@ -88,17 +88,18 @@ export const EditContextModal: React.FC<EditContextModalProps> = ({
           </TouchableOpacity>
 
           <View style={styles.inputRow}>
-            <TextInput
-              testID="edit-context-input"
-              style={styles.input}
-              value={value}
-              onChangeText={onChangeText}
-              placeholder={t('contextChips.edit_placeholder')}
-              placeholderTextColor={theme.colors.figmaTextSecondary}
-              autoFocus
-              returnKeyType="send"
-              onSubmitEditing={submitDisabled ? undefined : onSubmit}
-            />
+            <View style={styles.inputFill}>
+              <MInput
+                testID="edit-context-input"
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={t('contextChips.edit_placeholder')}
+                accessibilityLabel={t('contextChips.edit_placeholder')}
+                autoFocus
+                returnKeyType="send"
+                onSubmitEditing={submitDisabled ? undefined : onSubmit}
+              />
+            </View>
             <TouchableOpacity
               testID="edit-context-submit"
               accessibilityRole="button"
@@ -111,7 +112,7 @@ export const EditContextModal: React.FC<EditContextModalProps> = ({
               disabled={submitDisabled}
               onPress={onSubmit}
             >
-              <Icons.ChevronRight
+              <Icons.ArrowRight
                 width={24}
                 height={24}
                 color={theme.colors.figmaPrimaryButtonText}
@@ -183,21 +184,15 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s,
     marginTop: theme.spacing.xl,
   },
-  input: {
+  inputFill: {
     flex: 1,
-    height: 64,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaDivider,
-    backgroundColor: theme.colors.figmaSurface,
-    paddingHorizontal: theme.spacing.m,
-    ...theme.typography.aliases.archivoBody,
-    color: theme.colors.figmaTextPrimary,
   },
+  // Square submit button paired to MInput's 54px height + 12px (radius.xl)
+  // corners so the field and its action read as one control.
   submitButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 54,
+    height: 54,
+    borderRadius: 12,
     backgroundColor: theme.colors.figmaPrimaryButtonBg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -206,9 +201,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   heading: {
-    ...theme.typography.aliases.interSemiboldSm,
-    fontSize: 18,
-    lineHeight: 24,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.figmaTextPrimary,
     marginTop: theme.spacing.l,
   },
