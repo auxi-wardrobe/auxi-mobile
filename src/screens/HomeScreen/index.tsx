@@ -6,7 +6,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   ScrollView,
   Text,
@@ -40,6 +39,7 @@ import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.sv
 import IconFeedback from '../../assets/images/feedback.svg';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
+import { DotsLoader } from '../../components/atoms/DotsLoader';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -1555,8 +1555,7 @@ export const HomeScreen = () => {
               loading={activeSaveState === 'saving'}
               trailing={
                 pinState.outfit === 'generating' ? (
-                  <ActivityIndicator
-                    size="small"
+                  <DotsLoader
                     color={theme.colors.figmaAction}
                     testID="home-wear-this-generating-spinner"
                   />

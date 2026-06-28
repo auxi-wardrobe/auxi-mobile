@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
-  ActivityIndicator,
   AccessibilityRole,
   Animated,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { theme } from '../../theme/theme';
 import { motion, useReducedMotion } from '../../theme/motion';
+import { DotsLoader } from '../atoms/DotsLoader';
 
 type PillVariant = 'filled' | 'outline' | 'soft' | 'text' | 'danger';
 
@@ -241,9 +241,8 @@ export const PillButton: React.FC<PillButtonProps> = ({
           pointerEvents="none"
           style={[styles.loaderOverlay, loaderStyle]}
         >
-          <ActivityIndicator
+          <DotsLoader
             testID={testID ? `${testID}-loading` : undefined}
-            size="small"
             color={
               variant === 'filled'
                 ? theme.colors.figmaPrimaryButtonText

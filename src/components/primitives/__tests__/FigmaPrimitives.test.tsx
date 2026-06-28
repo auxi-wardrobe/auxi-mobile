@@ -40,7 +40,7 @@ describe('PillButton', () => {
     const r = render(
       <PillButton testID="pb" title="Wear this" loading onPress={() => {}} />,
     );
-    // ActivityIndicator surfaces the testID on both the composite and its host
+    // DotsLoader surfaces the testID on both the composite and its host
     // node, so assert presence rather than an exact count.
     expect(findByTestID(r.root, 'pb-loading').length).toBeGreaterThan(0);
     // `disabled || loading` disables the touchable; assert across matching

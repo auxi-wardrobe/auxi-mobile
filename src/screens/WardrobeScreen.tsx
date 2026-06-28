@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
   Image,
@@ -30,6 +29,7 @@ import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
 import { MBottomSheet, MButton } from '../components/design-system/lib';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
+import { DotsLoader } from '../components/atoms/DotsLoader';
 import { useSidebar } from '../context/SidebarContext';
 import {
   wardrobeService,
@@ -561,10 +561,7 @@ export const WardrobeScreen = () => {
             accessibilityLabel={t('common.a11y_add_item')}
           >
             {uploading ? (
-              <ActivityIndicator
-                size="small"
-                color={theme.colors.figmaAction}
-              />
+              <DotsLoader color={theme.colors.figmaAction} />
             ) : (
               <Icons.Plus width={24} height={24} />
             )}

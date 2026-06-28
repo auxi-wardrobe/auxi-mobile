@@ -3,12 +3,12 @@ import {
     TouchableOpacity,
     Text,
     StyleSheet,
-    ActivityIndicator,
     ViewStyle,
     TextStyle,
     TouchableOpacityProps,
 } from 'react-native';
 import { theme } from '../../theme/theme';
+import { DotsLoader } from './DotsLoader';
 
 interface ButtonProps extends TouchableOpacityProps {
     title: string;
@@ -65,7 +65,7 @@ export const Button: React.FC<ButtonProps> = ({
             {...props}
         >
             {loading ? (
-                <ActivityIndicator
+                <DotsLoader
                     color={
                         variant === 'outline' || variant === 'text'
                             ? theme.colors.primary

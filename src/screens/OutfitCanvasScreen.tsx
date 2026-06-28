@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
@@ -287,7 +286,7 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
             contentContainerStyle={pickerStyles.scrollContent}
           >
             {loading ? (
-              <ActivityIndicator style={{ marginTop: 40 }} />
+              <DotsLoader style={pickerStyles.loading} />
             ) : wardrobeItems.length === 0 ? (
               <Text style={pickerStyles.empty}>
                 {t('outfitCanvas.no_items_found')}
@@ -1418,6 +1417,10 @@ const pickerStyles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingBottom: 24,
+  },
+  loading: {
+    marginTop: 40,
+    alignSelf: 'center',
   },
   grid: {
     flexDirection: 'row',
