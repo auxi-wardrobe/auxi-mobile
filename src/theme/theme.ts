@@ -296,6 +296,13 @@ export const theme = {
         fontSize: 24,
         lineHeight: 32,
       },
+      // My Creations card name title — Poppins SemiBold 32/40, text/neutral/base
+      // (#1d1f23). Mirrors the Favourite card title treatment, one step larger.
+      poppinsTitleSemibold: {
+        fontFamily: 'Poppins-SemiBold',
+        fontSize: 32,
+        lineHeight: 40,
+      },
       uacBodyMdSemibold: {
         fontFamily: 'Poppins-SemiBold',
         fontSize: 16,
