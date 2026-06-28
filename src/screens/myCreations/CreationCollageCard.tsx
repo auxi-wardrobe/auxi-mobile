@@ -74,7 +74,7 @@ export const CreationCollageCard: React.FC<Props> = ({
         {creation.name ? (
           <Text
             style={styles.name}
-            numberOfLines={1}
+            numberOfLines={2}
             testID={`${testIDPrefix}-name`}
           >
             {creation.name}
@@ -208,9 +208,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     paddingVertical: theme.spacing.s,
   },
+  // Creation name — Poppins SemiBold 32/40, #1d1f23 (rgb(29,31,35)), centred at
+  // the top of the card, mirroring the Favourite page title treatment.
   name: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaTextDark,
+    ...theme.typography.aliases.poppinsTitleSemibold,
+    color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
   date: {
