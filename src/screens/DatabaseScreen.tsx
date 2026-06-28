@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import Toast from 'react-native-toast-message';
+import { toast } from '../components/design-system/lib';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Header } from '../components/layout/Header';
@@ -95,7 +95,7 @@ export const DatabaseScreen = () => {
       setItems(data);
     } catch (error) {
       console.error('Error fetching wardrobe items', error);
-      Toast.show({
+      toast.show({
         type: 'error',
         text1: t('common.load_wardrobe_failed_title'),
         text2: t('common.try_again_moment'),
@@ -175,13 +175,13 @@ export const DatabaseScreen = () => {
 
     const addedCount = succeededIds.length;
 
-    // Show exactly ONE toast. react-native-toast-message only renders the most
+    // Show exactly ONE toast. The toast service only renders the most
     // recent call, so firing a success and an error back-to-back would let the
     // success clobber the failure notice — on a partial batch the user would
     // never learn some items failed. Pick a single honest message instead.
     if (addedCount > 0 && failedCount > 0) {
       console.error(`Failed to clone ${failedCount} of ${ids.length} item(s)`);
-      Toast.show({
+      toast.show({
         type: 'success',
         text1: t('wardrobe.database.added_partial_toast', {
           added: addedCount,
@@ -190,14 +190,14 @@ export const DatabaseScreen = () => {
         position: 'bottom',
       });
     } else if (addedCount > 0) {
-      Toast.show({
+      toast.show({
         type: 'success',
         text1: t('wardrobe.database.added_toast', { count: addedCount }),
         position: 'bottom',
       });
     } else if (failedCount > 0) {
       console.error(`Failed to clone ${failedCount} of ${ids.length} item(s)`);
-      Toast.show({
+      toast.show({
         type: 'error',
         text1: t('common.add_items_failed_title'),
         text2: t('common.try_again_moment'),
