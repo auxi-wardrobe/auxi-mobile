@@ -6,10 +6,12 @@
  * read from this hook, so they can NEVER disagree about the current mode
  * (named high-risk: "header/recommendation mismatch", "override not cleared").
  *
- * Persistence (D3): the active override survives same-day reloads via
- * AsyncStorage, keyed by `@auxi/temp_override` with the value
- * `{ bucketKey, dateISO }`. On mount we load it; if `dateISO` is not today the
- * override is expired and we fall back to `weather`.
+ * Session-only (AU-391): the override lives purely in memory and is NOT
+ * persisted. A real app terminate → cold reopen recreates the JS context, so
+ * the hook re-initializes to `weather` (live weather) on its own — i.e. the
+ * override always resets to Live Weather on app restart, which is the point of
+ * AU-391. Backgrounding / foregrounding within a session keeps the override
+ * (React state survives, only a full restart drops it).
  *
  * `overrideTempC` is `null` while on `weather` (live temp) and the bucket's
  * representative midpoint while an override is active. Callers substitute it as
@@ -18,30 +20,12 @@
  * override without re-creating their callbacks.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DEFAULT_TEMPERATURE_BUCKET_KEY,
   isOverrideBucket,
-  isTemperatureBucketKey,
   repTempCFor,
   type TemperatureBucketKey,
 } from '../config/temperature-buckets';
-
-const STORAGE_KEY = '@auxi/temp_override';
-
-interface PersistedOverride {
-  bucketKey: TemperatureBucketKey;
-  dateISO: string;
-}
-
-/** Local calendar day stamp (YYYY-MM-DD) — used to expire the override. */
-const todayISO = (): string => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = `${now.getMonth() + 1}`.padStart(2, '0');
-  const d = `${now.getDate()}`.padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
 
 export interface UseTemperatureOverride {
   activeBucketKey: TemperatureBucketKey;
@@ -53,9 +37,9 @@ export interface UseTemperatureOverride {
   overrideTempCRef: React.MutableRefObject<number | null>;
   /** True when a non-default bucket is active. */
   isOverrideActive: boolean;
-  /** Persist + activate a bucket (any key, incl. `weather` to clear). */
+  /** Activate a bucket in-memory (any key, incl. `weather` to clear). */
   apply: (key: TemperatureBucketKey) => void;
-  /** Reset to live weather and drop the persisted override. */
+  /** Reset to live weather. */
   clear: () => void;
 }
 
@@ -74,32 +58,6 @@ export const useTemperatureOverride = (): UseTemperatureOverride => {
     overrideTempCRef.current = repTempCFor(activeBucketKey);
   }, [activeBucketKey]);
 
-  // Load persisted override on mount; expire if not from today (D3).
-  useEffect(() => {
-    let mounted = true;
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then(raw => {
-        if (!mounted || !raw) {
-          return;
-        }
-        const parsed = JSON.parse(raw) as Partial<PersistedOverride>;
-        if (
-          isTemperatureBucketKey(parsed.bucketKey) &&
-          isOverrideBucket(parsed.bucketKey) &&
-          parsed.dateISO === todayISO()
-        ) {
-          setActiveBucketKey(parsed.bucketKey);
-        } else {
-          // Stale (yesterday) or malformed → clean up.
-          AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
-        }
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const apply = useCallback((key: TemperatureBucketKey) => {
     // Sync the refs SYNCHRONOUSLY here, not only via the effect above (which
     // runs post-commit): the Home Apply handler fires the recommendation
@@ -110,14 +68,6 @@ export const useTemperatureOverride = (): UseTemperatureOverride => {
     activeBucketKeyRef.current = key;
     overrideTempCRef.current = repTempCFor(key);
     setActiveBucketKey(key);
-    if (isOverrideBucket(key)) {
-      AsyncStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ bucketKey: key, dateISO: todayISO() }),
-      ).catch(() => {});
-    } else {
-      AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
-    }
   }, []);
 
   const clear = useCallback(() => {
