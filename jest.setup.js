@@ -7,6 +7,18 @@
  * (e.g. services/__tests__/analytics.test.ts) stay unaffected.
  */
 
+// theme/motion: force `useReducedMotion()` to report true in tests. Looping
+// loaders (DotsLoader/GeneratingDots/MacgieLoader) and the PillButton cross-fade
+// take their static, no-animation branch under reduced motion — otherwise an
+// `Animated.loop` keeps a timer alive that fires after Jest tears the
+// environment down (`getNativeTagFromPublicInstance is not a function` /
+// "import a file after the Jest environment has been torn down"). Every other
+// export stays real so motion tokens/easing/helpers are unchanged.
+jest.mock('./src/theme/motion', () => ({
+  ...jest.requireActual('./src/theme/motion'),
+  useReducedMotion: () => true,
+}));
+
 // react-native-toast-message: the default export is BOTH a renderable component
 // (App.tsx renders `<Toast />`) and a namespace with .show/.hide statics (screens
 // call Toast.show(...)). Model it as a no-op component function with the spies

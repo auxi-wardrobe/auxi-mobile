@@ -6,7 +6,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   ScrollView,
   Text,
@@ -42,6 +41,7 @@ import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.sv
 import IconFeedback from '../../assets/images/feedback.svg';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
+import { DotsLoader } from '../../components/atoms/DotsLoader';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -1379,22 +1379,6 @@ export const HomeScreen = () => {
         ) : null}
       </View>
 
-      {pinState.outfit === 'generating' ? (
-        <View
-          style={styles.pinGeneratingHeader}
-          testID="home-pin-generating-header"
-        >
-          <Text style={styles.pinGeneratingHeaderText} numberOfLines={1}>
-            {t('pin.generating_header')}
-          </Text>
-          <ActivityIndicator
-            size="small"
-            color={theme.colors.figmaTextPrimary}
-            testID="home-pin-generating-spinner"
-          />
-        </View>
-      ) : null}
-
       {loading ? (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -1568,14 +1552,27 @@ export const HomeScreen = () => {
           ) : (
             <PillButton
               testID="home-wear-this"
-              title={t('home.wear_this')}
+              title={
+                pinState.outfit === 'generating'
+                  ? t('pin.generating_header')
+                  : t('home.wear_this')
+              }
               variant="outline"
               onPress={() =>
                 activeOutfit && handleWearThisForOutfit(activeOutfit)
               }
               disabled={!activeOutfit || pinState.outfit === 'generating'}
               loading={activeSaveState === 'saving'}
-              trailing={<IconHomeHeartOutline width={24} height={24} />}
+              trailing={
+                pinState.outfit === 'generating' ? (
+                  <DotsLoader
+                    color={theme.colors.figmaAction}
+                    testID="home-wear-this-generating-spinner"
+                  />
+                ) : (
+                  <IconHomeHeartOutline width={24} height={24} />
+                )
+              }
               style={styles.primaryActionFull}
               textStyle={styles.primaryActionLabel}
             />

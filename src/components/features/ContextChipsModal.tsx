@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
@@ -14,6 +13,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Icons } from '../../assets/icons';
+import { DotsLoader } from '../atoms/DotsLoader';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { useBackgroundScale } from '../../context/BackgroundScaleContext';
@@ -249,7 +249,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
               onPress={onConfirm}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color={theme.colors.white} />
+                <DotsLoader color={theme.colors.white} />
               ) : (
                 <Text
                   style={[

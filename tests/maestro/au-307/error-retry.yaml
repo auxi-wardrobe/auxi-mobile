@@ -82,7 +82,7 @@ env:
 # 'generating' into 'error'). Catches a reducer regression where the
 # header lingers under the error banner.
 - assertNotVisible:
-    id: home-pin-generating-header
+    id: home-wear-this-generating-spinner
 
 # --- 4. Tap Retry → RETRY dispatch → outfit='generating' again ---
 - tapOn:
@@ -92,7 +92,7 @@ env:
 # Use extendedWaitUntil so we don't race the dispatch → render transition.
 - extendedWaitUntil:
     visible:
-      id: home-pin-generating-header
+      id: home-wear-this-generating-spinner
     timeout: ${MODAL_TIMEOUT_MS}
 - assertNotVisible:
     id: pin-generation-error
@@ -104,7 +104,7 @@ env:
 #       Generating header to leave. ---
 - extendedWaitUntil:
     notVisible:
-      id: home-pin-generating-header
+      id: home-wear-this-generating-spinner
     timeout: ${PIN_GENERATE_TIMEOUT_MS}
 - assertVisible:
     id: home-swipe-deck
