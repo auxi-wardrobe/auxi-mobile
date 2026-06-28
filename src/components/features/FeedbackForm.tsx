@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Toast from 'react-native-toast-message';
+import { toast } from '../design-system/lib';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useMutation } from '@tanstack/react-query';
@@ -98,7 +98,7 @@ export const FeedbackForm: React.FC<FeedbackFormProps> = ({
         category,
         ...(rating ? { rating } : {}),
       });
-      Toast.show({
+      toast.show({
         type: 'success',
         text1: t('feedback.success'),
         position: 'bottom',
@@ -110,7 +110,7 @@ export const FeedbackForm: React.FC<FeedbackFormProps> = ({
     onError: (error: unknown) => {
       const errorCode = resolveErrorCode(error);
       track('feedback_submit_failed', { error_code: errorCode });
-      Toast.show({
+      toast.show({
         type: 'error',
         text1:
           errorCode === 'rate_limited'

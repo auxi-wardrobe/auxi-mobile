@@ -328,7 +328,8 @@
       "errorGeneric": "Unable to save your feedback. Please try again.",
       "errorTimeout": "Connection timed out. Please try again.",
       "savedBanner": "This look is now saved to your favorites.",
-      "moodUpdatedBanner": "Mood updated for this saved look."
+      "moodUpdatedBanner": "Mood updated for this saved look.",
+      "notLovedBanner": "Got it — we won't add this look to your favorites."
     },
     "common": {
       "error_title": "Error",
@@ -558,7 +559,8 @@
       "discard_title": "Discard this creation?",
       "discard_body": "Your changes haven't been saved.",
       "discard_save": "Save",
-      "discard_discard": "Discard"
+      "discard_discard": "Discard",
+      "save_failed": "Unable to save outfit. Please try again."
     },
     "myCreations": {
       "title": "My Creations",
@@ -566,7 +568,12 @@
       "back": "Back",
       "empty_body": "Save a creation from the canvas to see it here.",
       "remove_a11y": "Remove creation",
-      "add_to_schedule": "Add to schedule"
+      "remove_title": "Remove from your Creations",
+      "remove_body": "Are you sure to remove this outfit from your creation list?",
+      "remove_confirm": "Yes",
+      "remove_cancel": "Cancel",
+      "add_to_schedule": "Add to schedule",
+      "self_visualization": "See on me"
     },
     "locationPermission": {
       "denied_title": "Permission Denied",

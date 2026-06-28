@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import Toast from 'react-native-toast-message';
+import { toast } from '../../components/design-system/lib';
 
 // The app's root <Toast/> host renders BELOW native modals, so a toast fired
 // while the date-picker sheet is still up renders behind it. We defer the toast
@@ -30,7 +30,7 @@ export const useScheduleAddedToast = (): (() => void) => {
       clearTimeout(timerRef.current);
     }
     timerRef.current = setTimeout(() => {
-      Toast.show({
+      toast.show({
         type: 'success',
         text1: t('schedule.added_toast'),
         position: 'bottom',

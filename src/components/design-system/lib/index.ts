@@ -87,6 +87,15 @@ export {
   type MToastProps,
 } from './MSnackbar';
 
+// Imperative toast (drop-in for react-native-toast-message): fire from anywhere
+// via `toast.*`, render once via `<MToastHost />`.
+export { MToastHost } from './MToastHost';
+export {
+  toast,
+  type ToastOptions,
+  type ToastTone,
+} from './m-toast-service';
+
 // Navigation
 export { MTopAppBar, type MTopAppBarProps } from './MTopAppBar';
 export { MTabBar, type MTabBarItem, type MTabBarProps } from './MTabBar';

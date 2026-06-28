@@ -17,6 +17,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   NavigationAction,
   RouteProp,
+  useFocusEffect,
   useRoute,
 } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -38,14 +39,21 @@ import { CategoryTabs } from '../components/features/CategoryTabs';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { getImageUrl } from '../utils/url';
 import { useSidebar } from '../context/SidebarContext';
+import { useCreationsSeen } from '../context/CreationsSeenContext';
 import { track } from '../services/analytics';
 import {
   CREATIONS_QUERY_KEY,
   CreationItem,
+  CreationSaveError,
   creationsService,
 } from '../services/creationsService';
+import {
+  requestCanvasExit,
+  setCanvasExitGuard,
+} from '../navigation/canvasExitGuard';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
+import { InfoSnackbar } from '../components/feedback/InfoSnackbar';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
@@ -427,6 +435,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<RouteProp<AppStackParamList, 'OutfitCanvas'>>();
   const { t } = useTranslation();
   const { open: openSidebar } = useSidebar();
+  const { hasUnseen: hasUnseenCreations, markSaved: markCreationSaved } =
+    useCreationsSeen();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   // Entered via Home's Remix button → show a back chevron (goes back to Home).
@@ -468,6 +478,10 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   // flips this true; Save clears it. Drives the "Discard this creation?" sheet
   // shown when the user tries to leave with pending edits.
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // In-flight Save guard: true while persistCreation awaits the network so the
+  // Save button can show its spinner and block a double-tap. Cleared in a
+  // `finally`, so it always resets even if the save throws.
+  const [isSaving, setIsSaving] = useState(false);
   const [discardVisible, setDiscardVisible] = useState(false);
   // The navigation action we intercepted (back / goBack), replayed verbatim
   // once the user resolves the sheet. `proceedRef` lets that replay through the
@@ -476,12 +490,22 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     null,
   );
   const proceedRef = useRef(false);
+  // A push-style exit intercepted by the canvas exit guard (My Creations icon,
+  // sidebar destinations that push rather than pop). Unlike `pendingAction`
+  // (a NavigationAction replayed via dispatch), this is a thunk that performs
+  // the navigation, replayed once the user resolves the discard sheet.
+  const pendingProceedRef = useRef<(() => void) | null>(null);
 
   // Self-controlled success snackbar (mint M3 ItemReadySnackbar, same component
   // as Wardrobe's "item ready"): the library Toast render path is unused here,
   // so we mount it as a bottom overlay and auto-dismiss.
   const [savedSnackbarVisible, setSavedSnackbarVisible] = useState(false);
   const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Self-controlled save-FAILURE snackbar (black InfoSnackbar). Mounted as a
+  // bottom overlay like the success one — deliberately NOT react-native-toast-
+  // message, which the toast migration (#177/#181) is removing.
+  const [saveErrorVisible, setSaveErrorVisible] = useState(false);
+  const saveErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks whether the screen is still mounted so async flows (the picker's
   // prefetch await) can skip their trailing setState if it unmounted mid-flight.
   const isMountedRef = useRef(true);
@@ -503,10 +527,32 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     }, SAVED_SNACKBAR_MS);
   }, []);
 
+  const dismissSaveError = useCallback(() => {
+    if (saveErrorTimerRef.current) {
+      clearTimeout(saveErrorTimerRef.current);
+      saveErrorTimerRef.current = null;
+    }
+    setSaveErrorVisible(false);
+  }, []);
+
+  const showSaveError = useCallback(() => {
+    if (saveErrorTimerRef.current) {
+      clearTimeout(saveErrorTimerRef.current);
+    }
+    setSaveErrorVisible(true);
+    saveErrorTimerRef.current = setTimeout(() => {
+      setSaveErrorVisible(false);
+      saveErrorTimerRef.current = null;
+    }, SAVED_SNACKBAR_MS);
+  }, []);
+
   useEffect(
     () => () => {
       if (snackbarTimerRef.current) {
         clearTimeout(snackbarTimerRef.current);
+      }
+      if (saveErrorTimerRef.current) {
+        clearTimeout(saveErrorTimerRef.current);
       }
     },
     [],
@@ -684,6 +730,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         const uri = getImageUrl(item.image_png ?? item.image_url);
         return {
           id: `item-${item.id}-${stamp}-${i}`,
+          // The real wardrobe id, carried so a saved creation can launch try-on.
+          wardrobeItemId: item.id,
           uri,
           category: item.category,
           imageSource: uri ? { uri } : testJeansImg,
@@ -714,8 +762,10 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         // sources from `prepared` so the prefetch warming and the per-item
         // "adding…" tracking below line up with the items actually placed.
         const srcByNewId = new Map<string, ImageSourcePropType>();
+        const wardrobeIdByNewId = new Map<string, string>();
         const newSeeds = prepared.map(p => {
           srcByNewId.set(p.id, p.imageSource);
+          wardrobeIdByNewId.set(p.id, p.wardrobeItemId);
           return { id: p.id, imageUri: p.uri ?? '', category: p.category };
         });
 
@@ -727,7 +777,11 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         // are returned by reference, so re-attach the source only for new ids.
         const next = addSeededItems(prev, newSeeds, CANVAS_WIDTH).map(c =>
           srcByNewId.has(c.id)
-            ? { ...c, imageSource: srcByNewId.get(c.id)! }
+            ? {
+                ...c,
+                imageSource: srcByNewId.get(c.id)!,
+                wardrobeItemId: wardrobeIdByNewId.get(c.id),
+              }
             : c,
         );
         pushHistory(next);
@@ -808,6 +862,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
       if (uri) {
         acc.push({
           id: it.id,
+          wardrobeItemId: it.wardrobeItemId,
           imageUri: uri,
           x: it.x,
           y: it.y,
@@ -825,17 +880,47 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
       return false;
     }
 
-    await creationsService.saveCreation({
-      items: savedItems,
-      tags,
-      canvasWidth: CANVAS_WIDTH,
-    });
-    queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
-    track('creation_saved', { item_count: savedItems.length });
-    setHasUnsavedChanges(false);
-    showSavedSnackbar();
-    return true;
-  }, [items, tags, queryClient, showSavedSnackbar]);
+    setIsSaving(true);
+    try {
+      await creationsService.saveCreation({
+        items: savedItems,
+        tags,
+        canvasWidth: CANVAS_WIDTH,
+      });
+      queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
+      track('creation_saved', { item_count: savedItems.length });
+      setHasUnsavedChanges(false);
+      // Light the My Creations header dot (same "unseen saved" feedback as the
+      // Home favourites "Wear this" mint dot); cleared when the list is opened.
+      markCreationSaved();
+      showSavedSnackbar();
+      return true;
+    } catch (error) {
+      // A genuine save failure (a true offline error never reaches here — the
+      // service falls back to a local save). `auth` = session expired: the
+      // apiClient interceptor already cleared tokens, redirected to login and
+      // toasted, so we stay silent and let that play out. Anything else didn't
+      // save — tell the user so they can retry instead of seeing fake success.
+      const isAuth =
+        error instanceof CreationSaveError && error.kind === 'auth';
+      if (!isAuth) {
+        showSaveError();
+      }
+      track('creation_save_failed', {
+        kind: error instanceof CreationSaveError ? error.kind : 'unknown',
+      });
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    items,
+    tags,
+    queryClient,
+    showSavedSnackbar,
+    markCreationSaved,
+    showSaveError,
+  ]);
 
   const handleSave = useCallback(() => {
     persistCreation();
@@ -843,11 +928,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleOpenCreations = useCallback(() => {
     // "My Creations" lists everything the user has saved from the canvas
-    // (new canvases, remixed outfits, …).
-    track('canvas_my_creations_opened');
-    // Back chevron (→ Outfit Canvas) instead of the hamburger — the user is in a
-    // sub-flow, not at a top-level destination.
-    navigation.navigate('MyCreations', { showBackButton: true });
+    // (new canvases, remixed outfits, …). Opening it PUSHES the screen, so it
+    // never trips beforeRemove — route through the exit guard so unsaved edits
+    // surface the discard sheet first (passes straight through when clean).
+    requestCanvasExit(() => {
+      track('canvas_my_creations_opened');
+      // Back chevron (→ Outfit Canvas) instead of the hamburger — the user is in
+      // a sub-flow, not at a top-level destination.
+      navigation.navigate('MyCreations', { showBackButton: true });
+    });
   }, [navigation]);
 
   // Intercept leaving the canvas (back chevron / hardware back) while there are
@@ -859,11 +948,35 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
       e.preventDefault();
+      pendingProceedRef.current = null;
       setPendingAction(e.data.action);
       setDiscardVisible(true);
     });
     return unsubscribe;
   }, [navigation, hasUnsavedChanges]);
+
+  // Register the module-level exit guard so PUSH-style exits that never hit
+  // beforeRemove (the My Creations icon, sidebar destinations) also surface the
+  // discard sheet. Focus-gated: the guard is only armed while the canvas is the
+  // focused screen, so a sidebar tap from a screen pushed ON TOP of a still-
+  // mounted dirty canvas (e.g. My Creations) doesn't surface the canvas dialog.
+  // The focus callback also re-arms proceedRef (a push exit leaves the canvas
+  // mounted with it stuck true) so a later back/exit prompts again if dirty.
+  useFocusEffect(
+    useCallback(() => {
+      proceedRef.current = false;
+      if (hasUnsavedChanges) {
+        setCanvasExitGuard(proceed => {
+          pendingProceedRef.current = proceed;
+          setPendingAction(null);
+          setDiscardVisible(true);
+        });
+      } else {
+        setCanvasExitGuard(null);
+      }
+      return () => setCanvasExitGuard(null);
+    }, [hasUnsavedChanges]),
+  );
 
   // The unsaved-changes sheet is reused for two intents: leaving the screen
   // (replay the intercepted nav action) and starting a NEW blank canvas (reset
@@ -874,7 +987,12 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const leaveWithPendingAction = useCallback(() => {
     proceedRef.current = true;
     setDiscardVisible(false);
-    if (pendingAction) {
+    const proceed = pendingProceedRef.current;
+    pendingProceedRef.current = null;
+    if (proceed) {
+      // Push-style exit (My Creations icon / sidebar) — run the navigation thunk.
+      proceed();
+    } else if (pendingAction) {
       navigation.dispatch(pendingAction);
     } else {
       navigation.goBack();
@@ -905,10 +1023,17 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [resetCanvasToBlank, leaveWithPendingAction]);
 
-  // Discard sheet — "Save" persists then resolves (leave or new canvas).
+  // Discard sheet — "Save" persists then resolves (leave or new canvas). Only
+  // resolve when the save actually succeeded: if it failed (server error) the
+  // error toast has fired and we close the sheet but STAY on the canvas so the
+  // user keeps their work and can retry, rather than leaving/clearing it.
   const handleDiscardSave = useCallback(async () => {
-    await persistCreation();
-    resolveSheet();
+    const saved = await persistCreation();
+    if (saved) {
+      resolveSheet();
+    } else {
+      setDiscardVisible(false);
+    }
   }, [persistCreation, resolveSheet]);
 
   // "Discard" resolves without saving.
@@ -921,15 +1046,21 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const handleDiscardCancel = useCallback(() => {
     setDiscardVisible(false);
     setPendingAction(null);
+    pendingProceedRef.current = null;
     sheetIntentRef.current = 'leave';
   }, []);
 
-  // "+" new-blank-canvas button. It is only enabled while there are unsaved
-  // changes, so always route through the save/discard sheet before clearing.
+  // New-blank-canvas button. Enabled whenever the canvas isn't already blank.
+  // Only route through the save/discard sheet when there are pending edits to
+  // lose; an already-saved canvas has nothing to discard, so reset in place.
   const handleNewBlankCanvas = useCallback(() => {
+    if (!hasUnsavedChanges) {
+      resetCanvasToBlank();
+      return;
+    }
     sheetIntentRef.current = 'new';
     setDiscardVisible(true);
-  }, []);
+  }, [hasUnsavedChanges, resetCanvasToBlank]);
 
   const actionDisabled = !selectedId;
 
@@ -991,6 +1122,16 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             style={styles.headerIconBtn}
           >
             <IconMyCreation width={24} height={24} />
+            {/* Mint "unseen saved creation" dot — same feedback as the Home
+                favourites "Wear this" dot. Lit on save, cleared when the My
+                Creations list is opened. */}
+            {hasUnseenCreations ? (
+              <View
+                testID="canvas-my-creations-badge"
+                style={styles.creationDot}
+                pointerEvents="none"
+              />
+            ) : null}
           </Pressable>
         </View>
 
@@ -1132,14 +1273,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             {/* Footer — 56×56 outline "new canvas" button (canvas glyph, distinct
-              from the toolbar add "+"; starts a new blank canvas, enabled only
-              with unsaved changes) ahead of the primary FILLED Save button, which
-              carries the My Creations icon. */}
+              from the toolbar add "+"; starts a new blank canvas, disabled only
+              when the canvas is already blank) ahead of the primary FILLED Save
+              button, which carries the My Creations icon and shows a spinner
+              while the save is in flight. */}
             <View style={styles.saveRow}>
               <PillButton
                 testID="canvas-new-blank"
                 onPress={handleNewBlankCanvas}
-                disabled={!hasUnsavedChanges}
+                disabled={items.length === 0}
                 accessibilityLabel={t('outfitCanvas.a11y_new_canvas')}
                 leading={
                   <IconNewCanvas
@@ -1154,7 +1296,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               <PillButton
                 testID="canvas-save"
                 onPress={handleSave}
-                disabled={!hasUnsavedChanges}
+                disabled={!hasUnsavedChanges || items.length === 0}
+                loading={isSaving}
                 accessibilityLabel={t('outfitCanvas.a11y_save_outfit')}
                 title={t('common.save')}
                 trailing={<IconMyCreation width={24} height={24} />}
@@ -1192,6 +1335,22 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           <ItemReadySnackbar message={t('outfitCanvas.saved_body')} />
         </View>
       ) : null}
+
+      {/* Save-failure snackbar overlay — black InfoSnackbar (role="alert"),
+          dismissible + auto-dismissing. Interactive (close button), so it must
+          stay touchable (no pointerEvents="none"). */}
+      {saveErrorVisible ? (
+        <View
+          style={[styles.saveErrorOverlay, { bottom: insets.bottom + 24 }]}
+          testID="canvas-save-error-overlay"
+        >
+          <InfoSnackbar
+            testID="canvas-save-error-snackbar"
+            message={t('outfitCanvas.save_failed')}
+            onClose={dismissSaveError}
+          />
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -1212,6 +1371,16 @@ const styles = StyleSheet.create({
     zIndex: theme.zIndex.toast,
     elevation: 1000,
   },
+  // The InfoSnackbar stretches to its container width, so this overlay adds the
+  // side margins (vs the success overlay, which centres a fixed-width card).
+  saveErrorOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingHorizontal: theme.spacing.m,
+    zIndex: theme.zIndex.toast,
+    elevation: 1000,
+  },
   // Header
   header: {
     flexDirection: 'row',
@@ -1229,6 +1398,17 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.m,
     backgroundColor: theme.colors.white,
     ...theme.ds.shadow.headerIcon,
+  },
+  // Mint "unseen saved creation" dot — mirrors the Home favourites favDot
+  // (12×12, top/right 8, figmaFavouriteDot) for a consistent saved-feedback cue.
+  creationDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: theme.colors.figmaFavouriteDot,
   },
   headerIconBtnDisabled: {
     opacity: 0.5,

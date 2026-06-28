@@ -7,9 +7,6 @@ export const { width: screenWidth, height: screenHeight } =
   Dimensions.get('window');
 
 export const PIN_DONT_SHOW_STORAGE_KEY = '@auxi/pin/dont_show_confirm';
-// Persisted so the "AI-generated — may be inaccurate" toast shows only the
-// first time; afterwards the floating feedback button is the affordance.
-export const AI_NOTICE_DISMISSED_KEY = '@auxi/ai_notice/dismissed';
 // First-launch "Welcome to Macgie" dialog — shown once, then never again.
 export const WELCOME_SEEN_KEY = '@auxi/welcome/seen';
 
