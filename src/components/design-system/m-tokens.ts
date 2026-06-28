@@ -122,6 +122,13 @@ export const role = {
   // Fill is n800 (#1D1F23 = color/neutral/800) — re-uses `ink`, already exact.
   primaryBtnLabel: '#EFE9E3', // color/primary/100 — solid primary button label
   secondaryBtnLabel: '#1C1A19', // color/primary/600 — secondary text-button label
+
+  // ── Destructive / error semantic ──────────────────────────────────────────
+  // Brand destructive red (= theme.ts `figmaDestructive`/`uacTextDangerBase`,
+  // documented in docs/design-system/color-rules.md). CEO ruling 2026-06-28:
+  // the M* error toast uses the BRAND destructive, not the showcase palette's
+  // `da300` (#E74C3C). Kept as a named role so the da* ramp stays monotonic.
+  danger: '#bb251a',
 } as const;
 
 // ── Radius (new scale) ──────────────────────────────────────────────────────

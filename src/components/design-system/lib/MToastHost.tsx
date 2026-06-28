@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { motion, useReducedMotion } from '../../../theme/motion';
-import { color, radius, shadow, space, type } from '../m-tokens';
+import { color, radius, role, shadow, space, type } from '../m-tokens';
 import {
   ActiveToast,
   subscribeToast,
@@ -27,7 +27,7 @@ import {
 // Tone → left-accent color. info stays neutral (no strong accent) per spec.
 const TONE_ACCENT: Record<ToastTone, string> = {
   success: color.su200,
-  error: color.da300,
+  error: role.danger, // brand destructive #bb251a (color-rules.md), not palette da300
   info: color.n500,
 };
 
