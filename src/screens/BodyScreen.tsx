@@ -16,7 +16,7 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
-import Toast from 'react-native-toast-message';
+import { toast } from '../components/design-system/lib';
 import { useTranslation } from 'react-i18next';
 import {
   PillButton,
@@ -156,7 +156,7 @@ export const BodyScreen = () => {
           // photoDetail must not silently fall through to the "no photo yet"
           // placeholder on a fetch failure — surface it (other modes keep the
           // existing grid placeholder behavior).
-          Toast.show({
+          toast.show({
             type: 'error',
             text1: t('body.toast_load_failed_title'),
             text2: t('body.toast_load_failed_body'),
