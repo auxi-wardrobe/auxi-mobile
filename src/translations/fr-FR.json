@@ -236,6 +236,12 @@
         "value_unset": "—",
         "name_edit_placeholder": "Saisir un nom"
       },
+      "welcome": {
+        "title": "Bienvenue dans votre garde-robe",
+        "body": "Nous avons pré-rempli votre garde-robe avec des articles d'exemple pour que vous puissiez commencer à explorer Macgie tout de suite.\n\nAjoutez vos propres vêtements pour recevoir des recommandations de tenues personnalisées selon votre garde-robe et votre style.",
+        "primary_cta": "Ajouter mes vêtements",
+        "secondary_cta": "Explorer pour l'instant"
+      },
       "list": {
         "added_title": "Article ajouté. Nous finissons de le préparer en arrière-plan.",
         "item_ready_title": "Votre article est prêt",

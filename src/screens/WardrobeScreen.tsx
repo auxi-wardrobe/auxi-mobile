@@ -25,6 +25,7 @@ import {
   Asset,
 } from 'react-native-image-picker';
 import { CategoryTabs } from '../components/features/CategoryTabs';
+import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
 import { Header } from '../components/layout/Header';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
@@ -333,7 +334,7 @@ export const WardrobeScreen = () => {
     navigation.navigate('ItemDetail', { itemId: item.id });
   };
 
-  const openAddSheet = (source: 'header' | 'empty_state') => {
+  const openAddSheet = (source: 'header' | 'empty_state' | 'welcome') => {
     track('add_item_opened', { source });
     setAddSheetVisible(true);
   };
@@ -758,6 +759,14 @@ export const WardrobeScreen = () => {
           <ItemReadySnackbar message={readySnackbarMessage} />
         </View>
       ) : null}
+
+      {/* First-open welcome popup — shown once the wardrobe finishes its initial
+          load (so it never overlays the skeleton), then never again. "Add My
+          Clothes" opens the add-item sheet; "Explore for Now" just dismisses. */}
+      <WardrobeWelcomeDialog
+        enabled={isFocused && !loading && !loadError}
+        onAddClothes={() => openAddSheet('welcome')}
+      />
     </SafeAreaView>
   );
 };
