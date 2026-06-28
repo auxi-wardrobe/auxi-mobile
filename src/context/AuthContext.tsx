@@ -124,13 +124,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (error) {
       console.log('Auth check failed', error);
-      // Token might be invalid
+      // refreshUser() → getCurrentUser() now goes through apiClient, which
+      // silently refreshes on a 401 and replays the request. If we still land
+      // here, distinguish a definitive auth rejection from a transient blip:
+      //
+      //   - Definitive expiry (refresh token itself rejected, or none stored):
+      //     the apiClient interceptor has ALREADY cleared the tokens and fired
+      //     the session-expired listener. authService.isAuthenticated() now
+      //     reports false → reflect the signed-out state.
+      //
+      //   - Transient failure (offline / timeout / 5xx): tokens are still
+      //     valid and were left intact. We must NOT wipe them — keep the
+      //     stored session so the user is restored on the next retry / when
+      //     back online, instead of being bounced to login.
+      //
+      // Crucially we NEVER call authService.logout() here: destroying a
+      // still-valid session on a transient error is exactly the ~hourly
+      // forced-logout bug this fix removes.
       try {
-        await authService.logout();
-      } catch (logoutError) {
-        console.warn('Logout failed during auth check cleanup', logoutError);
+        const stillAuthenticated = await authService.isAuthenticated();
+        if (!stillAuthenticated) {
+          setUser(null);
+        }
+      } catch (storageError) {
+        console.warn('Auth check storage probe failed', storageError);
       }
-      setUser(null);
     } finally {
       setIsLoading(false);
     }
