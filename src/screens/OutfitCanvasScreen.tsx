@@ -30,7 +30,10 @@ import {
   CanvasItemData,
   OutfitCanvasSurface,
 } from '../components/features/OutfitCanvasSurface';
-import { seedCanvasLayout } from '../components/features/collage-seed-layout';
+import {
+  addSeededItems,
+  seedCanvasLayout,
+} from '../components/features/collage-seed-layout';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -44,9 +47,13 @@ import {
 } from '../services/creationsService';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
+import { DotsLoader } from '../components/atoms/DotsLoader';
 import IconChevronLeft from '../assets/images/icon_chevron_left.svg';
 import IconMenu from '../assets/images/icon_menu.svg';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
+// Footer "new blank canvas" affordance — a canvas/frame glyph, deliberately
+// distinct from the toolbar's "+" add-item icon so the two aren't ambiguous.
+import IconNewCanvas from '../assets/images/icon_outfit_canvas.svg';
 import IconCanvasUndo from '../assets/images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../assets/images/canvas-icons/redo.svg';
 import IconCanvasAdd from '../assets/images/canvas-icons/add.svg';
@@ -67,11 +74,46 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // (theme.spacing.uacDimension12 each side), aspect 3:4 (height = width × 4/3).
 const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.uacDimension12;
 const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
-const ITEM_DEFAULT_SIZE = 160;
 
 // How long the "Saved to My Creations" success snackbar stays up (mirrors
 // Wardrobe's READY_SNACKBAR_MS).
 const SAVED_SNACKBAR_MS = 4000;
+
+// Upper bound on how long we'll wait for picked images before showing the
+// canvas anyway. Caps the picker's "Adding…" button spinner and the canvas
+// "Adding…" status so a slow or broken image can never wedge either: we warm
+// the cache for snappy placement, but never block the UI on the network.
+const ADD_IMAGE_TIMEOUT_MS = 6000;
+
+// Minimum time the "Adding…" feedback (picker button spinner + canvas status)
+// stays up, even when images are already cached and load instantly. Without this
+// floor the feedback can flash by unseen (common on web, where the cache hit is
+// immediate); it also smooths the fast path so the spinner never just flickers.
+const MIN_ADD_FEEDBACK_MS = 700;
+
+const delay = (ms: number): Promise<void> =>
+  new Promise(resolve => setTimeout(resolve, ms));
+
+// Prefetch a remote image into the cache, resolving on success, failure, OR a
+// timeout — whichever comes first. Always resolves (never rejects) so a single
+// bad URL can't reject the whole Promise.all in the add flow.
+const prefetchWithTimeout = (uri: string): Promise<void> =>
+  new Promise<void>(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (!settled) {
+        settled = true;
+        resolve();
+      }
+    };
+    const timer = setTimeout(finish, ADD_IMAGE_TIMEOUT_MS);
+    Image.prefetch(uri)
+      .catch(() => undefined)
+      .finally(() => {
+        clearTimeout(timer);
+        finish();
+      });
+  });
 
 // Pull a serializable URI out of a canvas item's imageSource for persistence.
 // Remote/picked items are `{ uri }`; require()'d mock assets are numbers (no
@@ -129,7 +171,9 @@ const INITIAL_MOCK_ITEMS: CanvasItemData[] = [];
 interface ItemPickerPanelProps {
   visible: boolean;
   onClose: () => void;
-  onConfirm: (items: WardrobeItem[]) => void;
+  // May be async: the panel keeps its "Add" button in a loading state until the
+  // promise settles (the parent warms the image cache before placing items).
+  onConfirm: (items: WardrobeItem[]) => void | Promise<void>;
 }
 
 const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
@@ -143,6 +187,9 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
   const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // True while the parent is warming the picked images / placing them on the
+  // canvas — drives the "Add" button's spinner.
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     Animated.timing(slideX, {
@@ -153,6 +200,7 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
     }).start();
     if (!visible) {
       setSelectedIds([]);
+      setConfirming(false);
     }
   }, [visible, slideX]);
 
@@ -191,9 +239,19 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
     );
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (confirming || selectedIds.length === 0) {
+      return;
+    }
     const chosen = wardrobeItems.filter(it => selectedIds.includes(it.id));
-    onConfirm(chosen);
+    setConfirming(true);
+    try {
+      await onConfirm(chosen);
+    } finally {
+      // Guard against a state update after the panel closed/unmounted: the
+      // visibility effect already resets `confirming`, so this is a no-op then.
+      setConfirming(false);
+    }
   };
 
   return (
@@ -270,22 +328,40 @@ const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
           </ScrollView>
         </View>
 
-        {/* Confirm button */}
+        {/* Confirm button — switches to a loading spinner while the picked
+            images are being warmed/placed (testID flips so Maestro can target
+            either state). */}
         <View style={pickerStyles.footer}>
           <TouchableOpacity
+            testID={
+              confirming ? 'canvas-picker-confirm-loading' : 'canvas-picker-confirm'
+            }
             style={[
               pickerStyles.confirmBtn,
-              selectedIds.length === 0 && pickerStyles.confirmBtnDisabled,
+              (selectedIds.length === 0 || confirming) &&
+                pickerStyles.confirmBtnDisabled,
             ]}
             onPress={handleConfirm}
-            disabled={selectedIds.length === 0}
+            disabled={selectedIds.length === 0 || confirming}
             activeOpacity={0.85}
           >
-            <Text style={pickerStyles.confirmBtnLabel}>
-              {selectedIds.length > 0
-                ? t('outfitCanvas.add_count', { count: selectedIds.length })
-                : t('outfitCanvas.add_to_canvas')}
-            </Text>
+            {confirming ? (
+              <View style={pickerStyles.confirmBtnLoadingRow}>
+                <DotsLoader
+                  color={theme.colors.figmaPrimaryButtonText}
+                  accessibilityLabel={t('outfitCanvas.adding')}
+                />
+                <Text style={pickerStyles.confirmBtnLabel}>
+                  {t('outfitCanvas.adding')}
+                </Text>
+              </View>
+            ) : (
+              <Text style={pickerStyles.confirmBtnLabel}>
+                {selectedIds.length > 0
+                  ? t('outfitCanvas.add_count', { count: selectedIds.length })
+                  : t('outfitCanvas.add_to_canvas')}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -367,6 +443,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           route.params.items.map(it => ({
             id: it.id,
             imageUri: it.imageUrl,
+            category: it.category,
           })),
           CANVAS_WIDTH,
         )
@@ -378,6 +455,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
+  // IDs of items just added from the picker whose remote images haven't finished
+  // loading yet. Each id clears on its image's onLoadEnd (and a safety timeout
+  // clears the rest).
+  const [addingIds, setAddingIds] = useState<string[]>([]);
+  // The on-canvas "Adding…" status is its own flag (not just `addingIds > 0`) so
+  // it can stay up for a minimum perceptible window even when cached images load
+  // instantly — see the hide effect below. `addShownAtRef` stamps when it opened.
+  const [addStatusVisible, setAddStatusVisible] = useState(false);
+  const addShownAtRef = useRef(0);
 
   // Unsaved-changes guard: any edit (item move/add/delete/layer, tag change)
   // flips this true; Save clears it. Drives the "Discard this creation?" sheet
@@ -397,6 +483,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   // so we mount it as a bottom overlay and auto-dismiss.
   const [savedSnackbarVisible, setSavedSnackbarVisible] = useState(false);
   const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks whether the screen is still mounted so async flows (the picker's
+  // prefetch await) can skip their trailing setState if it unmounted mid-flight.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const showSavedSnackbar = useCallback(() => {
     if (snackbarTimerRef.current) {
@@ -578,34 +673,113 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   const handlePickerConfirm = useCallback(
-    (picked: WardrobeItem[]) => {
-      setPickerVisible(false);
+    async (picked: WardrobeItem[]) => {
       if (picked.length === 0) {
+        setPickerVisible(false);
         return;
       }
+      // Build the canvas items up front so we know which URIs to warm. zIndex is
+      // assigned later inside the setItems updater against the freshest state.
+      const stamp = Date.now();
+      const prepared = picked.map((item, i) => {
+        const uri = getImageUrl(item.image_png ?? item.image_url);
+        return {
+          id: `item-${item.id}-${stamp}-${i}`,
+          uri,
+          category: item.category,
+          imageSource: uri ? { uri } : testJeansImg,
+        };
+      });
+
+      // Warm the cache (bounded) so pieces land already-decoded rather than
+      // popping in one-by-one. The picker's "Add" button stays in its loading
+      // state for this await — floored at MIN_ADD_FEEDBACK_MS so a cache hit
+      // doesn't make the spinner flash by.
+      await Promise.all([
+        delay(MIN_ADD_FEEDBACK_MS),
+        ...prepared.map(p =>
+          p.uri ? prefetchWithTimeout(p.uri) : Promise.resolve(),
+        ),
+      ]);
+
+      // The screen may have unmounted while we awaited the prefetch — bail before
+      // touching state so we don't update an unmounted component.
+      if (!isMountedRef.current) {
+        return;
+      }
+
       setItems(prev => {
-        let maxZ = prev.length > 0 ? Math.max(...prev.map(it => it.zIndex)) : 0;
-        const newItems: CanvasItemData[] = picked.map((item, i) => {
-          const uri = getImageUrl(item.image_png ?? item.image_url);
-          return {
-            id: `item-${item.id}-${Date.now()}-${i}`,
-            imageSource: uri ? { uri } : testJeansImg,
-            x: 40 + i * 20,
-            y: 40 + i * 20,
-            zIndex: ++maxZ,
-            width: ITEM_DEFAULT_SIZE,
-            height: ITEM_DEFAULT_SIZE,
-            scale: 1,
-            rotation: 0,
-          };
+        // Real image source for each NEW item, keyed by its generated id — the
+        // collage engine computes geometry from category only, so re-attach the
+        // actual (possibly require()'d) source afterwards. Reuse the ids and
+        // sources from `prepared` so the prefetch warming and the per-item
+        // "adding…" tracking below line up with the items actually placed.
+        const srcByNewId = new Map<string, ImageSourcePropType>();
+        const newSeeds = prepared.map(p => {
+          srcByNewId.set(p.id, p.imageSource);
+          return { id: p.id, imageUri: p.uri ?? '', category: p.category };
         });
-        const next = [...prev, ...newItems];
+
+        // Lay out ONLY the new item(s) through the collage engine; every item
+        // already on the canvas keeps its current (possibly hand-edited)
+        // position, scale and rotation. (CEO decision: adding an item must NOT
+        // wipe manual edits — previously the whole canvas was re-seeded.) New
+        // items stack above the existing arrangement. Undoable. Existing items
+        // are returned by reference, so re-attach the source only for new ids.
+        const next = addSeededItems(prev, newSeeds, CANVAS_WIDTH).map(c =>
+          srcByNewId.has(c.id)
+            ? { ...c, imageSource: srcByNewId.get(c.id)! }
+            : c,
+        );
         pushHistory(next);
         return next;
       });
+
+      // Track each new remote image until it reports loaded (onLoadEnd) — the
+      // safety net for anything the prefetch didn't fully warm — and open the
+      // canvas status. URI-less mock items need no status.
+      const pendingIds = prepared.filter(p => p.uri).map(p => p.id);
+      if (pendingIds.length > 0) {
+        addShownAtRef.current = Date.now();
+        setAddingIds(pendingIds);
+        setAddStatusVisible(true);
+      }
+      setPickerVisible(false);
     },
     [pushHistory],
   );
+
+  // Clear an item's "adding…" marker once its image has loaded. Returns the same
+  // array reference for unrelated items so untracked image loads don't re-render.
+  const handleItemImageLoad = useCallback((id: string) => {
+    setAddingIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : prev));
+  }, []);
+
+  // Safety net: never leave a marker stuck if an image's onLoadEnd never arrives
+  // (e.g. a dead URL on web). Clears whatever's left after the cap.
+  useEffect(() => {
+    if (addingIds.length === 0) {
+      return;
+    }
+    const timer = setTimeout(() => setAddingIds([]), ADD_IMAGE_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [addingIds]);
+
+  // Hide the canvas "Adding…" status once every new image has loaded, but not
+  // before MIN_ADD_FEEDBACK_MS has passed since it opened — so a cache hit (which
+  // empties `addingIds` almost immediately) still shows the status long enough to
+  // register.
+  useEffect(() => {
+    if (!addStatusVisible || addingIds.length > 0) {
+      return;
+    }
+    const remaining = Math.max(
+      0,
+      MIN_ADD_FEEDBACK_MS - (Date.now() - addShownAtRef.current),
+    );
+    const timer = setTimeout(() => setAddStatusVisible(false), remaining);
+    return () => clearTimeout(timer);
+  }, [addStatusVisible, addingIds]);
 
   // Tag actions
   const handleRemoveTag = useCallback((tag: string) => {
@@ -672,7 +846,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     // "My Creations" lists everything the user has saved from the canvas
     // (new canvases, remixed outfits, …).
     track('canvas_my_creations_opened');
-    navigation.navigate('MyCreations');
+    // Back chevron (→ Outfit Canvas) instead of the hamburger — the user is in a
+    // sub-flow, not at a top-level destination.
+    navigation.navigate('MyCreations', { showBackButton: true });
   }, [navigation]);
 
   // Intercept leaving the canvas (back chevron / hardware back) while there are
@@ -690,6 +866,12 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     return unsubscribe;
   }, [navigation, hasUnsavedChanges]);
 
+  // The unsaved-changes sheet is reused for two intents: leaving the screen
+  // (replay the intercepted nav action) and starting a NEW blank canvas (reset
+  // in place). A ref tracks which, so the shared Save/Discard handlers resolve
+  // correctly.
+  const sheetIntentRef = useRef<'leave' | 'new'>('leave');
+
   const leaveWithPendingAction = useCallback(() => {
     proceedRef.current = true;
     setDiscardVisible(false);
@@ -700,22 +882,54 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [navigation, pendingAction]);
 
-  // Discard sheet — "Save" persists then continues leaving.
+  // Reset to a fresh, empty canvas (clears items, selection and history) and
+  // mark it clean so the navigation guard and the "+" button settle.
+  const resetCanvasToBlank = useCallback(() => {
+    const blank: CanvasItemData[] = [];
+    history.current = [blank];
+    historyIndex.current = 0;
+    setItems(blank);
+    setSelectedId(null);
+    setHasUnsavedChanges(false);
+    track('canvas_reset');
+  }, []);
+
+  // Resolve the sheet per the active intent: start a blank canvas, or continue
+  // leaving the screen.
+  const resolveSheet = useCallback(() => {
+    setDiscardVisible(false);
+    if (sheetIntentRef.current === 'new') {
+      sheetIntentRef.current = 'leave';
+      resetCanvasToBlank();
+    } else {
+      leaveWithPendingAction();
+    }
+  }, [resetCanvasToBlank, leaveWithPendingAction]);
+
+  // Discard sheet — "Save" persists then resolves (leave or new canvas).
   const handleDiscardSave = useCallback(async () => {
     await persistCreation();
-    leaveWithPendingAction();
-  }, [persistCreation, leaveWithPendingAction]);
+    resolveSheet();
+  }, [persistCreation, resolveSheet]);
 
-  // "Discard" leaves without saving.
+  // "Discard" resolves without saving.
   const handleDiscardConfirm = useCallback(() => {
     track('creation_discarded');
-    leaveWithPendingAction();
-  }, [leaveWithPendingAction]);
+    resolveSheet();
+  }, [resolveSheet]);
 
-  // Backdrop / back dismiss — stay on the canvas.
+  // Backdrop / back dismiss — stay on the canvas, reset the intent.
   const handleDiscardCancel = useCallback(() => {
     setDiscardVisible(false);
     setPendingAction(null);
+    sheetIntentRef.current = 'leave';
+  }, []);
+
+  // "+" new-blank-canvas button. It is only enabled while there are unsaved
+  // changes, so always route through the save/discard sheet before clearing.
+  const handleNewBlankCanvas = useCallback(() => {
+    sheetIntentRef.current = 'new';
+    setDiscardVisible(true);
   }, []);
 
   const actionDisabled = !selectedId;
@@ -791,19 +1005,38 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           {/* Top group — gap 16 (theme.spacing.m) between card / add-row / tags */}
           <View style={styles.topGroup}>
             {/* Canvas card — fixed-size inset rounded card (Figma "Image 3:4") */}
-            <OutfitCanvasSurface
-              items={items}
-              width={CANVAS_WIDTH}
-              height={CANVAS_HEIGHT}
-              selectedId={selectedId}
-              onSelect={handleSelect}
-              onPositionChange={handlePositionChange}
-              onScaleChange={handleScaleChange}
-              onRotationChange={handleRotationChange}
-              showGrid
-              itemTestIDPrefix="canvas-item"
-              enablePinchZoom
-            />
+            <View style={styles.canvasWrap}>
+              <OutfitCanvasSurface
+                items={items}
+                width={CANVAS_WIDTH}
+                height={CANVAS_HEIGHT}
+                selectedId={selectedId}
+                onSelect={handleSelect}
+                onPositionChange={handlePositionChange}
+                onScaleChange={handleScaleChange}
+                onRotationChange={handleRotationChange}
+                onImageLoad={handleItemImageLoad}
+                showGrid
+                itemTestIDPrefix="canvas-item"
+                enablePinchZoom
+              />
+              {/* Adding-items status — shown while freshly-added images load.
+                  Informational, so it never blocks canvas touches. */}
+              {addStatusVisible ? (
+                <View
+                  style={styles.addingStatusWrap}
+                  pointerEvents="none"
+                  testID="canvas-adding-status"
+                >
+                  <View style={styles.addingStatus}>
+                    <DotsLoader accessibilityLabel={t('outfitCanvas.adding')} />
+                    <Text style={styles.addingStatusLabel}>
+                      {t('outfitCanvas.adding')}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
 
             {/* Toolbar */}
             <View style={styles.toolbar}>
@@ -899,14 +1132,35 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               </ScrollView>
             </View>
 
-            {/* Save button — canonical secondary button. */}
+            {/* Footer — 56×56 outline "new canvas" button (canvas glyph, distinct
+              from the toolbar add "+"; starts a new blank canvas, enabled only
+              with unsaved changes) ahead of the primary FILLED Save button, which
+              carries the My Creations icon. */}
             <View style={styles.saveRow}>
+              <PillButton
+                testID="canvas-new-blank"
+                onPress={handleNewBlankCanvas}
+                disabled={!hasUnsavedChanges}
+                accessibilityLabel={t('outfitCanvas.a11y_new_canvas')}
+                leading={
+                  <IconNewCanvas
+                    width={24}
+                    height={24}
+                    color={theme.colors.figmaText}
+                  />
+                }
+                variant="outline"
+                style={styles.newCanvasButton}
+              />
               <PillButton
                 testID="canvas-save"
                 onPress={handleSave}
+                disabled={!hasUnsavedChanges}
                 accessibilityLabel={t('outfitCanvas.a11y_save_outfit')}
                 title={t('common.save')}
-                variant="outline"
+                trailing={<IconMyCreation width={24} height={24} />}
+                variant="filled"
+                style={styles.saveButton}
               />
             </View>
           </View>
@@ -995,6 +1249,32 @@ const styles = StyleSheet.create({
   topGroup: {
     gap: theme.spacing.m,
   },
+  // Relative wrapper so the "Adding…" status can anchor over the canvas card.
+  canvasWrap: {
+    position: 'relative',
+  },
+  // Full-width band pinned near the top of the canvas; centres the status pill.
+  addingStatusWrap: {
+    position: 'absolute',
+    top: theme.spacing.m,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  addingStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.chip,
+    paddingVertical: theme.spacing.s,
+    paddingHorizontal: theme.spacing.uacDimension12,
+    ...theme.ds.shadow.headerIcon,
+  },
+  addingStatusLabel: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.figmaTextDark,
+  },
   // Add-item button (circular, below canvas — Figma Group 36, 48×48).
   // Left-aligned, flush to the canvas card's left edge (body provides the
   // 12px horizontal inset; gap handled by topGroup).
@@ -1080,8 +1360,21 @@ const styles = StyleSheet.create({
   // Side inset = 12px (theme.spacing.uacDimension12), supplied by the body padding so the
   // button aligns flush with the canvas card edges.
   saveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.uacDimension12,
     paddingBottom: theme.spacing.m,
     paddingTop: theme.spacing.s,
+  },
+  // 56×56 outline icon button: override the PillButton's text padding so it's a
+  // square, sitting ahead of the Save button.
+  newCanvasButton: {
+    width: 56,
+    paddingHorizontal: 0,
+  },
+  // Primary Save button fills the remaining row width.
+  saveButton: {
+    flex: 1,
   },
 });
 
@@ -1176,6 +1469,11 @@ const pickerStyles = StyleSheet.create({
   },
   confirmBtnDisabled: {
     opacity: 0.5,
+  },
+  confirmBtnLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
   },
   confirmBtnLabel: {
     fontFamily: 'Poppins-Medium',

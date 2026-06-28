@@ -264,7 +264,9 @@
       "database": {
         "title": "Database",
         "empty": "No items to select yet",
-        "add_item": "Add Item"
+        "add_item": "Add Item",
+        "added_toast": "Added {{count}} item(s) to your wardrobe",
+        "added_partial_toast": "Added {{added}}, {{failed}} couldn't be added"
       },
       "new_badge": "New",
       "less_used_badge": "less use",
@@ -345,6 +347,7 @@
       "badge_common": "common",
       "action_cannot_undo": "This action cannot be undone.",
       "pick_image_failed": "Failed to pick image",
+      "add_items_failed_title": "Couldn't add items",
       "load_wardrobe_failed_title": "Unable to load wardrobe",
       "try_again_moment": "Please try again in a moment.",
       "a11y_add_item": "Add item",
@@ -377,6 +380,7 @@
       "chip_weather_cold": "Weather feels too cold",
       "chip_bolder": "Bolder choice",
       "chip_simpler": "Simpler look",
+      "refineAppliedToast": "{{feedback}} applied!",
       "a11y_open_menu": "Open menu",
       "a11y_saved_fav": "Saved to favourites",
       "a11y_fav_this": "Favourite this look",
@@ -395,6 +399,7 @@
       "skip_label": "Next",
       "back_label": "Back",
       "saved_to_favourite": "Saved to favourite",
+      "saved_open_favourites": "Outfit saved. Open Favourites to use See on Me.",
       "wear_this": "Wear this",
       "save_failed_retry": "Couldn’t save this look. Tap \"Wear this\" to retry.",
       "error_load_title": "Couldn't load your outfits",
@@ -424,7 +429,9 @@
       "temp_error_offline": "No internet connection. Please try again.",
       "temp_override_a11y": "Outfit temperature override active: {{range}}. Tap to change.",
       "a11y_temp_idle": "Adjust outfit temperature",
-      "a11y_temp_active": "Outfit temperature override active. Tap to change."
+      "a11y_temp_active": "Outfit temperature override active. Tap to change.",
+      "temp_toast_override": "Using {{temp}}°C for outfit suggestions",
+      "temp_toast_current": "Using current weather for outfit suggestions"
     },
     "pin": {
       "modal_title": "Keep this item",
@@ -532,6 +539,7 @@
       "no_items_found": "No items found",
       "add_count_one": "Add {{count}} item",
       "add_count_other": "Add {{count}} items",
+      "adding": "Adding…",
       "a11y_remove_tag": "Remove tag {{label}}",
       "a11y_redo": "Redo",
       "a11y_undo": "Undo",
@@ -545,6 +553,7 @@
       "a11y_tag_input": "Tag name input",
       "a11y_add_tag": "Add tag",
       "a11y_save_outfit": "Save outfit",
+      "a11y_new_canvas": "New canvas",
       "saved_body": "Saved to My Creations",
       "discard_title": "Discard this creation?",
       "discard_body": "Your changes haven't been saved.",
@@ -554,8 +563,10 @@
     "myCreations": {
       "title": "My Creations",
       "open_menu": "Open menu",
+      "back": "Back",
       "empty_body": "Save a creation from the canvas to see it here.",
-      "remove_a11y": "Remove creation"
+      "remove_a11y": "Remove creation",
+      "add_to_schedule": "Add to schedule"
     },
     "locationPermission": {
       "denied_title": "Permission Denied",
@@ -572,10 +583,34 @@
       "see_outfits": "See my outfits",
       "wardrobe": "Wardrobe",
       "favourite": "My Favourite",
+      "schedule": "Schedule",
       "feedback": "Feedback",
       "setting": "Setting",
       "outfit_canvas": "Outfit Canvas",
       "logout": "Log out"
+    },
+    "schedule": {
+      "title": "Schedule",
+      "scheduled_outfit": "Scheduled outfit",
+      "empty_title": "Nothing planned",
+      "empty_body": "Tap [+] to add an outfit",
+      "a11y_open_menu": "Open menu",
+      "a11y_add": "Add an outfit",
+      "added_toast": "Added to your schedule",
+      "remove_a11y": "Remove from schedule",
+      "add_sheet": {
+        "title": "Add an outfit",
+        "subtitle": "Choose where to add it from.",
+        "favourite_title": "My Favourite",
+        "creations_title": "My Creations"
+      },
+      "picker": {
+        "title": "Add to Schedule",
+        "cancel": "Cancel",
+        "confirm": "Schedule",
+        "prev_month": "Previous month",
+        "next_month": "Next month"
+      }
     },
     "outfitActions": {
       "a11y_remix": "Remix this outfit",
@@ -605,7 +640,8 @@
       "empty_a11y": "No saved outfits yet",
       "common_badge": "common",
       "view_item_a11y": "View item details",
-      "self_visualization": "Self visualization",
+      "self_visualization": "See on me",
+      "add_to_schedule": "Add to schedule",
       "remove_a11y": "Remove this outfit from favourites",
       "remove_title": "Remove from your favourite",
       "remove_body": "Are you sure to remove this outfit from your favourite list",

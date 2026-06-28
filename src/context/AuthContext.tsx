@@ -12,6 +12,8 @@ import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { registerSessionExpiredListener } from '../services/apiClient';
 import { identifyUser, resetAnalytics, track } from '../services/analytics';
 import { getForcedFirstLogin } from '../services/reviewOverrides';
+import { resetV05Session } from '../services/v05Api';
+import { setRecommendationMemoryUser } from '../services/recommendationMemory';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
 
 /**
@@ -192,6 +194,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const distinctId = String(user.id);
       if (analyticsIdRef.current === distinctId) return;
       analyticsIdRef.current = distinctId;
+      // Point long-term recommendation memory at this user (hydrates their
+      // persisted last-5 signatures from disk) on every real identity change.
+      setRecommendationMemoryUser(distinctId);
       // People profile — full user attributes (incl. reserved $email/$created).
       const profile: Record<string, unknown> = {
         $email: user.email,
@@ -247,6 +252,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } else if (analyticsIdRef.current !== null) {
       analyticsIdRef.current = null;
       resetAnalytics();
+      // User left (logout / session expiry): drop the in-memory recommendation
+      // memory and the cached V05 session so neither outlives the user it
+      // belongs to (the per-user persisted memory blob stays for re-login).
+      setRecommendationMemoryUser(null);
+      resetV05Session();
     }
   }, [user]);
 

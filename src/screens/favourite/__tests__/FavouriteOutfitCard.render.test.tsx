@@ -57,12 +57,7 @@ test('grid view renders all outfit tiles', () => {
   let r!: TestRenderer.ReactTestRenderer;
   act(() => {
     r = TestRenderer.create(
-      <FavouriteOutfitCard
-        favourite={fav}
-        view="grid"
-        onRemove={() => {}}
-        onSelfVisualization={() => {}}
-      />,
+      <FavouriteOutfitCard favourite={fav} view="grid" />,
     );
   });
   expect(tileIDs(r)).toHaveLength(3);
@@ -72,12 +67,7 @@ test('collage view renders all outfit tiles after layout', () => {
   let r!: TestRenderer.ReactTestRenderer;
   act(() => {
     r = TestRenderer.create(
-      <FavouriteOutfitCard
-        favourite={fav}
-        view="collage"
-        onRemove={() => {}}
-        onSelfVisualization={() => {}}
-      />,
+      <FavouriteOutfitCard favourite={fav} view="collage" />,
     );
   });
 

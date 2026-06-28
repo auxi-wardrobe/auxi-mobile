@@ -6,6 +6,8 @@ import {
   MoodPromptPolicy,
   moodPolicyService,
 } from '../services/moodPolicyService';
+import { submitFeedback } from '../services/v05Api';
+import { moodFeedbackText } from '../components/features/mood-chips';
 import { track } from '../services/analytics';
 
 /**
@@ -288,6 +290,20 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
             });
           }
           onSaveSuccessRef.current(pending.outfitHash, updated);
+          // Feed the mood into the engine's ranking signals. `/v05/feedback`
+          // runs LLM-2 over the text and persists decay-weighted L4 signals
+          // that reweight the user's FUTURE builds — so "polished / sharp"
+          // nudges the next recommendations toward that vibe, and a
+          // `not_quite_me` nudges away. Best-effort (the endpoint is a silent
+          // 204) and strictly non-blocking: a failure here must never disturb
+          // the save outcome the user just saw succeed.
+          const feedbackText = moodFeedbackText(moodIds);
+          if (feedbackText) {
+            submitFeedback({
+              outfit_id: pending.outfitHash,
+              text: feedbackText,
+            }).catch(() => {});
+          }
           // Tier thresholds may have advanced (e.g. every_save → occasional).
           refetchPolicy();
         })

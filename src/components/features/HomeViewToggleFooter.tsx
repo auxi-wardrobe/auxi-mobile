@@ -6,6 +6,8 @@ import { track } from '../../services/analytics';
 import { theme } from '../../theme/theme';
 import IconGrid from '../../assets/images/icon_grid.svg';
 import IconGridAlt from '../../assets/images/icon_grid_alt.svg';
+import IconGridToggle from '../../assets/images/icon_grid_toggle.svg';
+import IconGridAltToggle from '../../assets/images/icon_grid_alt_toggle.svg';
 
 // Home | Grid View — bottom view-toggle (Figma footer 2464:17348).
 //
@@ -29,25 +31,51 @@ export const HOME_VIEW_TOGGLE_FOOTER_HEIGHT = 84;
 
 export type HomeView = 'grid' | 'collage';
 
-type Props = {
+type PillProps = {
   activeView?: HomeView;
   onSelectView?: (view: HomeView) => void;
   testID?: string;
+  /**
+   * Per-item testID stem (default `home-footer-tab`). The Favourite header
+   * mounts a second instance, so it passes its own stem to avoid colliding
+   * with the Home footer's maestro selectors.
+   */
+  itemTestIDStem?: string;
+  /** Forwarded to MFloatingPill — `'sm'` for the compact header chip. */
+  size?: 'md' | 'sm';
+  /**
+   * Which surface this toggle is mounted on. Tags the `home_view_toggled`
+   * event so the Home collage-adoption funnel (tracking-plan §10) can isolate
+   * Home-footer taps from the Favourite header's copy of the same pill —
+   * without it both mounts fire the identical event and corrupt the funnel
+   * denominator. Required, so a new mount can't silently pollute the funnel.
+   */
+  source: 'home' | 'favourite';
 };
+
+type Props = Omit<PillProps, 'itemTestIDStem'>;
 
 const VIEWS: HomeView[] = ['grid', 'collage'];
 
-export const HomeViewToggleFooter: React.FC<Props> = ({
+// The bare springy grid/collage pill, decoupled from the footer bar so it can
+// also be dropped into a header (Favourite screen, compact `size="sm"`). The
+// footer wrapper below positions it; everything else (icons, tracking, a11y) is
+// shared so both mounts stay in lock-step.
+export const HomeViewTogglePill: React.FC<PillProps> = ({
   activeView = 'grid',
   onSelectView,
   testID,
+  itemTestIDStem = 'home-footer-tab',
+  size = 'md',
+  source,
 }) => {
   const { t } = useTranslation();
 
-  // Per-item testIDs MUST match maestro/flows/home/collage-toggle.yaml exactly:
-  //   home-footer-tab-grid / -grid-active / -collage / -collage-active.
+  // Per-item testIDs MUST match maestro/flows/home/collage-toggle.yaml exactly
+  // for the default stem: home-footer-tab-grid / -grid-active / -collage /
+  // -collage-active.
   const itemTestID = (tab: string, active: boolean) =>
-    `home-footer-tab-${tab}${active ? '-active' : ''}`;
+    `${itemTestIDStem}-${tab}${active ? '-active' : ''}`;
 
   const a11yLabel = (tab: string) =>
     tab === 'grid'
@@ -60,6 +88,13 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
     const iconColor = active
       ? theme.colors.figmaTextDark
       : theme.ds.color.tanStroke;
+    // sm (header chip): 16×16 glyph with a 1.3px-look stroke — dedicated
+    // *_toggle assets (stroke baked at 1.95 so it reads 1.3px once scaled into
+    // the 16px box). md (Home footer): the standard 24×24 / 1.5px icons.
+    if (size === 'sm') {
+      const Icon = tab === 'grid' ? IconGridToggle : IconGridAltToggle;
+      return <Icon width={16} height={16} color={iconColor} />;
+    }
     const Icon = tab === 'grid' ? IconGrid : IconGridAlt;
     return <Icon width={24} height={24} color={iconColor} />;
   };
@@ -67,20 +102,41 @@ export const HomeViewToggleFooter: React.FC<Props> = ({
   const handleChange = (next: string) => {
     const view = next as HomeView;
     // Tap is a real interaction even before the collage seed layout ships
-    // (AU-253) — the toggle swaps the sheet's middle region today.
-    track('home_view_toggled', { view });
+    // (AU-253) — the toggle swaps the sheet's middle region today. `source`
+    // tags the surface (home | favourite) so the Home collage-adoption funnel
+    // stays uncontaminated by the Favourite header's copy of this pill.
+    track('home_view_toggled', { view, source });
     onSelectView?.(view);
   };
 
   return (
+    <MFloatingPill
+      tabs={VIEWS}
+      value={activeView}
+      onChange={handleChange}
+      renderIcon={renderIcon}
+      testID={testID}
+      itemTestID={itemTestID}
+      itemAccessibilityLabel={a11yLabel}
+      size={size}
+    />
+  );
+};
+
+export const HomeViewToggleFooter: React.FC<Props> = ({
+  activeView = 'grid',
+  onSelectView,
+  testID,
+  size,
+  source,
+}) => {
+  return (
     <View testID={testID} style={styles.bar}>
-      <MFloatingPill
-        tabs={VIEWS}
-        value={activeView}
-        onChange={handleChange}
-        renderIcon={renderIcon}
-        itemTestID={itemTestID}
-        itemAccessibilityLabel={a11yLabel}
+      <HomeViewTogglePill
+        activeView={activeView}
+        onSelectView={onSelectView}
+        size={size}
+        source={source}
       />
     </View>
   );

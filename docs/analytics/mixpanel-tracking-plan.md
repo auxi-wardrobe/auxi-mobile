@@ -103,7 +103,8 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `refine_submitted` (pre-existing) | Refine confirm | `HomeScreen.tsx:1246` | `occasion`, `time_of_day`, `weather_condition` |
 | `refine_cancelled` (pre-existing) | Refine dismiss | `HomeScreen.tsx:1589` | `source` |
 | `refine_skipped` | "Skip for now" on the after-6 progressive-refinement gate — defers feedback and resumes generation of the next tier | `HomeScreen/index.tsx` (`onSkipRefinement`) | `skipped_count` (running per-session skip tally) |
-| `home_view_toggled` | Tap on the Home footer view-toggle pill (DS `MFloatingPill`, icon mode) — swaps the outfit sheet's middle region between the grid and collage layouts | `HomeViewToggleFooter.tsx` (`handleChange`) | `view` (`grid` / `collage`) |
+| `refine_confirmation_shown` | The "{feedback} applied!" confirmation toast surfaces once the refined deck has loaded — measures how often a refine submit actually produced a visible refreshed result | `HomeScreen/index.tsx` (`showRefineToast`) | `mode` (`chip` / `custom`, always); `value` (applied chip label — **chip mode only**; omitted for custom to avoid shipping free-text user input, same gate as `refine_submitted`) |
+| `home_view_toggled` | Tap on the grid/collage view-toggle pill (DS `MFloatingPill`, icon mode) — swaps the outfit sheet's middle region between the grid and collage layouts. The SAME pill is mounted on two surfaces (Home footer + Favourite header), so `source` discriminates them | `HomeViewToggleFooter.tsx` (`handleChange`) | `view` (`grid` / `collage`); `source` (`home` / `favourite` — which surface fired it) |
 
 ### 5.4 Wardrobe + ItemDetail
 
@@ -187,6 +188,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
 | `canvas_item_layer_reordered` | Selected canvas item moved one layer via the toolbar (AU-360 fix — z-index swap with adjacent item). Fires only on an actual move, not at the front/back edge. | `OutfitCanvasScreen.tsx:448` (`moveLayer`) | `direction` (`forward`/`backward`) |
+| `canvas_reset` | Canvas cleared to a blank state via the footer "+" new-canvas button (after the save/discard sheet resolves). | `OutfitCanvasScreen.tsx` (`resetCanvasToBlank`) | — |
 
 > Gap: other canvas toolbar actions (add / duplicate / swap / delete / tag add-remove / save) are not yet instrumented — local-only editor state, no persistence wired. Track when the Save→backend persist step lands (`handleSave` is a TODO `goBack()` today). Logged in §6.6.
 
@@ -250,6 +252,24 @@ The pin feature (AU-307) originally shipped with NO analytics (only `console.inf
 | **`pin_dont_show_again_toggled`** | The "Don't show this popup again" checkbox in the pin-confirm sheet is toggled. Fires on every toggle (the value persists to `AsyncStorage` only on confirm). | `HomeScreen.tsx:1722` | `checked` (bool) |
 
 > PII: none. `source` values are a closed enum of UI-surface keys; `confirm_skipped` / `checked` are unquoted booleans. No item id, no garment name, no free text. Item identifiers are intentionally omitted (the funnel question is "does the pin feature get used", not "which garment").
+
+### 5.18 Schedule (outfit planning, mobile-local)
+
+The Schedule screen (sidebar → Schedule) lets the user plan saved outfits / canvas creations onto calendar days. The store is **local, per-user AsyncStorage** (`@auxi/schedule/<userId>`) — no backend route. Events capture the planning funnel: open the date picker → confirm a day; plus the in-Schedule add-source picker and day selection.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| **`favourite_schedule_opened`** | "Add to schedule" (calendar-add) tapped on a saved outfit (Favourite sticky action bar) — opens the date picker. | `FavouriteScreen.tsx:218` (`handleSchedule`) | `favorite_id` (internal id) |
+| **`favourite_added_to_schedule`** | Date picker confirmed for a favourite — outfit scheduled to the chosen day. | `FavouriteScreen.tsx:224` (`handleConfirmSchedule`) | `favorite_id`, `date` (`YYYY-MM-DD`) |
+| **`creation_schedule_opened`** | "Add to schedule" tapped on a saved creation — opens the date picker. | `MyCreationsScreen.tsx:66` (`handleSchedule`) | `creation_id` (internal id) |
+| **`creation_added_to_schedule`** | Date picker confirmed for a creation — creation scheduled to the chosen day. | `MyCreationsScreen.tsx:72` (`handleConfirmSchedule`) | `creation_id`, `date` (`YYYY-MM-DD`) |
+| **`schedule_add_tapped`** | Schedule header "+" tapped — opens the "Add an outfit" source picker. | `ScheduleScreen.tsx:186` (`handleAddOutfit`) | `date` (`YYYY-MM-DD`, the selected day) |
+| **`schedule_add_source_selected`** | A source chosen in the "Add an outfit" picker — routes to that page. | `ScheduleScreen.tsx:193` (`handlePickSource`) | `source` (`favourite` / `creations`) |
+| **`schedule_day_selected`** | A day tapped on the week strip. | `ScheduleScreen.tsx:181` (`handleSelectDay`) | `date` (`YYYY-MM-DD`), `is_today` (bool) |
+
+> Funnel intent: `*_schedule_opened` → `*_added_to_schedule` measures add-to-schedule completion per source (favourite vs creation); `schedule_add_tapped` → `schedule_add_source_selected` measures the in-Schedule "+" entry. `schedule_day_selected` is engagement with the rail.
+>
+> PII: none. `favorite_id` / `creation_id` are internal record ids (no garment names, no free text); `date` is a calendar day (`YYYY-MM-DD`, no time); `source` is a closed enum; `is_today` is an unquoted boolean. The store itself is on-device only and never sent to a backend.
 
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
@@ -346,7 +366,7 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 - **App-feedback submission funnel:** `screen_viewed` (`screen_name = Feedback`) → `feedback_submitted` (vs `feedback_submit_failed`, broken down by `error_code`) — measures completion rate of the feedback form and surfaces rate-limit / validation friction.
 - **Temperature-override funnel (AU-362):** `temperature_modal_opened` → `temperature_apply_clicked` → `temperature_override_active` → `recommendation_generated_by_temperature` — answers the ticket's analytics goal: do users actually adopt a temperature override vs stay on live weather? Break down by `option` / `bucket` to see which ranges are used. `temperature_override_removed` is the return-to-weather branch; `temperature_option_selected` ÷ `temperature_apply_clicked` measures browse-vs-commit on the radios.
 
-- **Home view-toggle adoption:** `home_view_toggled` broken down by `view` measures how often users switch the outfit sheet to the collage layout vs stay on the grid — a low collage rate flags weak discoverability or low value of the alternate layout (informs the AU-253 collage seed-layout investment). Denominator: `screen_viewed` (`screen_name = Home`).
+- **Home view-toggle adoption:** `home_view_toggled` broken down by `view` measures how often users switch the outfit sheet to the collage layout vs stay on the grid — a low collage rate flags weak discoverability or low value of the alternate layout (informs the AU-253 collage seed-layout investment). Denominator: `screen_viewed` (`screen_name = Home`). **Filter `source = home`** — the identical toggle pill is also mounted on the Favourite header (`source = favourite`), and those taps must be excluded or they inflate the numerator against a Home-only denominator. Conversely, `source = favourite` is the basis for a separate "Favourite view-toggle adoption" cut should it be needed.
 
 - **Notification-settings engagement (AU-316):** `notifications_toggle_changed` / `notifications_schedule_changed` / `notifications_reset` measure how users tune the daily reminder; `notifications_reset` ÷ `notifications_reset_undone` is the regret rate on the reset action (a high undo rate signals the reset is too easy to trigger or its defaults are wrong — relevant to the pending UAC 07:30 vs constant 06:15 default discrepancy). Break down `notifications_schedule_changed` by `frequency`/`period` to see preferred cadence.
 

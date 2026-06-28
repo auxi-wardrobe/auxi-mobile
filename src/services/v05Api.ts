@@ -9,6 +9,7 @@
  * any post-review tweak should be a single targeted edit to this file.
  */
 import { apiClient } from './apiClient';
+import { getBuildMemory, recordServedOutfit } from './recommendationMemory';
 import type { UserConfidenceLevel, UserStyleDirection } from '../types/auth';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -557,9 +558,10 @@ export const tryAnother = async (
 // `session_id` is bearer-equivalent (contract §8) — NEVER log it (no
 // `console.*` with session_id; do not embed in deep links / aggregators).
 //
-// TODO: clear v05SessionId on logout — there is no clean hook today; once
-// the AuthContext exposes a logout subscription we should listen for it and
-// call `resetV05Session()`. (Same gap as recommendationService.resetSession.)
+// Cleared on logout / session expiry: AuthContext's identity effect calls
+// `resetV05Session()` (and `setRecommendationMemoryUser(null)`) when `user`
+// transitions to null, so a session_id never outlives the user it belongs to.
+// (recommendationService.resetSession — the V2 path — still has this gap.)
 let v05SessionId: string | null = null;
 let v05LastOutfitHash: string | null = null;
 
@@ -645,12 +647,17 @@ const buildAndStore = async (
   params: RecommendV05Params,
   options?: { signal?: AbortSignal },
 ): Promise<RecommendV05Result> => {
+  // Thread the long-term memory (last-5 signatures + reasoning the user has
+  // already seen) so the engine's novelty filter (R10) avoids cross-session
+  // repeats. Omitted entirely when empty — the backend no-ops empty arrays.
+  const memory = getBuildMemory();
   const data = await buildRecommendation(
     {
       weather: params.weather,
       user: params.user,
       intent: params.intent,
       count: params.count ?? 3,
+      ...(memory ? { memory } : {}),
       ...(params.pinned_item_id
         ? { pinned_item_id: params.pinned_item_id }
         : {}),
@@ -659,7 +666,12 @@ const buildAndStore = async (
   );
   v05SessionId = data.session_id ?? null;
   const defaultIdx = data.suggested_default ?? 0;
-  v05LastOutfitHash = data.outfits[defaultIdx]?.outfit_hash ?? null;
+  const anchor = data.outfits[defaultIdx];
+  v05LastOutfitHash = anchor?.outfit_hash ?? null;
+  // Remember the outfit we're anchoring on so the NEXT cold-start build sees it.
+  if (anchor) {
+    recordServedOutfit(anchor);
+  }
   return {
     outfits: data.outfits,
     lowConfidence: data.low_confidence === true,
@@ -716,6 +728,11 @@ export const recommendV05 = async (
       // ("variations_cycled") — the top-level field is authoritative.
       if (data.outfit?.outfit_hash) {
         v05LastOutfitHash = data.outfit.outfit_hash;
+      }
+      // Feed the served variation into long-term memory too (no-op on a
+      // `cycled` re-serve of the same hash — recordServedOutfit dedups).
+      if (data.outfit) {
+        recordServedOutfit(data.outfit);
       }
       const cycled =
         data.cycled === true ||

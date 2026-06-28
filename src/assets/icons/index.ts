@@ -45,6 +45,7 @@ import IconCheckCircle from '../images/icon_check_circle.svg';
 import IconOutfitCanvas from '../images/icon_outfit_canvas.svg';
 import IconEye from '../images/icon_eye.svg';
 import IconEyeOff from '../images/icon_eye_off.svg';
+import IconCalendar from '../images/icon_calendar.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -94,6 +95,7 @@ export const Icons = {
   OutfitCanvas: IconOutfitCanvas,
   Eye: IconEye,
   EyeOff: IconEyeOff,
+  Calendar: IconCalendar,
 };
 
 export {
@@ -134,4 +136,5 @@ export {
   IconSwipeHand,
   IconEye,
   IconEyeOff,
+  IconCalendar,
 };

@@ -264,7 +264,9 @@
       "database": {
         "title": "Base de données",
         "empty": "Aucun article à sélectionner",
-        "add_item": "Ajouter"
+        "add_item": "Ajouter",
+        "added_toast": "{{count}} article(s) ajouté(s) à votre garde-robe",
+        "added_partial_toast": "{{added}} ajouté(s), {{failed}} n'ont pas pu être ajouté(s)"
       },
       "new_badge": "Nouveau",
       "less_used_badge": "peu utilisé",
@@ -345,6 +347,7 @@
       "badge_common": "commun",
       "action_cannot_undo": "Cette action est irréversible.",
       "pick_image_failed": "Échec de la sélection de l'image",
+      "add_items_failed_title": "Impossible d'ajouter les articles",
       "load_wardrobe_failed_title": "Impossible de charger la garde-robe",
       "try_again_moment": "Veuillez réessayer dans un instant.",
       "a11y_add_item": "Ajouter un article",
@@ -377,6 +380,7 @@
       "chip_weather_cold": "Il fait trop froid",
       "chip_bolder": "Choix plus audacieux",
       "chip_simpler": "Look plus simple",
+      "refineAppliedToast": "{{feedback}} appliqué !",
       "a11y_open_menu": "Ouvrir le menu",
       "a11y_saved_fav": "Enregistré dans les favoris",
       "a11y_fav_this": "Ajouter cette tenue aux favoris",
@@ -395,6 +399,7 @@
       "skip_label": "Suivant",
       "back_label": "Retour",
       "saved_to_favourite": "Enregistré dans les favoris",
+      "saved_open_favourites": "Tenue enregistrée. Ouvrez les favoris pour utiliser See on Me.",
       "wear_this": "Porter ceci",
       "save_failed_retry": "Impossible d'enregistrer cette tenue. Appuyez sur « Porter ceci » pour réessayer.",
       "error_load_title": "Impossible de charger vos tenues",
@@ -424,7 +429,9 @@
       "temp_error_offline": "Pas de connexion Internet. Veuillez réessayer.",
       "temp_override_a11y": "Réglage de température actif : {{range}}. Touchez pour modifier.",
       "a11y_temp_idle": "Ajuster la température des tenues",
-      "a11y_temp_active": "Réglage de température actif. Touchez pour modifier."
+      "a11y_temp_active": "Réglage de température actif. Touchez pour modifier.",
+      "temp_toast_override": "Suggestions basées sur {{temp}}°C",
+      "temp_toast_current": "Suggestions basées sur la météo actuelle"
     },
     "pin": {
       "modal_title": "Garder cet article",
@@ -532,6 +539,7 @@
       "no_items_found": "Aucun article trouvé",
       "add_count_one": "Ajouter {{count}} article",
       "add_count_other": "Ajouter {{count}} articles",
+      "adding": "Ajout…",
       "a11y_remove_tag": "Supprimer l'étiquette {{label}}",
       "a11y_redo": "Rétablir",
       "a11y_undo": "Annuler",
@@ -545,6 +553,7 @@
       "a11y_tag_input": "Champ nom d'étiquette",
       "a11y_add_tag": "Ajouter une étiquette",
       "a11y_save_outfit": "Enregistrer la tenue",
+      "a11y_new_canvas": "Nouvelle toile",
       "saved_body": "Enregistrée dans Mes créations",
       "discard_title": "Abandonner cette création ?",
       "discard_body": "Vos modifications n'ont pas été enregistrées.",
@@ -554,8 +563,10 @@
     "myCreations": {
       "title": "Mes créations",
       "open_menu": "Ouvrir le menu",
+      "back": "Retour",
       "empty_body": "Enregistrez une création depuis le canevas pour la retrouver ici.",
-      "remove_a11y": "Supprimer la création"
+      "remove_a11y": "Supprimer la création",
+      "add_to_schedule": "Ajouter au planning"
     },
     "locationPermission": {
       "denied_title": "Autorisation refusée",
@@ -572,10 +583,34 @@
       "see_outfits": "Voir mes tenues",
       "wardrobe": "Garde-robe",
       "favourite": "Mes favoris",
+      "schedule": "Planning",
       "feedback": "Commentaires",
       "setting": "Paramètres",
       "outfit_canvas": "Canevas de tenue",
       "logout": "Se déconnecter"
+    },
+    "schedule": {
+      "title": "Planning",
+      "scheduled_outfit": "Tenue planifiée",
+      "empty_title": "Rien de prévu",
+      "empty_body": "Touchez [+] pour ajouter une tenue",
+      "a11y_open_menu": "Ouvrir le menu",
+      "a11y_add": "Ajouter une tenue",
+      "added_toast": "Ajouté à votre planning",
+      "remove_a11y": "Retirer du planning",
+      "add_sheet": {
+        "title": "Ajouter une tenue",
+        "subtitle": "Choisissez d'où l'ajouter.",
+        "favourite_title": "Mes favoris",
+        "creations_title": "Mes créations"
+      },
+      "picker": {
+        "title": "Ajouter au planning",
+        "cancel": "Annuler",
+        "confirm": "Planifier",
+        "prev_month": "Mois précédent",
+        "next_month": "Mois suivant"
+      }
     },
     "outfitActions": {
       "a11y_remix": "Remixer cette tenue",
@@ -606,6 +641,7 @@
       "common_badge": "commun",
       "view_item_a11y": "Voir les détails de l’article",
       "self_visualization": "Auto-visualisation",
+      "add_to_schedule": "Ajouter au planning",
       "remove_a11y": "Retirer cette tenue des favoris",
       "remove_title": "Retirer de vos favoris",
       "remove_body": "Voulez-vous vraiment retirer cette tenue de votre liste de favoris",

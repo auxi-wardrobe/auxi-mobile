@@ -47,6 +47,13 @@ export interface MFloatingPillProps {
   itemTestID?: (tab: string, active: boolean) => string;
   /** Per-item accessibilityLabel (recommended in icon mode). */
   itemAccessibilityLabel?: (tab: string) => string;
+  /**
+   * Compact icon-mode variant. `'sm'` shrinks the bar/thumb/item padding so a
+   * 2-icon toggle measures ~84×44 — sized for header chips (e.g. the Favourite
+   * header view-toggle). Defaults to `'md'` (the Home footer size); existing
+   * callers are unaffected.
+   */
+  size?: 'md' | 'sm';
 }
 
 export const MFloatingPill: React.FC<MFloatingPillProps> = ({
@@ -57,7 +64,9 @@ export const MFloatingPill: React.FC<MFloatingPillProps> = ({
   renderIcon,
   itemTestID,
   itemAccessibilityLabel,
+  size = 'md',
 }) => {
+  const sm = size === 'sm';
   const reduce = useReducedMotion();
   const idx = Math.max(0, tabs.indexOf(value));
   const x = useRef(new Animated.Value(0)).current;
@@ -96,8 +105,10 @@ export const MFloatingPill: React.FC<MFloatingPillProps> = ({
   };
 
   return (
-    <View style={styles.fbar} testID={testID}>
-      <Animated.View style={[styles.fthumb, { left: x, width: w }]} />
+    <View style={[styles.fbar, sm && styles.fbarSm]} testID={testID}>
+      <Animated.View
+        style={[styles.fthumb, sm && styles.fthumbSm, { left: x, width: w }]}
+      />
       {tabs.map((tb, i) => {
         const sel = tb === value;
         const itemId = itemTestID
@@ -110,7 +121,11 @@ export const MFloatingPill: React.FC<MFloatingPillProps> = ({
             key={tb}
             onLayout={onLayout(i)}
             onPress={() => move(i, tb)}
-            style={[styles.fitem, renderIcon && styles.fitemIcon]}
+            style={[
+              styles.fitem,
+              renderIcon && styles.fitemIcon,
+              sm && styles.fitemIconSm,
+            ]}
             testID={itemId}
             accessibilityRole="tab"
             accessibilityLabel={itemAccessibilityLabel?.(tb)}
@@ -136,6 +151,11 @@ const styles = StyleSheet.create({
     padding: 8,
     alignItems: 'center',
   },
+  // sm: tighter 6px frame so a 2-icon toggle lands at ~84×44 (header chip).
+  fbarSm: {
+    borderRadius: radius.md,
+    padding: 6,
+  },
   fthumb: {
     position: 'absolute',
     top: 8,
@@ -144,10 +164,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     ...shadow.card,
   },
+  fthumbSm: {
+    top: 6,
+    bottom: 6,
+    borderRadius: radius.md,
+  },
   fitem: { paddingVertical: 10, paddingHorizontal: 22, alignItems: 'center' },
   // Icon mode: squarer ~48×48 tabs (icon 24 + 12 padding) — text-mode's wide
   // label padding (22) reads too spread around a single glyph.
   fitemIcon: { paddingVertical: 12, paddingHorizontal: 12 },
+  // sm icon tab: 16px icon + 8px padding → a 32×32 square thumb; with the 6px
+  // frame two of them measure 76 wide × 44 tall.
+  fitemIconSm: { paddingVertical: 8, paddingHorizontal: 8 },
   ftext: { ...type.bodySm, color: role.ink3 },
   ftextOn: { color: role.ink, fontFamily: type.h3.fontFamily },
 });

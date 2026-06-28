@@ -17,8 +17,6 @@ import {
   seedCanvasLayout,
 } from '../../components/features/collage-seed-layout';
 import { MOOD_CHIPS } from '../../components/features/mood-chips';
-import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
-import IconSparkle from '../../assets/images/icon_sparkle.svg';
 import { Favourite, FavouriteItem } from '../../services/favouriteService';
 
 type Props = {
@@ -28,8 +26,6 @@ type Props = {
   // title block above the top divider (Figma `3539:22168`). The screen formats
   // it from `created_at` so the date repeats on every saved outfit.
   dateLabel?: string;
-  onRemove: (id: string) => void;
-  onSelfVisualization: (favourite: Favourite) => void;
   /** Open an item's detail. Omit to keep tiles non-interactive. */
   onItemPress?: (itemId: string) => void;
 };
@@ -58,8 +54,10 @@ const moodLabel = (id: string, t: TFunction): string => {
 };
 
 // One saved outfit (Figma `2852:22063`), top→bottom: date → bold outfit title
-// → filled mood/vibe-tag pill → 2-column 3:4 tile grid → ⊖ remove /
-// "Self visualization" action row. Tile look mirrors the Home grid
+// → filled mood/vibe-tag pill → 2-column 3:4 tile grid. The ⊖ remove /
+// "Self visualization" actions are NO LONGER per-card — they live in the
+// screen-level sticky `FavouriteActionBar` (CEO 2026-06-27) and act on the
+// outfit currently snapped into view. Tile look mirrors the Home grid
 // (`HomeScreen` card/cardImage/cardTag styles) so the two screens read
 // identically.
 //
@@ -142,6 +140,7 @@ const CollageView: React.FC<{
             items.map(item => ({
               id: item.id,
               imageUri: resolveItemImage(item) || '',
+              category: item.category,
             })),
             surfaceWidth,
           )
@@ -200,8 +199,6 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
   favourite,
   view,
   dateLabel,
-  onRemove,
-  onSelfVisualization,
   onItemPress,
 }) => {
   const { t } = useTranslation();
@@ -293,42 +290,6 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
           ))}
         </View>
       )}
-
-      <View style={styles.actionRow}>
-        <TouchableOpacity
-          testID={`favourite-remove-${favourite.id}`}
-          accessibilityRole="button"
-          accessibilityLabel={t('favourite.remove_a11y')}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={styles.removeButton}
-          onPress={() => onRemove(favourite.id)}
-        >
-          <IconMinusCircle
-            width={24}
-            height={24}
-            color={theme.colors.figmaItemDetailDanger}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          testID={`favourite-self-visualization-${favourite.id}`}
-          accessibilityRole="button"
-          accessibilityLabel={t('favourite.self_visualization')}
-          activeOpacity={0.7}
-          style={styles.selfVizButton}
-          onPress={() => onSelfVisualization(favourite)}
-        >
-          <Text style={styles.selfVizLabel} numberOfLines={1}>
-            {t('favourite.self_visualization')}
-          </Text>
-          <IconSparkle
-            width={24}
-            height={24}
-            color={theme.colors.figmaAiSparkle}
-          />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -445,31 +406,5 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.white,
     textAlign: 'center',
-  },
-  // Action row (Frame 2031): ⊖ remove + "Self visualization" link, gap 24.
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.l,
-  },
-  removeButton: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selfVizButton: {
-    flex: 1,
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.s,
-    borderRadius: theme.borderRadius.round,
-  },
-  selfVizLabel: {
-    ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.uacTextBase,
-    flexShrink: 1,
   },
 });
