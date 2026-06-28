@@ -469,6 +469,10 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   // flips this true; Save clears it. Drives the "Discard this creation?" sheet
   // shown when the user tries to leave with pending edits.
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // In-flight Save guard: true while persistCreation awaits the network so the
+  // Save button can show its spinner and block a double-tap. Cleared in a
+  // `finally`, so it always resets even if the save throws.
+  const [isSaving, setIsSaving] = useState(false);
   const [discardVisible, setDiscardVisible] = useState(false);
   // The navigation action we intercepted (back / goBack), replayed verbatim
   // once the user resolves the sheet. `proceedRef` lets that replay through the
@@ -826,16 +830,21 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
       return false;
     }
 
-    await creationsService.saveCreation({
-      items: savedItems,
-      tags,
-      canvasWidth: CANVAS_WIDTH,
-    });
-    queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
-    track('creation_saved', { item_count: savedItems.length });
-    setHasUnsavedChanges(false);
-    showSavedSnackbar();
-    return true;
+    setIsSaving(true);
+    try {
+      await creationsService.saveCreation({
+        items: savedItems,
+        tags,
+        canvasWidth: CANVAS_WIDTH,
+      });
+      queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
+      track('creation_saved', { item_count: savedItems.length });
+      setHasUnsavedChanges(false);
+      showSavedSnackbar();
+      return true;
+    } finally {
+      setIsSaving(false);
+    }
   }, [items, tags, queryClient, showSavedSnackbar]);
 
   const handleSave = useCallback(() => {
@@ -925,12 +934,17 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     sheetIntentRef.current = 'leave';
   }, []);
 
-  // "+" new-blank-canvas button. It is only enabled while there are unsaved
-  // changes, so always route through the save/discard sheet before clearing.
+  // New-blank-canvas button. Enabled whenever the canvas isn't already blank.
+  // Only route through the save/discard sheet when there are pending edits to
+  // lose; an already-saved canvas has nothing to discard, so reset in place.
   const handleNewBlankCanvas = useCallback(() => {
+    if (!hasUnsavedChanges) {
+      resetCanvasToBlank();
+      return;
+    }
     sheetIntentRef.current = 'new';
     setDiscardVisible(true);
-  }, []);
+  }, [hasUnsavedChanges, resetCanvasToBlank]);
 
   const actionDisabled = !selectedId;
 
@@ -1133,14 +1147,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             {/* Footer — 56×56 outline "new canvas" button (canvas glyph, distinct
-              from the toolbar add "+"; starts a new blank canvas, enabled only
-              with unsaved changes) ahead of the primary FILLED Save button, which
-              carries the My Creations icon. */}
+              from the toolbar add "+"; starts a new blank canvas, disabled only
+              when the canvas is already blank) ahead of the primary FILLED Save
+              button, which carries the My Creations icon and shows a spinner
+              while the save is in flight. */}
             <View style={styles.saveRow}>
               <PillButton
                 testID="canvas-new-blank"
                 onPress={handleNewBlankCanvas}
-                disabled={!hasUnsavedChanges}
+                disabled={items.length === 0}
                 accessibilityLabel={t('outfitCanvas.a11y_new_canvas')}
                 leading={
                   <IconNewCanvas
@@ -1156,6 +1171,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 testID="canvas-save"
                 onPress={handleSave}
                 disabled={!hasUnsavedChanges}
+                loading={isSaving}
                 accessibilityLabel={t('outfitCanvas.a11y_save_outfit')}
                 title={t('common.save')}
                 trailing={<IconMyCreation width={24} height={24} />}
