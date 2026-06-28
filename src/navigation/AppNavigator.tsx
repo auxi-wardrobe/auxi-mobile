@@ -161,12 +161,36 @@ export const AppNavigator = () => {
             </>
           ) : (
             <>
-              <Stack.Screen name="Home" component={HomeScreen} />
-              <Stack.Screen name="Settings" component={SettingsScreen} />
-              <Stack.Screen name="Wardrobe" component={WardrobeScreen} />
+              {/* Root destinations reached from the sidebar drawer — these are
+                  where the user starts exploring, not steps in a back-stack, so
+                  the iOS swipe-right-to-go-back gesture is disabled on them
+                  (OutfitCanvas below is likewise disabled). */}
+              <Stack.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="Wardrobe"
+                component={WardrobeScreen}
+                options={{ gestureEnabled: false }}
+              />
               <Stack.Screen name="Favourite" component={FavouriteScreen} />
-              <Stack.Screen name="Schedule" component={ScheduleScreen} />
-              <Stack.Screen name="Feedback" component={FeedbackScreen} />
+              <Stack.Screen
+                name="Schedule"
+                component={ScheduleScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="Feedback"
+                component={FeedbackScreen}
+                options={{ gestureEnabled: false }}
+              />
               <Stack.Screen name="Body" component={BodyScreen} />
               <Stack.Screen
                 name="SeeThisOnMe"
