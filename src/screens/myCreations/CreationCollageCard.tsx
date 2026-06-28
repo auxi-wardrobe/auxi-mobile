@@ -208,10 +208,10 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     paddingVertical: theme.spacing.s,
   },
-  // Creation name — Poppins SemiBold 32/40, #1d1f23 (rgb(29,31,35)), centred at
-  // the top of the card, mirroring the Favourite page title treatment.
+  // Creation name — Poppins SemiBold 24/32, #1d1f23 (rgb(29,31,35)), centred at
+  // the top of the card. Same alias the Favourite page title uses.
   name: {
-    ...theme.typography.aliases.poppinsTitleSemibold,
+    ...theme.typography.aliases.poppinsH4SemiBold,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
