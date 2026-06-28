@@ -129,6 +129,70 @@ async function writeAll(creations: Creation[]): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(creations));
 }
 
+// ---------------------------------------------------------------------------
+// Local creationId → name map. The backend `/creations` does not persist the
+// `name` field yet, so a server round-trip would drop the title the user typed.
+// We remember names the user gave on this device, keyed by the (server-assigned)
+// creation id, and merge them back in listCreations — so titles show regardless
+// of backend support. Drop the row in this map (server adds `name`) once the API
+// echoes it. (Local-fallback creations already carry their name; we mirror it
+// here too so there's one merge path.)
+// ---------------------------------------------------------------------------
+
+const NAME_STORAGE_KEY = '@auxi/creation-names';
+
+async function readNameMap(): Promise<Record<string, string>> {
+  try {
+    const raw = await AsyncStorage.getItem(NAME_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === 'object'
+      ? (parsed as Record<string, string>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Best-effort: remember the user's name for a creation id. A failed write must
+ *  never break the save, so errors are swallowed. No-op when there's no name. */
+async function rememberName(id: string, name?: string): Promise<void> {
+  if (!name) {
+    return;
+  }
+  try {
+    const map = await readNameMap();
+    map[id] = name;
+    await AsyncStorage.setItem(NAME_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore — the name just won't survive a server round-trip this time.
+  }
+}
+
+async function forgetName(id: string): Promise<void> {
+  try {
+    const map = await readNameMap();
+    if (id in map) {
+      delete map[id];
+      await AsyncStorage.setItem(NAME_STORAGE_KEY, JSON.stringify(map));
+    }
+  } catch {
+    // ignore — an orphaned name row is harmless.
+  }
+}
+
+/** Fill in `name` from the local map for any creation the server returned
+ *  without one (because the backend dropped the field). */
+async function mergeLocalNames(creations: Creation[]): Promise<Creation[]> {
+  if (creations.every(c => c.name)) {
+    return creations;
+  }
+  const nameMap = await readNameMap();
+  return creations.map(c => (c.name ? c : { ...c, name: nameMap[c.id] }));
+}
+
 /** Local-only save (AsyncStorage). The offline fallback for saveCreation.
  *  NOTE: a creation persisted here lives on-device only — there is no
  *  offline→server sync, so it will not propagate to the backend or other
@@ -141,6 +205,7 @@ async function saveCreationLocal(input: NewCreation): Promise<Creation> {
   };
   const existing = await readAll();
   await writeAll([creation, ...existing]);
+  await rememberName(creation.id, input.name);
   return creation;
 }
 
@@ -152,10 +217,13 @@ export const creationsService = {
       const response = await apiClient.get<{ creations: ServerCreation[] }>(
         '/creations',
       );
-      return { creations: response.data.creations.map(mapServerCreation) };
+      const creations = await mergeLocalNames(
+        response.data.creations.map(mapServerCreation),
+      );
+      return { creations };
     } catch (error) {
       console.warn('listCreations: server unavailable, using local store', error);
-      const creations = await readAll();
+      const creations = await mergeLocalNames(await readAll());
       return { creations };
     }
   },
@@ -170,7 +238,12 @@ export const creationsService = {
         items: input.items,
         canvas_width: input.canvasWidth,
       });
-      return mapServerCreation(response.data);
+      const created = mapServerCreation(response.data);
+      // Remember the name locally keyed by the server id, so it survives even
+      // when the backend drops the field (see mergeLocalNames). Fill it onto the
+      // returned creation too for any immediate consumer.
+      await rememberName(created.id, input.name);
+      return created.name ? created : { ...created, name: input.name };
     } catch (error) {
       // Genuine offline (the request never reached a server — no HTTP response)
       // keeps the deliberate offline-first resilience: persist locally so the
@@ -193,6 +266,9 @@ export const creationsService = {
   },
 
   async removeCreation(id: string): Promise<void> {
+    // Drop any remembered name for this id (best-effort, runs regardless of
+    // where the delete itself lands).
+    await forgetName(id);
     try {
       await apiClient.delete(`/creations/${id}`);
     } catch (error) {
