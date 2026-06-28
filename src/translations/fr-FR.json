@@ -559,7 +559,8 @@
       "discard_title": "Abandonner cette création ?",
       "discard_body": "Vos modifications n'ont pas été enregistrées.",
       "discard_save": "Enregistrer",
-      "discard_discard": "Abandonner"
+      "discard_discard": "Abandonner",
+      "save_failed": "Impossible d'enregistrer la tenue. Veuillez réessayer."
     },
     "myCreations": {
       "title": "Mes créations",
@@ -571,7 +572,8 @@
       "remove_body": "Voulez-vous vraiment retirer cette tenue de votre liste de créations ?",
       "remove_confirm": "Oui",
       "remove_cancel": "Annuler",
-      "add_to_schedule": "Ajouter au planning"
+      "add_to_schedule": "Ajouter au planning",
+      "self_visualization": "Voir sur moi"
     },
     "locationPermission": {
       "denied_title": "Autorisation refusée",
