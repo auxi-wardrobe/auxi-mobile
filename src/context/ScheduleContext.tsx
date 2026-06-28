@@ -4,36 +4,46 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { Favourite } from '../services/favouriteService';
 import { Creation } from '../services/creationsService';
+import {
+  scheduleService,
+  type ScheduleEntry,
+} from '../services/scheduleService';
+import { trackOutfitUnscheduled } from '../services/analytics';
 
 // A thing the user has planned onto a calendar day. Either a saved outfit
 // (Favourite page) or a saved canvas creation (My Creations page) — both are
 // schedulable, so the store holds a tagged union and the Schedule page renders
 // each with its own existing card.
+//
+// `id` (optional) is the SERVER-assigned schedule-entry uuid — set when the
+// outfit is loaded from, or persisted to, the backend. It is DISTINCT from the
+// inner favourite/creation id and is what `unscheduleOutfit` uses to DELETE the
+// entry server-side. It is only briefly absent during the optimistic window
+// between an add and its server reconcile.
 export type ScheduledOutfit =
-  | { kind: 'favourite'; favourite: Favourite }
-  | { kind: 'creation'; creation: Creation };
+  | { kind: 'favourite'; favourite: Favourite; id?: string }
+  | { kind: 'creation'; creation: Creation; id?: string };
 
-/** Stable identity for dedupe / unschedule, regardless of kind. */
+/** Stable CLIENT-side identity for the per-day dedupe guard, regardless of
+ *  kind. NOTE: this is the inner favourite/creation id, NOT the server entry
+ *  `id` — the two are intentionally different (one outfit can be planned on
+ *  several days, each a distinct server entry). */
 export const scheduledOutfitId = (o: ScheduledOutfit): string =>
   o.kind === 'favourite' ? o.favourite.id : o.creation.id;
 
 // day ("YYYY-MM-DD") → outfits planned for that day.
 export type ScheduleMap = Record<string, ScheduledOutfit[]>;
 
-// Persisted per-user under `@auxi/schedule/<userId>` (a `guest` bucket when
-// signed out) so it survives relaunch and never bleeds one account's plan into
-// another after logout/login — same scheme as FavouritesSeenContext.
-//
-// NOTE: this is a local, client-only store. When a real scheduling backend
-// lands it replaces this provider; the consumer surface (`useSchedule()`) is
-// intentionally small so that swap is contained.
+// Backend-first store. The canonical source is the server (`/schedule`, via
+// scheduleService); AsyncStorage is an offline fallback only, handled entirely
+// inside the service (no dual-write from here). The consumer surface
+// (`useSchedule()`) is intentionally small and unchanged from the previous
+// local-only implementation, so screens did not need to change.
 type ScheduleContextValue = {
   scheduledByDay: ScheduleMap;
   /** Plan an outfit on a day. No-op if it is already on that day. */
@@ -42,52 +52,20 @@ type ScheduleContextValue = {
   unscheduleOutfit: (dayKey: string, outfitId: string) => void;
 };
 
-const STORAGE_PREFIX = '@auxi/schedule/';
-const GUEST_KEY = `${STORAGE_PREFIX}guest`;
-
 const ScheduleContext = createContext<ScheduleContextValue>({
   scheduledByDay: {},
   scheduleOutfit: () => {},
   unscheduleOutfit: () => {},
 });
 
-// Coerce a persisted entry into a ScheduledOutfit. Tolerates the legacy shape
-// (a bare Favourite stored before the union existed) so an upgrade doesn't drop
-// previously-scheduled outfits.
-const normalizeEntry = (e: unknown): ScheduledOutfit | null => {
-  if (!e || typeof e !== 'object') {
-    return null;
-  }
-  const obj = e as Record<string, unknown>;
-  if (obj.kind === 'favourite' && obj.favourite) {
-    return { kind: 'favourite', favourite: obj.favourite as Favourite };
-  }
-  if (obj.kind === 'creation' && obj.creation) {
-    return { kind: 'creation', creation: obj.creation as Creation };
-  }
-  // Legacy: a bare Favourite (has outfit_items + id) written before the tagged
-  // union existed. This branch ONLY covers Favourites by design — scheduling
-  // Creations shipped together with the union, so no untagged Creation shape was
-  // ever persisted. Anything that matches neither branch is dropped.
-  if (Array.isArray(obj.outfit_items) && typeof obj.id === 'string') {
-    return { kind: 'favourite', favourite: obj as unknown as Favourite };
-  }
-  return null;
-};
-
-const normalizeMap = (raw: unknown): ScheduleMap => {
+/** Group the backend's flat entry list into the per-day map. The server returns
+ *  entries ordered by date then `created_at` ASC, so pushing in order yields
+ *  oldest-first within each day — the single ordering convention we keep in
+ *  state (optimistic inserts append to match). */
+const groupByDay = (entries: ScheduleEntry[]): ScheduleMap => {
   const out: ScheduleMap = {};
-  if (raw && typeof raw === 'object') {
-    for (const [day, list] of Object.entries(raw as Record<string, unknown>)) {
-      if (Array.isArray(list)) {
-        const items = list
-          .map(normalizeEntry)
-          .filter((x): x is ScheduledOutfit => x !== null);
-        if (items.length) {
-          out[day] = items;
-        }
-      }
-    }
+  for (const entry of entries) {
+    (out[entry.dayKey] ??= []).push(entry.outfit);
   }
   return out;
 };
@@ -96,62 +74,90 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { user } = useAuth();
-  const storageKey = user ? `${STORAGE_PREFIX}${user.id}` : GUEST_KEY;
-  // Writes read the key from a ref so the persisted target always matches the
-  // CURRENT account, even if a schedule/unschedule fires around a login change.
-  const storageKeyRef = useRef(storageKey);
+  // `user.id` is `number | string`; normalise to the string the service uses
+  // for the per-user offline fallback key (null = guest).
+  const userId = user?.id != null ? String(user.id) : null;
   const [scheduledByDay, setScheduledByDay] = useState<ScheduleMap>({});
 
-  // Reload the plan whenever the active account changes.
+  // Load (or reload) the plan whenever the active account changes. Reset to
+  // empty first so the previous account's plan never flashes for the new user.
   useEffect(() => {
-    storageKeyRef.current = storageKey;
     let active = true;
-    AsyncStorage.getItem(storageKey)
-      .then(value => {
-        if (!active) {
-          return;
-        }
-        try {
-          setScheduledByDay(value ? normalizeMap(JSON.parse(value)) : {});
-        } catch {
-          setScheduledByDay({});
+    setScheduledByDay({});
+    scheduleService
+      .getSchedule(userId)
+      .then(({ entries }) => {
+        if (active) {
+          setScheduledByDay(groupByDay(entries));
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        // getSchedule already falls back to local and does not throw; this is
+        // belt-and-suspenders so a load failure leaves an empty plan, not a hang.
+        if (active) {
+          setScheduledByDay({});
+        }
+      });
     return () => {
       active = false;
     };
-  }, [storageKey]);
-
-  const persist = useCallback((next: ScheduleMap) => {
-    AsyncStorage.setItem(storageKeyRef.current, JSON.stringify(next)).catch(
-      () => {},
-    );
-  }, []);
+  }, [userId]);
 
   const scheduleOutfit = useCallback(
     (dayKey: string, outfit: ScheduledOutfit) => {
-      const id = scheduledOutfitId(outfit);
+      const innerId = scheduledOutfitId(outfit);
+      let didInsert = false;
       setScheduledByDay(prev => {
         const dayList = prev[dayKey] ?? [];
-        if (dayList.some(o => scheduledOutfitId(o) === id)) {
+        // Client-side dedupe guard — the server does NOT dedupe, so this is what
+        // prevents the same outfit being planned twice on one day.
+        if (dayList.some(o => scheduledOutfitId(o) === innerId)) {
           return prev; // already planned for this day — keep state identity
         }
-        const next = { ...prev, [dayKey]: [outfit, ...dayList] };
-        persist(next);
-        return next;
+        didInsert = true;
+        // Append (oldest-first within the day) to match the backend ordering.
+        return { ...prev, [dayKey]: [...dayList, outfit] };
       });
+      if (!didInsert) {
+        return;
+      }
+      // Persist, then stamp the returned server entry `id` onto the in-state
+      // outfit so a later unschedule can DELETE the right entry. addToSchedule
+      // resolves with a local-id entry on network failure, so this reconcile
+      // path is the same online and offline.
+      scheduleService
+        .addToSchedule(userId, { dayKey, outfit })
+        .then(entry => {
+          setScheduledByDay(prev => {
+            const dayList = prev[dayKey];
+            if (!dayList) {
+              return prev;
+            }
+            return {
+              ...prev,
+              [dayKey]: dayList.map(o =>
+                scheduledOutfitId(o) === innerId ? entry.outfit : o,
+              ),
+            };
+          });
+        })
+        .catch(() => {
+          // addToSchedule never throws (it falls back to local); leave the
+          // optimistic entry in place if it somehow does.
+        });
     },
-    [persist],
+    [userId],
   );
 
   const unscheduleOutfit = useCallback(
     (dayKey: string, outfitId: string) => {
+      let removed: ScheduledOutfit | undefined;
       setScheduledByDay(prev => {
         const dayList = prev[dayKey];
         if (!dayList) {
           return prev;
         }
+        removed = dayList.find(o => scheduledOutfitId(o) === outfitId);
         const filtered = dayList.filter(o => scheduledOutfitId(o) !== outfitId);
         const next = { ...prev };
         if (filtered.length) {
@@ -159,11 +165,21 @@ export const ScheduleProvider: React.FC<{ children: React.ReactNode }> = ({
         } else {
           delete next[dayKey];
         }
-        persist(next);
         return next;
       });
+      if (!removed) {
+        return;
+      }
+      trackOutfitUnscheduled(removed.kind);
+      // DELETE by the SERVER entry id (NOT scheduledOutfitId). When `id` is
+      // absent — only in the brief optimistic window before an add reconciles —
+      // there is nothing to delete server-side yet; the entry is gone from state
+      // and the still-resolving add leaves an orphan (rare, acceptable).
+      if (removed.id) {
+        scheduleService.removeFromSchedule(userId, removed.id).catch(() => {});
+      }
     },
-    [persist],
+    [userId],
   );
 
   const value = useMemo(
