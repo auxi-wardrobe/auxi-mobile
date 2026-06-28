@@ -440,22 +440,6 @@ export const styles = StyleSheet.create({
     ...theme.typography.aliases.manropeCaption,
     color: theme.colors.figmaTextSecondary,
   },
-  pinGeneratingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: SHEET_PADDING,
-    marginTop: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: theme.colors.figmaCaptionPillBg,
-    alignSelf: 'center',
-  },
-  pinGeneratingHeaderText: {
-    ...theme.typography.aliases.manropeCaption,
-    color: theme.colors.figmaTextPrimary,
-  },
   pinBannerFloat: {
     position: 'absolute',
     left: SHEET_PADDING,

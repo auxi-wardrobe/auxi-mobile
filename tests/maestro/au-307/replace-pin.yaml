@@ -77,7 +77,7 @@ env:
 
 # --- 5. Generating again (same UI contract as primary) ---
 - assertVisible:
-    id: home-pin-generating-header
+    id: home-wear-this-generating-spinner
 - assertVisible:
     id: "home-tile-skeleton-.*"
     index: 0
@@ -88,7 +88,7 @@ env:
       id: "home-tile-skeleton-.*"
     timeout: ${PIN_GENERATE_TIMEOUT_MS}
 - assertNotVisible:
-    id: home-pin-generating-header
+    id: home-wear-this-generating-spinner
 
 # --- 7. A pinned tile is still present (which slot now carries it is
 #       determined by the BE response shape — could be original index 1 or

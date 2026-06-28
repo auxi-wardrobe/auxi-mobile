@@ -59,7 +59,7 @@ Every assertion targets a stable `testID`. No text matching, no coords.
 | Selector | Where defined | Sub-flows using it |
 |---|---|---|
 | `home-swipe-deck` | `HomeScreen.tsx:1810` | A, B, C |
-| `home-pin-generating-header` | `HomeScreen.tsx:1771` | A, B, C |
+| `home-wear-this-generating-spinner` | `HomeScreen/index.tsx` (Wear-this CTA loading state) | A, B, C |
 | `home-tile-pin-.*-0` (regex) | `HomeScreen.tsx:2300-2304` (unpinned suffix) | A, C |
 | `home-tile-pin-.*-1` (regex) | same — flatTileIndex 1, unpinned | B |
 | `home-tile-pin-.*-set` (regex) | same — pinned-state suffix | A, B |
