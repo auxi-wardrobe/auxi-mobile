@@ -28,8 +28,11 @@ import { CategoryTabs } from '../components/features/CategoryTabs';
 import { Header } from '../components/layout/Header';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
-import { MBottomSheet, MButton } from '../components/design-system/lib';
-import { PillButton } from '../components/primitives/FigmaPrimitives';
+import {
+  MActionSheet,
+  MBottomSheet,
+  MButton,
+} from '../components/design-system/lib';
 import { useSidebar } from '../context/SidebarContext';
 import {
   wardrobeService,
@@ -167,6 +170,9 @@ export const WardrobeScreen = () => {
   // itself mounted through the close animation), so the screen only tracks the
   // boolean.
   const [addSheetVisible, setAddSheetVisible] = useState(false);
+  // Take-photo source chooser. Migrated from a 3-button Alert.alert to the DS
+  // MActionSheet (GH-364); driven by this controlled boolean.
+  const [photoSourceSheetVisible, setPhotoSourceSheetVisible] = useState(false);
 
   // AU-361: item-ready snackbar. `preparingIdsRef` holds IDs that were still
   // preparing on the previous fetch; `readyToastedIdsRef` dedups so an item
@@ -420,22 +426,10 @@ export const WardrobeScreen = () => {
   const handleTakePhoto = () => {
     track('add_item_method_selected', { method: 'take_photo' });
     setAddSheetVisible(false);
+    // Let the add sheet finish its close animation before the source chooser
+    // slides up (matches the prior Alert timing).
     setTimeout(() => {
-      Alert.alert(
-        t('wardrobe.list.add_photo_title'),
-        t('wardrobe.list.add_photo_body'),
-        [
-          {
-            text: t('common.take_photo'),
-            onPress: () => handleImageSelection('camera'),
-          },
-          {
-            text: t('common.choose_from_library'),
-            onPress: () => handleImageSelection('gallery'),
-          },
-          { text: t('common.cancel'), style: 'cancel' },
-        ],
-      );
+      setPhotoSourceSheetVisible(true);
     }, 250);
   };
 
@@ -596,13 +590,14 @@ export const WardrobeScreen = () => {
               {t('wardrobe.list.error_body')}
             </Text>
             <View style={styles.errorRetryWrap}>
-              <PillButton
-                title={t('common.retry')}
-                variant="outline"
+              <MButton
+                variant="secondary"
                 onPress={handleRetryLoad}
                 testID="wardrobe-error-retry"
                 accessibilityLabel={t('common.a11y_retry_load')}
-              />
+              >
+                {t('common.retry')}
+              </MButton>
             </View>
           </View>
         ) : hasItems ? (
@@ -685,6 +680,33 @@ export const WardrobeScreen = () => {
           />
         </View>
       </MBottomSheet>
+
+      {/* Take-photo source chooser — DS MActionSheet (GH-364, replaces the
+          3-button Alert.alert). The per-source upload/capture analytics still
+          fire inside handleImageSelection; cancel dismisses via onDismiss. */}
+      <MActionSheet
+        visible={photoSourceSheetVisible}
+        onDismiss={() => setPhotoSourceSheetVisible(false)}
+        title={t('wardrobe.list.add_photo_title')}
+        options={[
+          {
+            label: t('common.take_photo'),
+            onPress: () => {
+              setPhotoSourceSheetVisible(false);
+              handleImageSelection('camera');
+            },
+          },
+          {
+            label: t('common.choose_from_library'),
+            onPress: () => {
+              setPhotoSourceSheetVisible(false);
+              handleImageSelection('gallery');
+            },
+          },
+        ]}
+        cancelLabel={t('common.cancel')}
+        testID="wardrobe-photo-source-sheet"
+      />
 
       {/* AI processing overlay (Figma node 2852:20021) */}
       <Modal visible={uploading} transparent animationType="fade">
