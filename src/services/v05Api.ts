@@ -10,6 +10,7 @@
  */
 import { apiClient } from './apiClient';
 import { getBuildMemory, recordServedOutfit } from './recommendationMemory';
+import type { UserConfidenceLevel, UserStyleDirection } from '../types/auth';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Closed enums (mirror backend Pydantic constants)
@@ -175,10 +176,18 @@ export interface BuildWeather {
   is_rainy?: boolean;
 }
 
-/** `user` input — both fields optional with backend defaults. */
+/** `user` input — all fields optional with backend defaults. */
 export interface BuildUser {
   gender?: 'M' | 'W' | 'U';
   occasion?: string;
+  /**
+   * Persona preferences sourced from `user_metadata` (Settings / onboarding).
+   * `style_direction` nudges the formality axis (relaxed ↔ polished);
+   * `confidence_level` nudges the statement axis (conservative ↔ bold).
+   * Omitted when unset so the backend applies its own defaults.
+   */
+  style_direction?: UserStyleDirection;
+  confidence_level?: UserConfidenceLevel;
 }
 
 /** `intent` input — mood biases scoring (Layer 4). Null = no bias. */

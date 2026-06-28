@@ -69,6 +69,18 @@ interface RefreshAxiosResponse {
 
 let inflightRefresh: Promise<string | null> | null = null;
 
+/**
+ * Outcomes of a refresh attempt:
+ *   - returns a token string  → refresh succeeded.
+ *   - returns null            → the session is DEFINITIVELY gone: either no
+ *                               refresh token is stored, or `/auth/refresh`
+ *                               rejected the refresh token (401/403). The
+ *                               caller must clear tokens + fire session-expired.
+ *   - THROWS                  → a TRANSIENT failure (offline / timeout / 5xx).
+ *                               Tokens are still valid; the caller must leave
+ *                               them intact and let the original request reject
+ *                               so it can be retried later.
+ */
 const performRefresh = async (): Promise<string | null> => {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) {
@@ -97,8 +109,22 @@ const performRefresh = async (): Promise<string | null> => {
     });
     return response.data.access_token;
   } catch (refreshError) {
-    console.warn('[apiClient] refresh failed', refreshError);
-    return null;
+    // Only a real 401/403 from /auth/refresh means the refresh token itself
+    // was rejected → the session is truly expired. Anything else (network
+    // error / timeout / 5xx) is transient: do NOT destroy the session, just
+    // rethrow so the original request rejects and the caller can retry later.
+    if (axios.isAxiosError(refreshError)) {
+      const refreshStatus = refreshError.response?.status;
+      if (refreshStatus === 401 || refreshStatus === 403) {
+        console.warn(
+          '[apiClient] refresh token rejected (session expired)',
+          refreshStatus,
+        );
+        return null;
+      }
+    }
+    console.warn('[apiClient] refresh failed transiently', refreshError);
+    throw refreshError;
   }
 };
 
@@ -137,7 +163,7 @@ export const registerSessionExpiredListener = (
 };
 
 const fireSessionExpired = () => {
-  sessionExpiredListeners.forEach((listener) => {
+  sessionExpiredListeners.forEach(listener => {
     try {
       listener();
     } catch (err) {
@@ -152,7 +178,7 @@ const isRefreshEndpoint = (url: string | undefined): boolean => {
 };
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  response => response,
   async (error: AxiosError) => {
     const status = error.response?.status;
     const originalConfig = error.config as RetryableRequestConfig | undefined;
@@ -170,8 +196,19 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const newAccessToken = await getOrStartRefresh();
+    let newAccessToken: string | null;
+    try {
+      newAccessToken = await getOrStartRefresh();
+    } catch {
+      // Transient refresh failure (offline / timeout / 5xx). Leave the stored
+      // tokens intact and DO NOT fire session-expired — reject the original
+      // request so the caller can retry later without being logged out.
+      return Promise.reject(error);
+    }
+
     if (!newAccessToken) {
+      // Refresh token missing or definitively rejected (401/403) → the
+      // session is truly expired. Clear tokens and notify AuthContext.
       await clearTokens();
       fireSessionExpired();
       return Promise.reject(error);

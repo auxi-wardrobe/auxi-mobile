@@ -14,6 +14,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { SidebarProvider } from './src/context/SidebarContext';
 import { FavouritesSeenProvider } from './src/context/FavouritesSeenContext';
+import { CreationsSeenProvider } from './src/context/CreationsSeenContext';
 import { ScheduleProvider } from './src/context/ScheduleContext';
 import { WardrobeViewedProvider } from './src/context/WardrobeViewedContext';
 import { RootDrawer } from './src/components/layout/RootDrawer';
@@ -80,23 +81,25 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <FavouritesSeenProvider>
-              <ScheduleProvider>
-                <WardrobeViewedProvider>
-                  <SidebarProvider>
-                    {/* Root error boundary — placed inside the providers so the
-                        fallback has theme/i18n available, and high enough to catch
-                        an unexpected render error anywhere in the navigator tree
-                        (recoverable fallback instead of a white screen on review). */}
-                    <ErrorBoundary>
-                      <BackgroundScaleProvider>
-                        <RootDrawer>
-                          <AppNavigator />
-                        </RootDrawer>
-                      </BackgroundScaleProvider>
-                    </ErrorBoundary>
-                  </SidebarProvider>
-                </WardrobeViewedProvider>
-              </ScheduleProvider>
+              <CreationsSeenProvider>
+                <ScheduleProvider>
+                  <WardrobeViewedProvider>
+                    <SidebarProvider>
+                      {/* Root error boundary — placed inside the providers so the
+                          fallback has theme/i18n available, and high enough to catch
+                          an unexpected render error anywhere in the navigator tree
+                          (recoverable fallback instead of a white screen on review). */}
+                      <ErrorBoundary>
+                        <BackgroundScaleProvider>
+                          <RootDrawer>
+                            <AppNavigator />
+                          </RootDrawer>
+                        </BackgroundScaleProvider>
+                      </ErrorBoundary>
+                    </SidebarProvider>
+                  </WardrobeViewedProvider>
+                </ScheduleProvider>
+              </CreationsSeenProvider>
             </FavouritesSeenProvider>
           </AuthProvider>
           <Toast />

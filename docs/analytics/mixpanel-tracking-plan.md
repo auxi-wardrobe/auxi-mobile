@@ -165,9 +165,17 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 
 > PII: all settings events carry bounded enums only (`period`, `frequency`, `direction`, `locale`, `granted`, `enabled`) — no raw text, no identifiers. The read-only hour value (`'06:15'`) is NOT tracked. `notifications_reset` props echo the constant defaults (so the dashboard can confirm what "default" was at fire time); `notifications_reset_undone` echoes the restored prior values for symmetry.
 
-### 5.8 Mood feedback (pre-existing, unchanged)
+### 5.8 Mood feedback
 
 8 events fired from `src/hooks/use-mood-feedback.ts`: `wear_this_clicked`, `mood_feedback_opened`, `mood_feedback_skipped`, `mood_feedback_submitted`, `outfit_mood_linked`, `negative_mood_selected`, `mood_feedback_submission_failed`, `mood_chip_selected`/`mood_chip_deselected`. See file for full property shapes.
+
+**Feeling-aware recommendations (AU-388) additions:**
+- `mood_feedback_submitted` now carries (on BOTH the saved and the soft-negative branch, so the event shape is uniform):
+  - `intent_moods: string[]` — engine-vocab projection of the chosen feeling chips (`feedbackMoodsToIntentMoods`, `services/mood/mood-vocabulary.ts`). Empty array when the selection maps to nothing.
+  - `saved: boolean` — `true` when the outfit was saved to favourites; `false` for a soft-negative (`not_quite_me`) submission, which is recorded as feedback only and **not** saved.
+  - `occasion?: string` — context for Feeling × Context analysis. **Omitted entirely when unknown** (no `null` per the no-null-props rule); fuller context (weather/temp/season/time) lands with the P1 capture schema.
+- `negative_mood_selected` now fires from the dedicated soft-negative branch (a mixed selection like `[confident, not_quite_me]` still counts as a rejection) and also carries the optional `occasion` property (same omit-when-unknown rule).
+- Funnel/analysis intent: validate the feedback→engine mood mapping (e.g. do users who pick `relaxed` favourite `confident`-mapped outfits?) before backend Feeling-Memory wiring. See `docs/strategy-mood-aware-recommendations.md`.
 
 ### 5.9 Global navigation
 
@@ -255,7 +263,7 @@ The pin feature (AU-307) originally shipped with NO analytics (only `console.inf
 
 ### 5.18 Schedule (outfit planning, mobile-local)
 
-The Schedule screen (sidebar → Schedule) lets the user plan saved outfits / canvas creations onto calendar days. The store is **local, per-user AsyncStorage** (`@auxi/schedule/<userId>`) — no backend route. Events capture the planning funnel: open the date picker → confirm a day; plus the in-Schedule add-source picker and day selection.
+The Schedule screen (sidebar → Schedule) lets the user plan saved outfits / canvas creations onto calendar days. The store is now **backend-backed** (`/api/schedule`, via `scheduleService`) with per-user AsyncStorage (`@auxi/schedule/<userId>`) as an offline fallback only. Events capture the planning funnel: open the date picker → confirm a day; plus the in-Schedule add-source picker, day selection, and removal.
 
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
@@ -266,8 +274,11 @@ The Schedule screen (sidebar → Schedule) lets the user plan saved outfits / ca
 | **`schedule_add_tapped`** | Schedule header "+" tapped — opens the "Add an outfit" source picker. | `ScheduleScreen.tsx:186` (`handleAddOutfit`) | `date` (`YYYY-MM-DD`, the selected day) |
 | **`schedule_add_source_selected`** | A source chosen in the "Add an outfit" picker — routes to that page. | `ScheduleScreen.tsx:193` (`handlePickSource`) | `source` (`favourite` / `creations`) |
 | **`schedule_day_selected`** | A day tapped on the week strip. | `ScheduleScreen.tsx:181` (`handleSelectDay`) | `date` (`YYYY-MM-DD`), `is_today` (bool) |
+| **`outfit_unscheduled`** | An outfit removed from a planned day (Schedule screen remove / collage-card remove). Fired from the store so every removal path is covered. | `ScheduleContext.tsx:173` (`unscheduleOutfit`) via `trackOutfitUnscheduled` | `source` (`favourite` / `creation`) — bounded enum, no ids/PII |
 
-> Funnel intent: `*_schedule_opened` → `*_added_to_schedule` measures add-to-schedule completion per source (favourite vs creation); `schedule_add_tapped` → `schedule_add_source_selected` measures the in-Schedule "+" entry. `schedule_day_selected` is engagement with the rail.
+> Funnel intent: `*_schedule_opened` → `*_added_to_schedule` measures add-to-schedule completion per source (favourite vs creation); `schedule_add_tapped` → `schedule_add_source_selected` measures the in-Schedule "+" entry. `schedule_day_selected` is engagement with the rail. `outfit_unscheduled` ÷ `*_added_to_schedule` is the plan-removal (regret) rate.
+>
+> Note: **adding** to the schedule is intentionally NOT re-fired from the `scheduleService`/context wiring — it is already captured by `favourite_added_to_schedule` / `creation_added_to_schedule` at the screen level. Firing an extra `outfit_scheduled` from the store would double-count the add funnel, so only the previously-untracked removal (`outfit_unscheduled`) was added when the feature moved to the backend.
 >
 > PII: none. `favorite_id` / `creation_id` are internal record ids (no garment names, no free text); `date` is a calendar day (`YYYY-MM-DD`, no time); `source` is a closed enum; `is_today` is an unquoted boolean. The store itself is on-device only and never sent to a backend.
 

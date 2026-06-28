@@ -25,6 +25,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
 import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
+import { useAuth } from '../../context/AuthContext';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
 import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
 import { WelcomeDialog } from '../../components/features/WelcomeDialog';
@@ -48,6 +49,7 @@ import {
   RecommendationMode,
 } from '../../services/recommendationService';
 import { recommendV05, resetV05Session } from '../../services/v05Api';
+import { moodForMode } from '../../services/mood/mood-vocabulary';
 import { favouriteService } from '../../services/favouriteService';
 import { wardrobeService } from '../../services/wardrobeService';
 import {
@@ -139,8 +141,29 @@ export const HomeScreen = () => {
   const route = useRoute<RouteProp<AppStackParamList, 'Home'>>();
   const queryClient = useQueryClient();
   const { open: openSidebar } = useSidebar();
+  const { user } = useAuth();
   const { hasUnseen: hasUnseenFavourites, markSaved: markFavouriteSaved } =
     useFavouritesSeen();
+
+  // Persona preferences threaded into every `/build` `user` payload so the
+  // engine biases formality (style_direction) + statement level
+  // (confidence_level). Omit unset keys so the backend keeps its defaults.
+  // Mirrored into a ref for the pin-regenerate effect, which reads from refs.
+  const buildPersona = useMemo(() => {
+    const meta = user?.user_metadata;
+    return {
+      ...(meta?.style_direction
+        ? { style_direction: meta.style_direction }
+        : {}),
+      ...(meta?.confidence_level
+        ? { confidence_level: meta.confidence_level }
+        : {}),
+    };
+  }, [user?.user_metadata]);
+  const buildPersonaRef = useRef(buildPersona);
+  useEffect(() => {
+    buildPersonaRef.current = buildPersona;
+  }, [buildPersona]);
   const [homeView, setHomeView] = useState<HomeView>('grid');
   const [collageDragActive, setCollageDragActive] = useState(false);
   const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -191,23 +214,7 @@ export const HomeScreen = () => {
   const [styleFeedback, setStyleFeedback] = useState<string | null>(null);
   const [hasCycled, setHasCycled] = useState(false);
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
-  const [aiNoticeDismissed, setAiNoticeDismissed] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
-  // Persist the AI notice dismissal so the toast appears only the first time;
-  // the floating feedback button remains as the ongoing affordance.
-  useEffect(() => {
-    AsyncStorage.getItem(AI_NOTICE_DISMISSED_KEY)
-      .then(v => {
-        if (v === 'true') {
-          setAiNoticeDismissed(true);
-        }
-      })
-      .catch(() => {});
-  }, []);
-  const dismissAiNotice = useCallback(() => {
-    setAiNoticeDismissed(true);
-    AsyncStorage.setItem(AI_NOTICE_DISMISSED_KEY, 'true').catch(() => {});
-  }, []);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   // "You've explored most combinations" sheet — shown when the user reaches the
   // end of the available outfits (pool depleted). `shownRef` keeps it to once
@@ -316,13 +323,10 @@ export const HomeScreen = () => {
       cycled?: boolean;
       wardrobeGap?: boolean;
     }> => {
-      const moodMap: Record<RecommendationMode, string | null> = {
-        safe: 'calm',
-        power: 'confident',
-        creative: 'playful',
-      };
       const mode = input.mode ?? DEFAULT_RECOMMENDATION_MODE;
-      const mood = moodMap[mode] ?? null;
+      // Mode pill → engine mood, via the shared mood-vocabulary bridge (single
+      // source of truth shared with the feedback→intent mapping).
+      const mood = moodForMode(mode);
       const occasion = mode || DEFAULT_RECOMMENDATION_MODE;
 
       const v05 = await recommendV05({
@@ -330,7 +334,7 @@ export const HomeScreen = () => {
           temp_c: overrideTempCRef.current ?? weather.tempC,
           is_rainy: false,
         },
-        user: { gender: 'U', occasion },
+        user: { gender: 'U', occasion, ...buildPersona },
         intent: { mood: mood as never },
         count: 3,
         mode,
@@ -349,7 +353,7 @@ export const HomeScreen = () => {
         wardrobeGap: v05.wardrobeGap,
       };
     },
-    [weather.tempC, overrideTempCRef],
+    [weather.tempC, overrideTempCRef, buildPersona],
   );
 
   const {
@@ -634,7 +638,11 @@ export const HomeScreen = () => {
         temp_c: overrideTempCRef.current ?? weather.tempC,
         is_rainy: false,
       },
-      user: { gender: 'U' as const, occasion: selectedModeRef.current },
+      user: {
+        gender: 'U' as const,
+        occasion: selectedModeRef.current,
+        ...buildPersonaRef.current,
+      },
       count: 3,
       mode: selectedModeRef.current,
       pinned_item_id: pinState.pinnedItemId ?? undefined,
@@ -1023,10 +1031,17 @@ export const HomeScreen = () => {
     [showMoodBanner, t, queryClient, markFavouriteSaved],
   );
 
+  // "Not quite me" → the outfit is intentionally NOT saved; acknowledge the
+  // feedback without a "saved" confirmation and leave the save state untouched.
+  const handleMoodRejected = useCallback(() => {
+    showMoodBanner(t('mood.notLovedBanner'));
+  }, [showMoodBanner, t]);
+
   const { onWearThisPress, sheetProps: moodSheetProps } =
     useMoodFeedback<WearThisPayload>({
       saveDirectly: pending => handleHeartTapForOutfit(pending.outfit),
       onSaveSuccess: handleMoodSaveSuccess,
+      onRejected: handleMoodRejected,
     });
 
   const handleWearThisForOutfit = useCallback(
@@ -1350,13 +1365,6 @@ export const HomeScreen = () => {
       {/* Floating toast layer (z-index tier 5) — sits on top of the grid,
           never stacks with the cards. */}
       <View style={styles.noticeStack} pointerEvents="box-none">
-        {optionSets.length > 0 && !aiNoticeDismissed ? (
-          <InfoSnackbar
-            message={t('aiDisclosure.label')}
-            onClose={dismissAiNotice}
-            testID="home-ai-disclosure"
-          />
-        ) : null}
         {hasCycled &&
         !isWardrobeGap &&
         optionSets.length > 0 &&

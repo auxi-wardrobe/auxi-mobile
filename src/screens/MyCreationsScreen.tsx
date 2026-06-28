@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { theme } from '../theme/theme';
 import { useSidebar } from '../context/SidebarContext';
 import { useSchedule } from '../context/ScheduleContext';
+import { useCreationsSeen } from '../context/CreationsSeenContext';
 import { MacgieLoader } from '../components/macgie';
 import { Header } from '../components/layout/Header';
 import IconMyCreation from '../assets/images/icon_my_creation.svg';
@@ -19,6 +25,7 @@ import {
   type Creation,
 } from '../services/creationsService';
 import { CreationCollageCard } from './myCreations/CreationCollageCard';
+import { RemoveCreationDialog } from './myCreations/RemoveCreationDialog';
 import { ScheduleDatePickerSheet } from './schedule/ScheduleDatePickerSheet';
 import { useScheduleAddedToast } from './schedule/useScheduleAddedToast';
 
@@ -45,8 +52,20 @@ export const MyCreationsScreen: React.FC = () => {
   const showBackButton = route.params?.showBackButton === true;
   const { scheduleOutfit } = useSchedule();
   const showScheduleAddedToast = useScheduleAddedToast();
+  const { markSeen: markCreationsSeen } = useCreationsSeen();
   // The creation awaiting a day in the "Add to Schedule" sheet (null = closed).
   const [scheduleTarget, setScheduleTarget] = useState<Creation | null>(null);
+  // Deleting a creation is confirmed via a bottom sheet (same pattern as the
+  // Favourite list): the card's ⊖ stages the id, the sheet confirms the delete.
+  const [pendingRemovalId, setPendingRemovalId] = useState<string | null>(null);
+
+  // Viewing the list clears the canvas header's "unseen saved creation" dot —
+  // same pattern as the Favourite page clearing the saved-looks dot.
+  useFocusEffect(
+    useCallback(() => {
+      markCreationsSeen();
+    }, [markCreationsSeen]),
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: CREATIONS_QUERY_KEY,
@@ -59,7 +78,14 @@ export const MyCreationsScreen: React.FC = () => {
       track('creation_removed', { creation_id: id });
       queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
     },
+    onSettled: () => setPendingRemovalId(null),
   });
+
+  const confirmRemove = () => {
+    if (pendingRemovalId) {
+      removeMutation.mutate(pendingRemovalId);
+    }
+  };
 
   const creations = data?.creations ?? [];
 
@@ -120,7 +146,7 @@ export const MyCreationsScreen: React.FC = () => {
           <CreationCollageCard
             key={creation.id}
             creation={creation}
-            onRemove={id => removeMutation.mutate(id)}
+            onRemove={setPendingRemovalId}
             onSchedule={handleSchedule}
           />
         ))}
@@ -160,6 +186,13 @@ export const MyCreationsScreen: React.FC = () => {
         initialDate={scheduleInitialDate}
         onCancel={() => setScheduleTarget(null)}
         onConfirm={handleConfirmSchedule}
+      />
+
+      <RemoveCreationDialog
+        visible={pendingRemovalId !== null}
+        isBusy={removeMutation.isPending}
+        onCancel={() => setPendingRemovalId(null)}
+        onConfirm={confirmRemove}
       />
     </View>
   );
