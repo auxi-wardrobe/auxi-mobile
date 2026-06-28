@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
-import Toast from 'react-native-toast-message';
+import { toast } from '../components/design-system/lib';
 import { authService } from '../services/auth';
 import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { registerSessionExpiredListener } from '../services/apiClient';
@@ -169,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       sessionExpiredFiredRef.current = true;
       setUser(null);
       setPendingVerifyEmail(null);
-      Toast.show({
+      toast.show({
         type: 'error',
         text1: 'Session expired',
         text2: 'Please sign in again.',

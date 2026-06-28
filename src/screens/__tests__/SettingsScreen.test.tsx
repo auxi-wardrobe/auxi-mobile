@@ -16,7 +16,7 @@
  */
 import React from 'react';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
-import Toast from 'react-native-toast-message';
+import { toast } from '../../components/design-system/lib';
 import { resolveSettings, SettingsScreen } from '../SettingsScreen';
 import { useAuth } from '../../context/AuthContext';
 import { User, UserMetadata } from '../../types/auth';
@@ -26,7 +26,7 @@ jest.mock('../../context/AuthContext', () => ({
 }));
 
 const mockedUseAuth = useAuth as jest.Mock;
-const mockedToastShow = (Toast as unknown as { show: jest.Mock }).show;
+const mockedToastShow = (toast as unknown as { show: jest.Mock }).show;
 
 // Typed handle to the Node process emitter without pulling @types/node into
 // the app tsconfig (it isn't in `types`). Used to assert the rejection from a

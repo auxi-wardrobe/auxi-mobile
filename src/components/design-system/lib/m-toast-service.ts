@@ -5,7 +5,7 @@
  *   toast.success('Saved');
  *   toast.show({ type: 'error', text1: 'Oops', text2: 'Try again' });
  *
- * On-system replacement for `react-native-toast-message`'s `Toast.show`. NO
+ * On-system replacement for the legacy toast library's `Toast.show`. NO
  * React import here so non-component callers (AuthContext, try-on notices) can
  * fire a toast. A tiny event emitter holds the single active toast + an
  * auto-increment id; `MToastHost` subscribes and renders it.
@@ -106,7 +106,7 @@ const withTone = (
 ): string => show({ ...opts, type: tone, text1 });
 
 /**
- * Imperative toast API (drop-in for `react-native-toast-message`'s `Toast`).
+ * Imperative toast API (drop-in for the legacy `Toast.show` global).
  *
  * Z-ORDER CAVEAT: `MToastHost` is a root overlay rendered in the normal view
  * tree, so it sits BELOW a native `<Modal>` (and native date/time pickers). A
