@@ -38,7 +38,7 @@ import Svg, { Path } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
 
 import { theme } from '../../theme/theme';
-import { MacgieLoader } from '../../components/macgie';
+import { MacgieNod } from '../../components/macgie';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import type { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
@@ -305,17 +305,11 @@ export const WelcomeScreen = () => {
 
       <View style={styles.bodyContainer}>
         {/* Hero group — logo + heading + subtitle near the top (Figma node
-            3910:22305). Per CEO: the lively MacgieLoader animation (±4° dwelling
-            sway + pupil tracking) fills the logo slot, presented as a logo
-            (`asLogo` → image a11y "Macgie", no busy/Loading state, no caption).
-            `inline` variant keeps it content-sized (no flex stretch). */}
+            3910:22305). Matches the Welcome (splash) screen: the MacgieNod
+            "nod sequence" animation (glance → hop + squash/stretch → nod) fills
+            the logo slot at size 96, rendered as an image a11y "Macgie". */}
         <View style={styles.heroGroup}>
-          <MacgieLoader
-            variant="inline"
-            size={126}
-            asLogo
-            testID="welcome-logo"
-          />
+          <MacgieNod size={96} style={styles.logo} testID="welcome-logo" />
           <Text style={styles.headline}>{t('uac.welcome.headline')}</Text>
           <Text style={styles.subtitle}>{t('uac.welcome.subtitle')}</Text>
         </View>
@@ -480,13 +474,18 @@ const styles = StyleSheet.create({
   heroGroup: {
     alignItems: 'center',
     marginTop: theme.spacing.uacDimension24 * 2,
-    gap: theme.spacing.uacDimension8,
+  },
+  // Mascot → heading spacing mirrors the Welcome (splash) screen (24px).
+  logo: {
+    marginBottom: theme.spacing.l,
   },
   headline: {
     ...theme.typography.aliases.uacH1Bold,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
     letterSpacing: -0.72,
+    // Heading → subtitle spacing mirrors the Welcome (splash) screen (16px).
+    marginBottom: theme.spacing.uacDimension16,
   },
   subtitle: {
     ...theme.typography.aliases.uacBodyXsRegular,
