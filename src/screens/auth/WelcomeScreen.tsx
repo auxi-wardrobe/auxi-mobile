@@ -23,7 +23,6 @@
  */
 import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   StyleSheet,
@@ -39,6 +38,7 @@ import Toast from 'react-native-toast-message';
 
 import { theme } from '../../theme/theme';
 import { MacgieNod } from '../../components/macgie';
+import { DotsLoader } from '../../components/atoms/DotsLoader';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import type { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
@@ -339,7 +339,7 @@ export const WelcomeScreen = () => {
                 ]}
               >
                 {socialBusy === 'google' ? (
-                  <ActivityIndicator
+                  <DotsLoader
                     testID="welcome-cta-google-spinner"
                     color={theme.colors.uacTextBase}
                   />
@@ -371,7 +371,7 @@ export const WelcomeScreen = () => {
                   ]}
                 >
                   {socialBusy === 'apple' ? (
-                    <ActivityIndicator
+                    <DotsLoader
                       testID="welcome-cta-apple-spinner"
                       color={theme.colors.uacTextPrimaryBase}
                     />

@@ -46,6 +46,8 @@ export interface MInputProps {
   autoCapitalize?: TextInputProps['autoCapitalize'];
   autoCorrect?: boolean;
   editable?: boolean;
+  /** Focus the field as soon as it mounts (e.g. a dedicated edit screen). */
+  autoFocus?: boolean;
   /** Submit key behaviour (e.g. "go") passed to the inner TextInput. */
   returnKeyType?: TextInputProps['returnKeyType'];
   /** Fired on the keyboard submit/return key. */
@@ -72,6 +74,7 @@ export const MInput: React.FC<MInputProps> = ({
   autoCapitalize,
   autoCorrect,
   editable = true,
+  autoFocus,
   returnKeyType,
   onSubmitEditing,
   textContentType,
@@ -104,6 +107,7 @@ export const MInput: React.FC<MInputProps> = ({
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
           editable={editable}
+          autoFocus={autoFocus}
           returnKeyType={returnKeyType}
           onSubmitEditing={onSubmitEditing}
           textContentType={textContentType}

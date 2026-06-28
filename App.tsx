@@ -20,7 +20,7 @@ import { WardrobeViewedProvider } from './src/context/WardrobeViewedContext';
 import { RootDrawer } from './src/components/layout/RootDrawer';
 import { BackgroundScaleProvider } from './src/context/BackgroundScaleContext';
 import { ErrorBoundary } from './src/components/common/ErrorBoundary';
-import Toast from 'react-native-toast-message';
+import { MToastHost } from './src/components/design-system/lib';
 import { initI18n } from './src/i18n/init';
 import { theme } from './src/theme/theme';
 import { configureGoogleSignIn } from './src/services/oauth/googleSignIn';
@@ -102,8 +102,10 @@ function App() {
               </CreationsSeenProvider>
             </FavouritesSeenProvider>
           </AuthProvider>
-          <Toast />
         </QueryClientProvider>
+        {/* Top-most inside SafeAreaProvider so toasts overlay the navigator and
+            all overlays/drawers. Renders nothing until a toast is fired. */}
+        <MToastHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

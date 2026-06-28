@@ -104,6 +104,15 @@ export const useContextRefineModal = ({
     setCustomText(text);
   }, []);
 
+  // Back out of the full-screen edit view to the chip row without closing the
+  // whole refine flow. Clears the in-progress draft so the chips reads fresh.
+  const onCancelEdit = useCallback(() => {
+    Keyboard.dismiss();
+    setIsEditing(false);
+    setCustomText('');
+    setSelectedChipId(null);
+  }, []);
+
   const onCancel = useCallback(() => {
     track('refine_cancelled', {
       had_selection: !!selectedChipId || trimmedCustomText.length > 0,
@@ -156,6 +165,7 @@ export const useContextRefineModal = ({
     onShuffle,
     onEdit,
     onChangeText,
+    onCancelEdit,
     onCancel,
     onConfirm,
     onSkip,

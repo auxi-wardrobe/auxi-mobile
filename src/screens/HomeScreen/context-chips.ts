@@ -53,6 +53,37 @@ export const pickContextChips = (
   return [...fresh, ...recycled].slice(0, count);
 };
 
+// Quick-fill prompts shown on the full-screen "Edit context" view (the design
+// reached by tapping "Edit" on the refine sheet). Tapping one drops its label
+// into the free-text field so the user can submit it as-is or tweak it first.
+// These are occasion/mood cues — distinct from the tap-only CONTEXT_CHIP_POOL
+// style signals above, which feed the refine sheet's chip row.
+export interface EditContextSuggestion {
+  id: string;
+  // English fallback; resolved through i18n via `labelKey` at render time.
+  label: string;
+  labelKey: string;
+}
+
+export const EDIT_CONTEXT_SUGGESTIONS: EditContextSuggestion[] = [
+  {
+    id: 'birthday',
+    label: 'Birthday',
+    labelKey: 'contextChips.suggestion_birthday',
+  },
+  { id: 'dating', label: 'Dating', labelKey: 'contextChips.suggestion_dating' },
+  {
+    id: 'confident',
+    label: 'Confident',
+    labelKey: 'contextChips.suggestion_confident',
+  },
+  {
+    id: 'interview',
+    label: 'Interview',
+    labelKey: 'contextChips.suggestion_interview',
+  },
+];
+
 export const CONTEXT_CHIP_LABEL_KEYS: Record<ContextChipId, string> = {
   more_casual: 'home.chip_more_casual',
   more_minimalist: 'home.chip_more_minimalist',

@@ -203,7 +203,7 @@
         "row_style": "Style",
         "row_color": "Couleur",
         "row_fit": "Coupe",
-        "common_badge": "commun",
+        "common_badge": "Macgie",
         "picker_title": "Sélectionner {{field}}",
         "picker_close": "Fermer",
         "coming_soon_title": "Bientôt disponible",
@@ -235,6 +235,12 @@
         "row_purchase_date": "Date d'achat",
         "value_unset": "—",
         "name_edit_placeholder": "Saisir un nom"
+      },
+      "welcome": {
+        "title": "Bienvenue dans votre garde-robe",
+        "body": "Nous avons pré-rempli votre garde-robe avec des articles d'exemple pour que vous puissiez commencer à explorer Macgie tout de suite.\n\nAjoutez vos propres vêtements pour recevoir des recommandations de tenues personnalisées selon votre garde-robe et votre style.",
+        "primary_cta": "Ajouter mes vêtements",
+        "secondary_cta": "Explorer pour l'instant"
       },
       "list": {
         "added_title": "Article ajouté. Nous finissons de le préparer en arrière-plan.",
@@ -345,7 +351,7 @@
       "upload_gallery": "Importer depuis la galerie",
       "choose_from_library": "Choisir dans la bibliothèque",
       "no_image": "Aucune image",
-      "badge_common": "commun",
+      "badge_common": "Macgie",
       "action_cannot_undo": "Cette action est irréversible.",
       "pick_image_failed": "Échec de la sélection de l'image",
       "add_items_failed_title": "Impossible d'ajouter les articles",
@@ -559,7 +565,8 @@
       "discard_title": "Abandonner cette création ?",
       "discard_body": "Vos modifications n'ont pas été enregistrées.",
       "discard_save": "Enregistrer",
-      "discard_discard": "Abandonner"
+      "discard_discard": "Abandonner",
+      "save_failed": "Impossible d'enregistrer la tenue. Veuillez réessayer."
     },
     "myCreations": {
       "title": "Mes créations",
@@ -571,7 +578,8 @@
       "remove_body": "Voulez-vous vraiment retirer cette tenue de votre liste de créations ?",
       "remove_confirm": "Oui",
       "remove_cancel": "Annuler",
-      "add_to_schedule": "Ajouter au planning"
+      "add_to_schedule": "Ajouter au planning",
+      "self_visualization": "Voir sur moi"
     },
     "locationPermission": {
       "denied_title": "Autorisation refusée",
@@ -635,7 +643,15 @@
       "refine_subtitle": "Qu'est-ce qui améliorerait ces suggestions ?",
       "skip": "Plus tard",
       "a11y_shuffle": "Mélanger les suggestions",
-      "placeholder": "Dites-nous ce que vous aimeriez changer"
+      "placeholder": "Dites-nous ce que vous aimeriez changer",
+      "edit_placeholder": "ex : Anniversaire",
+      "suggested_context": "Contexte suggéré",
+      "a11y_back": "Retour",
+      "a11y_submit": "Appliquer le contexte",
+      "suggestion_birthday": "Anniversaire",
+      "suggestion_dating": "Rendez-vous",
+      "suggestion_confident": "Assuré",
+      "suggestion_interview": "Entretien"
     },
     "favourite": {
       "title": "Favoris",
@@ -643,7 +659,7 @@
       "open_menu": "Ouvrir le menu",
       "empty_body": "Appuyez sur « Porter ceci » pour ajouter une tenue",
       "empty_a11y": "Aucune tenue enregistrée pour le moment",
-      "common_badge": "commun",
+      "common_badge": "Macgie",
       "view_item_a11y": "Voir les détails de l’article",
       "self_visualization": "Auto-visualisation",
       "add_to_schedule": "Ajouter au planning",

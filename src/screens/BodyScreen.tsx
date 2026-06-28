@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
   Image,
@@ -32,6 +31,7 @@ import { theme } from '../theme/theme';
 import { AppStackParamList, TryOnOutfitContext } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
 import { Icons } from '../assets/icons';
+import { DotsLoader } from '../components/atoms/DotsLoader';
 import { Header } from '../components/layout/Header';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -473,10 +473,7 @@ export const BodyScreen = () => {
               onPress={() => setModalVisible(true)}
             >
               {uploading ? (
-                <ActivityIndicator
-                  size="small"
-                  color={theme.colors.uacTextBase}
-                />
+                <DotsLoader color={theme.colors.uacTextBase} />
               ) : (
                 <Text style={styles.detailRetakeLabel}>{t('body.retake')}</Text>
               )}

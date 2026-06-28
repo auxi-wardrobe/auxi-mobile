@@ -203,7 +203,7 @@
         "row_style": "Style",
         "row_color": "Color",
         "row_fit": "Fit",
-        "common_badge": "common",
+        "common_badge": "Macgie",
         "picker_title": "Select {{field}}",
         "picker_close": "Close",
         "coming_soon_title": "Coming soon",
@@ -235,6 +235,12 @@
         "row_purchase_date": "Purchase Date",
         "value_unset": "—",
         "name_edit_placeholder": "Enter a name"
+      },
+      "welcome": {
+        "title": "Welcome to your wardrobe",
+        "body": "We've pre-filled your wardrobe with sample items so you can start exploring Macgie right away.\n\nAdd your own clothes to receive outfit recommendations personalized to your wardrobe and style.",
+        "primary_cta": "Add My Clothes",
+        "secondary_cta": "Explore for Now"
       },
       "list": {
         "added_title": "Item added. We'll finish preparing it in the background.",
@@ -345,7 +351,7 @@
       "upload_gallery": "Upload from gallery",
       "choose_from_library": "Choose from library",
       "no_image": "No image",
-      "badge_common": "common",
+      "badge_common": "Macgie",
       "action_cannot_undo": "This action cannot be undone.",
       "pick_image_failed": "Failed to pick image",
       "add_items_failed_title": "Couldn't add items",
@@ -559,7 +565,8 @@
       "discard_title": "Discard this creation?",
       "discard_body": "Your changes haven't been saved.",
       "discard_save": "Save",
-      "discard_discard": "Discard"
+      "discard_discard": "Discard",
+      "save_failed": "Unable to save outfit. Please try again."
     },
     "myCreations": {
       "title": "My Creations",
@@ -571,7 +578,8 @@
       "remove_body": "Are you sure to remove this outfit from your creation list?",
       "remove_confirm": "Yes",
       "remove_cancel": "Cancel",
-      "add_to_schedule": "Add to schedule"
+      "add_to_schedule": "Add to schedule",
+      "self_visualization": "See on me"
     },
     "locationPermission": {
       "denied_title": "Permission Denied",
@@ -635,7 +643,15 @@
       "refine_subtitle": "What would make these picks better?",
       "skip": "Skip for now",
       "a11y_shuffle": "Shuffle suggestions",
-      "placeholder": "Tell us what you'd like to change"
+      "placeholder": "Tell us what you'd like to change",
+      "edit_placeholder": "eg: Birthday",
+      "suggested_context": "Suggested context",
+      "a11y_back": "Back",
+      "a11y_submit": "Apply context",
+      "suggestion_birthday": "Birthday",
+      "suggestion_dating": "Dating",
+      "suggestion_confident": "Confident",
+      "suggestion_interview": "Interview"
     },
     "favourite": {
       "title": "Favourite",
@@ -643,7 +659,7 @@
       "open_menu": "Open menu",
       "empty_body": "Tap \"Wear this\" button to add an outfit",
       "empty_a11y": "No saved outfits yet",
-      "common_badge": "common",
+      "common_badge": "Macgie",
       "view_item_a11y": "View item details",
       "self_visualization": "See on me",
       "add_to_schedule": "Add to schedule",

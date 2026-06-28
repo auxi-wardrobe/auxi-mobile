@@ -241,6 +241,21 @@ export const trackLegalDocumentViewed = (
   track('legal_document_viewed', { document, source });
 };
 
+// ── Schedule (outfit planning) ─────────────────────────────────────────────
+// Adding to the schedule is ALREADY tracked at the screen level
+// (`favourite_added_to_schedule` / `creation_added_to_schedule`, tracking-plan
+// §5.18), so we do NOT re-fire a duplicate here — that would double-count the
+// add funnel. Removing from the schedule had no event; this fills that gap.
+// Literal event name (no template strings); `source` is a bounded enum — no
+// outfit ids, no PII.
+
+/** An outfit was removed from a planned day (unscheduled). */
+export const trackOutfitUnscheduled = (
+  source: 'favourite' | 'creation',
+): void => {
+  track('outfit_unscheduled', { source });
+};
+
 /**
  * Link events to a known user. Call after authentication. Uses the database
  * primary key as distinct_id (never email). Profile attributes go to

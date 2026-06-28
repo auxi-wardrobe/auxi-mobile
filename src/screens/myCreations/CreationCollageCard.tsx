@@ -12,6 +12,7 @@ import { theme } from '../../theme/theme';
 import { COLLAGE_ASPECT } from '../../components/features/collage-seed-layout';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
 import IconCalendarAdd from '../../assets/images/icon_calendar_add.svg';
+import IconSparkle from '../../assets/images/icon_sparkle.svg';
 import { Creation } from '../../services/creationsService';
 import { formatDateLabel } from '../favourite/group-by-date';
 
@@ -24,6 +25,13 @@ type Props = {
    * itself rendered ON the Schedule page) to hide the button.
    */
   onSchedule?: (creation: Creation) => void;
+  /**
+   * Launch Self Visualization / virtual try-on for this creation. When provided,
+   * a sparkle button renders in the action row. The parent omits it when the
+   * creation has no recoverable wardrobe item ids (older saves), so the button
+   * never launches a try-on that would fail.
+   */
+  onVisualize?: (creation: Creation) => void;
 };
 
 // A saved creation rendered as a static collage card. Visually mirrors the
@@ -40,6 +48,7 @@ export const CreationCollageCard: React.FC<Props> = ({
   creation,
   onRemove,
   onSchedule,
+  onVisualize,
 }) => {
   const { t } = useTranslation();
   const [surfaceWidth, setSurfaceWidth] = useState(0);
@@ -136,6 +145,27 @@ export const CreationCollageCard: React.FC<Props> = ({
           />
         </TouchableOpacity>
 
+        {/* Self Visualization / try-on (sparkle). Rendered only when the screen
+            supplies an `onVisualize` handler — omitted when the creation has no
+            recoverable wardrobe ids, so it can't launch a try-on that'd fail. */}
+        {onVisualize ? (
+          <TouchableOpacity
+            testID={`creation-visualize-${creation.id}`}
+            accessibilityRole="button"
+            accessibilityLabel={t('myCreations.self_visualization')}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.visualizeButton}
+            onPress={() => onVisualize(creation)}
+          >
+            <IconSparkle
+              width={24}
+              height={24}
+              color={theme.colors.figmaAiSparkle}
+            />
+          </TouchableOpacity>
+        ) : null}
+
         {/* Add this creation to the Schedule (calendar-with-plus). Rendered only
             when the screen supplies an `onSchedule` handler. */}
         {onSchedule ? (
@@ -222,6 +252,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scheduleButton: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  visualizeButton: {
     width: 56,
     height: 56,
     alignItems: 'center',

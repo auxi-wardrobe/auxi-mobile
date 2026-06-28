@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { MButton } from '../../components/design-system/lib';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
-import IconSparkle from '../../assets/images/icon_sparkle.svg';
+import IconSeeOnMe from '../../assets/images/icon_see_on_me.svg';
 import IconCalendarAdd from '../../assets/images/icon_calendar_add.svg';
 
 type Props = {
@@ -102,14 +102,15 @@ export const FavouriteActionBar: React.FC<Props> = ({
         ) : null}
 
         {/* Self-visualization = the shared DS secondary/outline button (MButton
-            variant="secondary": transparent fill, 1.5px ink border). The AI
-            sparkle keeps its purple accent via rightIcon + iconColor. */}
+            variant="secondary": transparent fill, 1.5px ink border). The "See
+            on me" sparkle carries its own pink→blue AI gradient inside the SVG,
+            so no iconColor tint is passed (it would have no effect on a
+            gradient fill). */}
         <MButton
           variant="secondary"
           testID="favourite-self-visualization-active"
           accessibilityLabel={t('favourite.self_visualization')}
-          rightIcon={IconSparkle}
-          iconColor={theme.colors.figmaAiSparkle}
+          rightIcon={IconSeeOnMe}
           onPress={onSelfVisualization}
         >
           {t('favourite.self_visualization')}

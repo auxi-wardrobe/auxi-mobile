@@ -40,18 +40,13 @@
  *   - email-google-notice-continue
  */
 import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 
 import { theme } from '../../theme/theme';
+import { DotsLoader } from '../../components/atoms/DotsLoader';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import { useGoogleSignInMutation } from '../../hooks/auth/useAuthMutations';
 import { useAuth } from '../../context/AuthContext';
@@ -192,7 +187,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
           ]}
         >
           {submitting ? (
-            <ActivityIndicator
+            <DotsLoader
               testID="email-google-notice-continue-spinner"
               color={theme.colors.uacTextBase}
             />
