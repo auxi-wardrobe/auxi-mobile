@@ -636,7 +636,15 @@
       "refine_subtitle": "Điều gì sẽ làm gợi ý tốt hơn?",
       "skip": "Để sau",
       "a11y_shuffle": "Xáo trộn gợi ý",
-      "placeholder": "Cho chúng tôi biết bạn muốn thay đổi gì"
+      "placeholder": "Cho chúng tôi biết bạn muốn thay đổi gì",
+      "edit_placeholder": "vd: Sinh nhật",
+      "suggested_context": "Ngữ cảnh gợi ý",
+      "a11y_back": "Quay lại",
+      "a11y_submit": "Áp dụng ngữ cảnh",
+      "suggestion_birthday": "Sinh nhật",
+      "suggestion_dating": "Hẹn hò",
+      "suggestion_confident": "Tự tin",
+      "suggestion_interview": "Phỏng vấn"
     },
     "favourite": {
       "title": "Yêu thích",

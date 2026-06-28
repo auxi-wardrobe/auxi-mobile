@@ -27,6 +27,7 @@ import { useSidebar } from '../../context/SidebarContext';
 import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
 import { useAuth } from '../../context/AuthContext';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
+import { EditContextModal } from '../../components/features/EditContextModal';
 import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
 import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
@@ -118,6 +119,7 @@ import {
 import { styles } from './styles';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
+import { EDIT_CONTEXT_SUGGESTIONS } from './context-chips';
 import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { HomeLoadingState } from './components/HomeLoadingState';
@@ -1614,20 +1616,31 @@ export const HomeScreen = () => {
       />
 
       <ContextChipsModal
-        visible={refine.isOpen}
+        visible={refine.isOpen && !refine.isEditing}
         chipOptions={refine.displayChipOptions}
         selectedChipId={refine.selectedChipId}
-        isEditing={refine.isEditing}
-        customContextText={refine.customText}
         isSubmitting={false}
         confirmDisabled={refine.confirmDisabled}
         onSelectChip={refine.onSelectChip}
         onShuffle={refine.onShuffle}
         onEdit={refine.onEdit}
-        onChangeText={refine.onChangeText}
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
         onSkip={refine.onSkip}
+      />
+
+      {/* Full-screen "Edit context" view — opened from the refine sheet's Edit
+          chip. Submitting applies the typed context through the same feedback
+          path; backing out returns to the chip row. */}
+      <EditContextModal
+        visible={refine.isOpen && refine.isEditing}
+        value={refine.customText}
+        suggestions={EDIT_CONTEXT_SUGGESTIONS}
+        submitDisabled={refine.confirmDisabled}
+        onChangeText={refine.onChangeText}
+        onSelectSuggestion={refine.onChangeText}
+        onBack={refine.onCancelEdit}
+        onSubmit={refine.onConfirm}
       />
 
       <OutfitLimitSheet
