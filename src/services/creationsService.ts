@@ -48,6 +48,9 @@ export interface Creation {
   id: string;
   /** ISO timestamp — drives the per-card date label, same as a favourite. */
   created_at: string;
+  /** User-given outfit name from the save-flow naming step. Optional: creations
+   *  saved before naming existed (or saved without a name) won't have one. */
+  name?: string;
   /** Vibe tags the user attached on the canvas (may be empty). */
   tags: string[];
   items: CreationItem[];
@@ -82,6 +85,7 @@ export class CreationSaveError extends Error {
 interface ServerCreation {
   id: string;
   created_at: string;
+  name?: string;
   tags: string[];
   items: CreationItem[];
   canvas_width: number;
@@ -92,6 +96,7 @@ function mapServerCreation(s: ServerCreation): Creation {
   return {
     id: s.id,
     created_at: s.created_at,
+    name: s.name,
     tags: s.tags,
     items: s.items,
     canvasWidth: s.canvas_width,
@@ -160,6 +165,7 @@ export const creationsService = {
   async saveCreation(input: NewCreation): Promise<Creation> {
     try {
       const response = await apiClient.post<ServerCreation>('/creations', {
+        name: input.name,
         tags: input.tags,
         items: input.items,
         canvas_width: input.canvasWidth,

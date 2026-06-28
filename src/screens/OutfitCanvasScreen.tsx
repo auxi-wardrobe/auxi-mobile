@@ -53,6 +53,7 @@ import {
   setCanvasExitGuard,
 } from '../navigation/canvasExitGuard';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
+import { NameCreationSheet } from './canvas/NameCreationSheet';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { InfoSnackbar } from '../components/feedback/InfoSnackbar';
 import { DotsLoader } from '../components/atoms/DotsLoader';
@@ -484,6 +485,12 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   // `finally`, so it always resets even if the save throws.
   const [isSaving, setIsSaving] = useState(false);
   const [discardVisible, setDiscardVisible] = useState(false);
+  // Save flow: tapping Save opens the naming sheet; the actual persist runs when
+  // the user submits a name. `afterNameSaveRef` carries what to do once that
+  // save succeeds — null for a plain Save (just close), or `resolveSheet` when
+  // the naming step was reached from the discard sheet (leave / new-canvas).
+  const [nameSheetVisible, setNameSheetVisible] = useState(false);
+  const afterNameSaveRef = useRef<(() => void) | null>(null);
   // The navigation action we intercepted (back / goBack), replayed verbatim
   // once the user resolves the sheet. `proceedRef` lets that replay through the
   // beforeRemove guard without re-prompting (a ref so the live listener reads it).
@@ -855,7 +862,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   // confirm with a toast that says WHERE it went. Returns whether anything was
   // saved (false when there's nothing URI-backed to persist). Does NOT navigate
   // — the user stays on the canvas; the toast points them at My Creations.
-  const persistCreation = useCallback(async (): Promise<boolean> => {
+  const persistCreation = useCallback(async (name?: string): Promise<boolean> => {
     // Only items backed by a real image URI persist — mock require()'d assets
     // (the deep-link/dev fallback) aren't serializable and are skipped.
     const savedItems = items.reduce<CreationItem[]>((acc, it) => {
@@ -887,9 +894,13 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         items: savedItems,
         tags,
         canvasWidth: CANVAS_WIDTH,
+        name,
       });
       queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
-      track('creation_saved', { item_count: savedItems.length });
+      track('creation_saved', {
+        item_count: savedItems.length,
+        named: !!name,
+      });
       setHasUnsavedChanges(false);
       // Light the My Creations header dot (same "unseen saved" feedback as the
       // Home favourites "Wear this" mint dot); cleared when the list is opened.
@@ -923,9 +934,36 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     showSaveError,
   ]);
 
+  // Save no longer persists immediately — it opens the naming sheet, and the
+  // actual save runs once the user submits a name (handleNameSubmit). The Save
+  // button is already gated to non-empty canvases, so there's always something
+  // to name here.
   const handleSave = useCallback(() => {
-    persistCreation();
-  }, [persistCreation]);
+    afterNameSaveRef.current = null;
+    setNameSheetVisible(true);
+  }, []);
+
+  // Naming sheet "continue" arrow — persist with the entered name, then run any
+  // queued follow-up (e.g. resolve the discard sheet's leave/new intent). Closes
+  // the sheet on completion; success/failure surfaces via the canvas snackbars.
+  const handleNameSubmit = useCallback(
+    async (name: string) => {
+      const saved = await persistCreation(name);
+      setNameSheetVisible(false);
+      if (saved) {
+        const after = afterNameSaveRef.current;
+        afterNameSaveRef.current = null;
+        after?.();
+      }
+    },
+    [persistCreation],
+  );
+
+  // Naming sheet back chip — abandon naming, keep the canvas + items intact.
+  const handleNameBack = useCallback(() => {
+    setNameSheetVisible(false);
+    afterNameSaveRef.current = null;
+  }, []);
 
   const handleOpenCreations = useCallback(() => {
     // "My Creations" lists everything the user has saved from the canvas
@@ -1024,18 +1062,22 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [resetCanvasToBlank, leaveWithPendingAction]);
 
-  // Discard sheet — "Save" persists then resolves (leave or new canvas). Only
-  // resolve when the save actually succeeded: if it failed (server error) the
-  // error toast has fired and we close the sheet but STAY on the canvas so the
-  // user keeps their work and can retry, rather than leaving/clearing it.
-  const handleDiscardSave = useCallback(async () => {
-    const saved = await persistCreation();
-    if (saved) {
-      resolveSheet();
-    } else {
-      setDiscardVisible(false);
-    }
-  }, [persistCreation, resolveSheet]);
+  // Discard sheet — "Save" routes through the naming step like the main Save,
+  // queueing `resolveSheet` to run once the save succeeds (leave / new canvas).
+  // A failed or abandoned save leaves the canvas untouched (the intent only
+  // fires on success), so the user never loses work.
+  const handleDiscardSave = useCallback(() => {
+    afterNameSaveRef.current = resolveSheet;
+    setDiscardVisible(false);
+    // Defer opening the naming sheet until the discard dialog's Modal has
+    // finished dismissing — presenting a Modal while another is mid-dismiss can
+    // drop the presentation on iOS (the race SeeThisOnMeScreen defers around).
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        setNameSheetVisible(true);
+      }
+    }, motion.duration.medium);
+  }, [resolveSheet]);
 
   // "Discard" resolves without saving.
   const handleDiscardConfirm = useCallback(() => {
@@ -1323,6 +1365,15 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         onCancel={handleDiscardCancel}
         onSave={handleDiscardSave}
         onDiscard={handleDiscardConfirm}
+      />
+
+      {/* Naming step — opened by Save (and the discard sheet's Save); persists
+          the creation with the entered name. */}
+      <NameCreationSheet
+        visible={nameSheetVisible}
+        isBusy={isSaving}
+        onBack={handleNameBack}
+        onSubmit={handleNameSubmit}
       />
 
       {/* Success snackbar overlay — "Saved to My Creations" (mint M3 snackbar,

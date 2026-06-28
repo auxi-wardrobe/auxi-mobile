@@ -71,6 +71,15 @@ export const CreationCollageCard: React.FC<Props> = ({
   return (
     <View style={styles.card} testID={testIDPrefix}>
       <View style={styles.titleBlock}>
+        {creation.name ? (
+          <Text
+            style={styles.name}
+            numberOfLines={1}
+            testID={`${testIDPrefix}-name`}
+          >
+            {creation.name}
+          </Text>
+        ) : null}
         {dateLabel ? (
           <Text style={styles.date} testID={`${testIDPrefix}-date`}>
             {dateLabel}
@@ -198,6 +207,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.xs,
     paddingVertical: theme.spacing.s,
+  },
+  name: {
+    ...theme.typography.aliases.uacBodyMdSemibold,
+    color: theme.colors.figmaTextDark,
+    textAlign: 'center',
   },
   date: {
     ...theme.typography.aliases.uacBodyXsRegular,

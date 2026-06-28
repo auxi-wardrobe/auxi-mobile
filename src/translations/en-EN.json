@@ -560,7 +560,11 @@
       "discard_body": "Your changes haven't been saved.",
       "discard_save": "Save",
       "discard_discard": "Discard",
-      "save_failed": "Unable to save outfit. Please try again."
+      "save_failed": "Unable to save outfit. Please try again.",
+      "name_placeholder": "eg: Weekend Coffee",
+      "a11y_name_input": "Outfit name",
+      "a11y_name_submit": "Save outfit",
+      "a11y_name_back": "Back"
     },
     "myCreations": {
       "title": "My Creations",

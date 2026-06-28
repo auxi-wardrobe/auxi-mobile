@@ -560,7 +560,11 @@
       "discard_body": "Vos modifications n'ont pas été enregistrées.",
       "discard_save": "Enregistrer",
       "discard_discard": "Abandonner",
-      "save_failed": "Impossible d'enregistrer la tenue. Veuillez réessayer."
+      "save_failed": "Impossible d'enregistrer la tenue. Veuillez réessayer.",
+      "name_placeholder": "ex : Café du week-end",
+      "a11y_name_input": "Nom de la tenue",
+      "a11y_name_submit": "Enregistrer la tenue",
+      "a11y_name_back": "Retour"
     },
     "myCreations": {
       "title": "Mes créations",

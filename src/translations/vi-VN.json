@@ -559,7 +559,11 @@
       "discard_body": "Các thay đổi của bạn chưa được lưu.",
       "discard_save": "Lưu",
       "discard_discard": "Bỏ",
-      "save_failed": "Không thể lưu trang phục. Vui lòng thử lại."
+      "save_failed": "Không thể lưu trang phục. Vui lòng thử lại.",
+      "name_placeholder": "vd: Cà phê cuối tuần",
+      "a11y_name_input": "Tên trang phục",
+      "a11y_name_submit": "Lưu trang phục",
+      "a11y_name_back": "Quay lại"
     },
     "myCreations": {
       "title": "Tác phẩm của tôi",
