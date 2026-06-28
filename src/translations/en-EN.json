@@ -236,6 +236,12 @@
         "value_unset": "—",
         "name_edit_placeholder": "Enter a name"
       },
+      "welcome": {
+        "title": "Welcome to your wardrobe",
+        "body": "We've pre-filled your wardrobe with sample items so you can start exploring Macgie right away.\n\nAdd your own clothes to receive outfit recommendations personalized to your wardrobe and style.",
+        "primary_cta": "Add My Clothes",
+        "secondary_cta": "Explore for Now"
+      },
       "list": {
         "added_title": "Item added. We'll finish preparing it in the background.",
         "item_ready_title": "Your item is ready",
