@@ -60,6 +60,11 @@ import type { LegalDocumentType } from '../../content/legal';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
+// Temporarily hide the Apple + email sign-in CTAs while those flows are
+// buggy. Google is the only supported entry point for now. Flip back to
+// `true` to restore the full action stack once the flows are fixed.
+const SHOW_APPLE_AND_EMAIL_SIGN_IN = false;
+
 // Minimal inline glyphs — keep diff small (no new SVG assets).
 // Sizes match the Figma 24×24 trailing-icon slot.
 const GoogleGlyph = () => (
@@ -359,7 +364,7 @@ export const WelcomeScreen = () => {
                 )}
               </Pressable>
 
-              {isAppleAvailable && (
+              {SHOW_APPLE_AND_EMAIL_SIGN_IN && isAppleAvailable && (
                 <Pressable
                   testID="welcome-cta-apple"
                   accessibilityRole="button"
@@ -393,24 +398,30 @@ export const WelcomeScreen = () => {
               )}
             </View>
 
-            {/* 3b. "or" divider — line · "or" · line (Figma Frame 2135) */}
-            <View style={styles.orDivider}>
-              <View style={styles.orDividerLine} />
-              <Text style={styles.orDividerLabel}>{t('uac.welcome.or')}</Text>
-              <View style={styles.orDividerLine} />
-            </View>
+            {SHOW_APPLE_AND_EMAIL_SIGN_IN && (
+              <>
+                {/* 3b. "or" divider — line · "or" · line (Figma Frame 2135) */}
+                <View style={styles.orDivider}>
+                  <View style={styles.orDividerLine} />
+                  <Text style={styles.orDividerLabel}>
+                    {t('uac.welcome.or')}
+                  </Text>
+                  <View style={styles.orDividerLine} />
+                </View>
 
-            {/* 3c. Email entry — canonical secondary button. */}
-            <PillButton
-              testID="welcome-cta-email"
-              accessibilityLabel={t('uac.welcome.email_cta')}
-              title={t('uac.welcome.email_cta')}
-              variant="outline"
-              disabled={isBusy}
-              onPress={onPressEmail}
-              style={styles.buttonBase}
-              trailing={<EnvelopeGlyph />}
-            />
+                {/* 3c. Email entry — canonical secondary button. */}
+                <PillButton
+                  testID="welcome-cta-email"
+                  accessibilityLabel={t('uac.welcome.email_cta')}
+                  title={t('uac.welcome.email_cta')}
+                  variant="outline"
+                  disabled={isBusy}
+                  onPress={onPressEmail}
+                  style={styles.buttonBase}
+                  trailing={<EnvelopeGlyph />}
+                />
+              </>
+            )}
           </View>
 
           {/* Legal footer — the "Terms of Service" + "Privacy Policy"
