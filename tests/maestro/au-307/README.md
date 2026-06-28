@@ -58,12 +58,12 @@ Every assertion targets a stable `testID`. No text matching, no coords.
 
 | Selector | Where defined | Sub-flows using it |
 |---|---|---|
-| `home-swipe-deck` | `HomeScreen.tsx:1810` | A, B, C |
+| `home-swipe-deck` | `HomeScreen/index.tsx:1396` | A, B, C |
 | `home-wear-this-generating-spinner` | `HomeScreen/index.tsx` (Wear-this CTA loading state) | A, B, C |
-| `home-tile-pin-.*-0` (regex) | `HomeScreen.tsx:2300-2304` (unpinned suffix) | A, C |
+| `home-tile-pin-.*-0` (regex) | `HomeScreen/components/OptionSheet.tsx:135` (unpinned suffix) | A, C |
 | `home-tile-pin-.*-1` (regex) | same — flatTileIndex 1, unpinned | B |
 | `home-tile-pin-.*-set` (regex) | same — pinned-state suffix | A, B |
-| `home-tile-skeleton-.*` (regex) | `HomeScreen.tsx:2259` | A, B |
+| `home-tile-skeleton-.*` (regex) | `HomeScreen/components/OptionSheet.tsx:103` | A, B |
 | `pin-confirm-modal-root` | `PinConfirmModal.tsx:120` | A, B, C |
 | `pin-confirm-modal-title` | `PinConfirmModal.tsx:143` | A, B |
 | `pin-confirm-modal-image` | `PinConfirmModal.tsx:129` | A, B |
