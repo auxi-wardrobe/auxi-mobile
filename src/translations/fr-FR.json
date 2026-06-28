@@ -637,7 +637,15 @@
       "refine_subtitle": "Qu'est-ce qui améliorerait ces suggestions ?",
       "skip": "Plus tard",
       "a11y_shuffle": "Mélanger les suggestions",
-      "placeholder": "Dites-nous ce que vous aimeriez changer"
+      "placeholder": "Dites-nous ce que vous aimeriez changer",
+      "edit_placeholder": "ex : Anniversaire",
+      "suggested_context": "Contexte suggéré",
+      "a11y_back": "Retour",
+      "a11y_submit": "Appliquer le contexte",
+      "suggestion_birthday": "Anniversaire",
+      "suggestion_dating": "Rendez-vous",
+      "suggestion_confident": "Assuré",
+      "suggestion_interview": "Entretien"
     },
     "favourite": {
       "title": "Favoris",

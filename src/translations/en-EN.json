@@ -637,7 +637,15 @@
       "refine_subtitle": "What would make these picks better?",
       "skip": "Skip for now",
       "a11y_shuffle": "Shuffle suggestions",
-      "placeholder": "Tell us what you'd like to change"
+      "placeholder": "Tell us what you'd like to change",
+      "edit_placeholder": "eg: Birthday",
+      "suggested_context": "Suggested context",
+      "a11y_back": "Back",
+      "a11y_submit": "Apply context",
+      "suggestion_birthday": "Birthday",
+      "suggestion_dating": "Dating",
+      "suggestion_confident": "Confident",
+      "suggestion_interview": "Interview"
     },
     "favourite": {
       "title": "Favourite",
