@@ -13,6 +13,7 @@
 // can drive it with React Query exactly like the Favourite list.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 import { apiClient } from './apiClient';
 
 const STORAGE_KEY = '@auxi/creations';
@@ -27,6 +28,12 @@ export const CREATIONS_QUERY_KEY = ['creations'] as const;
 // asset — not serializable) so the layout round-trips through AsyncStorage.
 export interface CreationItem {
   id: string;
+  /** Originating wardrobe item id. The canvas `id` is a synthetic per-instance
+   *  key (`item-<wardrobeId>-<stamp>-<i>`), so we keep the real wardrobe id here
+   *  for flows that need it — notably Self Visualization / virtual try-on, which
+   *  takes wardrobe item ids. Optional: creations saved before this field
+   *  existed won't have it (the My Creations screen recovers it from `id`). */
+  wardrobeItemId?: string;
   imageUri: string;
   x: number;
   y: number;
@@ -50,6 +57,24 @@ export interface Creation {
 }
 
 export type NewCreation = Omit<Creation, 'id' | 'created_at'>;
+
+/** How a save failed, for the UI to react. `auth` = the session expired: the
+ *  apiClient 401 interceptor has already cleared tokens and fired
+ *  session-expired (which redirects to login), so the caller should stay silent
+ *  and let that global flow play out. `server` = any other HTTP failure — the
+ *  save genuinely did NOT happen, so the caller should surface it. NOTE: a true
+ *  offline failure (no HTTP response) does NOT throw — `saveCreation` falls back
+ *  to the local store, preserving the deliberate offline-first resilience. */
+export type CreationSaveErrorKind = 'auth' | 'server';
+
+export class CreationSaveError extends Error {
+  readonly kind: CreationSaveErrorKind;
+  constructor(kind: CreationSaveErrorKind, message: string) {
+    super(message);
+    this.name = 'CreationSaveError';
+    this.kind = kind;
+  }
+}
 
 // Backend wire shape. snake_case `canvas_width`; `items` is the exact
 // CreationItem[] we POST, echoed back verbatim (camelCase preserved by the
@@ -141,8 +166,23 @@ export const creationsService = {
       });
       return mapServerCreation(response.data);
     } catch (error) {
-      console.warn('saveCreation: server unavailable, saving locally', error);
-      return saveCreationLocal(input);
+      // Genuine offline (the request never reached a server — no HTTP response)
+      // keeps the deliberate offline-first resilience: persist locally so the
+      // user doesn't lose the creation. NOTE: device-only, no later sync.
+      if (axios.isAxiosError(error) && !error.response) {
+        console.warn('saveCreation: offline, saving locally', error);
+        return saveCreationLocal(input);
+      }
+      // A real HTTP failure. 401 = session expired: the apiClient interceptor
+      // already tried to refresh and, on failure, cleared tokens + fired
+      // session-expired (→ login). Flag it `auth` so the screen stays silent.
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        throw new CreationSaveError('auth', 'session expired');
+      }
+      // Any other server/HTTP error: the save did NOT happen. Surface it so the
+      // screen tells the user instead of faking success with a local write.
+      console.warn('saveCreation: server error', error);
+      throw new CreationSaveError('server', 'creation save failed');
     }
   },
 

@@ -41,10 +41,12 @@ import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { getImageUrl } from '../utils/url';
 import { useSidebar } from '../context/SidebarContext';
 import { useCreationsSeen } from '../context/CreationsSeenContext';
+import Toast from 'react-native-toast-message';
 import { track } from '../services/analytics';
 import {
   CREATIONS_QUERY_KEY,
   CreationItem,
+  CreationSaveError,
   creationsService,
 } from '../services/creationsService';
 import {
@@ -702,6 +704,8 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         const uri = getImageUrl(item.image_png ?? item.image_url);
         return {
           id: `item-${item.id}-${stamp}-${i}`,
+          // The real wardrobe id, carried so a saved creation can launch try-on.
+          wardrobeItemId: item.id,
           uri,
           category: item.category,
           imageSource: uri ? { uri } : testJeansImg,
@@ -732,8 +736,10 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         // sources from `prepared` so the prefetch warming and the per-item
         // "adding…" tracking below line up with the items actually placed.
         const srcByNewId = new Map<string, ImageSourcePropType>();
+        const wardrobeIdByNewId = new Map<string, string>();
         const newSeeds = prepared.map(p => {
           srcByNewId.set(p.id, p.imageSource);
+          wardrobeIdByNewId.set(p.id, p.wardrobeItemId);
           return { id: p.id, imageUri: p.uri ?? '', category: p.category };
         });
 
@@ -745,7 +751,11 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
         // are returned by reference, so re-attach the source only for new ids.
         const next = addSeededItems(prev, newSeeds, CANVAS_WIDTH).map(c =>
           srcByNewId.has(c.id)
-            ? { ...c, imageSource: srcByNewId.get(c.id)! }
+            ? {
+                ...c,
+                imageSource: srcByNewId.get(c.id)!,
+                wardrobeItemId: wardrobeIdByNewId.get(c.id),
+              }
             : c,
         );
         pushHistory(next);
@@ -826,6 +836,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
       if (uri) {
         acc.push({
           id: it.id,
+          wardrobeItemId: it.wardrobeItemId,
           imageUri: uri,
           x: it.x,
           y: it.y,
@@ -858,10 +869,29 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
       markCreationSaved();
       showSavedSnackbar();
       return true;
+    } catch (error) {
+      // A genuine save failure (a true offline error never reaches here — the
+      // service falls back to a local save). `auth` = session expired: the
+      // apiClient interceptor already cleared tokens, redirected to login and
+      // toasted, so we stay silent and let that play out. Anything else didn't
+      // save — tell the user so they can retry instead of seeing fake success.
+      const isAuth =
+        error instanceof CreationSaveError && error.kind === 'auth';
+      if (!isAuth) {
+        Toast.show({
+          type: 'error',
+          text1: t('outfitCanvas.save_failed'),
+          position: 'bottom',
+        });
+      }
+      track('creation_save_failed', {
+        kind: error instanceof CreationSaveError ? error.kind : 'unknown',
+      });
+      return false;
     } finally {
       setIsSaving(false);
     }
-  }, [items, tags, queryClient, showSavedSnackbar, markCreationSaved]);
+  }, [items, tags, queryClient, showSavedSnackbar, markCreationSaved, t]);
 
   const handleSave = useCallback(() => {
     persistCreation();
@@ -964,10 +994,17 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [resetCanvasToBlank, leaveWithPendingAction]);
 
-  // Discard sheet — "Save" persists then resolves (leave or new canvas).
+  // Discard sheet — "Save" persists then resolves (leave or new canvas). Only
+  // resolve when the save actually succeeded: if it failed (server error) the
+  // error toast has fired and we close the sheet but STAY on the canvas so the
+  // user keeps their work and can retry, rather than leaving/clearing it.
   const handleDiscardSave = useCallback(async () => {
-    await persistCreation();
-    resolveSheet();
+    const saved = await persistCreation();
+    if (saved) {
+      resolveSheet();
+    } else {
+      setDiscardVisible(false);
+    }
   }, [persistCreation, resolveSheet]);
 
   // "Discard" resolves without saving.
@@ -1230,7 +1267,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               <PillButton
                 testID="canvas-save"
                 onPress={handleSave}
-                disabled={!hasUnsavedChanges}
+                disabled={!hasUnsavedChanges || items.length === 0}
                 loading={isSaving}
                 accessibilityLabel={t('outfitCanvas.a11y_save_outfit')}
                 title={t('common.save')}

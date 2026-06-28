@@ -558,7 +558,8 @@
       "discard_title": "Bỏ tác phẩm này?",
       "discard_body": "Các thay đổi của bạn chưa được lưu.",
       "discard_save": "Lưu",
-      "discard_discard": "Bỏ"
+      "discard_discard": "Bỏ",
+      "save_failed": "Không thể lưu trang phục. Vui lòng thử lại."
     },
     "myCreations": {
       "title": "Tác phẩm của tôi",
@@ -570,7 +571,8 @@
       "remove_body": "Bạn có chắc muốn xóa bộ đồ này khỏi danh sách tác phẩm không?",
       "remove_confirm": "Có",
       "remove_cancel": "Hủy",
-      "add_to_schedule": "Thêm vào lịch"
+      "add_to_schedule": "Thêm vào lịch",
+      "self_visualization": "Xem trên bạn"
     },
     "locationPermission": {
       "denied_title": "Quyền bị từ chối",

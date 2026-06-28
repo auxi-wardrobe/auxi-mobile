@@ -29,6 +29,19 @@ import { RemoveCreationDialog } from './myCreations/RemoveCreationDialog';
 import { ScheduleDatePickerSheet } from './schedule/ScheduleDatePickerSheet';
 import { useScheduleAddedToast } from './schedule/useScheduleAddedToast';
 
+// A canvas item id looks like `item-<wardrobeId>-<stamp>-<index>` (see
+// OutfitCanvasScreen.handlePickerConfirm). Newer creations also store the raw
+// `wardrobeItemId`; for older ones we recover it from that synthetic id. Used to
+// feed the try-on flow, which needs real wardrobe item ids (deduped).
+const SYNTHETIC_ITEM_ID = /^item-(.+)-\d+-\d+$/;
+
+const resolveWardrobeItemIds = (creation: Creation): string[] => {
+  const ids = creation.items
+    .map(it => it.wardrobeItemId ?? SYNTHETIC_ITEM_ID.exec(it.id)?.[1] ?? null)
+    .filter((id): id is string => !!id);
+  return Array.from(new Set(ids));
+};
+
 // "My Creations" — the saved-canvas list reached from the canvas header's
 // My Creations icon. Structurally mirrors FavouriteScreen (blurred menu header
 // + scrolling list + loader/empty states); the body reuses the Favourite page's
@@ -95,6 +108,26 @@ export const MyCreationsScreen: React.FC = () => {
     setScheduleTarget(creation);
   };
 
+  // Launch Self Visualization / try-on for a saved creation. Synthesizes the
+  // TryOnOutfitContext the "See this on me" flow needs from the creation's
+  // items (real wardrobe ids + their image urls). Guarded against the no-id
+  // case (the button is hidden then, but belt-and-braces here too).
+  const handleVisualize = (creation: Creation) => {
+    const itemIds = resolveWardrobeItemIds(creation);
+    if (itemIds.length === 0) {
+      return;
+    }
+    track('creation_self_visualization_opened', { creation_id: creation.id });
+    navigation.navigate('SeeThisOnMe', {
+      outfit: {
+        outfitHash: creation.id,
+        itemIds,
+        itemImageUrls: creation.items.map(it => it.imageUri).filter(Boolean),
+        stylingNote: '',
+      },
+    });
+  };
+
   const handleConfirmSchedule = (date: Date) => {
     if (!scheduleTarget) {
       return;
@@ -148,6 +181,11 @@ export const MyCreationsScreen: React.FC = () => {
             creation={creation}
             onRemove={setPendingRemovalId}
             onSchedule={handleSchedule}
+            onVisualize={
+              resolveWardrobeItemIds(creation).length > 0
+                ? handleVisualize
+                : undefined
+            }
           />
         ))}
       </ScrollView>
