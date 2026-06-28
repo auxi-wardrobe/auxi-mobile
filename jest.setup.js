@@ -7,16 +7,22 @@
  * (e.g. services/__tests__/analytics.test.ts) stay unaffected.
  */
 
-// react-native-toast-message: the default export is BOTH a renderable component
-// (App.tsx renders `<Toast />`) and a namespace with .show/.hide statics (screens
-// call Toast.show(...)). Model it as a no-op component function with the spies
-// attached as static methods so both usages work.
-jest.mock('react-native-toast-message', () => {
-  const Toast = () => null;
-  Toast.show = jest.fn();
-  Toast.hide = jest.fn();
-  return { __esModule: true, default: Toast };
-});
+// DS toast service (m-toast-service) — replaces the former
+// react-native-toast-message global mock. Screens fire the imperative `toast.*`
+// API (toast.show / toast.hide); spy on its methods so tests can assert what was
+// shown. `subscribeToast` returns a no-op unsubscribe so <MToastHost/> (the App
+// render path) mounts to null without a live subscription.
+jest.mock('./src/components/design-system/lib/m-toast-service', () => ({
+  __esModule: true,
+  toast: {
+    show: jest.fn(),
+    hide: jest.fn(),
+    success: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+  },
+  subscribeToast: jest.fn(() => () => {}),
+}));
 
 // react-native-safe-area-context: insets + provider passthrough.
 jest.mock('react-native-safe-area-context', () => {
