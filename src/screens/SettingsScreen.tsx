@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Linking,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -18,6 +19,7 @@ import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useAuth } from '../context/AuthContext';
+import { ensurePushPermissionAndRegister } from '../services/notificationService';
 import { useSidebar } from '../context/SidebarContext';
 import { BottomSheetSurface } from '../components/primitives/FigmaPrimitives';
 import { Header } from '../components/layout/Header';
@@ -414,6 +416,27 @@ export const SettingsScreen = () => {
     const previousValue = settings.dailyNotification.enabled;
 
     track('notifications_toggle_changed', { enabled });
+
+    // Turning reminders ON: ensure OS permission + a registered FCM token exist
+    // (login already registers, but the user may have declined then). If they
+    // decline, guide them to OS Settings — the `enabled` flag still persists;
+    // the server simply has no token to deliver to. Fire-and-forget.
+    if (enabled) {
+      ensurePushPermissionAndRegister().then(granted => {
+        if (!granted) {
+          Toast.show({
+            type: 'info',
+            text1: t('settings.push_permission_needed_title'),
+            text2: t('settings.push_permission_needed_body'),
+            position: 'bottom',
+            visibilityTime: 5000,
+            onPress: () => {
+              Linking.openSettings().catch(() => {});
+            },
+          });
+        }
+      });
+    }
 
     setSettings(current => ({
       ...current,

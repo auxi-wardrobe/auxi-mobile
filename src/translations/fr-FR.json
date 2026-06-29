@@ -499,6 +499,8 @@
       "frequency_weekdays_label": "Jours de semaine",
       "frequency_weekdays_desc": "Lun, Mar, Mer, Jeu, Ven",
       "frequency_everyday_label": "Tous les jours",
+      "push_permission_needed_title": "Activer les notifications",
+      "push_permission_needed_body": "Touchez pour activer les notifications dans Réglages et recevoir votre rappel quotidien.",
       "toast_title": "Paramètres",
       "error_load": "Échec du chargement des paramètres",
       "error_update_time": "Échec de la mise à jour de l'heure quotidienne",

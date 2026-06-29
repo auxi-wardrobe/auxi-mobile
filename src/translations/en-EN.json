@@ -499,6 +499,8 @@
       "frequency_weekdays_label": "Weekdays",
       "frequency_weekdays_desc": "Mon, Tue, Wed, Thu, Fri",
       "frequency_everyday_label": "Everydays",
+      "push_permission_needed_title": "Turn on notifications",
+      "push_permission_needed_body": "Tap to enable notifications in Settings so we can send your daily reminder.",
       "toast_title": "Settings",
       "error_load": "Failed to load settings",
       "error_update_time": "Failed to update daily time",
