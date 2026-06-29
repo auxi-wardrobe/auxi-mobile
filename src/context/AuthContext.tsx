@@ -11,6 +11,10 @@ import { authService } from '../services/auth';
 import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { registerSessionExpiredListener } from '../services/apiClient';
 import { identifyUser, resetAnalytics, track } from '../services/analytics';
+import {
+  registerDeviceForPush,
+  unregisterDevice,
+} from '../services/notificationService';
 import { getForcedFirstLogin } from '../services/reviewOverrides';
 import { resetV05Session } from '../services/v05Api';
 import { setRecommendationMemoryUser } from '../services/recommendationMemory';
@@ -263,6 +267,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           track('oauth_sign_in_completed', { provider: method });
         }
         track('sign_in_completed', { method });
+        // Push: request permission + register the FCM device token now that the
+        // user is authenticated (contextual, post-login — never cold on launch).
+        // Fire-and-forget; the service never throws.
+        registerDeviceForPush();
         // Reset to default for the next transition (cold-start
         // restores remain silent because justLoggedInRef stays false).
         pendingAuthMethodRef.current = 'email';
@@ -321,6 +329,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const logout = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Remove this device's push token before clearing the session (the
+      // DELETE is Bearer-authed — must run while tokens are still valid).
+      await unregisterDevice();
       await authService.logout();
       setUser(null);
       setPendingVerifyEmail(null);

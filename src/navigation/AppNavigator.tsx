@@ -33,6 +33,10 @@ import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
 import {
+  registerPushTapHandlers,
+  registerTokenRefreshListener,
+} from '../services/notificationService';
+import {
   getPendingNavIntent,
   setPendingNavIntent,
 } from '../services/reviewOverrides';
@@ -44,8 +48,17 @@ export const AppNavigator = () => {
     // Register Linking listeners for the verify-email and reset-password deep
     // links, driving them through the shared navigationRef (also used by the
     // root-level push-drawer menu, which renders outside the container).
-    const unregister = registerDeepLinkListeners(() => navigationRef.current);
-    return unregister;
+    const unregisterLinks = registerDeepLinkListeners(() => navigationRef.current);
+    // Push notification taps (cold-start / background) route through the same
+    // navigationRef; token-refresh re-registers the device so the backend never
+    // holds a stale FCM token.
+    const unregisterTaps = registerPushTapHandlers(() => navigationRef.current);
+    const unregisterRefresh = registerTokenRefreshListener();
+    return () => {
+      unregisterLinks();
+      unregisterTaps();
+      unregisterRefresh();
+    };
   }, []);
   const { user, isLoading } = useAuth();
 
