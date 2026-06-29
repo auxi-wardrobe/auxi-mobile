@@ -499,6 +499,8 @@
       "frequency_weekdays_label": "Ngày trong tuần",
       "frequency_weekdays_desc": "T2, T3, T4, T5, T6",
       "frequency_everyday_label": "Mỗi ngày",
+      "push_permission_needed_title": "Bật thông báo",
+      "push_permission_needed_body": "Chạm để bật thông báo trong Cài đặt để nhận nhắc nhở hằng ngày.",
       "toast_title": "Cài đặt",
       "error_load": "Không thể tải cài đặt",
       "error_update_time": "Không thể cập nhật giờ nhắc hằng ngày",

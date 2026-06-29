@@ -226,3 +226,78 @@ export const registerDeepLinkListeners = (
     sub.remove();
   };
 };
+
+// ── Push deep-link routing (Phase 1, push-notification system) ──────────────
+// Curated, param-free screen allowlist — the mobile mirror of spec §5.1's
+// registry. The admin SPA + backend duplicate this list (no shared SDK), so
+// keep these names in sync with API_DOCUMENTATION.md. The registry's PUBLIC
+// name `Creations` maps to the registered RN route `MyCreations` (the route
+// name differs from the contract name); the others map 1:1.
+
+export const CURATED_PUSH_SCREENS = [
+  'Home',
+  'Schedule',
+  'Favourite',
+  'Creations',
+  'Settings',
+] as const;
+export type CuratedPushScreen = (typeof CURATED_PUSH_SCREENS)[number];
+
+const PUSH_SCREEN_ROUTE: Record<CuratedPushScreen, keyof AppStackParamList> = {
+  Home: 'Home',
+  Schedule: 'Schedule',
+  Favourite: 'Favourite',
+  Creations: 'MyCreations',
+  Settings: 'Settings',
+};
+
+const isHttpUrl = (url: string): boolean => /^https?:\/\//i.test(url);
+
+const isCuratedScreen = (value: string): value is CuratedPushScreen =>
+  (CURATED_PUSH_SCREENS as readonly string[]).includes(value);
+
+/**
+ * Resolve an FCM `data` payload to a navigation/open side-effect. FCM data is
+ * a flat string map. Rules (spec §5.1):
+ *   - kind:'route' + allowlisted screen → navRef.navigate(<mapped route>)
+ *   - kind:'external' + http(s) url     → Linking.openURL(url)
+ *   - anything unknown / missing        → fallback Home (NEVER crash)
+ * No-op (no crash) when the nav tree is not mounted yet.
+ */
+export const resolveNotificationData = (
+  data: Record<string, string> | undefined,
+  navRef: NavRef | null,
+): void => {
+  if (!navRef || !navRef.isReady()) {
+    return;
+  }
+  // Loose cast mirrors AppNavigator's dynamic-target navigate: all curated
+  // routes + Home accept undefined params.
+  const navigate = navRef.navigate as unknown as (name: string) => void;
+  const fallbackHome = () => navigate('Home');
+
+  try {
+    if (!data || !data.kind) {
+      fallbackHome();
+      return;
+    }
+    if (data.kind === 'route') {
+      if (data.screen && isCuratedScreen(data.screen)) {
+        navigate(PUSH_SCREEN_ROUTE[data.screen]);
+      } else {
+        fallbackHome();
+      }
+      return;
+    }
+    if (data.kind === 'external' && data.url && isHttpUrl(data.url)) {
+      Linking.openURL(data.url).catch(err => {
+        console.warn('[deepLinkHandler] openURL failed', err);
+      });
+      return;
+    }
+    fallbackHome();
+  } catch (err) {
+    console.warn('[deepLinkHandler] resolveNotificationData failed', err);
+    fallbackHome();
+  }
+};
