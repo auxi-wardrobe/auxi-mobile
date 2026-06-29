@@ -285,6 +285,24 @@ The Schedule screen (sidebar → Schedule) lets the user plan saved outfits / ca
 >
 > PII: none. `favorite_id` / `creation_id` are internal record ids (no garment names, no free text); `date` is a calendar day (`YYYY-MM-DD`, no time); `source` is a closed enum; `is_today` is an unquoted boolean. The store itself is on-device only and never sent to a backend.
 
+### 5.19 Push notifications (Phase 1)
+
+FCM device-token lifecycle + tap routing (push-notification system, Phase 1).
+Permission requested contextually after sign-in (AuthContext identity effect)
+and when enabling the daily reminder (SettingsScreen). All events are
+literal-named via `analytics.ts` helpers.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `push_permission_requested` | OS notification-permission prompt shown / re-evaluated (login + Settings reminder-enable) | `notificationService.ts` (`requestPushPermission`) via `analytics.ts` | — |
+| `push_permission_granted` | Permission granted or provisionally granted | `notificationService.ts` via `analytics.ts` | — |
+| `push_permission_denied` | Permission denied / not determined | `notificationService.ts` via `analytics.ts` | — |
+| `device_token_registered` | FCM token successfully POSTed to `/api/notifications/device-token` (register + token-refresh re-register) | `notificationService.ts` (`registerCurrentToken`) via `analytics.ts` | — |
+| `push_received` | A push arrived while the app was foregrounded (`onMessage`) | `notificationService.ts` (`registerPushTapHandlers`) via `analytics.ts` | `type` (notification type) |
+| `push_opened` | A push was tapped and routed — cold-start (`getInitialNotification`) or background (`onNotificationOpenedApp`) | `notificationService.ts` (`registerPushTapHandlers`) via `analytics.ts` | `type` (notification type) |
+
+> PII: none. `type` is the bounded notification-type enum (`daily_reminder` / `planned_outfit` / `admin_broadcast` / `admin_direct` / `admin_segment`) carried in the FCM `data` payload — no token, no deep-link url, no free text. Tokens never enter analytics. Deep-link tap routing uses the curated allowlist (`CURATED_PUSH_SCREENS` in `deepLinkHandler.ts`, the mobile mirror of spec §5.1); the `Creations` registry name maps to the RN route `MyCreations`.
+
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
 These hooks were spec'd but cannot fire today — the UI surface, control, or API doesn't exist yet. **No code shipped for these** (we don't fake events). Re-evaluate when the underlying surface lands.
@@ -384,4 +402,6 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 
 - **Notification-settings engagement (AU-316):** `notifications_toggle_changed` / `notifications_schedule_changed` / `notifications_reset` measure how users tune the daily reminder; `notifications_reset` ÷ `notifications_reset_undone` is the regret rate on the reset action (a high undo rate signals the reset is too easy to trigger or its defaults are wrong — relevant to the pending UAC 07:30 vs constant 06:15 default discrepancy). Break down `notifications_schedule_changed` by `frequency`/`period` to see preferred cadence.
 
-Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`. Super properties (`platform`, `app_environment`) are available globally.
+- **Push opt-in + engagement funnel (push Phase 1):** `push_permission_requested` → `push_permission_granted` → `device_token_registered` measures registration completion (denominator: requested; `push_permission_denied` is the drop branch). Engagement: `push_opened` ÷ `push_received` (foreground) plus cold/background opens — break down by `type` to compare `daily_reminder` vs `planned_outfit` vs `admin_*` open rates.
+
+Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`, `type`. Super properties (`platform`, `app_environment`) are available globally.
