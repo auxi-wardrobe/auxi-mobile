@@ -21,6 +21,9 @@ import { MacgieLoader } from '../components/macgie';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
 import { BodyScreen } from '../screens/BodyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { PersonalizationSettingsScreen } from '../screens/settings/PersonalizationSettingsScreen';
+import { PrivacySettingsScreen } from '../screens/settings/PrivacySettingsScreen';
+import { AboutSettingsScreen } from '../screens/settings/AboutSettingsScreen';
 import { FavouriteScreen } from '../screens/FavouriteScreen';
 import { ScheduleScreen } from '../screens/ScheduleScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
@@ -163,6 +166,12 @@ export const AppNavigator = () => {
             <>
               <Stack.Screen name="Home" component={HomeScreen} />
               <Stack.Screen name="Settings" component={SettingsScreen} />
+              <Stack.Screen
+                name="PersonalizationSettings"
+                component={PersonalizationSettingsScreen}
+              />
+              <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
+              <Stack.Screen name="AboutSettings" component={AboutSettingsScreen} />
               <Stack.Screen name="Wardrobe" component={WardrobeScreen} />
               <Stack.Screen name="Favourite" component={FavouriteScreen} />
               <Stack.Screen name="Schedule" component={ScheduleScreen} />
