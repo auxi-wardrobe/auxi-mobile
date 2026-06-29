@@ -10,19 +10,19 @@ import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
 
 /**
- * iOS-HIG "grouped list" primitives for the Settings architecture.
+ * iOS-HIG settings-list primitives for the Settings architecture.
  *
- * A screen is a stack of `SettingsGroup`s (each an optionally-captioned card of
- * hairline-separated rows). `SettingsRow` is the single row vocabulary —
- * label + optional value/right-accessory (chevron, toggle, custom node) — so
- * every Settings page reads as one system and new rows drop in without bespoke
- * layout. Tokens only; no literal hex.
+ * A screen is a stack of `SettingsGroup`s (each a run of hairline-separated
+ * rows) divided by `SettingsSeparator`. `SettingsRow` is the single row
+ * vocabulary — label + optional value/right-accessory (chevron, toggle, custom
+ * node) — so every Settings page reads as one system and new rows drop in
+ * without bespoke layout. Tokens only; no literal hex.
  */
 
 type SettingsGroupProps = {
-  /** Small caps section caption above the card (e.g. "Daily Reminder"). */
+  /** Optional small caps caption above the list (e.g. "Privacy Control"). */
   header?: string;
-  /** Muted explanatory caption below the card. */
+  /** Muted explanatory caption below the list. */
   footer?: string;
   children: React.ReactNode;
   style?: ViewStyle;
@@ -38,20 +38,23 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
   // count right when a caller conditionally renders `null` children.
   const rows = React.Children.toArray(children).filter(Boolean);
   return (
-    <View style={[styles.groupWrap, style]}>
+    <View style={style}>
       {header ? <Text style={styles.groupHeader}>{header}</Text> : null}
-      <View style={styles.card}>
-        {rows.map((child, index) => (
-          <View key={index}>
-            {index > 0 ? <View style={styles.divider} /> : null}
-            {child}
-          </View>
-        ))}
-      </View>
+      {rows.map((child, index) => (
+        <View key={index}>
+          {index > 0 ? <View style={styles.divider} /> : null}
+          {child}
+        </View>
+      ))}
       {footer ? <Text style={styles.groupFooter}>{footer}</Text> : null}
     </View>
   );
 };
+
+/** Section break between two `SettingsGroup`s — a divider with breathing room. */
+export const SettingsSeparator: React.FC = () => (
+  <View style={styles.separator} />
+);
 
 type SettingsRowProps = {
   label: string;
@@ -124,31 +127,24 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
 };
 
 const styles = StyleSheet.create({
-  groupWrap: {
-    marginBottom: 24,
-  },
   groupHeader: {
     ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.figmaOnboardingStepLabel,
-    marginBottom: 8,
-    marginLeft: 4,
+    marginBottom: 4,
   },
   groupFooter: {
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaOnboardingStepLabel,
     marginTop: 8,
-    marginLeft: 4,
-  },
-  card: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.uacPanel,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaListDivider,
-    paddingHorizontal: 16,
   },
   divider: {
     height: 1,
     backgroundColor: theme.colors.figmaListDivider,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: theme.colors.figmaListDivider,
+    marginVertical: 16,
   },
   row: {
     minHeight: 52,

@@ -16,7 +16,11 @@ import { Header } from '../components/layout/Header';
 import { SettingsDialog } from '../components/settings/SettingsDialog';
 import { Radio, RadioOptionList } from '../components/settings/RadioOptionList';
 import { SettingsSwitch } from '../components/settings/SettingsSwitch';
-import { SettingsGroup, SettingsRow } from '../components/settings/SettingsList';
+import {
+  SettingsGroup,
+  SettingsRow,
+  SettingsSeparator,
+} from '../components/settings/SettingsList';
 import { DailyNotificationPeriod } from '../types/auth';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
@@ -109,7 +113,7 @@ export const SettingsScreen = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* 1–4 · Daily Reminder */}
-          <SettingsGroup header={t('settings.section_daily_reminder')}>
+          <SettingsGroup>
             <SettingsRow
               label={t('settings.enable_daily_reminder')}
               testID="settings-daily-toggle-row"
@@ -147,6 +151,8 @@ export const SettingsScreen = () => {
             />
           </SettingsGroup>
 
+          <SettingsSeparator />
+
           {/* 5–7 · Drill-down sub-pages */}
           <SettingsGroup>
             <SettingsRow
@@ -168,6 +174,8 @@ export const SettingsScreen = () => {
               onPress={() => navigation.navigate('AboutSettings')}
             />
           </SettingsGroup>
+
+          <SettingsSeparator />
 
           {/* 8 · Delete my data (destructive) */}
           <SettingsGroup>
