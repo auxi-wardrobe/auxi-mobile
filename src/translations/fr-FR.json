@@ -532,7 +532,19 @@
       "notification_reset_toast_title": "Rappels réinitialisés par défaut",
       "notification_reset_toast_body": "Touchez pour annuler",
       "notification_reset_undone_title": "Réinitialisation annulée",
-      "error_update_notification_reset": "Échec de la réinitialisation des rappels"
+      "error_update_notification_reset": "Échec de la réinitialisation des rappels",
+      "section_personalization": "Personnalisation",
+      "section_privacy": "Confidentialité",
+      "section_privacy_title": "Contrôle de confidentialité",
+      "section_about": "À propos",
+      "enable_daily_reminder": "Activer le rappel quotidien",
+      "reminder_time": "Heure du rappel",
+      "repeat_schedule": "Planning de répétition",
+      "reset_to_default": "Réinitialiser par défaut",
+      "delete_my_data": "Supprimer mes données",
+      "a11y_open_personalization": "Ouvrir les paramètres de personnalisation",
+      "a11y_open_privacy": "Ouvrir les paramètres de confidentialité",
+      "a11y_open_about": "Ouvrir à propos"
     },
     "outfitCanvas": {
       "a11y_close_picker": "Fermer le sélecteur",

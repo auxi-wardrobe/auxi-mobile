@@ -532,7 +532,19 @@
       "notification_reset_toast_title": "Đã đặt lại nhắc nhở về mặc định",
       "notification_reset_toast_body": "Chạm để hoàn tác",
       "notification_reset_undone_title": "Đã hoàn tác",
-      "error_update_notification_reset": "Không thể đặt lại cài đặt nhắc nhở"
+      "error_update_notification_reset": "Không thể đặt lại cài đặt nhắc nhở",
+      "section_personalization": "Cá nhân hóa",
+      "section_privacy": "Quyền riêng tư",
+      "section_privacy_title": "Kiểm soát quyền riêng tư",
+      "section_about": "Giới thiệu",
+      "enable_daily_reminder": "Bật nhắc nhở hằng ngày",
+      "reminder_time": "Giờ nhắc nhở",
+      "repeat_schedule": "Lịch lặp lại",
+      "reset_to_default": "Đặt lại mặc định",
+      "delete_my_data": "Xóa dữ liệu của tôi",
+      "a11y_open_personalization": "Mở cài đặt cá nhân hóa",
+      "a11y_open_privacy": "Mở cài đặt quyền riêng tư",
+      "a11y_open_about": "Mở giới thiệu"
     },
     "outfitCanvas": {
       "a11y_close_picker": "Đóng bộ chọn",
