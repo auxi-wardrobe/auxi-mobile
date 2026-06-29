@@ -74,7 +74,12 @@ export type AppStackParamList = {
   // `CONFIRM_PIN_FROM_DETAIL` (skipping the confirm modal), then clears
   // the param so re-focus / re-render does not refire the auto-pin.
   Home: { pinFromDetail?: string } | undefined;
+  // Settings architecture — a parent screen (reminder controls + drill-downs +
+  // delete) plus three pushed sub-pages grouping related settings (iOS HIG).
   Settings: undefined;
+  PersonalizationSettings: undefined; // Style Direction · Language · Body Photo
+  PrivacySettings: undefined; // Privacy Control · usage analytics · AI sharing
+  AboutSettings: undefined; // Version · Terms of Service · Privacy Policy
   Wardrobe: undefined;
   // `returnToSchedule` is set when the user reached this page via the Schedule
   // "+" source picker — after scheduling an outfit we send them back to

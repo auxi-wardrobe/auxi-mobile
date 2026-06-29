@@ -6,6 +6,9 @@ export type RadioOption<K extends string> = {
   key: K;
   label: string;
   description?: string;
+  // Surfaced but inert — e.g. the "Custom" repeat-schedule option, kept visible
+  // for IA completeness until the data model supports it.
+  disabled?: boolean;
 };
 
 type RadioOptionListProps<K extends string> = {
@@ -39,7 +42,8 @@ export function RadioOptionList<K extends string>({
           key={option.key}
           testID={`${testIDPrefix}-${option.key}`}
           activeOpacity={0.82}
-          style={styles.optionRow}
+          disabled={option.disabled}
+          style={[styles.optionRow, option.disabled && styles.optionRowDisabled]}
           onPress={() => onSelect(option.key)}
         >
           <View style={styles.optionCopy}>
@@ -68,6 +72,9 @@ const styles = StyleSheet.create({
     minHeight: 72,
     position: 'relative',
     paddingVertical: 8,
+  },
+  optionRowDisabled: {
+    opacity: 0.45,
   },
   optionCopy: {
     flex: 1,

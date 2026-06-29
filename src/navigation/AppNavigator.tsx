@@ -21,6 +21,9 @@ import { MacgieLoader } from '../components/macgie';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
 import { BodyScreen } from '../screens/BodyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { PersonalizationSettingsScreen } from '../screens/settings/PersonalizationSettingsScreen';
+import { PrivacySettingsScreen } from '../screens/settings/PrivacySettingsScreen';
+import { AboutSettingsScreen } from '../screens/settings/AboutSettingsScreen';
 import { FavouriteScreen } from '../screens/FavouriteScreen';
 import { ScheduleScreen } from '../screens/ScheduleScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
@@ -189,6 +192,20 @@ export const AppNavigator = () => {
                 name="Settings"
                 component={SettingsScreen}
                 options={{ gestureEnabled: false }}
+              />
+              {/* Settings sub-pages — pushed drill-downs (back chevron +
+                  swipe-back enabled, since they ARE in a back-stack). */}
+              <Stack.Screen
+                name="PersonalizationSettings"
+                component={PersonalizationSettingsScreen}
+              />
+              <Stack.Screen
+                name="PrivacySettings"
+                component={PrivacySettingsScreen}
+              />
+              <Stack.Screen
+                name="AboutSettings"
+                component={AboutSettingsScreen}
               />
               <Stack.Screen
                 name="Wardrobe"

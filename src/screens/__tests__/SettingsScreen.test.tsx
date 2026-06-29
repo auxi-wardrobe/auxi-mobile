@@ -204,18 +204,27 @@ describe('resolveSettings', () => {
   });
 });
 
+// Find a host text node whose rendered string contains `substr`.
+const hasTextContaining = (root: ReactTestInstance, substr: string): boolean =>
+  root.findAll(
+    n =>
+      typeof n.type === 'string' &&
+      typeof n.children?.[0] === 'string' &&
+      (n.children[0] as string).includes(substr),
+  ).length > 0;
+
 // =============================================================================
-// 2. applyChangeTime rollback
+// 2a. Reminder Time dialog (period) — persist + rollback
 // =============================================================================
-describe('applyChangeTime', () => {
-  it('success: server values sync + dialog closes', async () => {
+describe('applyReminderTime', () => {
+  it('success: persists period only + dialog closes', async () => {
     const updateCurrentUser = jest.fn().mockResolvedValue(
       makeUser({
         daily_notification: {
           enabled: true,
           time: '06:15',
           period: 'PM',
-          frequency: 'everydays',
+          frequency: 'weekdays',
         },
       }),
     );
@@ -224,27 +233,21 @@ describe('applyChangeTime', () => {
     const r = await renderScreen();
     const root = r.root;
 
-    // open change-time dialog
     press(oneByTestID(root, 'settings-time-row'));
     expect(isDialogOpen(root, 'settings-time-update')).toBe(true);
 
-    // choose PM + everydays then update
     press(oneByTestID(root, 'settings-time-period-pm'));
-    press(oneByTestID(root, 'settings-time-freq-everydays'));
     press(oneByTestID(root, 'settings-time-update'));
     await flushPromises();
 
     expect(updateCurrentUser).toHaveBeenCalledWith({
-      user_metadata: {
-        daily_notification: { period: 'PM', frequency: 'everydays' },
-      },
+      user_metadata: { daily_notification: { period: 'PM' } },
     });
-    // synced from server response + dialog closed
     expect(isDialogOpen(root, 'settings-time-update')).toBe(false);
     expect(mockedToastShow).not.toHaveBeenCalled();
   });
 
-  it('failure: committed settings unchanged, dialog stays open, error toast, no unhandled rejection', async () => {
+  it('failure: committed value unchanged, dialog stays open, error toast, no unhandled rejection', async () => {
     const unhandled = jest.fn();
     proc.on('unhandledRejection', unhandled);
 
@@ -262,11 +265,10 @@ describe('applyChangeTime', () => {
     expect(updateCurrentUser).toHaveBeenCalledTimes(1);
     // dialog still open for retry
     expect(isDialogOpen(root, 'settings-time-update')).toBe(true);
-    // committed display value unchanged — still default AM
-    const period = oneByTestID(root, 'settings-time-row').findAll(
-      n => typeof n.type === 'string' && n.children?.[0] === 'AM',
+    // committed display value unchanged — Reminder Time row still shows AM
+    expect(hasTextContaining(oneByTestID(root, 'settings-time-row'), 'AM')).toBe(
+      true,
     );
-    expect(period.length).toBeGreaterThan(0);
     // error toast surfaced. SettingsScreen is i18n-wired; without an i18next
     // instance in tests, t(key) returns the bare key, so assert on the key.
     expect(mockedToastShow).toHaveBeenCalledWith(
@@ -276,6 +278,65 @@ describe('applyChangeTime', () => {
     await flushPromises();
     proc.off('unhandledRejection', unhandled);
     expect(unhandled).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// 2b. Repeat Schedule dialog (frequency) — persist
+// =============================================================================
+describe('applyRepeatSchedule', () => {
+  it('success: persists frequency only + dialog closes', async () => {
+    const updateCurrentUser = jest.fn().mockResolvedValue(
+      makeUser({
+        daily_notification: {
+          enabled: true,
+          time: '06:15',
+          period: 'AM',
+          frequency: 'everydays',
+        },
+      }),
+    );
+    mockedUseAuth.mockReturnValue(buildAuth({ updateCurrentUser }));
+
+    const r = await renderScreen();
+    const root = r.root;
+
+    press(oneByTestID(root, 'settings-schedule-row'));
+    expect(isDialogOpen(root, 'settings-schedule-update')).toBe(true);
+
+    press(oneByTestID(root, 'settings-schedule-freq-everydays'));
+    press(oneByTestID(root, 'settings-schedule-update'));
+    await flushPromises();
+
+    expect(updateCurrentUser).toHaveBeenCalledWith({
+      user_metadata: { daily_notification: { frequency: 'everydays' } },
+    });
+    expect(isDialogOpen(root, 'settings-schedule-update')).toBe(false);
+    expect(mockedToastShow).not.toHaveBeenCalled();
+  });
+
+  it('custom option is disabled (selecting it does not change pending frequency)', async () => {
+    const updateCurrentUser = jest
+      .fn()
+      .mockResolvedValue(makeUser({ daily_notification: { enabled: true } }));
+    mockedUseAuth.mockReturnValue(buildAuth({ updateCurrentUser }));
+
+    const r = await renderScreen();
+    const root = r.root;
+
+    press(oneByTestID(root, 'settings-schedule-row'));
+    // custom row is rendered but inert (disabled) — its TouchableOpacity carries
+    // disabled=true so onPress can't fire.
+    expect(
+      oneByTestID(root, 'settings-schedule-freq-custom').props.disabled,
+    ).toBe(true);
+
+    // updating without changing anything persists the default frequency
+    press(oneByTestID(root, 'settings-schedule-update'));
+    await flushPromises();
+    expect(updateCurrentUser).toHaveBeenCalledWith({
+      user_metadata: { daily_notification: { frequency: 'weekdays' } },
+    });
   });
 });
 
@@ -541,7 +602,10 @@ describe('handleResetNotifications', () => {
 // 4. handleResetPreferences branch
 // =============================================================================
 describe('handleResetPreferences', () => {
-  it('is_first_login=false → modal closes + settings synced', async () => {
+  it('is_first_login=false → modal closes + reset called', async () => {
+    // Style direction now lives on the Personalization sub-page, so the parent
+    // Settings screen asserts only the delete-flow contract: reset runs and the
+    // confirm dialog closes on success.
     const resetUserPreferences = jest.fn().mockResolvedValue(
       makeUser({ style_direction: 'more_relaxed' }), // is_first_login false (makeUser default)
     );
@@ -558,19 +622,9 @@ describe('handleResetPreferences', () => {
 
     expect(resetUserPreferences).toHaveBeenCalledTimes(1);
     expect(isDialogOpen(root, 'settings-delete-confirm')).toBe(false); // modal closed
-    // synced: style direction row now reflects reset value. i18n-wired —
-    // t(key) returns the bare key in tests, so the rendered value is the
-    // direction label key, not the English string.
-    const directionRow = oneByTestID(root, 'settings-style-direction-row');
-    const hasRelaxed = directionRow.findAll(
-      n =>
-        typeof n.type === 'string' &&
-        n.children?.[0] === 'settings.direction_relaxed_label',
-    );
-    expect(hasRelaxed.length).toBeGreaterThan(0);
   });
 
-  it('is_first_login=true → modal stays open, settings NOT synced', async () => {
+  it('is_first_login=true → modal stays open', async () => {
     const firstLoginUser: User = {
       ...makeUser({ style_direction: 'more_polished' }),
       is_first_login: true,
@@ -587,12 +641,6 @@ describe('handleResetPreferences', () => {
 
     expect(resetUserPreferences).toHaveBeenCalledTimes(1);
     expect(isDialogOpen(root, 'settings-delete-confirm')).toBe(true); // stays open
-    // NOT synced — direction row still shows default "Stay Balanced"
-    const directionRow = oneByTestID(root, 'settings-style-direction-row');
-    const polished = directionRow.findAll(
-      n => typeof n.type === 'string' && n.children?.[0] === 'More Polished',
-    );
-    expect(polished.length).toBe(0);
   });
 
   it('reject → error toast + isResettingPreferences resets (confirm button re-enabled)', async () => {
