@@ -21,6 +21,16 @@ end
 target 'auxi' do
   config = use_native_modules!
 
+  # @react-native-firebase: firebase-ios-sdk 11.x ships Swift pods
+  # (FirebaseCoreInternal etc.) that depend on GoogleUtilities, which does not
+  # define modules. Under the default static-library linkage (CI builds WITHOUT
+  # USE_FRAMEWORKS, so use_frameworks! is off), a Swift pod can only be
+  # integrated as a static lib if its dependencies expose module maps. We opt
+  # GoogleUtilities into modular headers (the dependency the resolver flags)
+  # rather than enabling use_frameworks! app-wide, which risks Hermes/other-pod
+  # breakage on RN 0.83.
+  pod 'GoogleUtilities', :modular_headers => true
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.
