@@ -15,9 +15,7 @@ let openUrlSpy: jest.SpyInstance;
 
 beforeEach(() => {
   jest.clearAllMocks();
-  openUrlSpy = jest
-    .spyOn(Linking, 'openURL')
-    .mockResolvedValue(true as never);
+  openUrlSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue(true as never);
 });
 
 afterEach(() => openUrlSpy.mockRestore());
@@ -38,7 +36,10 @@ describe('resolveNotificationData — route kind', () => {
 
   it('falls back to Home for a screen not in the allowlist', () => {
     const nav = makeNavRef();
-    resolveNotificationData({ kind: 'route', screen: 'ItemDetail' }, nav as any);
+    resolveNotificationData(
+      { kind: 'route', screen: 'ItemDetail' },
+      nav as any,
+    );
     expect(nav.navigate).toHaveBeenCalledWith('Home');
   });
 });

@@ -48,7 +48,9 @@ export const AppNavigator = () => {
     // Register Linking listeners for the verify-email and reset-password deep
     // links, driving them through the shared navigationRef (also used by the
     // root-level push-drawer menu, which renders outside the container).
-    const unregisterLinks = registerDeepLinkListeners(() => navigationRef.current);
+    const unregisterLinks = registerDeepLinkListeners(
+      () => navigationRef.current,
+    );
     // Push notification taps (cold-start / background) route through the same
     // navigationRef; token-refresh re-registers the device so the backend never
     // holds a stale FCM token.
@@ -221,10 +223,7 @@ export const AppNavigator = () => {
                 component={OutfitCanvasScreen}
                 options={{ gestureEnabled: false }}
               />
-              <Stack.Screen
-                name="MyCreations"
-                component={MyCreationsScreen}
-              />
+              <Stack.Screen name="MyCreations" component={MyCreationsScreen} />
               {/* __DEV__-only Design System reference screen. Registering it
                   unconditionally is harmless — the only entry point (Settings
                   "Version" row) is itself __DEV__-gated, so prod users can't

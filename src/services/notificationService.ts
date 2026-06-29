@@ -108,7 +108,10 @@ export const registerDeviceForPush = async (): Promise<void> => {
 export const registerTokenRefreshListener = (): (() => void) =>
   messaging().onTokenRefresh(() => {
     registerCurrentToken().catch(err =>
-      console.warn('[notificationService] token-refresh re-register failed', err),
+      console.warn(
+        '[notificationService] token-refresh re-register failed',
+        err,
+      ),
     );
   });
 

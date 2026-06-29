@@ -5,8 +5,9 @@
 // toggle vibes cleanly on the sandbox (no "enable in Settings" guidance toast).
 export const registerDeviceForPush = async (): Promise<void> => {};
 export const unregisterDevice = async (): Promise<void> => {};
-export const ensurePushPermissionAndRegister = async (): Promise<boolean> => true;
+export const ensurePushPermissionAndRegister = async (): Promise<boolean> =>
+  true;
 export const registerTokenRefreshListener = (): (() => void) => () => {};
-export const registerPushTapHandlers = (
-  _getNavRef?: unknown,
-): (() => void) => () => {};
+export const registerPushTapHandlers =
+  (_getNavRef?: unknown): (() => void) =>
+  () => {};

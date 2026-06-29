@@ -45,7 +45,9 @@ jest.mock('../analytics', () => ({
 
 jest.mock('react-native-localize', () => ({
   getTimeZone: () => 'Asia/Saigon',
-  getLocales: () => [{ languageCode: 'en', countryCode: 'US', languageTag: 'en-US' }],
+  getLocales: () => [
+    { languageCode: 'en', countryCode: 'US', languageTag: 'en-US' },
+  ],
 }));
 
 // Stub the deep-link module so importing notificationService doesn't pull the
