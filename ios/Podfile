@@ -21,15 +21,24 @@ end
 target 'auxi' do
   config = use_native_modules!
 
-  # @react-native-firebase: firebase-ios-sdk 11.x ships Swift pods
-  # (FirebaseCoreInternal etc.) that depend on GoogleUtilities, which does not
-  # define modules. Under the default static-library linkage (CI builds WITHOUT
-  # USE_FRAMEWORKS, so use_frameworks! is off), a Swift pod can only be
-  # integrated as a static lib if its dependencies expose module maps. We opt
-  # GoogleUtilities into modular headers (the dependency the resolver flags)
-  # rather than enabling use_frameworks! app-wide, which risks Hermes/other-pod
-  # breakage on RN 0.83.
+  # @react-native-firebase: firebase-ios-sdk 11.x links statically here (CI builds
+  # WITHOUT USE_FRAMEWORKS, so use_frameworks! is off). In that static-library
+  # mode FirebaseMessaging compiles `@import FirebaseCore;` (and FirebaseCore in
+  # turn `@import`s FirebaseCoreInternal/GoogleUtilities/...), so every pod in the
+  # Firebase `@import` chain needs a clang module map. `pod install` only flagged
+  # GoogleUtilities, but the Release archive compile fails on the rest of the
+  # cascade ("Module 'FirebaseCore' not found"). Opt the whole chain into modular
+  # headers rather than enabling use_frameworks! app-wide, which risks
+  # Hermes/RN-core/folly non-modular-header breakage on RN 0.83.
+  pod 'FirebaseCore', :modular_headers => true
+  pod 'FirebaseCoreInternal', :modular_headers => true
+  pod 'FirebaseCoreExtension', :modular_headers => true
+  pod 'FirebaseInstallations', :modular_headers => true
+  pod 'FirebaseMessaging', :modular_headers => true
+  pod 'GoogleDataTransport', :modular_headers => true
   pod 'GoogleUtilities', :modular_headers => true
+  pod 'PromisesObjC', :modular_headers => true
+  pod 'nanopb', :modular_headers => true
 
   use_react_native!(
     :path => config[:reactNativePath],
