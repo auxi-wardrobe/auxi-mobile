@@ -1,8 +1,11 @@
 /* eslint-env jest */
 // notificationService — device-token lifecycle. Mocks @react-native-firebase
-// messaging, apiClient, the analytics helpers, and react-native-localize so the
-// pure register/unregister logic is asserted without a native runtime.
+// messaging, apiClient, the analytics helpers, deepLinkHandler, and
+// react-native-localize so the pure register/unregister logic is asserted
+// without a native runtime.
 
+// Firebase: spies referenced INSIDE the lazy messaging() factory so they bind
+// at call time (after the const declarations below initialize).
 const mockRequestPermission = jest.fn();
 const mockGetToken = jest.fn();
 const mockRegisterRemote = jest.fn().mockResolvedValue(undefined);
@@ -23,21 +26,19 @@ jest.mock('@react-native-firebase/messaging', () => {
   return { __esModule: true, default: messaging };
 });
 
-const mockPost = jest.fn().mockResolvedValue({ data: { ok: true } });
-const mockDelete = jest.fn().mockResolvedValue({ data: { ok: true } });
+// apiClient + analytics: create the spies INSIDE the factory (retrieved via cast
+// after import). Referencing external `const mock*` vars directly in the
+// returned object would hit the TDZ — babel hoists `import` above the const
+// declarations, so the factory runs before they initialize.
 jest.mock('../apiClient', () => ({
-  apiClient: { post: mockPost, delete: mockDelete },
+  apiClient: { post: jest.fn(), delete: jest.fn() },
 }));
 
-const mockTrackRequested = jest.fn();
-const mockTrackGranted = jest.fn();
-const mockTrackDenied = jest.fn();
-const mockTrackRegistered = jest.fn();
 jest.mock('../analytics', () => ({
-  trackPushPermissionRequested: mockTrackRequested,
-  trackPushPermissionGranted: mockTrackGranted,
-  trackPushPermissionDenied: mockTrackDenied,
-  trackDeviceTokenRegistered: mockTrackRegistered,
+  trackPushPermissionRequested: jest.fn(),
+  trackPushPermissionGranted: jest.fn(),
+  trackPushPermissionDenied: jest.fn(),
+  trackDeviceTokenRegistered: jest.fn(),
   trackPushReceived: jest.fn(),
   trackPushOpened: jest.fn(),
 }));
@@ -47,15 +48,38 @@ jest.mock('react-native-localize', () => ({
   getLocales: () => [{ languageCode: 'en', countryCode: 'US', languageTag: 'en-US' }],
 }));
 
+// Stub the deep-link module so importing notificationService doesn't pull the
+// real deepLinkHandler → auth → apiClient chain. Tap routing is covered in
+// deepLinkHandler.test.ts.
+jest.mock('../deepLinkHandler', () => ({
+  resolveNotificationData: jest.fn(),
+}));
+
 import {
   registerDeviceForPush,
   unregisterDevice,
   ensurePushPermissionAndRegister,
 } from '../notificationService';
+import { apiClient } from '../apiClient';
+import {
+  trackPushPermissionRequested,
+  trackPushPermissionGranted,
+  trackPushPermissionDenied,
+  trackDeviceTokenRegistered,
+} from '../analytics';
+
+const mockPost = apiClient.post as jest.Mock;
+const mockDelete = apiClient.delete as jest.Mock;
+const mockTrackRequested = trackPushPermissionRequested as jest.Mock;
+const mockTrackGranted = trackPushPermissionGranted as jest.Mock;
+const mockTrackDenied = trackPushPermissionDenied as jest.Mock;
+const mockTrackRegistered = trackDeviceTokenRegistered as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetToken.mockResolvedValue('fcm-tok-1');
+  mockPost.mockResolvedValue({ data: { ok: true } });
+  mockDelete.mockResolvedValue({ data: { ok: true } });
 });
 
 describe('registerDeviceForPush — granted path', () => {
