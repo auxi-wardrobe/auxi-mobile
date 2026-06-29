@@ -75,6 +75,9 @@ export type AppStackParamList = {
   // the param so re-focus / re-render does not refire the auto-pin.
   Home: { pinFromDetail?: string } | undefined;
   Settings: undefined;
+  PersonalizationSettings: undefined;
+  PrivacySettings: undefined;
+  AboutSettings: undefined;
   Wardrobe: undefined;
   // `returnToSchedule` is set when the user reached this page via the Schedule
   // "+" source picker — after scheduling an outfit we send them back to
