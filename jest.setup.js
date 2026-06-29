@@ -131,7 +131,32 @@ jest.mock('react-native-localize', () => ({
   getLocales: () => [
     { languageCode: 'en', countryCode: 'US', languageTag: 'en-US' },
   ],
+  getTimeZone: () => 'Asia/Saigon',
 }));
+
+// @react-native-firebase/messaging: native FCM bridge, absent in jest. Inert
+// default-export stub so the AuthContext/AppNavigator → notificationService
+// import chain (App.test.tsx render path) resolves. Per-test files re-mock
+// with spies (see services/__tests__/notificationService.test.ts).
+jest.mock('@react-native-firebase/messaging', () => {
+  const messaging = () => ({
+    requestPermission: jest.fn().mockResolvedValue(1),
+    registerDeviceForRemoteMessages: jest.fn().mockResolvedValue(undefined),
+    getToken: jest.fn().mockResolvedValue('test-fcm-token'),
+    onTokenRefresh: jest.fn(() => () => {}),
+    onMessage: jest.fn(() => () => {}),
+    onNotificationOpenedApp: jest.fn(() => () => {}),
+    getInitialNotification: jest.fn().mockResolvedValue(null),
+    setBackgroundMessageHandler: jest.fn(),
+  });
+  messaging.AuthorizationStatus = {
+    NOT_DETERMINED: -1,
+    DENIED: 0,
+    AUTHORIZED: 1,
+    PROVISIONAL: 2,
+  };
+  return { __esModule: true, default: messaging };
+});
 
 // @sentry/react-native: untranspiled ESM (outside transformIgnorePatterns) plus
 // a native bridge. Reached via services/sentry.ts + weatherService.ts on the

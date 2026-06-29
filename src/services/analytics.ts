@@ -300,3 +300,38 @@ export const resetAnalytics = (): void => {
   pendingIdentity = null;
   mixpanel?.reset();
 };
+
+// ── Push notifications (Phase 1) ───────────────────────────────────────────
+// Literal event names (no template strings). The only property is `type`
+// (notification type enum — daily_reminder | planned_outfit | admin_*) — no
+// ids, no free text, no PII. permission events carry no properties.
+
+/** OS notification permission prompt about to be shown / re-evaluated. */
+export const trackPushPermissionRequested = (): void => {
+  track('push_permission_requested');
+};
+
+/** Permission granted (or provisionally granted). */
+export const trackPushPermissionGranted = (): void => {
+  track('push_permission_granted');
+};
+
+/** Permission denied / not determined. */
+export const trackPushPermissionDenied = (): void => {
+  track('push_permission_denied');
+};
+
+/** FCM token successfully registered with the backend. */
+export const trackDeviceTokenRegistered = (): void => {
+  track('device_token_registered');
+};
+
+/** A push arrived while the app was in the foreground. */
+export const trackPushReceived = (type: string): void => {
+  track('push_received', { type });
+};
+
+/** A push was tapped (cold-start or background) and routed. */
+export const trackPushOpened = (type: string): void => {
+  track('push_opened', { type });
+};
