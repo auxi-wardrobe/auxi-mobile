@@ -25,6 +25,7 @@ import { formatItemDate, ItemDetailScreen } from '../ItemDetailScreen';
 
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
+const mockPopTo = jest.fn();
 let mockRouteParams: Record<string, unknown> = { itemId: 'item-1' };
 
 // The screen's load effect depends on `navigation` and `t` — both MUST be
@@ -34,6 +35,7 @@ jest.mock('@react-navigation/native', () => {
   const navigation = {
     navigate: (...args: unknown[]) => mockNavigate(...args),
     goBack: (...args: unknown[]) => mockGoBack(...args),
+    popTo: (...args: unknown[]) => mockPopTo(...args),
     dispatch: jest.fn(),
   };
   return {
@@ -200,6 +202,21 @@ describe('read mode', () => {
     expect(
       root.findAll(n => n.props?.children === 'Mix with this').length,
     ).toBe(0);
+  });
+
+  // Regression: "Build around this" must leave the modal via popTo (pop
+  // semantics that dismiss the native modal layer), NOT navigate('Home',…).
+  // ItemDetail is presented as presentation:'modal'; navigate() to a screen
+  // below the modal desyncs JS nav state from the native presentation, leaving
+  // the sheet stuck on top and unresponsive ("can't close, can't do anything").
+  it('"Build around this" pops to Home with pinFromDetail (not navigate)', async () => {
+    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'item-detail-mix-btn'));
+
+    expect(mockPopTo).toHaveBeenCalledWith('Home', { pinFromDetail: 'item-1' });
+    expect(mockNavigate).not.toHaveBeenCalledWith('Home', expect.anything());
   });
 
   it('has no heart button and no read-mode attribute rows', async () => {
