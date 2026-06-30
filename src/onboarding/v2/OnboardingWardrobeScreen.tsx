@@ -18,7 +18,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStepHeader } from './OnboardingStepHeader';
 import {
@@ -26,9 +31,11 @@ import {
   OnboardingSelectionFigure,
 } from '../../components/primitives/OnboardingSelectionCard';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
+import { SettingsDialog } from '../../components/settings/SettingsDialog';
+import { useExitConfirm } from './useExitConfirm';
 import { theme } from '../../theme/theme';
 import type { WardrobeDirection } from '../../services/v05Api';
-import { STEP_COPY, WARDROBE_OPTIONS, wardrobeTileArt } from '../config';
+import { RETAKE_COPY, STEP_COPY, WARDROBE_OPTIONS, wardrobeTileArt } from '../config';
 import { AppStackParamList } from '../../types/navigation';
 import { track } from '../../services/analytics';
 
@@ -36,11 +43,20 @@ type Navigation = NativeStackNavigationProp<
   AppStackParamList,
   'OnboardingWardrobe'
 >;
+type ScreenRoute = RouteProp<AppStackParamList, 'OnboardingWardrobe'>;
 
 export const OnboardingWardrobeScreen = () => {
   const navigation = useNavigation<Navigation>();
+  const route = useRoute<ScreenRoute>();
+  const flow = route.params?.flow ?? 'onboarding';
+  const isRetake = flow === 'retake';
   const [selected, setSelected] = useState<WardrobeDirection | null>(null);
   const copy = STEP_COPY.step1;
+
+  // Retake only: leaving Step 1 exits the whole quiz → confirm discard. Steps
+  // 2/3 going back is in-flow (no guard there). Nothing is persisted until the
+  // user Saves on the review screen, so discard needs no server cleanup.
+  const exit = useExitConfirm(isRetake);
 
   useFocusEffect(
     useCallback(() => {
@@ -58,7 +74,10 @@ export const OnboardingWardrobeScreen = () => {
 
   const handleContinue = () => {
     if (!selected) return;
-    navigation.navigate('OnboardingFit', { wardrobe_direction: selected });
+    navigation.navigate('OnboardingFit', {
+      wardrobe_direction: selected,
+      flow,
+    });
   };
 
   // Row 1 = first two options side-by-side; row 2 = remaining (solo) tile.
@@ -129,6 +148,22 @@ export const OnboardingWardrobeScreen = () => {
           testID="onboarding-wardrobe-continue"
         />
       </View>
+
+      {isRetake ? (
+        <SettingsDialog
+          visible={exit.visible}
+          onClose={exit.onCancel}
+          isBusy={false}
+          title={RETAKE_COPY.discard.title}
+          body={RETAKE_COPY.discard.body}
+          primaryLabel={RETAKE_COPY.discard.confirm}
+          primaryVariant="danger"
+          onPrimary={exit.onConfirm}
+          cancelLabel={RETAKE_COPY.discard.cancel}
+          cancelTestID="retake-discard-cancel"
+          primaryTestID="retake-discard-confirm"
+        />
+      ) : null}
     </SafeAreaView>
   );
 };

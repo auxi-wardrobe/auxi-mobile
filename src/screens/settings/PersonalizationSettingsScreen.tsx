@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet } from 'react-native';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -11,8 +18,11 @@ import {
   SettingsGroup,
   SettingsRow,
 } from '../../components/settings/SettingsList';
-import { UserStyleDirection } from '../../types/auth';
-import { AppStackParamList } from '../../types/navigation';
+import { SelectedChips } from '../../onboarding/v2/SelectedChips';
+import { selectionChipLabels } from '../../onboarding/config';
+import { Icons } from '../../assets/icons';
+import { useAuth } from '../../context/AuthContext';
+import { AppStackParamList, V05OnboardingSelection } from '../../types/navigation';
 import { theme } from '../../theme/theme';
 import { useSettingsController } from './useSettingsController';
 import { LANGUAGE_LABEL_MAP, LANGUAGE_OPTIONS } from './settingsShared';
@@ -22,53 +32,56 @@ type Navigation = NativeStackNavigationProp<
   AppStackParamList,
   'PersonalizationSettings'
 >;
-type ActiveModal = 'none' | 'direction' | 'language';
 
-// 5 · Personalization — Style Direction, Language, Manage Body Photo.
+// 5 · Personalization — Style Direction (onboarding profile), Language,
+// Manage Body Photo.
 export const PersonalizationSettingsScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Navigation>();
-  const {
-    settings,
-    directionOptions,
-    currentDirectionLabel,
-    applyDirection,
-    isSavingDirection,
-    currentLanguage,
-    applyLanguage,
-    isSavingLanguage,
-  } = useSettingsController();
+  const { user } = useAuth();
+  const { currentLanguage, applyLanguage, isSavingLanguage } =
+    useSettingsController();
 
-  const [activeModal, setActiveModal] = useState<ActiveModal>('none');
-  const [pendingDirection, setPendingDirection] = useState<UserStyleDirection>(
-    settings.styleDirection,
-  );
+  // Stored onboarding answers (loosely typed in metadata) → the strongly-typed
+  // selection the chips + review screen consume. Absent until a user completes
+  // onboarding or a retake.
+  const profile = user?.user_metadata?.onboarding_profile;
+  const selection = profile
+    ? ({
+        wardrobe_direction: profile.wardrobe_direction,
+        fit_preference: profile.fit_preference,
+        style_preferences: profile.style_preferences,
+      } as V05OnboardingSelection)
+    : null;
+  const chips = selection ? selectionChipLabels(selection) : [];
+
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [pendingLanguage, setPendingLanguage] =
     useState<Language>(currentLanguage);
 
-  const openDirectionModal = () => {
-    setPendingDirection(settings.styleDirection);
-    setActiveModal('direction');
-  };
-
   const openLanguageModal = () => {
     setPendingLanguage(currentLanguage);
-    setActiveModal('language');
+    setLanguageModalVisible(true);
   };
 
-  const closeModal = () => {
-    if (isSavingDirection || isSavingLanguage) return;
-    setActiveModal('none');
-  };
-
-  const onApplyDirection = async () => {
-    const ok = await applyDirection(pendingDirection);
-    if (ok) setActiveModal('none');
+  const closeLanguageModal = () => {
+    if (isSavingLanguage) return;
+    setLanguageModalVisible(false);
   };
 
   const onApplyLanguage = async () => {
     const ok = await applyLanguage(pendingLanguage);
-    if (ok) setActiveModal('none');
+    if (ok) setLanguageModalVisible(false);
+  };
+
+  // With a saved profile → review it (read-only, Save disabled). Without one →
+  // start the quiz directly (nothing to review / replace).
+  const openStyleDirection = () => {
+    if (selection) {
+      navigation.navigate('StyleDirectionReview', { selection, changed: false });
+    } else {
+      navigation.navigate('OnboardingWardrobe', { flow: 'retake' });
+    }
   };
 
   return (
@@ -87,13 +100,38 @@ export const PersonalizationSettingsScreen = () => {
           showsVerticalScrollIndicator={false}
         >
           <SettingsGroup>
-            <SettingsRow
-              label={t('settings.style_direction')}
-              value={currentDirectionLabel}
-              chevron
+            {/* Style Direction — label + selected chips (or a set-up prompt),
+                drilling into the review / retake flow. Custom row because the
+                chips wrap below the label. */}
+            <TouchableOpacity
               testID="settings-style-direction-row"
-              onPress={openDirectionModal}
-            />
+              accessibilityLabel={t('settings.style_direction')}
+              activeOpacity={0.82}
+              style={styles.styleRow}
+              onPress={openStyleDirection}
+            >
+              <View style={styles.styleRowMain}>
+                <Text style={styles.styleRowLabel}>
+                  {t('settings.style_direction')}
+                </Text>
+                {selection ? (
+                  <SelectedChips
+                    labels={chips}
+                    testID="settings-style-direction-chips"
+                  />
+                ) : (
+                  <Text style={styles.styleRowSetup}>
+                    {t('settings.style_direction_setup')}
+                  </Text>
+                )}
+              </View>
+              <Icons.ChevronRight
+                width={20}
+                height={20}
+                color={theme.colors.figmaOnboardingStepLabel}
+              />
+            </TouchableOpacity>
+
             <SettingsRow
               label={t('settings.language')}
               value={LANGUAGE_LABEL_MAP[currentLanguage]}
@@ -115,28 +153,8 @@ export const PersonalizationSettingsScreen = () => {
       </BottomSheetSurface>
 
       <SettingsDialog
-        visible={activeModal === 'direction'}
-        onClose={closeModal}
-        isBusy={isSavingDirection}
-        title={t('settings.dialog_direction_title')}
-        body={t('settings.dialog_direction_body')}
-        primaryLabel={t('settings.update')}
-        primaryVariant="default"
-        onPrimary={onApplyDirection}
-        cancelTestID="settings-direction-cancel"
-        primaryTestID="settings-direction-update"
-      >
-        <RadioOptionList
-          options={directionOptions}
-          selected={pendingDirection}
-          onSelect={setPendingDirection}
-          testIDPrefix="settings-direction-option"
-        />
-      </SettingsDialog>
-
-      <SettingsDialog
-        visible={activeModal === 'language'}
-        onClose={closeModal}
+        visible={languageModalVisible}
+        onClose={closeLanguageModal}
         isBusy={isSavingLanguage}
         title={t('settings.dialog_language_title')}
         primaryLabel={t('settings.update')}
@@ -171,5 +189,24 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingHorizontal: 24,
     paddingBottom: 32,
+  },
+  styleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 14,
+  },
+  styleRowMain: {
+    flex: 1,
+    gap: 10,
+  },
+  styleRowLabel: {
+    ...theme.typography.aliases.poppinsBody,
+    color: theme.colors.uacTextBase,
+  },
+  styleRowSetup: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.figmaOnboardingStepLabel,
   },
 });

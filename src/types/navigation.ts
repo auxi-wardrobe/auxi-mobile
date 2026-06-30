@@ -67,6 +67,16 @@ export interface V05OnboardingSelection {
   style_preferences: StyleTag[];
 }
 
+/**
+ * Which flow the shared onboarding step screens are running in:
+ *  - `onboarding` (default / absent): first-time setup. Step 3 → Loading
+ *    (which owns /generate) → Completed → Outro → completeOnboarding().
+ *  - `retake`: post-login re-run from Settings → Personalization. Step 3 →
+ *    StyleDirectionReview; NOTHING is persisted or generated until the user
+ *    taps Save there. Leaving mid-flow prompts a discard confirm.
+ */
+export type OnboardingFlow = 'onboarding' | 'retake';
+
 export type AppStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   // AU-307 phase 05 — ItemDetail "Build around this" navigates Home with
@@ -78,6 +88,12 @@ export type AppStackParamList = {
   // delete) plus three pushed sub-pages grouping related settings (iOS HIG).
   Settings: undefined;
   PersonalizationSettings: undefined; // Style Direction · Language · Body Photo
+  // Style Direction review (reuses the onboarding "Completed" design). Entered
+  // read-only from Personalization (`changed:false` → Save disabled, Retake
+  // secondary) and again after a retake completes (`changed:true` → Save
+  // enabled). `selection` is the profile being shown (current, or the new
+  // retake answers).
+  StyleDirectionReview: { selection: V05OnboardingSelection; changed: boolean };
   PrivacySettings: undefined; // Privacy Control · usage analytics · AI sharing
   AboutSettings: undefined; // Version · Terms of Service · Privacy Policy
   Wardrobe: undefined;
@@ -131,11 +147,14 @@ export type AppStackParamList = {
   //
   // `OnboardingFit` and `OnboardingStyles` are each ONE screen parameterised
   // by the upstream wardrobe choice (D8) — not 3 distinct flows.
-  OnboardingWardrobe: undefined;
-  OnboardingFit: { wardrobe_direction: WardrobeDirection };
+  // `flow` threads through every step so the screens know whether they are
+  // first-time onboarding (default) or a Settings-initiated retake.
+  OnboardingWardrobe: { flow?: OnboardingFlow } | undefined;
+  OnboardingFit: { wardrobe_direction: WardrobeDirection; flow?: OnboardingFlow };
   OnboardingStyles: {
     wardrobe_direction: WardrobeDirection;
     fit_preference: FitPreference;
+    flow?: OnboardingFlow;
   };
   // Loading owns the /generate mutation (moved out of Styles per D10). Carries
   // the full selection forward so it can fire the call and, on success,

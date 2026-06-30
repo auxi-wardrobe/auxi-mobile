@@ -23,6 +23,8 @@ type SettingsDialogProps = {
   onPrimary: () => void;
   cancelTestID: string;
   primaryTestID: string;
+  /** Secondary/cancel button label. Defaults to the shared `common.cancel`. */
+  cancelLabel?: string;
   children?: React.ReactNode;
 };
 
@@ -43,6 +45,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
   onPrimary,
   cancelTestID,
   primaryTestID,
+  cancelLabel,
   children,
 }) => {
   const { t } = useTranslation();
@@ -81,7 +84,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
                   onPress={onClose}
                 >
                   <Text style={styles.modalTextActionLabel}>
-                    {t('common.cancel')}
+                    {cancelLabel ?? t('common.cancel')}
                   </Text>
                 </TouchableOpacity>
 

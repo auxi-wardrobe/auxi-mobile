@@ -45,7 +45,7 @@ type ScreenRoute = RouteProp<AppStackParamList, 'OnboardingFit'>;
 export const OnboardingFitScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<ScreenRoute>();
-  const { wardrobe_direction } = route.params;
+  const { wardrobe_direction, flow } = route.params;
   // Track the wire value (never the display label) so the contract value
   // is what threads downstream (D2).
   const [selected, setSelected] = useState<FitPreference | null>(null);
@@ -70,6 +70,7 @@ export const OnboardingFitScreen = () => {
     navigation.navigate('OnboardingStyles', {
       wardrobe_direction,
       fit_preference: selected,
+      flow,
     });
   };
 

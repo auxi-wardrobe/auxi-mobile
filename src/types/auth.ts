@@ -16,11 +16,28 @@ export interface UserDailyNotificationSettings {
   frequency?: DailyNotificationFrequency;
 }
 
+/**
+ * Persisted onboarding selection (wardrobe direction + fit + ranked styles).
+ * Stored loosely (plain strings) to keep `types/auth` a leaf module — the
+ * branded `WardrobeDirection`/`FitPreference`/`StyleTag` unions live in
+ * `services/v05Api`, which itself imports this file. App code reads this back
+ * as a `V05OnboardingSelection` (structurally identical, strings widen) to
+ * render chips and seed a retake. See `Personalization` → "Style Direction".
+ */
+export interface OnboardingProfileMetadata {
+  wardrobe_direction: string;
+  fit_preference: string;
+  style_preferences: string[];
+}
+
 export interface UserMetadata {
   daily_notification?: UserDailyNotificationSettings;
   style_direction?: UserStyleDirection;
   confidence_level?: UserConfidenceLevel;
   display_state?: UserDisplayState;
+  // Snapshot of the user's onboarding answers — written on first-time
+  // completion (Outro) and replaced only when a retake is Saved.
+  onboarding_profile?: OnboardingProfileMetadata;
 }
 
 export interface User {

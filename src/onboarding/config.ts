@@ -307,6 +307,55 @@ export const OUTRO_COPY: OutroCopy = {
 /** Static lead-in above the chips row (Figma "You selected"). */
 export const SELECTED_CHIPS_LEADIN = 'You selected';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Retake (post-login Personalization → Style Direction). English-only like the
+// rest of onboarding; the review screen reuses the Completed design.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const RETAKE_COPY = {
+  // Style Direction review / result screen.
+  review: {
+    leadIn: 'Your style profile',
+    headlineReview: 'Your Style Direction',
+    headlineResult: 'Your new Style Direction',
+    footerReview: 'Retake the quiz to update your personalization profile.',
+    footerResult: 'Save to update your personalization, or retake again.',
+    setupHeadline: 'Set up your Style Direction',
+    setupFooter:
+      'Take a quick style quiz so Macgie can personalize your recommendations.',
+    save: 'Save',
+    retake: 'Retake',
+    setup: 'Set up',
+  },
+  // Confirm before restarting the quiz (a completed profile would be replaced).
+  retakeConfirm: {
+    title: 'Retake Style Direction?',
+    body:
+      'Retaking will replace your current personalization profile.\n\n' +
+      '• Your previous style preferences and personalization memory will be removed.\n' +
+      '• Your wardrobe recommendations may change.\n' +
+      '• Sample wardrobe items may be regenerated based on your new profile.\n' +
+      '• Future recommendations will learn from your new preferences.\n\n' +
+      'This action cannot be undone.',
+    cancel: 'Cancel',
+    confirm: 'I Understand, Continue',
+  },
+  // Confirm before leaving an in-progress retake (nothing saved yet).
+  discard: {
+    title: 'Discard your changes?',
+    body:
+      "You haven't finished updating your personalization. If you leave now, " +
+      'your new answers will be discarded and your current personalization ' +
+      'will remain unchanged.',
+    cancel: 'Continue Editing',
+    confirm: 'Discard Changes',
+  },
+  // Toast after a successful Save.
+  savedToast:
+    'Personalization updated. Recommendations will improve as you continue using Macgie.',
+  saveError: 'Could not update personalization. Please try again.',
+} as const;
+
 /**
  * Resolve the user's selection to display labels for the "You selected" chips.
  * Wire values never appear in the UI: fit `Classic Fit` renders as "Regular"

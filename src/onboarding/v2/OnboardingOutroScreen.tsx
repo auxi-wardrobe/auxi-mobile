@@ -50,8 +50,12 @@ export const OnboardingOutroScreen = () => {
     setIsFinishing(true);
     try {
       // Deferred completion: flips is_first_login=false → AppNavigator swaps
-      // to Home. Clears the dev replay override internally.
-      await completeOnboarding();
+      // to Home. Clears the dev replay override internally. Snapshot the
+      // onboarding answers into user_metadata so Settings → Personalization can
+      // render the profile + seed a future retake (backend deep-merges).
+      await completeOnboarding({
+        user_metadata: { onboarding_profile: selection },
+      });
       // Activation milestone — fired AFTER completion resolves (not on
       // /generate, and not before the await) so it emits exactly once, at the
       // true completion point. If completeOnboarding throws, the CTA stays

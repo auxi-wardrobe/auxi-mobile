@@ -70,7 +70,7 @@ type ScreenRoute = RouteProp<AppStackParamList, 'OnboardingStyles'>;
 export const OnboardingStylesScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<ScreenRoute>();
-  const { wardrobe_direction, fit_preference } = route.params;
+  const { wardrobe_direction, fit_preference, flow } = route.params;
   const copy = STEP_COPY.step3;
 
   // ranked = ordered selection; index 0 has rank 1 (highest weight).
@@ -103,14 +103,19 @@ export const OnboardingStylesScreen = () => {
 
   const handleNext = () => {
     if (!isReady) return;
-    // Hand the full selection to the Loading screen, which owns /generate (D10).
-    navigation.navigate('OnboardingLoading', {
-      selection: {
-        wardrobe_direction,
-        fit_preference,
-        style_preferences: ranked,
-      },
-    });
+    const selection = {
+      wardrobe_direction,
+      fit_preference,
+      style_preferences: ranked,
+    };
+    // Retake: nothing is generated or persisted yet — hand the new answers to
+    // the review screen, where Save (now enabled) commits them. First-time
+    // onboarding still hands off to Loading, which owns /generate (D10).
+    if (flow === 'retake') {
+      navigation.navigate('StyleDirectionReview', { selection, changed: true });
+      return;
+    }
+    navigation.navigate('OnboardingLoading', { selection });
   };
 
   // Build the 2-per-row grid from STYLE_OPTIONS (any trailing odd tile sits solo).
