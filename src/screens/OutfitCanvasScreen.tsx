@@ -599,9 +599,28 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     setSelectedId(null);
   }, [canRedo]);
 
+  // Stamps the last moment an item handled a tap. On react-native-web a click on
+  // an item ALSO bubbles to the canvas backdrop Pressable (whose onPress clears
+  // the selection), so the item gets selected and instantly deselected — the
+  // toolbar never enables. Native's responder system stops that bubble, so this
+  // guard is a no-op there. The backdrop's deselect ignores a tap that an item
+  // just handled (see styles.body Pressable below).
+  const lastItemTapRef = useRef(0);
+
   // Item actions
   const handleSelect = useCallback((id: string) => {
+    lastItemTapRef.current = Date.now();
     setSelectedId(prev => (prev === id ? null : id));
+  }, []);
+
+  // Backdrop tap → deselect, UNLESS an item just handled this same tap (web
+  // bubble). 250ms comfortably covers the pointerup→click gap without swallowing
+  // a deliberate later tap on empty canvas.
+  const handleBackdropPress = useCallback(() => {
+    if (Date.now() - lastItemTapRef.current < 250) {
+      return;
+    }
+    setSelectedId(null);
   }, []);
 
   const handlePositionChange = useCallback(
@@ -1167,7 +1186,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           top, Save pinned at the bottom. Backdrop tap deselects. */}
         <Pressable
           testID="canvas-backdrop"
-          onPress={() => setSelectedId(null)}
+          onPress={handleBackdropPress}
           style={styles.body}
         >
           {/* Top group — gap 16 (theme.spacing.m) between card / add-row / tags */}
