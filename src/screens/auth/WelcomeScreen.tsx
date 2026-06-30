@@ -34,7 +34,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
-import Toast from 'react-native-toast-message';
+import { toast } from '../../components/design-system/lib';
 
 import { theme } from '../../theme/theme';
 import { MacgieNod } from '../../components/macgie';
@@ -201,7 +201,7 @@ export const WelcomeScreen = () => {
         return;
       }
       // EMAIL_LINKED_TO_OTHER_PROVIDER
-      Toast.show({
+      toast.show({
         type: 'info',
         text1: t('uac.welcome.oauth_conflict_other_provider', {
           provider: err.detail.provider,
@@ -209,7 +209,7 @@ export const WelcomeScreen = () => {
       });
       return;
     }
-    Toast.show({
+    toast.show({
       type: 'error',
       text1: t('uac.welcome.oauth_generic_error'),
     });
@@ -219,7 +219,7 @@ export const WelcomeScreen = () => {
     if (isBusy) return;
     track('oauth_sign_in_started', { provider: 'google' });
     if (!isOAuthConfigured()) {
-      Toast.show({
+      toast.show({
         type: 'info',
         text1: t('uac.welcome.oauth_not_configured'),
       });
@@ -242,7 +242,7 @@ export const WelcomeScreen = () => {
         handleAuthError(err as AuthErrorEnvelope);
         return;
       }
-      Toast.show({
+      toast.show({
         type: 'error',
         text1: t('uac.welcome.oauth_generic_error'),
       });
@@ -260,7 +260,7 @@ export const WelcomeScreen = () => {
       // OAuth config is currently shared between Google + Apple — until
       // anh confirms Apple Sign-In is provisioned, we surface the same
       // info toast as Google to avoid crashing on tap.
-      Toast.show({
+      toast.show({
         type: 'info',
         text1: t('uac.welcome.oauth_not_configured'),
       });
@@ -278,7 +278,7 @@ export const WelcomeScreen = () => {
         handleAuthError(err as AuthErrorEnvelope);
         return;
       }
-      Toast.show({
+      toast.show({
         type: 'error',
         text1: t('uac.welcome.oauth_generic_error'),
       });

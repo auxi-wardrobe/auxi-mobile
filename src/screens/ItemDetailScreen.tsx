@@ -13,7 +13,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import Toast from 'react-native-toast-message';
+import { toast } from '../components/design-system/lib';
 import {
   BottomSheetSurface,
   DividerRow,
@@ -317,7 +317,7 @@ export const ItemDetailScreen = () => {
           if (applyFallback()) {
             return;
           }
-          Toast.show({
+          toast.show({
             type: 'error',
             text1: t('wardrobe.itemDetail.toast_item_not_found'),
             position: 'bottom',
@@ -339,7 +339,7 @@ export const ItemDetailScreen = () => {
           return;
         }
 
-        Toast.show({
+        toast.show({
           type: 'error',
           text1: t('wardrobe.itemDetail.toast_load_failed_title'),
           text2: t('wardrobe.itemDetail.toast_load_failed_body'),
@@ -505,7 +505,7 @@ export const ItemDetailScreen = () => {
     } catch (error) {
       console.error('Failed to update usage frequency', error);
       setItem(previousItem);
-      Toast.show({
+      toast.show({
         type: 'error',
         text1: t('wardrobe.itemDetail.toast_usage_failed_title'),
         text2: getFriendlyError(
@@ -527,7 +527,7 @@ export const ItemDetailScreen = () => {
     // but keep this guard in case handleDelete is wired up by another caller
     // in the future (long-press, swipe, etc.).
     if (isCatalogItem) {
-      Toast.show({
+      toast.show({
         type: 'error',
         text1: t('wardrobe.itemDetail.toast_catalog_delete_blocked'),
         position: 'bottom',
@@ -557,7 +557,7 @@ export const ItemDetailScreen = () => {
                 deletedProps.category = item.category;
               }
               track('wardrobe_item_deleted', deletedProps);
-              Toast.show({
+              toast.show({
                 type: 'success',
                 text1: t('wardrobe.itemDetail.toast_deleted'),
                 position: 'bottom',
@@ -565,7 +565,7 @@ export const ItemDetailScreen = () => {
               navigation.goBack();
             } catch (error) {
               console.error('Failed to delete item', error);
-              Toast.show({
+              toast.show({
                 type: 'error',
                 text1: t('wardrobe.itemDetail.toast_delete_failed_title'),
                 text2: getFriendlyError(
@@ -688,14 +688,14 @@ export const ItemDetailScreen = () => {
         fields_changed: fieldsChanged,
       });
 
-      Toast.show({
+      toast.show({
         type: 'success',
         text1: t('wardrobe.itemDetail.toast_updated'),
         position: 'bottom',
       });
     } catch (error) {
       console.error('Failed to save item updates', error);
-      Toast.show({
+      toast.show({
         type: 'error',
         text1: t('wardrobe.itemDetail.toast_save_failed_title'),
         text2: getFriendlyError(

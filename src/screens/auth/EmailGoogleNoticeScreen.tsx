@@ -43,7 +43,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import Toast from 'react-native-toast-message';
+import { toast } from '../../components/design-system/lib';
 
 import { theme } from '../../theme/theme';
 import { DotsLoader } from '../../components/atoms/DotsLoader';
@@ -92,7 +92,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
         return;
       }
       // EMAIL_LINKED_TO_OTHER_PROVIDER
-      Toast.show({
+      toast.show({
         type: 'info',
         text1: t('uac.welcome.oauth_conflict_other_provider', {
           provider: err.detail.provider,
@@ -100,7 +100,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
       });
       return;
     }
-    Toast.show({
+    toast.show({
       type: 'error',
       text1: t('uac.welcome.oauth_generic_error'),
     });
@@ -112,7 +112,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
     if (!isOAuthConfigured()) {
       // Build hasn't received the OAuth client IDs / plist yet — surface a
       // toast instead of crashing at the native SDK boundary.
-      Toast.show({
+      toast.show({
         type: 'info',
         text1: t('uac.welcome.oauth_not_configured'),
       });
@@ -132,7 +132,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
         handleAuthError(err as AuthErrorEnvelope);
         return;
       }
-      Toast.show({
+      toast.show({
         type: 'error',
         text1: t('uac.welcome.oauth_generic_error'),
       });

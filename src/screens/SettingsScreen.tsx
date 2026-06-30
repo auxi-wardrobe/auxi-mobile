@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Toast from 'react-native-toast-message';
+import { toast } from '../components/design-system/lib';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useAuth } from '../context/AuthContext';
@@ -194,7 +194,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 };
 
 const showSettingsError = (title: string, message: string) => {
-  Toast.show({
+  toast.show({
     type: 'error',
     text1: title,
     text2: message,
@@ -584,7 +584,7 @@ export const SettingsScreen = () => {
       dailyNotification: { ...previous },
     }));
     // Brief, calm confirmation that the undo took effect (closes the loop).
-    Toast.show({
+    toast.show({
       type: 'info',
       text1: t('settings.notification_reset_undone_title'),
       position: 'bottom',
@@ -646,17 +646,16 @@ export const SettingsScreen = () => {
           period: defaults.period,
           frequency: defaults.frequency,
         });
-        // Calm/lightweight confirmation with a tap-to-undo affordance. Uses the
-        // codebase-proven Toast.show + onPress pattern (the library's custom
-        // toastConfig render path is unreliable here — see AU-361 ItemReadySnackbar).
-        Toast.show({
+        // Calm/lightweight confirmation with a tap-to-undo affordance. The DS
+        // toast fires `onPress` then auto-hides, so undo just restores the
+        // previous setting (no explicit hide needed).
+        toast.show({
           type: 'info',
           text1: t('settings.notification_reset_toast_title'),
           text2: t('settings.notification_reset_toast_body'),
           position: 'bottom',
           visibilityTime: 5000,
           onPress: () => {
-            Toast.hide();
             undoNotificationReset(previous);
           },
         });

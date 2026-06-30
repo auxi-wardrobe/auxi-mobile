@@ -34,7 +34,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from '../../components/design-system/lib';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
@@ -116,7 +116,7 @@ export const VerifyEmailScreen = () => {
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        Toast.show({
+        toast.show({
           type: 'info',
           text1: t('uac.verify_email.title'),
           text2: t('uac.verify_email.body_line_c'),
@@ -136,14 +136,14 @@ export const VerifyEmailScreen = () => {
       {
         onSuccess: () => {
           setCooldown(RESEND_COOLDOWN_SECONDS);
-          Toast.show({
+          toast.show({
             type: 'success',
             text1: t('uac.verify_email.resend_success'),
             position: 'bottom',
           });
         },
         onError: () => {
-          Toast.show({
+          toast.show({
             type: 'error',
             text1: t('uac.verify_email.resend_failure'),
             position: 'bottom',

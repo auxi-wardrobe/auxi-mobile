@@ -18,7 +18,7 @@
  */
 import React from 'react';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
-import Toast from 'react-native-toast-message';
+import { toast } from '../../components/design-system/lib';
 import { formatItemDate, ItemDetailScreen } from '../ItemDetailScreen';
 
 // ---- mocks ------------------------------------------------------------------
@@ -93,7 +93,7 @@ jest.mock('../../utils/url', () => ({
   getImageUrl: (url?: string | null) => url ?? undefined,
 }));
 
-const mockedToastShow = (Toast as unknown as { show: jest.Mock }).show;
+const mockedToastShow = (toast as unknown as { show: jest.Mock }).show;
 
 // ---- fixtures / helpers -----------------------------------------------------
 

@@ -17,8 +17,14 @@ import { apiClient } from './apiClient';
 // level (lifted by the app.py exception handler) or nested under `detail`
 // (FastAPI's raw envelope), so we check both positions for the `message`.
 
-/** Body shapes the backend recognises for the reusable self-visualization profile. */
-export type BodyShape = 'pear' | 'hourglass' | 'rectangle';
+/**
+ * Body shapes the backend recognises for the reusable self-visualization
+ * profile. AU-358: these are the three AI-generated body BUILDS the user picks
+ * from (slim / average / fuller), not the legacy silhouette taxonomy
+ * (pear / hourglass / rectangle). The value rides in `select` + the persisted
+ * profile and is the single source of truth — `body-shapes.ts` re-exports it.
+ */
+export type BodyShape = 'slim' | 'average' | 'fuller';
 
 export interface BodyItem {
   id: string;
@@ -128,7 +134,11 @@ export const bodyService = {
   // `PATCH /api/body/{id}` returns `{ body: Body }`.
   updateBody: async (
     id: string,
-    patch: { body_shape?: string; full_body_url?: string; is_primary?: boolean },
+    patch: {
+      body_shape?: string;
+      full_body_url?: string;
+      is_primary?: boolean;
+    },
   ): Promise<BodyProfile> => {
     try {
       const response = await apiClient.patch(`/body/${id}`, patch);

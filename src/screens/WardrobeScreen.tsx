@@ -17,7 +17,7 @@ import { MacgieLoader } from '../components/macgie';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import Toast from 'react-native-toast-message';
+import { toast } from '../components/design-system/lib';
 import {
   launchCamera,
   launchImageLibrary,
@@ -116,10 +116,7 @@ const isPreparing = (item: WardrobeItem): boolean => item.is_preparing === true;
 //   • (none)   — a user item that has been seen.
 type TileStatus = 'new' | 'less_use' | 'common' | null;
 
-const resolveTileStatus = (
-  item: WardrobeItem,
-  viewed: boolean,
-): TileStatus => {
+const resolveTileStatus = (item: WardrobeItem, viewed: boolean): TileStatus => {
   // "New" only applies to the user's own uploads, never to catalog/common
   // items — those carry the "common" tag regardless of whether they've been
   // opened.
@@ -276,7 +273,7 @@ export const WardrobeScreen = () => {
           // journey-continuity fix.
           setLoadError(true);
           track('wardrobe_load_failed', { category: selectedTab });
-          Toast.show({
+          toast.show({
             type: 'error',
             text1: t('common.load_wardrobe_failed_title'),
             text2: t('common.try_again_moment'),
@@ -411,7 +408,7 @@ export const WardrobeScreen = () => {
       } catch (error) {
         console.error('Upload error', error);
         track('add_item_upload_failed', { source: type });
-        Toast.show({
+        toast.show({
           type: 'error',
           text1: t('wardrobe.list.upload_failed_title'),
           text2: t('wardrobe.list.upload_failed_body'),

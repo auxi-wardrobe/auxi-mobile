@@ -53,7 +53,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
+import { toast } from '../../components/design-system/lib';
 import {
   useNavigation,
   useRoute,
@@ -143,7 +143,7 @@ export const EmailInputScreen = () => {
           // unmounting screen) and bounce back to Welcome so they can pick a
           // sign-up path or try a different email.
           if (result.provider === 'none') {
-            Toast.show({
+            toast.show({
               type: 'info',
               text1: t('uac.email_input.error_no_account'),
               position: 'bottom',
