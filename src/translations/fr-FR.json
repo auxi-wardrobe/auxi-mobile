@@ -692,7 +692,11 @@
       "retakeProfile": "Reprendre les photos",
       "privacy": "Vos photos sont envoyées de façon sécurisée à nos fournisseurs d'IA (Google, OpenAI) pour générer votre résultat, et ne sont jamais vendues ni partagées avec des annonceurs.",
       "generating": "Création de votre look…",
+      "generatingShapes": "Création de vos morphologies…",
       "error": "Impossible de créer votre look. Veuillez réessayer.",
+      "shapesError": "Impossible de créer vos morphologies. Veuillez réessayer.",
+      "shapesPartial": "Certaines formes n'ont pas été générées — utilisez celles-ci ou régénérez.",
+      "regenerate": "Régénérer",
       "retry": "Réessayer",
       "errors": {
         "noPerson": "Veuillez importer une photo de vous montrant votre corps, afin que nous puissions afficher la tenue sur vous.",
@@ -715,11 +719,9 @@
         "retake": "Reprendre les photos"
       },
       "shapes": {
-        "pear": "Poire",
-        "hourglass": "Sablier",
-        "rectangle": "Rectangle",
-        "triangle": "Triangle",
-        "oval": "Ovale"
+        "slim": "Mince",
+        "average": "Moyenne",
+        "fuller": "Ronde"
       },
       "quit": {
         "hint": "Cela peut prendre un instant. Vous pouvez partir — nous vous préviendrons dès que c’est prêt.",
@@ -729,7 +731,11 @@
         "readyTitle": "Votre rendu est prêt",
         "readyBody": "Touchez pour voir votre visualisation.",
         "failedTitle": "Impossible de créer votre rendu",
-        "failedBody": "Touchez pour revenir et réessayer."
+        "failedBody": "Touchez pour revenir et réessayer.",
+        "shapesReadyTitle": "Vos morphologies sont prêtes",
+        "shapesReadyBody": "Touchez pour choisir celle qui vous ressemble le plus.",
+        "shapesFailedTitle": "Impossible de créer vos morphologies",
+        "shapesFailedBody": "Touchez pour revenir et réessayer."
       }
     },
     "aiConsent": {

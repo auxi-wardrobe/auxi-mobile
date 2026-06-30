@@ -692,7 +692,11 @@
       "retakeProfile": "Retake photos",
       "privacy": "Your photos are sent securely to our AI providers (Google, OpenAI) to generate your result, and are never sold or shared with advertisers.",
       "generating": "Creating your look…",
+      "generatingShapes": "Creating your body shapes…",
       "error": "We couldn't create your look. Please try again.",
+      "shapesError": "We couldn't create your body shapes. Please try again.",
+      "shapesPartial": "Some shapes didn't generate — use one of these or regenerate.",
+      "regenerate": "Regenerate",
       "retry": "Try again",
       "errors": {
         "noPerson": "Please upload a photo of yourself showing your body, so we can show the outfit on you.",
@@ -715,11 +719,9 @@
         "retake": "Retake photos"
       },
       "shapes": {
-        "pear": "Pear",
-        "hourglass": "Hourglass",
-        "rectangle": "Rectangle",
-        "triangle": "Triangle",
-        "oval": "Oval"
+        "slim": "Slim",
+        "average": "Average",
+        "fuller": "Fuller"
       },
       "quit": {
         "hint": "This can take a moment. You can leave — we’ll let you know the second it’s ready.",
@@ -729,7 +731,11 @@
         "readyTitle": "Your look is ready",
         "readyBody": "Tap to view your visualization.",
         "failedTitle": "We couldn’t create your look",
-        "failedBody": "Tap to go back and try again."
+        "failedBody": "Tap to go back and try again.",
+        "shapesReadyTitle": "Your body shapes are ready",
+        "shapesReadyBody": "Tap to pick the one that feels most like you.",
+        "shapesFailedTitle": "We couldn’t create your body shapes",
+        "shapesFailedBody": "Tap to go back and try again."
       }
     },
     "aiConsent": {

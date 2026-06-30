@@ -691,7 +691,11 @@
       "retakeProfile": "Chụp lại ảnh",
       "privacy": "Ảnh của bạn được gửi an toàn đến các nhà cung cấp AI (Google, OpenAI) để tạo kết quả, và không bao giờ được bán hay chia sẻ cho nhà quảng cáo.",
       "generating": "Đang tạo diện mạo của bạn…",
+      "generatingShapes": "Đang tạo dáng người của bạn…",
       "error": "Không thể tạo diện mạo của bạn. Vui lòng thử lại.",
+      "shapesError": "Không thể tạo dáng người của bạn. Vui lòng thử lại.",
+      "shapesPartial": "Một số dáng chưa được tạo — dùng các dáng này hoặc tạo lại.",
+      "regenerate": "Tạo lại",
       "retry": "Thử lại",
       "errors": {
         "noPerson": "Vui lòng tải lên ảnh của chính bạn thấy rõ toàn thân, để chúng tôi có thể hiển thị trang phục lên người bạn.",
@@ -714,11 +718,9 @@
         "retake": "Chụp lại ảnh"
       },
       "shapes": {
-        "pear": "Quả lê",
-        "hourglass": "Đồng hồ cát",
-        "rectangle": "Chữ nhật",
-        "triangle": "Tam giác",
-        "oval": "Bầu dục"
+        "slim": "Thon gọn",
+        "average": "Trung bình",
+        "fuller": "Đầy đặn"
       },
       "quit": {
         "hint": "Việc này có thể mất một lát. Bạn có thể rời đi — chúng tôi sẽ báo ngay khi xong.",
@@ -728,7 +730,11 @@
         "readyTitle": "Diện mạo của bạn đã sẵn sàng",
         "readyBody": "Chạm để xem hình ảnh của bạn.",
         "failedTitle": "Chúng tôi không thể tạo diện mạo",
-        "failedBody": "Chạm để quay lại và thử lại."
+        "failedBody": "Chạm để quay lại và thử lại.",
+        "shapesReadyTitle": "Các dáng người của bạn đã sẵn sàng",
+        "shapesReadyBody": "Chạm để chọn dáng giống bạn nhất.",
+        "shapesFailedTitle": "Không thể tạo dáng người của bạn",
+        "shapesFailedBody": "Chạm để quay lại và thử lại."
       }
     },
     "aiConsent": {

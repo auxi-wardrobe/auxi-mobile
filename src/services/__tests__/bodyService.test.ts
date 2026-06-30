@@ -43,7 +43,7 @@ const sampleProfile: BodyProfile = {
   id: 'body-1',
   user_id: 'user-1',
   image_url: 'https://cdn/selfie.jpg',
-  body_shape: 'hourglass',
+  body_shape: 'average',
   full_body_url: 'https://cdn/full.jpg',
   is_primary: true,
 };
@@ -79,17 +79,17 @@ describe('bodyService.getActiveProfile', () => {
 
 describe('bodyService.updateBody', () => {
   it('PATCHes /body/{id} with the patch and unwraps { body }', async () => {
-    const patched = { ...sampleProfile, body_shape: 'pear' as const };
+    const patched = { ...sampleProfile, body_shape: 'slim' as const };
     mockedPatch.mockResolvedValueOnce({ data: { body: patched } });
 
     const result = await bodyService.updateBody('body-1', {
-      body_shape: 'pear',
+      body_shape: 'slim',
       is_primary: true,
       full_body_url: 'https://cdn/full.jpg',
     });
 
     expect(mockedPatch).toHaveBeenCalledWith('/body/body-1', {
-      body_shape: 'pear',
+      body_shape: 'slim',
       is_primary: true,
       full_body_url: 'https://cdn/full.jpg',
     });
@@ -99,14 +99,18 @@ describe('bodyService.updateBody', () => {
   it('falls back to the raw data when no { body } wrapper is present', async () => {
     mockedPatch.mockResolvedValueOnce({ data: sampleProfile });
 
-    expect(await bodyService.updateBody('body-1', { is_primary: true })).toEqual(
-      sampleProfile,
-    );
+    expect(
+      await bodyService.updateBody('body-1', { is_primary: true }),
+    ).toEqual(sampleProfile);
   });
 });
 
 describe('bodyService.uploadBody', () => {
-  const asset = { uri: 'file://selfie.jpg', type: 'image/jpeg', fileName: 's.jpg' };
+  const asset = {
+    uri: 'file://selfie.jpg',
+    type: 'image/jpeg',
+    fileName: 's.jpg',
+  };
 
   const getSentFormData = (): MockFormData =>
     mockedPost.mock.calls[0][1] as unknown as MockFormData;
@@ -115,7 +119,7 @@ describe('bodyService.uploadBody', () => {
     mockedPost.mockResolvedValueOnce({ data: { body: sampleProfile } });
 
     await bodyService.uploadBody(asset, {
-      body_shape: 'hourglass',
+      body_shape: 'average',
       photo_type: 'full_body',
       is_primary: true,
     });
@@ -128,7 +132,7 @@ describe('bodyService.uploadBody', () => {
       }),
     );
     const sent = getSentFormData().appended;
-    expect(sent).toContainEqual(['body_shape', 'hourglass']);
+    expect(sent).toContainEqual(['body_shape', 'average']);
     expect(sent).toContainEqual(['photo_type', 'full_body']);
     expect(sent).toContainEqual(['is_primary', 'true']);
   });

@@ -19,22 +19,39 @@ import { i18n } from '../../i18n/init';
 import { track } from '../../services/analytics';
 import { navigationRef } from '../../navigation/navigationRef';
 import { TryOnOutfitContext } from '../../types/navigation';
+import { GenerationPhase } from './try-on-generation-store';
 
 export const showTryOnCompletionNotice = (result: {
   status: 'success' | 'error';
+  // AU-358: which async step finished — picks the right copy. The 'shapes'
+  // phase tells the user their body shapes are ready to PICK from; the 'render'
+  // phase tells them their final look is ready to VIEW.
+  phase: GenerationPhase;
   outfit: TryOnOutfitContext | null;
 }): void => {
   const t = i18n.t.bind(i18n);
   const isSuccess = result.status === 'success';
+  const isShapes = result.phase === 'shapes';
+
+  const titleKey = isShapes
+    ? isSuccess
+      ? 'seeThisOnMe.notify.shapesReadyTitle'
+      : 'seeThisOnMe.notify.shapesFailedTitle'
+    : isSuccess
+    ? 'seeThisOnMe.notify.readyTitle'
+    : 'seeThisOnMe.notify.failedTitle';
+  const bodyKey = isShapes
+    ? isSuccess
+      ? 'seeThisOnMe.notify.shapesReadyBody'
+      : 'seeThisOnMe.notify.shapesFailedBody'
+    : isSuccess
+    ? 'seeThisOnMe.notify.readyBody'
+    : 'seeThisOnMe.notify.failedBody';
 
   toast.show({
     type: isSuccess ? 'success' : 'error',
-    text1: isSuccess
-      ? t('seeThisOnMe.notify.readyTitle')
-      : t('seeThisOnMe.notify.failedTitle'),
-    text2: isSuccess
-      ? t('seeThisOnMe.notify.readyBody')
-      : t('seeThisOnMe.notify.failedBody'),
+    text1: t(titleKey),
+    text2: t(bodyKey),
     position: 'top',
     visibilityTime: 6000,
     // Tap-to-view: re-open the flow so the user lands back on the result.

@@ -12,16 +12,22 @@ import { MacgieLoader } from '../../components/macgie';
 interface GeneratingViewProps {
   errored: boolean;
   onRetry: () => void;
-  // AU-358: leave the loading screen while the render keeps going in the
+  // AU-358: leave the loading screen while the job keeps going in the
   // background; the user is notified in-app when it completes. Omitted in the
   // errored state (nothing to background — they retry or go back instead).
   onQuit?: () => void;
+  // AU-358: the loader / error copy differ per phase (3-shape generation vs the
+  // final outfit render). Default to the render copy when omitted.
+  label?: string;
+  errorText?: string;
 }
 
 export const GeneratingView: React.FC<GeneratingViewProps> = ({
   errored,
   onRetry,
   onQuit,
+  label,
+  errorText,
 }) => {
   const { t } = useTranslation();
 
@@ -29,7 +35,9 @@ export const GeneratingView: React.FC<GeneratingViewProps> = ({
     <View style={styles.centerFill} testID="stom-generating">
       {errored ? (
         <>
-          <Text style={styles.errorText}>{t('seeThisOnMe.error')}</Text>
+          <Text style={styles.errorText}>
+            {errorText ?? t('seeThisOnMe.error')}
+          </Text>
           <PillButton
             testID="stom-retry"
             title={t('seeThisOnMe.retry')}
@@ -40,7 +48,7 @@ export const GeneratingView: React.FC<GeneratingViewProps> = ({
         </>
       ) : (
         <>
-          <MacgieLoader label={t('seeThisOnMe.generating')} />
+          <MacgieLoader label={label ?? t('seeThisOnMe.generating')} />
           {onQuit ? (
             <View style={styles.quitBlock}>
               <Text style={styles.quitHint}>{t('seeThisOnMe.quit.hint')}</Text>
