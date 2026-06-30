@@ -1,75 +1,102 @@
 /**
- * Background-safe store for the "See this on me" / self-visualization render
- * (AU-358 / AU-354 pt.2).
+ * Background-safe store for the two ASYNC steps of the "See this on me" /
+ * self-visualization flow (AU-358):
+ *
+ *   • phase 'shapes' — generate 3 AI body-shape photos (slim/average/fuller)
+ *   • phase 'render' — render the chosen outfit onto the picked body
  *
  * WHY THIS EXISTS
  * ---------------
- * The high-res try-on render takes ~10-20s. Previously the request was awaited
- * inside `SeeThisOnMeScreen` with the result in component-local state, so the
- * user was trapped on a blocking loading screen — leaving it unmounted the
- * component and dropped the in-flight render (and there was no way to learn it
- * had finished). This store lifts the generation OUT of the React tree so it:
+ * Both steps run on the backend worker (submit → poll, ~30–120s). Awaiting
+ * them inside the React tree trapped the user on a blocking screen and dropped
+ * the in-flight job if they left. This single store lifts BOTH jobs out of
+ * React so each:
  *
- *   1. keeps running when the user quits the loading screen ("continue in
+ *   1. keeps polling when the user quits the loading screen ("continue in
  *      background"), and
- *   2. notifies (in-app) on completion via an injected `onBackgroundComplete`
- *      callback, so the user can return and view their result.
+ *   2. notifies (in-app) on completion via the injected `onBackgroundComplete`
+ *      callback, so the user can return and continue/view their result.
  *
- * KISS: a single module-level singleton (no Redux/Zustand — see auxi/CLAUDE.md).
- * Only ONE generation is tracked at a time, which matches the flow (one outfit
- * render per visit). Subscribe from React via `useTryOnGeneration`.
+ * KISS: ONE module-level singleton with a `phase` discriminator — not two
+ * mechanisms (per the mobile spec §3.7). Only one job is tracked at a time,
+ * which matches the linear flow (shapes → pick → render). Subscribe from React
+ * via `useTryOnGeneration`.
  */
 import { tryOnService } from '../../services/tryOnService';
+import { bodyShapeService } from '../../services/bodyShapeService';
+import { pollJob } from '../../services/job-polling';
 import { TryOnOutfitContext } from '../../types/navigation';
-import { BodyShapeId } from './body-shapes';
+import { BodyShapeId, GeneratedShape, sortShapes } from './body-shapes';
 
-export type TryOnGenerationStatus =
-  | 'idle'
-  | 'generating'
-  | 'success'
-  | 'error';
+export type GenerationPhase = 'shapes' | 'render';
+
+export type TryOnGenerationStatus = 'idle' | 'generating' | 'success' | 'error';
 
 export interface TryOnGenerationState {
+  /** Which async job is tracked, or null when idle. */
+  phase: GenerationPhase | null;
   status: TryOnGenerationStatus;
-  /** The outfit being rendered — kept so a backgrounded screen can re-navigate. */
+  /** The outfit in flight — kept for both phases so a backgrounded screen can
+   *  re-navigate, and so the render phase knows what to render. */
   outfit: TryOnOutfitContext | null;
-  /** Inputs, retained so retry can re-run without the screen holding them. */
+
+  /** The worker job id for the current phase (needed by the screen to `select`). */
+  jobId: string | null;
+
+  // ── shapes phase ──────────────────────────────────────────────────────────
+  /** Inputs, retained so a retry can re-run without the screen holding them. */
+  selfieId: string | null;
+  fullBodyId: string | null;
+  /** The 3 generated builds (sorted slim→average→fuller) once succeeded. */
+  shapes: GeneratedShape[] | null;
+  /** True when only 1–2/3 builds succeeded (still a success — show + regenerate). */
+  partial: boolean;
+
+  // ── render phase ──────────────────────────────────────────────────────────
   bodyId: string | null;
   shape: BodyShapeId | null;
-  /** Resolved composite (url or data-uri) once `status === 'success'`. */
+  /** Resolved composite URL once the render `status === 'success'`. */
   resultUrl: string | null;
-  provider: string | null;
+
   /** True while the loading screen is NOT mounted (user quit / backgrounded). */
   backgrounded: boolean;
 }
 
 const initialState: TryOnGenerationState = {
+  phase: null,
   status: 'idle',
   outfit: null,
+  jobId: null,
+  selfieId: null,
+  fullBodyId: null,
+  shapes: null,
+  partial: false,
   bodyId: null,
   shape: null,
   resultUrl: null,
-  provider: null,
   backgrounded: false,
 };
 
 let state: TryOnGenerationState = initialState;
 const listeners = new Set<() => void>();
 
-// Bumps every time a new generation starts so a stale in-flight resolution
-// (e.g. the user retook + restarted) can't clobber the current one.
+// Bumps every time a new job starts so a stale in-flight resolution (e.g. the
+// user retook + restarted, or switched phase) can't clobber the current one.
 let runToken = 0;
 
 /**
- * Fired when a generation finishes while the screen is backgrounded (the user
- * quit the loading screen). The screen injects this on mount; it drives the
- * in-app completion Toast + the `body_shape_generation_completed_notified`
- * analytics event. Null when no screen is mounted (no-op — the result is still
- * stored and shown when the user returns).
+ * Fired when a job finishes while the screen is backgrounded (the user quit the
+ * loading screen). The screen injects this on mount; it drives the in-app
+ * completion Toast + the `body_shape_generation_completed_notified` analytics
+ * event. `phase` lets the notice pick the right copy ("shapes ready" vs "look
+ * ready"). Null when no screen is mounted (no-op — the result is still stored
+ * and shown when the user returns).
  */
-type BackgroundCompleteHandler = (
-  result: { status: 'success' | 'error'; outfit: TryOnOutfitContext | null },
-) => void;
+type BackgroundCompleteHandler = (result: {
+  status: 'success' | 'error';
+  phase: GenerationPhase;
+  outfit: TryOnOutfitContext | null;
+}) => void;
 let onBackgroundComplete: BackgroundCompleteHandler | null = null;
 
 export const setBackgroundCompleteHandler = (
@@ -85,6 +112,16 @@ const emit = (): void => {
 const setState = (patch: Partial<TryOnGenerationState>): void => {
   state = { ...state, ...patch };
   emit();
+};
+
+// Notify a backgrounded screen of a finished job (shared by both phases).
+const notifyIfBackgrounded = (
+  status: 'success' | 'error',
+  phase: GenerationPhase,
+): void => {
+  if (state.backgrounded) {
+    onBackgroundComplete?.({ status, phase, outfit: state.outfit });
+  }
 };
 
 export const tryOnGenerationStore = {
@@ -108,65 +145,125 @@ export const tryOnGenerationStore = {
   },
 
   /**
-   * Kick off (or restart) a generation. Resolves the request OUTSIDE React so
-   * it survives the screen unmounting. On completion, if the screen is
-   * backgrounded the injected `onBackgroundComplete` handler fires so the app
-   * can notify the user. Never throws — failures land in `status: 'error'`.
+   * Phase 1: generate the 3 body-shape photos. Submits the job then polls OUTSIDE
+   * React so it survives the screen unmounting. On success `shapes` holds the
+   * sorted builds (+ `partial`). Never throws — failures land in `status:'error'`.
+   *
+   * `fullBodyId` is required by the backend; the screen passes the full-body id
+   * when captured, else falls back to the selfie id (same fallback the render
+   * uses), since a 3-shape job needs two body ids.
    */
-  start: (input: {
+  startShapes: (input: {
+    outfit: TryOnOutfitContext;
+    selfieId: string;
+    fullBodyId: string;
+  }): void => {
+    const token = ++runToken;
+    setState({
+      phase: 'shapes',
+      status: 'generating',
+      outfit: input.outfit,
+      jobId: null,
+      selfieId: input.selfieId,
+      fullBodyId: input.fullBodyId,
+      shapes: null,
+      partial: false,
+      // clear any stale render output from a prior run
+      resultUrl: null,
+    });
+
+    (async () => {
+      try {
+        const { job_id } = await bodyShapeService.generateBodyShapes({
+          full_body_id: input.fullBodyId,
+          selfie_id: input.selfieId,
+          gemini_opt_in: true,
+        });
+        if (token !== runToken) return; // superseded before poll
+        setState({ jobId: job_id });
+        const { result } = await pollJob(
+          () => bodyShapeService.getBodyShapeResult(job_id),
+          r => r.status === 'completed' || r.status === 'failed',
+          { shouldContinue: () => token === runToken },
+        );
+        if (token !== runToken) return; // superseded
+
+        const shapes = result?.shapes ?? [];
+        if (result?.status === 'completed' && shapes.length > 0) {
+          setState({
+            status: 'success',
+            shapes: sortShapes(shapes),
+            partial: result.partial === true,
+          });
+          notifyIfBackgrounded('success', 'shapes');
+        } else {
+          setState({ status: 'error', shapes: null, partial: false });
+          notifyIfBackgrounded('error', 'shapes');
+        }
+      } catch {
+        if (token !== runToken) return;
+        setState({ status: 'error', shapes: null, partial: false });
+        notifyIfBackgrounded('error', 'shapes');
+      }
+    })();
+  },
+
+  /**
+   * Phase 2: render the outfit onto the chosen body. Submits the job then polls
+   * OUTSIDE React. On success `resultUrl` is the durable composite URL. Never
+   * throws — failures land in `status:'error'`.
+   *
+   * B1 invariant: only ever reached AFTER the caller confirmed AI data-sharing
+   * consent via useAiConsentGate (see SeeThisOnMeScreen.runRender). The route
+   * requires gemini_opt_in === true, so the only correct value is `true` — now
+   * backed by a recorded consent decision. Never call without the consent gate.
+   */
+  startRender: (input: {
     outfit: TryOnOutfitContext;
     bodyId: string;
     shape: BodyShapeId | null;
   }): void => {
     const token = ++runToken;
     setState({
+      phase: 'render',
       status: 'generating',
       outfit: input.outfit,
+      jobId: null,
       bodyId: input.bodyId,
       shape: input.shape,
       resultUrl: null,
-      provider: null,
     });
 
-    tryOnService
-      .generateTryOn({
-        body_id: input.bodyId,
-        wardrobe_item_ids: input.outfit.itemIds,
-        // B1 invariant: `start` is only ever reached AFTER the caller has
-        // confirmed AI data-sharing consent via useAiConsentGate (see
-        // SeeThisOnMeScreen.runGenerate). The backend route requires
-        // gemini_opt_in === true, so the only correct value here is `true` —
-        // and it now reflects a real, recorded consent decision, not a faked
-        // flag. Never call this store method without passing the consent gate.
-        gemini_opt_in: true,
-        prompt_params: input.shape ? { body_shape: input.shape } : undefined,
-      })
-      .then(res => {
-        if (token !== runToken) return; // superseded by a newer run
-        const url =
-          res.composite_url ??
-          (res.composite_png
-            ? `data:image/png;base64,${res.composite_png}`
-            : null);
-        if (!url) {
-          throw new Error('no_composite');
-        }
-        setState({
-          status: 'success',
-          resultUrl: url,
-          provider: res.provider ?? null,
+    (async () => {
+      try {
+        const { job_id } = await tryOnService.generateTryOn({
+          body_id: input.bodyId,
+          wardrobe_item_ids: input.outfit.itemIds,
+          gemini_opt_in: true,
+          prompt_params: input.shape ? { body_shape: input.shape } : undefined,
         });
-        if (state.backgrounded) {
-          onBackgroundComplete?.({ status: 'success', outfit: state.outfit });
+        if (token !== runToken) return; // superseded before poll
+        setState({ jobId: job_id });
+        const { result } = await pollJob(
+          () => tryOnService.getTryOnResult(job_id),
+          r => r.status === 'completed' || r.status === 'failed',
+          { shouldContinue: () => token === runToken },
+        );
+        if (token !== runToken) return; // superseded
+
+        if (result?.status === 'completed' && result.composite_url) {
+          setState({ status: 'success', resultUrl: result.composite_url });
+          notifyIfBackgrounded('success', 'render');
+        } else {
+          setState({ status: 'error', resultUrl: null });
+          notifyIfBackgrounded('error', 'render');
         }
-      })
-      .catch(() => {
+      } catch {
         if (token !== runToken) return;
-        setState({ status: 'error', resultUrl: null, provider: null });
-        if (state.backgrounded) {
-          onBackgroundComplete?.({ status: 'error', outfit: state.outfit });
-        }
-      });
+        setState({ status: 'error', resultUrl: null });
+        notifyIfBackgrounded('error', 'render');
+      }
+    })();
   },
 
   /** Clear everything (e.g. when the user finishes / leaves the feature). */

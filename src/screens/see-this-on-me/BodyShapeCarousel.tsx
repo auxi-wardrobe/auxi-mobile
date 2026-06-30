@@ -1,14 +1,13 @@
 /**
- * Body-shape picker — expanded full-screen carousel (Figma node 3398:17745 →
- * `noti` 3398:17798). Tap-to-expand modal over a scrim: headline + a swipeable
- * shape carousel with pagination dots + Retake / Use this photo actions.
- *
- * ASSET GAP: no silhouette SVGs exist, so each "page" renders the labeled shape
- * card from `body-shapes.ts` rather than artwork (see body-shapes.ts header).
+ * Body-shape picker — expanded full-screen carousel (AU-358). Tap-to-expand
+ * modal over a scrim: headline + a swipeable carousel of the 3 AI-GENERATED
+ * body-shape PHOTOS with pagination dots + Retake / Use this photo actions.
+ * Each page renders a real generated image (`image_url`), not a label.
  */
 import React, { useState } from 'react';
 import {
   Dimensions,
+  Image,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -22,12 +21,14 @@ import { useTranslation } from 'react-i18next';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
-import { BODY_SHAPE_OPTIONS, BodyShapeId } from './body-shapes';
+import { BodyShapeId, GeneratedShape } from './body-shapes';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 interface BodyShapeCarouselProps {
   visible: boolean;
+  /** The generated builds to page through (sorted slim→average→fuller). */
+  shapes: GeneratedShape[];
   initialShape: BodyShapeId | null;
   // AU-346 (1.1): the "save this as my reusable profile" opt-in lives here now
   // (default checked). When checked at "Use this photo", the screen persists the
@@ -40,6 +41,7 @@ interface BodyShapeCarouselProps {
 
 export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
   visible,
+  shapes,
   initialShape,
   optIn,
   onToggleOptIn,
@@ -49,7 +51,7 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
   const { t } = useTranslation();
   const initialIndex = Math.max(
     0,
-    BODY_SHAPE_OPTIONS.findIndex(o => o.id === initialShape),
+    shapes.findIndex(s => s.shape === initialShape),
   );
   const [index, setIndex] = useState(initialIndex);
 
@@ -60,7 +62,7 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
     }
   };
 
-  const current = BODY_SHAPE_OPTIONS[index] ?? BODY_SHAPE_OPTIONS[0];
+  const current = shapes[index] ?? shapes[0];
 
   return (
     <Modal
@@ -83,25 +85,28 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
             contentOffset={{ x: initialIndex * screenWidth, y: 0 }}
             style={styles.carousel}
           >
-            {BODY_SHAPE_OPTIONS.map(option => (
+            {shapes.map(option => (
               <View
-                key={option.id}
+                key={option.shape}
                 style={styles.page}
-                testID={`stom-shape-page-${option.id}`}
+                testID={`stom-shape-page-${option.shape}`}
               >
-                <View style={styles.shapeCard}>
-                  <Text style={styles.shapeLabel}>
-                    {t(`seeThisOnMe.shapes.${option.labelKey}`)}
-                  </Text>
-                </View>
+                <Image
+                  source={{ uri: option.image_url }}
+                  style={styles.shapeImage}
+                  resizeMode="cover"
+                />
+                <Text style={styles.shapeLabel}>
+                  {t(`seeThisOnMe.shapes.${option.shape}`)}
+                </Text>
               </View>
             ))}
           </ScrollView>
 
           <View style={styles.dots}>
-            {BODY_SHAPE_OPTIONS.map((option, i) => (
+            {shapes.map((option, i) => (
               <View
-                key={option.id}
+                key={option.shape}
                 style={[
                   styles.dot,
                   i === index ? styles.dotActive : styles.dotInactive,
@@ -138,7 +143,7 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
               testID="stom-generate"
               title={t('seeThisOnMe.useThisPhoto')}
               variant="filled"
-              onPress={() => onUse(current.id)}
+              onPress={() => current && onUse(current.shape)}
               style={styles.useButton}
             />
           </View>
@@ -176,14 +181,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.xl,
+    gap: theme.spacing.s,
   },
-  shapeCard: {
+  shapeImage: {
     width: '70%',
     aspectRatio: 3 / 4,
     borderRadius: theme.borderRadius.l,
     backgroundColor: theme.colors.figmaCardSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   shapeLabel: {
     ...theme.typography.aliases.poppinsButton,

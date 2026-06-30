@@ -25,6 +25,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { bodyService, BodyItem } from '../services/bodyService';
 import { tryOnService } from '../services/tryOnService';
+import { pollJob } from '../services/job-polling';
 import { track } from '../services/analytics';
 import { useAiConsentGate } from '../hooks/useAiConsentGate';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
@@ -310,20 +311,25 @@ export const BodyScreen = () => {
         item_count: tryOnOutfit.itemIds.length,
         has_body_photo: !!selectedBodyId,
       });
-      const response = await tryOnService.generateTryOn({
+      // AU-358: the render is async now — submit enqueues a job, then we poll
+      // for the durable S3 composite URL (worker does Kling → OpenAI fallback).
+      const { job_id } = await tryOnService.generateTryOn({
         body_id: selectedBodyId,
         wardrobe_item_ids: tryOnOutfit.itemIds,
         gemini_opt_in: true,
       });
-      // Prefer the S3 composite URL; fall back to an inline base64 PNG when
-      // S3 is unavailable (backend returns `composite_png` in that case).
-      const tryOnUrl =
-        response.composite_url ??
-        (response.composite_png
-          ? `data:image/png;base64,${response.composite_png}`
-          : null);
-      setGeneratedTryOnUrl(tryOnUrl);
-      track('try_on_completed', { outfit_hash: tryOnOutfit.outfitHash });
+      const { result } = await pollJob(
+        () => tryOnService.getTryOnResult(job_id),
+        r => r.status === 'completed' || r.status === 'failed',
+      );
+      if (result?.status === 'completed' && result.composite_url) {
+        setGeneratedTryOnUrl(result.composite_url);
+        track('try_on_completed', { outfit_hash: tryOnOutfit.outfitHash });
+      } else {
+        // failed status, timeout, or no URL → surface the same error path.
+        track('try_on_failed', { outfit_hash: tryOnOutfit.outfitHash });
+        setTryOnError(t('body.tryon_failed'));
+      }
     } catch (error) {
       console.error('Try-on generation error', error);
       track('try_on_failed', { outfit_hash: tryOnOutfit.outfitHash });

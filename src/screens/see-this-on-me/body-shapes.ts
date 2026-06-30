@@ -1,26 +1,40 @@
 /**
- * Body-shape options for the Step 3 picker.
+ * Body-shape vocabulary for the "See this on me" Step 3 picker (AU-358).
  *
- * ASSET GAP: the Figma design (node 3395:9248 / 3398:17745) renders the shapes
- * as full-body *photo* instances, not reusable SVG silhouettes — so there are no
- * vector assets to export. Per the Workstream-5 task instruction ("if no SVG
- * assets exist, use a simple labeled option set … note the asset gap"), we ship
- * a labeled shape vocabulary. The `id` is what rides in
- * `prompt_params.body_shape` to `/tryon/highres`.
+ * The shapes are no longer a static labeled set — the backend GENERATES 3
+ * body-shape photos (slim / average / fuller) of the user, which the carousel
+ * renders as real images. This module is the small shared vocabulary: the
+ * canonical shape id (re-exported from `bodyService`), the stable display
+ * order, and a sort helper (the worker returns the 3 builds out of order).
+ *
+ * i18n labels live under `seeThisOnMe.shapes.<id>` (`slim` | `average` |
+ * `fuller`). The `id` is what rides in `select` + the persisted profile.
  */
-export type BodyShapeId = 'pear' | 'hourglass' | 'rectangle';
+import { BodyShape } from '../../services/bodyService';
+import { GeneratedShape } from '../../services/bodyShapeService';
 
-export interface BodyShapeOption {
-  id: BodyShapeId;
-  /** i18n key suffix under `seeThisOnMe.shapes.*` for the label. */
-  labelKey: string;
-}
+// Single source of truth — identical to bodyService.BodyShape so the store,
+// screen, and picker all speak the same union.
+export type BodyShapeId = BodyShape;
 
-// Figma step-3 (3395:9248) / detail (3398:17745) render exactly 3 body shapes.
-// The picker row, expanded carousel pages, and pagination dots all derive their
-// count from this array — keep it at 3 to match the design.
-export const BODY_SHAPE_OPTIONS: BodyShapeOption[] = [
-  { id: 'pear', labelKey: 'pear' },
-  { id: 'hourglass', labelKey: 'hourglass' },
-  { id: 'rectangle', labelKey: 'rectangle' },
-];
+// Re-export so see-this-on-me components have one vocabulary import source.
+export type { GeneratedShape };
+
+/**
+ * Stable display order for the 3 generated builds. The backend renders them in
+ * parallel, so a poll result can arrive in any order (or partially) — always
+ * present them slim → average → fuller.
+ */
+export const SHAPE_ORDER: BodyShapeId[] = ['slim', 'average', 'fuller'];
+
+/**
+ * Sort generated shapes into the canonical SHAPE_ORDER for display. Unknown
+ * shapes (shouldn't happen) sort to the end. Returns a new array.
+ */
+export const sortShapes = (shapes: GeneratedShape[]): GeneratedShape[] => {
+  const rank = (s: BodyShapeId): number => {
+    const i = SHAPE_ORDER.indexOf(s);
+    return i === -1 ? SHAPE_ORDER.length : i;
+  };
+  return [...shapes].sort((a, b) => rank(a.shape) - rank(b.shape));
+};
