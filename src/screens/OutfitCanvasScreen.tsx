@@ -1227,7 +1227,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 disabled={actionDisabled}
                 accessibilityLabel={t('outfitCanvas.a11y_delete_item')}
               >
-                <IconCanvasDelete width={18} height={18} />
+                <IconCanvasDelete width={32} height={31} />
               </ToolbarBtn>
             </View>
 
