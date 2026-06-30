@@ -33,6 +33,8 @@ import IconCanvasLayerUp from '../images/canvas-icons/layer_up.svg';
 import IconCanvasLayerDown from '../images/canvas-icons/layer_down.svg';
 import IconCanvasDuplicate from '../images/canvas-icons/duplicate.svg';
 import IconCanvasSwap from '../images/canvas-icons/swap.svg';
+import IconCanvasUnlock from '../images/canvas-icons/unlock.svg';
+import IconCanvasLock from '../images/canvas-icons/lock.svg';
 import IconCanvasDelete from '../images/canvas-icons/trash.svg';
 import IconEdit from '../images/icon_edit.svg';
 import IconMinusCircle from '../images/icon_minus_circle.svg';
@@ -79,6 +81,8 @@ export const Icons = {
   CanvasLayerUp: IconCanvasLayerUp,
   CanvasLayerDown: IconCanvasLayerDown,
   CanvasDuplicate: IconCanvasDuplicate,
+  CanvasUnlock: IconCanvasUnlock,
+  CanvasLock: IconCanvasLock,
   CanvasDelete: IconCanvasDelete,
   Loading: IconLoading,
   SeeOutfit: IconSeeOutfit,
@@ -130,6 +134,8 @@ export {
   IconCanvasLayerUp,
   IconCanvasLayerDown,
   IconCanvasDuplicate,
+  IconCanvasUnlock,
+  IconCanvasLock,
   IconCanvasDelete,
   IconLoading,
   IconSeeOutfit,

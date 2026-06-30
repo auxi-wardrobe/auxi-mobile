@@ -556,6 +556,8 @@
       "a11y_send_backward": "Đưa ra sau",
       "a11y_duplicate": "Nhân đôi món",
       "a11y_swap": "Đổi món",
+      "a11y_lock": "Khóa món",
+      "a11y_unlock": "Mở khóa món",
       "a11y_delete_item": "Xóa món",
       "tag_placeholder": "Tên thẻ",
       "a11y_tag_input": "Ô nhập tên thẻ",

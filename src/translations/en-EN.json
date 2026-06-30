@@ -557,6 +557,8 @@
       "a11y_send_backward": "Send backward",
       "a11y_duplicate": "Duplicate item",
       "a11y_swap": "Swap item",
+      "a11y_lock": "Lock item",
+      "a11y_unlock": "Unlock item",
       "a11y_delete_item": "Delete item",
       "tag_placeholder": "Tag name",
       "a11y_tag_input": "Tag name input",

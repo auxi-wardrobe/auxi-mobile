@@ -102,6 +102,10 @@ export type DragActivation = 'immediate' | 'longPress';
 interface DraggableItemProps {
   item: CanvasItemData;
   isSelected: boolean;
+  // When locked the item is FROZEN: drag and pinch/rotate are ignored so it
+  // can't be moved/edited while the user arranges other pieces. A tap still
+  // selects it (so the toolbar lock toggle can flip it back).
+  isLocked: boolean;
   testIDPrefix: string;
   dragActivation: DragActivation;
   onSelect?: (id: string) => void;
@@ -121,6 +125,7 @@ interface DraggableItemProps {
 const DraggableItem: React.FC<DraggableItemProps> = ({
   item,
   isSelected,
+  isLocked,
   testIDPrefix,
   dragActivation,
   onSelect,
@@ -150,6 +155,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   // Keep latest props fresh inside the PanResponder closure (created once).
   const propsRef = useRef({
     item,
+    isLocked,
     onSelect,
     onPositionChange,
     dragActivation,
@@ -159,6 +165,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   });
   propsRef.current = {
     item,
+    isLocked,
     onSelect,
     onPositionChange,
     dragActivation,
@@ -233,8 +240,12 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       propsRef.current.onRotationChange?.(item.id, newRotation);
     });
 
-  // Combine pinch and rotation gestures to work simultaneously
-  const combinedGesture = Gesture.Simultaneous(pinchGesture, rotationGesture);
+  // Combine pinch and rotation gestures to work simultaneously. Disabled while
+  // the item is locked so a frozen item can't be scaled or rotated either.
+  const combinedGesture = Gesture.Simultaneous(
+    pinchGesture,
+    rotationGesture,
+  ).enabled(!isLocked);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -277,11 +288,19 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       onMoveShouldSetPanResponder: () => armed.current,
       onPanResponderGrant: () => {
         hasMoved.current = false;
-        setLifted(true);
+        // Locked items don't lift — they stay put; the touch only re-selects.
+        if (!propsRef.current.isLocked) {
+          setLifted(true);
+        }
         // Covers immediate mode (no arm step) + idempotent for longPress.
         propsRef.current.onDragActiveChange?.(true);
       },
       onPanResponderMove: (_, gs) => {
+        // Frozen while locked: swallow the move so the item can't be dragged.
+        // hasMoved stays false → release is treated as a tap (re-select).
+        if (propsRef.current.isLocked) {
+          return;
+        }
         if (
           Math.abs(gs.dx) > MOVE_THRESHOLD ||
           Math.abs(gs.dy) > MOVE_THRESHOLD
@@ -391,6 +410,8 @@ type SurfaceProps = {
   height: number;
   onPositionChange: (id: string, x: number, y: number) => void;
   selectedId?: string | null;
+  // Ids of items the user has locked (frozen): non-draggable, non-editable.
+  lockedIds?: string[];
   onSelect?: (id: string) => void;
   onScaleChange?: (id: string, scale: number) => void;
   onRotationChange?: (id: string, rotation: number) => void;
@@ -414,6 +435,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
   height,
   onPositionChange,
   selectedId = null,
+  lockedIds,
   onSelect,
   onScaleChange,
   onRotationChange,
@@ -438,6 +460,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
           key={item.id}
           item={item}
           isSelected={selectedId === item.id}
+          isLocked={lockedIds?.includes(item.id) ?? false}
           testIDPrefix={itemTestIDPrefix}
           dragActivation={dragActivation}
           onSelect={onSelect}

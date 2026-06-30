@@ -68,6 +68,8 @@ import IconCanvasLayerUp from '../assets/images/canvas-icons/layer_up.svg';
 import IconCanvasLayerDown from '../assets/images/canvas-icons/layer_down.svg';
 import IconCanvasDuplicate from '../assets/images/canvas-icons/duplicate.svg';
 import IconCanvasSwap from '../assets/images/canvas-icons/swap.svg';
+import IconCanvasUnlock from '../assets/images/canvas-icons/unlock.svg';
+import IconCanvasLock from '../assets/images/canvas-icons/lock.svg';
 import IconCanvasDelete from '../assets/images/canvas-icons/trash.svg';
 
 // Test image for canvas preview
@@ -460,6 +462,11 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   ).current;
   const [items, setItems] = useState<CanvasItemData[]>(initialItems);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Ids of items the user has "locked". A locked item is frozen on the canvas
+  // (no drag/pinch/rotate) and its edit actions (layer, duplicate, swap, delete)
+  // are disabled — only the lock toggle stays active so it can be unlocked.
+  // Lets the user pin one piece out of the way while arranging the others.
+  const [lockedIds, setLockedIds] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>(['Low Energy', 'Calm']);
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState('');
@@ -710,8 +717,24 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
       pushHistory(next);
       return next;
     });
+    setLockedIds(prev => prev.filter(id => id !== selectedId));
     setSelectedId(null);
   }, [selectedId, pushHistory]);
+
+  // Toggle the selected item's locked state. Locking keeps the item SELECTED so
+  // the toolbar stays focused on it and the user can immediately unlock; it does
+  // not mutate the canvas arrangement, so it's intentionally NOT an undo step.
+  const handleToggleLock = useCallback(() => {
+    if (!selectedId) {
+      return;
+    }
+    setLockedIds(prev =>
+      prev.includes(selectedId)
+        ? prev.filter(id => id !== selectedId)
+        : [...prev, selectedId],
+    );
+    track('canvas_item_lock_toggled');
+  }, [selectedId]);
 
   const handleAddItem = useCallback(() => {
     setPickerVisible(true);
@@ -1007,6 +1030,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     historyIndex.current = 0;
     setItems(blank);
     setSelectedId(null);
+    setLockedIds([]);
     setHasUnsavedChanges(false);
     track('canvas_reset');
   }, []);
@@ -1062,7 +1086,11 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     setDiscardVisible(true);
   }, [hasUnsavedChanges, resetCanvasToBlank]);
 
-  const actionDisabled = !selectedId;
+  const isSelectedLocked = selectedId !== null && lockedIds.includes(selectedId);
+  // The lock toggle needs a selection; every OTHER item action also needs the
+  // selection to be UNLOCKED (a locked item is frozen — only unlock is allowed).
+  const lockDisabled = !selectedId;
+  const actionDisabled = !selectedId || isSelectedLocked;
 
   return (
     <View style={styles.container}>
@@ -1151,6 +1179,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 width={CANVAS_WIDTH}
                 height={CANVAS_HEIGHT}
                 selectedId={selectedId}
+                lockedIds={lockedIds}
                 onSelect={handleSelect}
                 onPositionChange={handlePositionChange}
                 onScaleChange={handleScaleChange}
@@ -1220,6 +1249,30 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 accessibilityLabel={t('outfitCanvas.a11y_swap')}
               >
                 <IconCanvasSwap width={32} height={31} />
+              </ToolbarBtn>
+              {/* Lock toggle — freezes the selected item so the user can arrange
+                  the others without nudging it. Open padlock = unlocked (tap to
+                  lock); padlock-with-check = locked (tap to unlock). Stays enabled
+                  while locked so it's always the way back out; every other action
+                  is disabled for a locked item. testID flips by state so Maestro
+                  can target either. */}
+              <ToolbarBtn
+                testID={
+                  isSelectedLocked ? 'canvas-tool-lock-locked' : 'canvas-tool-lock'
+                }
+                onPress={handleToggleLock}
+                disabled={lockDisabled}
+                accessibilityLabel={
+                  isSelectedLocked
+                    ? t('outfitCanvas.a11y_unlock')
+                    : t('outfitCanvas.a11y_lock')
+                }
+              >
+                {isSelectedLocked ? (
+                  <IconCanvasLock width={24} height={24} />
+                ) : (
+                  <IconCanvasUnlock width={24} height={24} />
+                )}
               </ToolbarBtn>
               <ToolbarBtn
                 testID="canvas-tool-delete"
@@ -1464,8 +1517,12 @@ const styles = StyleSheet.create({
   toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: theme.spacing.m,
+    // Left-aligned with a flat 8px gap between every icon (was space-around with
+    // 16px side padding). paddingHorizontal 0 lets the row sit flush with the
+    // canvas card's left edge (the body supplies the 12px inset).
+    justifyContent: 'flex-start',
+    gap: theme.spacing.s,
+    paddingHorizontal: 0,
     paddingVertical: theme.spacing.s,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.colors.figmaDivider,

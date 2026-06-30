@@ -557,6 +557,8 @@
       "a11y_send_backward": "Reculer",
       "a11y_duplicate": "Dupliquer l'article",
       "a11y_swap": "Remplacer l'article",
+      "a11y_lock": "Verrouiller l'article",
+      "a11y_unlock": "Déverrouiller l'article",
       "a11y_delete_item": "Supprimer l'article",
       "tag_placeholder": "Nom de l'étiquette",
       "a11y_tag_input": "Champ nom d'étiquette",
