@@ -55,7 +55,10 @@ export const OnboardingCompletedScreen = () => {
   const { selection, flow = 'onboarding', changed = false } = route.params;
   const isRetake = flow === 'retake';
   const { updateCurrentUser } = useAuth();
-  const chips = selectionChipLabels(selection);
+  // `selection` is absent only for the retake review of a legacy user with no
+  // stored profile → the set-up variant (no chips, single "take the quiz" CTA).
+  const isSetup = isRetake && !selection;
+  const chips = selection ? selectionChipLabels(selection) : [];
 
   const [retakeConfirmVisible, setRetakeConfirmVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -81,16 +84,20 @@ export const OnboardingCompletedScreen = () => {
     }, [isRetake]),
   );
 
-  const confirmRetake = () => {
-    setRetakeConfirmVisible(false);
+  const goToQuiz = () => {
     track('personalization_retake_started', {
-      wardrobe_direction: selection.wardrobe_direction,
+      wardrobe_direction: selection?.wardrobe_direction,
     });
     navigation.navigate('OnboardingWardrobe', { flow: 'retake' });
   };
 
+  const confirmRetake = () => {
+    setRetakeConfirmVisible(false);
+    goToQuiz();
+  };
+
   const handleSave = async () => {
-    if (!changed || isSaving) return;
+    if (!selection || !changed || isSaving) return;
     setIsSaving(true);
     try {
       // Commit point: regenerate the seeded wardrobe from the new answers, then
@@ -135,16 +142,30 @@ export const OnboardingCompletedScreen = () => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.chipsBlock}>
-          <Text style={styles.leadIn}>{SELECTED_CHIPS_LEADIN}</Text>
-          <SelectedChips labels={chips} testID="onboarding-completed-chips" />
-        </View>
-        <Text style={styles.headline}>{COMPLETED_COPY.headline}</Text>
-        <Text style={styles.footer}>{COMPLETED_COPY.footer}</Text>
+        {isSetup ? null : (
+          <View style={styles.chipsBlock}>
+            <Text style={styles.leadIn}>{SELECTED_CHIPS_LEADIN}</Text>
+            <SelectedChips labels={chips} testID="onboarding-completed-chips" />
+          </View>
+        )}
+        <Text style={styles.headline}>
+          {isSetup ? RETAKE_COPY.review.setupHeadline : COMPLETED_COPY.headline}
+        </Text>
+        <Text style={styles.footer}>
+          {isSetup ? RETAKE_COPY.review.setupFooter : COMPLETED_COPY.footer}
+        </Text>
       </ScrollView>
 
       <View style={styles.footerBar}>
-        {isRetake ? (
+        {isSetup ? (
+          <PillButton
+            title={RETAKE_COPY.review.takeQuiz}
+            variant="filled"
+            onPress={goToQuiz}
+            style={styles.cta}
+            testID="onboarding-completed-take-quiz"
+          />
+        ) : isRetake ? (
           <>
             <PillButton
               title={RETAKE_COPY.review.save}
@@ -168,7 +189,10 @@ export const OnboardingCompletedScreen = () => {
           <PillButton
             title={COMPLETED_COPY.ctaLabel}
             variant="filled"
-            onPress={() => navigation.navigate('OnboardingOutro', { selection })}
+            onPress={() =>
+              selection &&
+              navigation.navigate('OnboardingOutro', { selection })
+            }
             style={styles.cta}
             testID="onboarding-completed-continue"
           />

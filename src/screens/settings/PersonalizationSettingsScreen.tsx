@@ -75,20 +75,16 @@ export const PersonalizationSettingsScreen = () => {
     if (ok) setLanguageModalVisible(false);
   };
 
-  // Open the completed onboarding screen — it's what shows the user their
-  // current choices — as a read-only review (Save disabled, Retake secondary).
-  // A legacy user with no stored profile has nothing to review, so they go
-  // straight into the quiz (the completed screen appears at the end).
+  // Always open the completed onboarding screen — it's what shows the user
+  // their choices — as a read-only review (Save disabled, Retake secondary).
+  // A legacy user with no stored profile gets the set-up variant of that same
+  // screen (no chips, a single "take the quiz" CTA) — never step 1 directly.
   const openStyleDirection = () => {
-    if (selection) {
-      navigation.navigate('OnboardingCompleted', {
-        selection,
-        flow: 'retake',
-        changed: false,
-      });
-    } else {
-      navigation.navigate('OnboardingWardrobe', { flow: 'retake' });
-    }
+    navigation.navigate('OnboardingCompleted', {
+      selection: selection ?? undefined,
+      flow: 'retake',
+      changed: false,
+    });
   };
 
   return (

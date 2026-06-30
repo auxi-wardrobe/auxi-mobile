@@ -159,7 +159,9 @@ export type AppStackParamList = {
   //  - retake: "Save" (enabled only once `changed`) + "Retake". Reached read-only
   //    from Personalization (`changed:false`) and after a retake (`changed:true`).
   OnboardingCompleted: {
-    selection: V05OnboardingSelection;
+    // Optional only for the retake review of a legacy user with no stored
+    // profile (set-up variant). Always present for onboarding + retake result.
+    selection?: V05OnboardingSelection;
     flow?: OnboardingFlow;
     changed?: boolean;
   };

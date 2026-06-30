@@ -313,11 +313,16 @@ export const SELECTED_CHIPS_LEADIN = 'You selected';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const RETAKE_COPY = {
-  // CTA labels that replace the onboarding "Continue" on the completed screen
-  // when it is shown as the Style Direction review (retake) entry.
+  // Copy that replaces the onboarding "Continue" on the completed screen when
+  // it is shown as the Style Direction review (retake) entry. `setup*` is the
+  // legacy variant for a user with no stored profile (nothing to review yet).
   review: {
     save: 'Save',
     retake: 'Retake',
+    setupHeadline: 'Set up your Style Direction',
+    setupFooter:
+      'Take a quick style quiz so Macgie can personalize your recommendations.',
+    takeQuiz: 'Take the style quiz',
   },
   // Confirm before restarting the quiz (a completed profile would be replaced).
   retakeConfirm: {
