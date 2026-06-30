@@ -326,6 +326,7 @@ export const RETAKE_COPY = {
     save: 'Save',
     retake: 'Retake',
     setup: 'Set up',
+    takeQuiz: 'Take the style quiz',
   },
   // Confirm before restarting the quiz (a completed profile would be replaced).
   retakeConfirm: {

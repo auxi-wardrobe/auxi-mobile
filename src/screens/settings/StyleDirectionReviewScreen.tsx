@@ -2,12 +2,14 @@
  * Style Direction review / retake-result (reuses the onboarding "Completed"
  * design — Figma node 2849:8498).
  *
- * Two entry states on ONE screen, keyed by the `changed` route param:
- *  - `changed:false` — opened read-only from Personalization. Shows the user's
- *    CURRENT profile chips; Save is disabled ("no changes yet"), Retake starts
- *    the quiz.
- *  - `changed:true` — reached after completing a retake (Styles → here). Shows
- *    the NEW answers; Save is enabled.
+ * This is the entry point for Personalization → Style Direction: it shows the
+ * user the choices they made. Three states, keyed by route params:
+ *  - has profile, `changed:false` — read-only review of the CURRENT profile.
+ *    Save disabled ("no changes yet"), Retake starts the quiz.
+ *  - has profile, `changed:true` — reached after completing a retake; shows the
+ *    NEW answers with Save enabled.
+ *  - no profile (legacy user with nothing stored) — a set-up state whose single
+ *    CTA starts the quiz.
  *
  * Deferred-write contract (matches the onboarding "nothing until Save" rule):
  * the retake quiz mutates NOTHING server-side. Save is the single commit point
@@ -51,7 +53,8 @@ export const StyleDirectionReviewScreen = () => {
   const { selection, changed } = route.params;
   const { updateCurrentUser } = useAuth();
 
-  const chips = selectionChipLabels(selection);
+  const hasProfile = !!selection;
+  const chips = selection ? selectionChipLabels(selection) : [];
   const [retakeConfirmVisible, setRetakeConfirmVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -64,18 +67,24 @@ export const StyleDirectionReviewScreen = () => {
   );
   const exit = useExitConfirm(changed && !isSaving, leaveToPersonalization);
 
-  const handleRetake = () => setRetakeConfirmVisible(true);
-
-  const confirmRetake = () => {
-    setRetakeConfirmVisible(false);
+  const goToQuiz = () => {
     track('personalization_retake_started', {
-      wardrobe_direction: selection.wardrobe_direction,
+      wardrobe_direction: selection?.wardrobe_direction,
     });
     navigation.navigate('OnboardingWardrobe', { flow: 'retake' });
   };
 
+  // With a profile, retaking replaces it → confirm first. With none, there is
+  // nothing to replace → straight into the quiz.
+  const handleRetake = () => setRetakeConfirmVisible(true);
+
+  const confirmRetake = () => {
+    setRetakeConfirmVisible(false);
+    goToQuiz();
+  };
+
   const handleSave = async () => {
-    if (!changed || isSaving) return;
+    if (!selection || !changed || isSaving) return;
     setIsSaving(true);
     try {
       // Commit point: regenerate the seeded wardrobe from the new answers, then
@@ -114,6 +123,17 @@ export const StyleDirectionReviewScreen = () => {
     }
   };
 
+  const headline = !hasProfile
+    ? RETAKE_COPY.review.setupHeadline
+    : changed
+      ? RETAKE_COPY.review.headlineResult
+      : RETAKE_COPY.review.headlineReview;
+  const footer = !hasProfile
+    ? RETAKE_COPY.review.setupFooter
+    : changed
+      ? RETAKE_COPY.review.footerResult
+      : RETAKE_COPY.review.footerReview;
+
   return (
     <SafeAreaView style={styles.container} testID="style-direction-review-screen">
       <View style={styles.headerRow}>
@@ -130,40 +150,46 @@ export const StyleDirectionReviewScreen = () => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.chipsBlock}>
-          <Text style={styles.leadIn}>{RETAKE_COPY.review.leadIn}</Text>
-          <SelectedChips labels={chips} testID="style-direction-chips" />
-        </View>
-        <Text style={styles.headline}>
-          {changed
-            ? RETAKE_COPY.review.headlineResult
-            : RETAKE_COPY.review.headlineReview}
-        </Text>
-        <Text style={styles.footer}>
-          {changed
-            ? RETAKE_COPY.review.footerResult
-            : RETAKE_COPY.review.footerReview}
-        </Text>
+        {hasProfile ? (
+          <View style={styles.chipsBlock}>
+            <Text style={styles.leadIn}>{RETAKE_COPY.review.leadIn}</Text>
+            <SelectedChips labels={chips} testID="style-direction-chips" />
+          </View>
+        ) : null}
+        <Text style={styles.headline}>{headline}</Text>
+        <Text style={styles.footer}>{footer}</Text>
       </ScrollView>
 
       <View style={styles.footerBar}>
-        <PillButton
-          title={RETAKE_COPY.review.save}
-          variant="filled"
-          disabled={!changed || isSaving}
-          loading={isSaving}
-          onPress={handleSave}
-          style={styles.cta}
-          testID="style-direction-save"
-        />
-        <PillButton
-          title={RETAKE_COPY.review.retake}
-          variant="text"
-          disabled={isSaving}
-          onPress={handleRetake}
-          style={styles.cta}
-          testID="style-direction-retake"
-        />
+        {hasProfile ? (
+          <>
+            <PillButton
+              title={RETAKE_COPY.review.save}
+              variant="filled"
+              disabled={!changed || isSaving}
+              loading={isSaving}
+              onPress={handleSave}
+              style={styles.cta}
+              testID="style-direction-save"
+            />
+            <PillButton
+              title={RETAKE_COPY.review.retake}
+              variant="text"
+              disabled={isSaving}
+              onPress={handleRetake}
+              style={styles.cta}
+              testID="style-direction-retake"
+            />
+          </>
+        ) : (
+          <PillButton
+            title={RETAKE_COPY.review.takeQuiz}
+            variant="filled"
+            onPress={goToQuiz}
+            style={styles.cta}
+            testID="style-direction-take-quiz"
+          />
+        )}
       </View>
 
       {/* Retake confirmation — a completed profile would be replaced. */}

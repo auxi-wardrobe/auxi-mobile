@@ -92,8 +92,12 @@ export type AppStackParamList = {
   // read-only from Personalization (`changed:false` → Save disabled, Retake
   // secondary) and again after a retake completes (`changed:true` → Save
   // enabled). `selection` is the profile being shown (current, or the new
-  // retake answers).
-  StyleDirectionReview: { selection: V05OnboardingSelection; changed: boolean };
+  // retake answers); absent only for a legacy user with no stored profile,
+  // where the screen shows a set-up state that starts the quiz.
+  StyleDirectionReview: {
+    selection?: V05OnboardingSelection;
+    changed: boolean;
+  };
   PrivacySettings: undefined; // Privacy Control · usage analytics · AI sharing
   AboutSettings: undefined; // Version · Terms of Service · Privacy Policy
   Wardrobe: undefined;

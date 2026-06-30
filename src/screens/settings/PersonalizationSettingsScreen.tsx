@@ -75,14 +75,14 @@ export const PersonalizationSettingsScreen = () => {
     if (ok) setLanguageModalVisible(false);
   };
 
-  // With a saved profile → review it (read-only, Save disabled). Without one →
-  // start the quiz directly (nothing to review / replace).
+  // Always open the completed/review screen first — it's what shows the user
+  // their current choices. `selection` is undefined only for a legacy user with
+  // no stored profile, where the review screen shows a set-up state.
   const openStyleDirection = () => {
-    if (selection) {
-      navigation.navigate('StyleDirectionReview', { selection, changed: false });
-    } else {
-      navigation.navigate('OnboardingWardrobe', { flow: 'retake' });
-    }
+    navigation.navigate('StyleDirectionReview', {
+      selection: selection ?? undefined,
+      changed: false,
+    });
   };
 
   return (
