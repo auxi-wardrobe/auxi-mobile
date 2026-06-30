@@ -388,6 +388,22 @@ export const ItemDetailScreen = () => {
     return { width, height: width / IMAGE_ASPECT };
   }, [imageRegion]);
 
+  // A `fallbackItem` only ever rides along with Home (suggestion-engine) pushes
+  // — the Wardrobe grid opens ItemDetail with just `{ itemId }` (same
+  // discriminator the `item_detail_opened` analytics source uses). The
+  // "Change" swap button is a suggestion-only affordance: from the wardrobe the
+  // item IS the item, there's nothing to swap.
+  const openedFromSuggestion = !!fallbackItem;
+
+  const handleOpenChange = () => {
+    // ItemDetail is a modal layer; push a fresh select-mode Wardrobe ON TOP of
+    // it (never navigate to a sibling below the modal — that desyncs the native
+    // presentation, see the popTo note on "Build around this"). The picker's
+    // "Change" CTA pops straight back to Home with the chosen id. Exclude the
+    // current item so the swap is always to a DIFFERENT item.
+    navigation.push('Wardrobe', { mode: 'select', excludeItemId: itemId });
+  };
+
   const usageFrequency = getItemUsageFrequency(item);
   const isCommonSystemItem = item?.is_common_item === true;
   // AU-287: SYSTEM common items AND per-user clones (USR_* hrid) belong to
@@ -950,31 +966,49 @@ export const ItemDetailScreen = () => {
                   depth; BE rejects 422 as backup). testID preserved so
                   existing Maestro flows keep resolving. */}
               {!isCommonSystemItem ? (
-                <PillButton
-                  testID="item-detail-mix-btn"
-                  variant="outline"
-                  title={t('wardrobe.itemDetail.build_around_this')}
-                  trailing={
-                    <Icons.Remix
-                      width={24}
-                      height={24}
-                      color={theme.colors.uacTextBase}
-                    />
-                  }
-                  style={styles.ctaPill}
-                  textStyle={styles.ctaPillText}
-                  onPress={() => {
-                    // ItemDetail is presented as a modal layer (AppNavigator
-                    // presentation:'modal'). navigate('Home',…) to a screen
-                    // BELOW the modal updates JS nav state but can leave the
-                    // native iOS modal still presented → desync: the sheet
-                    // stays stuck on top and nothing responds. popTo issues
-                    // pop semantics (like the back button's goBack) that
-                    // dismiss the modal AND land on Home with the pin intent.
-                    navigation.popTo('Home', { pinFromDetail: itemId });
-                  }}
-                  disabled={isPreparing}
-                />
+                <View style={styles.ctaRow}>
+                  {/* Suggestion-only "Change" swap button — opens the wardrobe
+                      as a single-item picker so the user can build around a
+                      different item instead. Hidden when the detail was opened
+                      from the wardrobe (note in the AU spec). Square outline
+                      chip sized to the primary pill's height. */}
+                  {openedFromSuggestion ? (
+                    <TouchableOpacity
+                      testID="item-detail-swap-btn"
+                      accessibilityRole="button"
+                      accessibilityLabel={t(
+                        'wardrobe.itemDetail.a11y_change_item',
+                      )}
+                      style={styles.swapButton}
+                      onPress={handleOpenChange}
+                      disabled={isPreparing}
+                    >
+                      <Icons.Change
+                        width={24}
+                        height={24}
+                        color={theme.colors.uacTextBase}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                  <PillButton
+                    testID="item-detail-mix-btn"
+                    variant="filled"
+                    title={t('wardrobe.itemDetail.build_around_this')}
+                    trailing={<Icons.Remix width={24} height={24} />}
+                    style={styles.ctaPrimary}
+                    onPress={() => {
+                      // ItemDetail is presented as a modal layer (AppNavigator
+                      // presentation:'modal'). navigate('Home',…) to a screen
+                      // BELOW the modal updates JS nav state but can leave the
+                      // native iOS modal still presented → desync: the sheet
+                      // stays stuck on top and nothing responds. popTo issues
+                      // pop semantics (like the back button's goBack) that
+                      // dismiss the modal AND land on Home with the pin intent.
+                      navigation.popTo('Home', { pinFromDetail: itemId });
+                    }}
+                    disabled={isPreparing}
+                  />
+                </View>
               ) : null}
 
               <View style={styles.bottomRow}>
@@ -1238,17 +1272,30 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.m,
     gap: theme.spacing.uacDimension12,
   },
-  // "Build around this": outline pill, border 1.5 border/neutral/base,
-  // padX 20. Radius reuses uacButtonCta=16 — Figma draws 17, deliberate 1px
-  // deviation pending CEO answer (qa-ui safe default #4).
-  ctaPill: {
-    alignSelf: 'stretch',
+  // Primary CTA row: the optional square "Change" swap chip sits in front of
+  // (left of) the "Build around this" pill, which flexes to fill the rest.
+  ctaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.uacDimension12,
+  },
+  // "Build around this" is now the primary (filled) button. It flexes to fill
+  // the row whether or not the swap chip is present. Radius reuses
+  // uacButtonCta=16; the filled variant owns its fill + border colour.
+  ctaPrimary: {
+    flex: 1,
     borderRadius: theme.borderRadius.uacButtonCta,
-    borderColor: theme.colors.uacBorderBase,
     paddingHorizontal: theme.spacing.uacButtonPaddingX,
   },
-  ctaPillText: {
-    color: theme.colors.uacTextBase,
+  // Square outline chip matching the primary pill's 56pt height/16 radius.
+  swapButton: {
+    width: 56,
+    height: 56,
+    borderRadius: theme.borderRadius.uacButtonCta,
+    borderWidth: 1.5,
+    borderColor: theme.colors.uacBorderBase,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   details: {
     gap: 8,
