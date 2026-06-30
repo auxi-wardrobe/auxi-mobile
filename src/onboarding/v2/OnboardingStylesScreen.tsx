@@ -109,10 +109,14 @@ export const OnboardingStylesScreen = () => {
       style_preferences: ranked,
     };
     // Retake: nothing is generated or persisted yet — hand the new answers to
-    // the review screen, where Save (now enabled) commits them. First-time
-    // onboarding still hands off to Loading, which owns /generate (D10).
+    // the completed/review screen, where Save (now enabled) commits them.
+    // First-time onboarding still hands off to Loading, which owns /generate.
     if (flow === 'retake') {
-      navigation.navigate('StyleDirectionReview', { selection, changed: true });
+      navigation.navigate('OnboardingCompleted', {
+        selection,
+        flow: 'retake',
+        changed: true,
+      });
       return;
     }
     navigation.navigate('OnboardingLoading', { selection });

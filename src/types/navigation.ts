@@ -72,8 +72,8 @@ export interface V05OnboardingSelection {
  *  - `onboarding` (default / absent): first-time setup. Step 3 → Loading
  *    (which owns /generate) → Completed → Outro → completeOnboarding().
  *  - `retake`: post-login re-run from Settings → Personalization. Step 3 →
- *    StyleDirectionReview; NOTHING is persisted or generated until the user
- *    taps Save there. Leaving mid-flow prompts a discard confirm.
+ *    the completed screen (in retake mode); NOTHING is persisted or generated
+ *    until the user taps Save there. Leaving mid-flow prompts a discard confirm.
  */
 export type OnboardingFlow = 'onboarding' | 'retake';
 
@@ -88,16 +88,6 @@ export type AppStackParamList = {
   // delete) plus three pushed sub-pages grouping related settings (iOS HIG).
   Settings: undefined;
   PersonalizationSettings: undefined; // Style Direction · Language · Body Photo
-  // Style Direction review (reuses the onboarding "Completed" design). Entered
-  // read-only from Personalization (`changed:false` → Save disabled, Retake
-  // secondary) and again after a retake completes (`changed:true` → Save
-  // enabled). `selection` is the profile being shown (current, or the new
-  // retake answers); absent only for a legacy user with no stored profile,
-  // where the screen shows a set-up state that starts the quiz.
-  StyleDirectionReview: {
-    selection?: V05OnboardingSelection;
-    changed: boolean;
-  };
   PrivacySettings: undefined; // Privacy Control · usage analytics · AI sharing
   AboutSettings: undefined; // Version · Terms of Service · Privacy Policy
   Wardrobe: undefined;
@@ -164,7 +154,15 @@ export type AppStackParamList = {
   // the full selection forward so it can fire the call and, on success,
   // hand the same selection to Completed (which renders from it instantly).
   OnboardingLoading: { selection: V05OnboardingSelection };
-  OnboardingCompleted: { selection: V05OnboardingSelection };
+  // The completed screen doubles as the Style Direction review (retake) entry.
+  //  - onboarding (default): single "Continue" → Outro.
+  //  - retake: "Save" (enabled only once `changed`) + "Retake". Reached read-only
+  //    from Personalization (`changed:false`) and after a retake (`changed:true`).
+  OnboardingCompleted: {
+    selection: V05OnboardingSelection;
+    flow?: OnboardingFlow;
+    changed?: boolean;
+  };
   OnboardingOutro: { selection: V05OnboardingSelection };
   // AU-312: `fallbackItem` carries the Home tile's payload so the pushed
   // detail screen can still render V05 `common_essential` injections —

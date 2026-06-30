@@ -75,14 +75,20 @@ export const PersonalizationSettingsScreen = () => {
     if (ok) setLanguageModalVisible(false);
   };
 
-  // Always open the completed/review screen first — it's what shows the user
-  // their current choices. `selection` is undefined only for a legacy user with
-  // no stored profile, where the review screen shows a set-up state.
+  // Open the completed onboarding screen — it's what shows the user their
+  // current choices — as a read-only review (Save disabled, Retake secondary).
+  // A legacy user with no stored profile has nothing to review, so they go
+  // straight into the quiz (the completed screen appears at the end).
   const openStyleDirection = () => {
-    navigation.navigate('StyleDirectionReview', {
-      selection: selection ?? undefined,
-      changed: false,
-    });
+    if (selection) {
+      navigation.navigate('OnboardingCompleted', {
+        selection,
+        flow: 'retake',
+        changed: false,
+      });
+    } else {
+      navigation.navigate('OnboardingWardrobe', { flow: 'retake' });
+    }
   };
 
   return (

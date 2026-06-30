@@ -24,7 +24,6 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { PersonalizationSettingsScreen } from '../screens/settings/PersonalizationSettingsScreen';
 import { PrivacySettingsScreen } from '../screens/settings/PrivacySettingsScreen';
 import { AboutSettingsScreen } from '../screens/settings/AboutSettingsScreen';
-import { StyleDirectionReviewScreen } from '../screens/settings/StyleDirectionReviewScreen';
 import { FavouriteScreen } from '../screens/FavouriteScreen';
 import { ScheduleScreen } from '../screens/ScheduleScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
@@ -208,13 +207,13 @@ export const AppNavigator = () => {
                 name="AboutSettings"
                 component={AboutSettingsScreen}
               />
-              {/* Style Direction review + Personalization retake. The onboarding
-                  step screens are shared with the first-login stack; here they
-                  run in `flow:'retake'` (swipe-back disabled — exit is guarded
-                  by an explicit discard confirm). */}
+              {/* Personalization retake. The onboarding step screens + the
+                  completed/review screen are shared with the first-login stack;
+                  here they run in `flow:'retake'` (step screens disable
+                  swipe-back — exit is guarded by an explicit discard confirm). */}
               <Stack.Screen
-                name="StyleDirectionReview"
-                component={StyleDirectionReviewScreen}
+                name="OnboardingCompleted"
+                component={OnboardingCompletedScreen}
               />
               <Stack.Screen
                 name="OnboardingWardrobe"
