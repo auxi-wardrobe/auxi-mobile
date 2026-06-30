@@ -50,7 +50,8 @@ export const PersonalizationSettingsScreen = () => {
     ? ({
         wardrobe_direction: profile.wardrobe_direction,
         fit_preference: profile.fit_preference,
-        style_preferences: profile.style_preferences,
+        // Defensive: a partial/legacy profile must not crash the chips row.
+        style_preferences: profile.style_preferences ?? [],
       } as V05OnboardingSelection)
     : null;
   const chips = selection ? selectionChipLabels(selection) : [];
