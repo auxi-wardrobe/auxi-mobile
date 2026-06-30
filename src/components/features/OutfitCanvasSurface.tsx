@@ -204,8 +204,11 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
     }).start();
   };
 
-  // Pinch gesture using new Gesture API
+  // Pinch gesture using new Gesture API. Disabled while the item is locked so a
+  // frozen item can't be scaled (.enabled lives on the individual gesture, not
+  // on the composed one).
   const pinchGesture = Gesture.Pinch()
+    .enabled(!isLocked)
     .onStart(() => {
       baseScale.current = item.scale || 1;
     })
@@ -222,8 +225,9 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       propsRef.current.onScaleChange?.(item.id, clampedScale);
     });
 
-  // Rotation gesture using new Gesture API
+  // Rotation gesture using new Gesture API. Also disabled while locked.
   const rotationGesture = Gesture.Rotation()
+    .enabled(!isLocked)
     .onStart(() => {
       baseRotation.current = item.rotation || 0;
     })
@@ -240,12 +244,10 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       propsRef.current.onRotationChange?.(item.id, newRotation);
     });
 
-  // Combine pinch and rotation gestures to work simultaneously. Disabled while
-  // the item is locked so a frozen item can't be scaled or rotated either.
-  const combinedGesture = Gesture.Simultaneous(
-    pinchGesture,
-    rotationGesture,
-  ).enabled(!isLocked);
+  // Combine pinch and rotation gestures to work simultaneously. (Each gesture is
+  // individually disabled when locked, above — a ComposedGesture has no
+  // .enabled(), so don't call it here.)
+  const combinedGesture = Gesture.Simultaneous(pinchGesture, rotationGesture);
 
   const panResponder = useRef(
     PanResponder.create({
