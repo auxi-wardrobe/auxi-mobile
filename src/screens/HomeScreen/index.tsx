@@ -732,6 +732,54 @@ export const HomeScreen = () => {
     pinState.pinnedItemId,
   ]);
 
+  // "Change" item swap (ItemDetail → wardrobe picker). A one-off, local
+  // replacement of the viewed item in the ACTIVE outfit with the chosen
+  // wardrobe item — explicitly NOT a pin: the item is not anchored and
+  // suggestions are not regenerated around it. Swiping to another outfit
+  // leaves it untouched.
+  useEffect(() => {
+    const swap = route.params?.swapItem;
+    if (!swap) {
+      return;
+    }
+    const { fromItemId, toItem } = swap;
+    const replacement: Item = {
+      id: toItem.id,
+      image_url: toItem.image_url ?? '',
+      image_png: toItem.image_png ?? null,
+      name: toItem.name ?? null,
+      category: toItem.category ?? 'Top',
+      color: toItem.color_hex ?? '',
+      isSystem: toItem.is_common_item ?? false,
+      isExploration: false,
+    };
+    setListOutfits(current => {
+      if (current.length === 0) {
+        return current;
+      }
+      const idx = Math.min(
+        Math.max(activeIndexRef.current, 0),
+        current.length - 1,
+      );
+      const target = current[idx];
+      const items = target?.items ?? [];
+      const pos = items.findIndex(it => it?.id === fromItemId);
+      if (pos < 0) {
+        return current;
+      }
+      const nextItems = items.slice();
+      nextItems[pos] = replacement;
+      const nextList = current.slice();
+      nextList[idx] = { ...target, items: nextItems };
+      return nextList;
+    });
+    track('outfit_item_swapped', {
+      from_item_id: fromItemId,
+      to_item_id: toItem.id,
+    });
+    navigation.setParams({ swapItem: undefined });
+  }, [route.params?.swapItem, navigation]);
+
   const { data: wardrobeItemsData } = useQuery({
     queryKey: ['home-wardrobe-items'],
     queryFn: () => wardrobeService.getWardrobeItems(),

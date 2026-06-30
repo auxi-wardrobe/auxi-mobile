@@ -191,6 +191,7 @@
     "wardrobe": {
       "itemDetail": {
         "build_around_this": "Phối quanh món này",
+        "a11y_change_item": "Đổi món đồ",
         "waiting_status": "Đang chờ dịp phù hợp",
         "less_used": "Ít dùng",
         "date_label": "Ngày: {{date}}",
@@ -251,6 +252,8 @@
         "add_photo_body": "Dùng máy ảnh hoặc chọn từ thư viện của bạn.",
         "a11y_item_fallback": "Món trong tủ đồ",
         "title": "Tủ đồ",
+        "change_title": "Đổi món đồ",
+        "change_cta": "Đổi",
         "empty_first_title": "Thêm món đầu tiên",
         "empty_filtered_title": "Chưa có món nào trong mục này",
         "empty_first_body": "Thêm ảnh hoặc duyệt cơ sở dữ liệu để bắt đầu tủ đồ của bạn.",

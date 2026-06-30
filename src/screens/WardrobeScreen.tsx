@@ -14,7 +14,12 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { MacgieLoader } from '../components/macgie';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import {
+  RouteProp,
+  useIsFocused,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../components/design-system/lib';
@@ -26,6 +31,7 @@ import {
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
 import { Header } from '../components/layout/Header';
+import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
 import {
@@ -74,6 +80,7 @@ type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
   'Wardrobe'
 >;
+type ScreenRoute = RouteProp<AppStackParamList, 'Wardrobe'>;
 
 const resolveFilterQuery = (selectedTab: FilterTab): string | undefined => {
   switch (selectedTab) {
@@ -144,6 +151,14 @@ const READY_SNACKBAR_MS = 4000;
 
 export const WardrobeScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
+  const route = useRoute<ScreenRoute>();
+  // Single-item picker mode — opened from ItemDetail's "Change" swap button.
+  // Tiles select instead of navigating; a bottom "Change" CTA commits the pick.
+  const isSelectMode = route.params?.mode === 'select';
+  // The item being changed — hidden from the picker so the swap is always to a
+  // different item ("change by other items only").
+  const excludeItemId = route.params?.excludeItemId;
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const isFocused = useIsFocused();
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -322,6 +337,15 @@ export const WardrobeScreen = () => {
   };
 
   const handleItemPress = (item: WardrobeItem) => {
+    if (isSelectMode) {
+      // Don't let the user anchor an item that isn't ready yet.
+      if (isPreparing(item)) {
+        return;
+      }
+      track('wardrobe_change_item_selected', { item_id: item.id });
+      setSelectedItemId(item.id);
+      return;
+    }
     track('wardrobe_item_opened', {
       item_id: item.id,
       is_common: isCommonItem(item),
@@ -329,6 +353,40 @@ export const WardrobeScreen = () => {
     // Opening the detail clears the item's "new" tag (uploaded → seen).
     markViewed(item.id);
     navigation.navigate('ItemDetail', { itemId: item.id });
+  };
+
+  const handleConfirmChange = () => {
+    if (!selectedItemId || !excludeItemId) {
+      return;
+    }
+    const chosen = items.find(item => item.id === selectedItemId);
+    if (!chosen) {
+      return;
+    }
+    track('wardrobe_change_item_confirmed', {
+      from_item_id: excludeItemId,
+      to_item_id: selectedItemId,
+    });
+    // popTo Home dismisses this picker AND the ItemDetail modal beneath it,
+    // landing on Home with a one-off swap intent: replace the viewed item with
+    // the chosen one in the active outfit. NOT a pin — the item is not anchored
+    // and suggestions are not regenerated around it.
+    navigation.popTo('Home', {
+      swapItem: {
+        fromItemId: excludeItemId,
+        toItem: {
+          id: chosen.id,
+          ...(chosen.image_url ? { image_url: chosen.image_url } : {}),
+          ...(chosen.image_png ? { image_png: chosen.image_png } : {}),
+          ...(chosen.name ? { name: chosen.name } : {}),
+          ...(chosen.category ? { category: chosen.category } : {}),
+          ...(chosen.color_hex ? { color_hex: chosen.color_hex } : {}),
+          ...(chosen.is_common_item != null
+            ? { is_common_item: chosen.is_common_item }
+            : {}),
+        },
+      },
+    });
   };
 
   const openAddSheet = (source: 'header' | 'empty_state' | 'welcome') => {
@@ -451,10 +509,12 @@ export const WardrobeScreen = () => {
       ? null
       : resolveTileStatus(item, isViewed(item.id));
 
+    const isSelected = isSelectMode && selectedItemId === item.id;
+
     return (
       <PressableScale
         key={item.id}
-        style={styles.tile}
+        style={[styles.tile, isSelected && styles.tileSelected]}
         activeOpacity={0.88}
         onPress={() => handleItemPress(item)}
         testID={tileTestID}
@@ -523,6 +583,22 @@ export const WardrobeScreen = () => {
             </View>
           </View>
         ) : null}
+
+        {/* Single-select check — top-right, only the picked tile in select
+            mode. Pure visual confirmation of the current selection. */}
+        {isSelected ? (
+          <View
+            style={styles.tileSelectedCheck}
+            testID={`wardrobe-select-check-${item.id}`}
+            pointerEvents="none"
+          >
+            <Icons.CheckCircle
+              width={24}
+              height={24}
+              color={theme.colors.figmaAction}
+            />
+          </View>
+        ) : null}
       </PressableScale>
     );
   };
@@ -535,35 +611,54 @@ export const WardrobeScreen = () => {
     </View>
   );
 
-  const hasItems = items.length > 0;
+  // In select mode hide the item being changed so it can't be re-picked.
+  const displayItems =
+    isSelectMode && excludeItemId
+      ? items.filter(item => item.id !== excludeItemId)
+      : items;
+  const hasItems = displayItems.length > 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Header.MenuTitleAction
-        title={t('wardrobe.list.title')}
-        leftTestID="wardrobe-menu-button"
-        onBack={openSidebar}
-        right={
-          <PressableScale
-            onPress={() => openAddSheet('header')}
-            disabled={uploading}
-            style={[styles.plusButton, styles.headerIconButton]}
-            activeOpacity={0.85}
-            testID="wardrobe-add-btn"
-            accessibilityLabel={t('common.a11y_add_item')}
-          >
-            {uploading ? (
-              <DotsLoader color={theme.colors.figmaAction} />
-            ) : (
-              <Icons.Plus width={24} height={24} />
-            )}
-          </PressableScale>
-        }
-      />
+      {isSelectMode ? (
+        // Picker mode (from ItemDetail "Change"): back chevron + title, no add
+        // action — the user is choosing an existing item, not adding one.
+        <Header.BackTitle
+          title={t('wardrobe.list.change_title')}
+          leftTestID="wardrobe-change-back"
+          leftAccessibilityLabel={t('uac.common.back')}
+          onBack={() => navigation.goBack()}
+        />
+      ) : (
+        <Header.MenuTitleAction
+          title={t('wardrobe.list.title')}
+          leftTestID="wardrobe-menu-button"
+          onBack={openSidebar}
+          right={
+            <PressableScale
+              onPress={() => openAddSheet('header')}
+              disabled={uploading}
+              style={[styles.plusButton, styles.headerIconButton]}
+              activeOpacity={0.85}
+              testID="wardrobe-add-btn"
+              accessibilityLabel={t('common.a11y_add_item')}
+            >
+              {uploading ? (
+                <DotsLoader color={theme.colors.figmaAction} />
+              ) : (
+                <Icons.Plus width={24} height={24} />
+              )}
+            </PressableScale>
+          }
+        />
+      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isSelectMode && styles.scrollContentSelect,
+        ]}
       >
         <CategoryTabs
           categories={[...FILTER_TABS]}
@@ -597,7 +692,7 @@ export const WardrobeScreen = () => {
           </View>
         ) : hasItems ? (
           <View testID="wardrobe-grid-root" style={styles.grid}>
-            {items.map(renderGridTile)}
+            {displayItems.map(renderGridTile)}
           </View>
         ) : (
           <View style={styles.emptyState}>
@@ -758,9 +853,26 @@ export const WardrobeScreen = () => {
           load (so it never overlays the skeleton), then never again. "Add My
           Clothes" opens the add-item sheet; "Explore for Now" just dismisses. */}
       <WardrobeWelcomeDialog
-        enabled={isFocused && !loading && !loadError}
+        enabled={!isSelectMode && isFocused && !loading && !loadError}
         onAddClothes={() => openAddSheet('welcome')}
       />
+
+      {/* Picker-mode commit bar — pinned to the bottom, disabled until a tile
+          is selected. "Change" pops back to Home with the chosen item. */}
+      {isSelectMode ? (
+        <View
+          style={[styles.changeFooter, { paddingBottom: insets.bottom + 16 }]}
+        >
+          <PillButton
+            testID="wardrobe-change-cta"
+            variant="filled"
+            title={t('wardrobe.list.change_cta')}
+            onPress={handleConfirmChange}
+            disabled={!selectedItemId}
+            style={styles.changeCta}
+          />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -821,6 +933,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Pinned picker-mode commit bar.
+  changeFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 12,
+    backgroundColor: theme.colors.figmaBackground,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.figmaListDivider,
+  },
+  changeCta: {
+    alignSelf: 'stretch',
+  },
   headerIconButton: {
     backgroundColor: theme.colors.white,
     borderRadius: theme.borderRadius.m,
@@ -829,6 +956,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: 12,
     paddingBottom: 32,
+  },
+  // Extra bottom room so the last grid row clears the pinned "Change" bar.
+  scrollContentSelect: {
+    paddingBottom: 120,
   },
   grid: {
     flexDirection: 'row',
@@ -846,6 +977,16 @@ const styles = StyleSheet.create({
   tileImage: {
     width: '100%',
     height: '100%',
+  },
+  // Single-select highlight ring (picker mode).
+  tileSelected: {
+    borderWidth: 2,
+    borderColor: theme.colors.figmaAction,
+  },
+  tileSelectedCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
   },
   tileFallback: {
     flex: 1,
