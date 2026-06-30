@@ -75,7 +75,12 @@ export type AppStackParamList = {
   // the param so re-focus / re-render does not refire the auto-pin.
   Home: { pinFromDetail?: string } | undefined;
   Settings: undefined;
-  Wardrobe: undefined;
+  // `mode: 'select'` opens the wardrobe as a single-item picker (reached from
+  // ItemDetail's "Change" swap button when the detail was opened from a Home
+  // suggestion). The grid stops navigating into ItemDetail and instead lets the
+  // user pick exactly one item; the "Change" CTA pops back to Home with that id
+  // as `pinFromDetail`, reusing the "Build around this" pin pipeline.
+  Wardrobe: { mode?: 'select' } | undefined;
   // `returnToSchedule` is set when the user reached this page via the Schedule
   // "+" source picker — after scheduling an outfit we send them back to
   // Schedule (focused on the chosen day) instead of staying here. `scheduleDate`
