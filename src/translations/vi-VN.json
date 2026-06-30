@@ -72,7 +72,7 @@
       "welcome": {
         "language_button": "Tiếng Việt",
         "headline": "Chào mừng đến với\nMacgie",
-        "subtitle": "Phối đồ rõ ràng hơn, bớt áp lực hơn.",
+        "subtitle": "Phối đồ rõ ràng hơn,\nbớt áp lực hơn.",
         "google_cta": "Tiếp tục với Google",
         "apple_cta": "Tiếp tục với Apple",
         "email_cta": "Tiếp tục với Email",
@@ -203,7 +203,7 @@
         "row_style": "Phong cách",
         "row_color": "Màu",
         "row_fit": "Dáng",
-        "common_badge": "món chung",
+        "common_badge": "Macgie",
         "picker_title": "Chọn {{field}}",
         "picker_close": "Đóng",
         "coming_soon_title": "Sắp ra mắt",
@@ -235,6 +235,12 @@
         "row_purchase_date": "Ngày mua",
         "value_unset": "—",
         "name_edit_placeholder": "Nhập tên"
+      },
+      "welcome": {
+        "title": "Chào mừng đến với tủ đồ của bạn",
+        "body": "Chúng tôi đã thêm sẵn các món đồ mẫu vào tủ đồ của bạn để bạn có thể bắt đầu khám phá Macgie ngay lập tức.\n\nThêm quần áo của riêng bạn để nhận các gợi ý trang phục được cá nhân hóa theo tủ đồ và phong cách của bạn.",
+        "primary_cta": "Thêm quần áo của tôi",
+        "secondary_cta": "Khám phá ngay bây giờ"
       },
       "list": {
         "added_title": "Đã thêm món đồ. Chúng tôi sẽ hoàn tất chuẩn bị ở chế độ nền.",
@@ -345,7 +351,7 @@
       "upload_gallery": "Tải lên từ thư viện",
       "choose_from_library": "Chọn từ thư viện",
       "no_image": "Không có ảnh",
-      "badge_common": "món chung",
+      "badge_common": "Macgie",
       "action_cannot_undo": "Hành động này không thể hoàn tác.",
       "pick_image_failed": "Không thể chọn ảnh",
       "add_items_failed_title": "Không thể thêm món đồ",
@@ -493,6 +499,8 @@
       "frequency_weekdays_label": "Ngày trong tuần",
       "frequency_weekdays_desc": "T2, T3, T4, T5, T6",
       "frequency_everyday_label": "Mỗi ngày",
+      "push_permission_needed_title": "Bật thông báo",
+      "push_permission_needed_body": "Chạm để bật thông báo trong Cài đặt để nhận nhắc nhở hằng ngày.",
       "toast_title": "Cài đặt",
       "error_load": "Không thể tải cài đặt",
       "error_update_time": "Không thể cập nhật giờ nhắc hằng ngày",
@@ -558,7 +566,8 @@
       "discard_title": "Bỏ tác phẩm này?",
       "discard_body": "Các thay đổi của bạn chưa được lưu.",
       "discard_save": "Lưu",
-      "discard_discard": "Bỏ"
+      "discard_discard": "Bỏ",
+      "save_failed": "Không thể lưu trang phục. Vui lòng thử lại."
     },
     "myCreations": {
       "title": "Tác phẩm của tôi",
@@ -570,7 +579,8 @@
       "remove_body": "Bạn có chắc muốn xóa bộ đồ này khỏi danh sách tác phẩm không?",
       "remove_confirm": "Có",
       "remove_cancel": "Hủy",
-      "add_to_schedule": "Thêm vào lịch"
+      "add_to_schedule": "Thêm vào lịch",
+      "self_visualization": "Xem trên bạn"
     },
     "locationPermission": {
       "denied_title": "Quyền bị từ chối",
@@ -634,7 +644,15 @@
       "refine_subtitle": "Điều gì sẽ làm gợi ý tốt hơn?",
       "skip": "Để sau",
       "a11y_shuffle": "Xáo trộn gợi ý",
-      "placeholder": "Cho chúng tôi biết bạn muốn thay đổi gì"
+      "placeholder": "Cho chúng tôi biết bạn muốn thay đổi gì",
+      "edit_placeholder": "vd: Sinh nhật",
+      "suggested_context": "Ngữ cảnh gợi ý",
+      "a11y_back": "Quay lại",
+      "a11y_submit": "Áp dụng ngữ cảnh",
+      "suggestion_birthday": "Sinh nhật",
+      "suggestion_dating": "Hẹn hò",
+      "suggestion_confident": "Tự tin",
+      "suggestion_interview": "Phỏng vấn"
     },
     "favourite": {
       "title": "Yêu thích",
@@ -642,7 +660,7 @@
       "open_menu": "Mở menu",
       "empty_body": "Nhấn nút \"Mặc bộ này\" để thêm trang phục",
       "empty_a11y": "Chưa có trang phục nào được lưu",
-      "common_badge": "phổ biến",
+      "common_badge": "Macgie",
       "view_item_a11y": "Xem chi tiết món đồ",
       "self_visualization": "Tự hình dung",
       "add_to_schedule": "Thêm vào lịch",

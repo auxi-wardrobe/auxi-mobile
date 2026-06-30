@@ -23,7 +23,6 @@
  */
 import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   StyleSheet,
@@ -38,7 +37,8 @@ import Svg, { Path } from 'react-native-svg';
 import { toast } from '../../components/design-system/lib';
 
 import { theme } from '../../theme/theme';
-import { MacgieLoader } from '../../components/macgie';
+import { MacgieNod } from '../../components/macgie';
+import { DotsLoader } from '../../components/atoms/DotsLoader';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import type { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
@@ -59,6 +59,11 @@ import { buildLegalSegments } from '../legal/legalLinkSegments';
 import type { LegalDocumentType } from '../../content/legal';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
+
+// Temporarily hide the Apple + email sign-in CTAs while those flows are
+// buggy. Google is the only supported entry point for now. Flip back to
+// `true` to restore the full action stack once the flows are fixed.
+const SHOW_APPLE_AND_EMAIL_SIGN_IN = false;
 
 // Minimal inline glyphs — keep diff small (no new SVG assets).
 // Sizes match the Figma 24×24 trailing-icon slot.
@@ -305,17 +310,11 @@ export const WelcomeScreen = () => {
 
       <View style={styles.bodyContainer}>
         {/* Hero group — logo + heading + subtitle near the top (Figma node
-            3910:22305). Per CEO: the lively MacgieLoader animation (±4° dwelling
-            sway + pupil tracking) fills the logo slot, presented as a logo
-            (`asLogo` → image a11y "Macgie", no busy/Loading state, no caption).
-            `inline` variant keeps it content-sized (no flex stretch). */}
+            3910:22305). Matches the Welcome (splash) screen: the MacgieNod
+            "nod sequence" animation (glance → hop + squash/stretch → nod) fills
+            the logo slot at size 96, rendered as an image a11y "Macgie". */}
         <View style={styles.heroGroup}>
-          <MacgieLoader
-            variant="inline"
-            size={126}
-            asLogo
-            testID="welcome-logo"
-          />
+          <MacgieNod size={96} style={styles.logo} testID="welcome-logo" />
           <Text style={styles.headline}>{t('uac.welcome.headline')}</Text>
           <Text style={styles.subtitle}>{t('uac.welcome.subtitle')}</Text>
         </View>
@@ -345,7 +344,7 @@ export const WelcomeScreen = () => {
                 ]}
               >
                 {socialBusy === 'google' ? (
-                  <ActivityIndicator
+                  <DotsLoader
                     testID="welcome-cta-google-spinner"
                     color={theme.colors.uacTextBase}
                   />
@@ -359,7 +358,7 @@ export const WelcomeScreen = () => {
                 )}
               </Pressable>
 
-              {isAppleAvailable && (
+              {SHOW_APPLE_AND_EMAIL_SIGN_IN && isAppleAvailable && (
                 <Pressable
                   testID="welcome-cta-apple"
                   accessibilityRole="button"
@@ -377,7 +376,7 @@ export const WelcomeScreen = () => {
                   ]}
                 >
                   {socialBusy === 'apple' ? (
-                    <ActivityIndicator
+                    <DotsLoader
                       testID="welcome-cta-apple-spinner"
                       color={theme.colors.uacTextPrimaryBase}
                     />
@@ -393,24 +392,30 @@ export const WelcomeScreen = () => {
               )}
             </View>
 
-            {/* 3b. "or" divider — line · "or" · line (Figma Frame 2135) */}
-            <View style={styles.orDivider}>
-              <View style={styles.orDividerLine} />
-              <Text style={styles.orDividerLabel}>{t('uac.welcome.or')}</Text>
-              <View style={styles.orDividerLine} />
-            </View>
+            {SHOW_APPLE_AND_EMAIL_SIGN_IN && (
+              <>
+                {/* 3b. "or" divider — line · "or" · line (Figma Frame 2135) */}
+                <View style={styles.orDivider}>
+                  <View style={styles.orDividerLine} />
+                  <Text style={styles.orDividerLabel}>
+                    {t('uac.welcome.or')}
+                  </Text>
+                  <View style={styles.orDividerLine} />
+                </View>
 
-            {/* 3c. Email entry — canonical secondary button. */}
-            <PillButton
-              testID="welcome-cta-email"
-              accessibilityLabel={t('uac.welcome.email_cta')}
-              title={t('uac.welcome.email_cta')}
-              variant="outline"
-              disabled={isBusy}
-              onPress={onPressEmail}
-              style={styles.buttonBase}
-              trailing={<EnvelopeGlyph />}
-            />
+                {/* 3c. Email entry — canonical secondary button. */}
+                <PillButton
+                  testID="welcome-cta-email"
+                  accessibilityLabel={t('uac.welcome.email_cta')}
+                  title={t('uac.welcome.email_cta')}
+                  variant="outline"
+                  disabled={isBusy}
+                  onPress={onPressEmail}
+                  style={styles.buttonBase}
+                  trailing={<EnvelopeGlyph />}
+                />
+              </>
+            )}
           </View>
 
           {/* Legal footer — the "Terms of Service" + "Privacy Policy"
@@ -480,13 +485,18 @@ const styles = StyleSheet.create({
   heroGroup: {
     alignItems: 'center',
     marginTop: theme.spacing.uacDimension24 * 2,
-    gap: theme.spacing.uacDimension8,
+  },
+  // Mascot → heading spacing mirrors the Welcome (splash) screen (24px).
+  logo: {
+    marginBottom: theme.spacing.l,
   },
   headline: {
     ...theme.typography.aliases.uacH1Bold,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
     letterSpacing: -0.72,
+    // Heading → subtitle spacing mirrors the Welcome (splash) screen (16px).
+    marginBottom: theme.spacing.uacDimension16,
   },
   subtitle: {
     ...theme.typography.aliases.uacBodyXsRegular,

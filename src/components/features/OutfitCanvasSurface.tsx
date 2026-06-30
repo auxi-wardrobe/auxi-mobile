@@ -37,6 +37,10 @@ export type CanvasItemData = {
   // Raw item category, carried so the editor can re-seed the layout via the
   // collage engine when items are added (newly added items follow the same rule).
   category?: string;
+  // Originating wardrobe item id (the `id` above is a synthetic per-instance
+  // key). Carried so a saved creation can launch Self Visualization / try-on,
+  // which needs real wardrobe item ids. Absent for mock/seeded items.
+  wardrobeItemId?: string;
 };
 
 // --- Grid background (graph-paper) ---

@@ -964,7 +964,14 @@ export const ItemDetailScreen = () => {
                   style={styles.ctaPill}
                   textStyle={styles.ctaPillText}
                   onPress={() => {
-                    navigation.navigate('Home', { pinFromDetail: itemId });
+                    // ItemDetail is presented as a modal layer (AppNavigator
+                    // presentation:'modal'). navigate('Home',…) to a screen
+                    // BELOW the modal updates JS nav state but can leave the
+                    // native iOS modal still presented → desync: the sheet
+                    // stays stuck on top and nothing responds. popTo issues
+                    // pop semantics (like the back button's goBack) that
+                    // dismiss the modal AND land on Home with the pin intent.
+                    navigation.popTo('Home', { pinFromDetail: itemId });
                   }}
                   disabled={isPreparing}
                 />

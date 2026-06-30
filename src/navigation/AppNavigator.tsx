@@ -33,6 +33,10 @@ import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
 import {
+  registerPushTapHandlers,
+  registerTokenRefreshListener,
+} from '../services/notificationService';
+import {
   getPendingNavIntent,
   setPendingNavIntent,
 } from '../services/reviewOverrides';
@@ -44,8 +48,19 @@ export const AppNavigator = () => {
     // Register Linking listeners for the verify-email and reset-password deep
     // links, driving them through the shared navigationRef (also used by the
     // root-level push-drawer menu, which renders outside the container).
-    const unregister = registerDeepLinkListeners(() => navigationRef.current);
-    return unregister;
+    const unregisterLinks = registerDeepLinkListeners(
+      () => navigationRef.current,
+    );
+    // Push notification taps (cold-start / background) route through the same
+    // navigationRef; token-refresh re-registers the device so the backend never
+    // holds a stale FCM token.
+    const unregisterTaps = registerPushTapHandlers(() => navigationRef.current);
+    const unregisterRefresh = registerTokenRefreshListener();
+    return () => {
+      unregisterLinks();
+      unregisterTaps();
+      unregisterRefresh();
+    };
   }, []);
   const { user, isLoading } = useAuth();
 
@@ -161,12 +176,36 @@ export const AppNavigator = () => {
             </>
           ) : (
             <>
-              <Stack.Screen name="Home" component={HomeScreen} />
-              <Stack.Screen name="Settings" component={SettingsScreen} />
-              <Stack.Screen name="Wardrobe" component={WardrobeScreen} />
+              {/* Root destinations reached from the sidebar drawer — these are
+                  where the user starts exploring, not steps in a back-stack, so
+                  the iOS swipe-right-to-go-back gesture is disabled on them
+                  (OutfitCanvas below is likewise disabled). */}
+              <Stack.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="Wardrobe"
+                component={WardrobeScreen}
+                options={{ gestureEnabled: false }}
+              />
               <Stack.Screen name="Favourite" component={FavouriteScreen} />
-              <Stack.Screen name="Schedule" component={ScheduleScreen} />
-              <Stack.Screen name="Feedback" component={FeedbackScreen} />
+              <Stack.Screen
+                name="Schedule"
+                component={ScheduleScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="Feedback"
+                component={FeedbackScreen}
+                options={{ gestureEnabled: false }}
+              />
               <Stack.Screen name="Body" component={BodyScreen} />
               <Stack.Screen
                 name="SeeThisOnMe"
@@ -184,10 +223,7 @@ export const AppNavigator = () => {
                 component={OutfitCanvasScreen}
                 options={{ gestureEnabled: false }}
               />
-              <Stack.Screen
-                name="MyCreations"
-                component={MyCreationsScreen}
-              />
+              <Stack.Screen name="MyCreations" component={MyCreationsScreen} />
               {/* __DEV__-only Design System reference screen. Registering it
                   unconditionally is harmless — the only entry point (Settings
                   "Version" row) is itself __DEV__-gated, so prod users can't

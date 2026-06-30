@@ -74,7 +74,7 @@ env:
 # Header renders only while outfit==='generating'. Skeletons render in
 # non-pinned slots of the active card (peek/back cards keep their data).
 - assertVisible:
-    id: home-pin-generating-header
+    id: home-wear-this-generating-spinner
 - assertVisible:
     id: "home-tile-skeleton-.*"
     index: 0
@@ -87,7 +87,7 @@ env:
       id: "home-tile-skeleton-.*"
     timeout: ${PIN_GENERATE_TIMEOUT_MS}
 - assertNotVisible:
-    id: home-pin-generating-header
+    id: home-wear-this-generating-spinner
 
 # --- 7. Pinned tile still in the deck (set suffix proves pin survived) ---
 # After GENERATE_SUCCESS, the pinned item retains its position and its pin

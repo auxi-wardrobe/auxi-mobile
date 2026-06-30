@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
@@ -14,10 +13,10 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Icons } from '../../assets/icons';
+import { DotsLoader } from '../atoms/DotsLoader';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { useBackgroundScale } from '../../context/BackgroundScaleContext';
-import { Input } from '../atoms/Input';
 import { track } from '../../services/analytics';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -46,14 +45,14 @@ interface ContextChipsModalProps {
   visible: boolean;
   chipOptions: ContextChipOption[];
   selectedChipId: ContextChipId | null;
-  isEditing: boolean;
-  customContextText: string;
   isSubmitting: boolean;
   confirmDisabled: boolean;
   onSelectChip: (chipId: ContextChipId) => void;
   onShuffle: () => void;
+  // Opens the full-screen "Edit context" view (rendered separately by the
+  // parent). The inline text editor that used to live here was lifted out into
+  // EditContextModal.
   onEdit: () => void;
-  onChangeText: (text: string) => void;
   onCancel: () => void;
   onConfirm: () => void;
   // Optional copy override (the progressive-refinement gate uses preference
@@ -71,14 +70,11 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
   visible,
   chipOptions,
   selectedChipId,
-  isEditing,
-  customContextText,
   isSubmitting,
   confirmDisabled,
   onSelectChip,
   onShuffle,
   onEdit,
-  onChangeText,
   onCancel,
   onConfirm,
   title,
@@ -229,19 +225,6 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          {isEditing ? (
-            <Input
-              testID="context-chips-custom-input"
-              value={customContextText}
-              onChangeText={onChangeText}
-              placeholder={t('contextChips.placeholder')}
-              autoFocus
-              editable={!isSubmitting}
-              returnKeyType="done"
-              style={styles.editInput}
-            />
-          ) : null}
-
           <View style={styles.actionsRow}>
             <TouchableOpacity
               testID={onSkip ? 'context-chips-skip' : 'context-chips-modal-close'}
@@ -266,7 +249,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
               onPress={onConfirm}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color={theme.colors.white} />
+                <DotsLoader color={theme.colors.white} />
               ) : (
                 <Text
                   style={[
@@ -356,11 +339,6 @@ const styles = StyleSheet.create({
   },
   selectedChipText: {
     color: theme.colors.white,
-  },
-  editInput: {
-    marginTop: 12,
-    marginBottom: 0,
-    alignSelf: 'stretch',
   },
   actionsRow: {
     marginTop: 16,

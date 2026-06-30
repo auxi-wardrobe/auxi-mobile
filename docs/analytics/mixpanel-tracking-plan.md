@@ -201,8 +201,11 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 |---|---|---|---|
 | `canvas_item_layer_reordered` | Selected canvas item moved one layer via the toolbar (AU-360 fix — z-index swap with adjacent item). Fires only on an actual move, not at the front/back edge. | `OutfitCanvasScreen.tsx:448` (`moveLayer`) | `direction` (`forward`/`backward`) |
 | `canvas_reset` | Canvas cleared to a blank state via the footer "+" new-canvas button (after the save/discard sheet resolves). | `OutfitCanvasScreen.tsx` (`resetCanvasToBlank`) | — |
+| `creation_saved` | A creation persisted successfully (`creationsService.saveCreation` resolved — server, or a local-store fallback when offline). | `OutfitCanvasScreen.tsx:892` (`persistCreation`) | `item_count` (number of persisted items) |
+| `creation_save_failed` | A save genuinely failed (the `creationsService.saveCreation` call threw). A true offline error never reaches here — the service falls back to a local save. | `OutfitCanvasScreen.tsx:910` (`persistCreation` catch) | `kind` — sanitized enum (`auth` session-expired / `server` other HTTP / `unknown`) |
+| `creation_self_visualization_opened` | "See on me" sparkle tapped on a saved creation card — launches the try-on (`SeeThisOnMe`) flow with the creation's wardrobe items. | `MyCreationsScreen.tsx:133` (`handleVisualize`) | `creation_id` (internal id) |
 
-> Gap: other canvas toolbar actions (add / duplicate / swap / delete / tag add-remove / save) are not yet instrumented — local-only editor state, no persistence wired. Track when the Save→backend persist step lands (`handleSave` is a TODO `goBack()` today). Logged in §6.6.
+> PII: `kind` is a closed enum, `creation_id` an internal record id — no garment names / free text. The Save→backend persist step now ships (`creation_saved`, §5.11 above is the success counterpart); other canvas toolbar actions (add / duplicate / swap / delete / tag add-remove) remain local-only editor state and are still uninstrumented (logged in §6.6).
 
 ### 5.12 App Feedback
 
@@ -267,7 +270,7 @@ The pin feature (AU-307) originally shipped with NO analytics (only `console.inf
 
 ### 5.18 Schedule (outfit planning, mobile-local)
 
-The Schedule screen (sidebar → Schedule) lets the user plan saved outfits / canvas creations onto calendar days. The store is **local, per-user AsyncStorage** (`@auxi/schedule/<userId>`) — no backend route. Events capture the planning funnel: open the date picker → confirm a day; plus the in-Schedule add-source picker and day selection.
+The Schedule screen (sidebar → Schedule) lets the user plan saved outfits / canvas creations onto calendar days. The store is now **backend-backed** (`/api/schedule`, via `scheduleService`) with per-user AsyncStorage (`@auxi/schedule/<userId>`) as an offline fallback only. Events capture the planning funnel: open the date picker → confirm a day; plus the in-Schedule add-source picker, day selection, and removal.
 
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
@@ -278,10 +281,31 @@ The Schedule screen (sidebar → Schedule) lets the user plan saved outfits / ca
 | **`schedule_add_tapped`** | Schedule header "+" tapped — opens the "Add an outfit" source picker. | `ScheduleScreen.tsx:186` (`handleAddOutfit`) | `date` (`YYYY-MM-DD`, the selected day) |
 | **`schedule_add_source_selected`** | A source chosen in the "Add an outfit" picker — routes to that page. | `ScheduleScreen.tsx:193` (`handlePickSource`) | `source` (`favourite` / `creations`) |
 | **`schedule_day_selected`** | A day tapped on the week strip. | `ScheduleScreen.tsx:181` (`handleSelectDay`) | `date` (`YYYY-MM-DD`), `is_today` (bool) |
+| **`outfit_unscheduled`** | An outfit removed from a planned day (Schedule screen remove / collage-card remove). Fired from the store so every removal path is covered. | `ScheduleContext.tsx:173` (`unscheduleOutfit`) via `trackOutfitUnscheduled` | `source` (`favourite` / `creation`) — bounded enum, no ids/PII |
 
-> Funnel intent: `*_schedule_opened` → `*_added_to_schedule` measures add-to-schedule completion per source (favourite vs creation); `schedule_add_tapped` → `schedule_add_source_selected` measures the in-Schedule "+" entry. `schedule_day_selected` is engagement with the rail.
+> Funnel intent: `*_schedule_opened` → `*_added_to_schedule` measures add-to-schedule completion per source (favourite vs creation); `schedule_add_tapped` → `schedule_add_source_selected` measures the in-Schedule "+" entry. `schedule_day_selected` is engagement with the rail. `outfit_unscheduled` ÷ `*_added_to_schedule` is the plan-removal (regret) rate.
+>
+> Note: **adding** to the schedule is intentionally NOT re-fired from the `scheduleService`/context wiring — it is already captured by `favourite_added_to_schedule` / `creation_added_to_schedule` at the screen level. Firing an extra `outfit_scheduled` from the store would double-count the add funnel, so only the previously-untracked removal (`outfit_unscheduled`) was added when the feature moved to the backend.
 >
 > PII: none. `favorite_id` / `creation_id` are internal record ids (no garment names, no free text); `date` is a calendar day (`YYYY-MM-DD`, no time); `source` is a closed enum; `is_today` is an unquoted boolean. The store itself is on-device only and never sent to a backend.
+
+### 5.19 Push notifications (Phase 1)
+
+FCM device-token lifecycle + tap routing (push-notification system, Phase 1).
+Permission requested contextually after sign-in (AuthContext identity effect)
+and when enabling the daily reminder (SettingsScreen). All events are
+literal-named via `analytics.ts` helpers.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `push_permission_requested` | OS notification-permission prompt shown / re-evaluated (login + Settings reminder-enable) | `notificationService.ts` (`requestPushPermission`) via `analytics.ts` | — |
+| `push_permission_granted` | Permission granted or provisionally granted | `notificationService.ts` via `analytics.ts` | — |
+| `push_permission_denied` | Permission denied / not determined | `notificationService.ts` via `analytics.ts` | — |
+| `device_token_registered` | FCM token successfully POSTed to `/api/notifications/device-token` (register + token-refresh re-register) | `notificationService.ts` (`registerCurrentToken`) via `analytics.ts` | — |
+| `push_received` | A push arrived while the app was foregrounded (`onMessage`) | `notificationService.ts` (`registerPushTapHandlers`) via `analytics.ts` | `type` (notification type) |
+| `push_opened` | A push was tapped and routed — cold-start (`getInitialNotification`) or background (`onNotificationOpenedApp`) | `notificationService.ts` (`registerPushTapHandlers`) via `analytics.ts` | `type` (notification type) |
+
+> PII: none. `type` is the bounded notification-type enum (`daily_reminder` / `planned_outfit` / `admin_broadcast` / `admin_direct` / `admin_segment`) carried in the FCM `data` payload — no token, no deep-link url, no free text. Tokens never enter analytics. Deep-link tap routing uses the curated allowlist (`CURATED_PUSH_SCREENS` in `deepLinkHandler.ts`, the mobile mirror of spec §5.1); the `Creations` registry name maps to the RN route `MyCreations`.
 
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
@@ -383,4 +407,6 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 
 - **Notification-settings engagement (AU-316):** `notifications_toggle_changed` / `notifications_schedule_changed` / `notifications_reset` measure how users tune the daily reminder; `notifications_reset` ÷ `notifications_reset_undone` is the regret rate on the reset action (a high undo rate signals the reset is too easy to trigger or its defaults are wrong — relevant to the pending UAC 07:30 vs constant 06:15 default discrepancy). Break down `notifications_schedule_changed` by `frequency`/`period` to see preferred cadence.
 
-Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`. Super properties (`platform`, `app_environment`) are available globally.
+- **Push opt-in + engagement funnel (push Phase 1):** `push_permission_requested` → `push_permission_granted` → `device_token_registered` measures registration completion (denominator: requested; `push_permission_denied` is the drop branch). Engagement: `push_opened` ÷ `push_received` (foreground) plus cold/background opens — break down by `type` to compare `daily_reminder` vs `planned_outfit` vs `admin_*` open rates.
+
+Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`, `type`. Super properties (`platform`, `app_environment`) are available globally.

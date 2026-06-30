@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
   Image,
@@ -25,6 +24,7 @@ import {
   Asset,
 } from 'react-native-image-picker';
 import { CategoryTabs } from '../components/features/CategoryTabs';
+import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
 import { Header } from '../components/layout/Header';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
@@ -33,6 +33,7 @@ import {
   MBottomSheet,
   MButton,
 } from '../components/design-system/lib';
+import { DotsLoader } from '../components/atoms/DotsLoader';
 import { useSidebar } from '../context/SidebarContext';
 import {
   wardrobeService,
@@ -330,7 +331,7 @@ export const WardrobeScreen = () => {
     navigation.navigate('ItemDetail', { itemId: item.id });
   };
 
-  const openAddSheet = (source: 'header' | 'empty_state') => {
+  const openAddSheet = (source: 'header' | 'empty_state' | 'welcome') => {
     track('add_item_opened', { source });
     setAddSheetVisible(true);
   };
@@ -552,10 +553,7 @@ export const WardrobeScreen = () => {
             accessibilityLabel={t('common.a11y_add_item')}
           >
             {uploading ? (
-              <ActivityIndicator
-                size="small"
-                color={theme.colors.figmaAction}
-              />
+              <DotsLoader color={theme.colors.figmaAction} />
             ) : (
               <Icons.Plus width={24} height={24} />
             )}
@@ -755,6 +753,14 @@ export const WardrobeScreen = () => {
           <ItemReadySnackbar message={readySnackbarMessage} />
         </View>
       ) : null}
+
+      {/* First-open welcome popup — shown once the wardrobe finishes its initial
+          load (so it never overlays the skeleton), then never again. "Add My
+          Clothes" opens the add-item sheet; "Explore for Now" just dismisses. */}
+      <WardrobeWelcomeDialog
+        enabled={isFocused && !loading && !loadError}
+        onAddClothes={() => openAddSheet('welcome')}
+      />
     </SafeAreaView>
   );
 };

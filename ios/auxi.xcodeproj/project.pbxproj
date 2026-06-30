@@ -13,6 +13,7 @@
 		6E10C15770CB4855BAF8244D /* Poppins-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 51ADDE6E7ABB4DA3A1CBFAB0 /* Poppins-Medium.ttf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		B7ECA4B4DAAA501BF091C0EB /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8D464E7171C04B226D45311A /* GoogleService-Info.plist */; };
 		F5A93C80C842600DC497D83F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -27,6 +28,7 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-auxi.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-auxi.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = auxi/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = auxi/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		8D464E7171C04B226D45311A /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "auxi/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		D79A7481465F4F9EB847E4A0 /* Poppins-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Poppins-Regular.ttf"; path = "../src/assets/fonts/Poppins-Regular.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -51,6 +53,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				8D464E7171C04B226D45311A /* GoogleService-Info.plist */,
 			);
 			name = auxi;
 			sourceTree = "<group>";
@@ -179,6 +182,7 @@
 				F5A93C80C842600DC497D83F /* PrivacyInfo.xcprivacy in Resources */,
 				6E10C15770CB4855BAF8244D /* Poppins-Medium.ttf in Resources */,
 				2C431744477F4AD39C8DD06E /* Poppins-Regular.ttf in Resources */,
+				B7ECA4B4DAAA501BF091C0EB /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

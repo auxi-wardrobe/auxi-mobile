@@ -23,6 +23,28 @@ jest.mock('./src/components/design-system/lib/m-toast-service', () => ({
   },
   subscribeToast: jest.fn(() => () => {}),
 }));
+// theme/motion: force `useReducedMotion()` to report true in tests. Looping
+// loaders (DotsLoader/GeneratingDots/MacgieLoader) and the PillButton cross-fade
+// take their static, no-animation branch under reduced motion — otherwise an
+// `Animated.loop` keeps a timer alive that fires after Jest tears the
+// environment down (`getNativeTagFromPublicInstance is not a function` /
+// "import a file after the Jest environment has been torn down"). Every other
+// export stays real so motion tokens/easing/helpers are unchanged.
+jest.mock('./src/theme/motion', () => ({
+  ...jest.requireActual('./src/theme/motion'),
+  useReducedMotion: () => true,
+}));
+
+// react-native-toast-message: the default export is BOTH a renderable component
+// (App.tsx renders `<Toast />`) and a namespace with .show/.hide statics (screens
+// call Toast.show(...)). Model it as a no-op component function with the spies
+// attached as static methods so both usages work.
+jest.mock('react-native-toast-message', () => {
+  const Toast = () => null;
+  Toast.show = jest.fn();
+  Toast.hide = jest.fn();
+  return { __esModule: true, default: Toast };
+});
 
 // react-native-safe-area-context: insets + provider passthrough.
 jest.mock('react-native-safe-area-context', () => {
@@ -125,7 +147,32 @@ jest.mock('react-native-localize', () => ({
   getLocales: () => [
     { languageCode: 'en', countryCode: 'US', languageTag: 'en-US' },
   ],
+  getTimeZone: () => 'Asia/Saigon',
 }));
+
+// @react-native-firebase/messaging: native FCM bridge, absent in jest. Inert
+// default-export stub so the AuthContext/AppNavigator → notificationService
+// import chain (App.test.tsx render path) resolves. Per-test files re-mock
+// with spies (see services/__tests__/notificationService.test.ts).
+jest.mock('@react-native-firebase/messaging', () => {
+  const messaging = () => ({
+    requestPermission: jest.fn().mockResolvedValue(1),
+    registerDeviceForRemoteMessages: jest.fn().mockResolvedValue(undefined),
+    getToken: jest.fn().mockResolvedValue('test-fcm-token'),
+    onTokenRefresh: jest.fn(() => () => {}),
+    onMessage: jest.fn(() => () => {}),
+    onNotificationOpenedApp: jest.fn(() => () => {}),
+    getInitialNotification: jest.fn().mockResolvedValue(null),
+    setBackgroundMessageHandler: jest.fn(),
+  });
+  messaging.AuthorizationStatus = {
+    NOT_DETERMINED: -1,
+    DENIED: 0,
+    AUTHORIZED: 1,
+    PROVISIONAL: 2,
+  };
+  return { __esModule: true, default: messaging };
+});
 
 // @sentry/react-native: untranspiled ESM (outside transformIgnorePatterns) plus
 // a native bridge. Reached via services/sentry.ts + weatherService.ts on the

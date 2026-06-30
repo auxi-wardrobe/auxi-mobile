@@ -6,7 +6,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   ScrollView,
   Text,
@@ -27,6 +26,7 @@ import { useSidebar } from '../../context/SidebarContext';
 import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
 import { useAuth } from '../../context/AuthContext';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
+import { EditContextModal } from '../../components/features/EditContextModal';
 import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
 import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
@@ -41,6 +41,7 @@ import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.sv
 import IconFeedback from '../../assets/images/feedback.svg';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
+import { DotsLoader } from '../../components/atoms/DotsLoader';
 import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
@@ -118,6 +119,7 @@ import {
 import { styles } from './styles';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
+import { EDIT_CONTEXT_SUGGESTIONS } from './context-chips';
 import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { HomeLoadingState } from './components/HomeLoadingState';
@@ -1377,22 +1379,6 @@ export const HomeScreen = () => {
         ) : null}
       </View>
 
-      {pinState.outfit === 'generating' ? (
-        <View
-          style={styles.pinGeneratingHeader}
-          testID="home-pin-generating-header"
-        >
-          <Text style={styles.pinGeneratingHeaderText} numberOfLines={1}>
-            {t('pin.generating_header')}
-          </Text>
-          <ActivityIndicator
-            size="small"
-            color={theme.colors.figmaTextPrimary}
-            testID="home-pin-generating-spinner"
-          />
-        </View>
-      ) : null}
-
       {loading ? (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -1566,14 +1552,27 @@ export const HomeScreen = () => {
           ) : (
             <PillButton
               testID="home-wear-this"
-              title={t('home.wear_this')}
+              title={
+                pinState.outfit === 'generating'
+                  ? t('pin.generating_header')
+                  : t('home.wear_this')
+              }
               variant="outline"
               onPress={() =>
                 activeOutfit && handleWearThisForOutfit(activeOutfit)
               }
               disabled={!activeOutfit || pinState.outfit === 'generating'}
               loading={activeSaveState === 'saving'}
-              trailing={<IconHomeHeartOutline width={24} height={24} />}
+              trailing={
+                pinState.outfit === 'generating' ? (
+                  <DotsLoader
+                    color={theme.colors.figmaAction}
+                    testID="home-wear-this-generating-spinner"
+                  />
+                ) : (
+                  <IconHomeHeartOutline width={24} height={24} />
+                )
+              }
               style={styles.primaryActionFull}
               textStyle={styles.primaryActionLabel}
             />
@@ -1614,20 +1613,31 @@ export const HomeScreen = () => {
       />
 
       <ContextChipsModal
-        visible={refine.isOpen}
+        visible={refine.isOpen && !refine.isEditing}
         chipOptions={refine.displayChipOptions}
         selectedChipId={refine.selectedChipId}
-        isEditing={refine.isEditing}
-        customContextText={refine.customText}
         isSubmitting={false}
         confirmDisabled={refine.confirmDisabled}
         onSelectChip={refine.onSelectChip}
         onShuffle={refine.onShuffle}
         onEdit={refine.onEdit}
-        onChangeText={refine.onChangeText}
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
         onSkip={refine.onSkip}
+      />
+
+      {/* Full-screen "Edit context" view — opened from the refine sheet's Edit
+          chip. Submitting applies the typed context through the same feedback
+          path; backing out returns to the chip row. */}
+      <EditContextModal
+        visible={refine.isOpen && refine.isEditing}
+        value={refine.customText}
+        suggestions={EDIT_CONTEXT_SUGGESTIONS}
+        submitDisabled={refine.confirmDisabled}
+        onChangeText={refine.onChangeText}
+        onSelectSuggestion={refine.onChangeText}
+        onBack={refine.onCancelEdit}
+        onSubmit={refine.onConfirm}
       />
 
       <OutfitLimitSheet
