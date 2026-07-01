@@ -78,7 +78,6 @@ import {
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
-import { MSnackbar } from '../../components/design-system/lib';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import {
   HomeView,
@@ -120,6 +119,7 @@ import { EDIT_CONTEXT_SUGGESTIONS } from './context-chips';
 import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { HomeLoadingState } from './components/HomeLoadingState';
+import { HomeToastLayer } from './components/HomeToastLayer';
 import { OptionSheet } from './components/OptionSheet';
 import { OutfitActionRow } from '../../components/features/OutfitActionRow';
 
@@ -1620,42 +1620,12 @@ export const HomeScreen = () => {
         onClose={() => setFeedbackVisible(false)}
       />
 
-      {refineToastText ? (
-        <View pointerEvents="none" style={styles.refineToastWrap}>
-          <View
-            testID="home-refine-applied-toast"
-            accessibilityRole="alert"
-            style={styles.refineToast}
-          >
-            <Text style={styles.refineToastText} numberOfLines={1}>
-              {refineToastText}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-
-      {moodBannerText ? (
-        <View
-          testID="mood-feedback-banner"
-          accessibilityRole="alert"
-          pointerEvents="none"
-          style={styles.moodBanner}
-        >
-          <Text style={styles.moodBannerText}>{moodBannerText}</Text>
-        </View>
-      ) : null}
-
-      <View
-        accessibilityRole="alert"
-        pointerEvents="none"
-        style={styles.tempToast}
-      >
-        <MSnackbar
-          visible={tempToastVisible}
-          message={tempToastText}
-          testID="home-temp-toast"
-        />
-      </View>
+      <HomeToastLayer
+        refineToastText={refineToastText}
+        moodBannerText={moodBannerText}
+        tempToastVisible={tempToastVisible}
+        tempToastText={tempToastText}
+      />
     </SafeAreaView>
   );
 };
