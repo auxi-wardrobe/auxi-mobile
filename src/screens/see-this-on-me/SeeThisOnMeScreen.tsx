@@ -31,7 +31,6 @@ import { bodyShapeService } from '../../services/bodyShapeService';
 import { track } from '../../services/analytics';
 import { useAiConsentGate } from '../../hooks/useAiConsentGate';
 import { AiConsentDialog } from '../../components/features/AiConsentDialog';
-import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { AppStackParamList } from '../../types/navigation';
 import { MacgieLoader } from '../../components/macgie/MacgieLoader';
@@ -51,6 +50,12 @@ import { StepReuseConfirm } from './StepReuseConfirm';
 import { OutfitPreview } from './OutfitPreview';
 import { GeneratingView } from './GeneratingView';
 import { BodyShapeId, GeneratedShape } from './body-shapes';
+import {
+  Step,
+  CaptureStep,
+  stepOrder,
+  captureStepConfig,
+} from './stom-steps';
 import { decideEntryMode } from './profile-entry';
 import { tryOnGenerationStore } from './try-on-generation-store';
 import { useTryOnGeneration } from './use-try-on-generation';
@@ -61,38 +66,6 @@ const ACTIVE_PROFILE_QUERY_KEY = ['body', 'active'] as const;
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'SeeThisOnMe'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'SeeThisOnMe'>;
-
-// Capture steps in transcript order. `promptKey` is the i18n bubble copy;
-// `icon` is the outline glyph that sits inside the bubble (Figma 3398:18229 /
-// 18246). The screen renders these bubbles + the per-step captured thumbnail
-// from state so every step shows the correct accumulation — no hand-picking.
-type CaptureStep = 'selfie' | 'fullBody' | 'bodyShape';
-
-// 'generatingShapes' = AI building the 3 body-shape photos (async, AU-358);
-// 'generating' = rendering the outfit onto the chosen body (async).
-type Step = CaptureStep | 'generatingShapes' | 'generating' | 'preview';
-
-const stepOrder: CaptureStep[] = ['selfie', 'fullBody', 'bodyShape'];
-
-const captureStepConfig: Record<
-  CaptureStep,
-  { promptKey: string; icon?: React.ReactNode; testID: string }
-> = {
-  selfie: {
-    promptKey: 'seeThisOnMe.step1.prompt',
-    icon: <Icons.FaceId width={44} height={44} />,
-    testID: 'stom-step-1-prompt',
-  },
-  fullBody: {
-    promptKey: 'seeThisOnMe.step2.prompt',
-    icon: <Icons.BodyOutline width={44} height={44} />,
-    testID: 'stom-step-2-prompt',
-  },
-  bodyShape: {
-    promptKey: 'seeThisOnMe.step3.prompt',
-    testID: 'stom-step-3-prompt',
-  },
-};
 
 export const SeeThisOnMeScreen: React.FC = () => {
   const { t } = useTranslation();
