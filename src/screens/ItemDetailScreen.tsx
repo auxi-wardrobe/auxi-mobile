@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
-  Modal,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -21,6 +19,7 @@ import {
   TopIconButton,
 } from '../components/primitives/FigmaPrimitives';
 import { MacgieLoader } from '../components/macgie';
+import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
 import { Icons } from '../assets/icons';
 import {
   getItemFitLabel,
@@ -38,7 +37,6 @@ import { track } from '../services/analytics';
 import {
   areTagsEqual,
   EditableField,
-  FIELD_CONFIG,
   findColorHex,
   formatItemDate,
   getFriendlyError,
@@ -245,21 +243,21 @@ export const ItemDetailScreen = () => {
     (typeof item?.human_readable_id === 'string' &&
       item.human_readable_id.startsWith('USR_'));
 
-  // Field-driven picker: options + header label come from FIELD_CONFIG (single
-  // source of truth), and the draft setter is looked up per field — collapses
-  // the three former parallel `switch (field)` blocks with identical behavior.
+  // Field-driven picker: the draft value + setter are looked up per field —
+  // collapses the former parallel `switch (field)` blocks with identical
+  // behavior. Options + header label live in FIELD_CONFIG (used by the sheet).
+  const draftValues: Record<EditableField, string> = {
+    category: draftCategory,
+    color: draftColor,
+    fit: draftFit,
+    style: draftStyle,
+  };
   const draftSetters: Record<EditableField, (value: string) => void> = {
     category: setDraftCategory,
     color: setDraftColor,
     fit: setDraftFit,
     style: setDraftStyle,
   };
-
-  const getPickerOptions = (field: EditableField): string[] =>
-    FIELD_CONFIG[field].options;
-
-  const getPickerFieldLabel = (field: EditableField): string =>
-    t(FIELD_CONFIG[field].labelKey);
 
   const handleSelectOption = (option: string) => {
     if (!pickerField) {
@@ -886,76 +884,12 @@ export const ItemDetailScreen = () => {
         )}
       </BottomSheetSurface>
 
-      <Modal
-        visible={!!pickerField}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPickerField(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {t('wardrobe.itemDetail.picker_title', {
-                  field: pickerField ? getPickerFieldLabel(pickerField) : '',
-                })}
-              </Text>
-              <TouchableOpacity
-                testID="item-detail-picker-close-btn"
-                onPress={() => setPickerField(null)}
-              >
-                <Text style={styles.modalClose}>
-                  {t('wardrobe.itemDetail.picker_close')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView>
-              {(pickerField ? getPickerOptions(pickerField) : []).map(
-                option => {
-                  const isSelected =
-                    (pickerField === 'category' && draftCategory === option) ||
-                    (pickerField === 'color' && draftColor === option) ||
-                    (pickerField === 'fit' && draftFit === option) ||
-                    (pickerField === 'style' && draftStyle === option);
-
-                  return (
-                    <TouchableOpacity
-                      key={option}
-                      testID={`item-detail-option-${option}`}
-                      style={styles.optionItem}
-                      onPress={() => handleSelectOption(option)}
-                    >
-                      <View style={styles.optionLeft}>
-                        {pickerField === 'color' ? (
-                          <View
-                            style={[
-                              styles.optionColorDot,
-                              { backgroundColor: findColorHex(option) },
-                            ]}
-                          />
-                        ) : null}
-                        <Text style={styles.optionText}>
-                          {pickerField
-                            ? getOptionDisplayLabel(t, pickerField, option)
-                            : option}
-                        </Text>
-                      </View>
-                      {isSelected ? (
-                        <Icons.ChevronRight
-                          width={18}
-                          height={18}
-                          color={theme.colors.figmaAction}
-                        />
-                      ) : null}
-                    </TouchableOpacity>
-                  );
-                },
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <OptionPickerSheet
+        field={pickerField}
+        selectedValue={pickerField ? draftValues[pickerField] : ''}
+        onSelect={handleSelectOption}
+        onClose={() => setPickerField(null)}
+      />
     </View>
   );
 };
@@ -1175,60 +1109,6 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     opacity: 0.5,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '55%',
-    paddingBottom: 36,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.figmaItemDetailModalDivider,
-  },
-  modalTitle: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaItemDetailRowText,
-  },
-  modalClose: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.figmaItemDetailModalClose,
-  },
-  optionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.figmaItemDetailOptionDivider,
-  },
-  optionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  optionColorDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaItemDetailOptionDotBorder,
-  },
-  optionText: {
-    ...theme.typography.aliases.interBodyMd,
-    color: theme.colors.figmaItemDetailRowText,
   },
   skeletonTitle: {
     width: '100%',
