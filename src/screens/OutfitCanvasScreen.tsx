@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Animated,
   Dimensions,
   Image,
   ImageSourcePropType,
@@ -10,7 +9,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -25,7 +23,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
-import { motion } from '../theme/motion';
 import {
   CanvasItemData,
   OutfitCanvasSurface,
@@ -34,8 +31,7 @@ import {
   addSeededItems,
   seedCanvasLayout,
 } from '../components/features/collage-seed-layout';
-import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
-import { CategoryTabs } from '../components/features/CategoryTabs';
+import { WardrobeItem } from '../services/wardrobeService';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { getImageUrl } from '../utils/url';
 import { useSidebar } from '../context/SidebarContext';
@@ -52,6 +48,7 @@ import {
   setCanvasExitGuard,
 } from '../navigation/canvasExitGuard';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
+import { ItemPickerPanel } from './canvas/ItemPickerPanel';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { InfoSnackbar } from '../components/feedback/InfoSnackbar';
 import { DotsLoader } from '../components/atoms/DotsLoader';
@@ -137,244 +134,9 @@ const extractUri = (source: ImageSourcePropType): string | undefined => {
   return undefined;
 };
 
-const PICKER_COLUMNS = 3;
-const PICKER_GAP = 4;
-const PICKER_TILE =
-  (SCREEN_WIDTH - 32 - PICKER_GAP * (PICKER_COLUMNS - 1)) / PICKER_COLUMNS;
-const PICKER_TILE_HEIGHT = PICKER_TILE * (4 / 3);
-
-const PICKER_FILTER_TABS = [
-  'All',
-  'Tops',
-  'Bottoms',
-  'Shoes',
-  'One-piece',
-  'AC',
-] as const;
-type PickerFilterTab = (typeof PICKER_FILTER_TABS)[number];
-
-const resolvePickerCategory = (tab: PickerFilterTab): string | undefined => {
-  switch (tab) {
-    case 'Tops':
-      return 'top';
-    case 'Bottoms':
-      return 'bottom';
-    case 'Shoes':
-      return 'shoes';
-    case 'One-piece':
-      return 'one_piece';
-    case 'AC':
-      return 'accessory';
-    default:
-      return undefined;
-  }
-};
-
 type HistorySnapshot = CanvasItemData[];
 
 const INITIAL_MOCK_ITEMS: CanvasItemData[] = [];
-
-// --- Item picker panel (slides in from right) ---
-interface ItemPickerPanelProps {
-  visible: boolean;
-  onClose: () => void;
-  // May be async: the panel keeps its "Add" button in a loading state until the
-  // promise settles (the parent warms the image cache before placing items).
-  onConfirm: (items: WardrobeItem[]) => void | Promise<void>;
-}
-
-const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
-  visible,
-  onClose,
-  onConfirm,
-}) => {
-  const { t } = useTranslation();
-  const slideX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
-  const [selectedTab, setSelectedTab] = useState<PickerFilterTab>('All');
-  const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  // True while the parent is warming the picked images / placing them on the
-  // canvas — drives the "Add" button's spinner.
-  const [confirming, setConfirming] = useState(false);
-
-  useEffect(() => {
-    Animated.timing(slideX, {
-      toValue: visible ? 0 : SCREEN_WIDTH,
-      duration: motion.duration.medium,
-      easing: motion.easing.standard,
-      useNativeDriver: true,
-    }).start();
-    if (!visible) {
-      setSelectedIds([]);
-      setConfirming(false);
-    }
-  }, [visible, slideX]);
-
-  useEffect(() => {
-    if (!visible) {
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    const category = resolvePickerCategory(selectedTab);
-    wardrobeService
-      .filterWardrobeItems({ category })
-      .then(data => {
-        if (!cancelled) {
-          setWardrobeItems(data);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setWardrobeItems([]);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [visible, selectedTab]);
-
-  const toggleItem = (id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
-    );
-  };
-
-  const handleConfirm = async () => {
-    if (confirming || selectedIds.length === 0) {
-      return;
-    }
-    const chosen = wardrobeItems.filter(it => selectedIds.includes(it.id));
-    setConfirming(true);
-    try {
-      await onConfirm(chosen);
-    } finally {
-      // Guard against a state update after the panel closed/unmounted: the
-      // visibility effect already resets `confirming`, so this is a no-op then.
-      setConfirming(false);
-    }
-  };
-
-  return (
-    <Animated.View
-      style={[pickerStyles.panel, { transform: [{ translateX: slideX }] }]}
-      pointerEvents={visible ? 'auto' : 'none'}
-    >
-      <SafeAreaView style={pickerStyles.safeArea}>
-        {/* Header */}
-        <View style={pickerStyles.header}>
-          <TouchableOpacity
-            onPress={onClose}
-            style={pickerStyles.backBtn}
-            accessibilityLabel={t('outfitCanvas.a11y_close_picker')}
-          >
-            <IconChevronLeft width={24} height={24} />
-          </TouchableOpacity>
-          <Text style={pickerStyles.title}>
-            {t('outfitCanvas.add_to_canvas')}
-          </Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        {/* Category tabs + grid */}
-        <View style={pickerStyles.body}>
-          <CategoryTabs
-            categories={[...PICKER_FILTER_TABS]}
-            selectedCategory={selectedTab}
-            onSelectCategory={tab => setSelectedTab(tab as PickerFilterTab)}
-          />
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={pickerStyles.scrollContent}
-          >
-            {loading ? (
-              <DotsLoader style={pickerStyles.loading} />
-            ) : wardrobeItems.length === 0 ? (
-              <Text style={pickerStyles.empty}>
-                {t('outfitCanvas.no_items_found')}
-              </Text>
-            ) : (
-              <View style={pickerStyles.grid}>
-                {wardrobeItems.map(item => {
-                  const uri = getImageUrl(item.image_png ?? item.image_url);
-                  const isSelected = selectedIds.includes(item.id);
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[
-                        pickerStyles.tile,
-                        isSelected && pickerStyles.tileSelected,
-                      ]}
-                      activeOpacity={0.82}
-                      onPress={() => toggleItem(item.id)}
-                    >
-                      {uri ? (
-                        <Image
-                          source={{ uri }}
-                          style={pickerStyles.tileImage}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View style={pickerStyles.tileFallback}>
-                          <Text style={pickerStyles.tileFallbackText}>
-                            {t('common.no_image')}
-                          </Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-          </ScrollView>
-        </View>
-
-        {/* Confirm button — switches to a loading spinner while the picked
-            images are being warmed/placed (testID flips so Maestro can target
-            either state). */}
-        <View style={pickerStyles.footer}>
-          <TouchableOpacity
-            testID={
-              confirming ? 'canvas-picker-confirm-loading' : 'canvas-picker-confirm'
-            }
-            style={[
-              pickerStyles.confirmBtn,
-              (selectedIds.length === 0 || confirming) &&
-                pickerStyles.confirmBtnDisabled,
-            ]}
-            onPress={handleConfirm}
-            disabled={selectedIds.length === 0 || confirming}
-            activeOpacity={0.85}
-          >
-            {confirming ? (
-              <View style={pickerStyles.confirmBtnLoadingRow}>
-                <DotsLoader
-                  color={theme.colors.figmaPrimaryButtonText}
-                  accessibilityLabel={t('outfitCanvas.adding')}
-                />
-                <Text style={pickerStyles.confirmBtnLabel}>
-                  {t('outfitCanvas.adding')}
-                </Text>
-              </View>
-            ) : (
-              <Text style={pickerStyles.confirmBtnLabel}>
-                {selectedIds.length > 0
-                  ? t('outfitCanvas.add_count', { count: selectedIds.length })
-                  : t('outfitCanvas.add_to_canvas')}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </Animated.View>
-  );
-};
 
 // --- Tag chip ---
 const TagChip = ({
@@ -1554,114 +1316,5 @@ const styles = StyleSheet.create({
   // Primary Save button fills the remaining row width.
   saveButton: {
     flex: 1,
-  },
-});
-
-const pickerStyles = StyleSheet.create({
-  panel: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: theme.colors.figmaBackground,
-    zIndex: theme.zIndex.sticky,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.m,
-    height: 56,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.figmaDivider,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontFamily: 'Poppins-SemiBold',
-    fontSize: 16,
-    color: theme.colors.figmaTextPrimary,
-  },
-  body: {
-    flex: 1,
-    paddingTop: 12,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  loading: {
-    marginTop: 40,
-    alignSelf: 'center',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: PICKER_GAP,
-  },
-  tile: {
-    width: PICKER_TILE,
-    height: PICKER_TILE_HEIGHT,
-    borderRadius: theme.borderRadius.m,
-    overflow: 'hidden',
-    backgroundColor: '#E8EBF0',
-  },
-  tileSelected: {
-    borderRadius: 12,
-  },
-  tileImage: {
-    width: '100%',
-    height: '100%',
-  },
-  tileFallback: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileFallbackText: {
-    ...theme.typography.aliases.manropeCaption,
-    color: theme.colors.figmaTextSecondary,
-  },
-  empty: {
-    textAlign: 'center',
-    marginTop: 40,
-    color: theme.colors.figmaTextSecondary,
-    fontFamily: 'Poppins-Regular',
-  },
-  footer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.figmaDivider,
-  },
-  confirmBtn: {
-    backgroundColor: theme.colors.figmaPrimaryButtonBg,
-    borderRadius: 16,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmBtnDisabled: {
-    opacity: 0.5,
-  },
-  confirmBtnLoadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.s,
-  },
-  confirmBtnLabel: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 16,
-    color: theme.colors.figmaPrimaryButtonText,
-    letterSpacing: 0.15,
   },
 });
