@@ -38,6 +38,7 @@ import {
 import { Icons } from '../assets/icons';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { Header } from '../components/layout/Header';
+import { PhotoSourceModal } from './body/PhotoSourceModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 const IMAGE_GAP = 8;
@@ -460,56 +461,16 @@ export const BodyScreen = () => {
           </View>
         </View>
 
-        <Modal
-          animationType="fade"
-          transparent
+        <PhotoSourceModal
           visible={modalVisible}
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>{t('body.retake_body')}</Text>
-
-                  <TouchableOpacity
-                    testID="body-detail-retake-camera"
-                    style={styles.modalAction}
-                    onPress={() => handleImageSelection('camera')}
-                  >
-                    <Text style={styles.modalActionText}>
-                      {t('common.take_photo')}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.modalDivider} />
-
-                  <TouchableOpacity
-                    testID="body-detail-retake-gallery"
-                    style={styles.modalAction}
-                    onPress={() => handleImageSelection('gallery')}
-                  >
-                    <Text style={styles.modalActionText}>
-                      {t('common.upload_gallery')}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.modalDivider} />
-
-                  <TouchableOpacity
-                    testID="body-detail-retake-cancel"
-                    style={styles.modalCancel}
-                    onPress={() => setModalVisible(false)}
-                  >
-                    <Text style={styles.modalCancelText}>
-                      {t('common.cancel')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
+          title={t('body.retake_body')}
+          onCamera={() => handleImageSelection('camera')}
+          onGallery={() => handleImageSelection('gallery')}
+          onClose={() => setModalVisible(false)}
+          cameraTestID="body-detail-retake-camera"
+          galleryTestID="body-detail-retake-gallery"
+          cancelTestID="body-detail-retake-cancel"
+        />
       </SafeAreaView>
     );
   }
@@ -650,55 +611,13 @@ export const BodyScreen = () => {
         )}
       </View>
 
-      <Modal
-        animationType="fade"
-        transparent
+      <PhotoSourceModal
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>
-                  {t('body.upload_body_photo')}
-                </Text>
-
-                <TouchableOpacity
-                  style={styles.modalAction}
-                  onPress={() => handleImageSelection('camera')}
-                >
-                  <Text style={styles.modalActionText}>
-                    {t('common.take_photo')}
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={styles.modalDivider} />
-
-                <TouchableOpacity
-                  style={styles.modalAction}
-                  onPress={() => handleImageSelection('gallery')}
-                >
-                  <Text style={styles.modalActionText}>
-                    {t('common.upload_gallery')}
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={styles.modalDivider} />
-
-                <TouchableOpacity
-                  style={styles.modalCancel}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <Text style={styles.modalCancelText}>
-                    {t('common.cancel')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+        title={t('body.upload_body_photo')}
+        onCamera={() => handleImageSelection('camera')}
+        onGallery={() => handleImageSelection('gallery')}
+        onClose={() => setModalVisible(false)}
+      />
 
       <Modal
         animationType="fade"
@@ -857,48 +776,6 @@ const styles = StyleSheet.create({
     left: 22,
     right: 22,
     bottom: 28,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 22,
-    paddingTop: 20,
-    paddingBottom: 34,
-  },
-  modalTitle: {
-    ...theme.typography.aliases.manropeBody,
-    textAlign: 'center',
-    color: theme.colors.figmaAction,
-    marginBottom: 16,
-  },
-  modalAction: {
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalActionText: {
-    ...theme.typography.aliases.manropeBody,
-    color: theme.colors.figmaAction,
-  },
-  modalDivider: {
-    height: 1,
-    backgroundColor: theme.colors.figmaDivider,
-  },
-  modalCancel: {
-    marginTop: 8,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalCancelText: {
-    ...theme.typography.aliases.manropeBody,
-    color: theme.colors.figmaRed,
   },
   largeImageModalOverlay: {
     flex: 1,
