@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   },
   // Two full-width buttons side by side (each cell flexes to half the row).
   actions: {
-    marginTop: theme.spacing.l,
+    marginTop: theme.spacing.m,
     flexDirection: 'row',
     gap: theme.spacing.uacDimension12,
   },

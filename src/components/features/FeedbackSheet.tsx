@@ -159,11 +159,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingLeft: theme.spacing.l,
     paddingRight: theme.spacing.s,
-    paddingBottom: theme.spacing.xs,
+    paddingBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaTextDark,
+    ...theme.typography.aliases.interSemiboldXsSm,
+    color: theme.colors.figmaTextPrimary,
   },
   // Drop the shared TopIconButton gray surface — plain X, no chip background.
   closeButton: {

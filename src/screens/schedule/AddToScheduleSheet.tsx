@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   subtitle: {
     ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
-    marginTop: 4,
-    marginBottom: 4,
+    marginTop: theme.spacing.s,
+    marginBottom: theme.spacing.m,
   },
 });

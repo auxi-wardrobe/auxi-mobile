@@ -1111,14 +1111,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   addSheetTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
   },
   addSheetSubtitle: {
-    ...theme.typography.aliases.interBodyMd,
-    color: theme.colors.figmaTextPrimary,
-    marginTop: 2,
-    marginBottom: 8,
+    ...theme.typography.aliases.interBodySm,
+    color: theme.colors.figmaTextSecondary,
+    marginTop: theme.spacing.s,
+    marginBottom: theme.spacing.m,
   },
   methodRow: {
     flexDirection: 'row',

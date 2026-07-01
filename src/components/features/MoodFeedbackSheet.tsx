@@ -242,15 +242,15 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.playfairDisplaySection,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
   subtitle: {
-    ...theme.typography.aliases.manropeCaption,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
-    marginTop: theme.spacing.xs,
+    marginTop: theme.spacing.s,
     marginBottom: theme.spacing.m,
   },
   errorText: {

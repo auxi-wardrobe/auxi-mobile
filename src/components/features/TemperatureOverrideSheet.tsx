@@ -242,14 +242,14 @@ const styles = StyleSheet.create({
     ...theme.ds.shadow.sheet,
   },
   title: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.uacTextBase,
+    ...theme.typography.aliases.interSemiboldXsSm,
+    color: theme.colors.figmaTextPrimary,
   },
   subtitle: {
     ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.s,
+    marginTop: theme.spacing.s,
+    marginBottom: theme.spacing.m,
   },
   radioList: {
     marginTop: theme.spacing.s,

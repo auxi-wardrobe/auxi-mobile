@@ -294,13 +294,13 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.interSemiboldSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
-    marginTop: theme.spacing.xs,
+    marginTop: theme.spacing.s,
   },
   chipRow: {
     flexDirection: 'row',

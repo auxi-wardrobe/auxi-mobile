@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.s,
   },
   actions: {
-    marginTop: theme.spacing.l,
+    marginTop: theme.spacing.m,
     flexDirection: 'row',
     gap: theme.spacing.uacDimension12,
   },

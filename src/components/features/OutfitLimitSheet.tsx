@@ -175,13 +175,13 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   title: {
-    ...theme.typography.aliases.interSemiboldSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
   },
   body: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
-    marginTop: theme.spacing.xs,
+    marginTop: theme.spacing.s,
   },
   tipsIntro: {
     ...theme.typography.aliases.poppinsBodySm,
