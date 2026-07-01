@@ -1,14 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, Image, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,11 +7,12 @@ import { useTranslation } from 'react-i18next';
 import { toast } from '../components/design-system/lib';
 import {
   BottomSheetSurface,
-  DividerRow,
-  PillButton,
   TopIconButton,
 } from '../components/primitives/FigmaPrimitives';
 import { MacgieLoader } from '../components/macgie';
+import { ItemDetailEditPanel } from './item-detail/ItemDetailEditPanel';
+import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
+import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
 import { Icons } from '../assets/icons';
 import {
   getItemFitLabel,
@@ -35,38 +27,27 @@ import { theme } from '../theme/theme';
 import { AppStackParamList } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
 import { track } from '../services/analytics';
+import {
+  areTagsEqual,
+  EditableField,
+  findColorHex,
+  formatItemDate,
+  getFriendlyError,
+  normalizeCategoryLabel,
+  normalizeColorLabel,
+  normalizeFormalityLabel,
+  replaceFitTag,
+  replaceTag,
+  STYLE_TAG_LESS_USED,
+  toApiCategory,
+  toApiFormality,
+} from '../utils/wardrobeItemMappers';
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
   'ItemDetail'
 >;
 type ScreenRoute = RouteProp<AppStackParamList, 'ItemDetail'>;
-type EditableField = 'category' | 'color' | 'fit' | 'style';
-
-const CATEGORY_OPTIONS = [
-  'Top',
-  'Bottom',
-  'Shoes',
-  'One-piece',
-  'Outerwear',
-  'Accessory',
-];
-const FIT_OPTIONS = ['Slim', 'Regular', 'Oversize'];
-const STYLE_OPTIONS = ['Casual', 'Business Casual', 'Formal'];
-const COLOR_OPTIONS = [
-  { label: 'Black', hex: '#272A32' },
-  { label: 'Blue', hex: '#8EA1BE' },
-  { label: 'Green', hex: '#7DAA8C' },
-  { label: 'Grey', hex: '#8F939B' },
-  { label: 'Red', hex: '#CC4C3E' },
-  { label: 'White', hex: '#F5F7FA' },
-  { label: 'Yellow', hex: '#D9C26A' },
-  { label: 'Pink', hex: '#DAA2B1' },
-  { label: 'Purple', hex: '#A493BE' },
-  { label: 'Orange', hex: '#C68A5A' },
-];
-const STYLE_TAG_LESS_USED = 'less-used';
-const FIT_TAG_PREFIX = 'fit:';
 
 // AU-312 (Figma 2852:14557) one-off literals — flagged in
 // figma-extraction-item-detail.md §One-off literals, not in the spacing scale:
@@ -75,167 +56,6 @@ const FIT_TAG_PREFIX = 'fit:';
 const IMAGE_SIDE_MARGIN = 18;
 const IMAGE_ASPECT = 3 / 4;
 const SHEET_BOTTOM_PADDING = 36;
-
-/**
- * AU-312: Figma read mode shows "Date: 11/06/2026" under the title.
- * Source field is `created_at`, rendered dd/mm/yyyy (qa-ui safe default #2).
- * Returns null on missing/invalid input so the row can be hidden (fallback
- * items pushed from Home carry no created_at). Exported for unit tests.
- */
-export const formatItemDate = (iso?: string): string | null => {
-  if (!iso) {
-    return null;
-  }
-
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  const dd = String(parsed.getDate()).padStart(2, '0');
-  const mm = String(parsed.getMonth() + 1).padStart(2, '0');
-  return `${dd}/${mm}/${parsed.getFullYear()}`;
-};
-
-const toTitleCase = (value: string): string =>
-  value.replace(/_/g, ' ').replace(/\b\w/g, match => match.toUpperCase());
-
-const normalizeCategoryLabel = (category?: string): string => {
-  const normalized = category?.trim().toLowerCase() || '';
-
-  switch (normalized) {
-    case 'top':
-      return 'Top';
-    case 'bottom':
-      return 'Bottom';
-    case 'shoes':
-      return 'Shoes';
-    case 'one_piece':
-    case 'one-piece':
-    case 'dress':
-      return 'One-piece';
-    case 'outerwear':
-      return 'Outerwear';
-    case 'accessory':
-    case 'ac':
-      return 'Accessory';
-    default:
-      return normalized ? toTitleCase(normalized) : 'Top';
-  }
-};
-
-const toApiCategory = (label: string): string => {
-  const normalized = label.trim().toLowerCase();
-
-  switch (normalized) {
-    case 'top':
-      return 'top';
-    case 'bottom':
-      return 'bottom';
-    case 'shoes':
-      return 'shoes';
-    case 'one-piece':
-      return 'one_piece';
-    case 'outerwear':
-      return 'outerwear';
-    case 'accessory':
-      return 'accessory';
-    default:
-      return normalized.replace(/\s+/g, '_');
-  }
-};
-
-const normalizeFormalityLabel = (formalityLevel?: string): string => {
-  if (!formalityLevel) {
-    return 'Casual';
-  }
-
-  if (formalityLevel.toLowerCase() === 'business_casual') {
-    return 'Business Casual';
-  }
-
-  return toTitleCase(formalityLevel.toLowerCase());
-};
-
-const toApiFormality = (label: string): string =>
-  label.trim().toLowerCase().replace(/\s+/g, '_');
-
-const findColorHex = (label: string): string =>
-  COLOR_OPTIONS.find(option => option.label === label)?.hex || '#8EA1BE';
-
-const normalizeColorLabel = (item: WardrobeItem): string => {
-  if (item.dominant_color && typeof item.dominant_color === 'string') {
-    return toTitleCase(item.dominant_color.toLowerCase());
-  }
-
-  if (Array.isArray(item.colors) && item.colors.length > 0) {
-    return toTitleCase(String(item.colors[0]).toLowerCase());
-  }
-
-  if (typeof item.color_hex === 'string' && item.color_hex) {
-    const matchedColor = COLOR_OPTIONS.find(
-      option => option.hex.toLowerCase() === item.color_hex?.toLowerCase(),
-    );
-    return matchedColor?.label || 'Custom';
-  }
-
-  return 'Blue';
-};
-
-const normalizeColorHex = (item: WardrobeItem, colorLabel: string): string => {
-  if (
-    colorLabel === 'Custom' &&
-    typeof item.color_hex === 'string' &&
-    item.color_hex
-  ) {
-    return item.color_hex;
-  }
-
-  return findColorHex(colorLabel);
-};
-
-const replaceTag = (
-  tags: string[],
-  tagToReplace: string,
-  enabled: boolean,
-): string[] => {
-  const nextTags = tags.filter(tag => tag !== tagToReplace);
-
-  if (enabled) {
-    nextTags.push(tagToReplace);
-  }
-
-  return nextTags;
-};
-
-const replaceFitTag = (tags: string[], fitLabel: string): string[] => {
-  const nextTags = tags.filter(tag => !tag.startsWith(FIT_TAG_PREFIX));
-  nextTags.push(`${FIT_TAG_PREFIX}${fitLabel.trim().toLowerCase()}`);
-  return nextTags;
-};
-
-const areTagsEqual = (left: string[], right: string[]): boolean => {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  return left.every((tag, index) => tag === right[index]);
-};
-
-type TFn = (key: string, options?: Record<string, unknown>) => string;
-
-const getFriendlyError = (error: any, fallback: string, t: TFn): string => {
-  switch (error?.response?.status) {
-    case 403:
-      return t('wardrobe.itemDetail.error_403');
-    case 404:
-      return t('wardrobe.itemDetail.error_404');
-    case 429:
-      return t('wardrobe.itemDetail.error_429');
-    default:
-      return fallback;
-  }
-};
 
 export const ItemDetailScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
@@ -414,66 +234,28 @@ export const ItemDetailScreen = () => {
     (typeof item?.human_readable_id === 'string' &&
       item.human_readable_id.startsWith('USR_'));
 
-  const getPickerOptions = (field: EditableField): string[] => {
-    switch (field) {
-      case 'category':
-        return CATEGORY_OPTIONS;
-      case 'color':
-        return COLOR_OPTIONS.map(option => option.label);
-      case 'fit':
-        return FIT_OPTIONS;
-      case 'style':
-        return STYLE_OPTIONS;
-      default:
-        return [];
-    }
+  // Field-driven picker: the draft value + setter are looked up per field —
+  // collapses the former parallel `switch (field)` blocks with identical
+  // behavior. Options + header label live in FIELD_CONFIG (used by the sheet).
+  const draftValues: Record<EditableField, string> = {
+    category: draftCategory,
+    color: draftColor,
+    fit: draftFit,
+    style: draftStyle,
   };
-
-  const getPickerFieldLabel = (field: EditableField): string => {
-    switch (field) {
-      case 'category':
-        return t('wardrobe.itemDetail.row_type');
-      case 'color':
-        return t('wardrobe.itemDetail.row_color');
-      case 'fit':
-        return t('wardrobe.itemDetail.row_fit');
-      case 'style':
-        return t('wardrobe.itemDetail.row_style');
-      default:
-        return '';
-    }
+  const draftSetters: Record<EditableField, (value: string) => void> = {
+    category: setDraftCategory,
+    color: setDraftColor,
+    fit: setDraftFit,
+    style: setDraftStyle,
   };
-
-  // DISPLAY-ONLY: localize a canonical option value (e.g. 'Top', 'Black') for
-  // rendering. The raw value still drives selection, lookup (toApiCategory /
-  // findColorHex / toApiFormality), comparison, and persistence — never mutate
-  // it. `EditableField` maps 1:1 to the `wardrobe.options.<group>` namespace.
-  // defaultValue falls back to the canonical English if a key is missing.
-  const getOptionDisplayLabel = (field: EditableField, value: string): string =>
-    t(`wardrobe.options.${field}.${value}`, { defaultValue: value });
 
   const handleSelectOption = (option: string) => {
     if (!pickerField) {
       return;
     }
 
-    switch (pickerField) {
-      case 'category':
-        setDraftCategory(option);
-        break;
-      case 'color':
-        setDraftColor(option);
-        break;
-      case 'fit':
-        setDraftFit(option);
-        break;
-      case 'style':
-        setDraftStyle(option);
-        break;
-      default:
-        break;
-    }
-
+    draftSetters[pickerField](option);
     setPickerField(null);
   };
 
@@ -726,50 +508,14 @@ export const ItemDetailScreen = () => {
     }
   };
 
-  const renderDetailRow = (
-    label: string,
-    value: string,
-    field: EditableField,
-    hideDivider?: boolean,
-  ) => {
-    const canEdit = isEditing && !isCatalogItem;
-    const showColor = field === 'color';
-    const colorHex =
-      showColor && item ? normalizeColorHex(item, draftColor) : null;
-    // Display-only: `value` stays the canonical draft for logic/persistence.
-    const displayValue = getOptionDisplayLabel(field, value);
-
-    return (
-      <TouchableOpacity
-        testID={`item-detail-row-${field}`}
-        activeOpacity={0.85}
-        disabled={!canEdit}
-        onPress={() => setPickerField(field)}
-      >
-        <DividerRow
-          label={label}
-          hideDivider={hideDivider}
-          labelStyle={styles.rowLabel}
-          rightNode={
-            <View style={styles.rowRight}>
-              {showColor && colorHex ? (
-                <View
-                  style={[styles.colorDot, { backgroundColor: colorHex }]}
-                />
-              ) : null}
-              <Text style={styles.rowValue}>{displayValue}</Text>
-              {canEdit ? (
-                <Icons.Edit
-                  width={18}
-                  height={18}
-                  color={theme.colors.figmaTextDark}
-                />
-              ) : null}
-            </View>
-          }
-        />
-      </TouchableOpacity>
-    );
+  const handleBuildAround = () => {
+    // ItemDetail is presented as a modal layer (AppNavigator
+    // presentation:'modal'). navigate('Home',…) to a screen BELOW the modal
+    // updates JS nav state but can leave the native iOS modal still presented
+    // → desync: the sheet stays stuck on top and nothing responds. popTo issues
+    // pop semantics (like the back button's goBack) that dismiss the modal AND
+    // land on Home with the pin intent.
+    navigation.popTo('Home', { pinFromDetail: itemId });
   };
 
   if (loading) {
@@ -863,306 +609,44 @@ export const ItemDetailScreen = () => {
         }}
       >
         {isEditing ? (
-          // EDIT MODE (Figma 3508:8356): editable attribute list + bottom
-          // [Cancel] [Save]. Name stays read-only (free-text edit needs a
-          // text-input picker; the option picker only supports enumerations
-          // — tracked in extraction note §New backend fields).
-          <>
-            <View style={styles.details}>
-              {item.name ? (
-                <DividerRow
-                  label={t('wardrobe.itemDetail.row_name')}
-                  value={item.name}
-                  labelStyle={styles.rowLabel}
-                  valueStyle={styles.rowValue}
-                />
-              ) : null}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_type'),
-                draftCategory,
-                'category',
-              )}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_style'),
-                draftStyle,
-                'style',
-              )}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_color'),
-                draftColor,
-                'color',
-              )}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_fit'),
-                draftFit,
-                'fit',
-                true,
-              )}
-            </View>
-
-            <View style={styles.actionBlock}>
-              <View style={styles.editActionRow}>
-                <PillButton
-                  testID="item-detail-cancel-btn"
-                  variant="text"
-                  title={t('wardrobe.itemDetail.cancel')}
-                  onPress={handleCancelEditing}
-                  disabled={saving}
-                  style={styles.editCancelButton}
-                />
-                <PillButton
-                  testID="item-detail-save-btn"
-                  variant="filled"
-                  title={t('wardrobe.itemDetail.save')}
-                  onPress={handleSaveEdits}
-                  loading={saving}
-                  disabled={saving}
-                  style={styles.editSaveButton}
-                />
-              </View>
-            </View>
-          </>
+          <ItemDetailEditPanel
+            item={item}
+            draftCategory={draftCategory}
+            draftStyle={draftStyle}
+            draftColor={draftColor}
+            draftFit={draftFit}
+            canEditRows={isEditing && !isCatalogItem}
+            saving={saving}
+            onPickField={setPickerField}
+            onCancel={handleCancelEditing}
+            onSave={handleSaveEdits}
+          />
         ) : (
-          // READ MODE (Figma 2852:14557 "detail"): centred title + date,
-          // outlined "Build around this" CTA, [trash][Less use] … [Edit].
-          <>
-            <View style={styles.titleBlock}>
-              {isPreparing ? (
-                <>
-                  <View style={styles.skeletonTitle} />
-                  <View style={styles.skeletonDate} />
-                </>
-              ) : (
-                <>
-                  <Text testID="item-detail-title" style={styles.titleText}>
-                    {titleText}
-                  </Text>
-                  {dateText ? (
-                    <Text testID="item-detail-date" style={styles.dateText}>
-                      {t('wardrobe.itemDetail.date_label', { date: dateText })}
-                    </Text>
-                  ) : null}
-                  {/* AU-351: single "Waiting for the right occasion" status
-                      line when the backend flags the item as exploration-
-                      waiting. Per-reason breakdown deferred. */}
-                  {isWaiting ? (
-                    <Text
-                      testID="item-detail-waiting-status"
-                      style={styles.waitingStatus}
-                    >
-                      {t('wardrobe.itemDetail.waiting_status')}
-                    </Text>
-                  ) : null}
-                </>
-              )}
-            </View>
-
-            <View style={styles.buttonGroup}>
-              {/* AU-307 phase 05 — "Build around this" navigates Home with
-                  `pinFromDetail` set to the item id. HomeScreen's mount
-                  effect dispatches CONFIRM_PIN_FROM_DETAIL (skips modal),
-                  then clears the param. SYSTEM common-essential items hide
-                  the CTA entirely (spec §9 IDOR / SYSTEM-item defense-in-
-                  depth; BE rejects 422 as backup). testID preserved so
-                  existing Maestro flows keep resolving. */}
-              {!isCommonSystemItem ? (
-                <View style={styles.ctaRow}>
-                  {/* Suggestion-only "Change" swap button — opens the wardrobe
-                      as a single-item picker so the user can build around a
-                      different item instead. Hidden when the detail was opened
-                      from the wardrobe (note in the AU spec). Square outline
-                      chip sized to the primary pill's height. */}
-                  {openedFromSuggestion ? (
-                    <TouchableOpacity
-                      testID="item-detail-swap-btn"
-                      accessibilityRole="button"
-                      accessibilityLabel={t(
-                        'wardrobe.itemDetail.a11y_change_item',
-                      )}
-                      style={styles.swapButton}
-                      onPress={handleOpenChange}
-                      disabled={isPreparing}
-                    >
-                      <Icons.Change
-                        width={24}
-                        height={24}
-                        color={theme.colors.uacTextBase}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-                  <PillButton
-                    testID="item-detail-mix-btn"
-                    variant="filled"
-                    title={t('wardrobe.itemDetail.build_around_this')}
-                    trailing={<Icons.Remix width={24} height={24} />}
-                    style={styles.ctaPrimary}
-                    onPress={() => {
-                      // ItemDetail is presented as a modal layer (AppNavigator
-                      // presentation:'modal'). navigate('Home',…) to a screen
-                      // BELOW the modal updates JS nav state but can leave the
-                      // native iOS modal still presented → desync: the sheet
-                      // stays stuck on top and nothing responds. popTo issues
-                      // pop semantics (like the back button's goBack) that
-                      // dismiss the modal AND land on Home with the pin intent.
-                      navigation.popTo('Home', { pinFromDetail: itemId });
-                    }}
-                    disabled={isPreparing}
-                  />
-                </View>
-              ) : null}
-
-              <View style={styles.bottomRow}>
-                <View style={styles.leftRow}>
-                  {/* AU-287: Trash hidden for catalog items (SYSTEM + USR_*
-                      clones). User demotes them via the Less use toggle. */}
-                  {!isCatalogItem ? (
-                    <TouchableOpacity
-                      testID="item-detail-delete-btn"
-                      accessibilityLabel={t('wardrobe.itemDetail.a11y_delete')}
-                      onPress={handleDelete}
-                      style={styles.iconOnlyButton}
-                      disabled={saving || isPreparing}
-                    >
-                      <Icons.Trash
-                        width={24}
-                        height={24}
-                        color={theme.colors.figmaItemDetailDanger}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-
-                  <TouchableOpacity
-                    testID={
-                      usageFrequency === 'LESS_USED'
-                        ? 'item-detail-less-used-btn-active'
-                        : 'item-detail-less-used-btn'
-                    }
-                    style={[
-                      styles.secondaryAction,
-                      usageFrequency === 'LESS_USED' &&
-                        styles.secondaryActionActive,
-                    ]}
-                    onPress={() => {
-                      handleToggleUsageFrequency();
-                    }}
-                    disabled={saving || isPreparing}
-                  >
-                    <Text
-                      style={[
-                        styles.lessUsedText,
-                        usageFrequency === 'LESS_USED' &&
-                          styles.lessUsedTextActive,
-                      ]}
-                    >
-                      {t('wardrobe.itemDetail.less_used')}
-                    </Text>
-                    <Icons.MinusCircle
-                      width={24}
-                      height={24}
-                      color={theme.colors.figmaItemDetailDanger}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Figma renames "Change" → "Edit" with a pencil glyph; same
-                    behaviour (enters edit mode). testID preserved for
-                    existing Maestro flows. */}
-                <TouchableOpacity
-                  testID="item-detail-change-btn"
-                  style={styles.secondaryAction}
-                  onPress={() => setIsEditing(true)}
-                  disabled={saving || isCatalogItem || isPreparing}
-                >
-                  <Text
-                    style={[
-                      styles.editActionText,
-                      isCatalogItem && styles.disabledText,
-                    ]}
-                  >
-                    {t('wardrobe.itemDetail.edit')}
-                  </Text>
-                  <Icons.Edit
-                    width={24}
-                    height={24}
-                    color={theme.colors.uacTextBase}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </>
+          <ItemDetailReadPanel
+            titleText={titleText}
+            dateText={dateText}
+            isPreparing={isPreparing}
+            isWaiting={isWaiting}
+            isCommonSystemItem={isCommonSystemItem}
+            openedFromSuggestion={openedFromSuggestion}
+            isCatalogItem={isCatalogItem}
+            usageFrequency={usageFrequency}
+            saving={saving}
+            onSwap={handleOpenChange}
+            onBuildAround={handleBuildAround}
+            onDelete={handleDelete}
+            onToggleUsage={handleToggleUsageFrequency}
+            onEdit={() => setIsEditing(true)}
+          />
         )}
       </BottomSheetSurface>
 
-      <Modal
-        visible={!!pickerField}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPickerField(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {t('wardrobe.itemDetail.picker_title', {
-                  field: pickerField ? getPickerFieldLabel(pickerField) : '',
-                })}
-              </Text>
-              <TouchableOpacity
-                testID="item-detail-picker-close-btn"
-                onPress={() => setPickerField(null)}
-              >
-                <Text style={styles.modalClose}>
-                  {t('wardrobe.itemDetail.picker_close')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView>
-              {(pickerField ? getPickerOptions(pickerField) : []).map(
-                option => {
-                  const isSelected =
-                    (pickerField === 'category' && draftCategory === option) ||
-                    (pickerField === 'color' && draftColor === option) ||
-                    (pickerField === 'fit' && draftFit === option) ||
-                    (pickerField === 'style' && draftStyle === option);
-
-                  return (
-                    <TouchableOpacity
-                      key={option}
-                      testID={`item-detail-option-${option}`}
-                      style={styles.optionItem}
-                      onPress={() => handleSelectOption(option)}
-                    >
-                      <View style={styles.optionLeft}>
-                        {pickerField === 'color' ? (
-                          <View
-                            style={[
-                              styles.optionColorDot,
-                              { backgroundColor: findColorHex(option) },
-                            ]}
-                          />
-                        ) : null}
-                        <Text style={styles.optionText}>
-                          {pickerField
-                            ? getOptionDisplayLabel(pickerField, option)
-                            : option}
-                        </Text>
-                      </View>
-                      {isSelected ? (
-                        <Icons.ChevronRight
-                          width={18}
-                          height={18}
-                          color={theme.colors.figmaAction}
-                        />
-                      ) : null}
-                    </TouchableOpacity>
-                  );
-                },
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <OptionPickerSheet
+        field={pickerField}
+        selectedValue={pickerField ? draftValues[pickerField] : ''}
+        onSelect={handleSelectOption}
+        onClose={() => setPickerField(null)}
+      />
     </View>
   );
 };
@@ -1243,212 +727,5 @@ const styles = StyleSheet.create({
   sheet: {
     paddingHorizontal: theme.spacing.m,
     paddingTop: theme.spacing.m,
-  },
-  // Figma "List items": pt 12, column gap 16, centred, text/neutral/base.
-  titleBlock: {
-    paddingTop: theme.spacing.uacDimension12,
-    alignItems: 'center',
-    gap: theme.spacing.m,
-  },
-  titleText: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
-    color: theme.colors.uacTextBase,
-    textAlign: 'center',
-  },
-  dateText: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.uacTextBase,
-  },
-  // AU-351: "Waiting for the right occasion" status — muted secondary text,
-  // centred to match the title block. Token-styled (no hex).
-  waitingStatus: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
-  },
-  // Figma "button group": column, gap 12, pt 16 (pb handled inline with the
-  // safe-area inset).
-  buttonGroup: {
-    paddingTop: theme.spacing.m,
-    gap: theme.spacing.uacDimension12,
-  },
-  // Primary CTA row: the optional square "Change" swap chip sits in front of
-  // (left of) the "Build around this" pill, which flexes to fill the rest.
-  ctaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.uacDimension12,
-  },
-  // "Build around this" is now the primary (filled) button. It flexes to fill
-  // the row whether or not the swap chip is present. Radius reuses
-  // uacButtonCta=16; the filled variant owns its fill + border colour.
-  ctaPrimary: {
-    flex: 1,
-    borderRadius: theme.borderRadius.uacButtonCta,
-    paddingHorizontal: theme.spacing.uacButtonPaddingX,
-  },
-  // Square outline chip matching the primary pill's 56pt height/16 radius.
-  swapButton: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.borderRadius.uacButtonCta,
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacBorderBase,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  details: {
-    gap: 8,
-  },
-  rowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  rowLabel: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaItemDetailRowText,
-  },
-  rowValue: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaItemDetailRowText,
-  },
-  colorDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaItemDetailColorDotBorder,
-  },
-  actionBlock: {
-    marginTop: 22,
-    gap: 8,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  leftRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.uacDimension12,
-  },
-  iconOnlyButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryAction: {
-    height: 56,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-  },
-  secondaryActionActive: {
-    backgroundColor: theme.colors.figmaItemDetailLessUsedActive,
-  },
-  lessUsedText: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextBase,
-  },
-  lessUsedTextActive: {
-    color: theme.colors.figmaItemDetailDanger,
-  },
-  editActionText: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextBase,
-  },
-  editActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  editCancelButton: {
-    flex: 1,
-    // Figma "Text button / size 56": match the Save pill's height + radius so
-    // the two bottom buttons align. PillButton's `text` variant defaults to h40.
-    height: 56,
-    borderRadius: 16,
-    paddingHorizontal: 20,
-  },
-  editSaveButton: {
-    flex: 1,
-    borderRadius: 16,
-  },
-  disabledText: {
-    opacity: 0.5,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '55%',
-    paddingBottom: 36,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.figmaItemDetailModalDivider,
-  },
-  modalTitle: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaItemDetailRowText,
-  },
-  modalClose: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.figmaItemDetailModalClose,
-  },
-  optionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.figmaItemDetailOptionDivider,
-  },
-  optionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  optionColorDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaItemDetailOptionDotBorder,
-  },
-  optionText: {
-    ...theme.typography.aliases.interBodyMd,
-    color: theme.colors.figmaItemDetailRowText,
-  },
-  skeletonTitle: {
-    width: '100%',
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: theme.colors.figmaDetailSurface,
-    alignSelf: 'center',
-  },
-  skeletonDate: {
-    width: '60%',
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: theme.colors.figmaDetailSurface,
-    alignSelf: 'center',
   },
 });
