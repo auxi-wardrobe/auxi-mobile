@@ -26,11 +26,7 @@ import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
 import { FeedbackSheet } from '../../components/features/FeedbackSheet';
 import { useMoodFeedback } from '../../hooks/use-mood-feedback';
-import {
-  PillButton,
-  TopIconButton,
-} from '../../components/primitives/FigmaPrimitives';
-import IconMenu from '../../assets/images/icon_menu.svg';
+import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
 import IconFeedback from '../../assets/images/feedback.svg';
 import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
@@ -57,15 +53,12 @@ import {
   trackRecommendationGeneratedByTemperatureOnce,
 } from '../../services/analytics';
 import { resolveItemImage } from '../../utils/url';
-import { WeatherWidget } from '../../components/features/WeatherWidget';
 import {
   TemperatureOverrideSheet,
   type TemperatureSheetErrorKey,
 } from '../../components/features/TemperatureOverrideSheet';
-import { TemperatureOverrideIndicator } from '../../components/features/TemperatureOverrideIndicator';
 import { useTemperatureOverride } from '../../hooks/useTemperatureOverride';
 import {
-  bucketLabel,
   isOverrideBucket,
   repTempCFor,
   type TemperatureBucketKey,
@@ -112,6 +105,7 @@ import { EDIT_CONTEXT_SUGGESTIONS } from './context-chips';
 import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { DeckCue } from './components/DeckCue';
+import { HomeHeader } from './components/HomeHeader';
 import { HomeLoadingState } from './components/HomeLoadingState';
 import { HomeToastLayer } from './components/HomeToastLayer';
 import { OptionSheet } from './components/OptionSheet';
@@ -1246,59 +1240,15 @@ export const HomeScreen = () => {
       style={styles.container}
       edges={['top']}
     >
-      <View style={styles.header}>
-        <TopIconButton
-          testID="home-menu-button"
-          accessibilityRole="button"
-          accessibilityLabel={t('home.a11y_open_menu')}
-          onPress={handleLeadingAction}
-          icon={<IconMenu width={24} height={24} />}
-          style={styles.headerIconButton}
-        />
-
-        {isOverrideActive ? (
-          <TemperatureOverrideIndicator
-            label={bucketLabel(t, activeBucketKey, weather.tempC)}
-            onPress={openTempSheet}
-          />
-        ) : (
-          <TouchableOpacity
-            testID="home-weather-temp-trigger"
-            accessibilityRole="button"
-            accessibilityLabel={t('home.a11y_temp_idle')}
-            activeOpacity={0.82}
-            onPress={openTempSheet}
-          >
-            <WeatherWidget
-              tempC={weather.tempC}
-              iconCode={weather.iconCode}
-              showChevron
-            />
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          testID="home-favourites-shortcut"
-          accessibilityRole="button"
-          accessibilityLabel={
-            hasUnseenFavourites
-              ? t('home.a11y_open_favourites_new')
-              : t('home.a11y_open_favourites')
-          }
-          activeOpacity={0.82}
-          style={styles.headerIconButton}
-          onPress={handleOpenFavourites}
-        >
-          <IconHomeHeartOutline width={24} height={24} />
-          {hasUnseenFavourites ? (
-            <View
-              testID="home-favourites-badge"
-              style={styles.favDot}
-              pointerEvents="none"
-            />
-          ) : null}
-        </TouchableOpacity>
-      </View>
+      <HomeHeader
+        onOpenMenu={handleLeadingAction}
+        isOverrideActive={isOverrideActive}
+        activeBucketKey={activeBucketKey}
+        weather={weather}
+        onOpenTemp={openTempSheet}
+        hasUnseenFavourites={hasUnseenFavourites}
+        onOpenFavourites={handleOpenFavourites}
+      />
 
       {/* Floating toast layer (z-index tier 5) — sits on top of the grid,
           never stacks with the cards. */}
