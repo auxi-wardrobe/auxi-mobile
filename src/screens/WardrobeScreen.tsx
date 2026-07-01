@@ -33,11 +33,7 @@ import { Header } from '../components/layout/Header';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
-import {
-  MActionSheet,
-  MBottomSheet,
-  MButton,
-} from '../components/design-system/lib';
+import { MActionSheet, MButton } from '../components/design-system/lib';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { useSidebar } from '../context/SidebarContext';
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
@@ -48,7 +44,7 @@ import { AppStackParamList } from '../types/navigation';
 import { resolveItemImage } from '../utils/url';
 import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
-import { AddMethodRow } from './wardrobe/AddMethodRow';
+import { AddItemSheet } from './wardrobe/AddItemSheet';
 import {
   FILTER_TABS,
   FilterTab,
@@ -641,56 +637,13 @@ export const WardrobeScreen = () => {
         )}
       </ScrollView>
 
-      {/* Add item — bottom sheet (Figma node 2852:19750), migrated to the DS
-          MBottomSheet primitive (GH-364): the slide/fade ENTER + faster CLOSE +
-          reduce-motion fallback + scrim/backdrop-dismiss are now encapsulated
-          inside the primitive (replaces the bespoke Modal + Animated +
-          BottomSheetSurface). The two methods stay as the Wardrobe-only
-          AddMethodRow composite because they carry a title + description
-          two-line layout that no generic M* row primitive (MSheetOption /
-          MListRow are single-line) expresses — keeping content faithful. */}
-      <MBottomSheet
+      <AddItemSheet
         visible={addSheetVisible}
         onDismiss={() => setAddSheetVisible(false)}
-        testID="wardrobe-add-sheet"
-      >
-        <View style={[styles.addSheetBody, { paddingBottom: insets.bottom }]}>
-          <Text style={styles.addSheetTitle}>
-            {t('wardrobe.list.add_item_sheet_title')}
-          </Text>
-          <Text style={styles.addSheetSubtitle}>
-            {t('wardrobe.list.add_item_sheet_subtitle')}
-          </Text>
-
-          <AddMethodRow
-            icon={
-              <Icons.Database
-                width={24}
-                height={24}
-                color={theme.colors.uacBackgroundBase}
-              />
-            }
-            title={t('wardrobe.list.method_search_title')}
-            description={t('wardrobe.list.method_search_desc')}
-            onPress={handleSearchDatabase}
-            testID="wardrobe-add-search"
-          />
-          <AddMethodRow
-            icon={
-              <Icons.Camera
-                width={24}
-                height={24}
-                color={theme.colors.uacBackgroundBase}
-              />
-            }
-            title={t('common.take_photo')}
-            description={t('wardrobe.list.method_photo_desc')}
-            onPress={handleTakePhoto}
-            testID="wardrobe-add-photo"
-            isLast
-          />
-        </View>
-      </MBottomSheet>
+        bottomInset={insets.bottom}
+        onSearchDatabase={handleSearchDatabase}
+        onTakePhoto={handleTakePhoto}
+      />
 
       {/* Take-photo source chooser — DS MActionSheet (GH-364, replaces the
           3-button Alert.alert). The per-source upload/capture analytics still
@@ -995,24 +948,6 @@ const styles = StyleSheet.create({
   // spacing stays on the screen, not the primitive.
   errorRetryWrap: {
     marginTop: 20,
-  },
-  // Add-item bottom sheet body — MBottomSheet provides the surface, top radius,
-  // scrim, grab handle and slide motion; this is just the content padding.
-  // The safe-area bottom inset is applied inline.
-  addSheetBody: {
-    paddingTop: 8,
-    paddingHorizontal: 24,
-    paddingBottom: 36,
-  },
-  addSheetTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-  },
-  addSheetSubtitle: {
-    ...theme.typography.aliases.interBodyMd,
-    color: theme.colors.figmaTextPrimary,
-    marginTop: 2,
-    marginBottom: 8,
   },
   // AI processing overlay
   preparingContainer: {
