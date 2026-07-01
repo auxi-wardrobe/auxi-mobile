@@ -37,11 +37,9 @@ import { getImageUrl } from '../utils/url';
 import { track } from '../services/analytics';
 import {
   areTagsEqual,
-  CATEGORY_OPTIONS,
-  COLOR_OPTIONS,
   EditableField,
+  FIELD_CONFIG,
   findColorHex,
-  FIT_OPTIONS,
   formatItemDate,
   getFriendlyError,
   getOptionDisplayLabel,
@@ -51,7 +49,6 @@ import {
   normalizeFormalityLabel,
   replaceFitTag,
   replaceTag,
-  STYLE_OPTIONS,
   STYLE_TAG_LESS_USED,
   toApiCategory,
   toApiFormality,
@@ -248,58 +245,28 @@ export const ItemDetailScreen = () => {
     (typeof item?.human_readable_id === 'string' &&
       item.human_readable_id.startsWith('USR_'));
 
-  const getPickerOptions = (field: EditableField): string[] => {
-    switch (field) {
-      case 'category':
-        return CATEGORY_OPTIONS;
-      case 'color':
-        return COLOR_OPTIONS.map(option => option.label);
-      case 'fit':
-        return FIT_OPTIONS;
-      case 'style':
-        return STYLE_OPTIONS;
-      default:
-        return [];
-    }
+  // Field-driven picker: options + header label come from FIELD_CONFIG (single
+  // source of truth), and the draft setter is looked up per field — collapses
+  // the three former parallel `switch (field)` blocks with identical behavior.
+  const draftSetters: Record<EditableField, (value: string) => void> = {
+    category: setDraftCategory,
+    color: setDraftColor,
+    fit: setDraftFit,
+    style: setDraftStyle,
   };
 
-  const getPickerFieldLabel = (field: EditableField): string => {
-    switch (field) {
-      case 'category':
-        return t('wardrobe.itemDetail.row_type');
-      case 'color':
-        return t('wardrobe.itemDetail.row_color');
-      case 'fit':
-        return t('wardrobe.itemDetail.row_fit');
-      case 'style':
-        return t('wardrobe.itemDetail.row_style');
-      default:
-        return '';
-    }
-  };
+  const getPickerOptions = (field: EditableField): string[] =>
+    FIELD_CONFIG[field].options;
+
+  const getPickerFieldLabel = (field: EditableField): string =>
+    t(FIELD_CONFIG[field].labelKey);
 
   const handleSelectOption = (option: string) => {
     if (!pickerField) {
       return;
     }
 
-    switch (pickerField) {
-      case 'category':
-        setDraftCategory(option);
-        break;
-      case 'color':
-        setDraftColor(option);
-        break;
-      case 'fit':
-        setDraftFit(option);
-        break;
-      case 'style':
-        setDraftStyle(option);
-        break;
-      default:
-        break;
-    }
-
+    draftSetters[pickerField](option);
     setPickerField(null);
   };
 

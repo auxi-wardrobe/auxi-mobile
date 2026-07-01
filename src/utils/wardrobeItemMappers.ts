@@ -215,3 +215,32 @@ export const getOptionDisplayLabel = (
   field: EditableField,
   value: string,
 ): string => t(`wardrobe.options.${field}.${value}`, { defaultValue: value });
+
+/**
+ * Single source of truth per editable field — collapses the three parallel
+ * `switch (field)` blocks (option list + picker header label) that used to
+ * live in the screen. `options` are canonical values (localized at render via
+ * getOptionDisplayLabel); `labelKey` is the i18n key for the picker header
+ * (resolve with `t(FIELD_CONFIG[field].labelKey)`).
+ */
+export const FIELD_CONFIG: Record<
+  EditableField,
+  { options: string[]; labelKey: string }
+> = {
+  category: {
+    options: CATEGORY_OPTIONS,
+    labelKey: 'wardrobe.itemDetail.row_type',
+  },
+  color: {
+    options: COLOR_OPTIONS.map(option => option.label),
+    labelKey: 'wardrobe.itemDetail.row_color',
+  },
+  fit: {
+    options: FIT_OPTIONS,
+    labelKey: 'wardrobe.itemDetail.row_fit',
+  },
+  style: {
+    options: STYLE_OPTIONS,
+    labelKey: 'wardrobe.itemDetail.row_style',
+  },
+};
