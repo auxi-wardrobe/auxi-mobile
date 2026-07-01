@@ -3,15 +3,17 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
-import { MBottomSheet, MButton } from '../../components/design-system/lib';
+import { MButton } from '../../components/design-system/lib';
+import { ContextualBottomSheet } from '../../components/features/ContextualBottomSheet';
 
 // "Add to Schedule" date picker — a month calendar (Figma: big selected-date
 // header → month nav → day grid → Cancel / Schedule). Self-contained: the
 // consumer controls `visible` and gets the chosen Date back via `onConfirm`.
 // Sunday-first grid to match the design's "S M T W T F S". The calendar grid is
 // bespoke (a specific Figma layout the generic MCalendar can't reproduce), but
-// it rides the DS MBottomSheet shell so motion / scrim / reduce-motion /
-// safe-area all come from the design system, not a bespoke sheet stack.
+// it rides the shared ContextualBottomSheet shell (full-width, "Refine
+// suggestions" reveal motion) so motion / scrim / reduce-motion / safe-area all
+// match the app's other contextual sheets, not a bespoke sheet stack.
 
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS_SHORT = [
@@ -134,7 +136,7 @@ export const ScheduleDatePickerSheet: React.FC<Props> = ({
   };
 
   return (
-    <MBottomSheet visible={visible} onDismiss={onCancel} testID={testID}>
+    <ContextualBottomSheet visible={visible} onDismiss={onCancel} testID={testID}>
       <Text style={styles.eyebrow}>{t('schedule.picker.title')}</Text>
       <Text style={styles.selectedDate} testID={`${testID}-selected-label`}>
         {formatSelected(selected)}
@@ -238,7 +240,7 @@ export const ScheduleDatePickerSheet: React.FC<Props> = ({
           {t('schedule.picker.confirm')}
         </MButton>
       </View>
-    </MBottomSheet>
+    </ContextualBottomSheet>
   );
 };
 
