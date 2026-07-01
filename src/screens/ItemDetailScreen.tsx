@@ -1,12 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, Image, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,11 +7,11 @@ import { useTranslation } from 'react-i18next';
 import { toast } from '../components/design-system/lib';
 import {
   BottomSheetSurface,
-  DividerRow,
-  PillButton,
   TopIconButton,
 } from '../components/primitives/FigmaPrimitives';
 import { MacgieLoader } from '../components/macgie';
+import { ItemDetailEditPanel } from './item-detail/ItemDetailEditPanel';
+import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
 import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
 import { Icons } from '../assets/icons';
 import {
@@ -40,9 +33,7 @@ import {
   findColorHex,
   formatItemDate,
   getFriendlyError,
-  getOptionDisplayLabel,
   normalizeCategoryLabel,
-  normalizeColorHex,
   normalizeColorLabel,
   normalizeFormalityLabel,
   replaceFitTag,
@@ -517,50 +508,14 @@ export const ItemDetailScreen = () => {
     }
   };
 
-  const renderDetailRow = (
-    label: string,
-    value: string,
-    field: EditableField,
-    hideDivider?: boolean,
-  ) => {
-    const canEdit = isEditing && !isCatalogItem;
-    const showColor = field === 'color';
-    const colorHex =
-      showColor && item ? normalizeColorHex(item, draftColor) : null;
-    // Display-only: `value` stays the canonical draft for logic/persistence.
-    const displayValue = getOptionDisplayLabel(t, field, value);
-
-    return (
-      <TouchableOpacity
-        testID={`item-detail-row-${field}`}
-        activeOpacity={0.85}
-        disabled={!canEdit}
-        onPress={() => setPickerField(field)}
-      >
-        <DividerRow
-          label={label}
-          hideDivider={hideDivider}
-          labelStyle={styles.rowLabel}
-          rightNode={
-            <View style={styles.rowRight}>
-              {showColor && colorHex ? (
-                <View
-                  style={[styles.colorDot, { backgroundColor: colorHex }]}
-                />
-              ) : null}
-              <Text style={styles.rowValue}>{displayValue}</Text>
-              {canEdit ? (
-                <Icons.Edit
-                  width={18}
-                  height={18}
-                  color={theme.colors.figmaTextDark}
-                />
-              ) : null}
-            </View>
-          }
-        />
-      </TouchableOpacity>
-    );
+  const handleBuildAround = () => {
+    // ItemDetail is presented as a modal layer (AppNavigator
+    // presentation:'modal'). navigate('Home',…) to a screen BELOW the modal
+    // updates JS nav state but can leave the native iOS modal still presented
+    // → desync: the sheet stays stuck on top and nothing responds. popTo issues
+    // pop semantics (like the back button's goBack) that dismiss the modal AND
+    // land on Home with the pin intent.
+    navigation.popTo('Home', { pinFromDetail: itemId });
   };
 
   if (loading) {
@@ -654,233 +609,35 @@ export const ItemDetailScreen = () => {
         }}
       >
         {isEditing ? (
-          // EDIT MODE (Figma 3508:8356): editable attribute list + bottom
-          // [Cancel] [Save]. Name stays read-only (free-text edit needs a
-          // text-input picker; the option picker only supports enumerations
-          // — tracked in extraction note §New backend fields).
-          <>
-            <View style={styles.details}>
-              {item.name ? (
-                <DividerRow
-                  label={t('wardrobe.itemDetail.row_name')}
-                  value={item.name}
-                  labelStyle={styles.rowLabel}
-                  valueStyle={styles.rowValue}
-                />
-              ) : null}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_type'),
-                draftCategory,
-                'category',
-              )}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_style'),
-                draftStyle,
-                'style',
-              )}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_color'),
-                draftColor,
-                'color',
-              )}
-              {renderDetailRow(
-                t('wardrobe.itemDetail.row_fit'),
-                draftFit,
-                'fit',
-                true,
-              )}
-            </View>
-
-            <View style={styles.actionBlock}>
-              <View style={styles.editActionRow}>
-                <PillButton
-                  testID="item-detail-cancel-btn"
-                  variant="text"
-                  title={t('wardrobe.itemDetail.cancel')}
-                  onPress={handleCancelEditing}
-                  disabled={saving}
-                  style={styles.editCancelButton}
-                />
-                <PillButton
-                  testID="item-detail-save-btn"
-                  variant="filled"
-                  title={t('wardrobe.itemDetail.save')}
-                  onPress={handleSaveEdits}
-                  loading={saving}
-                  disabled={saving}
-                  style={styles.editSaveButton}
-                />
-              </View>
-            </View>
-          </>
+          <ItemDetailEditPanel
+            item={item}
+            draftCategory={draftCategory}
+            draftStyle={draftStyle}
+            draftColor={draftColor}
+            draftFit={draftFit}
+            canEditRows={isEditing && !isCatalogItem}
+            saving={saving}
+            onPickField={setPickerField}
+            onCancel={handleCancelEditing}
+            onSave={handleSaveEdits}
+          />
         ) : (
-          // READ MODE (Figma 2852:14557 "detail"): centred title + date,
-          // outlined "Build around this" CTA, [trash][Less use] … [Edit].
-          <>
-            <View style={styles.titleBlock}>
-              {isPreparing ? (
-                <>
-                  <View style={styles.skeletonTitle} />
-                  <View style={styles.skeletonDate} />
-                </>
-              ) : (
-                <>
-                  <Text testID="item-detail-title" style={styles.titleText}>
-                    {titleText}
-                  </Text>
-                  {dateText ? (
-                    <Text testID="item-detail-date" style={styles.dateText}>
-                      {t('wardrobe.itemDetail.date_label', { date: dateText })}
-                    </Text>
-                  ) : null}
-                  {/* AU-351: single "Waiting for the right occasion" status
-                      line when the backend flags the item as exploration-
-                      waiting. Per-reason breakdown deferred. */}
-                  {isWaiting ? (
-                    <Text
-                      testID="item-detail-waiting-status"
-                      style={styles.waitingStatus}
-                    >
-                      {t('wardrobe.itemDetail.waiting_status')}
-                    </Text>
-                  ) : null}
-                </>
-              )}
-            </View>
-
-            <View style={styles.buttonGroup}>
-              {/* AU-307 phase 05 — "Build around this" navigates Home with
-                  `pinFromDetail` set to the item id. HomeScreen's mount
-                  effect dispatches CONFIRM_PIN_FROM_DETAIL (skips modal),
-                  then clears the param. SYSTEM common-essential items hide
-                  the CTA entirely (spec §9 IDOR / SYSTEM-item defense-in-
-                  depth; BE rejects 422 as backup). testID preserved so
-                  existing Maestro flows keep resolving. */}
-              {!isCommonSystemItem ? (
-                <View style={styles.ctaRow}>
-                  {/* Suggestion-only "Change" swap button — opens the wardrobe
-                      as a single-item picker so the user can build around a
-                      different item instead. Hidden when the detail was opened
-                      from the wardrobe (note in the AU spec). Square outline
-                      chip sized to the primary pill's height. */}
-                  {openedFromSuggestion ? (
-                    <TouchableOpacity
-                      testID="item-detail-swap-btn"
-                      accessibilityRole="button"
-                      accessibilityLabel={t(
-                        'wardrobe.itemDetail.a11y_change_item',
-                      )}
-                      style={styles.swapButton}
-                      onPress={handleOpenChange}
-                      disabled={isPreparing}
-                    >
-                      <Icons.Change
-                        width={24}
-                        height={24}
-                        color={theme.colors.uacTextBase}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-                  <PillButton
-                    testID="item-detail-mix-btn"
-                    variant="filled"
-                    title={t('wardrobe.itemDetail.build_around_this')}
-                    trailing={<Icons.Remix width={24} height={24} />}
-                    style={styles.ctaPrimary}
-                    onPress={() => {
-                      // ItemDetail is presented as a modal layer (AppNavigator
-                      // presentation:'modal'). navigate('Home',…) to a screen
-                      // BELOW the modal updates JS nav state but can leave the
-                      // native iOS modal still presented → desync: the sheet
-                      // stays stuck on top and nothing responds. popTo issues
-                      // pop semantics (like the back button's goBack) that
-                      // dismiss the modal AND land on Home with the pin intent.
-                      navigation.popTo('Home', { pinFromDetail: itemId });
-                    }}
-                    disabled={isPreparing}
-                  />
-                </View>
-              ) : null}
-
-              <View style={styles.bottomRow}>
-                <View style={styles.leftRow}>
-                  {/* AU-287: Trash hidden for catalog items (SYSTEM + USR_*
-                      clones). User demotes them via the Less use toggle. */}
-                  {!isCatalogItem ? (
-                    <TouchableOpacity
-                      testID="item-detail-delete-btn"
-                      accessibilityLabel={t('wardrobe.itemDetail.a11y_delete')}
-                      onPress={handleDelete}
-                      style={styles.iconOnlyButton}
-                      disabled={saving || isPreparing}
-                    >
-                      <Icons.Trash
-                        width={24}
-                        height={24}
-                        color={theme.colors.figmaItemDetailDanger}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-
-                  <TouchableOpacity
-                    testID={
-                      usageFrequency === 'LESS_USED'
-                        ? 'item-detail-less-used-btn-active'
-                        : 'item-detail-less-used-btn'
-                    }
-                    style={[
-                      styles.secondaryAction,
-                      usageFrequency === 'LESS_USED' &&
-                        styles.secondaryActionActive,
-                    ]}
-                    onPress={() => {
-                      handleToggleUsageFrequency();
-                    }}
-                    disabled={saving || isPreparing}
-                  >
-                    <Text
-                      style={[
-                        styles.lessUsedText,
-                        usageFrequency === 'LESS_USED' &&
-                          styles.lessUsedTextActive,
-                      ]}
-                    >
-                      {t('wardrobe.itemDetail.less_used')}
-                    </Text>
-                    <Icons.MinusCircle
-                      width={24}
-                      height={24}
-                      color={theme.colors.figmaItemDetailDanger}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Figma renames "Change" → "Edit" with a pencil glyph; same
-                    behaviour (enters edit mode). testID preserved for
-                    existing Maestro flows. */}
-                <TouchableOpacity
-                  testID="item-detail-change-btn"
-                  style={styles.secondaryAction}
-                  onPress={() => setIsEditing(true)}
-                  disabled={saving || isCatalogItem || isPreparing}
-                >
-                  <Text
-                    style={[
-                      styles.editActionText,
-                      isCatalogItem && styles.disabledText,
-                    ]}
-                  >
-                    {t('wardrobe.itemDetail.edit')}
-                  </Text>
-                  <Icons.Edit
-                    width={24}
-                    height={24}
-                    color={theme.colors.uacTextBase}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </>
+          <ItemDetailReadPanel
+            titleText={titleText}
+            dateText={dateText}
+            isPreparing={isPreparing}
+            isWaiting={isWaiting}
+            isCommonSystemItem={isCommonSystemItem}
+            openedFromSuggestion={openedFromSuggestion}
+            isCatalogItem={isCatalogItem}
+            usageFrequency={usageFrequency}
+            saving={saving}
+            onSwap={handleOpenChange}
+            onBuildAround={handleBuildAround}
+            onDelete={handleDelete}
+            onToggleUsage={handleToggleUsageFrequency}
+            onEdit={() => setIsEditing(true)}
+          />
         )}
       </BottomSheetSurface>
 
@@ -970,158 +727,5 @@ const styles = StyleSheet.create({
   sheet: {
     paddingHorizontal: theme.spacing.m,
     paddingTop: theme.spacing.m,
-  },
-  // Figma "List items": pt 12, column gap 16, centred, text/neutral/base.
-  titleBlock: {
-    paddingTop: theme.spacing.uacDimension12,
-    alignItems: 'center',
-    gap: theme.spacing.m,
-  },
-  titleText: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
-    color: theme.colors.uacTextBase,
-    textAlign: 'center',
-  },
-  dateText: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.uacTextBase,
-  },
-  // AU-351: "Waiting for the right occasion" status — muted secondary text,
-  // centred to match the title block. Token-styled (no hex).
-  waitingStatus: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
-  },
-  // Figma "button group": column, gap 12, pt 16 (pb handled inline with the
-  // safe-area inset).
-  buttonGroup: {
-    paddingTop: theme.spacing.m,
-    gap: theme.spacing.uacDimension12,
-  },
-  // Primary CTA row: the optional square "Change" swap chip sits in front of
-  // (left of) the "Build around this" pill, which flexes to fill the rest.
-  ctaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.uacDimension12,
-  },
-  // "Build around this" is now the primary (filled) button. It flexes to fill
-  // the row whether or not the swap chip is present. Radius reuses
-  // uacButtonCta=16; the filled variant owns its fill + border colour.
-  ctaPrimary: {
-    flex: 1,
-    borderRadius: theme.borderRadius.uacButtonCta,
-    paddingHorizontal: theme.spacing.uacButtonPaddingX,
-  },
-  // Square outline chip matching the primary pill's 56pt height/16 radius.
-  swapButton: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.borderRadius.uacButtonCta,
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacBorderBase,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  details: {
-    gap: 8,
-  },
-  rowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  rowLabel: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaItemDetailRowText,
-  },
-  rowValue: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaItemDetailRowText,
-  },
-  colorDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.figmaItemDetailColorDotBorder,
-  },
-  actionBlock: {
-    marginTop: 22,
-    gap: 8,
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  leftRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.uacDimension12,
-  },
-  iconOnlyButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryAction: {
-    height: 56,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-  },
-  secondaryActionActive: {
-    backgroundColor: theme.colors.figmaItemDetailLessUsedActive,
-  },
-  lessUsedText: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextBase,
-  },
-  lessUsedTextActive: {
-    color: theme.colors.figmaItemDetailDanger,
-  },
-  editActionText: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextBase,
-  },
-  editActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  editCancelButton: {
-    flex: 1,
-    // Figma "Text button / size 56": match the Save pill's height + radius so
-    // the two bottom buttons align. PillButton's `text` variant defaults to h40.
-    height: 56,
-    borderRadius: 16,
-    paddingHorizontal: 20,
-  },
-  editSaveButton: {
-    flex: 1,
-    borderRadius: 16,
-  },
-  disabledText: {
-    opacity: 0.5,
-  },
-  skeletonTitle: {
-    width: '100%',
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: theme.colors.figmaDetailSurface,
-    alignSelf: 'center',
-  },
-  skeletonDate: {
-    width: '60%',
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: theme.colors.figmaDetailSurface,
-    alignSelf: 'center',
   },
 });
