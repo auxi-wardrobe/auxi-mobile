@@ -19,7 +19,8 @@
 import React from 'react';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
 import { toast } from '../../components/design-system/lib';
-import { formatItemDate, ItemDetailScreen } from '../ItemDetailScreen';
+import { ItemDetailScreen } from '../ItemDetailScreen';
+import { formatItemDate } from '../../utils/wardrobeItemMappers';
 
 // ---- mocks ------------------------------------------------------------------
 

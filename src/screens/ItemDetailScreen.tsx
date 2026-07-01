@@ -35,38 +35,33 @@ import { theme } from '../theme/theme';
 import { AppStackParamList } from '../types/navigation';
 import { getImageUrl } from '../utils/url';
 import { track } from '../services/analytics';
+import {
+  areTagsEqual,
+  CATEGORY_OPTIONS,
+  COLOR_OPTIONS,
+  EditableField,
+  findColorHex,
+  FIT_OPTIONS,
+  formatItemDate,
+  getFriendlyError,
+  getOptionDisplayLabel,
+  normalizeCategoryLabel,
+  normalizeColorHex,
+  normalizeColorLabel,
+  normalizeFormalityLabel,
+  replaceFitTag,
+  replaceTag,
+  STYLE_OPTIONS,
+  STYLE_TAG_LESS_USED,
+  toApiCategory,
+  toApiFormality,
+} from '../utils/wardrobeItemMappers';
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
   'ItemDetail'
 >;
 type ScreenRoute = RouteProp<AppStackParamList, 'ItemDetail'>;
-type EditableField = 'category' | 'color' | 'fit' | 'style';
-
-const CATEGORY_OPTIONS = [
-  'Top',
-  'Bottom',
-  'Shoes',
-  'One-piece',
-  'Outerwear',
-  'Accessory',
-];
-const FIT_OPTIONS = ['Slim', 'Regular', 'Oversize'];
-const STYLE_OPTIONS = ['Casual', 'Business Casual', 'Formal'];
-const COLOR_OPTIONS = [
-  { label: 'Black', hex: '#272A32' },
-  { label: 'Blue', hex: '#8EA1BE' },
-  { label: 'Green', hex: '#7DAA8C' },
-  { label: 'Grey', hex: '#8F939B' },
-  { label: 'Red', hex: '#CC4C3E' },
-  { label: 'White', hex: '#F5F7FA' },
-  { label: 'Yellow', hex: '#D9C26A' },
-  { label: 'Pink', hex: '#DAA2B1' },
-  { label: 'Purple', hex: '#A493BE' },
-  { label: 'Orange', hex: '#C68A5A' },
-];
-const STYLE_TAG_LESS_USED = 'less-used';
-const FIT_TAG_PREFIX = 'fit:';
 
 // AU-312 (Figma 2852:14557) one-off literals — flagged in
 // figma-extraction-item-detail.md §One-off literals, not in the spacing scale:
@@ -75,167 +70,6 @@ const FIT_TAG_PREFIX = 'fit:';
 const IMAGE_SIDE_MARGIN = 18;
 const IMAGE_ASPECT = 3 / 4;
 const SHEET_BOTTOM_PADDING = 36;
-
-/**
- * AU-312: Figma read mode shows "Date: 11/06/2026" under the title.
- * Source field is `created_at`, rendered dd/mm/yyyy (qa-ui safe default #2).
- * Returns null on missing/invalid input so the row can be hidden (fallback
- * items pushed from Home carry no created_at). Exported for unit tests.
- */
-export const formatItemDate = (iso?: string): string | null => {
-  if (!iso) {
-    return null;
-  }
-
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  const dd = String(parsed.getDate()).padStart(2, '0');
-  const mm = String(parsed.getMonth() + 1).padStart(2, '0');
-  return `${dd}/${mm}/${parsed.getFullYear()}`;
-};
-
-const toTitleCase = (value: string): string =>
-  value.replace(/_/g, ' ').replace(/\b\w/g, match => match.toUpperCase());
-
-const normalizeCategoryLabel = (category?: string): string => {
-  const normalized = category?.trim().toLowerCase() || '';
-
-  switch (normalized) {
-    case 'top':
-      return 'Top';
-    case 'bottom':
-      return 'Bottom';
-    case 'shoes':
-      return 'Shoes';
-    case 'one_piece':
-    case 'one-piece':
-    case 'dress':
-      return 'One-piece';
-    case 'outerwear':
-      return 'Outerwear';
-    case 'accessory':
-    case 'ac':
-      return 'Accessory';
-    default:
-      return normalized ? toTitleCase(normalized) : 'Top';
-  }
-};
-
-const toApiCategory = (label: string): string => {
-  const normalized = label.trim().toLowerCase();
-
-  switch (normalized) {
-    case 'top':
-      return 'top';
-    case 'bottom':
-      return 'bottom';
-    case 'shoes':
-      return 'shoes';
-    case 'one-piece':
-      return 'one_piece';
-    case 'outerwear':
-      return 'outerwear';
-    case 'accessory':
-      return 'accessory';
-    default:
-      return normalized.replace(/\s+/g, '_');
-  }
-};
-
-const normalizeFormalityLabel = (formalityLevel?: string): string => {
-  if (!formalityLevel) {
-    return 'Casual';
-  }
-
-  if (formalityLevel.toLowerCase() === 'business_casual') {
-    return 'Business Casual';
-  }
-
-  return toTitleCase(formalityLevel.toLowerCase());
-};
-
-const toApiFormality = (label: string): string =>
-  label.trim().toLowerCase().replace(/\s+/g, '_');
-
-const findColorHex = (label: string): string =>
-  COLOR_OPTIONS.find(option => option.label === label)?.hex || '#8EA1BE';
-
-const normalizeColorLabel = (item: WardrobeItem): string => {
-  if (item.dominant_color && typeof item.dominant_color === 'string') {
-    return toTitleCase(item.dominant_color.toLowerCase());
-  }
-
-  if (Array.isArray(item.colors) && item.colors.length > 0) {
-    return toTitleCase(String(item.colors[0]).toLowerCase());
-  }
-
-  if (typeof item.color_hex === 'string' && item.color_hex) {
-    const matchedColor = COLOR_OPTIONS.find(
-      option => option.hex.toLowerCase() === item.color_hex?.toLowerCase(),
-    );
-    return matchedColor?.label || 'Custom';
-  }
-
-  return 'Blue';
-};
-
-const normalizeColorHex = (item: WardrobeItem, colorLabel: string): string => {
-  if (
-    colorLabel === 'Custom' &&
-    typeof item.color_hex === 'string' &&
-    item.color_hex
-  ) {
-    return item.color_hex;
-  }
-
-  return findColorHex(colorLabel);
-};
-
-const replaceTag = (
-  tags: string[],
-  tagToReplace: string,
-  enabled: boolean,
-): string[] => {
-  const nextTags = tags.filter(tag => tag !== tagToReplace);
-
-  if (enabled) {
-    nextTags.push(tagToReplace);
-  }
-
-  return nextTags;
-};
-
-const replaceFitTag = (tags: string[], fitLabel: string): string[] => {
-  const nextTags = tags.filter(tag => !tag.startsWith(FIT_TAG_PREFIX));
-  nextTags.push(`${FIT_TAG_PREFIX}${fitLabel.trim().toLowerCase()}`);
-  return nextTags;
-};
-
-const areTagsEqual = (left: string[], right: string[]): boolean => {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  return left.every((tag, index) => tag === right[index]);
-};
-
-type TFn = (key: string, options?: Record<string, unknown>) => string;
-
-const getFriendlyError = (error: any, fallback: string, t: TFn): string => {
-  switch (error?.response?.status) {
-    case 403:
-      return t('wardrobe.itemDetail.error_403');
-    case 404:
-      return t('wardrobe.itemDetail.error_404');
-    case 429:
-      return t('wardrobe.itemDetail.error_429');
-    default:
-      return fallback;
-  }
-};
 
 export const ItemDetailScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
@@ -443,14 +277,6 @@ export const ItemDetailScreen = () => {
         return '';
     }
   };
-
-  // DISPLAY-ONLY: localize a canonical option value (e.g. 'Top', 'Black') for
-  // rendering. The raw value still drives selection, lookup (toApiCategory /
-  // findColorHex / toApiFormality), comparison, and persistence — never mutate
-  // it. `EditableField` maps 1:1 to the `wardrobe.options.<group>` namespace.
-  // defaultValue falls back to the canonical English if a key is missing.
-  const getOptionDisplayLabel = (field: EditableField, value: string): string =>
-    t(`wardrobe.options.${field}.${value}`, { defaultValue: value });
 
   const handleSelectOption = (option: string) => {
     if (!pickerField) {
@@ -737,7 +563,7 @@ export const ItemDetailScreen = () => {
     const colorHex =
       showColor && item ? normalizeColorHex(item, draftColor) : null;
     // Display-only: `value` stays the canonical draft for logic/persistence.
-    const displayValue = getOptionDisplayLabel(field, value);
+    const displayValue = getOptionDisplayLabel(t, field, value);
 
     return (
       <TouchableOpacity
@@ -1144,7 +970,7 @@ export const ItemDetailScreen = () => {
                         ) : null}
                         <Text style={styles.optionText}>
                           {pickerField
-                            ? getOptionDisplayLabel(pickerField, option)
+                            ? getOptionDisplayLabel(t, pickerField, option)
                             : option}
                         </Text>
                       </View>
