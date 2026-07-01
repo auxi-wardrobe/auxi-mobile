@@ -3,13 +3,11 @@ import {
   Alert,
   Dimensions,
   Image,
-  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -39,6 +37,7 @@ import { Icons } from '../assets/icons';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { Header } from '../components/layout/Header';
 import { PhotoSourceModal } from './body/PhotoSourceModal';
+import { BodyImageLightbox } from './body/BodyImageLightbox';
 
 const { width: screenWidth } = Dimensions.get('window');
 const IMAGE_GAP = 8;
@@ -619,30 +618,11 @@ export const BodyScreen = () => {
         onClose={() => setModalVisible(false)}
       />
 
-      <Modal
-        animationType="fade"
-        transparent
+      <BodyImageLightbox
         visible={largeImageModalVisible}
-        onRequestClose={() => setLargeImageModalVisible(false)}
-      >
-        <TouchableWithoutFeedback
-          onPress={() => setLargeImageModalVisible(false)}
-        >
-          <View style={styles.largeImageModalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.largeImageContainer}>
-                {selectedImageUrl && (
-                  <Image
-                    source={{ uri: selectedImageUrl }}
-                    style={styles.largeImage}
-                    resizeMode="contain"
-                  />
-                )}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+        imageUrl={selectedImageUrl}
+        onClose={() => setLargeImageModalVisible(false)}
+      />
 
       {/* B1: AI data-sharing consent prompt — gates the try-on photo upload. */}
       <AiConsentDialog {...aiConsentGate.dialogProps} />
@@ -776,22 +756,6 @@ const styles = StyleSheet.create({
     left: 22,
     right: 22,
     bottom: 28,
-  },
-  largeImageModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  largeImageContainer: {
-    width: '90%',
-    height: '80%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  largeImage: {
-    width: '100%',
-    height: '100%',
   },
   // Body-photo detail view (Settings redesign Frame 5).
   detailContainer: {
