@@ -75,6 +75,12 @@ export type AppStackParamList = {
   // the param so re-focus / re-render does not refire the auto-pin.
   Home: { pinFromDetail?: string } | undefined;
   Settings: undefined;
+  // Settings sub-screens (grouped IA). The main Settings screen keeps the
+  // daily-reminder controls + "Delete My Data"; these three carry the grouped
+  // secondary settings, pushed on top so they get the standard back gesture.
+  SettingsPersonalization: undefined;
+  SettingsPrivacy: undefined;
+  SettingsAbout: undefined;
   Wardrobe: undefined;
   // `returnToSchedule` is set when the user reached this page via the Schedule
   // "+" source picker — after scheduling an outfit we send them back to

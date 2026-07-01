@@ -540,7 +540,21 @@
       "notification_reset_toast_title": "Rappels réinitialisés par défaut",
       "notification_reset_toast_body": "Touchez pour annuler",
       "notification_reset_undone_title": "Réinitialisation annulée",
-      "error_update_notification_reset": "Échec de la réinitialisation des rappels"
+      "error_update_notification_reset": "Échec de la réinitialisation des rappels",
+      "enable_daily_reminder": "Activer le rappel quotidien",
+      "reminder_time": "Heure du rappel",
+      "repeat_schedule": "Fréquence de répétition",
+      "dialog_schedule_title": "Fréquence de répétition",
+      "a11y_change_schedule": "Changer la fréquence de répétition",
+      "section_personalization": "Personnalisation",
+      "section_privacy": "Confidentialité",
+      "section_about": "À propos",
+      "a11y_open_personalization": "Ouvrir les paramètres de personnalisation",
+      "a11y_open_privacy": "Ouvrir les paramètres de confidentialité",
+      "a11y_open_about": "Ouvrir À propos",
+      "a11y_back": "Retour",
+      "delete_my_data": "Supprimer mes données",
+      "privacy_control_body": "Contrôlez ce que vous partagez avec Auxi et nos fournisseurs d'IA. Vous pouvez modifier ces choix à tout moment."
     },
     "outfitCanvas": {
       "a11y_close_picker": "Fermer le sélecteur",
