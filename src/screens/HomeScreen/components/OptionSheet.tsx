@@ -285,6 +285,7 @@ export const OptionSheet = React.memo(
                   surfaceWidth={COLLAGE_SURFACE_WIDTH}
                   surfaceHeight={COLLAGE_SURFACE_HEIGHT}
                   onDragActiveChange={onCollageDragActiveChange}
+                  onItemPress={onItemPress}
                 />
               ) : (
                 renderLayout()
