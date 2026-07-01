@@ -30,7 +30,11 @@ import { useAiConsentGate } from '../hooks/useAiConsentGate';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { theme } from '../theme/theme';
 import { AppStackParamList, TryOnOutfitContext } from '../types/navigation';
-import { getImageUrl } from '../utils/url';
+import {
+  formatPhotoTimestamp,
+  getErrorStatus,
+  resolveImageUrl,
+} from '../utils/body';
 import { Icons } from '../assets/icons';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { Header } from '../components/layout/Header';
@@ -47,41 +51,10 @@ type ScreenRoute = RouteProp<AppStackParamList, 'Body'>;
 // Modes the Body route can resolve to. `manage` is the default (undefined params).
 type BodyMode = 'manage' | 'tryOn' | 'photoDetail';
 
-const resolveImageUrl = (url: string) => getImageUrl(url) || url;
-
-// Mirror of SettingsScreen.getErrorStatus — pull HTTP status off an axios-like error.
-const getErrorStatus = (error: unknown) =>
-  (error as { response?: { status?: number } } | undefined)?.response?.status;
-
 // Exhaustiveness guard for the discriminated Body route union. A `never` arg
 // means every mode is handled; a new mode added later forces a compile error here.
 const assertNever = (value: never): never => {
   throw new Error(`Unhandled Body mode: ${String(value)}`);
-};
-
-// Format BodyItem.created_at → "HH:MM - DD MMM, YYYY" (e.g. "12:23 - 12 Feb, 2026").
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-const formatPhotoTimestamp = (createdAt?: string): string | null => {
-  if (!createdAt) return null;
-  const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) return null;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(date.getHours())}:${pad(
-    date.getMinutes(),
-  )} - ${date.getDate()} ${MONTHS[date.getMonth()]}, ${date.getFullYear()}`;
 };
 
 export const BodyScreen = () => {
