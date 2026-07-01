@@ -5,13 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  Animated,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -39,7 +33,6 @@ import {
 import IconMenu from '../../assets/images/icon_menu.svg';
 import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
 import IconFeedback from '../../assets/images/feedback.svg';
-import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
 import { DotsLoader } from '../../components/atoms/DotsLoader';
 import { theme } from '../../theme/theme';
@@ -118,6 +111,7 @@ import { useHomeToasts } from './hooks/useHomeToasts';
 import { EDIT_CONTEXT_SUGGESTIONS } from './context-chips';
 import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
+import { DeckCue } from './components/DeckCue';
 import { HomeLoadingState } from './components/HomeLoadingState';
 import { HomeToastLayer } from './components/HomeToastLayer';
 import { OptionSheet } from './components/OptionSheet';
@@ -1374,38 +1368,13 @@ export const HomeScreen = () => {
               />
             )}
             renderCue={(backOpacity, nextOpacity) => (
-              <>
-                {/* Swipe right → previous: back chevron on the right edge
-                    (hidden on the first card — nothing to return to). */}
-                {clampedActiveIndex > 0 ? (
-                  <Animated.View
-                    pointerEvents="none"
-                    style={[
-                      styles.deckCue,
-                      styles.deckCueLike,
-                      { opacity: backOpacity },
-                    ]}
-                  >
-                    <IconChevronLeft width={20} height={20} />
-                    <Text style={styles.deckCueSkipText}>
-                      {t('home.back_label')}
-                    </Text>
-                  </Animated.View>
-                ) : null}
-                {/* Swipe left → next: cue on the left edge. */}
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.deckCue,
-                    styles.deckCueSkip,
-                    { opacity: nextOpacity },
-                  ]}
-                >
-                  <Text style={styles.deckCueSkipText}>
-                    {t('home.skip_label')}
-                  </Text>
-                </Animated.View>
-              </>
+              <DeckCue
+                backOpacity={backOpacity}
+                nextOpacity={nextOpacity}
+                showBack={clampedActiveIndex > 0}
+                backLabel={t('home.back_label')}
+                skipLabel={t('home.skip_label')}
+              />
             )}
           />
           {/* Fixed action row — Remix · dots · Refine stay put while only the
