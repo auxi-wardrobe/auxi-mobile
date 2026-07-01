@@ -16,7 +16,6 @@ import {
   useRoute,
 } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
@@ -30,12 +29,6 @@ import { useSidebar } from '../context/SidebarContext';
 import { useCreationsSeen } from '../context/CreationsSeenContext';
 import { track } from '../services/analytics';
 import {
-  CREATIONS_QUERY_KEY,
-  CreationItem,
-  CreationSaveError,
-  creationsService,
-} from '../services/creationsService';
-import {
   requestCanvasExit,
   setCanvasExitGuard,
 } from '../navigation/canvasExitGuard';
@@ -43,9 +36,9 @@ import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import { ItemPickerPanel } from './canvas/ItemPickerPanel';
 import { TagChip } from './canvas/TagChip';
 import { ToolbarBtn } from './canvas/ToolbarBtn';
-import { extractUri } from './canvas/canvas-helpers';
 import { useCanvasHistory } from './canvas/useCanvasHistory';
 import { useCanvasAddItems } from './canvas/useCanvasAddItems';
+import { useCreationPersistence } from './canvas/useCreationPersistence';
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from './canvas/canvas-dimensions';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { InfoSnackbar } from '../components/feedback/InfoSnackbar';
@@ -80,7 +73,6 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const { open: openSidebar } = useSidebar();
   const { hasUnseen: hasUnseenCreations, markSaved: markCreationSaved } =
     useCreationsSeen();
-  const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   // Entered via Home's Remix button → show a back chevron (goes back to Home).
   // Entered from the sidebar drawer → show the hamburger that re-opens it.
@@ -112,10 +104,6 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   // flips this true; Save clears it. Drives the "Discard this creation?" sheet
   // shown when the user tries to leave with pending edits.
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  // In-flight Save guard: true while persistCreation awaits the network so the
-  // Save button can show its spinner and block a double-tap. Cleared in a
-  // `finally`, so it always resets even if the save throws.
-  const [isSaving, setIsSaving] = useState(false);
   const [discardVisible, setDiscardVisible] = useState(false);
   // The navigation action we intercepted (back / goBack), replayed verbatim
   // once the user resolves the sheet. `proceedRef` lets that replay through the
@@ -240,81 +228,21 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     setAddingTag(false);
   }, [tagInput, tags]);
 
-  // Persist the current canvas arrangement to the local My Creations store and
-  // confirm with a toast that says WHERE it went. Returns whether anything was
-  // saved (false when there's nothing URI-backed to persist). Does NOT navigate
-  // — the user stays on the canvas; the toast points them at My Creations.
-  const persistCreation = useCallback(async (): Promise<boolean> => {
-    // Only items backed by a real image URI persist — mock require()'d assets
-    // (the deep-link/dev fallback) aren't serializable and are skipped.
-    const savedItems = items.reduce<CreationItem[]>((acc, it) => {
-      const uri = extractUri(it.imageSource);
-      if (uri) {
-        acc.push({
-          id: it.id,
-          wardrobeItemId: it.wardrobeItemId,
-          imageUri: uri,
-          x: it.x,
-          y: it.y,
-          width: it.width,
-          height: it.height,
-          zIndex: it.zIndex,
-          scale: it.scale,
-          rotation: it.rotation,
-        });
-      }
-      return acc;
-    }, []);
+  // Clears the unsaved-changes flag on a successful save. Stable so
+  // persistCreation keeps identical identity to the previous inline version.
+  const markClean = useCallback(() => setHasUnsavedChanges(false), []);
 
-    if (savedItems.length === 0) {
-      return false;
-    }
-
-    setIsSaving(true);
-    try {
-      await creationsService.saveCreation({
-        items: savedItems,
-        tags,
-        canvasWidth: CANVAS_WIDTH,
-      });
-      queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
-      track('creation_saved', { item_count: savedItems.length });
-      setHasUnsavedChanges(false);
-      // Light the My Creations header dot (same "unseen saved" feedback as the
-      // Home favourites "Wear this" mint dot); cleared when the list is opened.
-      markCreationSaved();
-      showSavedSnackbar();
-      return true;
-    } catch (error) {
-      // A genuine save failure (a true offline error never reaches here — the
-      // service falls back to a local save). `auth` = session expired: the
-      // apiClient interceptor already cleared tokens, redirected to login and
-      // toasted, so we stay silent and let that play out. Anything else didn't
-      // save — tell the user so they can retry instead of seeing fake success.
-      const isAuth =
-        error instanceof CreationSaveError && error.kind === 'auth';
-      if (!isAuth) {
-        showSaveError();
-      }
-      track('creation_save_failed', {
-        kind: error instanceof CreationSaveError ? error.kind : 'unknown',
-      });
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
+  // Save-to-My-Creations persistence (serialize → save → invalidate → snackbar).
+  // Behaviour preserved (see useCreationPersistence). `persistCreation` returns
+  // whether anything was saved and is reused by the discard sheet's Save path.
+  const { isSaving, persistCreation, handleSave } = useCreationPersistence({
     items,
     tags,
-    queryClient,
     showSavedSnackbar,
-    markCreationSaved,
     showSaveError,
-  ]);
-
-  const handleSave = useCallback(() => {
-    persistCreation();
-  }, [persistCreation]);
+    markCreationSaved,
+    markClean,
+  });
 
   const handleOpenCreations = useCallback(() => {
     // "My Creations" lists everything the user has saved from the canvas
