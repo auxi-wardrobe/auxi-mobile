@@ -33,8 +33,6 @@ import { useAiConsentGate } from '../../hooks/useAiConsentGate';
 import { AiConsentDialog } from '../../components/features/AiConsentDialog';
 import { theme } from '../../theme/theme';
 import { AppStackParamList } from '../../types/navigation';
-import { MacgieLoader } from '../../components/macgie/MacgieLoader';
-import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import {
   StomHeader,
   PromptBubble,
@@ -46,9 +44,7 @@ import {
 import { StepSelfie } from './StepSelfie';
 import { StepFullBody } from './StepFullBody';
 import { StepBodyShape } from './StepBodyShape';
-import { StepReuseConfirm } from './StepReuseConfirm';
-import { OutfitPreview } from './OutfitPreview';
-import { GeneratingView } from './GeneratingView';
+import { renderStomStepScreen } from './StomStepScreen';
 import { BodyShapeId, GeneratedShape } from './body-shapes';
 import {
   Step,
@@ -484,97 +480,32 @@ export const SeeThisOnMeScreen: React.FC = () => {
     selectedProfileId ?? (reuseMode ? activeProfile?.id ?? null : null);
   const renderShape = selectedShape ?? activeProfile?.body_shape ?? null;
 
-  // ── Loading the reusable profile ──────────────────────────────────────────
-  if (profileLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
-        <MacgieLoader testID="stom-profile-loading" />
-      </SafeAreaView>
-    );
-  }
-
-  // ── Generating shapes (phase 1) / error state ─────────────────────────────
-  if (step === 'generatingShapes') {
-    return (
-      <SafeAreaView style={styles.container}>
-        {/* Back during generation = quit-to-background (keeps the job alive +
-            notifies on done); in the errored state it's a plain back. */}
-        <StomHeader
-          title={t('seeThisOnMe.title')}
-          onBack={shapesErrored ? handleBack : handleQuitGeneration}
-        />
-        <GeneratingView
-          errored={shapesErrored}
-          label={t('seeThisOnMe.generatingShapes')}
-          errorText={t('seeThisOnMe.shapesError')}
-          onRetry={regenerateShapes}
-          onQuit={shapesErrored ? undefined : handleQuitGeneration}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  // ── Generating render (phase 2) / error state ─────────────────────────────
-  if (step === 'generating') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StomHeader
-          title={t('seeThisOnMe.title')}
-          onBack={errored ? handleBack : handleQuitGeneration}
-        />
-        <GeneratingView
-          errored={errored}
-          onRetry={() => {
-            if (renderBodyId) {
-              runRender(renderBodyId, renderShape);
-            }
-          }}
-          onQuit={errored ? undefined : handleQuitGeneration}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  // ── Preview state ─────────────────────────────────────────────────────────
-  if (step === 'preview' && resultUrl) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
-        <OutfitPreview imageUri={resultUrl} onBackHome={goHome} />
-        {/* Reuse path: let the user discard the saved profile and recapture. */}
-        {reuseMode ? (
-          <View style={styles.retakeProfileRow}>
-            <PillButton
-              testID="stom-retake-profile"
-              title={t('seeThisOnMe.retakeProfile')}
-              variant="text"
-              onPress={restartCapture}
-            />
-          </View>
-        ) : null}
-      </SafeAreaView>
-    );
-  }
-
-  // ── Reuse-confirm re-entry (AU-354 pt.3) ─────────────────────────────────
-  if (
-    reuseMode &&
-    !reuseConfirmed &&
-    !rehydratedRef.current &&
-    reusePhotoUri &&
-    step === 'selfie'
-  ) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
-        <StepReuseConfirm
-          photoUri={reusePhotoUri}
-          onConfirm={handleReuseConfirm}
-          onRetake={handleReuseRetake}
-        />
-      </SafeAreaView>
-    );
+  // Non-transcript screens (loading / generating / preview / reuse-confirm).
+  // Returns the matching shell, or null → render the capture transcript below.
+  const stepScreen = renderStomStepScreen({
+    t,
+    step,
+    profileLoading,
+    handleBack,
+    handleQuitGeneration,
+    shapesErrored,
+    regenerateShapes,
+    errored,
+    renderBodyId,
+    renderShape,
+    runRender,
+    resultUrl,
+    goHome,
+    reuseMode,
+    restartCapture,
+    reuseConfirmed,
+    rehydrated: rehydratedRef.current,
+    reusePhotoUri,
+    handleReuseConfirm,
+    handleReuseRetake,
+  });
+  if (stepScreen) {
+    return stepScreen;
   }
 
   // ── Capture transcript (selfie / fullBody / bodyShape) ────────────────────
@@ -721,10 +652,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: theme.spacing.uacDimension12,
     paddingBottom: theme.spacing.m,
-  },
-  retakeProfileRow: {
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingBottom: theme.spacing.m,
-    alignItems: 'center',
   },
 });
