@@ -49,6 +49,7 @@ import {
 } from '../navigation/canvasExitGuard';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import { ItemPickerPanel } from './canvas/ItemPickerPanel';
+import { TagChip } from './canvas/TagChip';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { InfoSnackbar } from '../components/feedback/InfoSnackbar';
 import { DotsLoader } from '../components/atoms/DotsLoader';
@@ -137,31 +138,6 @@ const extractUri = (source: ImageSourcePropType): string | undefined => {
 type HistorySnapshot = CanvasItemData[];
 
 const INITIAL_MOCK_ITEMS: CanvasItemData[] = [];
-
-// --- Tag chip ---
-const TagChip = ({
-  label,
-  onRemove,
-}: {
-  label: string;
-  onRemove: () => void;
-}) => {
-  const { t } = useTranslation();
-  return (
-    <View style={styles.tagChip}>
-      <Text style={styles.tagChipLabel}>{label}</Text>
-      <Pressable
-        testID={`canvas-tag-remove-${label}`}
-        onPress={onRemove}
-        hitSlop={8}
-        style={styles.tagChipRemove}
-        accessibilityLabel={t('outfitCanvas.a11y_remove_tag', { label })}
-      >
-        <Text style={styles.tagChipX}>×</Text>
-      </Pressable>
-    </View>
-  );
-};
 
 // --- Toolbar button ---
 const ToolbarBtn = ({
@@ -1251,31 +1227,6 @@ const styles = StyleSheet.create({
   tagsScroll: {
     gap: 10, // Figma chip row gap
     alignItems: 'center',
-  },
-  // Tag chip — Figma: bg background/primary/subtle_100 (#e0d2c4), radius 6,
-  // height 32, padding 8/12, gap 4, text Inter Regular 12/16 #070707.
-  tagChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 32,
-    backgroundColor: theme.colors.figmaInsightPillBg,
-    borderRadius: theme.borderRadius.chip,
-    paddingVertical: theme.spacing.s,
-    paddingHorizontal: theme.spacing.uacDimension12,
-    gap: theme.spacing.xs,
-  },
-  tagChipLabel: {
-    ...theme.typography.aliases.uacBodyXsRegular, // Inter Regular 12/16
-    color: theme.colors.figmaTextDark,
-  },
-  tagChipRemove: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tagChipX: {
-    fontSize: 14,
-    lineHeight: 16,
-    color: theme.colors.figmaTextDark,
   },
   // Add chip — Figma: bg background/primary/subtle_50 (#f2efec), radius 6,
   // height 32, icon-only "+".
