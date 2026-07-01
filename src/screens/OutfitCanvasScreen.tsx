@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Dimensions,
   ImageSourcePropType,
   Pressable,
   SafeAreaView,
@@ -58,6 +57,7 @@ import {
   prefetchWithTimeout,
 } from './canvas/canvas-helpers';
 import { useCanvasHistory } from './canvas/useCanvasHistory';
+import { CANVAS_HEIGHT, CANVAS_WIDTH } from './canvas/canvas-dimensions';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { InfoSnackbar } from '../components/feedback/InfoSnackbar';
 import { DotsLoader } from '../components/atoms/DotsLoader';
@@ -80,13 +80,6 @@ import IconCanvasDelete from '../assets/images/canvas-icons/trash.svg';
 const testJeansImg = require('../assets/images/test_jeans.png');
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OutfitCanvas'>;
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-// Figma "remix" frame (node 2852:16582): the canvas card "Image 3:4" is an
-// inset rounded card sitting inside the body's 12px horizontal padding
-// (theme.spacing.uacDimension12 each side), aspect 3:4 (height = width × 4/3).
-const CANVAS_WIDTH = SCREEN_WIDTH - 2 * theme.spacing.uacDimension12;
-const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
 
 // How long the "Saved to My Creations" success snackbar stays up (mirrors
 // Wardrobe's READY_SNACKBAR_MS).
