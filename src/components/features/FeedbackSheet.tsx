@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
   sheet: {
     // Modal tier — sheet sits above the dim/dismiss layer.
     zIndex: theme.zIndex.modal,
+    width: '100%',
     maxHeight: screenHeight * 0.9,
     borderTopLeftRadius: theme.borderRadius.l,
     borderTopRightRadius: theme.borderRadius.l,
@@ -158,11 +159,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingLeft: theme.spacing.l,
     paddingRight: theme.spacing.s,
-    paddingBottom: theme.spacing.xs,
+    paddingBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaTextDark,
+    ...theme.typography.aliases.interSemiboldXsSm,
+    color: theme.colors.figmaTextPrimary,
   },
   // Drop the shared TopIconButton gray surface — plain X, no chip background.
   closeButton: {

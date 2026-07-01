@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
 import IconMyCreation from '../../assets/images/icon_my_creation.svg';
-import { MBottomSheet, MSheetOption } from '../../components/design-system/lib';
+import { MSheetOption } from '../../components/design-system/lib';
+import { ContextualBottomSheet } from '../../components/features/ContextualBottomSheet';
 
 // "Add an outfit" source picker — the Schedule header "+" opens this so the
 // user chooses where to add an outfit from, then is routed to that page
-// (Favourite / My Creations). Built on the DS MBottomSheet shell + MSheetOption
-// rows, so motion / scrim / reduce-motion / safe-area all come from the design
-// system instead of a bespoke sheet stack.
+// (Favourite / My Creations). Rides the shared ContextualBottomSheet shell
+// (full-width, "Refine suggestions" reveal motion) + MSheetOption rows, so the
+// look / motion / scrim / reduce-motion / safe-area match the app's other
+// contextual sheets instead of a bespoke sheet stack.
 
 interface Props {
   visible: boolean;
@@ -30,7 +32,7 @@ export const AddToScheduleSheet: React.FC<Props> = ({
   const { t } = useTranslation();
 
   return (
-    <MBottomSheet visible={visible} onDismiss={onDismiss} testID={testID}>
+    <ContextualBottomSheet visible={visible} onDismiss={onDismiss} testID={testID}>
       <Text style={styles.title}>{t('schedule.add_sheet.title')}</Text>
       <Text style={styles.subtitle}>{t('schedule.add_sheet.subtitle')}</Text>
 
@@ -46,7 +48,7 @@ export const AddToScheduleSheet: React.FC<Props> = ({
         onPress={onSelectCreations}
         testID={`${testID}-creations`}
       />
-    </MBottomSheet>
+    </ContextualBottomSheet>
   );
 };
 
@@ -58,7 +60,7 @@ const styles = StyleSheet.create({
   subtitle: {
     ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
-    marginTop: 4,
-    marginBottom: 4,
+    marginTop: theme.spacing.s,
+    marginBottom: theme.spacing.m,
   },
 });

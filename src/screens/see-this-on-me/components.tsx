@@ -238,9 +238,9 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   sheetTitle: {
-    ...theme.typography.aliases.interMediumSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     textAlign: 'center',
-    color: theme.colors.figmaAction,
+    color: theme.colors.figmaTextPrimary,
     marginBottom: theme.spacing.m,
   },
   sheetAction: {

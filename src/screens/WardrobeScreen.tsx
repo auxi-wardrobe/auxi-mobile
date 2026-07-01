@@ -78,10 +78,10 @@ export const WardrobeScreen = () => {
   // error state + Retry rather than the misleading "add your first item" copy.
   const [loadError, setLoadError] = useState(false);
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
-  // Add-item sheet visibility. The slide/fade ENTER + faster CLOSE motion +
-  // reduce-motion fallback are now encapsulated inside MBottomSheet (it keeps
-  // itself mounted through the close animation), so the screen only tracks the
-  // boolean.
+  // Add-item sheet visibility. The full-width panel + "Refine suggestions"
+  // reveal motion + reduce-motion fallback are encapsulated inside
+  // ContextualBottomSheet (it keeps itself mounted through the close
+  // animation), so the screen only tracks the boolean.
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   // Take-photo source chooser. Migrated from a 3-button Alert.alert to the DS
   // MActionSheet (GH-364); driven by this controlled boolean.
@@ -380,7 +380,6 @@ export const WardrobeScreen = () => {
       <AddItemSheet
         visible={addSheetVisible}
         onDismiss={() => setAddSheetVisible(false)}
-        bottomInset={insets.bottom}
         onSearchDatabase={handleSearchDatabase}
         onTakePhoto={handleTakePhoto}
       />

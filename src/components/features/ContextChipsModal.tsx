@@ -19,8 +19,7 @@ import { motion } from '../../theme/motion';
 import { useBackgroundScale } from '../../context/BackgroundScaleContext';
 import { track } from '../../services/analytics';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const MODAL_WIDTH = Math.min(screenWidth - 16, 414);
+const { height: screenHeight } = Dimensions.get('window');
 
 export type ContextChipId =
   | 'more_casual'
@@ -272,16 +271,16 @@ const styles = StyleSheet.create({
   // Dim tier — RN <Modal> host carries the scrim (see docs/Z_INDEX_LAYERING.md §1).
   overlay: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   card: {
     // Modal tier — content sits above the dim/dismiss layer.
     zIndex: theme.zIndex.modal,
-    width: MODAL_WIDTH,
-    marginBottom: 8,
-    borderRadius: 16,
+    width: '100%',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     backgroundColor: theme.colors.figmaSurface,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -295,13 +294,13 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.interSemiboldSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
-    marginTop: theme.spacing.xs,
+    marginTop: theme.spacing.s,
   },
   chipRow: {
     flexDirection: 'row',

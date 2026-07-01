@@ -103,10 +103,10 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
   },
   modalTitle: {
-    ...theme.typography.aliases.manropeBody,
+    ...theme.typography.aliases.interSemiboldXsSm,
     textAlign: 'center',
-    color: theme.colors.figmaAction,
-    marginBottom: 16,
+    color: theme.colors.figmaTextPrimary,
+    marginBottom: theme.spacing.m,
   },
   modalAction: {
     height: 52,

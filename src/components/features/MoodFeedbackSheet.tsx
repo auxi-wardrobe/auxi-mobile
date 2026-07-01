@@ -17,8 +17,7 @@ import { PillButton } from '../primitives/FigmaPrimitives';
 import { MoodChipGrid } from './MoodChipGrid';
 import { getMoodChipsForOccasion } from './mood-chips';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const SHEET_WIDTH = Math.min(screenWidth - 16, 414);
+const { height: screenHeight } = Dimensions.get('window');
 const OPEN_DURATION_MS = motion.duration.medium;
 const CLOSE_DURATION_MS = motion.duration.normal;
 const SNAP_BACK_DURATION_MS = motion.duration.fast;
@@ -214,16 +213,16 @@ const styles = StyleSheet.create({
   // Dim tier — RN <Modal> host carries the scrim (see docs/Z_INDEX_LAYERING.md §1).
   overlay: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'flex-end',
     backgroundColor: theme.colors.figmaOverlayScrim,
   },
   sheet: {
     // Modal tier — sheet sits above the dim/dismiss layer.
     zIndex: theme.zIndex.modal,
-    width: SHEET_WIDTH,
-    marginBottom: theme.spacing.s,
-    borderRadius: 16,
+    width: '100%',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     backgroundColor: theme.colors.figmaSurface,
     paddingHorizontal: theme.spacing.m,
     paddingTop: theme.spacing.s,
@@ -243,15 +242,15 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.playfairDisplaySection,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
   subtitle: {
-    ...theme.typography.aliases.manropeCaption,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
-    marginTop: theme.spacing.xs,
+    marginTop: theme.spacing.s,
     marginBottom: theme.spacing.m,
   },
   errorText: {
