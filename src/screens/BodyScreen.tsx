@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -15,10 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { toast } from '../components/design-system/lib';
 import { useTranslation } from 'react-i18next';
-import {
-  PillButton,
-  TopIconButton,
-} from '../components/primitives/FigmaPrimitives';
+import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { useAuth } from '../context/AuthContext';
 import { bodyService, BodyItem } from '../services/bodyService';
 import { tryOnService } from '../services/tryOnService';
@@ -28,21 +24,14 @@ import { useAiConsentGate } from '../hooks/useAiConsentGate';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { theme } from '../theme/theme';
 import { AppStackParamList, TryOnOutfitContext } from '../types/navigation';
-import {
-  formatPhotoTimestamp,
-  getErrorStatus,
-  resolveImageUrl,
-} from '../utils/body';
-import { Icons } from '../assets/icons';
-import { DotsLoader } from '../components/atoms/DotsLoader';
+import { getErrorStatus, resolveImageUrl } from '../utils/body';
 import { Header } from '../components/layout/Header';
 import { PhotoSourceModal } from './body/PhotoSourceModal';
 import { BodyImageLightbox } from './body/BodyImageLightbox';
 import { BodyPhotoGrid } from './body/BodyPhotoGrid';
+import { BodyPhotoDetailView } from './body/BodyPhotoDetailView';
 
 const { width: screenWidth } = Dimensions.get('window');
-// Body-photo detail (Settings redesign Frame 5): full-bleed 3:4 image.
-const DETAIL_IMAGE_HEIGHT = Math.round(screenWidth * (4 / 3));
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Body'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'Body'>;
@@ -324,100 +313,21 @@ export const BodyScreen = () => {
     setLargeImageModalVisible(true);
   };
 
-  // Body-photo detail view (Settings redesign Frame 5).
-  // Single photo: full 3:4 image + metadata caption + Delete (red, left) / Retake (right).
-  // Reuses existing handleDelete + handleImageSelection (Retake = re-capture/upload).
+  // Body-photo detail view (Settings redesign Frame 5) — same isPhotoDetailMode
+  // condition, just moved to its own component (no routing change).
   if (isPhotoDetailMode) {
-    const detailImageUrl = selectedBody
-      ? resolveImageUrl(selectedBody.image_url)
-      : null;
-    const photoTimestamp = formatPhotoTimestamp(selectedBody?.created_at);
-
     return (
-      <SafeAreaView style={styles.detailContainer}>
-        <View style={styles.detailImageWrap}>
-          {detailImageUrl ? (
-            <Image
-              source={{ uri: detailImageUrl }}
-              style={styles.detailImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[styles.detailImage, styles.detailImagePlaceholder]}>
-              <Text style={styles.detailPlaceholderText}>
-                {loading ? t('common.loading') : t('body.no_photo_hint')}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.detailBackWrap}>
-            <TopIconButton
-              testID="body-detail-back"
-              onPress={() => navigation.goBack()}
-              icon={<Icons.ChevronLeft width={24} height={24} />}
-            />
-          </View>
-        </View>
-
-        <View style={styles.detailPanel}>
-          <View style={styles.detailCopy}>
-            {photoTimestamp ? (
-              <Text style={styles.detailText}>
-                {t('body.time_label', { time: photoTimestamp })}
-              </Text>
-            ) : null}
-            <Text style={styles.detailText}>{t('body.photo_helps')}</Text>
-            <Text style={styles.detailText}>{t('body.privacy_note')}</Text>
-          </View>
-
-          <View style={styles.detailActions}>
-            <TouchableOpacity
-              testID="body-detail-delete"
-              activeOpacity={0.82}
-              disabled={!selectedBody}
-              style={[
-                styles.detailActionButton,
-                !selectedBody && styles.detailActionDisabled,
-              ]}
-              onPress={() => {
-                if (selectedBody) {
-                  handleDelete(selectedBody.id);
-                }
-              }}
-            >
-              <Text style={styles.detailDeleteLabel}>{t('common.delete')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              testID="body-detail-retake"
-              activeOpacity={0.82}
-              disabled={uploading}
-              style={[
-                styles.detailActionButton,
-                uploading && styles.detailActionDisabled,
-              ]}
-              onPress={() => setModalVisible(true)}
-            >
-              {uploading ? (
-                <DotsLoader color={theme.colors.uacTextBase} />
-              ) : (
-                <Text style={styles.detailRetakeLabel}>{t('body.retake')}</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <PhotoSourceModal
-          visible={modalVisible}
-          title={t('body.retake_body')}
-          onCamera={() => handleImageSelection('camera')}
-          onGallery={() => handleImageSelection('gallery')}
-          onClose={() => setModalVisible(false)}
-          cameraTestID="body-detail-retake-camera"
-          galleryTestID="body-detail-retake-gallery"
-          cancelTestID="body-detail-retake-cancel"
-        />
-      </SafeAreaView>
+      <BodyPhotoDetailView
+        selectedBody={selectedBody}
+        loading={loading}
+        uploading={uploading}
+        modalVisible={modalVisible}
+        onBack={() => navigation.goBack()}
+        onDelete={handleDelete}
+        onImageSelect={handleImageSelection}
+        onOpenSourceModal={() => setModalVisible(true)}
+        onCloseSourceModal={() => setModalVisible(false)}
+      />
     );
   }
 
@@ -697,72 +607,5 @@ const styles = StyleSheet.create({
     left: 22,
     right: 22,
     bottom: 28,
-  },
-  // Body-photo detail view (Settings redesign Frame 5).
-  detailContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.figmaDetailSurface,
-  },
-  detailImageWrap: {
-    width: '100%',
-    height: DETAIL_IMAGE_HEIGHT,
-  },
-  detailImage: {
-    width: '100%',
-    height: '100%',
-  },
-  detailImagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.figmaCardSurface,
-    paddingHorizontal: 28,
-  },
-  detailPlaceholderText: {
-    ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.uacTextBase,
-    textAlign: 'center',
-  },
-  detailBackWrap: {
-    position: 'absolute',
-    top: 8,
-    left: 22,
-  },
-  detailPanel: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 24,
-    justifyContent: 'space-between',
-  },
-  detailCopy: {
-    gap: 12,
-  },
-  detailText: {
-    ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.uacTextBase,
-  },
-  detailActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  detailActionButton: {
-    minHeight: 56,
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: theme.borderRadius.uacRadioPill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailActionDisabled: {
-    opacity: 0.5,
-  },
-  detailDeleteLabel: {
-    ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.figmaRed,
-  },
-  detailRetakeLabel: {
-    ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.uacTextBase,
   },
 });
