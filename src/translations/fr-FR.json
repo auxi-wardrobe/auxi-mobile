@@ -391,6 +391,8 @@
       "chip_bolder": "Choix plus audacieux",
       "chip_simpler": "Look plus simple",
       "refineAppliedToast": "{{feedback}} appliqué !",
+      "scheduled_outfit_caption": "Planifié pour aujourd'hui",
+      "a11y_scheduled_outfit": "Tenue planifiée pour aujourd'hui",
       "a11y_open_menu": "Ouvrir le menu",
       "a11y_saved_fav": "Enregistré dans les favoris",
       "a11y_fav_this": "Ajouter cette tenue aux favoris",

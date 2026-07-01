@@ -391,6 +391,8 @@
       "chip_bolder": "Bolder choice",
       "chip_simpler": "Simpler look",
       "refineAppliedToast": "{{feedback}} applied!",
+      "scheduled_outfit_caption": "Scheduled for today",
+      "a11y_scheduled_outfit": "Scheduled outfit for today",
       "a11y_open_menu": "Open menu",
       "a11y_saved_fav": "Saved to favourites",
       "a11y_fav_this": "Favourite this look",

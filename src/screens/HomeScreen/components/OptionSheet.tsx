@@ -266,6 +266,7 @@ export const OptionSheet = React.memo(
           <OutfitCardCaption
             testID={`home-card-caption-${cellKey}`}
             caption={outfit.caption}
+            scheduled={outfit.scheduled}
           />
 
           <ScrollView

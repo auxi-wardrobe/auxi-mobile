@@ -19,6 +19,8 @@ import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
 import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
 import { useAuth } from '../../context/AuthContext';
+import { useSchedule } from '../../context/ScheduleContext';
+import { toDayKey } from '../../utils/dateKey';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
 import { EditContextModal } from '../../components/features/EditContextModal';
 import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
@@ -86,6 +88,10 @@ import {
   mapV05Item,
   normalizeOutfits,
 } from './outfit-normalize';
+import {
+  buildScheduledOutfitSheets,
+  withScheduledPrefix,
+} from './scheduled-outfits';
 import { styles } from './styles';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
@@ -111,6 +117,25 @@ export const HomeScreen = () => {
   const { user } = useAuth();
   const { hasUnseen: hasUnseenFavourites, markSaved: markFavouriteSaved } =
     useFavouritesSeen();
+  const { scheduledByDay } = useSchedule();
+
+  // Today's calendar day, captured once per mount. Not reactive to a midnight
+  // rollover mid-session — reopening the app re-captures it, which is enough for
+  // "the outfit you planned for today leads the deck".
+  const todayKey = useMemo(() => toDayKey(new Date()), []);
+  // The user's outfits planned for today (favourites only — see
+  // scheduled-outfits.ts), synthesised into deck sheets flagged `scheduled` so
+  // they render the calendar badge. These lead the recommendation deck.
+  const scheduledSheets = useMemo(
+    () => buildScheduledOutfitSheets(scheduledByDay[todayKey]),
+    [scheduledByDay, todayKey],
+  );
+  // Read by the recommendation onSuccess (cold start) so it can prepend the
+  // plan without depending on it directly.
+  const scheduledSheetsRef = useRef<OutfitSheet[]>(scheduledSheets);
+  useEffect(() => {
+    scheduledSheetsRef.current = scheduledSheets;
+  }, [scheduledSheets]);
 
   // Persona preferences threaded into every `/build` `user` payload so the
   // engine biases formality (style_direction) + statement level
@@ -273,6 +298,43 @@ export const HomeScreen = () => {
     };
   }, [setPinnedItemId]);
 
+  // Keep today's scheduled outfit(s) seated as the leading card(s) of the deck.
+  // The schedule store loads asynchronously (and can change while Home is up as
+  // the user plans/removes outfits), so this reconciles whenever the plan
+  // changes — prepending new scheduled sheets and dropping ones that were
+  // unscheduled. Guarded to the first card so a late-arriving plan can never
+  // yank the user back from a recommendation they've already swiped to; the
+  // recommendation cold-start also prepends (see the mutation onSuccess) to
+  // cover the common case where the plan is already loaded on first render.
+  useEffect(() => {
+    if (activeIndexRef.current !== 0) {
+      return;
+    }
+    setListOutfits(current => {
+      const next = withScheduledPrefix(current, scheduledSheets);
+      const unchanged =
+        current.length === next.length &&
+        current.every((o, i) => o.outfitHash === next[i].outfitHash);
+      return unchanged ? current : next;
+    });
+    // Scheduled outfits are already saved favourites — seed their save state so
+    // the heart reads "saved" and re-tapping is a no-op (their namespaced
+    // `scheduled-*` hash is never a valid save payload).
+    if (scheduledSheets.length > 0) {
+      setSaveStateByHash(current => {
+        let changed = false;
+        const next = { ...current };
+        for (const sheet of scheduledSheets) {
+          if (next[sheet.outfitHash] !== 'saved') {
+            next[sheet.outfitHash] = 'saved';
+            changed = true;
+          }
+        }
+        return changed ? next : current;
+      });
+    }
+  }, [scheduledSheets]);
+
   const buildViaV05 = useCallback(
     async (
       input: BuildViaV05Input,
@@ -359,9 +421,23 @@ export const HomeScreen = () => {
         isFirstLoadRef.current = false;
         isColdStart = true;
         const incoming = normalizeOutfits(data, 0);
-        addedCount = incoming.length;
-        settledHash = incoming[0]?.outfitHash;
-        setListOutfits(incoming);
+        // Lead the fresh deck with the user's outfit(s) scheduled for today.
+        // `withScheduledPrefix` is a no-op when nothing is planned, so the deck
+        // is recommendations-only on ordinary days.
+        const scheduled = scheduledSheetsRef.current;
+        const combined = withScheduledPrefix(incoming, scheduled);
+        addedCount = combined.length;
+        settledHash = combined[0]?.outfitHash;
+        setListOutfits(combined);
+        if (scheduled.length > 0) {
+          setSaveStateByHash(current => {
+            const next = { ...current };
+            for (const sheet of scheduled) {
+              next[sheet.outfitHash] = 'saved';
+            }
+            return next;
+          });
+        }
         setActiveIndex(0);
         activeIndexRef.current = 0;
         unfavoritedSwipeCountRef.current = 0;

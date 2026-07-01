@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
+import { Icons } from '../../assets/icons';
 import { MarqueeText } from '../atoms/MarqueeText';
 
 // Home | Grid View — title row (Figma Frame 2104).
@@ -13,18 +14,39 @@ import { MarqueeText } from '../atoms/MarqueeText';
 // /try_another responses (HomeScreen buildViaV05 → normalizeOutfits). The
 // t('outfitActions.default_caption') fallback below covers the rare case the
 // field is absent (empty/fallback batch or a legacy cached payload).
+//
+// When `scheduled` is set the card is one of the user's outfits planned for
+// today (surfaced ahead of the AI suggestions). A 24×24 calendar glyph sits
+// alongside the pill and the message reads as the scheduled note so the user
+// knows this look came from their schedule, not the recommender.
 
 type Props = {
   caption?: string | null;
+  scheduled?: boolean;
   testID?: string;
 };
 
-export const OutfitCardCaption: React.FC<Props> = ({ caption, testID }) => {
+export const OutfitCardCaption: React.FC<Props> = ({
+  caption,
+  scheduled = false,
+  testID,
+}) => {
   const { t } = useTranslation();
-  const text = caption?.trim() || t('outfitActions.default_caption');
+  const text = scheduled
+    ? t('home.scheduled_outfit_caption')
+    : caption?.trim() || t('outfitActions.default_caption');
 
   return (
     <View testID={testID} style={styles.row}>
+      {scheduled ? (
+        <Icons.Calendar
+          width={24}
+          height={24}
+          color={theme.colors.uacTextBase}
+          testID={testID ? `${testID}-scheduled-badge` : undefined}
+          accessibilityLabel={t('home.a11y_scheduled_outfit')}
+        />
+      ) : null}
       <View style={styles.captionPill}>
         <MarqueeText text={text} style={styles.captionText} />
       </View>
