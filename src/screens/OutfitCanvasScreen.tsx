@@ -57,6 +57,7 @@ import {
   extractUri,
   prefetchWithTimeout,
 } from './canvas/canvas-helpers';
+import { useCanvasHistory } from './canvas/useCanvasHistory';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { InfoSnackbar } from '../components/feedback/InfoSnackbar';
 import { DotsLoader } from '../components/atoms/DotsLoader';
@@ -90,8 +91,6 @@ const CANVAS_HEIGHT = (CANVAS_WIDTH * 4) / 3;
 // How long the "Saved to My Creations" success snackbar stays up (mirrors
 // Wardrobe's READY_SNACKBAR_MS).
 const SAVED_SNACKBAR_MS = 4000;
-
-type HistorySnapshot = CanvasItemData[];
 
 const INITIAL_MOCK_ITEMS: CanvasItemData[] = [];
 
@@ -223,160 +222,36 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     [],
   );
 
-  // Undo / redo
-  const history = useRef<HistorySnapshot[]>([initialItems]);
-  const historyIndex = useRef(0);
+  // Marks the canvas dirty on every history push. Stable so the history
+  // handlers keep identical identity to the previous inline implementation.
+  const markDirty = useCallback(() => setHasUnsavedChanges(true), []);
 
-  const pushHistory = useCallback((snapshot: CanvasItemData[]) => {
-    const newHistory = history.current.slice(0, historyIndex.current + 1);
-    newHistory.push(snapshot);
-    history.current = newHistory;
-    historyIndex.current = newHistory.length - 1;
-    // Every history push is a user edit → mark the canvas dirty.
-    setHasUnsavedChanges(true);
-  }, []);
-
-  const canUndo = historyIndex.current > 0;
-  const canRedo = historyIndex.current < history.current.length - 1;
-
-  const handleUndo = useCallback(() => {
-    if (!canUndo) {
-      return;
-    }
-    historyIndex.current -= 1;
-    setItems(history.current[historyIndex.current]);
-    setSelectedId(null);
-  }, [canUndo]);
-
-  const handleRedo = useCallback(() => {
-    if (!canRedo) {
-      return;
-    }
-    historyIndex.current += 1;
-    setItems(history.current[historyIndex.current]);
-    setSelectedId(null);
-  }, [canRedo]);
-
-  // Item actions
-  const handleSelect = useCallback((id: string) => {
-    setSelectedId(prev => (prev === id ? null : id));
-  }, []);
-
-  const handlePositionChange = useCallback(
-    (id: string, x: number, y: number) => {
-      setItems(prev => {
-        const next = prev.map(it => (it.id === id ? { ...it, x, y } : it));
-        pushHistory(next);
-        return next;
-      });
-    },
-    [pushHistory],
-  );
-
-  const handleScaleChange = useCallback(
-    (id: string, scale: number) => {
-      setItems(prev => {
-        const next = prev.map(it => (it.id === id ? { ...it, scale } : it));
-        pushHistory(next);
-        return next;
-      });
-    },
-    [pushHistory],
-  );
-
-  const handleRotationChange = useCallback(
-    (id: string, rotation: number) => {
-      setItems(prev => {
-        const next = prev.map(it => (it.id === id ? { ...it, rotation } : it));
-        pushHistory(next);
-        return next;
-      });
-    },
-    [pushHistory],
-  );
-
-  // Move the selected item one layer in `direction` by SWAPPING its z-index with
-  // the immediate neighbour in stacking order. Nudging a single item's z by ±1
-  // (the old behaviour) produced ties — two items sharing a z-index don't
-  // reorder deterministically, so the move was invisible. Swapping guarantees a
-  // distinct, visible re-stack and keeps z-indices a stable permutation.
-  const moveLayer = useCallback(
-    (direction: 'forward' | 'backward') => {
-      if (!selectedId) {
-        return;
-      }
-      // Ascending z = bottom→top render order.
-      const ordered = [...items].sort((a, b) => a.zIndex - b.zIndex);
-      const idx = ordered.findIndex(it => it.id === selectedId);
-      if (idx === -1) {
-        return;
-      }
-      // 'forward' = toward the top (higher z) = next item up; 'backward' =
-      // toward the bottom (lower z) = previous item.
-      const neighbourIdx = direction === 'forward' ? idx + 1 : idx - 1;
-      if (neighbourIdx < 0 || neighbourIdx >= ordered.length) {
-        // Already at the front/back edge — nothing to swap with, no event.
-        return;
-      }
-      const selZ = ordered[idx].zIndex;
-      const neighbourId = ordered[neighbourIdx].id;
-      const neighbourZ = ordered[neighbourIdx].zIndex;
-      const next = items.map(it => {
-        if (it.id === selectedId) {
-          return { ...it, zIndex: neighbourZ };
-        }
-        if (it.id === neighbourId) {
-          return { ...it, zIndex: selZ };
-        }
-        return it;
-      });
-      setItems(next);
-      pushHistory(next);
-      track('canvas_item_layer_reordered', { direction });
-    },
-    [selectedId, items, pushHistory],
-  );
-
-  const handleLayerUp = useCallback(() => moveLayer('forward'), [moveLayer]);
-
-  const handleLayerDown = useCallback(() => moveLayer('backward'), [moveLayer]);
-
-  const handleDuplicate = useCallback(() => {
-    if (!selectedId) {
-      return;
-    }
-    setItems(prev => {
-      const source = prev.find(it => it.id === selectedId);
-      if (!source) {
-        return prev;
-      }
-      const maxZ = Math.max(...prev.map(it => it.zIndex));
-      const copy: CanvasItemData = {
-        ...source,
-        id: `${source.id}-copy-${Date.now()}`,
-        x: source.x + 20,
-        y: source.y + 20,
-        zIndex: maxZ + 1,
-        scale: source.scale || 1,
-        rotation: source.rotation || 0,
-      };
-      const next = [...prev, copy];
-      pushHistory(next);
-      return next;
-    });
-  }, [selectedId, pushHistory]);
-
-  const handleDelete = useCallback(() => {
-    if (!selectedId) {
-      return;
-    }
-    setItems(prev => {
-      const next = prev.filter(it => it.id !== selectedId);
-      pushHistory(next);
-      return next;
-    });
-    setSelectedId(null);
-  }, [selectedId, pushHistory]);
+  // Undo/redo + item-transform history (position/scale/rotation/layer/dup/
+  // delete). Operates on the lifted items/selectedId state — behaviour
+  // preserved verbatim (see useCanvasHistory).
+  const {
+    pushHistory,
+    canUndo,
+    canRedo,
+    handleUndo,
+    handleRedo,
+    handleSelect,
+    handlePositionChange,
+    handleScaleChange,
+    handleRotationChange,
+    handleLayerUp,
+    handleLayerDown,
+    handleDuplicate,
+    handleDelete,
+    resetHistory,
+  } = useCanvasHistory({
+    initialItems,
+    items,
+    selectedId,
+    setItems,
+    setSelectedId,
+    onDirty: markDirty,
+  });
 
   const handleAddItem = useCallback(() => {
     setPickerVisible(true);
@@ -668,13 +543,12 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   // mark it clean so the navigation guard and the "+" button settle.
   const resetCanvasToBlank = useCallback(() => {
     const blank: CanvasItemData[] = [];
-    history.current = [blank];
-    historyIndex.current = 0;
+    resetHistory(blank);
     setItems(blank);
     setSelectedId(null);
     setHasUnsavedChanges(false);
     track('canvas_reset');
-  }, []);
+  }, [resetHistory]);
 
   // Resolve the sheet per the active intent: start a blank canvas, or continue
   // leaving the screen.
