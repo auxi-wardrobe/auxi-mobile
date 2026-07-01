@@ -20,8 +20,7 @@ import {
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const SHEET_WIDTH = Math.min(screenWidth - 16, 414);
+const { height: screenHeight } = Dimensions.get('window');
 const OPEN_DURATION_MS = motion.duration.medium;
 const CLOSE_DURATION_MS = motion.duration.normal;
 
@@ -226,16 +225,16 @@ const styles = StyleSheet.create({
   // Dim tier — RN <Modal> host carries the scrim (docs/Z_INDEX_LAYERING.md §1).
   overlay: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'flex-end',
     backgroundColor: theme.colors.figmaOverlayScrim,
   },
   sheet: {
     // Modal tier — sheet sits above the dim/dismiss layer.
     zIndex: theme.zIndex.modal,
-    width: SHEET_WIDTH,
-    marginBottom: theme.spacing.s,
-    borderRadius: theme.borderRadius.l,
+    width: '100%',
+    borderTopLeftRadius: theme.borderRadius.l,
+    borderTopRightRadius: theme.borderRadius.l,
     backgroundColor: theme.colors.figmaSurface,
     paddingHorizontal: theme.spacing.m,
     paddingTop: theme.spacing.l,

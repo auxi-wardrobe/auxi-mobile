@@ -144,6 +144,7 @@ const styles = StyleSheet.create({
   sheet: {
     // Modal tier — sheet sits above the dim/dismiss layer.
     zIndex: theme.zIndex.modal,
+    width: '100%',
     maxHeight: screenHeight * 0.9,
     borderTopLeftRadius: theme.borderRadius.l,
     borderTopRightRadius: theme.borderRadius.l,

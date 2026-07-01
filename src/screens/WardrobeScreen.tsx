@@ -34,11 +34,8 @@ import { Header } from '../components/layout/Header';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
-import {
-  MActionSheet,
-  MBottomSheet,
-  MButton,
-} from '../components/design-system/lib';
+import { MActionSheet, MButton } from '../components/design-system/lib';
+import { ContextualBottomSheet } from '../components/features/ContextualBottomSheet';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { useSidebar } from '../context/SidebarContext';
 import {
@@ -178,10 +175,10 @@ export const WardrobeScreen = () => {
     null,
   );
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
-  // Add-item sheet visibility. The slide/fade ENTER + faster CLOSE motion +
-  // reduce-motion fallback are now encapsulated inside MBottomSheet (it keeps
-  // itself mounted through the close animation), so the screen only tracks the
-  // boolean.
+  // Add-item sheet visibility. The full-width panel + "Refine suggestions"
+  // reveal motion + reduce-motion fallback are encapsulated inside
+  // ContextualBottomSheet (it keeps itself mounted through the close
+  // animation), so the screen only tracks the boolean.
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   // Take-photo source chooser. Migrated from a 3-button Alert.alert to the DS
   // MActionSheet (GH-364); driven by this controlled boolean.
@@ -720,20 +717,19 @@ export const WardrobeScreen = () => {
         )}
       </ScrollView>
 
-      {/* Add item — bottom sheet (Figma node 2852:19750), migrated to the DS
-          MBottomSheet primitive (GH-364): the slide/fade ENTER + faster CLOSE +
-          reduce-motion fallback + scrim/backdrop-dismiss are now encapsulated
-          inside the primitive (replaces the bespoke Modal + Animated +
-          BottomSheetSurface). The two methods stay as the Wardrobe-only
-          AddMethodRow composite because they carry a title + description
-          two-line layout that no generic M* row primitive (MSheetOption /
-          MListRow are single-line) expresses — keeping content faithful. */}
-      <MBottomSheet
+      {/* Add item — full-width bottom sheet (Figma node 2852:19750) on the
+          shared ContextualBottomSheet shell: the "Refine suggestions" reveal
+          motion + reduce-motion fallback + scrim/backdrop-dismiss + safe-area
+          are encapsulated inside the shell. The two methods stay as the
+          Wardrobe-only AddMethodRow composite because they carry a title +
+          description two-line layout that no generic M* row primitive
+          (MSheetOption / MListRow are single-line) expresses. */}
+      <ContextualBottomSheet
         visible={addSheetVisible}
         onDismiss={() => setAddSheetVisible(false)}
         testID="wardrobe-add-sheet"
       >
-        <View style={[styles.addSheetBody, { paddingBottom: insets.bottom }]}>
+        <View style={styles.addSheetBody}>
           <Text style={styles.addSheetTitle}>
             {t('wardrobe.list.add_item_sheet_title')}
           </Text>
@@ -769,7 +765,7 @@ export const WardrobeScreen = () => {
             isLast
           />
         </View>
-      </MBottomSheet>
+      </ContextualBottomSheet>
 
       {/* Take-photo source chooser — DS MActionSheet (GH-364, replaces the
           3-button Alert.alert). The per-source upload/capture analytics still
@@ -1107,13 +1103,12 @@ const styles = StyleSheet.create({
   errorRetryWrap: {
     marginTop: 20,
   },
-  // Add-item bottom sheet body — MBottomSheet provides the surface, top radius,
-  // scrim, grab handle and slide motion; this is just the content padding.
-  // The safe-area bottom inset is applied inline.
+  // Add-item bottom sheet body — ContextualBottomSheet provides the surface,
+  // top radius, scrim, slide motion AND the safe-area bottom inset; this is
+  // just the inner content padding.
   addSheetBody: {
     paddingTop: 8,
     paddingHorizontal: 24,
-    paddingBottom: 36,
   },
   addSheetTitle: {
     ...theme.typography.aliases.interSemiboldSm,

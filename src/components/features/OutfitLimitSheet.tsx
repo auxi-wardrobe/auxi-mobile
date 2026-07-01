@@ -14,8 +14,7 @@ import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { useBackgroundScale } from '../../context/BackgroundScaleContext';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const SHEET_WIDTH = Math.min(screenWidth - 16, 414);
+const { height: screenHeight } = Dimensions.get('window');
 
 interface OutfitLimitSheetProps {
   visible: boolean;
@@ -156,16 +155,16 @@ const styles = StyleSheet.create({
   // Matches the refine sheet (ContextChipsModal) scrim for visual parity.
   overlay: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {
     // Modal tier — sheet sits above the dim/dismiss layer.
     zIndex: theme.zIndex.modal,
-    width: SHEET_WIDTH,
-    marginBottom: theme.spacing.s,
-    borderRadius: 16,
+    width: '100%',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     backgroundColor: theme.colors.figmaSurface,
     paddingHorizontal: 16,
     paddingVertical: 16,
