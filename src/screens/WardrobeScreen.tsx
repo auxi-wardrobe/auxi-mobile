@@ -1,18 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Alert,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
-import { MacgieLoader } from '../components/macgie';
 import {
   RouteProp,
   useIsFocused,
@@ -45,6 +36,7 @@ import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
 import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
+import { PreparingOverlay } from './wardrobe/PreparingOverlay';
 import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
 import {
   FILTER_TABS,
@@ -500,38 +492,7 @@ export const WardrobeScreen = () => {
         testID="wardrobe-photo-source-sheet"
       />
 
-      {/* AI processing overlay (Figma node 2852:20021) */}
-      <Modal visible={uploading} transparent animationType="fade">
-        <View style={styles.preparingContainer}>
-          <View style={styles.preparingPhotoWrap}>
-            {uploadingPhotoUri ? (
-              <Image
-                source={{ uri: uploadingPhotoUri }}
-                style={styles.preparingPhoto}
-                resizeMode="contain"
-              />
-            ) : null}
-          </View>
-          <View style={styles.preparingPanel}>
-            <MacgieLoader
-              variant="inline"
-              size={40}
-              testID="wardrobe-preparing-macgie"
-            />
-            <Text style={styles.preparingTitle}>
-              {t('wardrobe.list.preparing_title')}
-            </Text>
-            <Text style={styles.preparingStep}>
-              {'• '}
-              {t('wardrobe.list.preparing_step1')}
-            </Text>
-            <Text style={styles.preparingStep}>
-              {'• '}
-              {t('wardrobe.list.preparing_step2')}
-            </Text>
-          </View>
-        </View>
-      </Modal>
+      <PreparingOverlay visible={uploading} photoUri={uploadingPhotoUri} />
 
       {/* AU-361: self-controlled "item ready" snackbar overlay. Sits above the
           grid near the bottom (Figma node 3915:30077). Informational only, so
@@ -688,40 +649,5 @@ const styles = StyleSheet.create({
   // spacing stays on the screen, not the primitive.
   errorRetryWrap: {
     marginTop: 20,
-  },
-  // AI processing overlay
-  preparingContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.figmaBackground,
-  },
-  preparingPhotoWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 64,
-    paddingHorizontal: 24,
-  },
-  preparingPhoto: {
-    width: '100%',
-    height: '100%',
-  },
-  preparingPanel: {
-    backgroundColor: theme.colors.figmaDetailSurface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    gap: 8,
-  },
-  preparingTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-    marginTop: 4,
-  },
-  preparingStep: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
   },
 });
