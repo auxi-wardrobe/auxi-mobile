@@ -1401,12 +1401,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 18,
+    marginBottom: theme.spacing.m,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.figmaItemDetailModalDivider,
   },
   modalTitle: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaItemDetailRowText,
+    ...theme.typography.aliases.interSemiboldXsSm,
+    color: theme.colors.figmaTextPrimary,
   },
   modalClose: {
     ...theme.typography.aliases.uacBodyMdMedium,
