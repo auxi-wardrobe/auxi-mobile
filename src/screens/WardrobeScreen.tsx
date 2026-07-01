@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -45,13 +45,13 @@ import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
 import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
+import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
 import {
   FILTER_TABS,
   FilterTab,
   GRID_GAP,
   HORIZONTAL_PADDING,
   PREPARING_POLL_MS,
-  READY_SNACKBAR_MS,
   TILE_HEIGHT,
   TILE_WIDTH,
   isCommonItem,
@@ -103,82 +103,15 @@ export const WardrobeScreen = () => {
   // MActionSheet (GH-364); driven by this controlled boolean.
   const [photoSourceSheetVisible, setPhotoSourceSheetVisible] = useState(false);
 
-  // AU-361: item-ready snackbar. `preparingIdsRef` holds IDs that were still
-  // preparing on the previous fetch; `readyToastedIdsRef` dedups so an item
-  // only ever fires one "ready" snackbar per session even across
-  // refetches/polls.
-  const preparingIdsRef = useRef<Set<string>>(new Set());
-  const readyToastedIdsRef = useRef<Set<string>>(new Set());
-
-  // AU-361: self-controlled in-screen snackbar state. The library's
-  // custom-config render path never mounted the snackbar, so we render it
-  // ourselves as an absolute overlay (see ItemReadySnackbar). `snackbarTimerRef`
-  // holds the auto-hide timeout so it can be cleared on re-trigger / unmount.
-  const [readySnackbarVisible, setReadySnackbarVisible] = useState(false);
-  const [readySnackbarMessage, setReadySnackbarMessage] = useState('');
-  const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const showReadySnackbar = useCallback((message: string) => {
-    if (snackbarTimerRef.current) {
-      clearTimeout(snackbarTimerRef.current);
-    }
-    setReadySnackbarMessage(message);
-    setReadySnackbarVisible(true);
-    snackbarTimerRef.current = setTimeout(() => {
-      setReadySnackbarVisible(false);
-      snackbarTimerRef.current = null;
-    }, READY_SNACKBAR_MS);
-  }, []);
-
-  // Clear any pending auto-hide timer on unmount.
-  useEffect(
-    () => () => {
-      if (snackbarTimerRef.current) {
-        clearTimeout(snackbarTimerRef.current);
-      }
-    },
-    [],
-  );
-
-  // AU-361: detect preparing→ready transitions and surface the toast once per
-  // item. Compares this fetch against the prior fetch's preparing set.
-  const reconcileReadyItems = useCallback(
-    (data: WardrobeItem[]) => {
-      const prevPreparing = preparingIdsRef.current;
-      const nextPreparing = new Set<string>();
-
-      for (const item of data) {
-        if (!item.id) {
-          continue;
-        }
-        if (isPreparing(item)) {
-          nextPreparing.add(item.id);
-          continue;
-        }
-        // Item is ready now. Toast only if it was preparing last fetch and
-        // hasn't been toasted yet (dedup across polls/refocus).
-        if (
-          prevPreparing.has(item.id) &&
-          !readyToastedIdsRef.current.has(item.id)
-        ) {
-          readyToastedIdsRef.current.add(item.id);
-          // Self-controlled M3 snackbar (Figma node 3915:30077) — see
-          // ItemReadySnackbar. The library's custom-config render path never
-          // mounted, so we drive an in-screen overlay instead. Visual only; the
-          // transition-detection / dedup / analytics logic is unchanged.
-          showReadySnackbar(t('wardrobe.list.item_ready_title'));
-          const readyProps: Record<string, unknown> = {};
-          if (item.category) {
-            readyProps.item_category = item.category;
-          }
-          track('item_ready_toast_shown', readyProps);
-        }
-      }
-
-      preparingIdsRef.current = nextPreparing;
-    },
-    [t, showReadySnackbar],
-  );
+  // AU-361: item-ready snackbar concern (preparing→ready transition detection,
+  // dedup refs, auto-hide timer, overlay state). `showReadySnackbar` is also
+  // reused by the add-item flow for the "item added" confirmation.
+  const {
+    readySnackbarVisible,
+    readySnackbarMessage,
+    showReadySnackbar,
+    reconcileReadyItems,
+  } = useItemReadySnackbar();
 
   // `silent` skips the skeleton spinner — used by the AU-361 background poll so
   // it doesn't flash the loading grid on every tick.
