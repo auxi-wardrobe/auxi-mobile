@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -26,12 +26,6 @@ import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
 import { FeedbackSheet } from '../../components/features/FeedbackSheet';
 import { useMoodFeedback } from '../../hooks/use-mood-feedback';
-import { PillButton } from '../../components/primitives/FigmaPrimitives';
-import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
-import IconFeedback from '../../assets/images/feedback.svg';
-import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
-import { DotsLoader } from '../../components/atoms/DotsLoader';
-import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
   DEFAULT_RECOMMENDATION_MODE,
@@ -104,6 +98,7 @@ import { HomeHeader } from './components/HomeHeader';
 import { HomeLoadingState } from './components/HomeLoadingState';
 import { HomeToastLayer } from './components/HomeToastLayer';
 import { PinStatusBanners } from './components/PinStatusBanners';
+import { WearThisFooter } from './components/WearThisFooter';
 import { OptionSheet } from './components/OptionSheet';
 import { OutfitActionRow } from '../../components/features/OutfitActionRow';
 
@@ -1355,77 +1350,15 @@ export const HomeScreen = () => {
         pinnedItemGoneAt={pinnedItemGoneAt}
       />
 
-      {optionSets.length > 0 ? (
-        <View style={styles.wearThisFooter}>
-          {activeSaveState === 'saved' ? (
-            <TouchableOpacity
-              testID="home-wear-this-saved-favourites"
-              accessibilityRole="button"
-              accessibilityLabel={t('home.saved_open_favourites')}
-              activeOpacity={0.7}
-              style={styles.savedFavouritesCta}
-              onPress={handleOpenFavourites}
-            >
-              <Text style={styles.savedFavouritesCtaText} numberOfLines={2}>
-                {t('home.saved_open_favourites')}
-              </Text>
-              <IconChevronRight width={20} height={20} />
-            </TouchableOpacity>
-          ) : (
-            <PillButton
-              testID="home-wear-this"
-              title={
-                pinState.outfit === 'generating'
-                  ? t('pin.generating_header')
-                  : t('home.wear_this')
-              }
-              variant="outline"
-              onPress={() =>
-                activeOutfit && handleWearThisForOutfit(activeOutfit)
-              }
-              disabled={!activeOutfit || pinState.outfit === 'generating'}
-              loading={activeSaveState === 'saving'}
-              trailing={
-                pinState.outfit === 'generating' ? (
-                  <DotsLoader
-                    color={theme.colors.figmaAction}
-                    testID="home-wear-this-generating-spinner"
-                  />
-                ) : (
-                  <IconHomeHeartOutline width={24} height={24} />
-                )
-              }
-              style={styles.primaryActionFull}
-              textStyle={styles.primaryActionLabel}
-            />
-          )}
-          {activeSaveState === 'error' ? (
-            <Text style={styles.saveErrorText}>
-              {t('home.save_failed_retry')}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      {/* Feedback affordance — 44px floating button, bottom-left of the
-          footer, Home only. Opens the in-app Feedback bottom sheet. AI-result
-          feedback now lives on the try-on result (see OutfitPreview). */}
-      {optionSets.length > 0 ? (
-        <TouchableOpacity
-          testID="home-feedback-fab"
-          accessibilityRole="button"
-          accessibilityLabel={t('feedback.title')}
-          activeOpacity={0.85}
-          onPress={() => setFeedbackVisible(true)}
-          style={styles.aiFeedbackFab}
-        >
-          <IconFeedback
-            width={24}
-            height={24}
-            color={theme.colors.uacTextBase}
-          />
-        </TouchableOpacity>
-      ) : null}
+      <WearThisFooter
+        visible={optionSets.length > 0}
+        activeSaveState={activeSaveState}
+        pinOutfit={pinState.outfit}
+        activeOutfit={activeOutfit}
+        onOpenFavourites={handleOpenFavourites}
+        onWearThis={handleWearThisForOutfit}
+        onOpenFeedback={() => setFeedbackVisible(true)}
+      />
 
       <HomeViewToggleFooter
         testID="home-footer-view-toggle"
