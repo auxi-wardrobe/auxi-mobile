@@ -6,6 +6,10 @@ export type OutfitSheet = {
   items: Item[];
   outfitHash: string;
   caption?: string | null;
+  // True when this sheet is one of the user's outfits SCHEDULED for today
+  // (surfaced as the leading card(s) of the deck), not a fresh AI
+  // recommendation. Drives the "scheduled" calendar badge on the caption.
+  scheduled?: boolean;
 };
 
 export type OutfitSheetWithGrid = OutfitSheet & {

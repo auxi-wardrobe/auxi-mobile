@@ -391,6 +391,8 @@
       "chip_bolder": "Táo bạo hơn",
       "chip_simpler": "Đơn giản hơn",
       "refineAppliedToast": "Đã áp dụng {{feedback}}!",
+      "scheduled_outfit_caption": "Đã lên lịch cho hôm nay",
+      "a11y_scheduled_outfit": "Bộ đồ đã lên lịch cho hôm nay",
       "a11y_open_menu": "Mở menu",
       "a11y_saved_fav": "Đã lưu vào yêu thích",
       "a11y_fav_this": "Lưu bộ đồ này",
