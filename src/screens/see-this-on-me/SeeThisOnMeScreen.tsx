@@ -31,11 +31,8 @@ import { bodyShapeService } from '../../services/bodyShapeService';
 import { track } from '../../services/analytics';
 import { useAiConsentGate } from '../../hooks/useAiConsentGate';
 import { AiConsentDialog } from '../../components/features/AiConsentDialog';
-import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { AppStackParamList } from '../../types/navigation';
-import { MacgieLoader } from '../../components/macgie/MacgieLoader';
-import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import {
   StomHeader,
   PromptBubble,
@@ -44,13 +41,18 @@ import {
   PhotoSourceSheet,
   InlineError,
 } from './components';
-import { StepSelfie } from './StepSelfie';
-import { StepFullBody } from './StepFullBody';
-import { StepBodyShape } from './StepBodyShape';
-import { StepReuseConfirm } from './StepReuseConfirm';
-import { OutfitPreview } from './OutfitPreview';
-import { GeneratingView } from './GeneratingView';
+import { renderStomStepScreen } from './StomStepScreen';
+import {
+  renderStomStepControls,
+  StomStepControlsProps,
+} from './StomStepControls';
 import { BodyShapeId, GeneratedShape } from './body-shapes';
+import {
+  Step,
+  CaptureStep,
+  stepOrder,
+  captureStepConfig,
+} from './stom-steps';
 import { decideEntryMode } from './profile-entry';
 import { tryOnGenerationStore } from './try-on-generation-store';
 import { useTryOnGeneration } from './use-try-on-generation';
@@ -61,38 +63,6 @@ const ACTIVE_PROFILE_QUERY_KEY = ['body', 'active'] as const;
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'SeeThisOnMe'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'SeeThisOnMe'>;
-
-// Capture steps in transcript order. `promptKey` is the i18n bubble copy;
-// `icon` is the outline glyph that sits inside the bubble (Figma 3398:18229 /
-// 18246). The screen renders these bubbles + the per-step captured thumbnail
-// from state so every step shows the correct accumulation — no hand-picking.
-type CaptureStep = 'selfie' | 'fullBody' | 'bodyShape';
-
-// 'generatingShapes' = AI building the 3 body-shape photos (async, AU-358);
-// 'generating' = rendering the outfit onto the chosen body (async).
-type Step = CaptureStep | 'generatingShapes' | 'generating' | 'preview';
-
-const stepOrder: CaptureStep[] = ['selfie', 'fullBody', 'bodyShape'];
-
-const captureStepConfig: Record<
-  CaptureStep,
-  { promptKey: string; icon?: React.ReactNode; testID: string }
-> = {
-  selfie: {
-    promptKey: 'seeThisOnMe.step1.prompt',
-    icon: <Icons.FaceId width={44} height={44} />,
-    testID: 'stom-step-1-prompt',
-  },
-  fullBody: {
-    promptKey: 'seeThisOnMe.step2.prompt',
-    icon: <Icons.BodyOutline width={44} height={44} />,
-    testID: 'stom-step-2-prompt',
-  },
-  bodyShape: {
-    promptKey: 'seeThisOnMe.step3.prompt',
-    testID: 'stom-step-3-prompt',
-  },
-};
 
 export const SeeThisOnMeScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -511,97 +481,32 @@ export const SeeThisOnMeScreen: React.FC = () => {
     selectedProfileId ?? (reuseMode ? activeProfile?.id ?? null : null);
   const renderShape = selectedShape ?? activeProfile?.body_shape ?? null;
 
-  // ── Loading the reusable profile ──────────────────────────────────────────
-  if (profileLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
-        <MacgieLoader testID="stom-profile-loading" />
-      </SafeAreaView>
-    );
-  }
-
-  // ── Generating shapes (phase 1) / error state ─────────────────────────────
-  if (step === 'generatingShapes') {
-    return (
-      <SafeAreaView style={styles.container}>
-        {/* Back during generation = quit-to-background (keeps the job alive +
-            notifies on done); in the errored state it's a plain back. */}
-        <StomHeader
-          title={t('seeThisOnMe.title')}
-          onBack={shapesErrored ? handleBack : handleQuitGeneration}
-        />
-        <GeneratingView
-          errored={shapesErrored}
-          label={t('seeThisOnMe.generatingShapes')}
-          errorText={t('seeThisOnMe.shapesError')}
-          onRetry={regenerateShapes}
-          onQuit={shapesErrored ? undefined : handleQuitGeneration}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  // ── Generating render (phase 2) / error state ─────────────────────────────
-  if (step === 'generating') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StomHeader
-          title={t('seeThisOnMe.title')}
-          onBack={errored ? handleBack : handleQuitGeneration}
-        />
-        <GeneratingView
-          errored={errored}
-          onRetry={() => {
-            if (renderBodyId) {
-              runRender(renderBodyId, renderShape);
-            }
-          }}
-          onQuit={errored ? undefined : handleQuitGeneration}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  // ── Preview state ─────────────────────────────────────────────────────────
-  if (step === 'preview' && resultUrl) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
-        <OutfitPreview imageUri={resultUrl} onBackHome={goHome} />
-        {/* Reuse path: let the user discard the saved profile and recapture. */}
-        {reuseMode ? (
-          <View style={styles.retakeProfileRow}>
-            <PillButton
-              testID="stom-retake-profile"
-              title={t('seeThisOnMe.retakeProfile')}
-              variant="text"
-              onPress={restartCapture}
-            />
-          </View>
-        ) : null}
-      </SafeAreaView>
-    );
-  }
-
-  // ── Reuse-confirm re-entry (AU-354 pt.3) ─────────────────────────────────
-  if (
-    reuseMode &&
-    !reuseConfirmed &&
-    !rehydratedRef.current &&
-    reusePhotoUri &&
-    step === 'selfie'
-  ) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
-        <StepReuseConfirm
-          photoUri={reusePhotoUri}
-          onConfirm={handleReuseConfirm}
-          onRetake={handleReuseRetake}
-        />
-      </SafeAreaView>
-    );
+  // Non-transcript screens (loading / generating / preview / reuse-confirm).
+  // Returns the matching shell, or null → render the capture transcript below.
+  const stepScreen = renderStomStepScreen({
+    t,
+    step,
+    profileLoading,
+    handleBack,
+    handleQuitGeneration,
+    shapesErrored,
+    regenerateShapes,
+    errored,
+    renderBodyId,
+    renderShape,
+    runRender,
+    resultUrl,
+    goHome,
+    reuseMode,
+    restartCapture,
+    reuseConfirmed,
+    rehydrated: rehydratedRef.current,
+    reusePhotoUri,
+    handleReuseConfirm,
+    handleReuseRetake,
+  });
+  if (stepScreen) {
+    return stepScreen;
   }
 
   // ── Capture transcript (selfie / fullBody / bodyShape) ────────────────────
@@ -615,81 +520,25 @@ export const SeeThisOnMeScreen: React.FC = () => {
   const visibleSteps =
     activeIndex >= 0 ? stepOrder.slice(0, activeIndex + 1) : [];
 
-  const renderStepControls = (s: CaptureStep) => {
-    switch (s) {
-      case 'selfie':
-        return (
-          <StepSelfie
-            busy={busy}
-            onTakePhoto={() =>
-              capture(asset => {
-                setSelfie(asset);
-                return validatePickedPhoto(
-                  asset,
-                  () => {
-                    setSelfie(null);
-                    setSelfieBodyId(null);
-                  },
-                  body => {
-                    setSelfieBodyId(body.id);
-                    track('try_on_step_completed', { step: 'selfie' });
-                    setStep('fullBody');
-                  },
-                );
-              })
-            }
-          />
-        );
-      case 'fullBody':
-        return (
-          <StepFullBody
-            busy={busy}
-            onTakePhoto={() =>
-              capture(asset => {
-                setFullBody(asset);
-                return validatePickedPhoto(
-                  asset,
-                  () => {
-                    setFullBody(null);
-                    setFullBodyId(null);
-                  },
-                  body => {
-                    setFullBodyId(body.id);
-                    track('try_on_step_completed', { step: 'fullBody' });
-                    // AU-358: leave full-body → kick off the 3-shape generation.
-                    if (selfieBodyId) {
-                      startShapeGeneration(selfieBodyId, body.id);
-                    }
-                  },
-                );
-              })
-            }
-            onSkip={() => {
-              track('try_on_step_completed', {
-                step: 'fullBody',
-                skipped: true,
-              });
-              // AU-358: skipping full-body → still generate shapes (the backend
-              // needs a full_body_id, so the selfie id is used as the fallback).
-              if (selfieBodyId) {
-                startShapeGeneration(selfieBodyId, null);
-              }
-            }}
-          />
-        );
-      case 'bodyShape':
-        return (
-          <StepBodyShape
-            shapes={shapes ?? []}
-            partial={shapesPartial}
-            selectedShape={selectedShape}
-            optIn={optIn}
-            onToggleOptIn={() => setOptIn(v => !v)}
-            onRegenerate={regenerateShapes}
-            onSelectShape={handleSelectShape}
-          />
-        );
-    }
+  // Wiring for the active step's CTA controls (see StomStepControls).
+  const stepControlsProps: StomStepControlsProps = {
+    busy,
+    capture,
+    validatePickedPhoto,
+    setSelfie,
+    setSelfieBodyId,
+    setStep,
+    setFullBody,
+    setFullBodyId,
+    startShapeGeneration,
+    selfieBodyId,
+    shapes,
+    shapesPartial,
+    selectedShape,
+    optIn,
+    setOptIn,
+    regenerateShapes,
+    handleSelectShape,
   };
 
   return (
@@ -713,7 +562,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
               {isActive && photoError ? (
                 <InlineError testID="stom-photo-error" text={photoError} />
               ) : null}
-              {isActive ? renderStepControls(s) : null}
+              {isActive ? renderStomStepControls(s, stepControlsProps) : null}
             </React.Fragment>
           );
         })}
@@ -748,10 +597,5 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: theme.spacing.uacDimension12,
     paddingBottom: theme.spacing.m,
-  },
-  retakeProfileRow: {
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingBottom: theme.spacing.m,
-    alignItems: 'center',
   },
 });
