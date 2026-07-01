@@ -96,10 +96,6 @@ import { PinFallbackNotice } from '../../components/features/PinFallbackNotice';
 import { PinnedItemUnavailableNotice } from '../../components/features/PinnedItemUnavailableNotice';
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
-  MOOD_BANNER_DURATION_MS,
-  TEMP_TOAST_DURATION_MS,
-  REFINE_TOAST_DURATION_MS,
-  AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
   REFINE_AFTER_OUTFITS,
   TARGET_AHEAD,
@@ -119,23 +115,13 @@ import {
 import { styles } from './styles';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
+import { useHomeToasts } from './hooks/useHomeToasts';
 import { EDIT_CONTEXT_SUGGESTIONS } from './context-chips';
 import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { HomeLoadingState } from './components/HomeLoadingState';
 import { OptionSheet } from './components/OptionSheet';
 import { OutfitActionRow } from '../../components/features/OutfitActionRow';
-
-const clearTimeoutRef = (
-  timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
-) => {
-  if (!timeoutRef.current) {
-    return;
-  }
-
-  clearTimeout(timeoutRef.current);
-  timeoutRef.current = null;
-};
 
 export const HomeScreen = () => {
   const navigation =
@@ -168,7 +154,6 @@ export const HomeScreen = () => {
   }, [buildPersona]);
   const [homeView, setHomeView] = useState<HomeView>('grid');
   const [collageDragActive, setCollageDragActive] = useState(false);
-  const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [listOutfits, setListOutfits] = useState<OutfitSheet[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -249,14 +234,17 @@ export const HomeScreen = () => {
     text: string;
     isChip: boolean;
   } | null>(null);
-  const refineToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  // onSuccess is declared before showRefineToast (which needs `t`), so reach the
-  // shower through a ref — same indirection the buffer trampoline uses.
-  const showRefineToastRef = useRef<(text: string, isChip: boolean) => void>(
-    () => {},
-  );
+
+  const {
+    moodBannerText,
+    refineToastText,
+    tempToastText,
+    tempToastVisible,
+    dismissRefineToast,
+    showMoodBanner,
+    showRefineToastRef,
+    showTempToastRef,
+  } = useHomeToasts();
 
   const { weather } = useWeather();
 
@@ -268,17 +256,6 @@ export const HomeScreen = () => {
   } = useTemperatureOverride();
   const [isTempSheetOpen, setIsTempSheetOpen] = useState(false);
   const [isApplyingTemp, setIsApplyingTemp] = useState(false);
-  // Transient toast shown once a temperature change actually takes effect
-  // (recommendations regenerated). Fired from the recommendation onSuccess via
-  // a ref so it can reach the later-declared `t`/timeout helpers.
-  const [tempToastText, setTempToastText] = useState('');
-  const [tempToastVisible, setTempToastVisible] = useState(false);
-  const tempToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const showTempToastRef = useRef<(key: TemperatureBucketKey) => void>(
-    () => {},
-  );
   const [tempErrorKey, setTempErrorKey] =
     useState<TemperatureSheetErrorKey | null>(null);
   const tempApplyIdRef = useRef(0);
@@ -606,13 +583,6 @@ export const HomeScreen = () => {
   }, [tierViewedCount, refineIsOpen, openRefine]);
 
   useEffect(() => {
-    return () => {
-      clearTimeoutRef(snackbarTimeoutRef);
-      clearTimeoutRef(tempToastTimeoutRef);
-    };
-  }, []);
-
-  useEffect(() => {
     if (pinState.outfit !== 'generating') {
       return;
     }
@@ -934,16 +904,6 @@ export const HomeScreen = () => {
     ensureBufferRef.current = ensureBuffer;
   }, [ensureBuffer]);
 
-  const [refineToastText, setRefineToastText] = useState<string | null>(null);
-
-  // Clears the refine toast early the moment the user starts interacting with
-  // the refreshed deck (swipe, like, …). Declared above the interaction
-  // handlers so they can depend on it without hitting the temporal dead zone.
-  const dismissRefineToast = useCallback(() => {
-    clearTimeoutRef(refineToastTimeoutRef);
-    setRefineToastText(current => (current === null ? current : null));
-  }, []);
-
   const handleHeartTapForOutfit = useCallback(
     (outfit: OutfitSheetWithGrid | OutfitSheet | undefined) => {
       if (!outfit) {
@@ -1000,72 +960,6 @@ export const HomeScreen = () => {
   }, [navigation, hasUnseenFavourites]);
 
   const { t } = useTranslation();
-  const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
-
-  const showMoodBanner = useCallback(
-    (text: string) => {
-      // The mood banner and refine toast share the bottom slot. Every path that
-      // surfaces the banner already runs through an interaction handler that
-      // dismisses the toast, but clear it here too so mutual exclusion is
-      // structurally enforced rather than merely relied upon.
-      dismissRefineToast();
-      clearTimeoutRef(snackbarTimeoutRef);
-      setMoodBannerText(text);
-      snackbarTimeoutRef.current = setTimeout(() => {
-        setMoodBannerText(null);
-        snackbarTimeoutRef.current = null;
-      }, MOOD_BANNER_DURATION_MS);
-    },
-    [dismissRefineToast],
-  );
-
-  // Refine confirmation toast ("Relaxed applied!") — builds the localized copy.
-  // Fired from the mutation's onSuccess (via showRefineToastRef) once the
-  // refreshed deck has loaded, then auto-dismisses after REFINE_TOAST_DURATION_MS.
-  const showRefineToast = useCallback(
-    (feedback: string, isChip: boolean) => {
-      clearTimeoutRef(refineToastTimeoutRef);
-      // Ship `mode` always; the label only for chips. Custom refine text is
-      // free-form user input (PII) and must never reach analytics — same gate
-      // as the sibling `refine_submitted` event.
-      track('refine_confirmation_shown', {
-        mode: isChip ? 'chip' : 'custom',
-        ...(isChip ? { value: feedback } : {}),
-      });
-      // The toast itself still shows the user's own words back to them.
-      setRefineToastText(t('home.refineAppliedToast', { feedback }));
-      refineToastTimeoutRef.current = setTimeout(() => {
-        setRefineToastText(null);
-        refineToastTimeoutRef.current = null;
-      }, REFINE_TOAST_DURATION_MS);
-    },
-    [t],
-  );
-
-  useEffect(() => {
-    showRefineToastRef.current = showRefineToast;
-  }, [showRefineToast]);
-
-  const showTempToast = useCallback(
-    (key: TemperatureBucketKey) => {
-      clearTimeoutRef(tempToastTimeoutRef);
-      setTempToastText(
-        isOverrideBucket(key)
-          ? t('home.temp_toast_override', { temp: repTempCFor(key) ?? 0 })
-          : t('home.temp_toast_current'),
-      );
-      setTempToastVisible(true);
-      tempToastTimeoutRef.current = setTimeout(() => {
-        setTempToastVisible(false);
-        tempToastTimeoutRef.current = null;
-      }, TEMP_TOAST_DURATION_MS);
-    },
-    [t],
-  );
-
-  useEffect(() => {
-    showTempToastRef.current = showTempToast;
-  }, [showTempToast]);
 
   const handleMoodSaveSuccess = useCallback(
     (outfitHash: string, updated: boolean) => {
