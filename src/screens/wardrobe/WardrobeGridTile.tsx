@@ -7,6 +7,7 @@ import { theme } from '../../theme/theme';
 import { resolveItemImage } from '../../utils/url';
 import { Icons } from '../../assets/icons';
 import { TILE_HEIGHT, TILE_WIDTH, resolveTileStatus } from './wardrobe-grid';
+import { TileStatusBadge } from './TileStatusBadge';
 
 interface WardrobeGridTileProps {
   item: WardrobeItem;
@@ -74,49 +75,7 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
         </View>
       ) : null}
 
-      {/* A single status pill, bottom-centre (Figma): "less use" (demoted),
-          "common" (catalog item) or "new" (fresh upload, not yet opened). */}
-      {status === 'new' ? (
-        <View style={styles.tileBadgeWrap}>
-          <View
-            style={[styles.tileBadge, styles.tileNewBadge]}
-            testID={`wardrobe-item-new-${item.id}`}
-            accessibilityLabel={t('wardrobe.new_badge')}
-          >
-            <Text numberOfLines={1} style={styles.tileNewBadgeText}>
-              {t('wardrobe.new_badge')}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-
-      {status === 'less_use' ? (
-        <View style={styles.tileBadgeWrap}>
-          <View
-            style={[styles.tileBadge, styles.tileLessUsedBadge]}
-            testID={`wardrobe-item-less-used-${item.id}`}
-            accessibilityLabel={t('wardrobe.less_used_badge')}
-          >
-            <Text numberOfLines={1} style={styles.tileLessUsedBadgeText}>
-              {t('wardrobe.less_used_badge')}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-
-      {status === 'common' ? (
-        <View style={styles.tileBadgeWrap}>
-          <View
-            style={styles.tileBadge}
-            testID={`wardrobe-item-common-${item.id}`}
-            accessibilityLabel={t('common.badge_common')}
-          >
-            <Text numberOfLines={1} style={styles.tileBadgeText}>
-              {t('common.badge_common')}
-            </Text>
-          </View>
-        </View>
-      ) : null}
+      {status ? <TileStatusBadge status={status} itemId={item.id} /> : null}
 
       {/* Single-select check — top-right, only the picked tile in select
           mode. Pure visual confirmation of the current selection. */}
@@ -169,46 +128,6 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
-  },
-  tileBadgeWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 8,
-    alignItems: 'center',
-  },
-  // Base status pill (bottom-centre). The "common" variant uses this as-is
-  // (dark fill, white text); "new" / "less use" override only the colours.
-  // F5: reuse the existing token instead of re-inlining the rgba duplicate
-  // (figmaCardTag === rgba(18,18,18,0.75), theme.ts:23). DRY.
-  tileBadge: {
-    height: 24, // chip size SM
-    paddingHorizontal: 12,
-    borderRadius: 9999,
-    backgroundColor: theme.colors.figmaCardTag,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tileBadgeText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.white,
-  },
-  // "New" — mint fill (reuses the success/200 token) + dark text.
-  tileNewBadge: {
-    backgroundColor: theme.colors.figmaSnackbarSuccessBg,
-  },
-  tileNewBadgeText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.figmaTextPrimary,
-  },
-  // "Less use" — soft coral fill + danger-red text (matches the item-detail
-  // "Less used" affordance colour).
-  tileLessUsedBadge: {
-    backgroundColor: theme.colors.figmaTileLessUsedBadgeBg,
-  },
-  tileLessUsedBadgeText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.figmaItemDetailDanger,
   },
   tilePreparingOverlay: {
     position: 'absolute',
