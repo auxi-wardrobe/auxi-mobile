@@ -41,10 +41,11 @@ import {
   PhotoSourceSheet,
   InlineError,
 } from './components';
-import { StepSelfie } from './StepSelfie';
-import { StepFullBody } from './StepFullBody';
-import { StepBodyShape } from './StepBodyShape';
 import { renderStomStepScreen } from './StomStepScreen';
+import {
+  renderStomStepControls,
+  StomStepControlsProps,
+} from './StomStepControls';
 import { BodyShapeId, GeneratedShape } from './body-shapes';
 import {
   Step,
@@ -519,81 +520,25 @@ export const SeeThisOnMeScreen: React.FC = () => {
   const visibleSteps =
     activeIndex >= 0 ? stepOrder.slice(0, activeIndex + 1) : [];
 
-  const renderStepControls = (s: CaptureStep) => {
-    switch (s) {
-      case 'selfie':
-        return (
-          <StepSelfie
-            busy={busy}
-            onTakePhoto={() =>
-              capture(asset => {
-                setSelfie(asset);
-                return validatePickedPhoto(
-                  asset,
-                  () => {
-                    setSelfie(null);
-                    setSelfieBodyId(null);
-                  },
-                  body => {
-                    setSelfieBodyId(body.id);
-                    track('try_on_step_completed', { step: 'selfie' });
-                    setStep('fullBody');
-                  },
-                );
-              })
-            }
-          />
-        );
-      case 'fullBody':
-        return (
-          <StepFullBody
-            busy={busy}
-            onTakePhoto={() =>
-              capture(asset => {
-                setFullBody(asset);
-                return validatePickedPhoto(
-                  asset,
-                  () => {
-                    setFullBody(null);
-                    setFullBodyId(null);
-                  },
-                  body => {
-                    setFullBodyId(body.id);
-                    track('try_on_step_completed', { step: 'fullBody' });
-                    // AU-358: leave full-body → kick off the 3-shape generation.
-                    if (selfieBodyId) {
-                      startShapeGeneration(selfieBodyId, body.id);
-                    }
-                  },
-                );
-              })
-            }
-            onSkip={() => {
-              track('try_on_step_completed', {
-                step: 'fullBody',
-                skipped: true,
-              });
-              // AU-358: skipping full-body → still generate shapes (the backend
-              // needs a full_body_id, so the selfie id is used as the fallback).
-              if (selfieBodyId) {
-                startShapeGeneration(selfieBodyId, null);
-              }
-            }}
-          />
-        );
-      case 'bodyShape':
-        return (
-          <StepBodyShape
-            shapes={shapes ?? []}
-            partial={shapesPartial}
-            selectedShape={selectedShape}
-            optIn={optIn}
-            onToggleOptIn={() => setOptIn(v => !v)}
-            onRegenerate={regenerateShapes}
-            onSelectShape={handleSelectShape}
-          />
-        );
-    }
+  // Wiring for the active step's CTA controls (see StomStepControls).
+  const stepControlsProps: StomStepControlsProps = {
+    busy,
+    capture,
+    validatePickedPhoto,
+    setSelfie,
+    setSelfieBodyId,
+    setStep,
+    setFullBody,
+    setFullBodyId,
+    startShapeGeneration,
+    selfieBodyId,
+    shapes,
+    shapesPartial,
+    selectedShape,
+    optIn,
+    setOptIn,
+    regenerateShapes,
+    handleSelectShape,
   };
 
   return (
@@ -617,7 +562,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
               {isActive && photoError ? (
                 <InlineError testID="stom-photo-error" text={photoError} />
               ) : null}
-              {isActive ? renderStepControls(s) : null}
+              {isActive ? renderStomStepControls(s, stepControlsProps) : null}
             </React.Fragment>
           );
         })}
