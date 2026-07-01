@@ -73,12 +73,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OUTFITS_PER_SET } from '../../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../../hooks/usePinReducer';
 import { PinConfirmModal } from '../../components/features/PinConfirmModal';
-import {
-  PinGenerationError,
-  type PinErrorKind,
-} from '../../components/features/PinGenerationError';
-import { PinFallbackNotice } from '../../components/features/PinFallbackNotice';
-import { PinnedItemUnavailableNotice } from '../../components/features/PinnedItemUnavailableNotice';
+import { type PinErrorKind } from '../../components/features/PinGenerationError';
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   PIN_DONT_SHOW_STORAGE_KEY,
@@ -108,6 +103,7 @@ import { DeckCue } from './components/DeckCue';
 import { HomeHeader } from './components/HomeHeader';
 import { HomeLoadingState } from './components/HomeLoadingState';
 import { HomeToastLayer } from './components/HomeToastLayer';
+import { PinStatusBanners } from './components/PinStatusBanners';
 import { OptionSheet } from './components/OptionSheet';
 import { OutfitActionRow } from '../../components/features/OutfitActionRow';
 
@@ -1343,56 +1339,21 @@ export const HomeScreen = () => {
         </View>
       )}
 
-      {pinState.outfit === 'error' ? (
-        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
-          <PinGenerationError
-            kind={pinErrorKind}
-            onRetry={() => {
-              setPinErrorKind('generic');
-              pinDispatch({ type: 'RETRY' });
-            }}
-          />
-        </View>
-      ) : pinState.outfit === 'fallback' ? (
-        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
-          <PinFallbackNotice />
-        </View>
-      ) : pinState.outfit === 'auth_required' ? (
-        <View
-          testID="pin-guest-banner"
-          pointerEvents="box-none"
-          style={styles.pinBannerFloat}
-        >
-          <View style={styles.pinGuestBox} accessibilityRole="alert">
-            <Text style={styles.pinGuestText} numberOfLines={3}>
-              {t('pin.guest_blocker')}
-            </Text>
-            <TouchableOpacity
-              testID="pin-guest-signin-cta"
-              accessibilityRole="button"
-              accessibilityLabel={t('pin.guest_blocker')}
-              activeOpacity={0.7}
-              onPress={() => {
-                navigation.navigate('Auth', {
-                  screen: 'EmailInput',
-                  params: { mode: 'signin' },
-                });
-              }}
-              style={styles.pinGuestCta}
-            >
-              <Text style={styles.pinGuestCtaText}>
-                {t('pin.guest_signin_cta')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : null}
-
-      {pinnedItemGoneAt !== null ? (
-        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
-          <PinnedItemUnavailableNotice />
-        </View>
-      ) : null}
+      <PinStatusBanners
+        pinOutfit={pinState.outfit}
+        pinErrorKind={pinErrorKind}
+        onRetry={() => {
+          setPinErrorKind('generic');
+          pinDispatch({ type: 'RETRY' });
+        }}
+        onSignIn={() => {
+          navigation.navigate('Auth', {
+            screen: 'EmailInput',
+            params: { mode: 'signin' },
+          });
+        }}
+        pinnedItemGoneAt={pinnedItemGoneAt}
+      />
 
       {optionSets.length > 0 ? (
         <View style={styles.wearThisFooter}>
