@@ -5,13 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  Animated,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -32,17 +26,6 @@ import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
 import { FeedbackSheet } from '../../components/features/FeedbackSheet';
 import { useMoodFeedback } from '../../hooks/use-mood-feedback';
-import {
-  PillButton,
-  TopIconButton,
-} from '../../components/primitives/FigmaPrimitives';
-import IconMenu from '../../assets/images/icon_menu.svg';
-import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
-import IconFeedback from '../../assets/images/feedback.svg';
-import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
-import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
-import { DotsLoader } from '../../components/atoms/DotsLoader';
-import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
   DEFAULT_RECOMMENDATION_MODE,
@@ -64,21 +47,17 @@ import {
   trackRecommendationGeneratedByTemperatureOnce,
 } from '../../services/analytics';
 import { resolveItemImage } from '../../utils/url';
-import { WeatherWidget } from '../../components/features/WeatherWidget';
 import {
   TemperatureOverrideSheet,
   type TemperatureSheetErrorKey,
 } from '../../components/features/TemperatureOverrideSheet';
-import { TemperatureOverrideIndicator } from '../../components/features/TemperatureOverrideIndicator';
 import { useTemperatureOverride } from '../../hooks/useTemperatureOverride';
 import {
-  bucketLabel,
   isOverrideBucket,
   repTempCFor,
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
-import { MSnackbar } from '../../components/design-system/lib';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import {
   HomeView,
@@ -88,18 +67,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OUTFITS_PER_SET } from '../../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../../hooks/usePinReducer';
 import { PinConfirmModal } from '../../components/features/PinConfirmModal';
-import {
-  PinGenerationError,
-  type PinErrorKind,
-} from '../../components/features/PinGenerationError';
-import { PinFallbackNotice } from '../../components/features/PinFallbackNotice';
-import { PinnedItemUnavailableNotice } from '../../components/features/PinnedItemUnavailableNotice';
+import { type PinErrorKind } from '../../components/features/PinGenerationError';
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
-  MOOD_BANNER_DURATION_MS,
-  TEMP_TOAST_DURATION_MS,
-  REFINE_TOAST_DURATION_MS,
-  AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
   REFINE_AFTER_OUTFITS,
   TARGET_AHEAD,
@@ -119,23 +89,18 @@ import {
 import { styles } from './styles';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
+import { useHomeToasts } from './hooks/useHomeToasts';
 import { EDIT_CONTEXT_SUGGESTIONS } from './context-chips';
 import { HomeErrorState } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
+import { DeckCue } from './components/DeckCue';
+import { HomeHeader } from './components/HomeHeader';
 import { HomeLoadingState } from './components/HomeLoadingState';
+import { HomeToastLayer } from './components/HomeToastLayer';
+import { PinStatusBanners } from './components/PinStatusBanners';
+import { WearThisFooter } from './components/WearThisFooter';
 import { OptionSheet } from './components/OptionSheet';
 import { OutfitActionRow } from '../../components/features/OutfitActionRow';
-
-const clearTimeoutRef = (
-  timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
-) => {
-  if (!timeoutRef.current) {
-    return;
-  }
-
-  clearTimeout(timeoutRef.current);
-  timeoutRef.current = null;
-};
 
 export const HomeScreen = () => {
   const navigation =
@@ -168,7 +133,6 @@ export const HomeScreen = () => {
   }, [buildPersona]);
   const [homeView, setHomeView] = useState<HomeView>('grid');
   const [collageDragActive, setCollageDragActive] = useState(false);
-  const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [listOutfits, setListOutfits] = useState<OutfitSheet[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -249,14 +213,17 @@ export const HomeScreen = () => {
     text: string;
     isChip: boolean;
   } | null>(null);
-  const refineToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  // onSuccess is declared before showRefineToast (which needs `t`), so reach the
-  // shower through a ref — same indirection the buffer trampoline uses.
-  const showRefineToastRef = useRef<(text: string, isChip: boolean) => void>(
-    () => {},
-  );
+
+  const {
+    moodBannerText,
+    refineToastText,
+    tempToastText,
+    tempToastVisible,
+    dismissRefineToast,
+    showMoodBanner,
+    showRefineToastRef,
+    showTempToastRef,
+  } = useHomeToasts();
 
   const { weather } = useWeather();
 
@@ -268,17 +235,6 @@ export const HomeScreen = () => {
   } = useTemperatureOverride();
   const [isTempSheetOpen, setIsTempSheetOpen] = useState(false);
   const [isApplyingTemp, setIsApplyingTemp] = useState(false);
-  // Transient toast shown once a temperature change actually takes effect
-  // (recommendations regenerated). Fired from the recommendation onSuccess via
-  // a ref so it can reach the later-declared `t`/timeout helpers.
-  const [tempToastText, setTempToastText] = useState('');
-  const [tempToastVisible, setTempToastVisible] = useState(false);
-  const tempToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const showTempToastRef = useRef<(key: TemperatureBucketKey) => void>(
-    () => {},
-  );
   const [tempErrorKey, setTempErrorKey] =
     useState<TemperatureSheetErrorKey | null>(null);
   const tempApplyIdRef = useRef(0);
@@ -606,13 +562,6 @@ export const HomeScreen = () => {
   }, [tierViewedCount, refineIsOpen, openRefine]);
 
   useEffect(() => {
-    return () => {
-      clearTimeoutRef(snackbarTimeoutRef);
-      clearTimeoutRef(tempToastTimeoutRef);
-    };
-  }, []);
-
-  useEffect(() => {
     if (pinState.outfit !== 'generating') {
       return;
     }
@@ -934,16 +883,6 @@ export const HomeScreen = () => {
     ensureBufferRef.current = ensureBuffer;
   }, [ensureBuffer]);
 
-  const [refineToastText, setRefineToastText] = useState<string | null>(null);
-
-  // Clears the refine toast early the moment the user starts interacting with
-  // the refreshed deck (swipe, like, …). Declared above the interaction
-  // handlers so they can depend on it without hitting the temporal dead zone.
-  const dismissRefineToast = useCallback(() => {
-    clearTimeoutRef(refineToastTimeoutRef);
-    setRefineToastText(current => (current === null ? current : null));
-  }, []);
-
   const handleHeartTapForOutfit = useCallback(
     (outfit: OutfitSheetWithGrid | OutfitSheet | undefined) => {
       if (!outfit) {
@@ -1000,72 +939,6 @@ export const HomeScreen = () => {
   }, [navigation, hasUnseenFavourites]);
 
   const { t } = useTranslation();
-  const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
-
-  const showMoodBanner = useCallback(
-    (text: string) => {
-      // The mood banner and refine toast share the bottom slot. Every path that
-      // surfaces the banner already runs through an interaction handler that
-      // dismisses the toast, but clear it here too so mutual exclusion is
-      // structurally enforced rather than merely relied upon.
-      dismissRefineToast();
-      clearTimeoutRef(snackbarTimeoutRef);
-      setMoodBannerText(text);
-      snackbarTimeoutRef.current = setTimeout(() => {
-        setMoodBannerText(null);
-        snackbarTimeoutRef.current = null;
-      }, MOOD_BANNER_DURATION_MS);
-    },
-    [dismissRefineToast],
-  );
-
-  // Refine confirmation toast ("Relaxed applied!") — builds the localized copy.
-  // Fired from the mutation's onSuccess (via showRefineToastRef) once the
-  // refreshed deck has loaded, then auto-dismisses after REFINE_TOAST_DURATION_MS.
-  const showRefineToast = useCallback(
-    (feedback: string, isChip: boolean) => {
-      clearTimeoutRef(refineToastTimeoutRef);
-      // Ship `mode` always; the label only for chips. Custom refine text is
-      // free-form user input (PII) and must never reach analytics — same gate
-      // as the sibling `refine_submitted` event.
-      track('refine_confirmation_shown', {
-        mode: isChip ? 'chip' : 'custom',
-        ...(isChip ? { value: feedback } : {}),
-      });
-      // The toast itself still shows the user's own words back to them.
-      setRefineToastText(t('home.refineAppliedToast', { feedback }));
-      refineToastTimeoutRef.current = setTimeout(() => {
-        setRefineToastText(null);
-        refineToastTimeoutRef.current = null;
-      }, REFINE_TOAST_DURATION_MS);
-    },
-    [t],
-  );
-
-  useEffect(() => {
-    showRefineToastRef.current = showRefineToast;
-  }, [showRefineToast]);
-
-  const showTempToast = useCallback(
-    (key: TemperatureBucketKey) => {
-      clearTimeoutRef(tempToastTimeoutRef);
-      setTempToastText(
-        isOverrideBucket(key)
-          ? t('home.temp_toast_override', { temp: repTempCFor(key) ?? 0 })
-          : t('home.temp_toast_current'),
-      );
-      setTempToastVisible(true);
-      tempToastTimeoutRef.current = setTimeout(() => {
-        setTempToastVisible(false);
-        tempToastTimeoutRef.current = null;
-      }, TEMP_TOAST_DURATION_MS);
-    },
-    [t],
-  );
-
-  useEffect(() => {
-    showTempToastRef.current = showTempToast;
-  }, [showTempToast]);
 
   const handleMoodSaveSuccess = useCallback(
     (outfitHash: string, updated: boolean) => {
@@ -1358,59 +1231,15 @@ export const HomeScreen = () => {
       style={styles.container}
       edges={['top']}
     >
-      <View style={styles.header}>
-        <TopIconButton
-          testID="home-menu-button"
-          accessibilityRole="button"
-          accessibilityLabel={t('home.a11y_open_menu')}
-          onPress={handleLeadingAction}
-          icon={<IconMenu width={24} height={24} />}
-          style={styles.headerIconButton}
-        />
-
-        {isOverrideActive ? (
-          <TemperatureOverrideIndicator
-            label={bucketLabel(t, activeBucketKey, weather.tempC)}
-            onPress={openTempSheet}
-          />
-        ) : (
-          <TouchableOpacity
-            testID="home-weather-temp-trigger"
-            accessibilityRole="button"
-            accessibilityLabel={t('home.a11y_temp_idle')}
-            activeOpacity={0.82}
-            onPress={openTempSheet}
-          >
-            <WeatherWidget
-              tempC={weather.tempC}
-              iconCode={weather.iconCode}
-              showChevron
-            />
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          testID="home-favourites-shortcut"
-          accessibilityRole="button"
-          accessibilityLabel={
-            hasUnseenFavourites
-              ? t('home.a11y_open_favourites_new')
-              : t('home.a11y_open_favourites')
-          }
-          activeOpacity={0.82}
-          style={styles.headerIconButton}
-          onPress={handleOpenFavourites}
-        >
-          <IconHomeHeartOutline width={24} height={24} />
-          {hasUnseenFavourites ? (
-            <View
-              testID="home-favourites-badge"
-              style={styles.favDot}
-              pointerEvents="none"
-            />
-          ) : null}
-        </TouchableOpacity>
-      </View>
+      <HomeHeader
+        onOpenMenu={handleLeadingAction}
+        isOverrideActive={isOverrideActive}
+        activeBucketKey={activeBucketKey}
+        weather={weather}
+        onOpenTemp={openTempSheet}
+        hasUnseenFavourites={hasUnseenFavourites}
+        onOpenFavourites={handleOpenFavourites}
+      />
 
       {/* Floating toast layer (z-index tier 5) — sits on top of the grid,
           never stacks with the cards. */}
@@ -1480,38 +1309,13 @@ export const HomeScreen = () => {
               />
             )}
             renderCue={(backOpacity, nextOpacity) => (
-              <>
-                {/* Swipe right → previous: back chevron on the right edge
-                    (hidden on the first card — nothing to return to). */}
-                {clampedActiveIndex > 0 ? (
-                  <Animated.View
-                    pointerEvents="none"
-                    style={[
-                      styles.deckCue,
-                      styles.deckCueLike,
-                      { opacity: backOpacity },
-                    ]}
-                  >
-                    <IconChevronLeft width={20} height={20} />
-                    <Text style={styles.deckCueSkipText}>
-                      {t('home.back_label')}
-                    </Text>
-                  </Animated.View>
-                ) : null}
-                {/* Swipe left → next: cue on the left edge. */}
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.deckCue,
-                    styles.deckCueSkip,
-                    { opacity: nextOpacity },
-                  ]}
-                >
-                  <Text style={styles.deckCueSkipText}>
-                    {t('home.skip_label')}
-                  </Text>
-                </Animated.View>
-              </>
+              <DeckCue
+                backOpacity={backOpacity}
+                nextOpacity={nextOpacity}
+                showBack={clampedActiveIndex > 0}
+                backLabel={t('home.back_label')}
+                skipLabel={t('home.skip_label')}
+              />
             )}
           />
           {/* Fixed action row — Remix · dots · Refine stay put while only the
@@ -1530,128 +1334,31 @@ export const HomeScreen = () => {
         </View>
       )}
 
-      {pinState.outfit === 'error' ? (
-        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
-          <PinGenerationError
-            kind={pinErrorKind}
-            onRetry={() => {
-              setPinErrorKind('generic');
-              pinDispatch({ type: 'RETRY' });
-            }}
-          />
-        </View>
-      ) : pinState.outfit === 'fallback' ? (
-        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
-          <PinFallbackNotice />
-        </View>
-      ) : pinState.outfit === 'auth_required' ? (
-        <View
-          testID="pin-guest-banner"
-          pointerEvents="box-none"
-          style={styles.pinBannerFloat}
-        >
-          <View style={styles.pinGuestBox} accessibilityRole="alert">
-            <Text style={styles.pinGuestText} numberOfLines={3}>
-              {t('pin.guest_blocker')}
-            </Text>
-            <TouchableOpacity
-              testID="pin-guest-signin-cta"
-              accessibilityRole="button"
-              accessibilityLabel={t('pin.guest_blocker')}
-              activeOpacity={0.7}
-              onPress={() => {
-                navigation.navigate('Auth', {
-                  screen: 'EmailInput',
-                  params: { mode: 'signin' },
-                });
-              }}
-              style={styles.pinGuestCta}
-            >
-              <Text style={styles.pinGuestCtaText}>
-                {t('pin.guest_signin_cta')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : null}
+      <PinStatusBanners
+        pinOutfit={pinState.outfit}
+        pinErrorKind={pinErrorKind}
+        onRetry={() => {
+          setPinErrorKind('generic');
+          pinDispatch({ type: 'RETRY' });
+        }}
+        onSignIn={() => {
+          navigation.navigate('Auth', {
+            screen: 'EmailInput',
+            params: { mode: 'signin' },
+          });
+        }}
+        pinnedItemGoneAt={pinnedItemGoneAt}
+      />
 
-      {pinnedItemGoneAt !== null ? (
-        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
-          <PinnedItemUnavailableNotice />
-        </View>
-      ) : null}
-
-      {optionSets.length > 0 ? (
-        <View style={styles.wearThisFooter}>
-          {activeSaveState === 'saved' ? (
-            <TouchableOpacity
-              testID="home-wear-this-saved-favourites"
-              accessibilityRole="button"
-              accessibilityLabel={t('home.saved_open_favourites')}
-              activeOpacity={0.7}
-              style={styles.savedFavouritesCta}
-              onPress={handleOpenFavourites}
-            >
-              <Text style={styles.savedFavouritesCtaText} numberOfLines={2}>
-                {t('home.saved_open_favourites')}
-              </Text>
-              <IconChevronRight width={20} height={20} />
-            </TouchableOpacity>
-          ) : (
-            <PillButton
-              testID="home-wear-this"
-              title={
-                pinState.outfit === 'generating'
-                  ? t('pin.generating_header')
-                  : t('home.wear_this')
-              }
-              variant="outline"
-              onPress={() =>
-                activeOutfit && handleWearThisForOutfit(activeOutfit)
-              }
-              disabled={!activeOutfit || pinState.outfit === 'generating'}
-              loading={activeSaveState === 'saving'}
-              trailing={
-                pinState.outfit === 'generating' ? (
-                  <DotsLoader
-                    color={theme.colors.figmaAction}
-                    testID="home-wear-this-generating-spinner"
-                  />
-                ) : (
-                  <IconHomeHeartOutline width={24} height={24} />
-                )
-              }
-              style={styles.primaryActionFull}
-              textStyle={styles.primaryActionLabel}
-            />
-          )}
-          {activeSaveState === 'error' ? (
-            <Text style={styles.saveErrorText}>
-              {t('home.save_failed_retry')}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      {/* Feedback affordance — 44px floating button, bottom-left of the
-          footer, Home only. Opens the in-app Feedback bottom sheet. AI-result
-          feedback now lives on the try-on result (see OutfitPreview). */}
-      {optionSets.length > 0 ? (
-        <TouchableOpacity
-          testID="home-feedback-fab"
-          accessibilityRole="button"
-          accessibilityLabel={t('feedback.title')}
-          activeOpacity={0.85}
-          onPress={() => setFeedbackVisible(true)}
-          style={styles.aiFeedbackFab}
-        >
-          <IconFeedback
-            width={24}
-            height={24}
-            color={theme.colors.uacTextBase}
-          />
-        </TouchableOpacity>
-      ) : null}
+      <WearThisFooter
+        visible={optionSets.length > 0}
+        activeSaveState={activeSaveState}
+        pinOutfit={pinState.outfit}
+        activeOutfit={activeOutfit}
+        onOpenFavourites={handleOpenFavourites}
+        onWearThis={handleWearThisForOutfit}
+        onOpenFeedback={() => setFeedbackVisible(true)}
+      />
 
       <HomeViewToggleFooter
         testID="home-footer-view-toggle"
@@ -1726,42 +1433,12 @@ export const HomeScreen = () => {
         onClose={() => setFeedbackVisible(false)}
       />
 
-      {refineToastText ? (
-        <View pointerEvents="none" style={styles.refineToastWrap}>
-          <View
-            testID="home-refine-applied-toast"
-            accessibilityRole="alert"
-            style={styles.refineToast}
-          >
-            <Text style={styles.refineToastText} numberOfLines={1}>
-              {refineToastText}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-
-      {moodBannerText ? (
-        <View
-          testID="mood-feedback-banner"
-          accessibilityRole="alert"
-          pointerEvents="none"
-          style={styles.moodBanner}
-        >
-          <Text style={styles.moodBannerText}>{moodBannerText}</Text>
-        </View>
-      ) : null}
-
-      <View
-        accessibilityRole="alert"
-        pointerEvents="none"
-        style={styles.tempToast}
-      >
-        <MSnackbar
-          visible={tempToastVisible}
-          message={tempToastText}
-          testID="home-temp-toast"
-        />
-      </View>
+      <HomeToastLayer
+        refineToastText={refineToastText}
+        moodBannerText={moodBannerText}
+        tempToastVisible={tempToastVisible}
+        tempToastText={tempToastText}
+      />
     </SafeAreaView>
   );
 };
