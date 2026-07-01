@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -13,11 +13,6 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../components/design-system/lib';
-import {
-  launchCamera,
-  launchImageLibrary,
-  Asset,
-} from 'react-native-image-picker';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
 import { Header } from '../components/layout/Header';
@@ -37,6 +32,7 @@ import { track } from '../services/analytics';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
 import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
 import { PreparingOverlay } from './wardrobe/PreparingOverlay';
+import { useAddWardrobeItem } from './wardrobe/useAddWardrobeItem';
 import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
 import {
   FILTER_TABS,
@@ -81,10 +77,6 @@ export const WardrobeScreen = () => {
   // is set on a (non-silent) fetch failure so the screen shows a dedicated
   // error state + Retry rather than the misleading "add your first item" copy.
   const [loadError, setLoadError] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadingPhotoUri, setUploadingPhotoUri] = useState<string | null>(
-    null,
-  );
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
   // Add-item sheet visibility. The slide/fade ENTER + faster CLOSE motion +
   // reduce-motion fallback are now encapsulated inside MBottomSheet (it keeps
@@ -241,94 +233,22 @@ export const WardrobeScreen = () => {
     navigation.navigate('Database');
   };
 
-  const handleImageSelection = async (type: 'camera' | 'gallery') => {
-    setAddSheetVisible(false);
-
-    setTimeout(async () => {
-      const options = {
-        mediaType: 'photo' as const,
-        selectionLimit: 1,
-      };
-
-      const result =
-        type === 'camera'
-          ? await launchCamera(options)
-          : await launchImageLibrary(options);
-
-      if (result.didCancel) {
-        return;
-      }
-
-      if (result.errorCode) {
-        Alert.alert(
-          t('common.error_title'),
-          result.errorMessage || t('common.pick_image_failed'),
-        );
-        return;
-      }
-
-      const asset: Asset | undefined = result.assets?.[0];
-      if (!asset) {
-        return;
-      }
-
-      try {
-        setUploadingPhotoUri(asset.uri ?? null);
-        setUploading(true);
-        track('add_item_upload_started', { source: type });
-        if (type === 'camera') {
-          track('wardrobe_photo_captured', { source: 'add_item' });
-        }
-
-        const createdItem = await wardrobeService.uploadWardrobeItem(
-          asset,
-          user!,
-          resolveFilterQuery(selectedTab),
-        );
-
-        track('add_item_upload_succeeded', { source: type });
-        const addedProps: Record<string, unknown> = {
-          source: type,
-          method: 'take_photo',
-        };
-        if (createdItem?.id) {
-          addedProps.item_id = createdItem.id;
-        }
-        if (createdItem?.category) {
-          addedProps.category = createdItem.category;
-        }
-        track('wardrobe_item_added', addedProps);
-        // AU-372: surface add-success via the mint M3 ItemReadySnackbar overlay
-        // (same component as the ready moment), not the default bottom toast.
-        // Copy reads "Item added. We'll finish preparing it in the background."
-        showReadySnackbar(t('wardrobe.list.added_title'));
-
-        await fetchItems();
-      } catch (error) {
-        console.error('Upload error', error);
-        track('add_item_upload_failed', { source: type });
-        toast.show({
-          type: 'error',
-          text1: t('wardrobe.list.upload_failed_title'),
-          text2: t('wardrobe.list.upload_failed_body'),
-          position: 'bottom',
-        });
-      } finally {
-        setUploading(false);
-        setUploadingPhotoUri(null);
-      }
-    }, 250);
-  };
-
-  const handleTakePhoto = () => {
-    track('add_item_method_selected', { method: 'take_photo' });
-    setAddSheetVisible(false);
-    // Let the add sheet finish its close animation before the source chooser
-    // slides up (matches the prior Alert timing).
-    setTimeout(() => {
-      setPhotoSourceSheetVisible(true);
-    }, 250);
-  };
+  // Add-item upload orchestration (image pick → upload → analytics →
+  // add-success snackbar → refetch) + the take-photo source chooser hand-off.
+  // `uploading` / `uploadingPhotoUri` drive the header spinner + PreparingOverlay.
+  const {
+    uploading,
+    uploadingPhotoUri,
+    handleImageSelection,
+    handleTakePhoto,
+  } = useAddWardrobeItem({
+    selectedTab,
+    user,
+    showReadySnackbar,
+    refetch: fetchItems,
+    closeAddSheet: () => setAddSheetVisible(false),
+    openPhotoSourceSheet: () => setPhotoSourceSheetVisible(true),
+  });
 
   const renderLoadingGrid = () => (
     <View style={styles.grid}>
