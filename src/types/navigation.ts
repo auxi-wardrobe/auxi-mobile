@@ -98,6 +98,12 @@ export type AppStackParamList = {
   // pinning (distinct from `pinFromDetail`, which pins + rebuilds around it).
   Home: { pinFromDetail?: string; swapItem?: HomeOutfitSwap } | undefined;
   Settings: undefined;
+  // Settings sub-screens (grouped IA). The main Settings screen keeps the
+  // daily-reminder controls + "Delete My Data"; these three carry the grouped
+  // secondary settings, pushed on top so they get the standard back gesture.
+  SettingsPersonalization: undefined;
+  SettingsPrivacy: undefined;
+  SettingsAbout: undefined;
   // `mode: 'select'` opens the wardrobe as a single-item picker (reached from
   // ItemDetail's "Change" swap button when the detail was opened from a Home
   // suggestion). The grid stops navigating into ItemDetail and instead lets the

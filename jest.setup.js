@@ -39,12 +39,19 @@ jest.mock('./src/theme/motion', () => ({
 // (App.tsx renders `<Toast />`) and a namespace with .show/.hide statics (screens
 // call Toast.show(...)). Model it as a no-op component function with the spies
 // attached as static methods so both usages work.
-jest.mock('react-native-toast-message', () => {
-  const Toast = () => null;
-  Toast.show = jest.fn();
-  Toast.hide = jest.fn();
-  return { __esModule: true, default: Toast };
-});
+// `virtual: true` — the app migrated off react-native-toast-message to the DS
+// m-toast-service (mocked above); the package is no longer a dependency, so this
+// legacy mock must not require the real module to resolve.
+jest.mock(
+  'react-native-toast-message',
+  () => {
+    const Toast = () => null;
+    Toast.show = jest.fn();
+    Toast.hide = jest.fn();
+    return { __esModule: true, default: Toast };
+  },
+  { virtual: true },
+);
 
 // react-native-safe-area-context: insets + provider passthrough.
 jest.mock('react-native-safe-area-context', () => {

@@ -543,7 +543,21 @@
       "notification_reset_toast_title": "Notifications reset to default",
       "notification_reset_toast_body": "Tap to undo",
       "notification_reset_undone_title": "Reset undone",
-      "error_update_notification_reset": "Failed to reset notification settings"
+      "error_update_notification_reset": "Failed to reset notification settings",
+      "enable_daily_reminder": "Enable Daily Reminder",
+      "reminder_time": "Reminder Time",
+      "repeat_schedule": "Repeat Schedule",
+      "dialog_schedule_title": "Repeat Schedule",
+      "a11y_change_schedule": "Change repeat schedule",
+      "section_personalization": "Personalization",
+      "section_privacy": "Privacy",
+      "section_about": "About",
+      "a11y_open_personalization": "Open personalization settings",
+      "a11y_open_privacy": "Open privacy settings",
+      "a11y_open_about": "Open about",
+      "a11y_back": "Back",
+      "delete_my_data": "Delete My Data",
+      "privacy_control_body": "Control what you share with Auxi and our AI providers. You can change these anytime."
     },
     "outfitCanvas": {
       "a11y_close_picker": "Close picker",
