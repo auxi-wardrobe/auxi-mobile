@@ -50,6 +50,7 @@ import {
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import { ItemPickerPanel } from './canvas/ItemPickerPanel';
 import { TagChip } from './canvas/TagChip';
+import { ToolbarBtn } from './canvas/ToolbarBtn';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { InfoSnackbar } from '../components/feedback/InfoSnackbar';
 import { DotsLoader } from '../components/atoms/DotsLoader';
@@ -138,35 +139,6 @@ const extractUri = (source: ImageSourcePropType): string | undefined => {
 type HistorySnapshot = CanvasItemData[];
 
 const INITIAL_MOCK_ITEMS: CanvasItemData[] = [];
-
-// --- Toolbar button ---
-const ToolbarBtn = ({
-  testID,
-  onPress,
-  disabled,
-  children,
-  accessibilityLabel,
-}: {
-  testID: string;
-  onPress: () => void;
-  disabled?: boolean;
-  children: React.ReactNode;
-  accessibilityLabel: string;
-}) => (
-  <Pressable
-    testID={testID}
-    onPress={onPress}
-    disabled={disabled}
-    accessibilityLabel={accessibilityLabel}
-    style={({ pressed }) => [
-      styles.toolbarBtn,
-      disabled && styles.toolbarBtnDisabled,
-      pressed && !disabled && styles.toolbarBtnPressed,
-    ]}
-  >
-    {children}
-  </Pressable>
-);
 
 // --- Main screen ---
 export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
@@ -1208,19 +1180,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.colors.figmaDivider,
     backgroundColor: theme.colors.background,
-  },
-  toolbarBtn: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: theme.borderRadius.m,
-  },
-  toolbarBtnDisabled: {
-    opacity: 0.5,
-  },
-  toolbarBtnPressed: {
-    backgroundColor: theme.colors.figmaSurfaceSoft,
   },
   // Tags — row sits in topGroup (gap 16 above); chips flush to body inset.
   tagsRow: {},
