@@ -369,6 +369,12 @@ export const ScheduleScreen: React.FC = () => {
                   onItemPress={item => {
                     const wardrobeId = resolveWardrobeItemId(item);
                     if (wardrobeId) {
+                      // Mirror MyCreationsScreen.handleItemPress so both entry
+                      // points to ItemDetail from a creation collage report the
+                      // same funnel event (repo analytics-tracking rule).
+                      track('creation_item_detail_opened', {
+                        wardrobe_item_id: wardrobeId,
+                      });
                       navigation.navigate('ItemDetail', { itemId: wardrobeId });
                     }
                   }}
