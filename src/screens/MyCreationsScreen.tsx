@@ -22,17 +22,14 @@ import { AppStackParamList } from '../types/navigation';
 import {
   CREATIONS_QUERY_KEY,
   creationsService,
+  resolveWardrobeItemId,
   type Creation,
+  type CreationItem,
 } from '../services/creationsService';
 import { CreationCollageCard } from './myCreations/CreationCollageCard';
 import { RemoveCreationDialog } from './myCreations/RemoveCreationDialog';
 import { ScheduleDatePickerSheet } from './schedule/ScheduleDatePickerSheet';
 import { useScheduleAddedToast } from './schedule/useScheduleAddedToast';
-
-// A canvas item id looks like `item-<wardrobeId>-<stamp>-<index>` (see
-// OutfitCanvasScreen.handlePickerConfirm). Newer creations also store the raw
-// `wardrobeItemId`; for older ones we recover it from that synthetic id.
-const SYNTHETIC_ITEM_ID = /^item-(.+)-\d+-\d+$/;
 
 // The creation's items reduced to what try-on needs: a real wardrobe id paired
 // with its image url. Built as ONE list (id + url kept together, deduped by id)
@@ -44,7 +41,7 @@ const resolveUsableItems = (
   const seen = new Set<string>();
   return creation.items.reduce<{ id: string; imageUrl: string }[]>(
     (acc, it) => {
-      const id = it.wardrobeItemId ?? SYNTHETIC_ITEM_ID.exec(it.id)?.[1];
+      const id = resolveWardrobeItemId(it);
       if (id && !seen.has(id)) {
         seen.add(id);
         acc.push({ id, imageUrl: it.imageUri });
@@ -141,6 +138,20 @@ export const MyCreationsScreen: React.FC = () => {
     });
   };
 
+  // Open a tapped collage item's detail. Resolves the real wardrobe id behind
+  // the creation item (stored `wardrobeItemId`, else recovered from the
+  // synthetic canvas id); items with no recoverable id are a no-op. Navigates
+  // to ItemDetail with just the id — same as the Favourite collage's per-item
+  // tap — so ItemDetail loads the live wardrobe record.
+  const handleItemPress = (item: CreationItem) => {
+    const wardrobeId = resolveWardrobeItemId(item);
+    if (!wardrobeId) {
+      return;
+    }
+    track('creation_item_detail_opened', { wardrobe_item_id: wardrobeId });
+    navigation.navigate('ItemDetail', { itemId: wardrobeId });
+  };
+
   const handleConfirmSchedule = (date: Date) => {
     if (!scheduleTarget) {
       return;
@@ -193,6 +204,7 @@ export const MyCreationsScreen: React.FC = () => {
             key={creation.id}
             creation={creation}
             onRemove={setPendingRemovalId}
+            onItemPress={handleItemPress}
             onSchedule={handleSchedule}
             onVisualize={
               resolveUsableItems(creation).length > 0

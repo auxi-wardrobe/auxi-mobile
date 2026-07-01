@@ -114,6 +114,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `wardrobe_filter_changed` (pre-existing) | Filter pill | `WardrobeScreen.tsx:135` | `category` |
 | `wardrobe_item_opened` (pre-existing) | Item tap | `WardrobeScreen.tsx:139` | `item_id`, `category` |
 | `item_detail_opened` | ItemDetailScreen mount | `ItemDetailScreen.tsx:280` | `item_id`, `source` |
+| `creation_item_detail_opened` | Tap an item inside a saved-creation collage → opens ItemDetail. Fired from both entry points to that collage: the My Creations list and the Schedule day's creation card. Resolves the real wardrobe id first (stored `wardrobeItemId`, else recovered from the synthetic canvas id); a no-op when neither yields one. | `MyCreationsScreen.tsx` (`handleItemPress`), `ScheduleScreen.tsx` (creation-card `onItemPress`) | `wardrobe_item_id` (internal wardrobe id) |
 | `wardrobe_item_added` | Take-photo upload complete | `WardrobeScreen.tsx:218` | `source`, `method` (`take_photo`), `item_id?`, `category?` |
 | `wardrobe_item_added` | Database clone complete | `DatabaseScreen.tsx:138` | `item_id`, `source` (`database`), `method` (`search_database`), `category?` |
 | `item_ready_toast_shown` (AU-361) | Uploaded item finishes background processing (`is_preparing` true→false) and the "Your item is ready" toast fires | `WardrobeScreen.tsx:149` | `item_category?` |

@@ -16,6 +16,9 @@ type Props = {
   testID?: string;
   // Bubbles up while an item is being dragged so Home can freeze paging scroll.
   onDragActiveChange?: (active: boolean) => void;
+  // Tap an item to open its detail. The seeded canvas id IS the outfit item's
+  // id (see seedFromOutfit), so we resolve the tapped id back to its `Item`.
+  onItemPress?: (item: Item) => void;
 };
 
 // Stable identity for "is this a different outfit?" — re-seed only when the set
@@ -30,6 +33,7 @@ export const CollageSheetCanvas: React.FC<Props> = ({
   surfaceHeight,
   testID,
   onDragActiveChange,
+  onItemPress,
 }) => {
   const [items, setItems] = useState<CanvasItemData[]>(() =>
     seedFromOutfit(outfitItems, surfaceWidth),
@@ -49,6 +53,22 @@ export const CollageSheetCanvas: React.FC<Props> = ({
     [],
   );
 
+  // Resolve the tapped canvas id back to its source `Item` and bubble it up.
+  const handleItemTap = useCallback(
+    (id: string) => {
+      if (!onItemPress) {
+        return;
+      }
+      const item = outfitItems.find(
+        (it): it is Item => !!it && it.id === id,
+      );
+      if (item) {
+        onItemPress(item);
+      }
+    },
+    [onItemPress, outfitItems],
+  );
+
   return (
     <OutfitCanvasSurface
       testID={testID}
@@ -56,6 +76,7 @@ export const CollageSheetCanvas: React.FC<Props> = ({
       width={surfaceWidth}
       height={surfaceHeight}
       onPositionChange={handlePositionChange}
+      onItemTap={onItemPress ? handleItemTap : undefined}
       selectedId={null}
       showGrid={false}
       itemTestIDPrefix="home-collage-item"
