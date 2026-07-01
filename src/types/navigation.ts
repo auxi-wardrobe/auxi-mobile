@@ -49,6 +49,26 @@ export interface ItemDetailFallbackItem {
   is_common_item?: boolean;
 }
 
+/**
+ * Local outfit item-swap intent (no pin). Returned to Home by the wardrobe
+ * picker (ItemDetail "Change" flow): replace `fromItemId` in the currently
+ * viewed outfit with `toItem`. This is a one-off swap on the active outfit —
+ * it does NOT pin the item or regenerate suggestions around it.
+ */
+export interface HomeOutfitSwap {
+  fromItemId: string;
+  // Serializable wardrobe payload, mapped to an outfit `Item` on Home.
+  toItem: {
+    id: string;
+    image_url?: string;
+    image_png?: string;
+    name?: string;
+    category?: string;
+    color_hex?: string;
+    is_common_item?: boolean;
+  };
+}
+
 export interface TryOnOutfitContext {
   outfitHash: string;
   itemIds: string[];
@@ -73,7 +93,10 @@ export type AppStackParamList = {
   // `pinFromDetail` set to the item id. HomeScreen consumes it on mount via
   // `CONFIRM_PIN_FROM_DETAIL` (skipping the confirm modal), then clears
   // the param so re-focus / re-render does not refire the auto-pin.
-  Home: { pinFromDetail?: string } | undefined;
+  // `swapItem` carries a one-off "Change" intent from the wardrobe picker:
+  // replace the viewed item in the active outfit with the chosen one, WITHOUT
+  // pinning (distinct from `pinFromDetail`, which pins + rebuilds around it).
+  Home: { pinFromDetail?: string; swapItem?: HomeOutfitSwap } | undefined;
   Settings: undefined;
   // Settings sub-screens (grouped IA). The main Settings screen keeps the
   // daily-reminder controls + "Delete My Data"; these three carry the grouped
@@ -81,7 +104,15 @@ export type AppStackParamList = {
   SettingsPersonalization: undefined;
   SettingsPrivacy: undefined;
   SettingsAbout: undefined;
-  Wardrobe: undefined;
+  // `mode: 'select'` opens the wardrobe as a single-item picker (reached from
+  // ItemDetail's "Change" swap button when the detail was opened from a Home
+  // suggestion). The grid stops navigating into ItemDetail and instead lets the
+  // user pick exactly one item; the "Change" CTA pops back to Home with a
+  // `swapItem` intent that replaces the viewed item in the active outfit — a
+  // one-off swap, NOT a pin. `excludeItemId` is the item being changed: it's
+  // hidden from the picker (you can only swap it for ANOTHER item) and becomes
+  // the swap's `fromItemId`.
+  Wardrobe: { mode?: 'select'; excludeItemId?: string } | undefined;
   // `returnToSchedule` is set when the user reached this page via the Schedule
   // "+" source picker — after scheduling an outfit we send them back to
   // Schedule (focused on the chosen day) instead of staying here. `scheduleDate`
