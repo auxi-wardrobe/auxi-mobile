@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Dimensions,
   Image,
   Modal,
   ScrollView,
@@ -41,11 +40,7 @@ import {
 } from '../components/design-system/lib';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { useSidebar } from '../context/SidebarContext';
-import {
-  wardrobeService,
-  WardrobeItem,
-  getItemUsageFrequency,
-} from '../services/wardrobeService';
+import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
 import { useWardrobeViewed } from '../context/WardrobeViewedContext';
@@ -53,101 +48,26 @@ import { AppStackParamList } from '../types/navigation';
 import { resolveItemImage } from '../utils/url';
 import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
-
-const { width: screenWidth } = Dimensions.get('window');
-
-// Wardrobe filter chips — design order (node 3234:17793).
-const FILTER_TABS = [
-  'All',
-  'Top',
-  'Bottoms',
-  'One-Piece',
-  'Shoes',
-  'Ac',
-] as const;
-type FilterTab = (typeof FILTER_TABS)[number];
-
-// Grid — Figma node 2850:16492: 3 columns, 24px side padding, 4px gaps, 3:4 tiles.
-const HORIZONTAL_PADDING = 12;
-const GRID_GAP = 4;
-const GRID_COLUMNS = 3;
-const TILE_WIDTH =
-  (screenWidth - HORIZONTAL_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) /
-  GRID_COLUMNS;
-const TILE_HEIGHT = TILE_WIDTH * (4 / 3);
+import {
+  FILTER_TABS,
+  FilterTab,
+  GRID_GAP,
+  HORIZONTAL_PADDING,
+  PREPARING_POLL_MS,
+  READY_SNACKBAR_MS,
+  TILE_HEIGHT,
+  TILE_WIDTH,
+  isCommonItem,
+  isPreparing,
+  resolveFilterQuery,
+  resolveTileStatus,
+} from './wardrobe/wardrobe-grid';
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
   'Wardrobe'
 >;
 type ScreenRoute = RouteProp<AppStackParamList, 'Wardrobe'>;
-
-const resolveFilterQuery = (selectedTab: FilterTab): string | undefined => {
-  switch (selectedTab) {
-    case 'Top':
-      return 'top';
-    case 'Bottoms':
-      return 'bottom';
-    case 'Shoes':
-      return 'shoes';
-    case 'One-Piece':
-      return 'one_piece';
-    case 'Ac':
-      return 'accessory';
-    case 'All':
-    default:
-      return undefined;
-  }
-};
-
-const isCommonItem = (item: WardrobeItem): boolean =>
-  item.is_common_item === true ||
-  item.user_id === null ||
-  item.user_id === undefined;
-
-// AU-361: items are uploaded then processed (bg-removal + auto-tagging) in the
-// background. `is_preparing` flips true→false when processing finishes and the
-// item becomes ready to use. The grid renders a "preparing" overlay while true.
-const isPreparing = (item: WardrobeItem): boolean => item.is_preparing === true;
-
-// A grid tile shows at most one status pill (Figma: bottom-centre). The four
-// states are mutually exclusive and resolved with the precedence
-// new > less use > common (product decision):
-//   • new      — one of the user's OWN items (not a catalog/common item) that
-//     they uploaded but have not opened the detail for yet. "Viewed" is tracked
-//     locally per-user (see WardrobeViewedContext); opening the detail clears
-//     the tag. Checked first so a fresh upload reads as "new".
-//   • less use — user explicitly demoted the item (NORMAL ↔ LESS_USED). Wins
-//     over "common" so a demoted catalog item still reads as "less use".
-//   • common   — item originates from our shared database (catalog).
-//   • (none)   — a user item that has been seen.
-type TileStatus = 'new' | 'less_use' | 'common' | null;
-
-const resolveTileStatus = (item: WardrobeItem, viewed: boolean): TileStatus => {
-  // "New" only applies to the user's own uploads, never to catalog/common
-  // items — those carry the "common" tag regardless of whether they've been
-  // opened.
-  if (!isCommonItem(item) && !viewed) {
-    return 'new';
-  }
-  if (getItemUsageFrequency(item) === 'LESS_USED') {
-    return 'less_use';
-  }
-  if (isCommonItem(item)) {
-    return 'common';
-  }
-  return null;
-};
-
-// While any item is still preparing we poll the wardrobe so the ready
-// transition can actually be observed (the screen otherwise only refetches on
-// focus). Kept light: a single refetch every few seconds, stopped once nothing
-// is preparing.
-const PREPARING_POLL_MS = 4000;
-
-// AU-361: how long the self-controlled "item ready" snackbar stays on screen
-// before auto-hiding.
-const READY_SNACKBAR_MS = 4000;
 
 export const WardrobeScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
