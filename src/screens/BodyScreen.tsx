@@ -38,10 +38,9 @@ import { DotsLoader } from '../components/atoms/DotsLoader';
 import { Header } from '../components/layout/Header';
 import { PhotoSourceModal } from './body/PhotoSourceModal';
 import { BodyImageLightbox } from './body/BodyImageLightbox';
+import { BodyPhotoGrid } from './body/BodyPhotoGrid';
 
 const { width: screenWidth } = Dimensions.get('window');
-const IMAGE_GAP = 8;
-const IMAGE_SIZE = Math.floor((screenWidth - 44 - IMAGE_GAP * 2) / 3);
 // Body-photo detail (Settings redesign Frame 5): full-bleed 3:4 image.
 const DETAIL_IMAGE_HEIGHT = Math.round(screenWidth * (4 / 3));
 
@@ -312,69 +311,17 @@ export const BodyScreen = () => {
     }
   };
 
-  const renderBodyGrid = () => {
-    if (loading) {
-      return (
-        <View style={styles.imageRow}>
-          {[0, 1, 2].map(index => (
-            <View
-              key={`loading-${index}`}
-              style={[styles.imageCard, styles.placeholderCard]}
-            />
-          ))}
-        </View>
-      );
-    }
+  // Try-on: tapping a body photo selects it as the render base.
+  const handleSelectBody = (item: BodyItem) => {
+    setSelectedBodyId(item.id);
+    setGeneratedTryOnUrl(null);
+    setTryOnError(null);
+  };
 
-    if (items.length === 0) {
-      return (
-        <View style={styles.imageRow}>
-          {[0, 1, 2].map(index => (
-            <View
-              key={`placeholder-${index}`}
-              style={[styles.imageCard, styles.placeholderCard]}
-            />
-          ))}
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.imageRow}>
-        {items.slice(0, 3).map(item => {
-          const imageUri = resolveImageUrl(item.image_url);
-          const isSelected = item.id === selectedBodyId;
-
-          return (
-            <TouchableOpacity
-              key={item.id}
-              activeOpacity={0.88}
-              onPress={() => {
-                if (isTryOnMode) {
-                  setSelectedBodyId(item.id);
-                  setGeneratedTryOnUrl(null);
-                  setTryOnError(null);
-                } else {
-                  setSelectedImageUrl(imageUri);
-                  setLargeImageModalVisible(true);
-                }
-              }}
-              onLongPress={() => handleDelete(item.id)}
-              style={[
-                styles.imageCard,
-                isTryOnMode && isSelected && styles.imageCardSelected,
-              ]}
-            >
-              <Image
-                source={{ uri: imageUri }}
-                style={styles.previewImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    );
+  // Manage: tapping a body photo opens the full-screen lightbox.
+  const handlePreviewImage = (imageUri: string) => {
+    setSelectedImageUrl(imageUri);
+    setLargeImageModalVisible(true);
   };
 
   // Body-photo detail view (Settings redesign Frame 5).
@@ -531,7 +478,15 @@ export const BodyScreen = () => {
             <Text style={styles.sectionTitle}>
               {t('body.choose_body_photo')}
             </Text>
-            {renderBodyGrid()}
+            <BodyPhotoGrid
+              loading={loading}
+              items={items}
+              selectedBodyId={selectedBodyId}
+              isTryOnMode={isTryOnMode}
+              onSelectBody={handleSelectBody}
+              onPreviewImage={handlePreviewImage}
+              onDeleteItem={handleDelete}
+            />
 
             {items.length > 0 ? (
               <PillButton
@@ -565,7 +520,15 @@ export const BodyScreen = () => {
             </View>
 
             <Text style={styles.sectionTitle}>{t('body.your_photos')}</Text>
-            {renderBodyGrid()}
+            <BodyPhotoGrid
+              loading={loading}
+              items={items}
+              selectedBodyId={selectedBodyId}
+              isTryOnMode={isTryOnMode}
+              onSelectBody={handleSelectBody}
+              onPreviewImage={handlePreviewImage}
+              onDeleteItem={handleDelete}
+            />
 
             {items.length > 0 ? (
               <Text style={styles.helperText}>
@@ -712,28 +675,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...theme.typography.aliases.archivoButton,
     color: theme.colors.figmaText,
-  },
-  imageRow: {
-    flexDirection: 'row',
-    gap: IMAGE_GAP,
-  },
-  imageCard: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: theme.colors.white,
-  },
-  imageCardSelected: {
-    borderWidth: 2,
-    borderColor: '#3BA3D0',
-  },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholderCard: {
-    backgroundColor: '#E5E6EA',
   },
   helperText: {
     ...theme.typography.aliases.manropeCaption,
