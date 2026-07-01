@@ -26,6 +26,7 @@ import { Header } from '../components/layout/Header';
 import { SettingsDialog } from '../components/settings/SettingsDialog';
 import { Radio, RadioOptionList } from '../components/settings/RadioOptionList';
 import { SettingsSwitch } from '../components/settings/SettingsSwitch';
+import { TimeStepper } from '../components/settings/TimeStepper';
 import { Icons } from '../assets/icons';
 import {
   DailyNotificationFrequency,
@@ -218,6 +219,9 @@ export const SettingsScreen = () => {
     useState<ResolvedSettingsState>(DEFAULT_SETTINGS);
   const [pendingDisplayDirection, setPendingDisplayDirection] =
     useState<UserStyleDirection>(DEFAULT_SETTINGS.styleDirection);
+  const [pendingTime, setPendingTime] = useState<string>(
+    DEFAULT_SETTINGS.dailyNotification.time,
+  );
   const [pendingPeriod, setPendingPeriod] = useState<DailyNotificationPeriod>(
     DEFAULT_SETTINGS.dailyNotification.period,
   );
@@ -256,6 +260,7 @@ export const SettingsScreen = () => {
     const nextSettings = resolveSettings(nextUser?.user_metadata);
     setSettings(nextSettings);
     setPendingDisplayDirection(nextSettings.styleDirection);
+    setPendingTime(nextSettings.dailyNotification.time);
     setPendingPeriod(nextSettings.dailyNotification.period);
     setPendingFrequency(nextSettings.dailyNotification.frequency);
   }, []);
@@ -356,6 +361,7 @@ export const SettingsScreen = () => {
   };
 
   const openChangeTimeModal = () => {
+    setPendingTime(settings.dailyNotification.time);
     setPendingPeriod(settings.dailyNotification.period);
     setPendingFrequency(settings.dailyNotification.frequency);
     setActiveModal('changeTime');
@@ -363,6 +369,7 @@ export const SettingsScreen = () => {
 
   const closeChangeTimeModal = () => {
     if (isSavingTime) return;
+    setPendingTime(settings.dailyNotification.time);
     setPendingPeriod(settings.dailyNotification.period);
     setPendingFrequency(settings.dailyNotification.frequency);
     setActiveModal('none');
@@ -424,7 +431,7 @@ export const SettingsScreen = () => {
     if (enabled) {
       ensurePushPermissionAndRegister().then(granted => {
         if (!granted) {
-          Toast.show({
+          toast.show({
             type: 'info',
             text1: t('settings.push_permission_needed_title'),
             text2: t('settings.push_permission_needed_body'),
@@ -538,9 +545,9 @@ export const SettingsScreen = () => {
     }
   };
 
-  // Change-time dialog (Frame 3). Per CEO (Q12): the "07:30" time value is
-  // READ-ONLY display; only AM/PM (period) + Weekdays/Everydays (frequency)
-  // are interactive and persisted — mirrors the enabled-toggle persist path.
+  // Change-time dialog (Frame 3). The hour:minute value (TimeStepper), AM/PM
+  // (period) and Weekdays/Everydays (frequency) are all interactive and
+  // persisted together — mirrors the enabled-toggle persist path.
   const applyChangeTime = async () => {
     if (isSavingTime) return;
 
@@ -548,10 +555,10 @@ export const SettingsScreen = () => {
     try {
       await persistUserMetadata(
         // Safe: backend deep-merges user_metadata (routers/auth.py _deep_merge) —
-        // partial daily_notification patch preserves enabled/time. Only period +
-        // frequency are sent (time is read-only display per CEO Q12).
+        // partial daily_notification patch preserves enabled.
         {
           daily_notification: {
+            time: pendingTime,
             period: pendingPeriod,
             frequency: pendingFrequency,
           },
@@ -560,6 +567,7 @@ export const SettingsScreen = () => {
       );
       // AU-316: the cadence/period change had no event (tracking-plan §6.1 gap).
       track('notifications_schedule_changed', {
+        time: pendingTime,
         period: pendingPeriod,
         frequency: pendingFrequency,
       });
@@ -972,10 +980,16 @@ export const SettingsScreen = () => {
         primaryTestID="settings-time-update"
       >
         <View style={styles.timeDialogRow}>
-          {/* Time value is READ-ONLY display (CEO Q12) — no editor. */}
-          <Text style={styles.timeDialogValue} allowFontScaling={false}>
-            {settings.dailyNotification.time.replace(':', ' : ')}
-          </Text>
+          {/* Editable hour:minute spinner. AM/PM lives in the period stack. */}
+          <TimeStepper
+            value={pendingTime}
+            onChange={setPendingTime}
+            testIDPrefix="settings-time"
+            hourUpA11yLabel={t('settings.a11y_time_hour_up')}
+            hourDownA11yLabel={t('settings.a11y_time_hour_down')}
+            minuteUpA11yLabel={t('settings.a11y_time_minute_up')}
+            minuteDownA11yLabel={t('settings.a11y_time_minute_down')}
+          />
 
           <View style={styles.periodStack}>
             {(['AM', 'PM'] as DailyNotificationPeriod[]).map(period => (
@@ -1129,10 +1143,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 16,
-  },
-  timeDialogValue: {
-    ...theme.typography.aliases.uacH1Bold,
-    color: theme.colors.uacTextBase,
   },
   periodStack: {
     gap: 4,

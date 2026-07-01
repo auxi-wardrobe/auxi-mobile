@@ -228,7 +228,8 @@ describe('applyChangeTime', () => {
     press(oneByTestID(root, 'settings-time-row'));
     expect(isDialogOpen(root, 'settings-time-update')).toBe(true);
 
-    // choose PM + everydays then update
+    // bump the hour once (06 → 07), then choose PM + everydays and update
+    press(oneByTestID(root, 'settings-time-hour-up'));
     press(oneByTestID(root, 'settings-time-period-pm'));
     press(oneByTestID(root, 'settings-time-freq-everydays'));
     press(oneByTestID(root, 'settings-time-update'));
@@ -236,7 +237,11 @@ describe('applyChangeTime', () => {
 
     expect(updateCurrentUser).toHaveBeenCalledWith({
       user_metadata: {
-        daily_notification: { period: 'PM', frequency: 'everydays' },
+        daily_notification: {
+          time: '07:15',
+          period: 'PM',
+          frequency: 'everydays',
+        },
       },
     });
     // synced from server response + dialog closed
