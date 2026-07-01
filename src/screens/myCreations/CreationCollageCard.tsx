@@ -13,12 +13,19 @@ import { COLLAGE_ASPECT } from '../../components/features/collage-seed-layout';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
 import IconCalendarAdd from '../../assets/images/icon_calendar_add.svg';
 import IconSparkle from '../../assets/images/icon_sparkle.svg';
-import { Creation } from '../../services/creationsService';
+import { Creation, CreationItem } from '../../services/creationsService';
 import { formatDateLabel } from '../favourite/group-by-date';
 
 type Props = {
   creation: Creation;
   onRemove: (id: string) => void;
+  /**
+   * Open an item's detail from the collage. When provided, each collage tile
+   * becomes tappable and calls this with the tapped item; omit it to keep the
+   * tiles a static, non-interactive render. Mirrors FavouriteOutfitCard's
+   * per-item `onItemPress`.
+   */
+  onItemPress?: (item: CreationItem) => void;
   /**
    * Add this creation to the Schedule (calendar) page. When provided, a
    * calendar-add button renders next to Remove. Omit it (e.g. when the card is
@@ -47,6 +54,7 @@ type Props = {
 export const CreationCollageCard: React.FC<Props> = ({
   creation,
   onRemove,
+  onItemPress,
   onSchedule,
   onVisualize,
 }) => {
@@ -100,9 +108,18 @@ export const CreationCollageCard: React.FC<Props> = ({
       >
         {factor > 0
           ? creation.items.map(item => (
-              <View
+              // Each tile opens the item's detail when the screen wires
+              // `onItemPress`; otherwise it stays a static, non-interactive
+              // render (disabled TouchableOpacity == a plain View here). The
+              // testID is preserved so existing Maestro selectors still resolve.
+              <TouchableOpacity
                 key={item.id}
                 testID={`${testIDPrefix}-tile-${item.id}`}
+                accessibilityRole="button"
+                accessibilityLabel={t('myCreations.view_item_a11y')}
+                activeOpacity={0.86}
+                disabled={!onItemPress}
+                onPress={onItemPress ? () => onItemPress(item) : undefined}
                 style={[
                   styles.collageItem,
                   {
@@ -123,7 +140,7 @@ export const CreationCollageCard: React.FC<Props> = ({
                   style={styles.collageImage}
                   resizeMode="contain"
                 />
-              </View>
+              </TouchableOpacity>
             ))
           : null}
       </View>

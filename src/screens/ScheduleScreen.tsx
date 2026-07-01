@@ -24,6 +24,7 @@ import { track } from '../services/analytics';
 import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { AppStackParamList } from '../types/navigation';
 import { Favourite } from '../services/favouriteService';
+import { resolveWardrobeItemId } from '../services/creationsService';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
 import { CreationCollageCard } from './myCreations/CreationCollageCard';
 import { AddToScheduleSheet } from './schedule/AddToScheduleSheet';
@@ -365,6 +366,12 @@ export const ScheduleScreen: React.FC = () => {
                   key={outfit.creation.id}
                   creation={outfit.creation}
                   onRemove={id => unscheduleOutfit(selectedKey, id)}
+                  onItemPress={item => {
+                    const wardrobeId = resolveWardrobeItemId(item);
+                    if (wardrobeId) {
+                      navigation.navigate('ItemDetail', { itemId: wardrobeId });
+                    }
+                  }}
                 />
               ),
             )}

@@ -579,6 +579,7 @@
       "back": "Back",
       "empty_body": "Save a creation from the canvas to see it here.",
       "remove_a11y": "Remove creation",
+      "view_item_a11y": "View item details",
       "remove_title": "Remove from your Creations",
       "remove_body": "Are you sure to remove this outfit from your creation list?",
       "remove_confirm": "Yes",
