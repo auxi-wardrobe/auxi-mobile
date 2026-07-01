@@ -24,10 +24,15 @@ jest.mock('../../../theme/motion', () => ({
 
 import { ContextualBottomSheet } from '../ContextualBottomSheet';
 
+// Match only host (rendered) elements — a composite component that merely
+// receives `testID` as a prop (e.g. ContextualBottomSheet itself) is NOT a
+// rendered node, so it must not count. Without the host filter, the hidden-state
+// query returns the composite root even though it renders null.
 const findByTestID = (
   root: ReactTestInstance,
   id: string,
-): ReactTestInstance[] => root.findAll(n => n.props?.testID === id);
+): ReactTestInstance[] =>
+  root.findAll(n => typeof n.type === 'string' && n.props?.testID === id);
 
 const render = (el: React.ReactElement): TestRenderer.ReactTestRenderer => {
   let r!: TestRenderer.ReactTestRenderer;
@@ -40,7 +45,11 @@ const render = (el: React.ReactElement): TestRenderer.ReactTestRenderer => {
 describe('ContextualBottomSheet', () => {
   it('renders nothing while hidden', () => {
     const r = render(
-      <ContextualBottomSheet visible={false} onDismiss={() => {}} testID="sheet">
+      <ContextualBottomSheet
+        visible={false}
+        onDismiss={() => {}}
+        testID="sheet"
+      >
         <Text>body</Text>
       </ContextualBottomSheet>,
     );
