@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +22,7 @@ import {
   UsageFrequency,
   WardrobeAttributeUpdate,
   WardrobeItem,
+  wardrobeKeys,
   wardrobeService,
 } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
@@ -62,6 +64,7 @@ export const ItemDetailScreen = () => {
   const route = useRoute<ScreenRoute>();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { itemId, fallbackItem } = route.params;
 
   const [item, setItem] = useState<WardrobeItem | null>(null);
@@ -300,6 +303,9 @@ export const ItemDetailScreen = () => {
             }
           : currentItem,
       );
+      // Wardrobe list is cached (60s stale, no focus-refetch): mutations must
+      // invalidate to refresh the grid when returning from ItemDetail.
+      queryClient.invalidateQueries({ queryKey: wardrobeKeys.all });
     } catch (error) {
       console.error('Failed to update usage frequency', error);
       setItem(previousItem);
@@ -360,6 +366,7 @@ export const ItemDetailScreen = () => {
                 text1: t('wardrobe.itemDetail.toast_deleted'),
                 position: 'bottom',
               });
+              queryClient.invalidateQueries({ queryKey: wardrobeKeys.all });
               navigation.goBack();
             } catch (error) {
               console.error('Failed to delete item', error);
@@ -464,6 +471,7 @@ export const ItemDetailScreen = () => {
       setItem(mergedItem);
       syncDraftsFromItem(mergedItem);
       setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: wardrobeKeys.all });
 
       // §3.4 #30: collapse API payload keys to user-facing field names so
       // analytics sees the human concept (color/fit) instead of the storage
