@@ -61,10 +61,8 @@ import {
 } from '../../config/temperature-buckets';
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
-import {
-  HomeView,
-  HomeViewToggleFooter,
-} from '../../components/features/HomeViewToggleFooter';
+import { HomeView } from '../../components/features/HomeViewToggleFooter';
+import { HomeNavToggleFooter } from '../../components/features/HomeNavToggleFooter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OUTFITS_PER_SET } from '../../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../../hooks/usePinReducer';
@@ -1313,8 +1311,8 @@ export const HomeScreen = () => {
         activeBucketKey={activeBucketKey}
         weather={weather}
         onOpenTemp={openTempSheet}
-        hasUnseenFavourites={hasUnseenFavourites}
-        onOpenFavourites={handleOpenFavourites}
+        homeView={homeView}
+        onSelectView={setHomeView}
       />
 
       {/* Floating toast layer (z-index tier 5) — sits on top of the grid,
@@ -1436,12 +1434,7 @@ export const HomeScreen = () => {
         onOpenFeedback={() => setFeedbackVisible(true)}
       />
 
-      <HomeViewToggleFooter
-        testID="home-footer-view-toggle"
-        source="home"
-        activeView={homeView}
-        onSelectView={setHomeView}
-      />
+      <HomeNavToggleFooter testID="home-footer-nav-toggle" />
 
       <ContextChipsModal
         visible={refine.isOpen && !refine.isEditing}
