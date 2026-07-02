@@ -60,6 +60,16 @@ export interface WardrobeItem {
   [key: string]: unknown;
 }
 
+/**
+ * React Query keys for wardrobe item lists. `list()` defaults to the 'All'
+ * filter so HomeScreen and the Wardrobe screen's "All" tab share ONE cache
+ * entry — opening Wardrobe right after Home is instant.
+ */
+export const wardrobeKeys = {
+  all: ['wardrobe-items'] as const,
+  list: (filter: string = 'All') => ['wardrobe-items', filter] as const,
+};
+
 const wardrobeApi = axios.create({
   baseURL: WARDROBE_URL,
   headers: {

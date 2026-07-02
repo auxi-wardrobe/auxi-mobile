@@ -17,7 +17,9 @@
  * Toast / safe-area / SVGs come from jest.setup.js + moduleNameMapper.
  */
 import React from 'react';
+import { Alert } from 'react-native';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { toast } from '../../components/design-system/lib';
 import { ItemDetailScreen } from '../ItemDetailScreen';
 import { formatItemDate } from '../../utils/wardrobeItemMappers';
@@ -75,18 +77,23 @@ jest.mock('react-i18next', () => {
 });
 
 const mockGetWardrobeItem = jest.fn();
+const mockDeleteWardrobeItem = jest.fn();
 
 jest.mock('../../services/wardrobeService', () => ({
   wardrobeService: {
     getWardrobeItem: (...args: unknown[]) => mockGetWardrobeItem(...args),
     toggleFavorite: jest.fn(),
     updateUsageFrequency: jest.fn(),
-    deleteWardrobeItem: jest.fn(),
+    deleteWardrobeItem: (...args: unknown[]) => mockDeleteWardrobeItem(...args),
     updateWardrobeItemAttributes: jest.fn(),
   },
   getItemFitLabel: () => 'Regular',
   getItemStyleTags: () => [],
   getItemUsageFrequency: () => 'NORMAL',
+  wardrobeKeys: {
+    all: ['wardrobe-items'],
+    list: (f: string = 'All') => ['wardrobe-items', f],
+  },
 }));
 
 // Cuts the utils/url → apiClient → react-native-keychain import chain.
@@ -138,10 +145,22 @@ const flushPromises = async () => {
 
 const liveRenderers: TestRenderer.ReactTestRenderer[] = [];
 
-const renderScreen = async () => {
+// gcTime: 0 prevents Jest's event loop from being kept alive by the default
+// 5-minute garbage-collection timer on unmounted queries.
+const makeTestClient = () =>
+  new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+
+const renderScreen = async (queryClient?: QueryClient) => {
+  const client = queryClient ?? makeTestClient();
   let renderer!: TestRenderer.ReactTestRenderer;
   await act(async () => {
-    renderer = TestRenderer.create(<ItemDetailScreen />);
+    renderer = TestRenderer.create(
+      <QueryClientProvider client={client}>
+        <ItemDetailScreen />
+      </QueryClientProvider>,
+    );
   });
   liveRenderers.push(renderer);
   await flushPromises(); // settle the loadItem mount effect
@@ -198,7 +217,9 @@ describe('read mode', () => {
 
     // CTA copy renamed from "Mix with this" (testID preserved for Maestro)
     const cta = oneByTestID(root, 'item-detail-mix-btn');
-    const ctaLabel = cta.findAll(n => n.props?.children === 'Build around this');
+    const ctaLabel = cta.findAll(
+      n => n.props?.children === 'Build around this',
+    );
     expect(ctaLabel.length).toBeGreaterThan(0);
     expect(
       root.findAll(n => n.props?.children === 'Mix with this').length,
@@ -394,5 +415,39 @@ describe('edit mode', () => {
     // read-mode block replaced
     expect(byTestID(root, 'item-detail-title').length).toBe(0);
     expect(byTestID(root, 'item-detail-mix-btn').length).toBe(0);
+  });
+});
+
+// =============================================================================
+// 5. cache invalidation — wardrobe list cached with no focus-refetch
+// =============================================================================
+describe('cache invalidation', () => {
+  it('invalidates wardrobe cache after successful delete', async () => {
+    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+    mockDeleteWardrobeItem.mockResolvedValue(undefined);
+
+    const testClient = makeTestClient();
+    const invalidateSpy = jest.spyOn(testClient, 'invalidateQueries');
+
+    // Bypass the native Alert: immediately invoke the destructive confirm button.
+    const alertSpy = jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((_title, _message, buttons) => {
+        const confirmBtn = buttons?.find(b => b.style === 'destructive');
+        confirmBtn?.onPress?.();
+      });
+
+    try {
+      const r = await renderScreen(testClient);
+
+      press(oneByTestID(r.root, 'item-detail-delete-btn'));
+      await flushPromises();
+
+      expect(invalidateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ queryKey: ['wardrobe-items'] }),
+      );
+    } finally {
+      alertSpy.mockRestore();
+    }
   });
 });
