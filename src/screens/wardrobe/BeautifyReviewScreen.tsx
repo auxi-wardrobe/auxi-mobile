@@ -1,17 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { wardrobeService, wardrobeKeys } from '../../services/wardrobeService';
 import { MButton } from '../../components/design-system/lib';
 import { track } from '../../services/analytics';
 import { theme } from '../../theme/theme';
+import type { AppStackParamList } from '../../types/navigation';
 
 const REGEN_CAP = 5;
 
+type ScreenNavigation = NativeStackNavigationProp<AppStackParamList>;
+type ScreenRoute = RouteProp<AppStackParamList, 'BeautifyReview'>;
+
 export function BeautifyReviewScreen() {
-  const nav = useNavigation<any>();
-  const route = useRoute<any>();
+  const nav = useNavigation<ScreenNavigation>();
+  const route = useRoute<ScreenRoute>();
   const qc = useQueryClient();
   const { itemId, originalUri } = route.params;
   const [candidate, setCandidate] = useState<string | undefined>();
@@ -41,7 +54,7 @@ export function BeautifyReviewScreen() {
       await wardrobeService.acceptBeautify(itemId);
       track('beautify_accepted');
       done();
-    } finally {
+    } catch {
       setBusy(false);
     }
   };
@@ -52,7 +65,7 @@ export function BeautifyReviewScreen() {
       await wardrobeService.discardBeautify(itemId);
       track('beautify_kept_original');
       done();
-    } finally {
+    } catch {
       setBusy(false);
     }
   };
@@ -61,7 +74,7 @@ export function BeautifyReviewScreen() {
     setBusy(true);
     try {
       await wardrobeService.beautifyItem(itemId);
-      track('beautify_regenerated', { attempt: attempts + 1 });
+      track('beautify_regenerated', { source: 'review', attempt: attempts + 1 });
       nav.replace('BeautifyPending', { itemId, originalUri });
     } catch {
       setBusy(false); // cap hit (409) or network — stay on review
@@ -71,7 +84,11 @@ export function BeautifyReviewScreen() {
   const atCap = attempts >= REGEN_CAP;
 
   return (
-    <View style={styles.container} testID="beautify-review">
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      testID="beautify-review"
+    >
       <Text style={styles.title}>Studio shot ready ✨</Text>
       <View style={styles.row}>
         <View style={styles.col}>
@@ -113,17 +130,20 @@ export function BeautifyReviewScreen() {
       >
         Keep original
       </MButton>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scroll: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  container: {
+    flexGrow: 1,
     padding: theme.spacing.l,
     gap: theme.spacing.m,
     justifyContent: 'center',
-    backgroundColor: theme.colors.background,
   },
   title: {
     fontSize: 20,

@@ -1,52 +1,81 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MacgieLoader } from '../../components/macgie';
 import { MButton } from '../../components/design-system/lib';
 import { wardrobeService } from '../../services/wardrobeService';
 import { beautifyStep, BEAUTIFY_POLL_MS } from './beautify-status';
 import { track } from '../../services/analytics';
 import { theme } from '../../theme/theme';
+import type { AppStackParamList } from '../../types/navigation';
 
 const MAX_WAIT_MS = 3 * 60 * 1000;
 
+type ScreenNavigation = NativeStackNavigationProp<AppStackParamList>;
+type ScreenRoute = RouteProp<AppStackParamList, 'BeautifyPending'>;
+
 export function BeautifyPendingScreen() {
-  const nav = useNavigation<any>();
-  const route = useRoute<any>();
+  const nav = useNavigation<ScreenNavigation>();
+  const route = useRoute<ScreenRoute>();
   const { itemId, originalUri } = route.params;
   const [elapsed, setElapsed] = useState(0);
   const [failed, setFailed] = useState(false);
   const started = useRef(Date.now());
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    const tick = setInterval(() => {
-      if (alive) setElapsed(Date.now() - started.current);
+  const clearIntervals = () => {
+    if (tickRef.current) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const startIntervals = (alive: { current: boolean }) => {
+    tickRef.current = setInterval(() => {
+      if (alive.current) setElapsed(Date.now() - started.current);
     }, 1000);
-    const poll = setInterval(async () => {
-      if (!alive) return;
+    pollRef.current = setInterval(async () => {
+      if (!alive.current) return;
       if (Date.now() - started.current > MAX_WAIT_MS) {
+        clearIntervals();
         setFailed(true);
         return;
       }
       try {
         const s = await wardrobeService.getBeautifyStatus(itemId);
-        if (!alive) return;
+        if (!alive.current) return;
         if (s.status === 'ready') {
           track('beautify_ready');
-          nav.replace('BeautifyReview', { itemId, originalUri, from: 'loader' });
+          nav.replace('BeautifyReview', {
+            itemId,
+            originalUri,
+            from: 'loader',
+          });
         } else if (s.status === 'failed') {
+          clearIntervals();
           setFailed(true);
         }
       } catch {
         // keep polling
       }
     }, BEAUTIFY_POLL_MS);
+  };
+
+  useEffect(() => {
+    const alive = { current: true };
+    startIntervals(alive);
     return () => {
-      alive = false;
-      clearInterval(tick);
-      clearInterval(poll);
+      alive.current = false;
+      clearIntervals();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId, nav, originalUri]);
 
   if (failed) {
@@ -73,10 +102,12 @@ export function BeautifyPendingScreen() {
             setElapsed(0);
             try {
               await wardrobeService.beautifyItem(itemId);
-              track('beautify_regenerated', { attempt: 'retry' });
+              track('beautify_regenerated', { source: 'retry_pending' });
             } catch {
               // ignore — server-side cap or network; UI already reset
             }
+            const alive = { current: true };
+            startIntervals(alive);
           }}
         >
           Try again
