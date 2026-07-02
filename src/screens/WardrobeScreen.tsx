@@ -205,8 +205,11 @@ export const WardrobeScreen = () => {
   };
 
   const handleSelectSort = (value: SortValue) => {
-    setSortValue(value);
     setSortSheetVisible(false);
+    if (value === sortValue) {
+      return;
+    }
+    setSortValue(value);
     const opt = SORT_OPTION_BY_VALUE[value];
     track('wardrobe_sort_changed', {
       sort_by: opt.sortBy,
