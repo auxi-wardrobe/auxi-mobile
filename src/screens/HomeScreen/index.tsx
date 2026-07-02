@@ -691,6 +691,17 @@ export const HomeScreen = () => {
           setListOutfits(mapped);
           setActiveIndex(0);
           activeIndexRef.current = 0;
+          // A fresh pinned deck is a new generation cycle: clear the
+          // depletion/limit flags so buffering resumes for the pinned context
+          // and the limit sheet can fire again once the pinned pool is truly
+          // exhausted. Without this, pinning after a prior depletion leaves the
+          // user on a dead-end swipe with no OutfitLimitSheet. Mirrors the
+          // cold-start reset above.
+          unfavoritedSwipeCountRef.current = 0;
+          poolDepletedRef.current = false;
+          limitSheetShownRef.current = false;
+          setHasCycled(false);
+          setIsWardrobeGap(false);
         }
         pinDispatch({
           type: result.lowConfidence ? 'GENERATE_FALLBACK' : 'GENERATE_SUCCESS',
