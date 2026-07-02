@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   // sm: tighter 6px frame so a 2-icon toggle lands at ~84×44 (header chip).
   fbarSm: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg, // 10 — softer tan-background corners on the sm chip
     padding: 6,
   },
   fthumb: {
