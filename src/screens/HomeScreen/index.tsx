@@ -37,7 +37,7 @@ import {
 import { recommendV05, resetV05Session } from '../../services/v05Api';
 import { moodForMode } from '../../services/mood/mood-vocabulary';
 import { favouriteService } from '../../services/favouriteService';
-import { wardrobeService } from '../../services/wardrobeService';
+import { wardrobeService, wardrobeKeys } from '../../services/wardrobeService';
 import {
   track,
   trackRecommendationViewedOnce,
@@ -804,7 +804,9 @@ export const HomeScreen = () => {
   }, [route.params?.swapItem, navigation]);
 
   const { data: wardrobeItemsData } = useQuery({
-    queryKey: ['home-wardrobe-items'],
+    // Shared with the Wardrobe screen's "All" tab (wardrobeKeys.list('All')) so
+    // the two screens reuse one cache entry. Home keeps its tighter 30s stale.
+    queryKey: wardrobeKeys.list(),
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 30_000,
   });
