@@ -1,19 +1,18 @@
 # auxi/maestro/flows/home/swipe.yaml
 # Home flow — Tinder-style swipe deck (supersedes the AU-303 two-axis flow).
 # Spec: auxi/docs/superpowers/specs/2026-06-12-home-tinder-swipe-design.md
-#   1. Header favourites shortcut present (heart → Favourite page, saved dot)
+#   1. Bottom Home | Wardrobe nav toggle present (home tab active)
 #   2. Swipe LEFT  = next card
 #   3. Swipe RIGHT = next card
 #   4. Remix button present
 #
-# The header heart is a quick-access shortcut to the Favourite page (mint dot
-# when looks are saved), not an inline save toggle. Swiping (either direction)
-# only browses to the next outfit — saving is exclusively the "Wear this"
-# footer button now.
+# The header heart shortcut was removed; Favourites is reached via the drawer.
+# Swiping (either direction) only browses to the next outfit — saving is
+# exclusively the "Wear this" footer button now.
 #
 # Selector note: per-card testIDs are now keyed by the dynamic `outfitHash`
 # (`home-outfit-sheet-<hash>`), so this flow asserts only on STABLE selectors:
-# `home-swipe-deck`, `home-favourites-shortcut`, `home-remix`. Richer
+# `home-swipe-deck`, `home-footer-nav-home-active`, `home-remix`. Richer
 # per-card / save-confirmation assertions need stable card testIDs (follow-up).
 # Swipe-gesture fidelity (finger-follow, ±6° tilt, no-bounce spring) is verified
 # by the iOS sim walk in the spec §8 — Maestro covers structure + regression.
@@ -38,12 +37,13 @@ env:
       id: home-swipe-deck
     timeout: ${RECOMMENDATION_TIMEOUT_MS}
 
-# --- 1. Header favourites shortcut present ---
-# The header heart is a quick-access shortcut to the Favourite page, not an
-# inline save toggle. Assert it is present; tapping it would leave Home, so the
-# swipe steps below cover the browse gestures.
+# --- 1. Bottom Home | Wardrobe nav toggle present (home tab active) ---
+# The footer is a nav toggle now: the grid/home tab marks the current screen and
+# the wardrobe tab navigates away. Assert the home tab is present + active;
+# tapping wardrobe would leave Home, so the swipe steps below cover the browse
+# gestures.
 - assertVisible:
-    id: home-favourites-shortcut
+    id: home-footer-nav-home-active
 
 # --- 2. Swipe LEFT = next card ---
 - swipe:

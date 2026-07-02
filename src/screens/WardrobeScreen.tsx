@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../components/design-system/lib';
 import { CategoryTabs } from '../components/features/CategoryTabs';
+import { HomeWardrobeNavFooter } from '../components/features/HomeWardrobeNavFooter';
 import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
 import { Header } from '../components/layout/Header';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -301,6 +302,7 @@ export const WardrobeScreen = () => {
       )}
 
       <ScrollView
+        style={styles.scroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
@@ -454,7 +456,15 @@ export const WardrobeScreen = () => {
             style={styles.changeCta}
           />
         </View>
-      ) : null}
+      ) : (
+        // Shared Home | Wardrobe bottom nav — the wardrobe tab reads as active
+        // here; tapping the home tab returns to Home. Hidden in picker mode,
+        // where the "Change" commit bar owns the bottom.
+        <HomeWardrobeNavFooter
+          active="wardrobe"
+          testID="wardrobe-footer-nav-toggle"
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -502,6 +512,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
     borderRadius: theme.borderRadius.m,
     ...theme.ds.shadow.headerIcon,
+  },
+  scroll: {
+    flex: 1,
   },
   scrollContent: {
     paddingTop: 12,

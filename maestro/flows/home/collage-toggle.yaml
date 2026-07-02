@@ -4,9 +4,10 @@
 # Plan: plans/260529-1401-home-collage-canvas-play/plan.md (Phase 05)
 # Figma: 0nXXMAR4Arf1ZfjtQvtBh0 section 2850:13589 "Home | Collage View"
 #
-# Scope: footer 2-icon toggle switches the sheet's middle region between the
-#   adaptive grid and the drag-to-play canvas surface, in-place, and back.
-#   Also smoke-drags an item on the collage surface (no crash).
+# Scope: header 2-icon view toggle (top-right, moved out of the footer) switches
+#   the sheet's middle region between the adaptive grid and the drag-to-play
+#   canvas surface, in-place, and back. Also smoke-drags an item on the collage
+#   surface (no crash).
 #
 # Out of scope: exact seed positions (visual fidelity → qa-ui Compare mode),
 #   per-item id assertions (ids are backend-dynamic; we assert the surface
@@ -37,16 +38,16 @@ env:
       id: home-tile-0-0
     timeout: ${RECOMMENDATION_TIMEOUT_MS}
 - assertVisible:
-    id: home-footer-tab-grid-active
+    id: home-view-tab-grid-active
 
 # --- 2. Toggle to collage: surface appears, grid tiles swapped out ---
 - tapOn:
-    id: home-footer-tab-collage
+    id: home-view-tab-collage
 - waitForAnimationToEnd
 - assertVisible:
     id: home-collage-0
 - assertVisible:
-    id: home-footer-tab-collage-active
+    id: home-view-tab-collage-active
 - assertNotVisible:
     id: home-tile-0-0
 
@@ -61,9 +62,9 @@ env:
 
 # --- 4. Toggle back to grid: tiles return ---
 - tapOn:
-    id: home-footer-tab-grid
+    id: home-view-tab-grid
 - waitForAnimationToEnd
 - assertVisible:
     id: home-tile-0-0
 - assertVisible:
-    id: home-footer-tab-grid-active
+    id: home-view-tab-grid-active
