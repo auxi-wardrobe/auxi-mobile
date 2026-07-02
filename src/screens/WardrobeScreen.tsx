@@ -24,7 +24,11 @@ import { PressableScale } from '../components/primitives/PressableScale';
 import { MActionSheet, MButton } from '../components/design-system/lib';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { useSidebar } from '../context/SidebarContext';
-import { wardrobeService, WardrobeItem, wardrobeKeys } from '../services/wardrobeService';
+import {
+  wardrobeService,
+  WardrobeItem,
+  wardrobeKeys,
+} from '../services/wardrobeService';
 import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
 import { useWardrobeViewed } from '../context/WardrobeViewedContext';
@@ -145,6 +149,13 @@ export const WardrobeScreen = () => {
 
   // F7: surface the load-failed toast + analytics once per error episode.
   const loadFailedRef = useRef(false);
+
+  // A tab change starts a fresh error episode — allow the load-failed toast +
+  // analytics to fire once for the newly selected tab.
+  useEffect(() => {
+    loadFailedRef.current = false;
+  }, [selectedTab]);
+
   useEffect(() => {
     if (loadError && !loadFailedRef.current) {
       loadFailedRef.current = true;
