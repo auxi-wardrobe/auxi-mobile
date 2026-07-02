@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ContextualBottomSheet } from '../../components/features/ContextualBottomSheet';
@@ -33,6 +33,15 @@ export const AddItemSheet: React.FC<AddItemSheetProps> = ({
 }) => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<UploadMode>('remove_bg');
+
+  // ContextualBottomSheet keeps children mounted through its close animation, so
+  // reset the mode when the sheet is dismissed — otherwise a beautify selection
+  // that wasn't acted on would silently carry into the next open.
+  useEffect(() => {
+    if (!visible) {
+      setMode('remove_bg');
+    }
+  }, [visible]);
 
   return (
     <ContextualBottomSheet

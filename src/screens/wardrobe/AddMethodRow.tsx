@@ -35,9 +35,7 @@ export const AddMethodRow: React.FC<AddMethodRowProps> = ({
     accessibilityLabel={title}
     accessibilityState={{ selected }}
   >
-    {icon !== undefined ? (
-      <View style={styles.methodIcon}>{icon}</View>
-    ) : null}
+    {icon !== undefined ? <View style={styles.methodIcon}>{icon}</View> : null}
     <View style={styles.methodTexts}>
       <Text style={styles.methodTitle}>{title}</Text>
       <Text style={styles.methodDescription}>{description}</Text>
@@ -58,6 +56,9 @@ const styles = StyleSheet.create({
   },
   /** Selected border replaces the divider — gives a clean radio-style indicator. */
   methodRowSelected: {
+    // 1.5px: one notch heavier than the 1px list divider so the selection ring
+    // reads as emphasis without jumping to a full 2px. No border-width token
+    // exists in theme.ts (only borderRadius is tokenised).
     borderWidth: 1.5,
     borderColor: theme.colors.figmaAction,
     borderRadius: theme.borderRadius.m,

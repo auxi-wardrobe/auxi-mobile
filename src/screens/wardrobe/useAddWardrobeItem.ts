@@ -142,6 +142,23 @@ export const useAddWardrobeItem = ({
             track('wardrobe_item_added', addedProps);
 
             if (mode === 'beautify') {
+              // The beautify job needs a durable item id. If the upload
+              // response is missing one, fail loudly here rather than calling
+              // beautifyItem(undefined) — otherwise the generic catch below
+              // masks the real cause and the item exists with no beautify job.
+              if (!createdItem?.id) {
+                track('add_item_upload_failed', {
+                  source: type,
+                  reason: 'missing_item_id',
+                });
+                toast.show({
+                  type: 'error',
+                  text1: t('wardrobe.list.upload_failed_title'),
+                  text2: t('wardrobe.list.upload_failed_body'),
+                  position: 'bottom',
+                });
+                return;
+              }
               // Submit the beautify job then navigate to the pending screen.
               // wardrobeService.beautifyItem kicks off a background job and
               // returns immediately with {job_id, status, attempts}.
@@ -199,6 +216,15 @@ export const useAddWardrobeItem = ({
     uploadingPhotoUri,
     handleImageSelection,
     handleTakePhoto,
-    aiConsentDialogProps: consentGate.dialogProps,
+    // Decorate the gate's onDecline so a declined beautify consent is tracked
+    // as an aborted upload (funnel visibility) before the gate drops the
+    // pending action. All other dialog props pass through unchanged.
+    aiConsentDialogProps: {
+      ...consentGate.dialogProps,
+      onDecline: () => {
+        track('add_item_upload_cancelled', { reason: 'ai_consent_declined' });
+        consentGate.dialogProps.onDecline();
+      },
+    },
   };
 };
