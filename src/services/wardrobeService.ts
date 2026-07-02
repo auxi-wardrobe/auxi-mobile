@@ -57,7 +57,18 @@ export interface WardrobeItem {
   //   occasion" status line.
   is_exploration_item?: boolean;
   exploration_waiting?: boolean;
+  // AI Beautify fields (Task 9 — backend /api/wardrobe/items/{id}/beautify*)
+  image_studio?: string;
+  image_studio_candidate?: string;
+  beautify_status?: 'none' | 'pending' | 'ready' | 'accepted' | 'discarded' | 'failed';
+  beautify_attempts?: number;
   [key: string]: unknown;
+}
+
+export interface BeautifyStatus {
+  status: 'none' | 'pending' | 'ready' | 'accepted' | 'discarded' | 'failed';
+  candidate_url?: string;
+  attempts: number;
 }
 
 const wardrobeApi = axios.create({
@@ -344,6 +355,26 @@ export const wardrobeService = {
       console.error('Error enhancing wardrobe item', error);
       throw error;
     }
+  },
+
+  beautifyItem: async (id: string): Promise<{ job_id: string; status: string; attempts: number }> => {
+    const response = await wardrobeApi.post(`/wardrobe/items/${id}/beautify`);
+    return response.data;
+  },
+
+  getBeautifyStatus: async (id: string): Promise<BeautifyStatus> => {
+    const response = await wardrobeApi.get(`/wardrobe/items/${id}/beautify/status`);
+    return response.data;
+  },
+
+  acceptBeautify: async (id: string): Promise<WardrobeItem> => {
+    const response = await wardrobeApi.post(`/wardrobe/items/${id}/beautify/accept`);
+    return getSingleItem(response.data);
+  },
+
+  discardBeautify: async (id: string): Promise<WardrobeItem> => {
+    const response = await wardrobeApi.post(`/wardrobe/items/${id}/beautify/discard`);
+    return getSingleItem(response.data);
   },
 
   uploadWardrobeItem: async (
