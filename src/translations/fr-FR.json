@@ -268,7 +268,24 @@
         "preparing_step1": "Suppression de l'arrière-plan et identification des détails…",
         "preparing_step2": "Étiquetage automatique de vos articles…",
         "preparing_tile": "Préparation de cet article",
-        "error_body": "Impossible de charger votre garde-robe. Vérifiez votre connexion et réessayez."
+        "error_body": "Impossible de charger votre garde-robe. Vérifiez votre connexion et réessayez.",
+        "sort": {
+          "label": "Sort",
+          "title": "Sort by",
+          "a11y_open": "Open sort options, currently {{option}}",
+          "newest": "Newest first",
+          "oldest": "Oldest first",
+          "name_az": "Name (A–Z)",
+          "name_za": "Name (Z–A)",
+          "most_worn": "Most worn",
+          "least_worn": "Least worn",
+          "short_newest": "Newest",
+          "short_oldest": "Oldest",
+          "short_name_az": "A–Z",
+          "short_name_za": "Z–A",
+          "short_most_worn": "Most worn",
+          "short_least_worn": "Least worn"
+        }
       },
       "database": {
         "title": "Base de données",
