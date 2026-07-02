@@ -71,6 +71,17 @@ export interface BeautifyStatus {
   attempts: number;
 }
 
+/**
+ * Shared TanStack Query key factory — one cache entry for wardrobe items
+ * regardless of which screen fetches them (Home, Wardrobe, beautify review).
+ * `invalidateQueries({ queryKey: wardrobeKeys.all })` hits every variant via
+ * prefix matching.
+ */
+export const wardrobeKeys = {
+  all: ['wardrobe-items'] as const,
+  list: (filter: string = 'All') => ['wardrobe-items', filter] as const,
+};
+
 const wardrobeApi = axios.create({
   baseURL: WARDROBE_URL,
   headers: {
