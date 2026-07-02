@@ -36,6 +36,7 @@ import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
 import { PreparingOverlay } from './wardrobe/PreparingOverlay';
 import { useAddWardrobeItem, UploadMode } from './wardrobe/useAddWardrobeItem';
 import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
+import { anyBeautifying } from './wardrobe/beautify-status';
 import {
   FILTER_TABS,
   FilterTab,
@@ -97,6 +98,9 @@ export const WardrobeScreen = () => {
     readySnackbarMessage,
     showReadySnackbar,
     reconcileReadyItems,
+    beautifySnackbarVisible,
+    beautifySnackbarItemId,
+    beautifySnackbarOriginalUri,
   } = useItemReadySnackbar();
 
   // `silent` skips the skeleton spinner — used by the AU-361 background poll so
@@ -152,19 +156,20 @@ export const WardrobeScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchItems, isFocused]);
 
-  // AU-361: while focused AND any item is still preparing, poll the wardrobe so
-  // the preparing→ready transition is observed and the toast fires. Stops as
-  // soon as nothing is preparing or the screen loses focus.
-  const hasPreparingItems = items.some(isPreparing);
+  // AU-361 + Task 14: while focused AND any item is still preparing OR beautifying,
+  // poll the wardrobe so the preparing→ready / beautify pending→ready transitions
+  // are observed and their respective snackbars fire. Stops as soon as nothing is
+  // in-flight or the screen loses focus.
+  const hasPendingItems = items.some(isPreparing) || anyBeautifying(items);
   useEffect(() => {
-    if (!isFocused || !hasPreparingItems) {
+    if (!isFocused || !hasPendingItems) {
       return;
     }
     const interval = setInterval(() => {
       fetchItems({ silent: true });
     }, PREPARING_POLL_MS);
     return () => clearInterval(interval);
-  }, [isFocused, hasPreparingItems, fetchItems]);
+  }, [isFocused, hasPendingItems, fetchItems]);
 
   const handleSelectTab = (category: FilterTab) => {
     setSelectedTab(category);
@@ -443,6 +448,31 @@ export const WardrobeScreen = () => {
           testID="wardrobe-item-ready-snackbar-overlay"
         >
           <ItemReadySnackbar message={readySnackbarMessage} />
+        </View>
+      ) : null}
+
+      {/* Task 14: "Studio shot ready — Review" snackbar. Actionable (tappable
+          → BeautifyReview), so the overlay does NOT carry pointerEvents="none".
+          Sits at the same bottom anchor; auto-hides after READY_SNACKBAR_MS. */}
+      {beautifySnackbarVisible && beautifySnackbarItemId ? (
+        <View
+          style={[
+            styles.readySnackbarOverlay,
+            { bottom: insets.bottom + 24 },
+          ]}
+          testID="beautify-ready-snackbar-overlay"
+        >
+          <ItemReadySnackbar
+            message={t('wardrobe.list.beautify_ready_title')}
+            testID="beautify-ready-snackbar"
+            onPress={() => {
+              navigation.navigate('BeautifyReview', {
+                itemId: beautifySnackbarItemId,
+                originalUri: beautifySnackbarOriginalUri ?? '',
+                from: 'snackbar',
+              });
+            }}
+          />
         </View>
       ) : null}
 

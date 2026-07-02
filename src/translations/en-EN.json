@@ -246,6 +246,7 @@
       "list": {
         "added_title": "Item added. We'll finish preparing it in the background.",
         "item_ready_title": "Your item is ready",
+        "beautify_ready_title": "✨ Studio shot ready — Review",
         "upload_failed_title": "Upload failed",
         "upload_failed_body": "We could not save that item.",
         "add_photo_title": "Add a photo",
