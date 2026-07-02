@@ -90,7 +90,10 @@ jest.mock('../../services/wardrobeService', () => ({
   getItemFitLabel: () => 'Regular',
   getItemStyleTags: () => [],
   getItemUsageFrequency: () => 'NORMAL',
-  wardrobeKeys: { all: ['wardrobe-items'], list: (f: string = 'All') => ['wardrobe-items', f] },
+  wardrobeKeys: {
+    all: ['wardrobe-items'],
+    list: (f: string = 'All') => ['wardrobe-items', f],
+  },
 }));
 
 // Cuts the utils/url → apiClient → react-native-keychain import chain.
@@ -214,7 +217,9 @@ describe('read mode', () => {
 
     // CTA copy renamed from "Mix with this" (testID preserved for Maestro)
     const cta = oneByTestID(root, 'item-detail-mix-btn');
-    const ctaLabel = cta.findAll(n => n.props?.children === 'Build around this');
+    const ctaLabel = cta.findAll(
+      n => n.props?.children === 'Build around this',
+    );
     expect(ctaLabel.length).toBeGreaterThan(0);
     expect(
       root.findAll(n => n.props?.children === 'Mix with this').length,
@@ -425,22 +430,24 @@ describe('cache invalidation', () => {
     const invalidateSpy = jest.spyOn(testClient, 'invalidateQueries');
 
     // Bypass the native Alert: immediately invoke the destructive confirm button.
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(
-      (_title, _message, buttons) => {
+    const alertSpy = jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((_title, _message, buttons) => {
         const confirmBtn = buttons?.find(b => b.style === 'destructive');
         confirmBtn?.onPress?.();
-      },
-    );
+      });
 
-    const r = await renderScreen(testClient);
+    try {
+      const r = await renderScreen(testClient);
 
-    press(oneByTestID(r.root, 'item-detail-delete-btn'));
-    await flushPromises();
+      press(oneByTestID(r.root, 'item-detail-delete-btn'));
+      await flushPromises();
 
-    expect(invalidateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ queryKey: ['wardrobe-items'] }),
-    );
-
-    alertSpy.mockRestore();
+      expect(invalidateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ queryKey: ['wardrobe-items'] }),
+      );
+    } finally {
+      alertSpy.mockRestore();
+    }
   });
 });
