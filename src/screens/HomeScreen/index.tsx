@@ -62,7 +62,7 @@ import {
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
-import { HomeNavToggleFooter } from '../../components/features/HomeNavToggleFooter';
+import { HomeWardrobeNavFooter } from '../../components/features/HomeWardrobeNavFooter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OUTFITS_PER_SET } from '../../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../../hooks/usePinReducer';
@@ -1434,7 +1434,7 @@ export const HomeScreen = () => {
         onOpenFeedback={() => setFeedbackVisible(true)}
       />
 
-      <HomeNavToggleFooter testID="home-footer-nav-toggle" />
+      <HomeWardrobeNavFooter active="home" testID="home-footer-nav-toggle" />
 
       <ContextChipsModal
         visible={refine.isOpen && !refine.isEditing}
