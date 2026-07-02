@@ -38,7 +38,11 @@ jest.mock('axios', () => ({
   },
 }));
 
-import { wardrobeService, BeautifyStatus, WardrobeItem } from '../wardrobeService';
+import {
+  wardrobeService,
+  BeautifyStatus,
+  WardrobeItem,
+} from '../wardrobeService';
 
 describe('beautify service methods', () => {
   beforeEach(() => {
@@ -48,7 +52,9 @@ describe('beautify service methods', () => {
 
   describe('beautifyItem', () => {
     it('POSTs to the beautify route and returns job envelope', async () => {
-      mockPost.mockResolvedValue({ data: { job_id: 'j1', status: 'pending', attempts: 0 } });
+      mockPost.mockResolvedValue({
+        data: { job_id: 'j1', status: 'pending', attempts: 0 },
+      });
       const res = await wardrobeService.beautifyItem('item-1');
       expect(mockPost).toHaveBeenCalledWith('/wardrobe/items/item-1/beautify');
       expect(res.job_id).toBe('j1');
@@ -59,9 +65,17 @@ describe('beautify service methods', () => {
 
   describe('getBeautifyStatus', () => {
     it('GETs the status route and returns BeautifyStatus', async () => {
-      mockGet.mockResolvedValue({ data: { status: 'ready', candidate_url: 'https://cdn/candidate.jpg', attempts: 1 } });
+      mockGet.mockResolvedValue({
+        data: {
+          status: 'ready',
+          candidate_url: 'https://cdn/candidate.jpg',
+          attempts: 1,
+        },
+      });
       const res = await wardrobeService.getBeautifyStatus('item-1');
-      expect(mockGet).toHaveBeenCalledWith('/wardrobe/items/item-1/beautify/status');
+      expect(mockGet).toHaveBeenCalledWith(
+        '/wardrobe/items/item-1/beautify/status',
+      );
       expect(res.status).toBe('ready');
       expect(res.candidate_url).toBe('https://cdn/candidate.jpg');
       expect(res.attempts).toBe(1);
@@ -77,10 +91,16 @@ describe('beautify service methods', () => {
 
   describe('acceptBeautify', () => {
     it('POSTs to the accept route and unwraps the item from {message, item}', async () => {
-      const item: WardrobeItem = { id: 'item-1', name: 'Blue Shirt', image_studio: 'https://cdn/studio.jpg' };
+      const item: WardrobeItem = {
+        id: 'item-1',
+        name: 'Blue Shirt',
+        image_studio: 'https://cdn/studio.jpg',
+      };
       mockPost.mockResolvedValue({ data: { message: 'Accepted', item } });
       const res = await wardrobeService.acceptBeautify('item-1');
-      expect(mockPost).toHaveBeenCalledWith('/wardrobe/items/item-1/beautify/accept');
+      expect(mockPost).toHaveBeenCalledWith(
+        '/wardrobe/items/item-1/beautify/accept',
+      );
       expect(res.id).toBe('item-1');
       expect(res.image_studio).toBe('https://cdn/studio.jpg');
     });
@@ -88,10 +108,13 @@ describe('beautify service methods', () => {
 
   describe('discardBeautify', () => {
     it('POSTs to the discard route and unwraps the item from {message, item}', async () => {
-      const item: WardrobeItem = { id: 'item-1', name: 'Blue Shirt', image_studio: null as any };
+      // After discard the backend clears the candidate; image_studio stays unset.
+      const item: WardrobeItem = { id: 'item-1', name: 'Blue Shirt' };
       mockPost.mockResolvedValue({ data: { message: 'Discarded', item } });
       const res = await wardrobeService.discardBeautify('item-1');
-      expect(mockPost).toHaveBeenCalledWith('/wardrobe/items/item-1/beautify/discard');
+      expect(mockPost).toHaveBeenCalledWith(
+        '/wardrobe/items/item-1/beautify/discard',
+      );
       expect(res.id).toBe('item-1');
     });
   });
@@ -110,7 +133,7 @@ describe('WardrobeItem beautify fields (type contract)', () => {
     expect(item.beautify_attempts).toBe(2);
   });
 
-  it('allows null for image_studio (backend may emit null when unset)', () => {
+  it('leaves image_studio undefined when not yet beautified', () => {
     const item: WardrobeItem = { id: 'item-1', image_studio: undefined };
     expect(item.image_studio).toBeUndefined();
   });
@@ -123,7 +146,11 @@ describe('BeautifyStatus interface', () => {
   });
 
   it('accepts candidate_url optionally', () => {
-    const s: BeautifyStatus = { status: 'ready', candidate_url: 'https://cdn/x.jpg', attempts: 1 };
+    const s: BeautifyStatus = {
+      status: 'ready',
+      candidate_url: 'https://cdn/x.jpg',
+      attempts: 1,
+    };
     expect(s.candidate_url).toBeDefined();
   });
 });
