@@ -4,12 +4,15 @@ import { PressableScale } from '../../components/primitives/PressableScale';
 import { theme } from '../../theme/theme';
 
 interface AddMethodRowProps {
-  icon: React.ReactNode;
+  /** Optional icon — omit for mode-selector rows that don't carry an icon. */
+  icon?: React.ReactNode;
   title: string;
   description: string;
   onPress: () => void;
   testID: string;
   isLast?: boolean;
+  /** When true the row renders a selection border (radio-style indicator). */
+  selected?: boolean;
 }
 
 export const AddMethodRow: React.FC<AddMethodRowProps> = ({
@@ -19,15 +22,22 @@ export const AddMethodRow: React.FC<AddMethodRowProps> = ({
   onPress,
   testID,
   isLast,
+  selected,
 }) => (
   <PressableScale
-    style={[styles.methodRow, !isLast && styles.methodRowDivider]}
+    style={[
+      styles.methodRow,
+      selected ? styles.methodRowSelected : !isLast && styles.methodRowDivider,
+    ]}
     activeOpacity={0.7}
     onPress={onPress}
     testID={testID}
     accessibilityLabel={title}
+    accessibilityState={{ selected }}
   >
-    <View style={styles.methodIcon}>{icon}</View>
+    {icon !== undefined ? (
+      <View style={styles.methodIcon}>{icon}</View>
+    ) : null}
     <View style={styles.methodTexts}>
       <Text style={styles.methodTitle}>{title}</Text>
       <Text style={styles.methodDescription}>{description}</Text>
@@ -45,6 +55,13 @@ const styles = StyleSheet.create({
   methodRowDivider: {
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.figmaListDivider,
+  },
+  /** Selected border replaces the divider — gives a clean radio-style indicator. */
+  methodRowSelected: {
+    borderWidth: 1.5,
+    borderColor: theme.colors.figmaAction,
+    borderRadius: theme.borderRadius.m,
+    paddingHorizontal: theme.spacing.s,
   },
   methodIcon: {
     width: 24,

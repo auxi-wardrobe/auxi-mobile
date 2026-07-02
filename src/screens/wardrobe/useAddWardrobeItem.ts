@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import {
   Asset,
@@ -9,8 +11,13 @@ import {
 import { toast } from '../../components/design-system/lib';
 import { wardrobeService } from '../../services/wardrobeService';
 import { track } from '../../services/analytics';
+import { useAiConsentGate } from '../../hooks/useAiConsentGate';
+import { AppStackParamList } from '../../types/navigation';
 import { User } from '../../types/auth';
 import { FilterTab, resolveFilterQuery } from './wardrobe-grid';
+
+/** Processing mode for a photo-based wardrobe addition. */
+export type UploadMode = 'remove_bg' | 'beautify';
 
 interface UseAddWardrobeItemParams {
   selectedTab: FilterTab;
@@ -27,8 +34,18 @@ interface UseAddWardrobeItemParams {
 interface UseAddWardrobeItem {
   uploading: boolean;
   uploadingPhotoUri: string | null;
-  handleImageSelection: (type: 'camera' | 'gallery') => Promise<void>;
+  handleImageSelection: (
+    type: 'camera' | 'gallery',
+    mode?: UploadMode,
+  ) => Promise<void>;
   handleTakePhoto: () => void;
+  /** Spread onto <AiConsentDialog /> rendered in the parent screen. */
+  aiConsentDialogProps: {
+    visible: boolean;
+    onAccept: () => void;
+    onDecline: () => void;
+    onOpenPrivacyPolicy: () => void;
+  };
 }
 
 /**
@@ -47,13 +64,21 @@ export const useAddWardrobeItem = ({
   openPhotoSourceSheet,
 }: UseAddWardrobeItemParams): UseAddWardrobeItem => {
   const { t } = useTranslation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  // B1: AI data-sharing consent gate — mirrors the try-on flow exactly.
+  // The parent screen renders <AiConsentDialog {...aiConsentDialogProps} />.
+  const consentGate = useAiConsentGate();
 
   const [uploading, setUploading] = useState(false);
   const [uploadingPhotoUri, setUploadingPhotoUri] = useState<string | null>(
     null,
   );
 
-  const handleImageSelection = async (type: 'camera' | 'gallery') => {
+  const handleImageSelection = async (
+    type: 'camera' | 'gallery',
+    mode: UploadMode = 'remove_bg',
+  ) => {
     closeAddSheet();
 
     setTimeout(async () => {
@@ -84,50 +109,77 @@ export const useAddWardrobeItem = ({
         return;
       }
 
-      try {
-        setUploadingPhotoUri(asset.uri ?? null);
-        setUploading(true);
-        track('add_item_upload_started', { source: type });
-        if (type === 'camera') {
-          track('wardrobe_photo_captured', { source: 'add_item' });
-        }
+      // Upload action — invoked directly for remove_bg or via the consent gate
+      // for beautify (which shows AiConsentDialog if not yet granted).
+      const doUpload = () => {
+        // Async IIFE so the consent gate's sync `run()` can fire it.
+        (async () => {
+          try {
+            setUploadingPhotoUri(asset.uri ?? null);
+            setUploading(true);
+            track('add_item_upload_started', { source: type, mode });
+            if (type === 'camera') {
+              track('wardrobe_photo_captured', { source: 'add_item' });
+            }
 
-        const createdItem = await wardrobeService.uploadWardrobeItem(
-          asset,
-          user!,
-          resolveFilterQuery(selectedTab),
-        );
+            const createdItem = await wardrobeService.uploadWardrobeItem(
+              asset,
+              user!,
+              resolveFilterQuery(selectedTab),
+            );
 
-        track('add_item_upload_succeeded', { source: type });
-        const addedProps: Record<string, unknown> = {
-          source: type,
-          method: 'take_photo',
-        };
-        if (createdItem?.id) {
-          addedProps.item_id = createdItem.id;
-        }
-        if (createdItem?.category) {
-          addedProps.category = createdItem.category;
-        }
-        track('wardrobe_item_added', addedProps);
-        // AU-372: surface add-success via the mint M3 ItemReadySnackbar overlay
-        // (same component as the ready moment), not the default bottom toast.
-        // Copy reads "Item added. We'll finish preparing it in the background."
-        showReadySnackbar(t('wardrobe.list.added_title'));
+            const addedProps: Record<string, unknown> = {
+              source: type,
+              method: 'take_photo',
+              mode,
+            };
+            if (createdItem?.id) {
+              addedProps.item_id = createdItem.id;
+            }
+            if (createdItem?.category) {
+              addedProps.category = createdItem.category;
+            }
+            track('wardrobe_item_added', addedProps);
 
-        await refetch();
-      } catch (error) {
-        console.error('Upload error', error);
-        track('add_item_upload_failed', { source: type });
-        toast.show({
-          type: 'error',
-          text1: t('wardrobe.list.upload_failed_title'),
-          text2: t('wardrobe.list.upload_failed_body'),
-          position: 'bottom',
-        });
-      } finally {
-        setUploading(false);
-        setUploadingPhotoUri(null);
+            if (mode === 'beautify') {
+              // Submit the beautify job then navigate to the pending screen.
+              // wardrobeService.beautifyItem kicks off a background job and
+              // returns immediately with {job_id, status, attempts}.
+              track('beautify_started');
+              await wardrobeService.beautifyItem(createdItem.id);
+              navigation.navigate('BeautifyPending', {
+                itemId: createdItem.id,
+                originalUri: asset.uri ?? '',
+              });
+            } else {
+              // AU-372: surface add-success via the mint M3 ItemReadySnackbar
+              // overlay (same component as the ready moment), not a toast.
+              track('add_item_upload_succeeded', { source: type });
+              showReadySnackbar(t('wardrobe.list.added_title'));
+              await refetch();
+            }
+          } catch (error) {
+            console.error('Upload error', error);
+            track('add_item_upload_failed', { source: type });
+            toast.show({
+              type: 'error',
+              text1: t('wardrobe.list.upload_failed_title'),
+              text2: t('wardrobe.list.upload_failed_body'),
+              position: 'bottom',
+            });
+          } finally {
+            setUploading(false);
+            setUploadingPhotoUri(null);
+          }
+        })();
+      };
+
+      if (mode === 'beautify') {
+        // Gate: if consent not yet granted, shows AiConsentDialog and defers
+        // doUpload until Accept. Decline drops the action (app stays usable).
+        consentGate.run(doUpload);
+      } else {
+        doUpload();
       }
     }, 250);
   };
@@ -147,5 +199,6 @@ export const useAddWardrobeItem = ({
     uploadingPhotoUri,
     handleImageSelection,
     handleTakePhoto,
+    aiConsentDialogProps: consentGate.dialogProps,
   };
 };

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   SafeAreaView,
@@ -30,10 +30,11 @@ import { useWardrobeViewed } from '../context/WardrobeViewedContext';
 import { AppStackParamList } from '../types/navigation';
 import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
+import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
 import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
 import { PreparingOverlay } from './wardrobe/PreparingOverlay';
-import { useAddWardrobeItem } from './wardrobe/useAddWardrobeItem';
+import { useAddWardrobeItem, UploadMode } from './wardrobe/useAddWardrobeItem';
 import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
 import {
   FILTER_TABS,
@@ -237,11 +238,16 @@ export const WardrobeScreen = () => {
   // Add-item upload orchestration (image pick → upload → analytics →
   // add-success snackbar → refetch) + the take-photo source chooser hand-off.
   // `uploading` / `uploadingPhotoUri` drive the header spinner + PreparingOverlay.
+  // Holds the mode chosen in AddItemSheet so it's available when the
+  // MActionSheet fires handleImageSelection after the sheet is dismissed.
+  const pendingUploadModeRef = useRef<UploadMode>('remove_bg');
+
   const {
     uploading,
     uploadingPhotoUri,
     handleImageSelection,
     handleTakePhoto,
+    aiConsentDialogProps,
   } = useAddWardrobeItem({
     selectedTab,
     user,
@@ -383,7 +389,10 @@ export const WardrobeScreen = () => {
         visible={addSheetVisible}
         onDismiss={() => setAddSheetVisible(false)}
         onSearchDatabase={handleSearchDatabase}
-        onTakePhoto={handleTakePhoto}
+        onTakePhoto={mode => {
+          pendingUploadModeRef.current = mode;
+          handleTakePhoto();
+        }}
       />
 
       {/* Take-photo source chooser — DS MActionSheet (GH-364, replaces the
@@ -398,20 +407,24 @@ export const WardrobeScreen = () => {
             label: t('common.take_photo'),
             onPress: () => {
               setPhotoSourceSheetVisible(false);
-              handleImageSelection('camera');
+              handleImageSelection('camera', pendingUploadModeRef.current);
             },
           },
           {
             label: t('common.choose_from_library'),
             onPress: () => {
               setPhotoSourceSheetVisible(false);
-              handleImageSelection('gallery');
+              handleImageSelection('gallery', pendingUploadModeRef.current);
             },
           },
         ]}
         cancelLabel={t('common.cancel')}
         testID="wardrobe-photo-source-sheet"
       />
+
+      {/* B1: AI data-sharing consent prompt — gated by useAiConsentGate inside
+          useAddWardrobeItem; shown before the first beautify upload. */}
+      <AiConsentDialog {...aiConsentDialogProps} />
 
       <PreparingOverlay visible={uploading} photoUri={uploadingPhotoUri} />
 
