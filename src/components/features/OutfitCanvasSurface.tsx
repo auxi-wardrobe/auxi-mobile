@@ -14,6 +14,7 @@ import {
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
+import { getItemHitArea } from './canvas-hit-area';
 
 // Shared drag-drop canvas surface. Extracted from OutfitCanvasScreen so both
 // the full Remix editor (with toolbar/undo/tags, owned by the screen) and the
@@ -345,9 +346,14 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   // Cleanup the hold timer if the item unmounts mid-press.
   useEffect(() => clearTimer, []);
 
+  // Touch target = centered content box (~72% of the frame), not the full frame.
+  // The outer view is box-none so its transparent margin never captures touches
+  // (they fall through to items behind); only the hit child below is draggable.
+  const hit = getItemHitArea(item.width, item.height);
   const renderItem = () => (
     <Animated.View
       testID={`${testIDPrefix}-${item.id}`}
+      pointerEvents="box-none"
       style={[
         styles.draggableItem,
         {
@@ -384,13 +390,27 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
         },
         isSelected && styles.selectedItem,
       ]}
-      {...panResponder.panHandlers}
     >
-      <Image
-        source={item.imageSource}
-        style={{ width: item.width, height: item.height }}
-        resizeMode="contain"
-        onLoadEnd={() => onImageLoad?.(item.id)}
+      <View pointerEvents="none">
+        <Image
+          source={item.imageSource}
+          style={{ width: item.width, height: item.height }}
+          resizeMode="contain"
+          onLoadEnd={() => onImageLoad?.(item.id)}
+        />
+      </View>
+      <View
+        testID={`${testIDPrefix}-${item.id}-hit`}
+        style={[
+          styles.hitArea,
+          {
+            left: hit.left,
+            top: hit.top,
+            width: hit.width,
+            height: hit.height,
+          },
+        ]}
+        {...panResponder.panHandlers}
       />
     </Animated.View>
   );
@@ -498,6 +518,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   draggableItem: {
+    position: 'absolute',
+  },
+  // Centered content-box touch target overlaid on each item (see canvas-hit-area).
+  hitArea: {
     position: 'absolute',
   },
   selectedItem: {
