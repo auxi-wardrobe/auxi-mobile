@@ -103,7 +103,7 @@ export const PREPARING_POLL_MS = 4000;
 // How long an item may stay in the preparing state before the client assumes
 // processing failed, removes the item and toasts the user. Measured from when
 // the client FIRST observes the item preparing (no server clock involved).
-export const PREPARING_TIMEOUT_MS = 30_000;
+export const PREPARING_TIMEOUT_MS = 180_000;
 
 // Cadence of the local stale-preparing check. Cheap (map scan only) — the
 // network work happens at most once per expired item.
