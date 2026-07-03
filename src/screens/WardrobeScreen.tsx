@@ -141,8 +141,8 @@ export const WardrobeScreen = () => {
   }, [wardrobeQuery.data, reconcileReadyItems]);
 
   // Stale-upload watchdog: an item stuck in the preparing state for more than
-  // 30s is assumed failed — auto-removed with an error toast telling the user
-  // to try again.
+  // PREPARING_TIMEOUT_MS is assumed failed — auto-removed with an error toast
+  // telling the user to try again.
   useStalePreparingCleanup({ items: wardrobeQuery.data, enabled: isFocused });
 
   // Analytics: screen viewed — decoupled from data fetching, fires on focus and
