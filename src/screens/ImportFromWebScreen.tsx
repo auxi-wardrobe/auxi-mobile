@@ -1,11 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -210,7 +204,16 @@ export const ImportFromWebScreen = () => {
       return;
     }
     importFiredRef.current = true;
-    track('wardrobe_url_import_submitted', { image_url: previewImage.url });
+    // Analytics: ship the hostname only, never the raw URL (it can carry Google
+    // proxy paths / CDN tokens). Omit the property entirely if unparseable.
+    const submittedProps: Record<string, string> = {};
+    // Hostname via regex — RN's URL polyfill doesn't type `.hostname`. Stops at
+    // the first / ? # or : so any port is dropped. Omitted if not an http(s) URL.
+    const domainMatch = /^https?:\/\/([^/?#:]+)/i.exec(previewImage.url);
+    if (domainMatch) {
+      submittedProps.url_domain = domainMatch[1];
+    }
+    track('wardrobe_url_import_submitted', submittedProps);
     // popTo, NOT navigate: under React Navigation 7 navigate() no longer goes
     // back to an existing screen — it would PUSH a second Wardrobe on top of
     // this one, leaving this screen (and its full-screen preview Modal)

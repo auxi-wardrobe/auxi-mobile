@@ -131,6 +131,10 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `add_item_upload_cancelled` | User declined the AI data-sharing consent dialog on the beautify path — action dropped, item not uploaded | `useAddWardrobeItem.ts:225` | `reason` (`ai_consent_declined`) |
 | `wardrobe_load_failed` (design-review F7) | Non-silent `fetchItems` failure → dedicated error state shown | `WardrobeScreen.tsx` (`fetchItems` catch) | `category` (selected filter tab) |
 | `wardrobe_load_retry_tapped` (design-review F7) | "Try again" tapped on the error state | `WardrobeScreen.tsx` (`handleRetryLoad`) | `category` (selected filter tab) |
+| `wardrobe_url_import_submitted` (PR #215) | User taps Import on the web-image preview | `ImportFromWebScreen.tsx:213` | `url_domain?` (hostname only — never the raw URL) |
+| `wardrobe_url_import_completed` (PR #215) | Web-image import created the wardrobe item | `WardrobeScreen.tsx:185` | `method` (`import_web`), `item_id?`, `category?` |
+| `wardrobe_url_import_failed` (PR #215) | Web-image import threw (network / service) | `WardrobeScreen.tsx:192` | — |
+| `add_item_method_selected` `import_web` | "Import from web" method picked in the add sheet | `WardrobeScreen.tsx:326` | `method` (`import_web`) |
 
 ### 5.5 Favourite + try-on outcomes
 
@@ -331,13 +335,15 @@ These hooks were spec'd but cannot fire today — the UI surface, control, or AP
 - `outfit_swiped` `method: 'button'` — no button-driven swipe path; never fires today
 - `context_chip_changed` runtime UI — mode-selector JSX commented out behind AU-221. `handleSelectMode` is wired so the event fires automatically once the UI lands.
 
-### 6.3 Wardrobe — URL import not built
+### 6.3 Wardrobe — URL import (SHIPPED · PR #215)
 
-- `wardrobe_url_import_submitted`
-- `wardrobe_url_import_completed`
-- `wardrobe_url_import_failed`
-
-The "Import from web" add-item option (its `handleImportFromWeb` "coming soon" Toast + `add_item_method_selected {method: 'import_web'}` event) was REMOVED from `WardrobeScreen` — App Store B3 / Guideline 2.1 (no dead/"coming soon" UI). No service, no submit form ever existed. Re-add the option and wire these events on the real handler once URL import actually lands.
+The "Import from web" add-item flow is now built (real WebView search → extract →
+preview → import via `wardrobeService.importWardrobeItemFromUrl`). The three
+events are now WIRED and documented in §5 above:
+`wardrobe_url_import_submitted` (ships hostname-only `url_domain`, never the raw
+URL), `wardrobe_url_import_completed`, `wardrobe_url_import_failed`. The
+`add_item_method_selected {method: 'import_web'}` option is back on
+`WardrobeScreen` (`WardrobeScreen.tsx:326`).
 
 ### 6.3.b Wardrobe — search submit step not built
 
