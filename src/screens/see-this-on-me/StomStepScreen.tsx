@@ -98,7 +98,10 @@ export function renderStomStepScreen(
   }
 
   // ── Generating shapes (phase 1) / error state ─────────────────────────────
-  if (step === 'generatingShapes') {
+  // While generating (not errored) this returns nothing here → the transcript
+  // renders the 3 skeleton tiles inline. The full-screen shell only takes over
+  // on error (retry affordance).
+  if (step === 'generatingShapes' && shapesErrored) {
     return (
       // Back during generation = quit-to-background (keeps the job alive +
       // notifies on done); in the errored state it's a plain back.

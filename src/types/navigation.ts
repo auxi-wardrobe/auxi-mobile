@@ -206,6 +206,8 @@ export type AppStackParamList = {
   // `pendingImportUrl` immediately (non-blocking) — Wardrobe owns the create
   // call and the optimistic preparing tile.
   ImportFromWeb: undefined;
+  BeautifyPending: { itemId: string; originalUri: string };
+  BeautifyReview: { itemId: string; originalUri: string; from?: 'loader' | 'snackbar' };
   OutfitCanvas:
     | {
         outfitId?: string;

@@ -35,6 +35,8 @@ import { OutfitCanvasScreen } from '../screens/OutfitCanvasScreen';
 import { MyCreationsScreen } from '../screens/MyCreationsScreen';
 import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
+import { BeautifyPendingScreen } from '../screens/wardrobe/BeautifyPendingScreen';
+import { BeautifyReviewScreen } from '../screens/wardrobe/BeautifyReviewScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
 import {
   registerPushTapHandlers,
@@ -259,6 +261,16 @@ export const AppNavigator = () => {
               <Stack.Screen
                 name="LegalDocument"
                 component={LegalDocumentScreen}
+              />
+              <Stack.Screen
+                name="BeautifyPending"
+                component={BeautifyPendingScreen}
+                options={{ headerShown: false, gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="BeautifyReview"
+                component={BeautifyReviewScreen}
+                options={{ headerShown: false }}
               />
             </>
           )
