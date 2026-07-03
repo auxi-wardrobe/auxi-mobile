@@ -100,6 +100,55 @@ export const resolveTileStatus = (
 // is preparing.
 export const PREPARING_POLL_MS = 4000;
 
+// How long an item may stay in the preparing state before the client assumes
+// processing failed, removes the item and toasts the user. Measured from when
+// the client FIRST observes the item preparing (no server clock involved).
+export const PREPARING_TIMEOUT_MS = 30_000;
+
+// Cadence of the local stale-preparing check. Cheap (map scan only) — the
+// network work happens at most once per expired item.
+export const STALE_PREPARING_CHECK_MS = 1000;
+
+// Bookkeeping for the stale-preparing timeout: record when each preparing item
+// was first observed, and forget entries once the item is seen NOT preparing
+// (it became ready, or the timeout removal succeeded). Items merely absent
+// from `items` keep counting down — the wardrobe list is per-filter-tab, so an
+// item can drop out of view while the backend is still processing it; the
+// pre-delete server re-check makes a lingering entry harmless.
+export const syncPreparingFirstSeen = (
+  firstSeenAt: Map<string, number>,
+  items: WardrobeItem[],
+  now: number,
+): void => {
+  for (const item of items) {
+    if (!item.id) {
+      continue;
+    }
+    if (isPreparing(item)) {
+      if (!firstSeenAt.has(item.id)) {
+        firstSeenAt.set(item.id, now);
+      }
+    } else {
+      firstSeenAt.delete(item.id);
+    }
+  }
+};
+
+// IDs whose preparing state has outlived the timeout and should be removed.
+export const findExpiredPreparingIds = (
+  firstSeenAt: Map<string, number>,
+  now: number,
+  timeoutMs: number = PREPARING_TIMEOUT_MS,
+): string[] => {
+  const expired: string[] = [];
+  firstSeenAt.forEach((seenAt, id) => {
+    if (now - seenAt >= timeoutMs) {
+      expired.push(id);
+    }
+  });
+  return expired;
+};
+
 // AU-361: how long the self-controlled "item ready" snackbar stays on screen
 // before auto-hiding.
 export const READY_SNACKBAR_MS = 4000;

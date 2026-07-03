@@ -248,6 +248,8 @@
         "item_ready_title": "Votre article est prêt",
         "upload_failed_title": "Échec du téléchargement",
         "upload_failed_body": "Nous n'avons pas pu enregistrer cet article.",
+        "preparing_timeout_title": "Le traitement a pris trop de temps",
+        "preparing_timeout_body": "Nous avons retiré l'article — veuillez réessayer de le télécharger.",
         "add_photo_title": "Ajouter une photo",
         "add_photo_body": "Utilisez votre appareil photo ou choisissez dans votre bibliothèque.",
         "a11y_item_fallback": "Article de garde-robe",

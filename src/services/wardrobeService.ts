@@ -46,6 +46,9 @@ export interface WardrobeItem {
   color_hex?: string;
   is_common_item?: boolean;
   is_deleted?: boolean;
+  // AU-361: true while the backend is still processing the upload (bg-removal
+  // + auto-tagging); flips false once the item is ready to use.
+  is_preparing?: boolean;
   is_favorited?: boolean;
   usage_frequency?: UsageFrequency;
   updated_at?: string;
