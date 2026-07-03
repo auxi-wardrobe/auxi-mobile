@@ -45,6 +45,7 @@ import {
   FilterTab,
   GRID_GAP,
   HORIZONTAL_PADDING,
+  PENDING_IMPORT_ID,
   PREPARING_POLL_MS,
   TILE_HEIGHT,
   TILE_WIDTH,
@@ -139,20 +140,65 @@ export const WardrobeScreen = () => {
     }
   }, [wardrobeQuery.data, reconcileReadyItems]);
 
-  // Returning from the ImportFromWeb flow: surface the same "item added"
-  // confirmation as the photo upload path and refetch so the new preparing
-  // placeholder tile appears. Clear the param so a re-focus doesn't refire it.
+  // Non-blocking web import: ImportFromWeb hands the picked image URL back via
+  // `pendingImportUrl` and navigates here immediately — this screen owns the
+  // create call so the user is never held in the preview watching a spinner
+  // (mirrors the take-photo flow's ownership). On consume: clear the param
+  // (re-focus must not refire the import), show the same "item added"
+  // snackbar as the photo path, and render an optimistic preparing placeholder
+  // tile until the backend item lands, at which point the refetched
+  // is_preparing item takes over and rides the normal preparing→ready
+  // lifecycle. On failure the placeholder is removed and the error surfaces
+  // via the root toast (no Modal above it anymore, so it's visible).
+  const [pendingImportUri, setPendingImportUri] = useState<string | null>(null);
   useEffect(() => {
-    if (route.params?.justImported) {
-      showReadySnackbar(t('wardrobe.list.added_title'));
-      refetchWardrobe();
-      navigation.setParams({ justImported: undefined });
+    const imageUrl = route.params?.pendingImportUrl;
+    if (!imageUrl) {
+      return;
     }
+    navigation.setParams({ pendingImportUrl: undefined });
+    showReadySnackbar(t('wardrobe.list.added_title'));
+    setPendingImportUri(imageUrl);
+
+    (async () => {
+      try {
+        const created = await wardrobeService.importWardrobeItemFromUrl(
+          imageUrl,
+          user!,
+        );
+        const props: Record<string, unknown> = { method: 'import_web' };
+        if (created?.id) {
+          props.item_id = created.id;
+        }
+        if (created?.category) {
+          props.category = created.category;
+        }
+        track('wardrobe_url_import_completed', props);
+        track('wardrobe_item_added', props);
+        // Awaited so the placeholder is only removed once the real
+        // is_preparing tile is in the list — one visual swap, no gap.
+        await refetchWardrobe();
+      } catch (error) {
+        console.error('Import from web failed', error);
+        track('wardrobe_url_import_failed', {});
+        toast.show({
+          type: 'error',
+          text1: t('wardrobe.import_web.import_failed'),
+          text2: t('common.try_again_moment'),
+          position: 'bottom',
+        });
+      } finally {
+        // Functional update: don't clobber the placeholder if a newer import
+        // has replaced it while this one was in flight.
+        setPendingImportUri(prev => (prev === imageUrl ? null : prev));
+      }
+    })();
   }, [
-    route.params?.justImported,
+    route.params?.pendingImportUrl,
     showReadySnackbar,
     refetchWardrobe,
     navigation,
+    user,
     t,
   ]);
 
@@ -199,6 +245,11 @@ export const WardrobeScreen = () => {
   };
 
   const handleItemPress = (item: WardrobeItem) => {
+    // The optimistic web-import placeholder is display-only — there's no
+    // backend item to open yet.
+    if (item.id === PENDING_IMPORT_ID) {
+      return;
+    }
     if (isSelectMode) {
       // Don't let the user anchor an item that isn't ready yet.
       if (isPreparing(item)) {
@@ -298,7 +349,22 @@ export const WardrobeScreen = () => {
     isSelectMode && excludeItemId
       ? items.filter(item => item.id !== excludeItemId)
       : items;
-  const hasItems = displayItems.length > 0;
+
+  // Optimistic preparing placeholder for an in-flight web import, prepended so
+  // the freshly added image is immediately visible with its processing status.
+  // WardrobeGridTile renders the standard preparing overlay off `is_preparing`;
+  // presses are ignored via the PENDING_IMPORT_ID guard in handleItemPress.
+  const gridItems = pendingImportUri
+    ? [
+        {
+          id: PENDING_IMPORT_ID,
+          image_url: pendingImportUri,
+          is_preparing: true,
+        } as WardrobeItem,
+        ...displayItems,
+      ]
+    : displayItems;
+  const hasItems = gridItems.length > 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -375,7 +441,7 @@ export const WardrobeScreen = () => {
           </View>
         ) : hasItems ? (
           <View testID="wardrobe-grid-root" style={styles.grid}>
-            {displayItems.map((item, index) => (
+            {gridItems.map((item, index) => (
               <WardrobeGridTile
                 key={item.id}
                 item={item}

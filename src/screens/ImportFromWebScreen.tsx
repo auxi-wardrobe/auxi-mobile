@@ -22,8 +22,6 @@ import { MButton, toast } from '../components/design-system/lib';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { Icons } from '../assets/icons';
 import { theme } from '../theme/theme';
-import { useAuth } from '../context/AuthContext';
-import { wardrobeService } from '../services/wardrobeService';
 import { track } from '../services/analytics';
 import { AppStackParamList } from '../types/navigation';
 import {
@@ -63,15 +61,15 @@ const HOW_TO_STEPS = [
 /**
  * Import from web (Figma: Import from web flow). One screen driving the whole
  * state machine: query input → embedded Google results (WebView) → Extract
- * images (injected scraper) → Select an image sheet → Preview → Import. The new
- * item is created straight from the picked image URL and rides the existing
- * preparing→ready lifecycle; on success we pop back to Wardrobe with a
- * `justImported` intent so it shows the "item added" snackbar + refetches.
+ * images (injected scraper) → Select an image sheet → Preview → Import.
+ * Import is NON-blocking: tapping it hands the picked URL back to Wardrobe
+ * via `pendingImportUrl` and navigates immediately — Wardrobe fires the
+ * create call, shows the "item added" snackbar + an optimistic preparing
+ * tile, and the new item rides the existing preparing→ready lifecycle.
  */
 export const ImportFromWebScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const { t } = useTranslation();
-  const { user } = useAuth();
 
   const webViewRef = useRef<RNWebView>(null);
   const mountedRef = useRef(true);
@@ -88,8 +86,10 @@ export const ImportFromWebScreen = () => {
   const [images, setImages] = useState<ExtractedImage[]>([]);
   const [selectSheetVisible, setSelectSheetVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState<ExtractedImage | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
+  // Multiple taps on Import must not create duplicate items (high-risk
+  // scenario): the first tap navigates away instantly, so a once-only ref is
+  // enough — no in-flight state to render.
+  const importFiredRef = useRef(false);
 
   const clearExtractTimer = useCallback(() => {
     if (extractTimerRef.current) {
@@ -178,7 +178,6 @@ export const ImportFromWebScreen = () => {
       setImages(result.images);
       // Only one eligible image → skip the picker and go straight to preview.
       if (result.images.length === 1) {
-        setImportError(null);
         setPreviewImage(result.images[0]);
       } else {
         setSelectSheetVisible(true);
@@ -189,63 +188,31 @@ export const ImportFromWebScreen = () => {
 
   const handleSelectImage = useCallback((image: ExtractedImage) => {
     setSelectSheetVisible(false);
-    setImportError(null);
     setPreviewImage(image);
   }, []);
 
   const handlePreviewCancel = useCallback(() => {
-    if (importing) {
-      return;
-    }
     setPreviewImage(null);
-    setImportError(null);
     // Multiple candidates → return to the selection grid; a lone auto-selected
     // image has no grid to return to, so we drop back to the results page.
     if (images.length > 1) {
       setSelectSheetVisible(true);
     }
-  }, [importing, images.length]);
+  }, [images.length]);
 
-  const handleImport = useCallback(async () => {
-    if (importing || !previewImage || !user) {
+  // NON-blocking import (mirrors the take-photo flow): tap Import → hand the
+  // picked URL straight back to Wardrobe and navigate immediately. Wardrobe
+  // owns the create call, the "item added" snackbar, the optimistic preparing
+  // placeholder tile, and the failure toast — the user is never held here
+  // watching a spinner.
+  const handleImport = useCallback(() => {
+    if (importFiredRef.current || !previewImage) {
       return;
     }
-    setImporting(true);
-    setImportError(null);
+    importFiredRef.current = true;
     track('wardrobe_url_import_submitted', { image_url: previewImage.url });
-
-    try {
-      const created = await wardrobeService.importWardrobeItemFromUrl(
-        previewImage.url,
-        user,
-      );
-      if (!mountedRef.current) {
-        return;
-      }
-      const props: Record<string, unknown> = { method: 'import_web' };
-      if (created?.id) {
-        props.item_id = created.id;
-      }
-      if (created?.category) {
-        props.category = created.category;
-      }
-      track('wardrobe_url_import_completed', props);
-      track('wardrobe_item_added', props);
-      // Pop back to Wardrobe; the param triggers the "item added" snackbar +
-      // a refetch that surfaces the preparing placeholder tile.
-      navigation.navigate('Wardrobe', { justImported: true });
-    } catch (error) {
-      console.error('Import from web failed', error);
-      if (!mountedRef.current) {
-        return;
-      }
-      track('wardrobe_url_import_failed', {});
-      // Keep the preview open and re-enable Import; show the reason inline
-      // (a toast would hide behind the preview Modal).
-      setImporting(false);
-      setImportError(t('wardrobe.import_web.import_failed'));
-    }
-  }, [importing, previewImage, user, navigation, t]);
+    navigation.navigate('Wardrobe', { pendingImportUrl: previewImage.url });
+  }, [previewImage, navigation]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -393,8 +360,6 @@ export const ImportFromWebScreen = () => {
       <ImportPreviewModal
         visible={previewImage !== null}
         imageUrl={previewImage?.url ?? null}
-        importing={importing}
-        errorMessage={importError}
         onCancel={handlePreviewCancel}
         onImport={handleImport}
       />

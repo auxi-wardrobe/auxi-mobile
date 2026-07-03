@@ -94,6 +94,12 @@ export const resolveTileStatus = (
   return null;
 };
 
+// Synthetic id for the optimistic "preparing" placeholder tile shown while a
+// web import request is still in flight (before the backend item exists). The
+// tile is display-only: presses on it are ignored and it's replaced by the
+// real is_preparing item once the create call resolves + the list refetches.
+export const PENDING_IMPORT_ID = '__pending_import__';
+
 // While any item is still preparing we poll the wardrobe so the ready
 // transition can actually be observed (the screen otherwise only refetches on
 // focus). Kept light: a single refetch every few seconds, stopped once nothing

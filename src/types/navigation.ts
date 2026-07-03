@@ -112,12 +112,14 @@ export type AppStackParamList = {
   // one-off swap, NOT a pin. `excludeItemId` is the item being changed: it's
   // hidden from the picker (you can only swap it for ANOTHER item) and becomes
   // the swap's `fromItemId`.
-  // `justImported` is set when returning from the ImportFromWeb flow after a
-  // successful web import: the screen shows the "item added" snackbar and
-  // refetches the grid (surfacing the preparing placeholder tile), then clears
-  // the param so a re-focus doesn't refire it.
+  // `pendingImportUrl` carries the image URL picked in the ImportFromWeb flow.
+  // Import is NON-blocking (mirrors the take-photo flow): the preview hands the
+  // URL straight back here, and THIS screen fires the create call, shows the
+  // "item added" snackbar and renders an optimistic preparing placeholder tile
+  // until the backend item lands. The param is cleared on consume so a
+  // re-focus doesn't refire the import.
   Wardrobe:
-    | { mode?: 'select'; excludeItemId?: string; justImported?: boolean }
+    | { mode?: 'select'; excludeItemId?: string; pendingImportUrl?: string }
     | undefined;
   // `returnToSchedule` is set when the user reached this page via the Schedule
   // "+" source picker — after scheduling an outfit we send them back to
@@ -200,7 +202,9 @@ export type AppStackParamList = {
   // "Import from web" (Figma: Import from web flow) — reached from the Add-item
   // sheet's "Search images" option. Self-contained flow: query input → embedded
   // Google results (WebView) → Extract images → Select an image → Preview →
-  // Import. On success it pops back to Wardrobe with `justImported`.
+  // Import. Import taps hand the picked URL back to Wardrobe via
+  // `pendingImportUrl` immediately (non-blocking) — Wardrobe owns the create
+  // call and the optimistic preparing tile.
   ImportFromWeb: undefined;
   OutfitCanvas:
     | {

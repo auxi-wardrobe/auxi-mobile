@@ -8,11 +8,6 @@ import { theme } from '../../theme/theme';
 interface ImportPreviewModalProps {
   visible: boolean;
   imageUrl: string | null;
-  importing: boolean;
-  // Import errors surface INLINE here, not via toast: the toast host renders
-  // beneath native Modals, so a toast fired while this preview is open would be
-  // hidden behind it.
-  errorMessage?: string | null;
   onCancel: () => void;
   onImport: () => void;
 }
@@ -21,14 +16,13 @@ interface ImportPreviewModalProps {
  * "Preview image" (Figma: Preview image screen) — the chosen image at full
  * width with Cancel / Import. Rendered as a full-screen Modal layered over the
  * results page + selection sheet so Cancel returns straight to the grid with no
- * navigation churn. `importing` disables both actions and shows the spinner on
- * Import so a double-tap can't create duplicate items (high-risk scenario).
+ * navigation churn. Import is non-blocking (the screen navigates back to
+ * Wardrobe on the first tap — see ImportFromWebScreen.handleImport), so the
+ * modal renders no in-flight or error state of its own.
  */
 export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
   visible,
   imageUrl,
-  importing,
-  errorMessage,
   onCancel,
   onImport,
 }) => {
@@ -39,7 +33,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
     <Modal
       visible={visible}
       animationType="slide"
-      onRequestClose={importing ? undefined : onCancel}
+      onRequestClose={onCancel}
       transparent={false}
     >
       <View
@@ -63,12 +57,6 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
           ) : null}
         </View>
 
-        {errorMessage ? (
-          <Text style={styles.errorText} testID="import-preview-error">
-            {errorMessage}
-          </Text>
-        ) : null}
-
         <View
           style={[styles.actions, { paddingBottom: insets.bottom + theme.spacing.m }]}
         >
@@ -76,7 +64,6 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
             variant="outline"
             title={t('wardrobe.import_web.cancel')}
             onPress={onCancel}
-            disabled={importing}
             style={styles.action}
             testID="import-preview-cancel"
             accessibilityLabel={t('wardrobe.import_web.cancel')}
@@ -85,8 +72,6 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
             variant="filled"
             title={t('wardrobe.import_web.import_cta')}
             onPress={onImport}
-            loading={importing}
-            disabled={importing}
             style={styles.action}
             testID="import-preview-import"
             accessibilityLabel={t('wardrobe.import_web.import_cta')}
@@ -119,12 +104,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
-  },
-  errorText: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.error,
-    textAlign: 'center',
-    marginTop: theme.spacing.m,
   },
   actions: {
     flexDirection: 'row',
