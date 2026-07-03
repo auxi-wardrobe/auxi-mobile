@@ -211,7 +211,13 @@ export const ImportFromWebScreen = () => {
     }
     importFiredRef.current = true;
     track('wardrobe_url_import_submitted', { image_url: previewImage.url });
-    navigation.navigate('Wardrobe', { pendingImportUrl: previewImage.url });
+    // popTo, NOT navigate: under React Navigation 7 navigate() no longer goes
+    // back to an existing screen — it would PUSH a second Wardrobe on top of
+    // this one, leaving this screen (and its full-screen preview Modal)
+    // mounted underneath, so the tap looked like a no-op. popTo pops back to
+    // the real Wardrobe instance with the param (same pattern as the
+    // Wardrobe→Home swap hand-off).
+    navigation.popTo('Wardrobe', { pendingImportUrl: previewImage.url });
   }, [previewImage, navigation]);
 
   return (
