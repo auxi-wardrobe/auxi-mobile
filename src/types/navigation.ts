@@ -191,6 +191,8 @@ export type AppStackParamList = {
   // serializable TryOnOutfitContext the flow needs (hash, item ids/urls, note).
   SeeThisOnMe: { outfit: TryOnOutfitContext };
   Database: undefined;
+  BeautifyPending: { itemId: string; originalUri: string };
+  BeautifyReview: { itemId: string; originalUri: string; from?: 'loader' | 'snackbar' };
   OutfitCanvas:
     | {
         outfitId?: string;

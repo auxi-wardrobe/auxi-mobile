@@ -75,6 +75,19 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
         </View>
       ) : null}
 
+      {/* AI beautify in progress — small corner badge, independent of the
+          preparing overlay. Shows while beautify_status === 'pending' so the
+          user knows a studio shot is being generated in the background. */}
+      {item.beautify_status === 'pending' ? (
+        <View
+          testID={`wardrobe-tile-beautifying-${item.id}`}
+          style={styles.beautifyBadge}
+          pointerEvents="none"
+        >
+          <Text style={styles.beautifyBadgeText}>✨</Text>
+        </View>
+      ) : null}
+
       {status ? <TileStatusBadge status={status} itemId={item.id} /> : null}
 
       {/* Single-select check — top-right, only the picked tile in select
@@ -144,5 +157,24 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
+  },
+  // AI beautify in-progress badge — top-left corner, chip SM (24px height),
+  // mirrors the TileStatusBadge pill sizing/radius/token colours. Sits above
+  // the preparing overlay via absolute positioning so it remains visible even
+  // when the tile is also preparing.
+  beautifyBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    height: 24,
+    paddingHorizontal: theme.spacing.s,
+    borderRadius: 9999,
+    backgroundColor: theme.colors.figmaCardTag,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  beautifyBadgeText: {
+    ...theme.typography.aliases.interCaptionXxs,
+    color: theme.colors.white,
   },
 });

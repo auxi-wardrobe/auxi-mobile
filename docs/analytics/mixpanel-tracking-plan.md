@@ -115,16 +115,20 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `wardrobe_item_opened` (pre-existing) | Item tap | `WardrobeScreen.tsx:139` | `item_id`, `category` |
 | `item_detail_opened` | ItemDetailScreen mount | `ItemDetailScreen.tsx:280` | `item_id`, `source` |
 | `creation_item_detail_opened` | Tap an item inside a saved-creation collage → opens ItemDetail. Fired from both entry points to that collage: the My Creations list and the Schedule day's creation card. Resolves the real wardrobe id first (stored `wardrobeItemId`, else recovered from the synthetic canvas id); a no-op when neither yields one. | `MyCreationsScreen.tsx` (`handleItemPress`), `ScheduleScreen.tsx` (creation-card `onItemPress`) | `wardrobe_item_id` (internal wardrobe id) |
-| `wardrobe_item_added` | Take-photo upload complete | `WardrobeScreen.tsx:218` | `source`, `method` (`take_photo`), `item_id?`, `category?` |
+| `wardrobe_item_added` | Take-photo upload complete | `useAddWardrobeItem.ts:142` | `source`, `method` (`take_photo`), `mode` (`remove_bg`/`beautify`), `item_id?`, `category?` |
 | `wardrobe_item_added` | Database clone complete | `DatabaseScreen.tsx:138` | `item_id`, `source` (`database`), `method` (`search_database`), `category?` |
-| `item_ready_toast_shown` (AU-361) | Uploaded item finishes background processing (`is_preparing` true→false) and the "Your item is ready" toast fires | `WardrobeScreen.tsx:149` | `item_category?` |
+| `item_ready_toast_shown` (AU-361) | Uploaded item finishes background processing (`is_preparing` true→false) and the "Your item is ready" toast fires | `useItemReadySnackbar.ts:133` | `item_category?` |
 | `wardrobe_item_edited` | ItemDetail save with diff | `ItemDetailScreen.tsx:678` | `item_id`, `fields_changed` (`category`/`color`/`style`/`fit`) |
 | `wardrobe_item_deleted` | ItemDetail delete confirm | `ItemDetailScreen.tsx:548` | `item_id`, `category?` |
 | `wardrobe_search_result_selected` | Database result tap → add | `DatabaseScreen.tsx:118` | `item_id`, `source` (`database`) |
-| `wardrobe_photo_captured` | Camera capture for take-photo flow | `WardrobeScreen.tsx:204` | `source` (`add_item`) |
+| `wardrobe_photo_captured` | Camera capture for take-photo flow | `useAddWardrobeItem.ts:122` | `source` (`add_item`) |
 | `add_item_opened` (pre-existing) | Add-item entry | `WardrobeScreen.tsx:147` | `source` |
-| `add_item_method_selected` (pre-existing) | Method pick | `WardrobeScreen.tsx:152, 158, 234` | `method` |
-| `add_item_upload_started/succeeded/failed` (pre-existing) | Upload lifecycle | `WardrobeScreen.tsx:201, 209, 219` | `source` |
+| `add_item_method_selected` (pre-existing) | Method pick | `useAddWardrobeItem.ts:205` | `method` |
+| `add_item_mode_selected` | User selects Beautify mode in the add-item sheet (only fires for `beautify`; `remove_bg` selection is silent — it is the default) | `AddItemSheet.tsx:106` | `mode` (`beautify`) |
+| `add_item_upload_started` (pre-existing, extended) | Upload initiated after image pick | `useAddWardrobeItem.ts:120` | `source` (`camera`/`gallery`), `mode` (`remove_bg`/`beautify`) |
+| `add_item_upload_succeeded` (pre-existing) | Non-beautify upload succeeded (fires only for `mode: 'remove_bg'`; beautify path fires `beautify_started` instead) | `useAddWardrobeItem.ts:174` | `source` |
+| `add_item_upload_failed` (pre-existing, extended) | Upload errored (network / unexpected). Beautify-specific path also fires this when the upload response is missing `item_id` | `useAddWardrobeItem.ts:150, 180` | `source`; `reason` (`missing_item_id`) on the beautify id-guard path only |
+| `add_item_upload_cancelled` | User declined the AI data-sharing consent dialog on the beautify path — action dropped, item not uploaded | `useAddWardrobeItem.ts:225` | `reason` (`ai_consent_declined`) |
 | `wardrobe_load_failed` (design-review F7) | Non-silent `fetchItems` failure → dedicated error state shown | `WardrobeScreen.tsx` (`fetchItems` catch) | `category` (selected filter tab) |
 | `wardrobe_load_retry_tapped` (design-review F7) | "Try again" tapped on the error state | `WardrobeScreen.tsx` (`handleRetryLoad`) | `category` (selected filter tab) |
 
@@ -351,6 +355,10 @@ The "Import from web" add-item option (its `handleImportFromWeb` "coming soon" T
 
 `body_photo_added/replaced/deleted` only fire for `slot: 'full_body'` today. `selfie` and `body_shape` slots live in the SeeThisOnMe step screens (`StepSelfie`, `StepBodyShape`) with a different lifecycle (flow-state, not persisted slots editable independently). When those flows gain replace/delete affordances, mirror the same event names with the matching `slot` value.
 
+### 6.7 Beautify — failure event not wired
+
+- `beautify_failed { reason }` — `BeautifyPendingScreen` transitions to a "Couldn't beautify" error UI when polling detects `status === 'failed'` OR the 3-minute `MAX_WAIT_MS` timeout elapses, but **no `track()` call is present at either branch**. Wire condition: add `track('beautify_failed', { reason: 'server_error' | 'timeout' })` inside the two `setFailed(true)` branches in `BeautifyPendingScreen.tsx` (lines ~48 and ~63).
+
 ### 6.6 Outfit Canvas — non-reorder toolbar actions not yet instrumented
 
 Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvasScreen` toolbar handlers (`handleAddItem`, `handleDuplicate`, `handleDelete`, swap-TODO, tag add/remove, undo/redo) and `handleSave` are local-only editor state with no persistence — the canvas never reaches the backend (`handleSave` is a TODO that just `goBack()`s). Wire `canvas_outfit_saved` (with `item_count`, `tag_count`) and the per-action events when the Save→persist endpoint lands. Re-wire condition: a real canvas-persist mutation exists.
@@ -410,4 +418,25 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 
 - **Push opt-in + engagement funnel (push Phase 1):** `push_permission_requested` → `push_permission_granted` → `device_token_registered` measures registration completion (denominator: requested; `push_permission_denied` is the drop branch). Engagement: `push_opened` ÷ `push_received` (foreground) plus cold/background opens — break down by `type` to compare `daily_reminder` vs `planned_outfit` vs `admin_*` open rates.
 
+- **Beautify funnel:** `beautify_started` → `beautify_ready` → `beautify_review_opened` → `beautify_accepted`. Drop-off between `beautify_started` and `beautify_ready` = job failure / timeout rate (see §6.7 gap — `beautify_failed` not yet wired so failures are only visible as missing continuations). `beautify_wait_continued_browsing` between `started` and `ready` is the leave-during-wait branch — segment `beautify_review_opened` by `from` (`loader` vs `snackbar`) to compare users who watched the full loader vs returned via the Wardrobe snackbar. `beautify_kept_original` and `beautify_regenerated` are exits or re-entry loops from the review step; `beautify_regenerated` broken down by `source` (`review` vs `retry_pending`) distinguishes deliberate re-rolls from failure-recovery retries. `add_item_mode_selected { mode: 'beautify' }` is the top-of-funnel intent signal (fires before upload).
+
 Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`, `type`. Super properties (`platform`, `app_environment`) are available globally.
+
+### 5.20 AI Beautify (studio-shot)
+
+The Beautify flow lets a user upload a garment photo and have GPT image-editing produce a studio-style shot. The flow is: upload → job submitted (`beautify_started`) → pending/polling screen → job resolves (`beautify_ready`) → review screen → accept / keep original / regenerate.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `beautify_started` | Upload succeeded with `mode: 'beautify'` and `createdItem.id` is present — beautify job submitted, navigation to BeautifyPending | `useAddWardrobeItem.ts:165` | — |
+| `beautify_wait_continued_browsing` | User taps "Continue browsing" on the pending/loader screen and navigates back to Wardrobe (job keeps running in background) | `BeautifyPendingScreen.tsx:136` | — |
+| `beautify_ready` | Polling detects `status === 'ready'` — auto-navigates to BeautifyReview with `from: 'loader'` | `BeautifyPendingScreen.tsx:55` | — |
+| `beautify_review_opened` | BeautifyReview screen mounts — fired via `useFocusEffect`-equivalent `useEffect` on mount. `from` distinguishes the two entry points: the loader auto-advance vs the Wardrobe snackbar tap (user left the loader and returned via the "Studio shot ready — Review" snackbar) | `BeautifyReviewScreen.tsx:35` | `from` (`loader` / `snackbar`) |
+| `beautify_accepted` | User taps "Accept & save" — `wardrobeService.acceptBeautify` resolves; the studio shot replaces the original image in the wardrobe | `BeautifyReviewScreen.tsx:55` | — |
+| `beautify_kept_original` | User taps "Keep original" — `wardrobeService.discardBeautify` resolves; the original image is retained unchanged | `BeautifyReviewScreen.tsx:66` | — |
+| `beautify_regenerated` | User requests a new studio shot. Two call sites with different prop shapes: from BeautifyReview ("Regenerate" button) carries `attempt`; from BeautifyPending failed-state ("Try again" button) does not — attempt count is unavailable after a timeout/failure reset | `BeautifyReviewScreen.tsx:77` (`source: 'review'`), `BeautifyPendingScreen.tsx:105` (`source: 'retry_pending'`) | `source` (`review` / `retry_pending`), `attempt` (integer ≥ 1, present only when `source === 'review'`) |
+
+> PII: none. `from` and `source` are closed enums; `attempt` is an unquoted integer (server-side counter). No garment names, URLs, or user identifiers.
+>
+> Note: `beautify_failed` is NOT wired — see §6.7. The pending screen shows a "Couldn't beautify" UI when polling times out or `status === 'failed'` but tracks no event at that point.
+

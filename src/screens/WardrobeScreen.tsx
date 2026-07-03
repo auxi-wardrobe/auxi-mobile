@@ -35,11 +35,13 @@ import { useWardrobeViewed } from '../context/WardrobeViewedContext';
 import { AppStackParamList } from '../types/navigation';
 import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
+import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
 import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
 import { PreparingOverlay } from './wardrobe/PreparingOverlay';
-import { useAddWardrobeItem } from './wardrobe/useAddWardrobeItem';
+import { useAddWardrobeItem, UploadMode } from './wardrobe/useAddWardrobeItem';
 import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
+import { anyBeautifying } from './wardrobe/beautify-status';
 import {
   FILTER_TABS,
   FilterTab,
@@ -96,6 +98,9 @@ export const WardrobeScreen = () => {
     readySnackbarMessage,
     showReadySnackbar,
     reconcileReadyItems,
+    beautifySnackbarVisible,
+    beautifySnackbarItemId,
+    beautifySnackbarOriginalUri,
   } = useItemReadySnackbar();
 
   const queryClient = useQueryClient();
@@ -109,10 +114,14 @@ export const WardrobeScreen = () => {
         : wardrobeService.getWardrobeItems();
     },
     staleTime: 60_000,
-    // AU-361: while focused AND something is preparing, poll so the
-    // preparing→ready transition is observed. Stops otherwise.
+    // AU-361 + Task 14: while focused AND something is preparing OR beautifying,
+    // poll so the preparing→ready / beautify pending→ready transitions are
+    // observed (their snackbars fire off reconcileReadyItems). Stops otherwise.
     refetchInterval: query =>
-      isFocused && anyPreparing(query.state.data) ? PREPARING_POLL_MS : false,
+      isFocused &&
+      (anyPreparing(query.state.data) || anyBeautifying(query.state.data ?? []))
+        ? PREPARING_POLL_MS
+        : false,
     refetchIntervalInBackground: false,
   });
 
@@ -248,11 +257,16 @@ export const WardrobeScreen = () => {
   // Add-item upload orchestration (image pick → upload → analytics →
   // add-success snackbar → refetch) + the take-photo source chooser hand-off.
   // `uploading` / `uploadingPhotoUri` drive the header spinner + PreparingOverlay.
+  // Holds the mode chosen in AddItemSheet so it's available when the
+  // MActionSheet fires handleImageSelection after the sheet is dismissed.
+  const pendingUploadModeRef = useRef<UploadMode>('remove_bg');
+
   const {
     uploading,
     uploadingPhotoUri,
     handleImageSelection,
     handleTakePhoto,
+    aiConsentDialogProps,
   } = useAddWardrobeItem({
     selectedTab,
     user,
@@ -394,7 +408,10 @@ export const WardrobeScreen = () => {
         visible={addSheetVisible}
         onDismiss={() => setAddSheetVisible(false)}
         onSearchDatabase={handleSearchDatabase}
-        onTakePhoto={handleTakePhoto}
+        onTakePhoto={mode => {
+          pendingUploadModeRef.current = mode;
+          handleTakePhoto();
+        }}
       />
 
       {/* Take-photo source chooser — DS MActionSheet (GH-364, replaces the
@@ -409,20 +426,24 @@ export const WardrobeScreen = () => {
             label: t('common.take_photo'),
             onPress: () => {
               setPhotoSourceSheetVisible(false);
-              handleImageSelection('camera');
+              handleImageSelection('camera', pendingUploadModeRef.current);
             },
           },
           {
             label: t('common.choose_from_library'),
             onPress: () => {
               setPhotoSourceSheetVisible(false);
-              handleImageSelection('gallery');
+              handleImageSelection('gallery', pendingUploadModeRef.current);
             },
           },
         ]}
         cancelLabel={t('common.cancel')}
         testID="wardrobe-photo-source-sheet"
       />
+
+      {/* B1: AI data-sharing consent prompt — gated by useAiConsentGate inside
+          useAddWardrobeItem; shown before the first beautify upload. */}
+      <AiConsentDialog {...aiConsentDialogProps} />
 
       <PreparingOverlay visible={uploading} photoUri={uploadingPhotoUri} />
 
@@ -441,6 +462,31 @@ export const WardrobeScreen = () => {
           testID="wardrobe-item-ready-snackbar-overlay"
         >
           <ItemReadySnackbar message={readySnackbarMessage} />
+        </View>
+      ) : null}
+
+      {/* Task 14: "Studio shot ready — Review" snackbar. Actionable (tappable
+          → BeautifyReview), so the overlay does NOT carry pointerEvents="none".
+          Sits at the same bottom anchor; auto-hides after READY_SNACKBAR_MS. */}
+      {beautifySnackbarVisible && beautifySnackbarItemId ? (
+        <View
+          style={[
+            styles.readySnackbarOverlay,
+            { bottom: insets.bottom + 24 },
+          ]}
+          testID="beautify-ready-snackbar-overlay"
+        >
+          <ItemReadySnackbar
+            message={t('wardrobe.list.beautify_ready_title')}
+            testID="beautify-ready-snackbar"
+            onPress={() => {
+              navigation.navigate('BeautifyReview', {
+                itemId: beautifySnackbarItemId,
+                originalUri: beautifySnackbarOriginalUri ?? '',
+                from: 'snackbar',
+              });
+            }}
+          />
         </View>
       ) : null}
 
