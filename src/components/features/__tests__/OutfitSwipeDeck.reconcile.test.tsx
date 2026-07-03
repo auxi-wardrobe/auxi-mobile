@@ -1,0 +1,59 @@
+/**
+ * Regression: advancing the deck must NOT remount the card that transitions
+ * from peek → active. A remount replays the OptionSheet reveal animation —
+ * that replay is the "image pop / jump" the user sees after each swipe.
+ * See docs/superpowers/specs/2026-07-02-home-swipe-image-pop-fix-design.md.
+ *
+ * Isolated render (no HomeScreen/providers): a probe renderCard counts mounts
+ * per item id via a mount-only effect. If a card is remounted on advance, its
+ * id's count rises above 1.
+ */
+import React, { useEffect } from 'react';
+import { Text } from 'react-native';
+import TestRenderer, { act } from 'react-test-renderer';
+import { OutfitSwipeDeck } from '../OutfitSwipeDeck';
+
+type Card = { id: string };
+
+describe('OutfitSwipeDeck reconciliation', () => {
+  it('does not remount a card promoted from peek to active', () => {
+    const mountCounts: Record<string, number> = {};
+
+    const Probe = ({ id }: { id: string; role: 'active' | 'peek' }) => {
+      useEffect(() => {
+        mountCounts[id] = (mountCounts[id] ?? 0) + 1;
+      }, [id]);
+      return <Text>{id}</Text>;
+    };
+
+    const items: Card[] = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    const props = {
+      items,
+      swipeEnabled: true,
+      keyOf: (c: Card) => c.id,
+      renderCard: (c: Card, role: 'active' | 'peek') => (
+        <Probe id={c.id} role={role} />
+      ),
+      onSwipeNext: jest.fn(),
+      onSwipeBack: jest.fn(),
+    };
+
+    let renderer!: ReturnType<typeof TestRenderer.create>;
+    act(() => {
+      renderer = TestRenderer.create(
+        <OutfitSwipeDeck {...props} activeIndex={0} />,
+      );
+    });
+
+    // Cold start: 'b' mounted once as the next-peek behind active 'a'.
+    expect(mountCounts.b).toBe(1);
+
+    // Advance one card: 'b' becomes active. Must be the SAME instance.
+    act(() => {
+      renderer.update(<OutfitSwipeDeck {...props} activeIndex={1} />);
+    });
+
+    expect(mountCounts.b).toBe(1); // preserved — no remount, no reveal replay
+    expect(mountCounts.a).toBe(1); // former active, now prev-peek — preserved
+  });
+});

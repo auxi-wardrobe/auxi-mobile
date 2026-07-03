@@ -37,7 +37,7 @@ import {
 import { recommendV05, resetV05Session } from '../../services/v05Api';
 import { moodForMode } from '../../services/mood/mood-vocabulary';
 import { favouriteService } from '../../services/favouriteService';
-import { wardrobeService } from '../../services/wardrobeService';
+import { wardrobeService, wardrobeKeys } from '../../services/wardrobeService';
 import {
   track,
   trackRecommendationViewedOnce,
@@ -691,6 +691,17 @@ export const HomeScreen = () => {
           setListOutfits(mapped);
           setActiveIndex(0);
           activeIndexRef.current = 0;
+          // A fresh pinned deck is a new generation cycle: clear the
+          // depletion/limit flags so buffering resumes for the pinned context
+          // and the limit sheet can fire again once the pinned pool is truly
+          // exhausted. Without this, pinning after a prior depletion leaves the
+          // user on a dead-end swipe with no OutfitLimitSheet. Mirrors the
+          // cold-start reset above.
+          unfavoritedSwipeCountRef.current = 0;
+          poolDepletedRef.current = false;
+          limitSheetShownRef.current = false;
+          setHasCycled(false);
+          setIsWardrobeGap(false);
         }
         pinDispatch({
           type: result.lowConfidence ? 'GENERATE_FALLBACK' : 'GENERATE_SUCCESS',
@@ -804,7 +815,9 @@ export const HomeScreen = () => {
   }, [route.params?.swapItem, navigation]);
 
   const { data: wardrobeItemsData } = useQuery({
-    queryKey: ['home-wardrobe-items'],
+    // Shared with the Wardrobe screen's "All" tab (wardrobeKeys.list('All')) so
+    // the two screens reuse one cache entry. Home keeps its tighter 30s stale.
+    queryKey: wardrobeKeys.list(),
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 30_000,
   });

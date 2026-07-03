@@ -198,65 +198,67 @@ export function OutfitSwipeDeck<T>({
     return null;
   }
 
+  // Windowed cards, painted back-to-front: peek(s) first, active last (on top).
+  // Keyed by ITEM IDENTITY (keyOf), NEVER by role — so a card promoted from
+  // peek → active is the SAME React instance. No remount means the OptionSheet
+  // reveal animation never replays; that replay was the visible "jump" after a
+  // swipe. See docs/superpowers/specs/2026-07-02-home-swipe-image-pop-fix-design.md.
+  const windowCards: { item: T; role: Role; peek?: 'prev' | 'next' }[] = [];
+  if (prevPeek) {
+    windowCards.push({ item: prevPeek, role: 'peek', peek: 'prev' });
+  }
+  if (nextPeek) {
+    windowCards.push({ item: nextPeek, role: 'peek', peek: 'next' });
+  }
+  windowCards.push({ item: active, role: 'active' });
+
   return (
     <View testID={testID} style={styles.stack}>
-      {prevPeek ? (
-        <Animated.View
-          key={`prev-${keyOf(prevPeek)}`}
-          style={[
-            styles.cardBase,
-            cardStyle,
-            { opacity: prevPeekOpacity, transform: [{ scale: peekScale }] },
-          ]}
-          pointerEvents="none"
-          // Background cards are decorative until promoted: keep their subtree
-          // out of the accessibility / test tree so VoiceOver doesn't announce
-          // the hidden card and duplicate testIDs (e.g. home-remix) don't clash.
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          {renderCard(prevPeek, 'peek')}
-        </Animated.View>
-      ) : null}
-
-      {nextPeek ? (
-        <Animated.View
-          key={`next-${keyOf(nextPeek)}`}
-          style={[
-            styles.cardBase,
-            cardStyle,
-            { opacity: nextPeekOpacity, transform: [{ scale: peekScale }] },
-          ]}
-          pointerEvents="none"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          {renderCard(nextPeek, 'peek')}
-        </Animated.View>
-      ) : null}
-
-      <Animated.View
-        key={`active-${keyOf(active)}`}
-        accessibilityActions={a11yActions}
-        onAccessibilityAction={e => {
-          if (e.nativeEvent.actionName === 'next') {
-            onSwipeNext(active);
-          }
-          if (e.nativeEvent.actionName === 'back' && activeIndex > 0) {
-            onSwipeBack(active);
-          }
-        }}
-        style={[
-          styles.cardBase,
-          styles.activeCard,
-          cardStyle,
-          { transform: [{ translateX: pan.x }] },
-        ]}
-        {...responder.panHandlers}
-      >
-        {renderCue ? renderCue(backOpacity, nextOpacity) : null}
-        {renderCard(active, 'active')}
-      </Animated.View>
+      {windowCards.map(({ item, role, peek }) => {
+        const isActive = role === 'active';
+        const peekOpacity = peek === 'prev' ? prevPeekOpacity : nextPeekOpacity;
+        return (
+          <Animated.View
+            key={keyOf(item)}
+            accessibilityActions={isActive ? a11yActions : undefined}
+            onAccessibilityAction={
+              isActive
+                ? e => {
+                    if (e.nativeEvent.actionName === 'next') {
+                      onSwipeNext(active);
+                    }
+                    if (
+                      e.nativeEvent.actionName === 'back' &&
+                      activeIndex > 0
+                    ) {
+                      onSwipeBack(active);
+                    }
+                  }
+                : undefined
+            }
+            style={[
+              styles.cardBase,
+              cardStyle,
+              isActive
+                ? [styles.activeCard, { transform: [{ translateX: pan.x }] }]
+                : { opacity: peekOpacity, transform: [{ scale: peekScale }] },
+            ]}
+            pointerEvents={isActive ? 'auto' : 'none'}
+            // Peek cards are decorative until promoted: keep their subtree out
+            // of the accessibility / test tree so VoiceOver doesn't announce the
+            // hidden card and duplicate testIDs (e.g. home-remix) don't clash.
+            accessibilityElementsHidden={!isActive}
+            importantForAccessibility={isActive ? 'auto' : 'no-hide-descendants'}
+            {...(isActive ? responder.panHandlers : {})}
+          >
+            {/* Cue slot rendered in BOTH roles (null when peek) so the card
+                content stays at a stable child index across promotion — the
+                OptionSheet child is never remounted. */}
+            {isActive && renderCue ? renderCue(backOpacity, nextOpacity) : null}
+            {renderCard(item, role)}
+          </Animated.View>
+        );
+      })}
     </View>
   );
 }

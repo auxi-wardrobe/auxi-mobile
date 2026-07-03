@@ -57,6 +57,11 @@ export const isCommonItem = (item: WardrobeItem): boolean =>
 export const isPreparing = (item: WardrobeItem): boolean =>
   item.is_preparing === true;
 
+// True if the list contains any item still being processed. Drives the query's
+// conditional refetch poll (replaces the old focus-time setInterval).
+export const anyPreparing = (items?: WardrobeItem[] | null): boolean =>
+  Array.isArray(items) && items.some(isPreparing);
+
 // A grid tile shows at most one status pill (Figma: bottom-centre). The four
 // states are mutually exclusive and resolved with the precedence
 // new > less use > common (product decision):

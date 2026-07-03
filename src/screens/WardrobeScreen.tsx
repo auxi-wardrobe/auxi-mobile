@@ -12,6 +12,7 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../components/design-system/lib';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { HomeWardrobeNavFooter } from '../components/features/HomeWardrobeNavFooter';
@@ -23,7 +24,11 @@ import { PressableScale } from '../components/primitives/PressableScale';
 import { MActionSheet, MButton } from '../components/design-system/lib';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { useSidebar } from '../context/SidebarContext';
-import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
+import {
+  wardrobeService,
+  WardrobeItem,
+  wardrobeKeys,
+} from '../services/wardrobeService';
 import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
 import { useWardrobeViewed } from '../context/WardrobeViewedContext';
@@ -45,6 +50,7 @@ import {
   PREPARING_POLL_MS,
   TILE_HEIGHT,
   TILE_WIDTH,
+  anyPreparing,
   isCommonItem,
   isPreparing,
   resolveFilterQuery,
@@ -74,12 +80,6 @@ export const WardrobeScreen = () => {
 
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<WardrobeItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  // F7: distinguish a genuine empty wardrobe from a failed load. `loadError`
-  // is set on a (non-silent) fetch failure so the screen shows a dedicated
-  // error state + Retry rather than the misleading "add your first item" copy.
-  const [loadError, setLoadError] = useState(false);
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
   // Add-item sheet visibility. The full-width panel + "Refine suggestions"
   // reveal motion + reduce-motion fallback are encapsulated inside
@@ -103,73 +103,87 @@ export const WardrobeScreen = () => {
     beautifySnackbarOriginalUri,
   } = useItemReadySnackbar();
 
-  // `silent` skips the skeleton spinner — used by the AU-361 background poll so
-  // it doesn't flash the loading grid on every tick.
-  const fetchItems = useCallback(
-    async (options?: { silent?: boolean }) => {
-      try {
-        if (!options?.silent) {
-          setLoading(true);
-          setLoadError(false);
-        }
-        const category = resolveFilterQuery(selectedTab);
-        const data = category
-          ? await wardrobeService.filterWardrobeItems({ category })
-          : await wardrobeService.getWardrobeItems();
-        setItems(data);
-        reconcileReadyItems(data);
-      } catch (error) {
-        console.error('Error fetching wardrobe items', error);
-        if (!options?.silent) {
-          // F7: surface a dedicated, recoverable error state (icon + message +
-          // Retry) instead of falling through to the empty-wardrobe copy. The
-          // toast stays as the transient confirmation; the inline state is the
-          // journey-continuity fix.
-          setLoadError(true);
-          track('wardrobe_load_failed', { category: selectedTab });
-          toast.show({
-            type: 'error',
-            text1: t('common.load_wardrobe_failed_title'),
-            text2: t('common.try_again_moment'),
-            position: 'bottom',
-          });
-        }
-      } finally {
-        if (!options?.silent) {
-          setLoading(false);
-        }
-      }
+  const queryClient = useQueryClient();
+
+  const wardrobeQuery = useQuery({
+    queryKey: wardrobeKeys.list(selectedTab),
+    queryFn: () => {
+      const category = resolveFilterQuery(selectedTab);
+      return category
+        ? wardrobeService.filterWardrobeItems({ category })
+        : wardrobeService.getWardrobeItems();
     },
-    [selectedTab, t, reconcileReadyItems],
+    staleTime: 60_000,
+    // AU-361 + Task 14: while focused AND something is preparing OR beautifying,
+    // poll so the preparing→ready / beautify pending→ready transitions are
+    // observed (their snackbars fire off reconcileReadyItems). Stops otherwise.
+    refetchInterval: query =>
+      isFocused &&
+      (anyPreparing(query.state.data) || anyBeautifying(query.state.data ?? []))
+        ? PREPARING_POLL_MS
+        : false,
+    refetchIntervalInBackground: false,
+  });
+
+  const { refetch } = wardrobeQuery;
+  const items = wardrobeQuery.data ?? [];
+  // Skeleton only on the first load (no cached data yet) — never on a
+  // background revalidate, so revisiting the screen doesn't flash.
+  const loading = wardrobeQuery.isLoading;
+  // F7: only show the dedicated error state when we have nothing to display;
+  // a failed background refetch over cached data stays silent.
+  const loadError = wardrobeQuery.isError && items.length === 0;
+
+  // Invalidate ALL wardrobe list caches after an upload — a new item may land
+  // in any category, so refresh every filter variant.
+  const refetchWardrobe = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: wardrobeKeys.all }),
+    [queryClient],
   );
+
+  // Detect preparing→ready transitions whenever the list changes (fetch/poll).
+  useEffect(() => {
+    if (wardrobeQuery.data) {
+      reconcileReadyItems(wardrobeQuery.data);
+    }
+  }, [wardrobeQuery.data, reconcileReadyItems]);
+
+  // Analytics: screen viewed — decoupled from data fetching, fires on focus and
+  // on filter change (preserves the prior wardrobe_viewed cadence).
+  useEffect(() => {
+    if (isFocused) {
+      track('wardrobe_viewed', { category: selectedTab });
+    }
+  }, [isFocused, selectedTab]);
+
+  // F7: surface the load-failed toast + analytics once per error episode.
+  const loadFailedRef = useRef(false);
+
+  // A tab change starts a fresh error episode — allow the load-failed toast +
+  // analytics to fire once for the newly selected tab.
+  useEffect(() => {
+    loadFailedRef.current = false;
+  }, [selectedTab]);
+
+  useEffect(() => {
+    if (loadError && !loadFailedRef.current) {
+      loadFailedRef.current = true;
+      track('wardrobe_load_failed', { category: selectedTab });
+      toast.show({
+        type: 'error',
+        text1: t('common.load_wardrobe_failed_title'),
+        text2: t('common.try_again_moment'),
+        position: 'bottom',
+      });
+    } else if (!loadError) {
+      loadFailedRef.current = false;
+    }
+  }, [loadError, selectedTab, t]);
 
   const handleRetryLoad = useCallback(() => {
     track('wardrobe_load_retry_tapped', { category: selectedTab });
-    fetchItems();
-  }, [fetchItems, selectedTab]);
-
-  useEffect(() => {
-    if (isFocused) {
-      fetchItems();
-      track('wardrobe_viewed', { category: selectedTab });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchItems, isFocused]);
-
-  // AU-361 + Task 14: while focused AND any item is still preparing OR beautifying,
-  // poll the wardrobe so the preparing→ready / beautify pending→ready transitions
-  // are observed and their respective snackbars fire. Stops as soon as nothing is
-  // in-flight or the screen loses focus.
-  const hasPendingItems = items.some(isPreparing) || anyBeautifying(items);
-  useEffect(() => {
-    if (!isFocused || !hasPendingItems) {
-      return;
-    }
-    const interval = setInterval(() => {
-      fetchItems({ silent: true });
-    }, PREPARING_POLL_MS);
-    return () => clearInterval(interval);
-  }, [isFocused, hasPendingItems, fetchItems]);
+    refetch();
+  }, [refetch, selectedTab]);
 
   const handleSelectTab = (category: FilterTab) => {
     setSelectedTab(category);
@@ -257,7 +271,7 @@ export const WardrobeScreen = () => {
     selectedTab,
     user,
     showReadySnackbar,
-    refetch: fetchItems,
+    refetch: refetchWardrobe,
     closeAddSheet: () => setAddSheetVisible(false),
     openPhotoSourceSheet: () => setPhotoSourceSheetVisible(true),
   });

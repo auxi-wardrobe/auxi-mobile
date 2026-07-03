@@ -74,6 +74,8 @@ export interface BeautifyStatus {
 /**
  * Shared TanStack Query key factory — one cache entry for wardrobe items
  * regardless of which screen fetches them (Home, Wardrobe, beautify review).
+ * `list()` defaults to the 'All' filter so HomeScreen and the Wardrobe "All"
+ * tab share ONE cache entry — opening Wardrobe right after Home is instant.
  * `invalidateQueries({ queryKey: wardrobeKeys.all })` hits every variant via
  * prefix matching.
  */
