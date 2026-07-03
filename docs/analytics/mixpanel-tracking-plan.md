@@ -124,7 +124,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `wardrobe_photo_captured` | Camera capture for take-photo flow | `useAddWardrobeItem.ts:122` | `source` (`add_item`) |
 | `add_item_opened` (pre-existing) | Add-item entry | `WardrobeScreen.tsx:147` | `source` |
 | `add_item_method_selected` (pre-existing) | Method pick | `useAddWardrobeItem.ts:205` | `method` |
-| `add_item_mode_selected` | User selects Beautify mode in the add-item sheet (only fires for `beautify`; `remove_bg` selection is silent — it is the default) | `AddItemSheet.tsx:106` | `mode` (`beautify`) |
+| `add_item_mode_selected` | **RETIRED** — the upload-time mode selector was removed from the add-item sheet (uploads always run remove-background; the AI step moved on-demand to Item Detail, §5.21). Historical data only | — (was `AddItemSheet.tsx`) | `mode` (`beautify`) |
 | `add_item_upload_started` (pre-existing, extended) | Upload initiated after image pick | `useAddWardrobeItem.ts:120` | `source` (`camera`/`gallery`), `mode` (`remove_bg`/`beautify`) |
 | `add_item_upload_succeeded` (pre-existing) | Non-beautify upload succeeded (fires only for `mode: 'remove_bg'`; beautify path fires `beautify_started` instead) | `useAddWardrobeItem.ts:174` | `source` |
 | `add_item_upload_failed` (pre-existing, extended) | Upload errored (network / unexpected). Beautify-specific path also fires this when the upload response is missing `item_id` | `useAddWardrobeItem.ts:150, 180` | `source`; `reason` (`missing_item_id`) on the beautify id-guard path only |
@@ -425,6 +425,8 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`, `type`. Super properties (`platform`, `app_environment`) are available globally.
 
 ### 5.20 AI Beautify (studio-shot)
+
+> **DORMANT** — the add-item sheet's mode selector was removed, so this upload-time flow is no longer user-reachable; new studio shots come from the on-demand Enhance flow (§5.21). The screens/events below stay wired for the dormant path and for historical data.
 
 The Beautify flow lets a user upload a garment photo and have GPT image-editing produce a studio-style shot. The flow is: upload → job submitted (`beautify_started`) → pending/polling screen → job resolves (`beautify_ready`) → review screen → accept / keep original / regenerate.
 
