@@ -29,6 +29,7 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
   const { t } = useTranslation();
 
   const imageUrl = resolveItemImage({
+    image_studio: item.image_studio ?? null,
     image_png: item.image_png ?? null,
     image_url: item.image_url ?? '',
   });

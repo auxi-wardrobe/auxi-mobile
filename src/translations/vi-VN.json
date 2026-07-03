@@ -237,6 +237,22 @@
         "value_unset": "—",
         "name_edit_placeholder": "Nhập tên"
       },
+      "enhance": {
+        "title": "Cải thiện ảnh",
+        "loading": "Đang chuẩn bị món này\ntrong chưa đầy 10 giây",
+        "compare_hint": "Nhấn giữ để xem ảnh gốc",
+        "discard": "Bỏ qua",
+        "replace_original": "Thay ảnh gốc",
+        "retry": "Thử lại",
+        "cancel": "Hủy",
+        "error_generic": "Không thể cải thiện ảnh. Vui lòng thử lại.",
+        "error_network": "Mất kết nối. Kiểm tra internet và thử lại.",
+        "error_timeout": "Quá trình cải thiện đang lâu hơn dự kiến.",
+        "toast_saved": "Đã cập nhật ảnh",
+        "toast_save_failed": "Không thể lưu ảnh đã cải thiện. Vui lòng thử lại.",
+        "a11y_enhance": "Cải thiện ảnh",
+        "a11y_preview": "Xem trước ảnh đã cải thiện"
+      },
       "welcome": {
         "title": "Chào mừng đến với tủ đồ của bạn",
         "body": "Chúng tôi đã thêm sẵn các món đồ mẫu vào tủ đồ của bạn để bạn có thể bắt đầu khám phá Macgie ngay lập tức.\n\nThêm quần áo của riêng bạn để nhận các gợi ý trang phục được cá nhân hóa theo tủ đồ và phong cách của bạn.",

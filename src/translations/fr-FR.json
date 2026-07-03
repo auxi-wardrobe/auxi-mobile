@@ -237,6 +237,22 @@
         "value_unset": "—",
         "name_edit_placeholder": "Saisir un nom"
       },
+      "enhance": {
+        "title": "Améliorer l'image",
+        "loading": "Préparation de l'article\nen moins de 10 secondes",
+        "compare_hint": "Appui long pour voir l'image d'origine",
+        "discard": "Ignorer",
+        "replace_original": "Remplacer l'original",
+        "retry": "Réessayer",
+        "cancel": "Annuler",
+        "error_generic": "Impossible d'améliorer l'image. Veuillez réessayer.",
+        "error_network": "Connexion perdue. Vérifiez votre connexion Internet et réessayez.",
+        "error_timeout": "L'amélioration prend plus de temps que prévu.",
+        "toast_saved": "Image mise à jour",
+        "toast_save_failed": "Impossible d'enregistrer l'image améliorée. Veuillez réessayer.",
+        "a11y_enhance": "Améliorer l'image",
+        "a11y_preview": "Aperçu de l'image améliorée"
+      },
       "welcome": {
         "title": "Bienvenue dans votre garde-robe",
         "body": "Nous avons pré-rempli votre garde-robe avec des articles d'exemple pour que vous puissiez commencer à explorer Macgie tout de suite.\n\nAjoutez vos propres vêtements pour recevoir des recommandations de tenues personnalisées selon votre garde-robe et votre style.",

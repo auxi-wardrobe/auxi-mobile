@@ -39,15 +39,19 @@ export const getImageUrl = (
 };
 
 /**
- * Pick the display image for a garment item: prefer the background-removed
- * cutout (`image_png`) and fall back to the original photo (`image_url`) when
- * the cutout is absent. Runs both through `getImageUrl` for S3 path-style
- * normalisation. Returns `undefined` only when neither source resolves.
+ * Pick the display image for a garment item. Precedence (beautify spec §5):
+ * accepted AI studio shot (`image_studio`) → background-removed cutout
+ * (`image_png`) → original photo (`image_url`). Runs the winner through
+ * `getImageUrl` for S3 path-style normalisation. Returns `undefined` only
+ * when no source resolves.
  */
 export const resolveItemImage = (
-  item: Pick<Item, 'image_png' | 'image_url'>,
+  item: Pick<Item, 'image_png' | 'image_url'> & {
+    image_studio?: string | null;
+  },
 ): string | undefined => {
+  const studio = item.image_studio?.trim() ? item.image_studio : undefined;
   const png = item.image_png?.trim() ? item.image_png : undefined;
-  const source = png ?? item.image_url;
+  const source = studio ?? png ?? item.image_url;
   return getImageUrl(source) || source || undefined;
 };

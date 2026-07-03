@@ -50,6 +50,19 @@ export interface ItemDetailFallbackItem {
 }
 
 /**
+ * AI Image Enhancement — serializable result EnhanceImage pops back to
+ * ItemDetail after "Replace original" succeeds, so the detail screen can show
+ * the enhanced image immediately without a refetch (the wardrobe list cache is
+ * invalidated separately). `image_studio` is the accepted studio shot; it wins
+ * the display precedence (image_studio → image_png → image_url).
+ */
+export interface EnhanceAppliedResult {
+  id: string;
+  image_studio?: string;
+  beautify_status?: 'accepted';
+}
+
+/**
  * Local outfit item-swap intent (no pin). Returned to Home by the wardrobe
  * picker (ItemDetail "Change" flow): replace `fromItemId` in the currently
  * viewed outfit with `toItem`. This is a one-off swap on the active outfit —
@@ -180,7 +193,20 @@ export type AppStackParamList = {
   // those ids are NOT in the user's wardrobe list, so the
   // wardrobeService.getWardrobeItem(id) lookup misses (see
   // figma-extraction-item-detail.md Q7). Keep it serializable.
-  ItemDetail: { itemId: string; fallbackItem?: ItemDetailFallbackItem };
+  // `enhancedItem` is a RETURN param: set only by EnhanceImage's popTo after a
+  // successful "Replace original", consumed (merged into state + cleared) by
+  // ItemDetail's mount-level effect — callers never pass it when pushing.
+  ItemDetail: {
+    itemId: string;
+    fallbackItem?: ItemDetailFallbackItem;
+    enhancedItem?: EnhanceAppliedResult;
+  };
+  // AI Image Enhancement preview (reached from ItemDetail's sparkle FAB).
+  // Fires POST /items/{id}/beautify on mount and polls for the candidate —
+  // the on-demand v2 of the upload-time beautify flow (spec §3 non-goal #1,
+  // now in scope). `displayUri` is the image the detail screen was showing;
+  // it doubles as the loading backdrop and the long-press compare baseline.
+  EnhanceImage: { itemId: string; displayUri: string };
   // __DEV__-only in-app Design System reference / style-guide catalog.
   // Reached from the Settings "Version" row in dev builds; not shipped to prod.
   DesignSystem: undefined;

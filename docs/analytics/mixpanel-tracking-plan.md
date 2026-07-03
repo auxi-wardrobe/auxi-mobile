@@ -420,6 +420,8 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 
 - **Beautify funnel:** `beautify_started` → `beautify_ready` → `beautify_review_opened` → `beautify_accepted`. Drop-off between `beautify_started` and `beautify_ready` = job failure / timeout rate (see §6.7 gap — `beautify_failed` not yet wired so failures are only visible as missing continuations). `beautify_wait_continued_browsing` between `started` and `ready` is the leave-during-wait branch — segment `beautify_review_opened` by `from` (`loader` vs `snackbar`) to compare users who watched the full loader vs returned via the Wardrobe snackbar. `beautify_kept_original` and `beautify_regenerated` are exits or re-entry loops from the review step; `beautify_regenerated` broken down by `source` (`review` vs `retry_pending`) distinguishes deliberate re-rolls from failure-recovery retries. `add_item_mode_selected { mode: 'beautify' }` is the top-of-funnel intent signal (fires before upload).
 
+- **Enhance funnel (on-demand, §5.21):** `enhance_started` → `enhance_completed` → `enhance_applied`. Drop between `started` and `completed` = failure rate — break `enhance_failed` down by `reason` (`timeout` specifically tests the "under 10 seconds" promise). Drop between `completed` and `applied` splits into `enhance_discarded` (user rejected the result — a quality signal on the studio-shot model) vs silent exits (backed out of the preview). `enhance_apply_failed` between `completed` and `applied` is the save-error branch. Keep separate from the `beautify_*` upload-time funnel — same backend, different intent.
+
 Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`, `type`. Super properties (`platform`, `app_environment`) are available globally.
 
 ### 5.20 AI Beautify (studio-shot)
@@ -439,4 +441,21 @@ The Beautify flow lets a user upload a garment photo and have GPT image-editing 
 > PII: none. `from` and `source` are closed enums; `attempt` is an unquoted integer (server-side counter). No garment names, URLs, or user identifiers.
 >
 > Note: `beautify_failed` is NOT wired — see §6.7. The pending screen shows a "Couldn't beautify" UI when polling times out or `status === 'failed'` but tracks no event at that point.
+
+### 5.21 AI Image Enhancement (on-demand, Item Detail)
+
+The on-demand v2 of the beautify branch: an existing wardrobe item is enhanced from Item Detail's sparkle FAB. Same backend endpoints as §5.20 but a synchronous preview UX ("under 10 seconds", 2s poll, 15s client timeout) with an explicit Discard / Replace-original decision. Distinct `enhance_*` event names keep this funnel separate from the upload-time `beautify_*` one.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `enhance_started` | Enhance session begins — `POST /items/{id}/beautify` submitted from the EnhanceImage screen (mount and every Retry) | `EnhanceImageScreen.tsx` (`startSession`) | `item_id` |
+| `enhance_completed` | Polling detects `status === 'ready'` with a candidate — preview swaps to the enhanced image | `EnhanceImageScreen.tsx` | `item_id`, `duration_ms` |
+| `enhance_failed` | Session ends in the error state | `EnhanceImageScreen.tsx` (`fail`) | `item_id`, `reason` (`network` / `timeout` / `server_error`) |
+| `enhance_discarded` | User taps Discard — candidate dropped, original untouched | `EnhanceImageScreen.tsx` | `item_id` |
+| `enhance_applied` | User taps Replace original — `acceptBeautify` resolves, studio shot becomes the display image | `EnhanceImageScreen.tsx` | `item_id` |
+| `enhance_apply_failed` | Replace original errored (server/storage) — user stays on the preview, candidate preserved | `EnhanceImageScreen.tsx` | `item_id` |
+
+> PII: none. `reason` is a closed enum; `item_id` is the backend UUID (consistent with `item_detail_opened` / `wardrobe_item_edited`).
+>
+> Not wired (deliberate MVP cut): a compare-used event for the long-press original preview, and `enhance_restore_original` — the restore-from-Edit affordance does not exist yet (no backend endpoint or UI).
 
