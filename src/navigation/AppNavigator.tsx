@@ -30,6 +30,7 @@ import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { SeeThisOnMeScreen } from '../screens/see-this-on-me/SeeThisOnMeScreen';
 import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
+import { ImportFromWebScreen } from '../screens/ImportFromWebScreen';
 import { OutfitCanvasScreen } from '../screens/OutfitCanvasScreen';
 import { MyCreationsScreen } from '../screens/MyCreationsScreen';
 import { DesignSystemScreen } from '../screens/DesignSystemScreen';
@@ -237,6 +238,10 @@ export const AppNavigator = () => {
                 options={{ presentation: 'modal' }}
               />
               <Stack.Screen name="Database" component={DatabaseScreen} />
+              <Stack.Screen
+                name="ImportFromWeb"
+                component={ImportFromWebScreen}
+              />
               <Stack.Screen
                 name="OutfitCanvas"
                 component={OutfitCanvasScreen}

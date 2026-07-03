@@ -14,6 +14,7 @@ interface AddItemSheetProps {
   onSearchDatabase: () => void;
   /** Called with the currently-selected processing mode when the user taps Take photo. */
   onTakePhoto: (mode: UploadMode) => void;
+  onImportFromWeb: () => void;
 }
 
 /**
@@ -30,6 +31,7 @@ export const AddItemSheet: React.FC<AddItemSheetProps> = ({
   onDismiss,
   onSearchDatabase,
   onTakePhoto,
+  onImportFromWeb,
 }) => {
   const { t } = useTranslation();
   const [mode, setMode] = useState<UploadMode>('remove_bg');
@@ -82,6 +84,19 @@ export const AddItemSheet: React.FC<AddItemSheetProps> = ({
           description={t('wardrobe.list.method_photo_desc')}
           onPress={() => onTakePhoto(mode)}
           testID="wardrobe-add-photo"
+        />
+        <AddMethodRow
+          icon={
+            <Icons.Globe
+              width={24}
+              height={24}
+              color={theme.colors.uacBackgroundBase}
+            />
+          }
+          title={t('wardrobe.list.method_import_title')}
+          description={t('wardrobe.list.method_import_desc')}
+          onPress={onImportFromWeb}
+          testID="wardrobe-add-import"
         />
 
         {/* Processing-mode selector — radio-style rows that only apply to

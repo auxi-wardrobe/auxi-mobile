@@ -420,6 +420,37 @@ export const wardrobeService = {
     }
   },
 
+  /**
+   * Import-from-web: create a wardrobe item from a public image URL the user
+   * picked out of the web results. Hands the URL to the dedicated `/from-web`
+   * endpoint, which SSRF-checks, downloads, validates, and re-hosts the image to
+   * our own storage before creating the item (unlike the photo flow, which
+   * uploads to our S3 first). The item comes back `is_preparing` and rides the
+   * existing preparing→ready lifecycle (placeholder tile + "item ready" snackbar).
+   */
+  importWardrobeItemFromUrl: async (
+    imageUrl: string,
+    user: User,
+    typeHint?: string,
+  ): Promise<WardrobeItem> => {
+    try {
+      if (!user || !user.id) {
+        throw new Error('User not authenticated or user ID missing');
+      }
+
+      const response = await wardrobeApi.post('/wardrobe/items/from-web', {
+        user_id: String(user.id),
+        category: typeHint || 'top',
+        image_url: imageUrl,
+        name: 'New Item',
+      });
+      return getSingleItem(response.data);
+    } catch (error) {
+      console.error('Error importing wardrobe item from URL', error);
+      throw error;
+    }
+  },
+
   updateWardrobeItemAttributes: async (
     id: string,
     payload: WardrobeAttributeUpdate,
