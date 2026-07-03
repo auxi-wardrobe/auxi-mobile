@@ -386,6 +386,36 @@ export const wardrobeService = {
     }
   },
 
+  /**
+   * Import-from-web: create a wardrobe item straight from a public image URL
+   * (the one the user picked out of the Google results). No local upload step —
+   * the URL is already reachable, so we hand it to the same AI-enhance endpoint
+   * the photo flow uses. The backend downloads + processes it in the background,
+   * so the new item comes back `is_preparing` and rides the existing preparing→
+   * ready lifecycle (placeholder tile + "item ready" snackbar).
+   */
+  importWardrobeItemFromUrl: async (
+    imageUrl: string,
+    user: User,
+    typeHint?: string,
+  ): Promise<WardrobeItem> => {
+    try {
+      if (!user || !user.id) {
+        throw new Error('User not authenticated or user ID missing');
+      }
+
+      return await wardrobeService.aiEnhanceWardrobeItem({
+        user_id: String(user.id),
+        category: typeHint || 'top',
+        image_url: imageUrl,
+        name: 'New Item',
+      });
+    } catch (error) {
+      console.error('Error importing wardrobe item from URL', error);
+      throw error;
+    }
+  },
+
   updateWardrobeItemAttributes: async (
     id: string,
     payload: WardrobeAttributeUpdate,

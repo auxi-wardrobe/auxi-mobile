@@ -112,7 +112,13 @@ export type AppStackParamList = {
   // one-off swap, NOT a pin. `excludeItemId` is the item being changed: it's
   // hidden from the picker (you can only swap it for ANOTHER item) and becomes
   // the swap's `fromItemId`.
-  Wardrobe: { mode?: 'select'; excludeItemId?: string } | undefined;
+  // `justImported` is set when returning from the ImportFromWeb flow after a
+  // successful web import: the screen shows the "item added" snackbar and
+  // refetches the grid (surfacing the preparing placeholder tile), then clears
+  // the param so a re-focus doesn't refire it.
+  Wardrobe:
+    | { mode?: 'select'; excludeItemId?: string; justImported?: boolean }
+    | undefined;
   // `returnToSchedule` is set when the user reached this page via the Schedule
   // "+" source picker — after scheduling an outfit we send them back to
   // Schedule (focused on the chosen day) instead of staying here. `scheduleDate`
@@ -191,6 +197,11 @@ export type AppStackParamList = {
   // serializable TryOnOutfitContext the flow needs (hash, item ids/urls, note).
   SeeThisOnMe: { outfit: TryOnOutfitContext };
   Database: undefined;
+  // "Import from web" (Figma: Import from web flow) — reached from the Add-item
+  // sheet's "Search images" option. Self-contained flow: query input → embedded
+  // Google results (WebView) → Extract images → Select an image → Preview →
+  // Import. On success it pops back to Wardrobe with `justImported`.
+  ImportFromWeb: undefined;
   OutfitCanvas:
     | {
         outfitId?: string;

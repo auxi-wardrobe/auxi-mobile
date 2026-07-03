@@ -139,6 +139,23 @@ export const WardrobeScreen = () => {
     }
   }, [wardrobeQuery.data, reconcileReadyItems]);
 
+  // Returning from the ImportFromWeb flow: surface the same "item added"
+  // confirmation as the photo upload path and refetch so the new preparing
+  // placeholder tile appears. Clear the param so a re-focus doesn't refire it.
+  useEffect(() => {
+    if (route.params?.justImported) {
+      showReadySnackbar(t('wardrobe.list.added_title'));
+      refetchWardrobe();
+      navigation.setParams({ justImported: undefined });
+    }
+  }, [
+    route.params?.justImported,
+    showReadySnackbar,
+    refetchWardrobe,
+    navigation,
+    t,
+  ]);
+
   // Analytics: screen viewed — decoupled from data fetching, fires on focus and
   // on filter change (preserves the prior wardrobe_viewed cadence).
   useEffect(() => {
@@ -243,6 +260,12 @@ export const WardrobeScreen = () => {
     track('add_item_method_selected', { method: 'search_database' });
     setAddSheetVisible(false);
     navigation.navigate('Database');
+  };
+
+  const handleImportFromWeb = () => {
+    track('add_item_method_selected', { method: 'import_web' });
+    setAddSheetVisible(false);
+    navigation.navigate('ImportFromWeb');
   };
 
   // Add-item upload orchestration (image pick → upload → analytics →
@@ -395,6 +418,7 @@ export const WardrobeScreen = () => {
         onDismiss={() => setAddSheetVisible(false)}
         onSearchDatabase={handleSearchDatabase}
         onTakePhoto={handleTakePhoto}
+        onImportFromWeb={handleImportFromWeb}
       />
 
       {/* Take-photo source chooser — DS MActionSheet (GH-364, replaces the
