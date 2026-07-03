@@ -21,7 +21,7 @@ import { MacgieLoader } from '../components/macgie';
 import { ItemDetailEditPanel } from './item-detail/ItemDetailEditPanel';
 import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
 import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
-import { isEnhanceAvailable } from './item-detail/enhance-session';
+import { canEnhanceItem } from './item-detail/enhance-session';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { useAiConsentGate } from '../hooks/useAiConsentGate';
 import { Icons } from '../assets/icons';
@@ -577,16 +577,11 @@ export const ItemDetailScreen = () => {
     });
   };
 
-  // Offer Enhance only on regular user items that still show their original
-  // image version: catalog items are immutable, `is_preparing` items are mid
-  // create-pipeline, and an accepted studio shot removes the affordance (one
-  // enhancement per image version — trust-first MVP).
-  const canEnhance =
-    !!item &&
-    !!imageUrl &&
-    !isCatalogItem &&
-    !(item.is_preparing === true) &&
-    isEnhanceAvailable(item);
+  // Offer Enhance only as the next step after a user's own upload finished
+  // processing successfully (cutout exists) — catalog/seeded items, items
+  // still preparing, failed processing, and already-enhanced items never get
+  // the FAB. Full rules: enhance-session.ts#canEnhanceItem.
+  const canEnhance = !!item && !!imageUrl && canEnhanceItem(item);
 
   const handleBuildAround = () => {
     // ItemDetail is presented as a modal layer (AppNavigator

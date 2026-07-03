@@ -1,4 +1,5 @@
 import {
+  canEnhanceItem,
   classifyEnhanceError,
   isEnhanceAvailable,
   ENHANCE_POLL_MS,
@@ -25,6 +26,61 @@ describe('enhance-session helpers', () => {
 
     it('hides enhancement while a beautify job is already pending', () => {
       expect(isEnhanceAvailable({ beautify_status: 'pending' })).toBe(false);
+    });
+  });
+
+  describe('canEnhanceItem (full FAB predicate)', () => {
+    // A user upload whose processing succeeded: no catalog id, pipeline done,
+    // rembg cutout present.
+    const UPLOADED = {
+      is_preparing: false,
+      image_png: 'https://cdn/cutout.png',
+    };
+
+    it('offers the FAB on a successfully processed upload', () => {
+      expect(canEnhanceItem(UPLOADED)).toBe(true);
+    });
+
+    it('rejects catalog inventory: common, USR_ clones, and any other hrid-seeded item', () => {
+      expect(canEnhanceItem({ ...UPLOADED, is_common_item: true })).toBe(false);
+      expect(
+        canEnhanceItem({
+          ...UPLOADED,
+          human_readable_id: 'USR_SH_SNK_BLK_HIG_01',
+        }),
+      ).toBe(false);
+      // seeded items carry non-USR hrids too — still not uploads
+      expect(
+        canEnhanceItem({ ...UPLOADED, human_readable_id: 'TOP_L1_001_WHT_REG_01' }),
+      ).toBe(false);
+      expect(
+        canEnhanceItem({
+          ...UPLOADED,
+          human_readable_id: 'TRADITIONAL_L1_ROBE_YELLOW_REG_001',
+        }),
+      ).toBe(false);
+    });
+
+    it('rejects uploads that are not successfully processed yet', () => {
+      // still in the create pipeline
+      expect(canEnhanceItem({ ...UPLOADED, is_preparing: true })).toBe(false);
+      // pipeline done but no cutout produced (processing failed)
+      expect(canEnhanceItem({ is_preparing: false })).toBe(false);
+      expect(canEnhanceItem({ is_preparing: false, image_png: '  ' })).toBe(
+        false,
+      );
+    });
+
+    it('applies the one-shot availability rules on top', () => {
+      expect(
+        canEnhanceItem({ ...UPLOADED, beautify_status: 'accepted' }),
+      ).toBe(false);
+      expect(
+        canEnhanceItem({ ...UPLOADED, image_studio: 'https://cdn/studio.png' }),
+      ).toBe(false);
+      expect(canEnhanceItem({ ...UPLOADED, beautify_status: 'pending' })).toBe(
+        false,
+      );
     });
   });
 

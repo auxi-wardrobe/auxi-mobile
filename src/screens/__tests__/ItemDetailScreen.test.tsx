@@ -431,8 +431,15 @@ describe('enhance FAB', () => {
     });
   };
 
-  it('shows the FAB for a user item and pushes EnhanceImage once on rapid taps', async () => {
-    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+  // A user upload whose processing succeeded (rembg cutout present) — the
+  // ONLY kind of item that offers the Enhance step.
+  const PROCESSED_UPLOAD = {
+    ...USER_ITEM,
+    image_png: 'https://cdn.example/denim-cutout.png',
+  };
+
+  it('shows the FAB for a processed upload and pushes EnhanceImage once on rapid taps', async () => {
+    mockGetWardrobeItem.mockResolvedValue(PROCESSED_UPLOAD);
 
     const r = await renderScreen();
     measureImageRegion(r.root);
@@ -444,8 +451,32 @@ describe('enhance FAB', () => {
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith('EnhanceImage', {
       itemId: 'item-1',
-      displayUri: 'https://cdn.example/denim.jpg',
+      // displayUri is what the detail shows: the processed cutout
+      displayUri: 'https://cdn.example/denim-cutout.png',
     });
+  });
+
+  it('hides the FAB when the upload has no processed cutout yet', async () => {
+    // pipeline done but rembg produced nothing (processing failed) — the
+    // "next step" is only offered after SUCCESSFUL processing
+    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+
+    const r = await renderScreen();
+    measureImageRegion(r.root);
+
+    expect(byTestID(r.root, 'item-detail-enhance-fab').length).toBe(0);
+  });
+
+  it('hides the FAB for hrid-seeded (non-upload) items', async () => {
+    mockGetWardrobeItem.mockResolvedValue({
+      ...PROCESSED_UPLOAD,
+      human_readable_id: 'TOP_L1_001_WHT_REG_01',
+    });
+
+    const r = await renderScreen();
+    measureImageRegion(r.root);
+
+    expect(byTestID(r.root, 'item-detail-enhance-fab').length).toBe(0);
   });
 
   it('hides the FAB for catalog items', async () => {
@@ -468,7 +499,7 @@ describe('enhance FAB', () => {
 
   it('hides the FAB once a studio shot is accepted, which also wins display precedence', async () => {
     mockGetWardrobeItem.mockResolvedValue({
-      ...USER_ITEM,
+      ...PROCESSED_UPLOAD,
       image_studio: 'https://cdn.example/studio.png',
       beautify_status: 'accepted',
     });
@@ -487,7 +518,7 @@ describe('enhance FAB', () => {
   });
 
   it('merges the popped-back enhancedItem result and clears the param', async () => {
-    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+    mockGetWardrobeItem.mockResolvedValue(PROCESSED_UPLOAD);
 
     const client = makeTestClient();
     const makeElement = () => (

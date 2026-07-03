@@ -62,3 +62,44 @@ export function isEnhanceAvailable(
     item.beautify_status !== 'accepted' && item.beautify_status !== 'pending'
   );
 }
+
+/**
+ * Full FAB predicate: Enhance is the NEXT step after a user's own upload has
+ * been successfully processed — nothing else qualifies.
+ *
+ * - Uploaded by the user: catalog items are excluded. That's SYSTEM common
+ *   items, USR_* per-user clones (AU-287), AND any other item carrying a
+ *   `human_readable_id` — hrids are only ever assigned to catalog/seeded
+ *   inventory (e.g. TOP_L1_*, TRADITIONAL_*); real uploads have none.
+ * - Successfully processed: the create pipeline finished (`is_preparing`
+ *   false) and produced the rembg cutout (`image_png`). Uploads that are
+ *   still processing — or whose processing failed — don't offer the step.
+ * - Plus the one-shot availability rules above (not already enhanced, no
+ *   job already pending).
+ */
+export function canEnhanceItem(
+  // `human_readable_id` / `is_preparing` reach WardrobeItem through its index
+  // signature (not declared fields), so they're typed loosely here and
+  // narrowed by the runtime checks below.
+  item: Pick<
+    WardrobeItem,
+    'image_studio' | 'beautify_status' | 'is_common_item' | 'image_png'
+  > & { human_readable_id?: unknown; is_preparing?: unknown },
+): boolean {
+  if (item.is_common_item === true) {
+    return false;
+  }
+  if (
+    typeof item.human_readable_id === 'string' &&
+    item.human_readable_id.trim()
+  ) {
+    return false;
+  }
+  if (item.is_preparing === true) {
+    return false;
+  }
+  if (!(typeof item.image_png === 'string' && item.image_png.trim())) {
+    return false;
+  }
+  return isEnhanceAvailable(item);
+}
