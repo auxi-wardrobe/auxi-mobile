@@ -16,6 +16,13 @@ import IconWardrobe from '../../assets/images/icon_wardrobe.svg';
 // reads as selected; tapping the other tab navigates to it. Built on the same
 // springy DS pill (`MFloatingPill`, icon mode) as the Home header view toggle
 // so the two controls read as one system.
+//
+// The Home↔Wardrobe transition is Facebook-tabs style: the Wardrobe route uses
+// `animation: 'none'` (AppNavigator), and both hosts render this bar at the
+// same bottom anchor (last in-flow child of an edges={['top']} SafeAreaView,
+// fixed 84px height), so on navigation the footer appears to stay put while
+// only the thumb switches and the page content swaps in place. Keep the
+// placement identical on both screens or the illusion breaks.
 
 export type HomeWardrobeNavTab = 'home' | 'wardrobe';
 
