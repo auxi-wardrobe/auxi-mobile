@@ -248,6 +248,7 @@ export const DatabaseScreen = () => {
       <Header.MenuTitle
         title={t('wardrobe.database.title')}
         leftTestID="database-menu-button"
+        leftAccessibilityLabel={t('wardrobe.database.a11y_open_menu')}
         onBack={openSidebar}
       />
 

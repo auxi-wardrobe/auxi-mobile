@@ -391,6 +391,7 @@ export const SettingsScreen = () => {
         headerVariant="menu"
         onLeftPress={openSidebar}
         leftTestID="settings-menu-button"
+        leftAccessibilityLabel={t('settings.a11y_open_menu')}
       >
         {/* ── Daily reminder ─────────────────────────────────────────────── */}
         <SettingsRow
