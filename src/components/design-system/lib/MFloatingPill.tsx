@@ -167,9 +167,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: 6,
   },
-  // md icon (footer nav): 10px frame + 32px icon tabs → a 52px-tall pill.
+  // md icon (footer nav): tight 4px frame + 44px icon tabs (36px glyph + 4px
+  // padding) → a 52px-tall pill with the icon dominating the thumb.
   fbarIconMd: {
-    padding: 10,
+    padding: 4,
   },
   fthumb: {
     position: 'absolute',
@@ -185,13 +186,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   fthumbIconMd: {
-    top: 10,
-    bottom: 10,
+    top: 4,
+    bottom: 4,
   },
   fitem: { paddingVertical: 10, paddingHorizontal: 22, alignItems: 'center' },
-  // Icon mode: square 32×32 tabs (icon 24 + 4 padding) so the thumb hugs the
-  // glyph — text-mode's wide label padding (22) reads too spread around a
-  // single icon.
+  // Icon mode: square tabs with a snug 4px inset so the thumb hugs the glyph —
+  // text-mode's wide label padding (22) reads too spread around a single icon.
+  // md callers pass 36px icons → 44×44 tabs; sm overrides below.
   fitemIcon: { paddingVertical: 4, paddingHorizontal: 4 },
   // sm icon tab: 16px icon + 8px padding → a 32×32 square thumb; with the 6px
   // frame two of them measure 76 wide × 44 tall.
