@@ -2,7 +2,6 @@ import { StyleSheet } from 'react-native';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { HOME_VIEW_TOGGLE_FOOTER_HEIGHT } from '../../components/features/HomeViewToggleFooter';
-import { M_PILL_ICON_MD_HEIGHT } from '../../components/design-system/lib';
 import {
   CARD_ASPECT,
   CARD_HEIGHT,
@@ -39,23 +38,6 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.white,
     ...theme.ds.shadow.headerIcon,
-  },
-  // AI feedback affordance — 44px floating button, bottom-left of the footer,
-  // vertically centred against the footer nav PILL (not the 84px reserved
-  // bar): the pill sits paddingBottom spacing.l inside the bar (see
-  // HomeWardrobeNavFooter), so the FAB's centre lands at spacing.l + pill/2.
-  aiFeedbackFab: {
-    position: 'absolute',
-    left: SHEET_PADDING,
-    bottom: theme.spacing.l + (M_PILL_ICON_MD_HEIGHT - 44) / 2,
-    width: 44,
-    height: 44,
-    borderRadius: theme.borderRadius.l,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.figmaSurface,
-    zIndex: theme.zIndex.sticky,
-    ...theme.ds.shadow.floatingButton,
   },
   // 12×12 mint indicator dot over the top-right lobe of the header favourites
   // heart — signals "you have saved looks" without a count. Positioned within

@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../components/design-system/lib';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { HomeWardrobeNavFooter } from '../components/features/HomeWardrobeNavFooter';
+import { FeedbackFab } from '../components/features/FeedbackFab';
 import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
 import { Header } from '../components/layout/Header';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -606,11 +607,16 @@ export const WardrobeScreen = () => {
       ) : (
         // Shared Home | Wardrobe bottom nav — the wardrobe tab reads as active
         // here; tapping the home tab returns to Home. Hidden in picker mode,
-        // where the "Change" commit bar owns the bottom.
-        <HomeWardrobeNavFooter
-          active="wardrobe"
-          testID="wardrobe-footer-nav-toggle"
-        />
+        // where the "Change" commit bar owns the bottom. The feedback FAB
+        // mounts alongside so the footer cluster matches Home pixel-for-pixel
+        // across the animation-less nav swap.
+        <>
+          <HomeWardrobeNavFooter
+            active="wardrobe"
+            testID="wardrobe-footer-nav-toggle"
+          />
+          <FeedbackFab testID="wardrobe-feedback-fab" />
+        </>
       )}
     </SafeAreaView>
   );
