@@ -45,7 +45,7 @@ export const HomeWardrobeNavFooter: React.FC<Props> = ({ active, testID }) => {
 
   // Active icon = ink (#070707); inactive dims to the muted tan token, matching
   // the header view toggle's treatment. Standard 24px glyphs centered in the
-  // pill's 44px tabs (4px frame + 44×44 thumb = the 52px footer-nav spec in
+  // pill's 40px tabs (6px frame + 40×40 thumb = the 52px footer-nav spec in
   // MFloatingPill).
   const renderIcon = (tab: string, on: boolean) => {
     const iconColor = on

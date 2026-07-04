@@ -68,7 +68,7 @@ export const MFloatingPill: React.FC<MFloatingPillProps> = ({
 }) => {
   const sm = size === 'sm';
   // md icon mode gets its own compact frame (see fbarIconMd) — the footer nav
-  // spec is a 52px-tall pill: 4px frame, 44×44 thumb, 24px glyph.
+  // spec is a 52px-tall pill: 6px frame, 40×40 thumb, 24px glyph.
   const iconMd = !!renderIcon && !sm;
   const reduce = useReducedMotion();
   const idx = Math.max(0, tabs.indexOf(value));
@@ -167,10 +167,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: 6,
   },
-  // md icon (footer nav): tight 4px frame + 44px icon tabs (24px glyph + 10px
-  // padding) → a 52px-tall pill with a 44×44 thumb.
+  // md icon (footer nav): 6px frame + 40px icon tabs (24px glyph + 8px
+  // padding) → a 52px-tall pill with a 40×40 thumb.
   fbarIconMd: {
-    padding: 4,
+    padding: 6,
   },
   fthumb: {
     position: 'absolute',
@@ -186,14 +186,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   fthumbIconMd: {
-    top: 4,
-    bottom: 4,
+    top: 6,
+    bottom: 6,
   },
   fitem: { paddingVertical: 10, paddingHorizontal: 22, alignItems: 'center' },
-  // Icon mode: square 44×44 tabs (24px glyph + 10px inset) — text-mode's wide
+  // Icon mode: square 40×40 tabs (24px glyph + 8px inset) — text-mode's wide
   // label padding (22) reads too spread around a single icon. sm overrides
   // below.
-  fitemIcon: { paddingVertical: 10, paddingHorizontal: 10 },
+  fitemIcon: { paddingVertical: 8, paddingHorizontal: 8 },
   // sm icon tab: 16px icon + 8px padding → a 32×32 square thumb; with the 6px
   // frame two of them measure 76 wide × 44 tall.
   fitemIconSm: { paddingVertical: 8, paddingHorizontal: 8 },
