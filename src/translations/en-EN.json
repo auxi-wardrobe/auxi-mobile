@@ -576,6 +576,7 @@
       "error_update_language": "Failed to change language",
       "notification_reset": "Reset to default setting",
       "a11y_notification_reset": "Reset daily notification to default",
+      "a11y_profile_photo": "Profile photo",
       "notification_reset_toast_title": "Notifications reset to default",
       "notification_reset_toast_body": "Tap to undo",
       "notification_reset_undone_title": "Reset undone",
