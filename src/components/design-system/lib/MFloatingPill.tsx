@@ -36,6 +36,12 @@ import { color, radius, role, shadow, type } from '../m-tokens';
 
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
+// Total height of the md icon-mode pill: 6px frame (fbarIconMd) + 40px icon
+// tabs (fitemIcon: 24px glyph + 8px inset) + 6px frame. Exported so screens
+// can centre-align neighbours against the footer nav pill (e.g. the Home
+// feedback FAB). Keep in sync with fbarIconMd / fitemIcon below.
+export const M_PILL_ICON_MD_HEIGHT = 52;
+
 export interface MFloatingPillProps {
   tabs: string[];
   value: string;
