@@ -44,14 +44,15 @@ export const HomeWardrobeNavFooter: React.FC<Props> = ({ active, testID }) => {
   const isFocused = useIsFocused();
 
   // Active icon = ink (#070707); inactive dims to the muted tan token, matching
-  // the header view toggle's treatment. 36px glyphs fill the pill's 44px tabs
-  // (4px frame + 4px icon inset = the 52px footer-nav spec in MFloatingPill).
+  // the header view toggle's treatment. Standard 24px glyphs centered in the
+  // pill's 44px tabs (4px frame + 44×44 thumb = the 52px footer-nav spec in
+  // MFloatingPill).
   const renderIcon = (tab: string, on: boolean) => {
     const iconColor = on
       ? theme.colors.figmaTextDark
       : theme.ds.color.tanStroke;
     const Icon = tab === 'home' ? IconGrid : IconWardrobe;
-    return <Icon width={36} height={36} color={iconColor} />;
+    return <Icon width={24} height={24} color={iconColor} />;
   };
 
   // Keep testIDs always-defined and flip the suffix per CLAUDE.md so Maestro can
