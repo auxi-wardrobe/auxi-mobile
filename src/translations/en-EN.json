@@ -249,6 +249,8 @@
         "beautify_ready_title": "✨ Studio shot ready — Review",
         "upload_failed_title": "Upload failed",
         "upload_failed_body": "We could not save that item.",
+        "preparing_timeout_title": "Processing took too long",
+        "preparing_timeout_body": "We removed the item — please try uploading it again.",
         "add_photo_title": "Add a photo",
         "add_photo_body": "Use your camera or pick from your library.",
         "a11y_item_fallback": "Wardrobe item",

@@ -42,6 +42,7 @@ import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
 import { PreparingOverlay } from './wardrobe/PreparingOverlay';
 import { useAddWardrobeItem, UploadMode } from './wardrobe/useAddWardrobeItem';
 import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
+import { useStalePreparingCleanup } from './wardrobe/useStalePreparingCleanup';
 import { anyBeautifying } from './wardrobe/beautify-status';
 import {
   FILTER_TABS,
@@ -149,6 +150,11 @@ export const WardrobeScreen = () => {
       reconcileReadyItems(wardrobeQuery.data);
     }
   }, [wardrobeQuery.data, reconcileReadyItems]);
+
+  // Stale-upload watchdog: an item stuck in the preparing state for more than
+  // PREPARING_TIMEOUT_MS is assumed failed — auto-removed with an error toast
+  // telling the user to try again.
+  useStalePreparingCleanup({ items: wardrobeQuery.data, enabled: isFocused });
 
   // Non-blocking web import: ImportFromWeb hands the picked image URL back via
   // `pendingImportUrl` and navigates here immediately — this screen owns the

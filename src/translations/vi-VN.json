@@ -249,6 +249,8 @@
         "beautify_ready_title": "✨ Ảnh studio sẵn sàng — Xem",
         "upload_failed_title": "Tải lên thất bại",
         "upload_failed_body": "Chúng tôi không thể lưu món đó.",
+        "preparing_timeout_title": "Xử lý mất quá nhiều thời gian",
+        "preparing_timeout_body": "Chúng tôi đã xóa món đồ — vui lòng thử tải lên lại.",
         "add_photo_title": "Thêm ảnh",
         "add_photo_body": "Dùng máy ảnh hoặc chọn từ thư viện của bạn.",
         "a11y_item_fallback": "Món trong tủ đồ",
