@@ -1152,9 +1152,23 @@ export const HomeScreen = () => {
     ensureBuffer();
   }, [ensureBuffer, openLimitSheet]);
 
+  // "Refine" on the limit sheet swaps one native modal for another. Opening
+  // the refine sheet while the limit sheet is still dismissing races UIKit
+  // (same bug class as the edit-context fix) — so only close here, and let
+  // the sheet's onDismissed callback open the refine flow once its modal is
+  // fully gone.
+  const pendingLimitRefineRef = useRef(false);
   const handleLimitRefine = useCallback(() => {
+    pendingLimitRefineRef.current = true;
     setLimitSheetVisible(false);
     track('outfit_limit_refine_tapped');
+  }, []);
+
+  const handleLimitSheetDismissed = useCallback(() => {
+    if (!pendingLimitRefineRef.current) {
+      return;
+    }
+    pendingLimitRefineRef.current = false;
     openRefine('explore_limit');
   }, [openRefine]);
 
@@ -1492,6 +1506,7 @@ export const HomeScreen = () => {
         visible={limitSheetVisible}
         onRefine={handleLimitRefine}
         onKeepBrowsing={handleLimitKeepBrowsing}
+        onDismissed={handleLimitSheetDismissed}
       />
 
       <PinConfirmModal

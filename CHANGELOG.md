@@ -8,6 +8,7 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ### Fixed
 - Refine sheet "Edit context" never opened on device (reported on build 43): the editor presented as a second native modal while the chip sheet was still dismissing, so iOS tore it down with the sheet. The edit view now renders inside the refine sheet's single modal (`ContextChipsModal` `editView`), and `EditContextModal` became the modal-less `EditContextView`.
+- Same modal-swap race on the outfit-limit sheet's "Refine" CTA: `OutfitLimitSheet` now reports `onDismissed` after its native modal is fully gone, and HomeScreen defers `openRefine('explore_limit')` until then instead of presenting the refine sheet mid-dismissal.
 
 ## [v1.0-build11] - 2026-05-28
 
