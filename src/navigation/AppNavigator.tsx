@@ -210,10 +210,17 @@ export const AppNavigator = () => {
                 name="SettingsAbout"
                 component={SettingsAboutScreen}
               />
+              {/* Facebook-style tab swap for the Home | Wardrobe footer toggle:
+                  both screens render the identical HomeWardrobeNavFooter at the
+                  same bottom anchor, so with no push/pop slide the footer reads
+                  as one persistent bar whose thumb switches while only the page
+                  content swaps in place. `animation: 'none'` on Wardrobe covers
+                  both directions — Home→Wardrobe pushes it, Wardrobe→Home pops
+                  it, and each transition uses Wardrobe's own animation option. */}
               <Stack.Screen
                 name="Wardrobe"
                 component={WardrobeScreen}
-                options={{ gestureEnabled: false }}
+                options={{ gestureEnabled: false, animation: 'none' }}
               />
               <Stack.Screen name="Favourite" component={FavouriteScreen} />
               <Stack.Screen

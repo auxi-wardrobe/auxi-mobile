@@ -26,7 +26,7 @@ import { EditContextModal } from '../../components/features/EditContextModal';
 import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
 import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
-import { FeedbackSheet } from '../../components/features/FeedbackSheet';
+import { FeedbackFab } from '../../components/features/FeedbackFab';
 import { useMoodFeedback } from '../../hooks/use-mood-feedback';
 import { Item } from '../../types/item';
 import {
@@ -203,7 +203,6 @@ export const HomeScreen = () => {
   const [styleFeedback, setStyleFeedback] = useState<string | null>(null);
   const [hasCycled, setHasCycled] = useState(false);
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
-  const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   // "You've explored most combinations" sheet — shown when the user reaches the
   // end of the available outfits (pool depleted). `shownRef` keeps it to once
@@ -1444,10 +1443,17 @@ export const HomeScreen = () => {
         activeOutfit={activeOutfit}
         onOpenFavourites={handleOpenFavourites}
         onWearThis={handleWearThisForOutfit}
-        onOpenFeedback={() => setFeedbackVisible(true)}
       />
 
       <HomeWardrobeNavFooter active="home" testID="home-footer-nav-toggle" />
+
+      {/* Shared bottom-left feedback FAB — the same component Wardrobe mounts,
+          so the footer cluster reads identically across the nav toggle. Keeps
+          the historical `optionSets.length > 0` gate (hidden during initial
+          load / error states, like the Wear-this cluster). */}
+      {optionSets.length > 0 ? (
+        <FeedbackFab testID="home-feedback-fab" />
+      ) : null}
 
       <ContextChipsModal
         visible={refine.isOpen && !refine.isEditing}
@@ -1508,11 +1514,6 @@ export const HomeScreen = () => {
         onApply={applyTemperature}
         onSelect={handleTempSelect}
         onCancel={closeTempSheet}
-      />
-
-      <FeedbackSheet
-        visible={feedbackVisible}
-        onClose={() => setFeedbackVisible(false)}
       />
 
       <HomeToastLayer
