@@ -61,9 +61,9 @@ export const AddItemSheet: React.FC<AddItemSheetProps> = ({
 
         <AddMethodRow
           icon={
-            <Icons.Database
-              width={24}
-              height={24}
+            <Icons.SearchDatabase
+              width={32}
+              height={32}
               color={theme.colors.uacBackgroundBase}
             />
           }
@@ -74,9 +74,9 @@ export const AddItemSheet: React.FC<AddItemSheetProps> = ({
         />
         <AddMethodRow
           icon={
-            <Icons.Camera
-              width={24}
-              height={24}
+            <Icons.TakePhoto
+              width={32}
+              height={32}
               color={theme.colors.uacBackgroundBase}
             />
           }
