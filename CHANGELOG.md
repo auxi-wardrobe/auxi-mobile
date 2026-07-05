@@ -6,6 +6,9 @@ Auto-appended by the `auxi-launch-notify` skill after each TestFlight upload. Se
 
 ## [Unreleased]
 
+### Fixed
+- Refine sheet "Edit context" never opened on device (reported on build 43): the editor presented as a second native modal while the chip sheet was still dismissing, so iOS tore it down with the sheet. The edit view now renders inside the refine sheet's single modal (`ContextChipsModal` `editView`), and `EditContextModal` became the modal-less `EditContextView`.
+
 ## [v1.0-build11] - 2026-05-28
 
 ### Added

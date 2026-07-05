@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -17,11 +16,10 @@ import { theme } from '../../theme/theme';
 import { MInput } from '../design-system/lib';
 import { EditContextSuggestion } from '../../screens/HomeScreen/context-chips';
 
-interface EditContextModalProps {
-  visible: boolean;
+interface EditContextViewProps {
   // Free-text context the user is composing. Mirrors the refine hook's
   // `customText` so typing here and submitting flows through the same path as
-  // the inline editor it replaces.
+  // the chip row it replaces.
   value: string;
   suggestions: EditContextSuggestion[];
   // Disabled while the trimmed text is empty — there's nothing to apply.
@@ -36,8 +34,12 @@ interface EditContextModalProps {
   onSelectSuggestion: (label: string) => void;
 }
 
-export const EditContextModal: React.FC<EditContextModalProps> = ({
-  visible,
+// Full-screen "Edit context" editor. Deliberately NOT a native <Modal>: it is
+// rendered INSIDE ContextChipsModal's Modal (swapped with the chip card via
+// the `editView` prop). Presenting it as a sibling Modal raced the chip
+// sheet's delayed dismissal on iOS — UIKit tore the editor down together with
+// the sheet's view controller, so the edit screen never survived on device.
+export const EditContextView: React.FC<EditContextViewProps> = ({
   value,
   suggestions,
   submitDisabled,
@@ -49,105 +51,92 @@ export const EditContextModal: React.FC<EditContextModalProps> = ({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
-  // Keep the tree (and the autoFocus input) unmounted while closed so it never
-  // steals focus behind the refine sheet.
-  if (!visible) {
-    return null;
-  }
-
   return (
-    <Modal
-      transparent={false}
-      visible={visible}
-      animationType="slide"
-      onRequestClose={onBack}
+    <KeyboardAvoidingView
+      testID="edit-context-root"
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <KeyboardAvoidingView
-        testID="edit-context-root"
-        style={styles.screen}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + theme.spacing.s },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.content,
-            { paddingTop: insets.top + theme.spacing.s },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <TouchableOpacity
+          testID="edit-context-back"
+          accessibilityRole="button"
+          accessibilityLabel={t('contextChips.a11y_back')}
+          activeOpacity={0.82}
+          style={styles.backButton}
+          onPress={onBack}
         >
+          <Icons.ChevronLeft width={24} height={24} />
+        </TouchableOpacity>
+
+        <View style={styles.inputRow}>
+          <View style={styles.inputFill}>
+            <MInput
+              testID="edit-context-input"
+              value={value}
+              onChangeText={onChangeText}
+              placeholder={t('contextChips.edit_placeholder')}
+              accessibilityLabel={t('contextChips.edit_placeholder')}
+              autoFocus
+              returnKeyType="send"
+              onSubmitEditing={submitDisabled ? undefined : onSubmit}
+            />
+          </View>
           <TouchableOpacity
-            testID="edit-context-back"
+            testID="edit-context-submit"
             accessibilityRole="button"
-            accessibilityLabel={t('contextChips.a11y_back')}
-            activeOpacity={0.82}
-            style={styles.backButton}
-            onPress={onBack}
+            accessibilityLabel={t('contextChips.a11y_submit')}
+            activeOpacity={0.85}
+            style={[
+              styles.submitButton,
+              submitDisabled && styles.submitButtonDisabled,
+            ]}
+            disabled={submitDisabled}
+            onPress={onSubmit}
           >
-            <Icons.ChevronLeft width={24} height={24} />
+            <Icons.ArrowRight
+              width={24}
+              height={24}
+              color={theme.colors.figmaPrimaryButtonText}
+            />
           </TouchableOpacity>
+        </View>
 
-          <View style={styles.inputRow}>
-            <View style={styles.inputFill}>
-              <MInput
-                testID="edit-context-input"
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={t('contextChips.edit_placeholder')}
-                accessibilityLabel={t('contextChips.edit_placeholder')}
-                autoFocus
-                returnKeyType="send"
-                onSubmitEditing={submitDisabled ? undefined : onSubmit}
-              />
-            </View>
-            <TouchableOpacity
-              testID="edit-context-submit"
-              accessibilityRole="button"
-              accessibilityLabel={t('contextChips.a11y_submit')}
-              activeOpacity={0.85}
-              style={[
-                styles.submitButton,
-                submitDisabled && styles.submitButtonDisabled,
-              ]}
-              disabled={submitDisabled}
-              onPress={onSubmit}
-            >
-              <Icons.ArrowRight
-                width={24}
-                height={24}
-                color={theme.colors.figmaPrimaryButtonText}
-              />
-            </TouchableOpacity>
-          </View>
+        <Text style={styles.heading}>
+          {t('contextChips.suggested_context')}
+        </Text>
 
-          <Text style={styles.heading}>
-            {t('contextChips.suggested_context')}
-          </Text>
-
-          <View style={styles.suggestions}>
-            {suggestions.map(suggestion => {
-              const label = t(suggestion.labelKey, {
-                defaultValue: suggestion.label,
-              });
-              return (
-                <Pressable
-                  key={suggestion.id}
-                  testID={`edit-context-suggestion-${suggestion.id}`}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [
-                    styles.suggestionChip,
-                    pressed && styles.suggestionChipPressed,
-                  ]}
-                  onPress={() => onSelectSuggestion(label)}
-                >
-                  <Text style={styles.suggestionText}>{label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Modal>
+        <View style={styles.suggestions}>
+          {suggestions.map(suggestion => {
+            const label = t(suggestion.labelKey, {
+              defaultValue: suggestion.label,
+            });
+            return (
+              <Pressable
+                key={suggestion.id}
+                testID={`edit-context-suggestion-${suggestion.id}`}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.suggestionChip,
+                  pressed && styles.suggestionChipPressed,
+                ]}
+                onPress={() => onSelectSuggestion(label)}
+              >
+                <Text style={styles.suggestionText}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
