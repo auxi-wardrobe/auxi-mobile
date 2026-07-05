@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { ensurePushPermissionAndRegister } from '../services/notificationService';
 import { useSidebar } from '../context/SidebarContext';
 import { SettingsScreenScaffold } from '../components/settings/SettingsScreenScaffold';
+import { SettingsProfileHeader } from '../components/settings/SettingsProfileHeader';
 import { SettingsRow, SettingsDivider } from '../components/settings/SettingsRow';
 import { SettingsDialog } from '../components/settings/SettingsDialog';
 import { Radio, RadioOptionList } from '../components/settings/RadioOptionList';
@@ -392,6 +393,9 @@ export const SettingsScreen = () => {
         onLeftPress={openSidebar}
         leftTestID="settings-menu-button"
       >
+        {/* ── Profile ────────────────────────────────────────────────────── */}
+        <SettingsProfileHeader email={user?.email} />
+
         {/* ── Daily reminder ─────────────────────────────────────────────── */}
         <SettingsRow
           testID="settings-daily-toggle-row"

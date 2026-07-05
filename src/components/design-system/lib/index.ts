@@ -95,7 +95,11 @@ export { toast, type ToastOptions, type ToastTone } from './m-toast-service';
 // Navigation
 export { MTopAppBar, type MTopAppBarProps } from './MTopAppBar';
 export { MTabBar, type MTabBarItem, type MTabBarProps } from './MTabBar';
-export { MFloatingPill, type MFloatingPillProps } from './MFloatingPill';
+export {
+  MFloatingPill,
+  M_PILL_ICON_MD_HEIGHT,
+  type MFloatingPillProps,
+} from './MFloatingPill';
 
 // Pickers
 export {
