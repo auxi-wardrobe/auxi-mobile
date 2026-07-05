@@ -42,17 +42,13 @@ import {
   InlineError,
 } from './components';
 import { renderStomStepScreen } from './StomStepScreen';
+import { StepBodyShapeSkeleton } from './StepBodyShapeSkeleton';
 import {
   renderStomStepControls,
   StomStepControlsProps,
 } from './StomStepControls';
 import { BodyShapeId, GeneratedShape } from './body-shapes';
-import {
-  Step,
-  CaptureStep,
-  stepOrder,
-  captureStepConfig,
-} from './stom-steps';
+import { Step, CaptureStep, stepOrder, captureStepConfig } from './stom-steps';
 import { decideEntryMode } from './profile-entry';
 import { tryOnGenerationStore } from './try-on-generation-store';
 import { useTryOnGeneration } from './use-try-on-generation';
@@ -516,7 +512,10 @@ export const SeeThisOnMeScreen: React.FC = () => {
     bodyShape: null,
   };
 
-  const activeIndex = stepOrder.indexOf(step as CaptureStep);
+  // While generating the 3 body-shape photos we stay in the transcript and treat
+  // the flow as sitting on the `bodyShape` step (skeleton tiles render there).
+  const displayStep = step === 'generatingShapes' ? 'bodyShape' : step;
+  const activeIndex = stepOrder.indexOf(displayStep as CaptureStep);
   const visibleSteps =
     activeIndex >= 0 ? stepOrder.slice(0, activeIndex + 1) : [];
 
@@ -543,12 +542,15 @@ export const SeeThisOnMeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StomHeader title={t('seeThisOnMe.title')} onBack={handleBack} />
+      <StomHeader
+        title={t('seeThisOnMe.title')}
+        onBack={step === 'generatingShapes' ? handleQuitGeneration : handleBack}
+      />
       <ScrollView contentContainerStyle={styles.transcript}>
         {visibleSteps.map(s => {
           const config = captureStepConfig[s];
           const thumbUri = stepThumbUri[s];
-          const isActive = s === step;
+          const isActive = s === displayStep;
           return (
             <React.Fragment key={s}>
               <PromptBubble
@@ -562,7 +564,13 @@ export const SeeThisOnMeScreen: React.FC = () => {
               {isActive && photoError ? (
                 <InlineError testID="stom-photo-error" text={photoError} />
               ) : null}
-              {isActive ? renderStomStepControls(s, stepControlsProps) : null}
+              {isActive ? (
+                step === 'generatingShapes' && s === 'bodyShape' ? (
+                  <StepBodyShapeSkeleton />
+                ) : (
+                  renderStomStepControls(s, stepControlsProps)
+                )
+              ) : null}
             </React.Fragment>
           );
         })}

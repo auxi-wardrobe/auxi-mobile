@@ -16,7 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Header } from '../components/layout/Header';
 import { theme } from '../theme/theme';
-import { Icons } from '../assets/icons';
+import { useSidebar } from '../context/SidebarContext';
 
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -71,14 +71,7 @@ type ScreenNavigation = NativeStackNavigationProp<
 export const DatabaseScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const { t } = useTranslation();
-
-  const handleBack = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('Wardrobe');
-    }
-  };
+  const { open: openSidebar } = useSidebar();
 
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');

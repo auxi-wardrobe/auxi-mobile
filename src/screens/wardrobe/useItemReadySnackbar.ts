@@ -9,6 +9,11 @@ interface UseItemReadySnackbar {
   readySnackbarMessage: string;
   showReadySnackbar: (message: string) => void;
   reconcileReadyItems: (data: WardrobeItem[]) => void;
+  // Beautify-ready snackbar state. Non-null while the snackbar is visible; the
+  // screen drives the overlay and navigates on press using these values.
+  beautifySnackbarVisible: boolean;
+  beautifySnackbarItemId: string | null;
+  beautifySnackbarOriginalUri: string | null;
 }
 
 /**
@@ -17,6 +22,10 @@ interface UseItemReadySnackbar {
  * verbatim from WardrobeScreen — same ref/timer/dedup semantics, so an item
  * only ever fires one "ready" snackbar per session. `showReadySnackbar` is also
  * reused by the add-item flow for the "item added" confirmation.
+ *
+ * Extended (Task 14): also detects beautify_status `pending → ready` transitions
+ * and exposes a separate beautify-ready snackbar state that the screen uses to
+ * render an actionable "Studio shot ready — Review" overlay → BeautifyReview.
  */
 export const useItemReadySnackbar = (): UseItemReadySnackbar => {
   const { t } = useTranslation();
@@ -47,11 +56,46 @@ export const useItemReadySnackbar = (): UseItemReadySnackbar => {
     }, READY_SNACKBAR_MS);
   }, []);
 
-  // Clear any pending auto-hide timer on unmount.
+  // --- Beautify-ready snackbar (Task 14) ---
+  // `beautifyStatusRef` maps item.id → last-seen beautify_status so we can
+  // detect the pending→ready transition across polls without re-mounting.
+  // `beautifyReadyToastedRef` dedups so each item fires at most one snackbar.
+  const beautifyStatusRef = useRef<Map<string, string>>(new Map());
+  const beautifyReadyToastedRef = useRef<Set<string>>(new Set());
+
+  const [beautifySnackbarVisible, setBeautifySnackbarVisible] = useState(false);
+  const [beautifySnackbarItemId, setBeautifySnackbarItemId] = useState<
+    string | null
+  >(null);
+  const [beautifySnackbarOriginalUri, setBeautifySnackbarOriginalUri] = useState<
+    string | null
+  >(null);
+  const beautifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showBeautifySnackbar = useCallback(
+    (itemId: string, originalUri: string) => {
+      if (beautifyTimerRef.current) {
+        clearTimeout(beautifyTimerRef.current);
+      }
+      setBeautifySnackbarItemId(itemId);
+      setBeautifySnackbarOriginalUri(originalUri);
+      setBeautifySnackbarVisible(true);
+      beautifyTimerRef.current = setTimeout(() => {
+        setBeautifySnackbarVisible(false);
+        beautifyTimerRef.current = null;
+      }, READY_SNACKBAR_MS);
+    },
+    [],
+  );
+
+  // Clear any pending auto-hide timers on unmount.
   useEffect(
     () => () => {
       if (snackbarTimerRef.current) {
         clearTimeout(snackbarTimerRef.current);
+      }
+      if (beautifyTimerRef.current) {
+        clearTimeout(beautifyTimerRef.current);
       }
     },
     [],
@@ -59,6 +103,7 @@ export const useItemReadySnackbar = (): UseItemReadySnackbar => {
 
   // Detect preparing→ready transitions and surface the toast once per item.
   // Compares this fetch against the prior fetch's preparing set.
+  // Also detects beautify_status pending→ready and fires the studio-shot snackbar.
   const reconcileReadyItems = useCallback(
     (data: WardrobeItem[]) => {
       const prevPreparing = preparingIdsRef.current;
@@ -68,13 +113,11 @@ export const useItemReadySnackbar = (): UseItemReadySnackbar => {
         if (!item.id) {
           continue;
         }
+
+        // --- preparing→ready (existing logic, unchanged) ---
         if (isPreparing(item)) {
           nextPreparing.add(item.id);
-          continue;
-        }
-        // Item is ready now. Toast only if it was preparing last fetch and
-        // hasn't been toasted yet (dedup across polls/refocus).
-        if (
+        } else if (
           prevPreparing.has(item.id) &&
           !readyToastedIdsRef.current.has(item.id)
         ) {
@@ -90,11 +133,31 @@ export const useItemReadySnackbar = (): UseItemReadySnackbar => {
           }
           track('item_ready_toast_shown', readyProps);
         }
+
+        // --- beautify_status pending→ready (Task 14) ---
+        const prevBeautifyStatus = beautifyStatusRef.current.get(item.id);
+        const currBeautifyStatus = item.beautify_status;
+
+        if (
+          prevBeautifyStatus === 'pending' &&
+          currBeautifyStatus === 'ready' &&
+          !beautifyReadyToastedRef.current.has(item.id)
+        ) {
+          beautifyReadyToastedRef.current.add(item.id);
+          showBeautifySnackbar(item.id, item.image_url ?? '');
+        }
+
+        // Update the last-seen beautify status for this item. Only track
+        // actionable statuses; omit undefined (item pre-dates the field) to
+        // avoid clobbering a previously stored status on a partial response.
+        if (currBeautifyStatus !== undefined) {
+          beautifyStatusRef.current.set(item.id, currBeautifyStatus);
+        }
       }
 
       preparingIdsRef.current = nextPreparing;
     },
-    [t, showReadySnackbar],
+    [t, showReadySnackbar, showBeautifySnackbar],
   );
 
   return {
@@ -102,5 +165,8 @@ export const useItemReadySnackbar = (): UseItemReadySnackbar => {
     readySnackbarMessage,
     showReadySnackbar,
     reconcileReadyItems,
+    beautifySnackbarVisible,
+    beautifySnackbarItemId,
+    beautifySnackbarOriginalUri,
   };
 };

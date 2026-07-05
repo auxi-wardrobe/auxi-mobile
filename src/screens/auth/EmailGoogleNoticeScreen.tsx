@@ -51,6 +51,7 @@ import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import { useGoogleSignInMutation } from '../../hooks/auth/useAuthMutations';
 import { useAuth } from '../../context/AuthContext';
 import { googleSignInRequest } from '../../services/oauth/googleSignIn';
+import { saveProfilePhoto } from '../../services/profilePhoto';
 import { isOAuthCancelled } from '../../services/oauth/oauthErrors';
 import { isOAuthConfigured } from '../../services/oauth/oauthConfig';
 import { track } from '../../services/analytics';
@@ -120,12 +121,17 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
     }
     setSubmitting(true);
     try {
-      const { idToken } = await googleSignInRequest();
+      const { idToken, photoUrl } = await googleSignInRequest();
       await googleMutation.mutateAsync({ id_token: idToken });
       // Tokens persisted by `signInWithGoogle`; pull the user so AuthContext
       // flips AppNavigator over to the AppStack.
       markOAuthSignIn('google');
-      await refreshUser();
+      const signedInUser = await refreshUser();
+      // Cache the Google avatar for the Settings profile header (the backend
+      // has no photo field, so this is the only place it can be captured).
+      if (photoUrl && signedInUser?.email) {
+        saveProfilePhoto(signedInUser.email, photoUrl);
+      }
     } catch (err) {
       if (isOAuthCancelled(err)) return;
       if (err && typeof err === 'object' && 'code' in err && 'status' in err) {
