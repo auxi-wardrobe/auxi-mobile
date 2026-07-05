@@ -576,6 +576,7 @@
       "error_update_language": "Không thể đổi ngôn ngữ",
       "notification_reset": "Đặt lại về mặc định",
       "a11y_notification_reset": "Đặt lại nhắc nhở hằng ngày về mặc định",
+      "a11y_profile_photo": "Ảnh đại diện",
       "notification_reset_toast_title": "Đã đặt lại nhắc nhở về mặc định",
       "notification_reset_toast_body": "Chạm để hoàn tác",
       "notification_reset_undone_title": "Đã hoàn tác",

@@ -48,6 +48,7 @@ import {
 } from '../../hooks/auth/useAuthMutations';
 import { appleSignInRequest } from '../../services/oauth/appleSignIn';
 import { googleSignInRequest } from '../../services/oauth/googleSignIn';
+import { saveProfilePhoto } from '../../services/profilePhoto';
 import { isOAuthCancelled } from '../../services/oauth/oauthErrors';
 import { isOAuthConfigured } from '../../services/oauth/oauthConfig';
 import { track } from '../../services/analytics';
@@ -227,13 +228,18 @@ export const WelcomeScreen = () => {
     }
     setSocialBusy('google');
     try {
-      const { idToken } = await googleSignInRequest();
+      const { idToken, photoUrl } = await googleSignInRequest();
       await googleMutation.mutateAsync({ id_token: idToken });
       // Tokens have already been persisted by `signInWithGoogle`. Pull
       // the user record so AuthContext flips AppNavigator over to the
       // AppStack — no manual reset() needed.
       markOAuthSignIn('google');
-      await refreshUser();
+      const signedInUser = await refreshUser();
+      // Cache the Google avatar for the Settings profile header (the backend
+      // has no photo field, so this is the only place it can be captured).
+      if (photoUrl && signedInUser?.email) {
+        saveProfilePhoto(signedInUser.email, photoUrl);
+      }
     } catch (err) {
       if (isOAuthCancelled(err)) return;
       // Mutation errors land here as AuthErrorEnvelope; native SDK
