@@ -45,7 +45,6 @@ import { useTranslation } from 'react-i18next';
 import { MButton, MInput } from '../../components/design-system/lib';
 import { AuthHeader } from '../../components/auth/AuthHeader';
 import { useForgotPasswordMutation } from '../../hooks/auth/useAuthMutations';
-import { isGoogleEmail } from '../../utils/email-provider';
 import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 import { theme } from '../../theme/theme';
@@ -65,9 +64,6 @@ export const ForgotPasswordRequestScreen: React.FC = () => {
 
   const [email, setEmail] = useState<string>(route.params?.email ?? '');
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  // AU-315: Gmail accounts can't be reset via our email flow — we show
-  // an informational notice (neutral, not an error) instead.
-  const [gmailNotice, setGmailNotice] = useState<string | null>(null);
 
   const mutation = useForgotPasswordMutation();
   const isSubmitting = mutation.isPending;
@@ -78,17 +74,7 @@ export const ForgotPasswordRequestScreen: React.FC = () => {
   const handleSubmit = () => {
     if (!canSubmit) return;
     setSubmissionError(null);
-    setGmailNotice(null);
     const trimmed = email.trim();
-
-    // AU-315: Gmail-domain emails authenticate via Google — there is no
-    // password to reset on our side and the backend no-ops the request.
-    // Steer the user to reset within Gmail instead of advancing to a
-    // check-mail screen they'd wait on forever.
-    if (isGoogleEmail(trimmed)) {
-      setGmailNotice(t('uac.forgot_request.gmail_notice') as string);
-      return;
-    }
 
     track('forgot_password_requested');
     mutation.mutate(
@@ -148,7 +134,6 @@ export const ForgotPasswordRequestScreen: React.FC = () => {
             onChangeText={text => {
               setEmail(text);
               if (submissionError) setSubmissionError(null);
-              if (gmailNotice) setGmailNotice(null);
             }}
             autoCapitalize="none"
             autoCorrect={false}
@@ -164,14 +149,7 @@ export const ForgotPasswordRequestScreen: React.FC = () => {
             </Text>
           ) : null}
 
-          {gmailNotice ? (
-            <Text
-              style={styles.noticeText}
-              testID="forgot-request-gmail-notice"
-            >
-              {gmailNotice}
-            </Text>
-          ) : null}
+
         </ScrollView>
 
         {/* Primary CTA — bottom-anchored */}
@@ -217,11 +195,6 @@ const styles = StyleSheet.create({
   errorText: {
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.uacTextDangerBase,
-    marginTop: theme.spacing.uacDimension8,
-  },
-  noticeText: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.uacTextInfoBase,
     marginTop: theme.spacing.uacDimension8,
   },
   footer: {
