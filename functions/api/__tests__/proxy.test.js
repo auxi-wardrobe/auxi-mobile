@@ -1,4 +1,5 @@
 // Node 20 provides global fetch/Headers/Request/Response/URL.
+/* global Response */
 const { onRequest } = require('../[[path]].js');
 
 describe('sandbox api proxy (pass-through)', () => {
@@ -12,11 +13,18 @@ describe('sandbox api proxy (pass-through)', () => {
   });
 
   it('forwards Authorization, strips cookie, preserves path+query+method', async () => {
-    const request = new Request('https://x.auxi-web-review.pages.dev/api/me?y=1', {
-      method: 'GET',
-      headers: { Authorization: 'Bearer abc', Cookie: 'AUXI_SESSION=zzz' },
+    const request = new Request(
+      'https://x.auxi-web-review.pages.dev/api/me?y=1',
+      {
+        method: 'GET',
+        headers: { Authorization: 'Bearer abc', Cookie: 'AUXI_SESSION=zzz' },
+      },
+    );
+    const resp = await onRequest({
+      request,
+      env: {},
+      params: { path: ['me'] },
     });
-    const resp = await onRequest({ request, env: {}, params: { path: ['me'] } });
 
     expect(resp.status).toBe(200);
     expect(captured.target).toBe(
@@ -28,11 +36,14 @@ describe('sandbox api proxy (pass-through)', () => {
   });
 
   it('forwards a POST body (e.g. login) untouched', async () => {
-    const request = new Request('https://x.auxi-web-review.pages.dev/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'a@b', password: 'p' }),
-    });
+    const request = new Request(
+      'https://x.auxi-web-review.pages.dev/api/login',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'a@b', password: 'p' }),
+      },
+    );
     await onRequest({ request, env: {}, params: { path: ['login'] } });
     expect(captured.target).toBe(
       'https://wardrobe-backend-production-c8d9.up.railway.app/api/login',
