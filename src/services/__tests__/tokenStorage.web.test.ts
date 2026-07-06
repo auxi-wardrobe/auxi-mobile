@@ -54,7 +54,6 @@ function loadModule(hostname = 'abc123.auxi-web-review.pages.dev') {
   (globalThis as any).localStorage = store;
   (globalThis as any).document = jar;
   (globalThis as any).location = { hostname };
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require('../tokenStorage.web');
 }
 
@@ -146,12 +145,12 @@ describe('tokenStorage.web shared cookie', () => {
 
   it('ephemeral mode: clearTokens does NOT delete the shared cookie', async () => {
     const m = loadModule();
-    await m.setTokens(bundle());              // non-ephemeral → cookie written
+    await m.setTokens(bundle()); // non-ephemeral → cookie written
     expect(jar.cookie).toContain('AUXI_SESSION=');
     m.enableEphemeralMode();
     await m.clearTokens();
-    expect(jar.cookie).toContain('AUXI_SESSION=');   // cookie survives
-    expect(await m.getAccessToken()).toBeNull();      // localStorage still cleared
+    expect(jar.cookie).toContain('AUXI_SESSION='); // cookie survives
+    expect(await m.getAccessToken()).toBeNull(); // localStorage still cleared
   });
 
   it('falls back to Max-Age=2592000 when refresh_token_expires_at is 0', async () => {

@@ -17,7 +17,9 @@ export interface SetTokensInput {
 // When enabled (admin impersonation iframe), ALL shared-cookie writes/deletes
 // are skipped so the ephemeral session never touches the designer's cookie.
 let ephemeral = false;
-export const enableEphemeralMode = (): void => { ephemeral = true; };
+export const enableEphemeralMode = (): void => {
+  ephemeral = true;
+};
 
 const write = (f: string, v: string | null | undefined) => {
   if (v === undefined) return;
@@ -52,7 +54,10 @@ const writeSharedCookie = (b: StoredTokenData): void => {
   const maxAge = ttl > 0 ? ttl : DEFAULT_MAX_AGE;
   const attrs = [
     `${SHARED_COOKIE}=${encodeURIComponent(JSON.stringify(b))}`,
-    'Path=/', 'Secure', 'SameSite=Lax', `Max-Age=${maxAge}`,
+    'Path=/',
+    'Secure',
+    'SameSite=Lax',
+    `Max-Age=${maxAge}`,
   ];
   const domain = sharedCookieDomain();
   if (domain) attrs.push(`Domain=${domain}`);
@@ -84,9 +89,12 @@ export const setTokens = async (input: SetTokensInput): Promise<void> => {
   });
 };
 
-export const getAccessToken = async (): Promise<string | null> => read('access_token');
-export const getRefreshToken = async (): Promise<string | null> => read('refresh_token');
-export const getStoredEmail = async (): Promise<string | null> => read('user_email');
+export const getAccessToken = async (): Promise<string | null> =>
+  read('access_token');
+export const getRefreshToken = async (): Promise<string | null> =>
+  read('refresh_token');
+export const getStoredEmail = async (): Promise<string | null> =>
+  read('user_email');
 
 export const getStoredTokens = async (): Promise<StoredTokenData | null> => {
   const access_token = read('access_token');
@@ -101,8 +109,13 @@ export const getStoredTokens = async (): Promise<StoredTokenData | null> => {
 };
 
 export const clearTokens = async (): Promise<void> => {
-  ['access_token', 'refresh_token', 'access_token_expires_at',
-   'refresh_token_expires_at', 'user_email'].forEach(f => localStorage.removeItem(KEY(f)));
+  [
+    'access_token',
+    'refresh_token',
+    'access_token_expires_at',
+    'refresh_token_expires_at',
+    'user_email',
+  ].forEach(f => localStorage.removeItem(KEY(f)));
   deleteSharedCookie();
 };
 
@@ -116,7 +129,11 @@ export const hydrateFromSharedCookie = async (): Promise<boolean> => {
   const raw = readCookie(SHARED_COOKIE);
   if (!raw) return false;
   let b: StoredTokenData;
-  try { b = JSON.parse(decodeURIComponent(raw)); } catch { return false; }
+  try {
+    b = JSON.parse(decodeURIComponent(raw));
+  } catch {
+    return false;
+  }
   if (!b || !b.access_token) return false;
   const exp = b.refresh_token_expires_at || b.access_token_expires_at || 0;
   if (exp && exp <= nowSec()) return false;
