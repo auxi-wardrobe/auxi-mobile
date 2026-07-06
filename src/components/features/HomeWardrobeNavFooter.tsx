@@ -71,7 +71,18 @@ export const HomeWardrobeNavFooter: React.FC<Props> = ({ active, testID }) => {
       return;
     }
     track('home_footer_nav_tapped', { destination: next });
-    navigation.navigate(next === 'home' ? 'Home' : 'Wardrobe');
+    if (next === 'home') {
+      // popTo, NOT navigate: under React Navigation 7 navigate() no longer
+      // pops back to a screen already in the stack — it pushes a SECOND Home
+      // on top of Wardrobe, which animates with Home's default slide and
+      // stacks duplicates. popTo pops back to the existing Home, so the
+      // Wardrobe→Home direction dismisses Wardrobe under its `animation:
+      // 'none'` option and stays as instant as Home→Wardrobe. (Same pitfall
+      // as ImportFromWebScreen → Wardrobe.)
+      navigation.popTo('Home');
+    } else {
+      navigation.navigate('Wardrobe');
+    }
   };
 
   return (
