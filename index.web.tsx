@@ -6,6 +6,7 @@ import {
   setPendingNavIntent,
 } from './src/services/reviewOverrides';
 import {
+  clearTokens,
   enableEphemeralMode,
   hydrateFromSharedCookie,
   setTokens,
@@ -39,6 +40,11 @@ async function boot() {
     // Admin impersonation: ephemeral, localStorage-only, never touch the
     // shared designer cookie. Strip the token from the URL immediately.
     enableEphemeralMode();
+    // Wipe any pre-existing (e.g. designer) session from this origin's
+    // localStorage first — cookie-safe under ephemeral mode — so the
+    // impersonation session can't inherit a stale refresh_token and later
+    // silently refresh back into the designer account.
+    await clearTokens();
     await setTokens({ access_token: paramToken });
     stripTokenFromUrl();
   } else if (authState !== 'logged-out') {
