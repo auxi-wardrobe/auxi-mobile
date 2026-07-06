@@ -9,12 +9,10 @@
  * safe) — we navigate to the check-mail screen regardless of whether the
  * email exists in the DB.
  *
- * AU-315: a Gmail-domain address can't be reset via our email flow — the
- * backend silently skips OAuth-only accounts on /api/auth/forgot-password,
- * so a reset email is never sent ("nothing happens"). Instead of firing the
- * no-op request, we surface inline guidance telling the user to reset their
- * password from within the Gmail / Google account, and we do NOT advance to
- * the check-mail screen (there's no mail to check).
+ * AU-315 (reverted): the previous gmail-domain gate that blocked @gmail.com
+ * addresses and surfaced inline guidance to reset via the Gmail app has been
+ * removed. The backend is enumeration-safe (always 200), so the gate was both
+ * unnecessary and harmful for dual-auth accounts (Google + Macgie password).
  *
  * Error handling: only RATE_LIMITED (429) surfaces an inline error; any
  * other transport failure shows the generic copy.
@@ -148,8 +146,6 @@ export const ForgotPasswordRequestScreen: React.FC = () => {
               {submissionError}
             </Text>
           ) : null}
-
-
         </ScrollView>
 
         {/* Primary CTA — bottom-anchored */}
