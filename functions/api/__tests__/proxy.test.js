@@ -1,5 +1,5 @@
 // Node 20 provides global fetch/Headers/Request/Response/URL.
-/* global Response */
+/* global Response, Request, Buffer */
 const { onRequest } = require('../[[path]].js');
 
 describe('sandbox api proxy (pass-through)', () => {
