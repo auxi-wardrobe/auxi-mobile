@@ -93,6 +93,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
 | **`outfit_recommendation_viewed`** | Active sheet settles on a new `outfit_hash`. Dedup'd via module-level `Set<outfit_hash>` per session — see `trackRecommendationViewedOnce()` helper. | `HomeScreen.tsx:564` via `analytics.ts:173` | `outfit_hash`, `position`, `source` (`feed`/`refine`) |
+| **`recommendation_failed`** | The Home recommendation build/poll mutation rejects (`onError`). Makes launch-week AI failures visible (previously only `console.error`'d). | `HomeScreen/index.tsx` (`startMutation.onError`) via `analytics.ts` (`trackRecommendationFailed`) | `error_kind` (`network` / `rate_limited` / `ai_unavailable` / `server` / `unknown` — sanitized from the axios error, NO raw message/URL/PII); `status` (HTTP status number, omitted when no response reached the app) |
 | **`outfit_favorited`** ★ (pre-existing) | `saveFavourite` success | `HomeScreen.tsx:973` | `outfit_hash`, `item_count`, `source` |
 | `outfit_unfavorited` (pre-existing) | Favourite removed | `FavouriteScreen.tsx:53` | `favorite_id` |
 | `outfit_swiped` | Swipe left → next suggestion / swipe right → previous (navigation only; favouriting moved to "Wear this"). Right-swipe is blocked on the first card, so `previous` only fires from index ≥ 1. | `HomeScreen/index.tsx` (`handleSkip`, `handleSwipeBack`) | `outfit_hash`, `direction` (`next`/`previous`), `method` (`gesture`) |

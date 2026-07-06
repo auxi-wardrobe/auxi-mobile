@@ -173,6 +173,23 @@ export const trackRecommendationViewedOnce = (
   track('outfit_recommendation_viewed', { outfit_hash: outfitHash, ...props });
 };
 
+// ── Recommendation failure (B4) ────────────────────────────────────────────
+// Fired when the Home recommendation build/poll rejects. Literal event name (no
+// template strings). `error_kind` is a sanitized enum derived from the axios
+// error (see classifyRecommendationError) — NEVER a raw message / URL / PII.
+// `status` is the numeric HTTP status (not PII) and is omitted when absent.
+
+/** A Home recommendation build failed. */
+export const trackRecommendationFailed = (
+  errorKind: string,
+  status?: number,
+): void => {
+  track('recommendation_failed', {
+    error_kind: errorKind,
+    ...(typeof status === 'number' ? { status } : {}),
+  });
+};
+
 // ── AU-362 Outfit Temperature override (6 events) ──────────────────────────
 // Literal event names (no template strings). Props use bucket keys only — no
 // PII, no raw user text. Numbers unquoted; unknown props omitted.
