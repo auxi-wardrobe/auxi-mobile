@@ -6,10 +6,18 @@
  */
 class MemStorage {
   store = new Map<string, string>();
-  getItem(k: string) { return this.store.has(k) ? this.store.get(k)! : null; }
-  setItem(k: string, v: string) { this.store.set(k, String(v)); }
-  removeItem(k: string) { this.store.delete(k); }
-  clear() { this.store.clear(); }
+  getItem(k: string) {
+    return this.store.has(k) ? this.store.get(k)! : null;
+  }
+  setItem(k: string, v: string) {
+    this.store.set(k, String(v));
+  }
+  removeItem(k: string) {
+    this.store.delete(k);
+  }
+  clear() {
+    this.store.clear();
+  }
 }
 
 // Minimal cookie jar: honours Max-Age=0 as delete, records raw set strings so
@@ -68,6 +76,8 @@ describe('tokenStorage.web shared cookie', () => {
     expect(raw).toContain('Domain=auxi-web-review.pages.dev');
     expect(raw).toContain('Secure');
     expect(raw).toContain('SameSite=Lax');
+    expect(raw).toContain('Path=/');
+    expect(raw).toMatch(/Max-Age=\d+/);
   });
 
   it('omits Domain on non-pages.dev hosts (localhost dev)', async () => {
@@ -101,7 +111,9 @@ describe('tokenStorage.web shared cookie', () => {
     // Fresh "subdomain": empty localStorage, same shared cookie present.
     const b = loadModule();
     (globalThis as any).document = {
-      get cookie() { return cookieValue; },
+      get cookie() {
+        return cookieValue;
+      },
       set cookie(_s: string) {},
     };
     const hydrated = await b.hydrateFromSharedCookie();
@@ -111,8 +123,11 @@ describe('tokenStorage.web shared cookie', () => {
 
   it('hydrateFromSharedCookie ignores an expired session', async () => {
     const m = loadModule();
-    const dead = { ...bundle(), access_token_expires_at: nowSec() - 10,
-      refresh_token_expires_at: nowSec() - 10 };
+    const dead = {
+      ...bundle(),
+      access_token_expires_at: nowSec() - 10,
+      refresh_token_expires_at: nowSec() - 10,
+    };
     (globalThis as any).document = {
       get cookie() {
         return 'AUXI_SESSION=' + encodeURIComponent(JSON.stringify(dead));
@@ -127,5 +142,21 @@ describe('tokenStorage.web shared cookie', () => {
     const m = loadModule();
     await m.setTokens(bundle());
     expect(await m.hydrateFromSharedCookie()).toBe(false);
+  });
+
+  it('ephemeral mode: clearTokens does NOT delete the shared cookie', async () => {
+    const m = loadModule();
+    await m.setTokens(bundle());              // non-ephemeral → cookie written
+    expect(jar.cookie).toContain('AUXI_SESSION=');
+    m.enableEphemeralMode();
+    await m.clearTokens();
+    expect(jar.cookie).toContain('AUXI_SESSION=');   // cookie survives
+    expect(await m.getAccessToken()).toBeNull();      // localStorage still cleared
+  });
+
+  it('falls back to Max-Age=2592000 when refresh_token_expires_at is 0', async () => {
+    const m = loadModule();
+    await m.setTokens({ access_token: 'a', refresh_token_expires_at: 0 });
+    expect(jar.raw.join('\n')).toContain('Max-Age=2592000');
   });
 });
