@@ -41,6 +41,7 @@ import { wardrobeService, wardrobeKeys } from '../../services/wardrobeService';
 import {
   track,
   trackRecommendationViewedOnce,
+  trackRecommendationFailed,
   trackTemperatureModalOpened,
   trackTemperatureOptionSelected,
   trackTemperatureApplyClicked,
@@ -48,6 +49,12 @@ import {
   trackTemperatureOverrideRemoved,
   trackRecommendationGeneratedByTemperatureOnce,
 } from '../../services/analytics';
+import {
+  AI_DAILY_LIMIT_CODE,
+  AI_UNAVAILABLE_CODE,
+  classifyRecommendationError,
+  getApiErrorCode,
+} from '../../utils/aiError';
 import { resolveItemImage } from '../../utils/url';
 import {
   TemperatureOverrideSheet,
@@ -95,7 +102,10 @@ import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
 import { useHomeToasts } from './hooks/useHomeToasts';
 import { EDIT_CONTEXT_SUGGESTIONS } from './context-chips';
-import { HomeErrorState } from './components/HomeErrorState';
+import {
+  HomeErrorState,
+  type HomeErrorVariant,
+} from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { DeckCue } from './components/DeckCue';
 import { HomeHeader } from './components/HomeHeader';
@@ -496,6 +506,10 @@ export const HomeScreen = () => {
       console.error('Failed to load recommendation', error);
       inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
 
+      // B4: record the failure with a sanitized error_kind (+ HTTP status).
+      const { kind, status } = classifyRecommendationError(error);
+      trackRecommendationFailed(kind, status);
+
       const tempApplyId = variables?.__tempApplyId;
       if (tempApplyId != null && tempApplyId === tempApplyIdRef.current) {
         const code = (error as { code?: string })?.code;
@@ -853,6 +867,15 @@ export const HomeScreen = () => {
   }, [pinState.outfit]);
 
   const loading = isStartPending && listOutfits.length === 0;
+
+  // B4/B5: map the backend AI error code to a specific error state (daily limit
+  // / temporarily unavailable) — everything else keeps the generic message.
+  const homeErrorVariant = useMemo<HomeErrorVariant>(() => {
+    const code = getApiErrorCode(startError);
+    if (code === AI_DAILY_LIMIT_CODE) return 'ai_limit';
+    if (code === AI_UNAVAILABLE_CODE) return 'ai_unavailable';
+    return 'generic';
+  }, [startError]);
 
   const pinnedItem = useMemo<Item | null>(() => {
     if (!pinnedItemId) {
@@ -1355,6 +1378,7 @@ export const HomeScreen = () => {
         />
       ) : optionSets.length === 0 && startError ? (
         <HomeErrorState
+          variant={homeErrorVariant}
           onRetry={() => {
             resetStartMutation();
             requestRecommendation({
