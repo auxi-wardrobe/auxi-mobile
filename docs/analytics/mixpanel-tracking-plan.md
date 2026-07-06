@@ -369,6 +369,10 @@ URL), `wardrobe_url_import_completed`, `wardrobe_url_import_failed`. The
 
 Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvasScreen` toolbar handlers (`handleAddItem`, `handleDuplicate`, `handleDelete`, swap-TODO, tag add/remove, undo/redo) and `handleSave` are local-only editor state with no persistence — the canvas never reaches the backend (`handleSave` is a TODO that just `goBack()`s). Wire `canvas_outfit_saved` (with `item_count`, `tag_count`) and the per-action events when the Save→persist endpoint lands. Re-wire condition: a real canvas-persist mutation exists.
 
+### 6.8 Web sandbox login — real login / admin impersonation (no web events)
+
+The web-preview ("sandbox") surface now boots through the real login screen (cookie auto-login across `*.auxi-web-review.pages.dev`) or an admin `?token=` impersonation param, instead of a forced review account. Mixpanel is stubbed on web (`web/stubs/mixpanel.ts`), so no auth events fire from the sandbox; impersonation auto-boot is not a user action. No new events — re-wire only if web analytics is ever un-stubbed. Spec: `docs/superpowers/specs/2026-07-06-web-sandbox-cookie-auth-and-admin-impersonation-design.md`.
+
 ## 7. Consent (EU/CA) — mechanism DONE, UI PENDING ⚠️
 
 `src/services/analytics.ts` exposes:
