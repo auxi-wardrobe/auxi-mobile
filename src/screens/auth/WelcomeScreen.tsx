@@ -64,7 +64,7 @@ type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 // Temporarily hide the Apple + email sign-in CTAs while those flows are
 // buggy. Google is the only supported entry point for now. Flip back to
 // `true` to restore the full action stack once the flows are fixed.
-const SHOW_APPLE_AND_EMAIL_SIGN_IN = false;
+const SHOW_APPLE_AND_EMAIL_SIGN_IN = true;
 
 // Minimal inline glyphs — keep diff small (no new SVG assets).
 // Sizes match the Figma 24×24 trailing-icon slot.
