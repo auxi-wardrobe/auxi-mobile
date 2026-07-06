@@ -1,8 +1,4 @@
-import {
-  parseTokenParam,
-  stripTokenFromUrl,
-  TOKEN_PARAM,
-} from '../tokenParam';
+import { parseTokenParam, stripTokenFromUrl, TOKEN_PARAM } from '../tokenParam';
 
 describe('parseTokenParam', () => {
   it('reads a non-empty token param', () => {
