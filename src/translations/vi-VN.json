@@ -85,7 +85,8 @@
         "oauth_conflict_other_provider": "Email này được liên kết với {{provider}}. Vui lòng đăng nhập bằng {{provider}}.",
         "oauth_conflict_password": "Email này đã có mật khẩu. Vui lòng đăng nhập bằng mật khẩu của bạn.",
         "qa_bypass_cta": "QA: Bỏ qua tới Onboarding",
-        "qa_bypass_error": "Đăng nhập QA bypass thất bại. Kiểm tra backend ở cổng :5001."
+        "qa_bypass_error": "Đăng nhập QA bypass thất bại. Kiểm tra backend ở cổng :5001.",
+        "sign_in_link": "Đã có tài khoản? Đăng nhập"
       },
       "language_settings": {
         "title": "Ngôn ngữ",

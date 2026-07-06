@@ -157,6 +157,11 @@ export const WelcomeScreen = () => {
     track('email_sign_in_started', { method: 'email' });
     navigation.navigate('EmailInput', { mode: 'signup' });
   };
+
+  const onPressSignIn = () => {
+    track('sign_in_link_tapped', { source: 'welcome' });
+    navigation.navigate('EmailInput', { mode: 'signin' });
+  };
   const onPressLanguage = () => {
     // Opening the auth-tier language picker. The actual locale change fires
     // `auth_language_changed` from inside LanguageSettings.
@@ -420,6 +425,23 @@ export const WelcomeScreen = () => {
                   style={styles.buttonBase}
                   trailing={<EnvelopeGlyph />}
                 />
+
+                {/* 3d. Sign-in link — returning users bypass signup flow. */}
+                <Pressable
+                  testID="welcome-cta-signin"
+                  accessibilityRole="link"
+                  accessibilityLabel={t('uac.welcome.sign_in_link')}
+                  onPress={onPressSignIn}
+                  disabled={isBusy}
+                  style={({ pressed }) => [
+                    styles.signInLink,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.signInLinkText}>
+                    {t('uac.welcome.sign_in_link')}
+                  </Text>
+                </Pressable>
               </>
             )}
           </View>
@@ -568,5 +590,15 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  signInLink: {
+    alignSelf: 'center',
+    paddingVertical: theme.spacing.uacDimension8,
+    paddingHorizontal: theme.spacing.uacDimension16,
+  },
+  signInLinkText: {
+    ...theme.typography.aliases.uacBodyXsMedium,
+    color: theme.colors.uacTextInfoBase,
+    textDecorationLine: 'underline',
   },
 });

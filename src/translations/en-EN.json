@@ -85,7 +85,8 @@
         "oauth_conflict_other_provider": "This email is linked to {{provider}}. Sign in with {{provider}} instead.",
         "oauth_conflict_password": "This email already has a password. Sign in with your password.",
         "qa_bypass_cta": "QA: Skip to Onboarding",
-        "qa_bypass_error": "QA bypass login failed. Check the backend on :5001."
+        "qa_bypass_error": "QA bypass login failed. Check the backend on :5001.",
+        "sign_in_link": "Already have an account? Sign in"
       },
       "language_settings": {
         "title": "Language",
@@ -134,7 +135,7 @@
         "google_cta": "Continue with Google"
       },
       "signin": {
-        "section_heading": "Enter password to signin",
+        "section_heading": "Enter password to sign in",
         "email_label": "Your email",
         "password_label": "Password",
         "password_placeholder": "Enter your password",
@@ -150,10 +151,10 @@
       },
       "forgot_request": {
         "section_heading": "Reset your password",
-        "body": "We'll send a password reseting to your email",
+        "body": "We'll send a password reset link to your email",
         "gmail_notice": "This email uses Google. Reset your password in the Gmail app or your Google account settings.",
         "email_label": "Your email",
-        "submit_cta": "Send reset password",
+        "submit_cta": "Send reset link",
         "error_rate_limited": "Too many requests. Please try again later.",
         "error_generic": "Couldn't send reset email. Please try again."
       },

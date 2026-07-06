@@ -85,7 +85,8 @@
         "oauth_conflict_other_provider": "Cet email est lié à {{provider}}. Connectez-vous plutôt avec {{provider}}.",
         "oauth_conflict_password": "Cet email a déjà un mot de passe. Connectez-vous avec votre mot de passe.",
         "qa_bypass_cta": "QA : Passer à l'onboarding",
-        "qa_bypass_error": "Échec de la connexion QA bypass. Vérifiez le backend sur :5001."
+        "qa_bypass_error": "Échec de la connexion QA bypass. Vérifiez le backend sur :5001.",
+        "sign_in_link": "Déjà un compte ? Se connecter"
       },
       "language_settings": {
         "title": "Langue",
