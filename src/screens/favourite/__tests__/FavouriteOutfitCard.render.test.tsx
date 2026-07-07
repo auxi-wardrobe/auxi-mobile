@@ -1,4 +1,5 @@
 import React from 'react';
+import { Image } from 'react-native';
 import TestRenderer, { act } from 'react-test-renderer';
 import { FavouriteOutfitCard } from '../FavouriteOutfitCard';
 import { Favourite } from '../../../services/favouriteService';
@@ -6,6 +7,11 @@ import { Favourite } from '../../../services/favouriteService';
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }));
+
+jest.mock('../../../theme/motion', () => {
+  const actual = jest.requireActual('../../../theme/motion');
+  return { ...actual, useReducedMotion: () => true };
+});
 
 const fav: Favourite = {
   id: 'fav1',
@@ -63,6 +69,27 @@ test('grid view renders all outfit tiles', () => {
   expect(tileIDs(r)).toHaveLength(3);
 });
 
+test('grid view keeps a skeleton visible until tile image load settles', () => {
+  let r!: TestRenderer.ReactTestRenderer;
+  act(() => {
+    r = TestRenderer.create(
+      <FavouriteOutfitCard favourite={fav} view="grid" />,
+    );
+  });
+
+  const skeletonId = 'favourite-card-fav1-image-skeleton-i1';
+  expect(
+    r.root.findAll(n => n.props?.testID === skeletonId).length,
+  ).toBeGreaterThan(0);
+
+  const image = r.root.findAllByType(Image)[0];
+  act(() => {
+    image.props.onLoadEnd();
+  });
+
+  expect(r.root.findAll(n => n.props?.testID === skeletonId)).toHaveLength(0);
+});
+
 test('collage view renders all outfit tiles after layout', () => {
   let r!: TestRenderer.ReactTestRenderer;
   act(() => {
@@ -75,7 +102,9 @@ test('collage view renders all outfit tiles after layout', () => {
   // before the first onLayout pass).
   expect(tileIDs(r)).toHaveLength(0);
 
-  const surface = r.root.find(n => n.props?.testID === 'favourite-card-fav1-collage');
+  const surface = r.root.find(
+    n => n.props?.testID === 'favourite-card-fav1-collage',
+  );
   act(() => {
     surface.props.onLayout({
       nativeEvent: { layout: { x: 0, y: 0, width: 343, height: 457 } },

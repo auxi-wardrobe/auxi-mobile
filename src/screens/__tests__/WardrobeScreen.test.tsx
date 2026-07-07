@@ -14,6 +14,7 @@
  * are stubbed so this test exercises WardrobeScreen's own tile wiring.
  */
 import React from 'react';
+import { Image } from 'react-native';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WardrobeScreen } from '../WardrobeScreen';
@@ -61,6 +62,11 @@ jest.mock('react-i18next', () => {
   return {
     useTranslation: () => translation,
   };
+});
+
+jest.mock('../../theme/motion', () => {
+  const actual = jest.requireActual('../../theme/motion');
+  return { ...actual, useReducedMotion: () => true };
 });
 
 const mockGetWardrobeItems = jest.fn();
@@ -188,6 +194,12 @@ const LESS_USED_ITEM = {
 const byTestID = (root: ReactTestInstance, id: string): ReactTestInstance[] =>
   root.findAll(n => n.props?.testID === id);
 
+const firstImageByUri = (
+  root: ReactTestInstance,
+  uri: string,
+): ReactTestInstance =>
+  root.findAllByType(Image).find(n => n.props?.source?.uri === uri)!;
+
 const flushPromises = async () => {
   await act(async () => {
     await Promise.resolve();
@@ -265,6 +277,23 @@ describe('WardrobeScreen tile status tags', () => {
     const badge = byTestID(root, 'wardrobe-item-new-mine-1')[0];
     const label = badge.findAll(n => n.props?.children === 'New');
     expect(label.length).toBeGreaterThan(0);
+  });
+
+  it('keeps a skeleton visible until the wardrobe tile image load settles', async () => {
+    mockGetWardrobeItems.mockResolvedValue([USER_ITEM]);
+
+    const r = await renderScreen();
+    const root = r.root;
+
+    expect(
+      byTestID(root, 'wardrobe-image-skeleton-mine-1').length,
+    ).toBeGreaterThan(0);
+
+    act(() => {
+      firstImageByUri(root, USER_ITEM.image_url).props.onLoadEnd();
+    });
+
+    expect(byTestID(root, 'wardrobe-image-skeleton-mine-1')).toHaveLength(0);
   });
 
   it('does NOT render the New tag once the item has been viewed', async () => {

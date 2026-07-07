@@ -1,6 +1,7 @@
 import React from 'react';
-import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { BodyItem } from '../../services/bodyService';
 import { TryOnOutfitContext } from '../../types/navigation';
@@ -45,10 +46,11 @@ export const BodyTryOnView: React.FC<BodyTryOnViewProps> = ({
     <>
       <View style={styles.previewCard}>
         {previewImageUrl ? (
-          <Image
-            source={{ uri: previewImageUrl }}
+          <LoadableRemoteImage
+            uri={previewImageUrl}
             style={styles.tryOnPreview}
             resizeMode="contain"
+            skeletonTestID="body-try-on-preview-skeleton"
           />
         ) : (
           <View style={styles.previewPlaceholder}>
@@ -67,10 +69,11 @@ export const BodyTryOnView: React.FC<BodyTryOnViewProps> = ({
               key={`outfit-preview-${index}`}
               style={styles.outfitPreviewCard}
             >
-              <Image
-                source={{ uri: resolveImageUrl(imageUrl) }}
+              <LoadableRemoteImage
+                uri={resolveImageUrl(imageUrl)}
                 style={styles.outfitPreviewImage}
                 resizeMode="contain"
+                skeletonTestID={`body-outfit-preview-skeleton-${index}`}
               />
             </View>
           ))}

@@ -7,8 +7,9 @@
  * affordance is offered.
  */
 import React, { useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { theme } from '../../theme/theme';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { BodyShapeId, GeneratedShape } from './body-shapes';
@@ -55,10 +56,10 @@ export const StepBodyShape: React.FC<StepBodyShapeProps> = ({
               style={[styles.option, isSelected && styles.optionSelected]}
               onPress={() => setExpandedShape(option.shape)}
             >
-              <Image
-                source={{ uri: option.image_url }}
-                style={styles.optionImage}
+              <LoadableRemoteImage
+                uri={option.image_url}
                 resizeMode="cover"
+                skeletonTestID={`stom-shape-option-image-skeleton-${option.shape}`}
               />
               <View style={styles.optionLabelRow}>
                 <Text style={styles.optionLabel} numberOfLines={1}>
@@ -119,10 +120,6 @@ const styles = StyleSheet.create({
   optionSelected: {
     borderWidth: 2,
     borderColor: theme.colors.figmaAction,
-  },
-  optionImage: {
-    width: '100%',
-    height: '100%',
   },
   optionLabelRow: {
     position: 'absolute',

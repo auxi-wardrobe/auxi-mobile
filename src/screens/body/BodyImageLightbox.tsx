@@ -1,11 +1,11 @@
 import React from 'react';
 import {
-  Image,
   Modal,
   StyleSheet,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 
 interface BodyImageLightboxProps {
   visible: boolean;
@@ -32,10 +32,11 @@ export const BodyImageLightbox: React.FC<BodyImageLightboxProps> = ({
           <TouchableWithoutFeedback>
             <View style={styles.largeImageContainer}>
               {imageUrl && (
-                <Image
-                  source={{ uri: imageUrl }}
+                <LoadableRemoteImage
+                  uri={imageUrl}
                   style={styles.largeImage}
                   resizeMode="contain"
+                  skeletonTestID="body-lightbox-image-skeleton"
                 />
               )}
             </View>
