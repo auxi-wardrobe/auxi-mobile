@@ -57,19 +57,24 @@ export const useContextRefineModal = ({
     setCustomText('');
   }, []);
 
+  // The draft (incl. `isEditing`) is deliberately NOT reset here — the sheet
+  // needs `isEditing` intact while it unmounts to know whether to skip the
+  // card slide-out. `open()` resets the draft before the next presentation.
   const close = useCallback(() => {
     Keyboard.dismiss();
     setIsOpen(false);
-    resetDraft();
-  }, [resetDraft]);
-
-  const open = useCallback((source: string) => {
-    Keyboard.dismiss();
-    // Show a fresh random subset each time the sheet opens.
-    setActiveChipOptions(pickContextChips());
-    setIsOpen(true);
-    track('refine_modal_opened', { source });
   }, []);
+
+  const open = useCallback(
+    (source: string) => {
+      Keyboard.dismiss();
+      // Fresh draft + a fresh random chip subset each time the sheet opens.
+      resetDraft();
+      setIsOpen(true);
+      track('refine_modal_opened', { source });
+    },
+    [resetDraft],
+  );
 
   const onShuffle = useCallback(() => {
     Keyboard.dismiss();

@@ -22,7 +22,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSchedule } from '../../context/ScheduleContext';
 import { toDayKey } from '../../utils/dateKey';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
-import { EditContextModal } from '../../components/features/EditContextModal';
+import { EditContextView } from '../../components/features/EditContextView';
 import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
 import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
@@ -1175,9 +1175,23 @@ export const HomeScreen = () => {
     ensureBuffer();
   }, [ensureBuffer, openLimitSheet]);
 
+  // "Refine" on the limit sheet swaps one native modal for another. Opening
+  // the refine sheet while the limit sheet is still dismissing races UIKit
+  // (same bug class as the edit-context fix) — so only close here, and let
+  // the sheet's onDismissed callback open the refine flow once its modal is
+  // fully gone.
+  const pendingLimitRefineRef = useRef(false);
   const handleLimitRefine = useCallback(() => {
+    pendingLimitRefineRef.current = true;
     setLimitSheetVisible(false);
     track('outfit_limit_refine_tapped');
+  }, []);
+
+  const handleLimitSheetDismissed = useCallback(() => {
+    if (!pendingLimitRefineRef.current) {
+      return;
+    }
+    pendingLimitRefineRef.current = false;
     openRefine('explore_limit');
   }, [openRefine]);
 
@@ -1479,8 +1493,12 @@ export const HomeScreen = () => {
         <FeedbackFab testID="home-feedback-fab" />
       ) : null}
 
+      {/* Single native modal for the whole refine flow. The full-screen
+          "Edit context" view is swapped in for the chip card INSIDE this
+          modal (editView) — presenting it as a second sibling <Modal> raced
+          the sheet's dismissal on iOS and the editor never survived. */}
       <ContextChipsModal
-        visible={refine.isOpen && !refine.isEditing}
+        visible={refine.isOpen}
         chipOptions={refine.displayChipOptions}
         selectedChipId={refine.selectedChipId}
         isSubmitting={false}
@@ -1488,29 +1506,31 @@ export const HomeScreen = () => {
         onSelectChip={refine.onSelectChip}
         onShuffle={refine.onShuffle}
         onEdit={refine.onEdit}
+        isEditing={refine.isEditing}
+        onEditBack={refine.onCancelEdit}
+        editView={
+          <EditContextView
+            value={refine.customText}
+            suggestions={EDIT_CONTEXT_SUGGESTIONS}
+            submitDisabled={refine.confirmDisabled}
+            onChangeText={refine.onChangeText}
+            onSelectSuggestion={refine.onChangeText}
+            onBack={refine.onCancelEdit}
+            onSubmit={refine.onConfirm}
+          />
+        }
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
         onSkip={refine.onSkip}
       />
 
-      {/* Full-screen "Edit context" view — opened from the refine sheet's Edit
-          chip. Submitting applies the typed context through the same feedback
-          path; backing out returns to the chip row. */}
-      <EditContextModal
-        visible={refine.isOpen && refine.isEditing}
-        value={refine.customText}
-        suggestions={EDIT_CONTEXT_SUGGESTIONS}
-        submitDisabled={refine.confirmDisabled}
-        onChangeText={refine.onChangeText}
-        onSelectSuggestion={refine.onChangeText}
-        onBack={refine.onCancelEdit}
-        onSubmit={refine.onConfirm}
-      />
+
 
       <OutfitLimitSheet
         visible={limitSheetVisible}
         onRefine={handleLimitRefine}
         onKeepBrowsing={handleLimitKeepBrowsing}
+        onDismissed={handleLimitSheetDismissed}
       />
 
       <PinConfirmModal
