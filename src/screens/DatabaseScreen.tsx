@@ -1,13 +1,8 @@
+import { StyleSheet, Text, ScrollView, View, Image } from 'react-native';
 import {
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  ScrollView,
-  View,
-  Dimensions,
-  Image,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -16,52 +11,27 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Header } from '../components/layout/Header';
 import { theme } from '../theme/theme';
-import { useSidebar } from '../context/SidebarContext';
+import { Icons } from '../assets/icons';
 
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
+import { PressableScale } from '../components/primitives/PressableScale';
 
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { AppStackParamList } from '../types/navigation';
-import { getImageUrl } from '../utils/url';
+import { resolveItemImage } from '../utils/url';
 import { track } from '../services/analytics';
-
-const { width: screenWidth } = Dimensions.get('window');
-
-const HORIZONTAL_PADDING = 24;
-const GRID_GAP = 4;
-const WARDROBE_COLUMNS = 4;
-
-const TILE_WIDTH = screenWidth / WARDROBE_COLUMNS;
-const TILE_HEIGHT = TILE_WIDTH * (4 / 3);
-
-const FILTER_TABS = [
-  'All',
-  'Tops',
-  'Bottoms',
-  'Shoes',
-  'One-piece',
-  'AC',
-] as const;
-type FilterTab = (typeof FILTER_TABS)[number];
-
-const resolveFilterQuery = (selectedTab: FilterTab): string | undefined => {
-  switch (selectedTab) {
-    case 'Tops':
-      return 'top';
-    case 'Bottoms':
-      return 'bottom';
-    case 'Shoes':
-      return 'shoes';
-    case 'One-piece':
-      return 'one_piece';
-    case 'AC':
-      return 'accessory';
-    case 'All':
-    default:
-      return undefined;
-  }
-};
+// Shared wardrobe grid spec (Figma node 2850:16492) — the Database picker
+// renders the exact same 3-column grid, tabs, and tile geometry as Wardrobe.
+import {
+  FILTER_TABS,
+  FilterTab,
+  GRID_GAP,
+  HORIZONTAL_PADDING,
+  TILE_HEIGHT,
+  TILE_WIDTH,
+  resolveFilterQuery,
+} from './wardrobe/wardrobe-grid';
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
@@ -71,11 +41,19 @@ type ScreenNavigation = NativeStackNavigationProp<
 export const DatabaseScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
   const { t } = useTranslation();
-  const { open: openSidebar } = useSidebar();
+  const insets = useSafeAreaInsets();
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Wardrobe');
+    }
+  };
 
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<WardrobeItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const isFocused = useIsFocused();
@@ -107,7 +85,7 @@ export const DatabaseScreen = () => {
 
   const renderLoadingGrid = () => (
     <View style={styles.grid}>
-      {Array.from({ length: 8 }).map((_, index) => (
+      {Array.from({ length: 6 }).map((_, index) => (
         <View key={`skeleton-${index}`} style={styles.tileSkeleton} />
       ))}
     </View>
@@ -205,80 +183,100 @@ export const DatabaseScreen = () => {
     }
   };
 
-  const renderGridTile = (item: WardrobeItem) => {
-    const imageUrl = getImageUrl(item.image_png ?? item.image_url);
+  // Same tile visual as WardrobeGridTile, with the wardrobe select-mode
+  // treatment (figmaAction ring + top-right check) extended to multi-select.
+  const renderGridTile = (item: WardrobeItem, index: number) => {
+    const imageUrl = resolveItemImage({
+      image_png: item.image_png ?? null,
+      image_url: item.image_url ?? '',
+    });
+    const isSelected = selectedItems.includes(item.id);
+    const tileTestID =
+      index === 0 ? 'database-item-first' : `database-item-${item.id}`;
 
     return (
-      <TouchableOpacity
+      <PressableScale
         key={item.id}
-        style={[
-          styles.tile,
-          selectedItems.includes(item.id) && {
-            borderWidth: 4,
-            borderRadius: 12,
-            borderColor: '#5B5550',
-          },
-        ]}
+        style={[styles.tile, isSelected && styles.tileSelected]}
         activeOpacity={0.88}
         onPress={() => handleItemPress(item.id)}
+        testID={tileTestID}
+        accessibilityLabel={item.name || t('wardrobe.list.a11y_item_fallback')}
       >
-        <View>
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.tileImage}
-              resizeMode="cover"
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl, cache: 'force-cache' }}
+            style={styles.tileImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={styles.tileFallback}>
+            <Text style={styles.tileFallbackText}>{t('common.no_image')}</Text>
+          </View>
+        )}
+
+        {isSelected ? (
+          <View
+            style={styles.tileSelectedCheck}
+            testID={`database-select-check-${item.id}`}
+            pointerEvents="none"
+          >
+            <Icons.CheckCircle
+              width={24}
+              height={24}
+              color={theme.colors.figmaAction}
             />
-          ) : (
-            <View style={styles.tileFallback}>
-              <Text style={styles.tileFallbackText}>
-                {t('common.no_image')}
-              </Text>
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
+          </View>
+        ) : null}
+      </PressableScale>
     );
   };
 
   const hasItems = items.length > 0;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Header.MenuTitle
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <Header.BackTitle
         title={t('wardrobe.database.title')}
-        leftTestID="database-menu-button"
-        onBack={openSidebar}
+        leftTestID="database-back-button"
+        leftAccessibilityLabel={t('uac.common.back')}
+        onBack={handleBack}
       />
 
-      <View style={{ paddingHorizontal: 16, flex: 1 }}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <CategoryTabs
-            categories={[...FILTER_TABS]}
-            selectedCategory={selectedTab}
-            onSelectCategory={category => setSelectedTab(category as FilterTab)}
-          />
-          {loading ? (
-            renderLoadingGrid()
-          ) : hasItems ? (
-            <View style={styles.grid}>{items.map(renderGridTile)}</View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>
-                {t('wardrobe.database.empty')}
-              </Text>
-            </View>
-          )}
-        </ScrollView>
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <CategoryTabs
+          categories={[...FILTER_TABS]}
+          selectedCategory={selectedTab}
+          onSelectCategory={category => setSelectedTab(category as FilterTab)}
+          wrap
+        />
+        {loading ? (
+          renderLoadingGrid()
+        ) : hasItems ? (
+          <View testID="database-grid-root" style={styles.grid}>
+            {items.map(renderGridTile)}
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>{t('wardrobe.database.empty')}</Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Pinned commit bar — same shape as the wardrobe picker-mode footer. */}
+      <View style={[styles.addFooter, { paddingBottom: insets.bottom + 16 }]}>
         <PillButton
           testID="database-add-items-submit"
+          variant="filled"
           title={t('wardrobe.database.add_item')}
           onPress={handleAddItems}
           disabled={selectedItems.length === 0 || submitting}
           loading={submitting}
+          style={styles.addCta}
         />
       </View>
     </SafeAreaView>
@@ -290,21 +288,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
   },
-  plusButton: {
-    width: 45,
-    height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  plusGlyph: {
-    color: theme.colors.figmaAction,
-    fontSize: 28,
-    lineHeight: 28,
-    marginTop: -2,
+  scroll: {
+    flex: 1,
   },
   scrollContent: {
     paddingTop: 12,
-    paddingBottom: 32,
+    // Extra bottom room so the last grid row clears the pinned "Add Item" bar.
+    paddingBottom: 120,
   },
   grid: {
     flexDirection: 'row',
@@ -315,16 +305,25 @@ const styles = StyleSheet.create({
   tileSkeleton: {
     width: TILE_WIDTH,
     height: TILE_HEIGHT,
-    borderRadius: theme.borderRadius.m,
-    backgroundColor: '#E3E6EB',
+    borderRadius: theme.borderRadius.figmaTile,
+    backgroundColor: theme.colors.figmaDetailSurface,
   },
   tile: {
-    padding: 2,
     width: TILE_WIDTH,
     height: TILE_HEIGHT,
-    borderRadius: theme.borderRadius.m,
+    borderRadius: theme.borderRadius.figmaTile,
     overflow: 'hidden',
-    backgroundColor: '#E8EBF0',
+    backgroundColor: theme.colors.figmaDetailSurface,
+  },
+  // Multi-select highlight ring — same treatment as the wardrobe picker mode.
+  tileSelected: {
+    borderWidth: 2,
+    borderColor: theme.colors.figmaAction,
+  },
+  tileSelectedCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
   },
   tileImage: {
     width: '100%',
@@ -337,49 +336,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   tileFallbackText: {
-    ...theme.typography.aliases.manropeCaption,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
   },
   emptyState: {
     paddingHorizontal: HORIZONTAL_PADDING,
-    paddingTop: 40,
+    paddingTop: 56,
     alignItems: 'center',
   },
   emptyTitle: {
-    ...theme.typography.aliases.archivoButton,
-    color: theme.colors.figmaAction,
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
-  emptySubtitle: {
-    ...theme.typography.aliases.manropeCaption,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
-    marginTop: 8,
-    maxWidth: 280,
-  },
-  tileBadgeWrap: {
+  // Pinned add-items commit bar — mirrors WardrobeScreen's changeFooter.
+  addFooter: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 12,
+    backgroundColor: theme.colors.figmaBackground,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.figmaListDivider,
   },
-  tileBadge: {
-    minWidth: 58,
-    maxWidth: TILE_WIDTH - 8,
-    height: 19,
-    paddingHorizontal: 12,
-    borderTopLeftRadius: theme.borderRadius.m,
-    borderTopRightRadius: theme.borderRadius.m,
-    backgroundColor: 'rgba(39, 42, 50, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tileBadgeText: {
-    fontFamily: 'Poppins-Medium',
-    fontSize: 8,
-    lineHeight: 12,
-    color: theme.colors.white,
+  addCta: {
+    alignSelf: 'stretch',
   },
 });
