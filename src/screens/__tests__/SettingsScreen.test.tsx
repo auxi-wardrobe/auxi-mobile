@@ -205,17 +205,17 @@ describe('resolveSettings', () => {
 });
 
 // =============================================================================
-// 2. applyChangeTime (reminder-time / AM-PM period) + applyChangeSchedule
+// 2. applyChangeTime (reminder time / AM-PM period) + applyChangeSchedule
 //    (repeat-schedule / frequency). The IA redesign split the old combined
 //    change-time dialog into two rows/dialogs, each persisting only its slice.
 // =============================================================================
 describe('applyChangeTime (reminder time / period)', () => {
-  it('success: only period persisted, dialog closes', async () => {
+  it('success: time and period persisted, dialog closes', async () => {
     const updateCurrentUser = jest.fn().mockResolvedValue(
       makeUser({
         daily_notification: {
           enabled: true,
-          time: '06:15',
+          time: '07:15',
           period: 'PM',
           frequency: 'weekdays',
         },
@@ -230,13 +230,19 @@ describe('applyChangeTime (reminder time / period)', () => {
     press(oneByTestID(root, 'settings-time-row'));
     expect(isDialogOpen(root, 'settings-time-update')).toBe(true);
 
-    // choose PM then update — frequency is a separate dialog now
+    // bump the hour once, choose PM, then update; frequency has its own dialog.
+    press(oneByTestID(root, 'settings-time-hour-up'));
     press(oneByTestID(root, 'settings-time-period-pm'));
     press(oneByTestID(root, 'settings-time-update'));
     await flushPromises();
 
     expect(updateCurrentUser).toHaveBeenCalledWith({
-      user_metadata: { daily_notification: { period: 'PM' } },
+      user_metadata: {
+        daily_notification: {
+          time: '07:15',
+          period: 'PM',
+        },
+      },
     });
     // synced from server response + dialog closed
     expect(isDialogOpen(root, 'settings-time-update')).toBe(false);

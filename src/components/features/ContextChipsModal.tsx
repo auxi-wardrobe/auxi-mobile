@@ -48,10 +48,17 @@ interface ContextChipsModalProps {
   confirmDisabled: boolean;
   onSelectChip: (chipId: ContextChipId) => void;
   onShuffle: () => void;
-  // Opens the full-screen "Edit context" view (rendered separately by the
-  // parent). The inline text editor that used to live here was lifted out into
-  // EditContextModal.
+  // Switches to the full-screen "Edit context" view (`editView`), rendered
+  // inside THIS modal. The editor must not be a sibling native <Modal>: on iOS
+  // swapping two modals in the same frame races the sheet's delayed dismissal
+  // and UIKit tears the editor down with it (broke Edit on TestFlight).
   onEdit: () => void;
+  // True while the parent shows the edit view instead of the chip card.
+  isEditing: boolean;
+  // The full-screen editor content (EditContextView), swapped in for the card.
+  editView: React.ReactNode;
+  // Hardware back (Android) while editing — return to the chip row.
+  onEditBack: () => void;
   onCancel: () => void;
   onConfirm: () => void;
   // Optional copy override (the progressive-refinement gate uses preference
@@ -74,6 +81,9 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
   onSelectChip,
   onShuffle,
   onEdit,
+  isEditing,
+  editView,
+  onEditBack,
   onCancel,
   onConfirm,
   title,
@@ -113,6 +123,13 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
       return;
     }
 
+    // Closing straight out of the edit view — there is no card on screen to
+    // slide away, so unmount immediately instead of animating a phantom sheet.
+    if (isEditing) {
+      setShouldRender(false);
+      return;
+    }
+
     Animated.timing(slideAnim, {
       toValue: screenHeight,
       duration: motion.duration.normal,
@@ -121,7 +138,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
     }).start(() => {
       setShouldRender(false);
     });
-  }, [shouldRender, slideAnim, visible]);
+  }, [shouldRender, slideAnim, visible, isEditing]);
 
   if (!shouldRender) {
     return null;
@@ -132,137 +149,145 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
       transparent
       visible={shouldRender}
       animationType="none"
-      onRequestClose={isSubmitting ? undefined : onSkip ?? onCancel}
+      onRequestClose={
+        isSubmitting ? undefined : isEditing ? onEditBack : (onSkip ?? onCancel)
+      }
     >
-      <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <Pressable
-          style={StyleSheet.absoluteFillObject}
-          onPress={isSubmitting ? undefined : onSkip ?? onCancel}
-        />
-
-        <Animated.View
-          testID="context-chips-modal-root"
-          style={[
-            styles.card,
-            {
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
+      {isEditing ? (
+        editView
+      ) : (
+        <KeyboardAvoidingView
+          style={styles.overlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={styles.header}>
-            <Text style={styles.title}>
-              {title ?? t('contextChips.title')}
-            </Text>
-            <Text style={styles.subtitle}>
-              {subtitle ?? t('contextChips.subtitle')}
-            </Text>
-          </View>
-          <View style={styles.chipRow}>
-            {chipOptions.map(chip => {
-              const selected = chip.id === selectedChipId;
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={isSubmitting ? undefined : (onSkip ?? onCancel)}
+          />
 
-              return (
-                <TouchableOpacity
-                  key={chip.id}
-                  testID={`context-chip-${chip.id}`}
-                  activeOpacity={0.82}
-                  style={[styles.chip, selected && styles.selectedChip]}
-                  disabled={isSubmitting}
-                  onPress={() => {
-                    // Analytics §3.3 #27/#28 — refine_chip_selected /
-                    // refine_chip_deselected. Tapping the currently selected
-                    // chip deselects it (parent toggles); tapping a different
-                    // chip selects it. We emit the event from the parent's
-                    // perspective BEFORE the toggle is applied.
-                    track(
-                      selected
-                        ? 'refine_chip_deselected'
-                        : 'refine_chip_selected',
-                      {
-                        chip_type: 'style_feedback',
-                        value: chip.id,
-                      },
-                    );
-                    onSelectChip(chip.id);
-                  }}
-                >
+          <Animated.View
+            testID="context-chips-modal-root"
+            style={[
+              styles.card,
+              {
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.header}>
+              <Text style={styles.title}>
+                {title ?? t('contextChips.title')}
+              </Text>
+              <Text style={styles.subtitle}>
+                {subtitle ?? t('contextChips.subtitle')}
+              </Text>
+            </View>
+            <View style={styles.chipRow}>
+              {chipOptions.map(chip => {
+                const selected = chip.id === selectedChipId;
+
+                return (
+                  <TouchableOpacity
+                    key={chip.id}
+                    testID={`context-chip-${chip.id}`}
+                    activeOpacity={0.82}
+                    style={[styles.chip, selected && styles.selectedChip]}
+                    disabled={isSubmitting}
+                    onPress={() => {
+                      // Analytics §3.3 #27/#28 — refine_chip_selected /
+                      // refine_chip_deselected. Tapping the currently selected
+                      // chip deselects it (parent toggles); tapping a different
+                      // chip selects it. We emit the event from the parent's
+                      // perspective BEFORE the toggle is applied.
+                      track(
+                        selected
+                          ? 'refine_chip_deselected'
+                          : 'refine_chip_selected',
+                        {
+                          chip_type: 'style_feedback',
+                          value: chip.id,
+                        },
+                      );
+                      onSelectChip(chip.id);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        selected && styles.selectedChipText,
+                      ]}
+                    >
+                      {chip.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+
+              <TouchableOpacity
+                testID="context-chips-shuffle"
+                accessibilityLabel={t('contextChips.a11y_shuffle')}
+                accessibilityRole="button"
+                activeOpacity={0.82}
+                style={[styles.chip, styles.shuffleChip]}
+                disabled={isSubmitting}
+                onPress={onShuffle}
+              >
+                <Icons.Sort width={24} height={24} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                testID="context-chips-edit"
+                activeOpacity={0.82}
+                style={[styles.chip, styles.editChip]}
+                disabled={isSubmitting}
+                onPress={onEdit}
+              >
+                <Text style={styles.chipText}>{t('common.edit')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                testID={
+                  onSkip ? 'context-chips-skip' : 'context-chips-modal-close'
+                }
+                activeOpacity={0.82}
+                style={styles.cancelButton}
+                disabled={isSubmitting}
+                onPress={onSkip ?? onCancel}
+              >
+                <Text style={onSkip ? styles.skipText : styles.cancelText}>
+                  {onSkip ? t('contextChips.skip') : t('common.cancel')}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                testID="context-chips-confirm"
+                activeOpacity={0.85}
+                style={[
+                  styles.confirmButton,
+                  confirmDisabled && styles.confirmButtonDisabled,
+                ]}
+                disabled={confirmDisabled || isSubmitting}
+                onPress={onConfirm}
+              >
+                {isSubmitting ? (
+                  <DotsLoader color={theme.colors.white} />
+                ) : (
                   <Text
                     style={[
-                      styles.chipText,
-                      selected && styles.selectedChipText,
+                      styles.confirmText,
+                      confirmDisabled && styles.confirmTextDisabled,
                     ]}
                   >
-                    {chip.label}
+                    {t('common.ok')}
                   </Text>
-                </TouchableOpacity>
-              );
-            })}
-
-            <TouchableOpacity
-              testID="context-chips-shuffle"
-              accessibilityLabel={t('contextChips.a11y_shuffle')}
-              accessibilityRole="button"
-              activeOpacity={0.82}
-              style={[styles.chip, styles.shuffleChip]}
-              disabled={isSubmitting}
-              onPress={onShuffle}
-            >
-              <Icons.Sort width={24} height={24} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              testID="context-chips-edit"
-              activeOpacity={0.82}
-              style={[styles.chip, styles.editChip]}
-              disabled={isSubmitting}
-              onPress={onEdit}
-            >
-              <Text style={styles.chipText}>{t('common.edit')}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.actionsRow}>
-            <TouchableOpacity
-              testID={onSkip ? 'context-chips-skip' : 'context-chips-modal-close'}
-              activeOpacity={0.82}
-              style={styles.cancelButton}
-              disabled={isSubmitting}
-              onPress={onSkip ?? onCancel}
-            >
-              <Text style={onSkip ? styles.skipText : styles.cancelText}>
-                {onSkip ? t('contextChips.skip') : t('common.cancel')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              testID="context-chips-confirm"
-              activeOpacity={0.85}
-              style={[
-                styles.confirmButton,
-                confirmDisabled && styles.confirmButtonDisabled,
-              ]}
-              disabled={confirmDisabled || isSubmitting}
-              onPress={onConfirm}
-            >
-              {isSubmitting ? (
-                <DotsLoader color={theme.colors.white} />
-              ) : (
-                <Text
-                  style={[
-                    styles.confirmText,
-                    confirmDisabled && styles.confirmTextDisabled,
-                  ]}
-                >
-                  {t('common.ok')}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </KeyboardAvoidingView>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      )}
     </Modal>
   );
 };

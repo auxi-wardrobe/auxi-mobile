@@ -11,6 +11,7 @@ interface AddItemSheetProps {
   onDismiss: () => void;
   onSearchDatabase: () => void;
   onTakePhoto: () => void;
+  onImportFromWeb: () => void;
 }
 
 /**
@@ -21,12 +22,18 @@ interface AddItemSheetProps {
  * The two methods stay as the Wardrobe-only AddMethodRow composite because they
  * carry a title + description two-line layout that no generic M* row primitive
  * (MSheetOption / MListRow are single-line) expresses — keeping content faithful.
+ *
+ * Uploads always run the default remove-background processing; the AI
+ * studio-shot step moved on-demand to Item Detail's Enhance flow, so the
+ * former upload-time "Remove background / AI beautify" mode selector was
+ * removed.
  */
 export const AddItemSheet: React.FC<AddItemSheetProps> = ({
   visible,
   onDismiss,
   onSearchDatabase,
   onTakePhoto,
+  onImportFromWeb,
 }) => {
   const { t } = useTranslation();
 
@@ -46,9 +53,9 @@ export const AddItemSheet: React.FC<AddItemSheetProps> = ({
 
         <AddMethodRow
           icon={
-            <Icons.Database
-              width={24}
-              height={24}
+            <Icons.SearchDatabase
+              width={32}
+              height={32}
               color={theme.colors.uacBackgroundBase}
             />
           }
@@ -59,9 +66,9 @@ export const AddItemSheet: React.FC<AddItemSheetProps> = ({
         />
         <AddMethodRow
           icon={
-            <Icons.Camera
-              width={24}
-              height={24}
+            <Icons.TakePhoto
+              width={32}
+              height={32}
               color={theme.colors.uacBackgroundBase}
             />
           }
@@ -69,6 +76,19 @@ export const AddItemSheet: React.FC<AddItemSheetProps> = ({
           description={t('wardrobe.list.method_photo_desc')}
           onPress={onTakePhoto}
           testID="wardrobe-add-photo"
+        />
+        <AddMethodRow
+          icon={
+            <Icons.Globe
+              width={24}
+              height={24}
+              color={theme.colors.uacBackgroundBase}
+            />
+          }
+          title={t('wardrobe.list.method_import_title')}
+          description={t('wardrobe.list.method_import_desc')}
+          onPress={onImportFromWeb}
+          testID="wardrobe-add-import"
           isLast
         />
       </View>
