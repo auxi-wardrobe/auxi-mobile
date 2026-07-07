@@ -801,6 +801,11 @@
       "retake": "Reprendre",
       "useThisPhoto": "Utiliser cette photo",
       "backToHome": "Retour à l'accueil",
+      "download": {
+        "success": "Enregistré dans Photos",
+        "error": "Impossible d'enregistrer l'image. Veuillez réessayer."
+      },
+      "downloadA11y": "Enregistrer l'image",
       "optIn": "Utiliser cette photo pour les futurs aperçus de tenues",
       "retakeProfile": "Reprendre les photos",
       "privacy": "Vos photos sont envoyées de façon sécurisée à nos fournisseurs d'IA (Google, OpenAI) pour générer votre résultat, et ne sont jamais vendues ni partagées avec des annonceurs.",

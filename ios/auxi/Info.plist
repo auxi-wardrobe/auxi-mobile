@@ -75,6 +75,8 @@
 	<string>We need access to your photo library to upload wardrobe items.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>We need access to your camera to capture wardrobe items.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need permission to save your generated try-on images to your photo library.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>RCTNewArchEnabled</key>

@@ -144,6 +144,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 |---|---|---|---|
 | `favourite_try_on_tapped` | "See on me" from a favourite card | `FavouriteScreen.tsx:112` | `favorite_id` |
 | `try_on_outcome_retaken` | Retake from try-on outcome | `SeeThisOnMeScreen.tsx:229` | `outfit_hash` |
+| `try_on_image_saved` (download) | Header download icon on the try-on preview → saves the rendered image to the device photo library (native) or downloads it (web). Fires on both outcomes | `hooks/use-save-image.ts` (+ `.web.ts`) via `components.tsx` `StomDownloadButton`; wrapper `analytics.ts` `trackTryOnImageSaved` | `surface` (`tryon`), `status` (`success` / `error`) |
 | `try_on_started` (pre-existing) | Try-on initiated | `BodyScreen.tsx:282`, `SeeThisOnMeScreen.tsx:147` | `outfit_hash`, `item_count`, `has_body_photo` |
 | `try_on_completed` (pre-existing) | Try-on succeeded | `BodyScreen.tsx:300`, `SeeThisOnMeScreen.tsx:166` | `outfit_hash`, `step_count?` |
 | `try_on_failed` (pre-existing) | Try-on errored | `BodyScreen.tsx:303`, `SeeThisOnMeScreen.tsx:175, 254, 262` | `outfit_hash`, `error_reason?` |
@@ -356,7 +357,7 @@ URL), `wardrobe_url_import_completed`, `wardrobe_url_import_failed`. The
 ### 6.4 Favourite + try-on outcomes — UI not built
 
 - `favourite_outfit_opened` — `FavouriteOutfitCard` has no whole-card tap target (only remove ⊖ and try-on actions are tappable)
-- `try_on_outcome_saved` — `OutfitPreview` has no save button (TODO AU-346: backend save not wired)
+- `try_on_outcome_saved` (backend persist) — no server-side "save this look" affordance on `OutfitPreview`. The **save-to-device** variant now ships as `try_on_image_saved` (§5.5 — header download icon, Figma 3398:17581); a backend save remains unbuilt.
 - `try_on_outcome_shared` — no share affordance on `OutfitPreview`
 
 ### 6.5 Body screen — slot coverage incomplete

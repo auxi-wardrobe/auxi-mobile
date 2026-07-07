@@ -801,6 +801,11 @@
       "retake": "Retake",
       "useThisPhoto": "Use this photo",
       "backToHome": "Back to home",
+      "download": {
+        "success": "Saved to Photos",
+        "error": "Couldn't save the image. Please try again."
+      },
+      "downloadA11y": "Save image",
       "optIn": "Use this photo for future outfit previews",
       "retakeProfile": "Retake photos",
       "privacy": "Your photos are sent securely to our AI providers (Google, OpenAI) to generate your result, and are never sold or shared with advertisers.",

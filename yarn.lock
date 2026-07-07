@@ -990,20 +990,7 @@
     "@babel/parser" "^7.28.6"
     "@babel/types" "^7.28.6"
 
-"@babel/traverse--for-generate-function-map@npm:@babel/traverse@^7.25.3":
-  version "7.29.0"
-  resolved "https://registry.npmjs.org/@babel/traverse/-/traverse-7.29.0.tgz"
-  integrity sha512-4HPiQr0X7+waHfyXPZpWPfWL/J7dcN1mx9gL6WdQVMbPnF3+ZhSMs8tCxN7oHddJE9fhNE7+lxdnlyemKfJRuA==
-  dependencies:
-    "@babel/code-frame" "^7.29.0"
-    "@babel/generator" "^7.29.0"
-    "@babel/helper-globals" "^7.28.0"
-    "@babel/parser" "^7.29.0"
-    "@babel/template" "^7.28.6"
-    "@babel/types" "^7.29.0"
-    debug "^4.3.1"
-
-"@babel/traverse@^7.25.3", "@babel/traverse@^7.27.1", "@babel/traverse@^7.28.5", "@babel/traverse@^7.28.6", "@babel/traverse@^7.29.0":
+"@babel/traverse--for-generate-function-map@npm:@babel/traverse@^7.25.3", "@babel/traverse@^7.25.3", "@babel/traverse@^7.27.1", "@babel/traverse@^7.28.5", "@babel/traverse@^7.28.6", "@babel/traverse@^7.29.0":
   version "7.29.0"
   resolved "https://registry.npmjs.org/@babel/traverse/-/traverse-7.29.0.tgz"
   integrity sha512-4HPiQr0X7+waHfyXPZpWPfWL/J7dcN1mx9gL6WdQVMbPnF3+ZhSMs8tCxN7oHddJE9fhNE7+lxdnlyemKfJRuA==
@@ -2084,6 +2071,11 @@
   integrity sha512-ENwbn3kj/dOapdR3GVgfX5x9f9/rxHnsqol1bUkt26lrv0aAq6UoXnTlv7y2dT7RH0AShh9B1+KAPDVjJXnk0w==
   dependencies:
     idb "8.0.3"
+
+"@react-native-camera-roll/camera-roll@^7.10.2":
+  version "7.10.2"
+  resolved "https://registry.yarnpkg.com/@react-native-camera-roll/camera-roll/-/camera-roll-7.10.2.tgz#af2234f60f0b55aff9afb60888ce7f0669d52593"
+  integrity sha512-XgJQJDFUycmqSX+MH7vTcRigQwEIQNLIu1GvOngCZRwlSV2mF61UzeruSmmHwkBcGnHZFXkKg9fil0FQVfyglw==
 
 "@react-native-community/blur@^4.4.1":
   version "4.4.1"
