@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme/theme';
 import IconCheckCircle from '../../assets/images/icon_check_circle.svg';
 
@@ -14,34 +14,49 @@ import IconCheckCircle from '../../assets/images/icon_check_circle.svg';
  * custom-config render path never mounted the snackbar; WardrobeScreen now
  * renders this presentational component directly as a self-controlled overlay.
  * Styling, testID and a11y are preserved verbatim from the original.
+ *
+ * `testID` defaults to the original "wardrobe-item-ready-snackbar" so existing
+ * Maestro flows are unaffected. Pass a custom testID + onPress for actionable
+ * variants (e.g. the beautify-ready snackbar → navigates to BeautifyReview).
  */
 interface ItemReadySnackbarProps {
   message: string;
+  testID?: string;
+  onPress?: () => void;
 }
 
 export const ItemReadySnackbar: React.FC<ItemReadySnackbarProps> = ({
   message,
-}) => (
-  <View
-    style={styles.snackbar}
-    testID="wardrobe-item-ready-snackbar"
-    accessible
-    accessibilityRole="alert"
-    accessibilityLabel={message}
-  >
-    {/* 24px container, 16px glyph — matches Figma icon sizing. */}
-    <View style={styles.iconContainer}>
-      <IconCheckCircle
-        width={16}
-        height={16}
-        color={theme.colors.figmaTextDark}
-      />
+  testID = 'wardrobe-item-ready-snackbar',
+  onPress,
+}) => {
+  const inner = (
+    <View
+      style={styles.snackbar}
+      testID={testID}
+      accessible
+      accessibilityRole={onPress ? 'button' : 'alert'}
+      accessibilityLabel={message}
+    >
+      {/* 24px container, 16px glyph — matches Figma icon sizing. */}
+      <View style={styles.iconContainer}>
+        <IconCheckCircle
+          width={16}
+          height={16}
+          color={theme.colors.figmaTextDark}
+        />
+      </View>
+      <Text style={styles.label} numberOfLines={2}>
+        {message}
+      </Text>
     </View>
-    <Text style={styles.label} numberOfLines={2}>
-      {message}
-    </Text>
-  </View>
-);
+  );
+
+  if (onPress) {
+    return <Pressable onPress={onPress}>{inner}</Pressable>;
+  }
+  return inner;
+};
 
 const styles = StyleSheet.create({
   snackbar: {

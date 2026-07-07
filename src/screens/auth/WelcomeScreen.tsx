@@ -48,6 +48,7 @@ import {
 } from '../../hooks/auth/useAuthMutations';
 import { appleSignInRequest } from '../../services/oauth/appleSignIn';
 import { googleSignInRequest } from '../../services/oauth/googleSignIn';
+import { saveProfilePhoto } from '../../services/profilePhoto';
 import { isOAuthCancelled } from '../../services/oauth/oauthErrors';
 import { isOAuthConfigured } from '../../services/oauth/oauthConfig';
 import { track } from '../../services/analytics';
@@ -63,7 +64,7 @@ type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 // Temporarily hide the Apple + email sign-in CTAs while those flows are
 // buggy. Google is the only supported entry point for now. Flip back to
 // `true` to restore the full action stack once the flows are fixed.
-const SHOW_APPLE_AND_EMAIL_SIGN_IN = false;
+const SHOW_APPLE_AND_EMAIL_SIGN_IN = true;
 
 // Minimal inline glyphs — keep diff small (no new SVG assets).
 // Sizes match the Figma 24×24 trailing-icon slot.
@@ -156,6 +157,11 @@ export const WelcomeScreen = () => {
     track('email_sign_in_started', { method: 'email' });
     navigation.navigate('EmailInput', { mode: 'signup' });
   };
+
+  const onPressSignIn = () => {
+    track('sign_in_link_tapped', { source: 'welcome' });
+    navigation.navigate('EmailInput', { mode: 'signin' });
+  };
   const onPressLanguage = () => {
     // Opening the auth-tier language picker. The actual locale change fires
     // `auth_language_changed` from inside LanguageSettings.
@@ -227,13 +233,18 @@ export const WelcomeScreen = () => {
     }
     setSocialBusy('google');
     try {
-      const { idToken } = await googleSignInRequest();
+      const { idToken, photoUrl } = await googleSignInRequest();
       await googleMutation.mutateAsync({ id_token: idToken });
       // Tokens have already been persisted by `signInWithGoogle`. Pull
       // the user record so AuthContext flips AppNavigator over to the
       // AppStack — no manual reset() needed.
       markOAuthSignIn('google');
-      await refreshUser();
+      const signedInUser = await refreshUser();
+      // Cache the Google avatar for the Settings profile header (the backend
+      // has no photo field, so this is the only place it can be captured).
+      if (photoUrl && signedInUser?.email) {
+        saveProfilePhoto(signedInUser.email, photoUrl);
+      }
     } catch (err) {
       if (isOAuthCancelled(err)) return;
       // Mutation errors land here as AuthErrorEnvelope; native SDK
@@ -414,6 +425,23 @@ export const WelcomeScreen = () => {
                   style={styles.buttonBase}
                   trailing={<EnvelopeGlyph />}
                 />
+
+                {/* 3d. Sign-in link — returning users bypass signup flow. */}
+                <Pressable
+                  testID="welcome-cta-signin"
+                  accessibilityRole="link"
+                  accessibilityLabel={t('uac.welcome.sign_in_link')}
+                  onPress={onPressSignIn}
+                  disabled={isBusy}
+                  style={({ pressed }) => [
+                    styles.signInLink,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.signInLinkText}>
+                    {t('uac.welcome.sign_in_link')}
+                  </Text>
+                </Pressable>
               </>
             )}
           </View>
@@ -562,5 +590,15 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  signInLink: {
+    alignSelf: 'center',
+    paddingVertical: theme.spacing.uacDimension8,
+    paddingHorizontal: theme.spacing.uacDimension16,
+  },
+  signInLinkText: {
+    ...theme.typography.aliases.uacBodyXsMedium,
+    color: theme.colors.uacTextInfoBase,
+    textDecorationLine: 'underline',
   },
 });

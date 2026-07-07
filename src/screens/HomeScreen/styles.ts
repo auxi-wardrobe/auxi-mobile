@@ -39,21 +39,6 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
     ...theme.ds.shadow.headerIcon,
   },
-  // AI feedback affordance — 44px floating button, bottom-left of the footer,
-  // vertically centred against the view-toggle footer.
-  aiFeedbackFab: {
-    position: 'absolute',
-    left: SHEET_PADDING,
-    bottom: (HOME_VIEW_TOGGLE_FOOTER_HEIGHT - 44) / 2,
-    width: 44,
-    height: 44,
-    borderRadius: theme.borderRadius.l,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.figmaSurface,
-    zIndex: theme.zIndex.sticky,
-    ...theme.ds.shadow.floatingButton,
-  },
   // 12×12 mint indicator dot over the top-right lobe of the header favourites
   // heart — signals "you have saved looks" without a count. Positioned within
   // the 44×44 button so it overlaps the 24×24 heart's upper-right curve.

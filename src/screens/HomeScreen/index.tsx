@@ -22,11 +22,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useSchedule } from '../../context/ScheduleContext';
 import { toDayKey } from '../../utils/dateKey';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
-import { EditContextModal } from '../../components/features/EditContextModal';
+import { EditContextView } from '../../components/features/EditContextView';
 import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
 import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
-import { FeedbackSheet } from '../../components/features/FeedbackSheet';
+import { FeedbackFab } from '../../components/features/FeedbackFab';
 import { useMoodFeedback } from '../../hooks/use-mood-feedback';
 import { Item } from '../../types/item';
 import {
@@ -41,6 +41,7 @@ import { wardrobeService, wardrobeKeys } from '../../services/wardrobeService';
 import {
   track,
   trackRecommendationViewedOnce,
+  trackRecommendationFailed,
   trackTemperatureModalOpened,
   trackTemperatureOptionSelected,
   trackTemperatureApplyClicked,
@@ -48,6 +49,12 @@ import {
   trackTemperatureOverrideRemoved,
   trackRecommendationGeneratedByTemperatureOnce,
 } from '../../services/analytics';
+import {
+  AI_DAILY_LIMIT_CODE,
+  AI_UNAVAILABLE_CODE,
+  classifyRecommendationError,
+  getApiErrorCode,
+} from '../../utils/aiError';
 import { resolveItemImage } from '../../utils/url';
 import {
   TemperatureOverrideSheet,
@@ -95,7 +102,10 @@ import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
 import { useHomeToasts } from './hooks/useHomeToasts';
 import { EDIT_CONTEXT_SUGGESTIONS } from './context-chips';
-import { HomeErrorState } from './components/HomeErrorState';
+import {
+  HomeErrorState,
+  type HomeErrorVariant,
+} from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { DeckCue } from './components/DeckCue';
 import { HomeHeader } from './components/HomeHeader';
@@ -203,7 +213,6 @@ export const HomeScreen = () => {
   const [styleFeedback, setStyleFeedback] = useState<string | null>(null);
   const [hasCycled, setHasCycled] = useState(false);
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
-  const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   // "You've explored most combinations" sheet — shown when the user reaches the
   // end of the available outfits (pool depleted). `shownRef` keeps it to once
@@ -497,6 +506,10 @@ export const HomeScreen = () => {
       console.error('Failed to load recommendation', error);
       inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
 
+      // B4: record the failure with a sanitized error_kind (+ HTTP status).
+      const { kind, status } = classifyRecommendationError(error);
+      trackRecommendationFailed(kind, status);
+
       const tempApplyId = variables?.__tempApplyId;
       if (tempApplyId != null && tempApplyId === tempApplyIdRef.current) {
         const code = (error as { code?: string })?.code;
@@ -691,6 +704,17 @@ export const HomeScreen = () => {
           setListOutfits(mapped);
           setActiveIndex(0);
           activeIndexRef.current = 0;
+          // A fresh pinned deck is a new generation cycle: clear the
+          // depletion/limit flags so buffering resumes for the pinned context
+          // and the limit sheet can fire again once the pinned pool is truly
+          // exhausted. Without this, pinning after a prior depletion leaves the
+          // user on a dead-end swipe with no OutfitLimitSheet. Mirrors the
+          // cold-start reset above.
+          unfavoritedSwipeCountRef.current = 0;
+          poolDepletedRef.current = false;
+          limitSheetShownRef.current = false;
+          setHasCycled(false);
+          setIsWardrobeGap(false);
         }
         pinDispatch({
           type: result.lowConfidence ? 'GENERATE_FALLBACK' : 'GENERATE_SUCCESS',
@@ -700,18 +724,35 @@ export const HomeScreen = () => {
         if (pinAbortRef.current !== controller) {
           return;
         }
-        const status = (error as { response?: { status?: number } })?.response
-          ?.status;
+        const response = (
+          error as {
+            response?: {
+              status?: number;
+              data?: { detail?: string | { code?: string } };
+            };
+          }
+        )?.response;
+        const status = response?.status;
+        // 422 is overloaded on the BE: pinned-item validation (item gone /
+        // not owned) shares it with `pool_insufficient:<reason>` — the engine
+        // couldn't compose an outfit at all. Only the former means the item
+        // is unavailable; pool exhaustion must NOT unpin or claim the item
+        // vanished (it's alive in the wardrobe the user just came from).
+        const detail = response?.data?.detail;
+        const detailCode = typeof detail === 'string' ? detail : detail?.code;
+        const isPoolInsufficient =
+          typeof detailCode === 'string' &&
+          detailCode.startsWith('pool_insufficient');
         if (status === 401) {
           pinDispatch({ type: 'AUTH_BLOCK' });
-        } else if (status === 410) {
+        } else if (status === 410 || (status === 422 && !isPoolInsufficient)) {
           setPinErrorKind('item_unavailable');
           setPinnedItemGoneAt(Date.now());
           pinDispatch({ type: 'PINNED_ITEM_GONE' });
         } else if (status === 422) {
-          setPinErrorKind('item_unavailable');
-          setPinnedItemGoneAt(Date.now());
-          pinDispatch({ type: 'PINNED_ITEM_GONE' });
+          // pool_insufficient — keep the pin, show the retryable error.
+          setPinErrorKind('generic');
+          pinDispatch({ type: 'GENERATE_ERROR' });
         } else {
           const code = (error as { code?: string })?.code;
           const isNetwork =
@@ -803,13 +844,28 @@ export const HomeScreen = () => {
     navigation.setParams({ swapItem: undefined });
   }, [route.params?.swapItem, navigation]);
 
-  const { data: wardrobeItemsData } = useQuery({
+  const {
+    data: wardrobeItemsData,
+    dataUpdatedAt: wardrobeItemsUpdatedAt,
+    refetch: refetchWardrobeItems,
+  } = useQuery({
     // Shared with the Wardrobe screen's "All" tab (wardrobeKeys.list('All')) so
     // the two screens reuse one cache entry. Home keeps its tighter 30s stale.
     queryKey: wardrobeKeys.list(),
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 30_000,
   });
+  // When the current pin was set. The gone-check below may only trust a
+  // wardrobe list fetched AFTER this moment — a cached list that predates the
+  // pin (e.g. "Build around this" on an item added since Home last fetched)
+  // would report a live item as gone. Declared before the gone-check so it
+  // runs first within the same commit.
+  const pinSetAtRef = useRef(0);
+  useEffect(() => {
+    if (pinState.pinnedItemId) {
+      pinSetAtRef.current = Date.now();
+    }
+  }, [pinState.pinnedItemId]);
   useEffect(() => {
     if (!pinState.pinnedItemId) {
       return;
@@ -820,11 +876,24 @@ export const HomeScreen = () => {
     const stillExists = wardrobeItemsData.some(
       i => i.id === pinState.pinnedItemId,
     );
-    if (!stillExists) {
-      pinDispatch({ type: 'PINNED_ITEM_GONE' });
-      setPinnedItemGoneAt(Date.now());
+    if (stillExists) {
+      return;
     }
-  }, [wardrobeItemsData, pinState.pinnedItemId, pinDispatch]);
+    if (wardrobeItemsUpdatedAt < pinSetAtRef.current) {
+      // The cached list can't prove the item is gone. Refetch; this effect
+      // re-runs with post-pin data and decides for real.
+      refetchWardrobeItems();
+      return;
+    }
+    pinDispatch({ type: 'PINNED_ITEM_GONE' });
+    setPinnedItemGoneAt(Date.now());
+  }, [
+    wardrobeItemsData,
+    wardrobeItemsUpdatedAt,
+    refetchWardrobeItems,
+    pinState.pinnedItemId,
+    pinDispatch,
+  ]);
 
   useEffect(() => {
     if (pinnedItemGoneAt === null) {
@@ -843,6 +912,15 @@ export const HomeScreen = () => {
   }, [pinState.outfit]);
 
   const loading = isStartPending && listOutfits.length === 0;
+
+  // B4/B5: map the backend AI error code to a specific error state (daily limit
+  // / temporarily unavailable) — everything else keeps the generic message.
+  const homeErrorVariant = useMemo<HomeErrorVariant>(() => {
+    const code = getApiErrorCode(startError);
+    if (code === AI_DAILY_LIMIT_CODE) return 'ai_limit';
+    if (code === AI_UNAVAILABLE_CODE) return 'ai_unavailable';
+    return 'generic';
+  }, [startError]);
 
   const pinnedItem = useMemo<Item | null>(() => {
     if (!pinnedItemId) {
@@ -1142,9 +1220,23 @@ export const HomeScreen = () => {
     ensureBuffer();
   }, [ensureBuffer, openLimitSheet]);
 
+  // "Refine" on the limit sheet swaps one native modal for another. Opening
+  // the refine sheet while the limit sheet is still dismissing races UIKit
+  // (same bug class as the edit-context fix) — so only close here, and let
+  // the sheet's onDismissed callback open the refine flow once its modal is
+  // fully gone.
+  const pendingLimitRefineRef = useRef(false);
   const handleLimitRefine = useCallback(() => {
+    pendingLimitRefineRef.current = true;
     setLimitSheetVisible(false);
     track('outfit_limit_refine_tapped');
+  }, []);
+
+  const handleLimitSheetDismissed = useCallback(() => {
+    if (!pendingLimitRefineRef.current) {
+      return;
+    }
+    pendingLimitRefineRef.current = false;
     openRefine('explore_limit');
   }, [openRefine]);
 
@@ -1345,6 +1437,7 @@ export const HomeScreen = () => {
         />
       ) : optionSets.length === 0 && startError ? (
         <HomeErrorState
+          variant={homeErrorVariant}
           onRetry={() => {
             resetStartMutation();
             requestRecommendation({
@@ -1433,13 +1526,24 @@ export const HomeScreen = () => {
         activeOutfit={activeOutfit}
         onOpenFavourites={handleOpenFavourites}
         onWearThis={handleWearThisForOutfit}
-        onOpenFeedback={() => setFeedbackVisible(true)}
       />
 
       <HomeWardrobeNavFooter active="home" testID="home-footer-nav-toggle" />
 
+      {/* Shared bottom-left feedback FAB — the same component Wardrobe mounts,
+          so the footer cluster reads identically across the nav toggle. Keeps
+          the historical `optionSets.length > 0` gate (hidden during initial
+          load / error states, like the Wear-this cluster). */}
+      {optionSets.length > 0 ? (
+        <FeedbackFab testID="home-feedback-fab" />
+      ) : null}
+
+      {/* Single native modal for the whole refine flow. The full-screen
+          "Edit context" view is swapped in for the chip card INSIDE this
+          modal (editView) — presenting it as a second sibling <Modal> raced
+          the sheet's dismissal on iOS and the editor never survived. */}
       <ContextChipsModal
-        visible={refine.isOpen && !refine.isEditing}
+        visible={refine.isOpen}
         chipOptions={refine.displayChipOptions}
         selectedChipId={refine.selectedChipId}
         isSubmitting={false}
@@ -1447,29 +1551,31 @@ export const HomeScreen = () => {
         onSelectChip={refine.onSelectChip}
         onShuffle={refine.onShuffle}
         onEdit={refine.onEdit}
+        isEditing={refine.isEditing}
+        onEditBack={refine.onCancelEdit}
+        editView={
+          <EditContextView
+            value={refine.customText}
+            suggestions={EDIT_CONTEXT_SUGGESTIONS}
+            submitDisabled={refine.confirmDisabled}
+            onChangeText={refine.onChangeText}
+            onSelectSuggestion={refine.onChangeText}
+            onBack={refine.onCancelEdit}
+            onSubmit={refine.onConfirm}
+          />
+        }
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
         onSkip={refine.onSkip}
       />
 
-      {/* Full-screen "Edit context" view — opened from the refine sheet's Edit
-          chip. Submitting applies the typed context through the same feedback
-          path; backing out returns to the chip row. */}
-      <EditContextModal
-        visible={refine.isOpen && refine.isEditing}
-        value={refine.customText}
-        suggestions={EDIT_CONTEXT_SUGGESTIONS}
-        submitDisabled={refine.confirmDisabled}
-        onChangeText={refine.onChangeText}
-        onSelectSuggestion={refine.onChangeText}
-        onBack={refine.onCancelEdit}
-        onSubmit={refine.onConfirm}
-      />
+
 
       <OutfitLimitSheet
         visible={limitSheetVisible}
         onRefine={handleLimitRefine}
         onKeepBrowsing={handleLimitKeepBrowsing}
+        onDismissed={handleLimitSheetDismissed}
       />
 
       <PinConfirmModal
@@ -1497,11 +1603,6 @@ export const HomeScreen = () => {
         onApply={applyTemperature}
         onSelect={handleTempSelect}
         onCancel={closeTempSheet}
-      />
-
-      <FeedbackSheet
-        visible={feedbackVisible}
-        onClose={() => setFeedbackVisible(false)}
       />
 
       <HomeToastLayer

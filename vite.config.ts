@@ -25,6 +25,7 @@ export default defineConfig({
       '@sentry/react-native': stub('web/stubs/sentry.ts'),
       'react-native-localize': stub('web/stubs/localize.ts'),
       'react-native-toast-message': stub('web/stubs/toast.tsx'),
+      'react-native-webview': stub('web/stubs/webview.tsx'),
     },
     extensions: [
       '.web.tsx', '.web.ts', '.web.jsx', '.web.js',

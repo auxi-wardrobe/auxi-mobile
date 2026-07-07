@@ -53,7 +53,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 
 import { theme } from '../../theme/theme';
-import { MButton, MInput } from '../../components/design-system/lib';
+import { MButton, MInput, toast } from '../../components/design-system/lib';
 import { AuthHeader } from '../../components/auth/AuthHeader';
 import { useLoginMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
@@ -100,8 +100,15 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const handleError = (err: AuthErrorEnvelope) => {
-    // OAuth-linked email → reroute to the EmailGoogleNotice screen.
+    // OAuth-linked email → inform the user then reroute to EmailGoogleNotice.
+    // Toast explains the redirect before the screen unmounts.
     if (isOAuthAccountError(err) && err.detail.provider === 'google') {
+      toast.show({
+        type: 'info',
+        text1: tr.errorOauthAccount,
+        position: 'bottom',
+        visibilityTime: 4000,
+      });
       navigation.navigate('EmailGoogleNotice', { email });
       return;
     }

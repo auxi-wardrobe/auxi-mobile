@@ -41,6 +41,7 @@
  */
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../../components/design-system/lib';
@@ -51,6 +52,7 @@ import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import { useGoogleSignInMutation } from '../../hooks/auth/useAuthMutations';
 import { useAuth } from '../../context/AuthContext';
 import { googleSignInRequest } from '../../services/oauth/googleSignIn';
+import { saveProfilePhoto } from '../../services/profilePhoto';
 import { isOAuthCancelled } from '../../services/oauth/oauthErrors';
 import { isOAuthConfigured } from '../../services/oauth/oauthConfig';
 import { track } from '../../services/analytics';
@@ -59,6 +61,27 @@ import {
   type AuthErrorEnvelope,
 } from '../../services/authTypes';
 import type { AuthStackParamList } from '../../types/navigation';
+
+const GoogleGlyph = () => (
+  <Svg width={24} height={24} viewBox="0 0 24 24">
+    <Path
+      d="M21.6 12.227c0-.709-.064-1.39-.182-2.045H12v3.868h5.382a4.6 4.6 0 0 1-1.995 3.018v2.51h3.227c1.887-1.74 2.986-4.298 2.986-7.351Z"
+      fill="#4285F4"
+    />
+    <Path
+      d="M12 22c2.7 0 4.964-.895 6.618-2.422l-3.227-2.51c-.895.6-2.04.955-3.391.955-2.605 0-4.81-1.76-5.595-4.122H3.072v2.59A9.997 9.997 0 0 0 12 22Z"
+      fill="#34A853"
+    />
+    <Path
+      d="M6.405 13.9a6 6 0 0 1 0-3.8V7.51H3.072a10.01 10.01 0 0 0 0 8.98L6.405 13.9Z"
+      fill="#FBBC05"
+    />
+    <Path
+      d="M12 5.977c1.468 0 2.785.504 3.823 1.495l2.864-2.864C16.96 3.014 14.695 2 12 2A9.997 9.997 0 0 0 3.072 7.51L6.405 10.1C7.19 7.738 9.395 5.977 12 5.977Z"
+      fill="#EA4335"
+    />
+  </Svg>
+);
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'EmailGoogleNotice'>;
 
@@ -120,12 +143,17 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
     }
     setSubmitting(true);
     try {
-      const { idToken } = await googleSignInRequest();
+      const { idToken, photoUrl } = await googleSignInRequest();
       await googleMutation.mutateAsync({ id_token: idToken });
       // Tokens persisted by `signInWithGoogle`; pull the user so AuthContext
       // flips AppNavigator over to the AppStack.
       markOAuthSignIn('google');
-      await refreshUser();
+      const signedInUser = await refreshUser();
+      // Cache the Google avatar for the Settings profile header (the backend
+      // has no photo field, so this is the only place it can be captured).
+      if (photoUrl && signedInUser?.email) {
+        saveProfilePhoto(signedInUser.email, photoUrl);
+      }
     } catch (err) {
       if (isOAuthCancelled(err)) return;
       if (err && typeof err === 'object' && 'code' in err && 'status' in err) {
@@ -196,10 +224,7 @@ export const EmailGoogleNoticeScreen: React.FC<Props> = ({
               <Text style={styles.ctaLabel}>
                 {t('uac.email_google_notice.google_cta')}
               </Text>
-              {/* Google G mark — placeholder square pending brand asset. */}
-              <View style={styles.ctaIconSlot} accessible={false}>
-                <View style={styles.ctaIconGlyph} />
-              </View>
+              <GoogleGlyph />
             </>
           )}
         </Pressable>
@@ -287,20 +312,6 @@ const styles = StyleSheet.create({
   ctaLabel: {
     ...theme.typography.aliases.uacBodyMdMedium,
     color: theme.colors.uacTextBase,
-  },
-  ctaIconSlot: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaIconGlyph: {
-    // Placeholder for Google G — see open question in batch C report.
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacBorderBase,
   },
 });
 
