@@ -144,6 +144,7 @@
         "forgot_link": "Mot de passe oublié ?",
         "submit_a11y": "Se connecter",
         "error_invalid_credentials": "Email ou mot de passe incorrect.",
+        "error_unknown_email_or_password": "Aucun compte trouvé pour cet email ou le mot de passe est incorrect.",
         "error_email_not_verified": "Veuillez vérifier votre email avant de vous connecter.",
         "error_oauth_account": "Cet email utilise {{provider}}. Connectez-vous avec {{provider}}.",
         "error_rate_limited": "Trop de tentatives. Veuillez réessayer plus tard.",

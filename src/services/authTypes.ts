@@ -177,14 +177,18 @@ export type AppleSignInResponse = TokenResponse;
 
 export interface EmailPrecheckRequest {
   email: string;
+  intent?: 'signin' | 'signup';
 }
 
 export interface EmailPrecheckResponse {
   /**
-   * "none" — email not registered (only visible to authenticated admin/staff).
+   * "none" — email not registered (visible to authenticated callers and
+   *          anonymous sign-in callers that pass intent='signin').
    * "password" — has password-based account OR enumeration-safety fallback
-   *              returned to anonymous callers regardless of real linkage.
-   * "google" / "apple" — visible only to authenticated callers.
+   *              returned to anonymous legacy/signup callers regardless of
+   *              real linkage.
+   * "google" / "apple" — visible to authenticated callers and anonymous
+   *                      sign-in callers.
    */
   provider: 'none' | OAuthProvider;
 }
