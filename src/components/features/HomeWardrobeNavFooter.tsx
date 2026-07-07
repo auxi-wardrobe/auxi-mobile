@@ -17,12 +17,13 @@ import IconWardrobe from '../../assets/images/icon_wardrobe.svg';
 // springy DS pill (`MFloatingPill`, icon mode) as the Home header view toggle
 // so the two controls read as one system.
 //
-// The Home↔Wardrobe transition is Facebook-tabs style: the Wardrobe route uses
-// `animation: 'none'` (AppNavigator), and both hosts render this bar at the
+// The Home↔Wardrobe transition is tab-style: the Wardrobe route uses
+// `animation: 'fade'` (AppNavigator), and both hosts render this bar at the
 // same bottom anchor (last in-flow child of an edges={['top']} SafeAreaView,
-// fixed 84px height), so on navigation the footer appears to stay put while
-// only the thumb switches and the page content swaps in place. Keep the
-// placement identical on both screens or the illusion breaks.
+// fixed 84px height), so on navigation the footer appears to stay put — it
+// cross-dissolves onto its identical twin — while the page content fades in
+// smoothly (Airbnb-style tab swap, not a hard cut). Keep the placement
+// identical on both screens or the illusion breaks.
 
 export type HomeWardrobeNavTab = 'home' | 'wardrobe';
 
@@ -76,8 +77,8 @@ export const HomeWardrobeNavFooter: React.FC<Props> = ({ active, testID }) => {
       // pops back to a screen already in the stack — it pushes a SECOND Home
       // on top of Wardrobe, which animates with Home's default slide and
       // stacks duplicates. popTo pops back to the existing Home, so the
-      // Wardrobe→Home direction dismisses Wardrobe under its `animation:
-      // 'none'` option and stays as instant as Home→Wardrobe. (Same pitfall
+      // Wardrobe→Home direction fades Wardrobe out under its `animation:
+      // 'fade'` option — the mirror of the Home→Wardrobe fade-in. (Same pitfall
       // as ImportFromWebScreen → Wardrobe.)
       navigation.popTo('Home');
     } else {

@@ -211,17 +211,20 @@ export const AppNavigator = () => {
                 name="SettingsAbout"
                 component={SettingsAboutScreen}
               />
-              {/* Facebook-style tab swap for the Home | Wardrobe footer toggle:
+              {/* Tab-style cross-fade for the Home | Wardrobe footer toggle:
                   both screens render the identical HomeWardrobeNavFooter at the
-                  same bottom anchor, so with no push/pop slide the footer reads
-                  as one persistent bar whose thumb switches while only the page
-                  content swaps in place. `animation: 'none'` on Wardrobe covers
-                  both directions — Home→Wardrobe pushes it, Wardrobe→Home pops
-                  it, and each transition uses Wardrobe's own animation option. */}
+                  same bottom anchor, so cross-dissolving the page (rather than a
+                  push/pop slide) reads as one persistent bar whose thumb settles
+                  into place while the content fades in — the smooth swap an
+                  Airbnb-style tab switch gives, not a hard cut. `animation:
+                  'fade'` on Wardrobe covers both directions symmetrically:
+                  Home→Wardrobe pushes it (fades Wardrobe in over Home) and
+                  Wardrobe→Home pops it (fades Wardrobe out, revealing Home) —
+                  both use Wardrobe's own animation option. */}
               <Stack.Screen
                 name="Wardrobe"
                 component={WardrobeScreen}
-                options={{ gestureEnabled: false, animation: 'none' }}
+                options={{ gestureEnabled: false, animation: 'fade' }}
               />
               <Stack.Screen name="Favourite" component={FavouriteScreen} />
               <Stack.Screen
