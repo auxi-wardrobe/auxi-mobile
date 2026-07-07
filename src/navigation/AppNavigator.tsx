@@ -21,16 +21,22 @@ import { MacgieLoader } from '../components/macgie';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
 import { BodyScreen } from '../screens/BodyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { SettingsPersonalizationScreen } from '../screens/settings/SettingsPersonalizationScreen';
+import { SettingsPrivacyScreen } from '../screens/settings/SettingsPrivacyScreen';
+import { SettingsAboutScreen } from '../screens/settings/SettingsAboutScreen';
 import { FavouriteScreen } from '../screens/FavouriteScreen';
 import { ScheduleScreen } from '../screens/ScheduleScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { SeeThisOnMeScreen } from '../screens/see-this-on-me/SeeThisOnMeScreen';
 import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
+import { ImportFromWebScreen } from '../screens/ImportFromWebScreen';
 import { OutfitCanvasScreen } from '../screens/OutfitCanvasScreen';
 import { MyCreationsScreen } from '../screens/MyCreationsScreen';
 import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
+import { BeautifyPendingScreen } from '../screens/wardrobe/BeautifyPendingScreen';
+import { BeautifyReviewScreen } from '../screens/wardrobe/BeautifyReviewScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
 import {
   registerPushTapHandlers,
@@ -190,10 +196,31 @@ export const AppNavigator = () => {
                 component={SettingsScreen}
                 options={{ gestureEnabled: false }}
               />
+              {/* Settings sub-screens (grouped IA) — pushed on top of Settings,
+                  so they keep the default back gesture / chevron. */}
+              <Stack.Screen
+                name="SettingsPersonalization"
+                component={SettingsPersonalizationScreen}
+              />
+              <Stack.Screen
+                name="SettingsPrivacy"
+                component={SettingsPrivacyScreen}
+              />
+              <Stack.Screen
+                name="SettingsAbout"
+                component={SettingsAboutScreen}
+              />
+              {/* Facebook-style tab swap for the Home | Wardrobe footer toggle:
+                  both screens render the identical HomeWardrobeNavFooter at the
+                  same bottom anchor, so with no push/pop slide the footer reads
+                  as one persistent bar whose thumb switches while only the page
+                  content swaps in place. `animation: 'none'` on Wardrobe covers
+                  both directions — Home→Wardrobe pushes it, Wardrobe→Home pops
+                  it, and each transition uses Wardrobe's own animation option. */}
               <Stack.Screen
                 name="Wardrobe"
                 component={WardrobeScreen}
-                options={{ gestureEnabled: false }}
+                options={{ gestureEnabled: false, animation: 'none' }}
               />
               <Stack.Screen name="Favourite" component={FavouriteScreen} />
               <Stack.Screen
@@ -219,6 +246,10 @@ export const AppNavigator = () => {
               />
               <Stack.Screen name="Database" component={DatabaseScreen} />
               <Stack.Screen
+                name="ImportFromWeb"
+                component={ImportFromWebScreen}
+              />
+              <Stack.Screen
                 name="OutfitCanvas"
                 component={OutfitCanvasScreen}
                 options={{ gestureEnabled: false }}
@@ -237,6 +268,16 @@ export const AppNavigator = () => {
               <Stack.Screen
                 name="LegalDocument"
                 component={LegalDocumentScreen}
+              />
+              <Stack.Screen
+                name="BeautifyPending"
+                component={BeautifyPendingScreen}
+                options={{ headerShown: false, gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="BeautifyReview"
+                component={BeautifyReviewScreen}
+                options={{ headerShown: false }}
               />
             </>
           )

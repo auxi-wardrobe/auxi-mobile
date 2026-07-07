@@ -14,6 +14,7 @@ import {
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
+import { getItemHitArea } from './canvas-hit-area';
 
 // Shared drag-drop canvas surface. Extracted from OutfitCanvasScreen so both
 // the full Remix editor (with toolbar/undo/tags, owned by the screen) and the
@@ -105,6 +106,11 @@ interface DraggableItemProps {
   testIDPrefix: string;
   dragActivation: DragActivation;
   onSelect?: (id: string) => void;
+  // Fired on a discrete TAP (press-release without a drag). Unlike `onSelect`
+  // — which only fires on release in `immediate` drag mode — this is an RNGH
+  // Tap gesture, so it also fires in `longPress` mode (the Home collage), where
+  // the drag PanResponder declines a plain tap and `onSelect` never runs.
+  onTap?: (id: string) => void;
   onPositionChange: (id: string, x: number, y: number) => void;
   onScaleChange?: (id: string, scale: number) => void;
   onRotationChange?: (id: string, rotation: number) => void;
@@ -124,6 +130,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   testIDPrefix,
   dragActivation,
   onSelect,
+  onTap,
   onPositionChange,
   onScaleChange,
   onRotationChange,
@@ -147,10 +154,12 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   const baseScale = useRef(item.scale || 1);
   const baseRotation = useRef(item.rotation || 0);
   
-  // Keep latest props fresh inside the PanResponder closure (created once).
+  // Keep latest props fresh inside the PanResponder / gesture closures (created
+  // once).
   const propsRef = useRef({
     item,
     onSelect,
+    onTap,
     onPositionChange,
     dragActivation,
     onDragActiveChange,
@@ -160,6 +169,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   propsRef.current = {
     item,
     onSelect,
+    onTap,
     onPositionChange,
     dragActivation,
     onDragActiveChange,
@@ -235,6 +245,18 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
 
   // Combine pinch and rotation gestures to work simultaneously
   const combinedGesture = Gesture.Simultaneous(pinchGesture, rotationGesture);
+
+  // Discrete tap → open the item (e.g. its detail). A recognized tap requires
+  // little movement, so it never competes with a hold-drag: a quick tap fires
+  // this while the longPress PanResponder stays inert; a press-and-drag moves
+  // past the tap slop and this fails, leaving the drag to the PanResponder.
+  const tapGesture = Gesture.Tap()
+    .maxDuration(500)
+    .onEnd((_event, success) => {
+      if (success) {
+        propsRef.current.onTap?.(propsRef.current.item.id);
+      }
+    });
 
   const panResponder = useRef(
     PanResponder.create({
@@ -324,9 +346,14 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   // Cleanup the hold timer if the item unmounts mid-press.
   useEffect(() => clearTimer, []);
 
+  // Touch target = centered content box (~72% of the frame), not the full frame.
+  // The outer view is box-none so its transparent margin never captures touches
+  // (they fall through to items behind); only the hit child below is draggable.
+  const hit = getItemHitArea(item.width, item.height);
   const renderItem = () => (
     <Animated.View
       testID={`${testIDPrefix}-${item.id}`}
+      pointerEvents="box-none"
       style={[
         styles.draggableItem,
         {
@@ -363,22 +390,44 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
         },
         isSelected && styles.selectedItem,
       ]}
-      {...panResponder.panHandlers}
     >
-      <Image
-        source={item.imageSource}
-        style={{ width: item.width, height: item.height }}
-        resizeMode="contain"
-        onLoadEnd={() => onImageLoad?.(item.id)}
+      <View pointerEvents="none">
+        <Image
+          source={item.imageSource}
+          style={{ width: item.width, height: item.height }}
+          resizeMode="contain"
+          onLoadEnd={() => onImageLoad?.(item.id)}
+        />
+      </View>
+      <View
+        testID={`${testIDPrefix}-${item.id}-hit`}
+        style={[
+          styles.hitArea,
+          {
+            left: hit.left,
+            top: hit.top,
+            width: hit.width,
+            height: hit.height,
+          },
+        ]}
+        {...panResponder.panHandlers}
       />
     </Animated.View>
   );
 
   if (enablePinchZoom) {
+    // Editor: pinch/rotate. Compose the tap in too when a handler is supplied
+    // so the two don't fight (tap loses to an active pinch by design).
+    const gesture = onTap
+      ? Gesture.Simultaneous(combinedGesture, tapGesture)
+      : combinedGesture;
+    return <GestureDetector gesture={gesture}>{renderItem()}</GestureDetector>;
+  }
+
+  // Collage-play (Home): no pinch, but a tap opens the item's detail.
+  if (onTap) {
     return (
-      <GestureDetector gesture={combinedGesture}>
-        {renderItem()}
-      </GestureDetector>
+      <GestureDetector gesture={tapGesture}>{renderItem()}</GestureDetector>
     );
   }
 
@@ -392,6 +441,10 @@ type SurfaceProps = {
   onPositionChange: (id: string, x: number, y: number) => void;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  // Tap an item (press-release, no drag) — used by the Home collage to open the
+  // item's detail. See DraggableItemProps.onTap for why this is separate from
+  // onSelect. Omit it to keep items non-tappable (the full Remix editor does).
+  onItemTap?: (id: string) => void;
   onScaleChange?: (id: string, scale: number) => void;
   onRotationChange?: (id: string, rotation: number) => void;
   // Editor shows the graph-paper grid; collage-play uses a plain cream tile.
@@ -415,6 +468,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
   onPositionChange,
   selectedId = null,
   onSelect,
+  onItemTap,
   onScaleChange,
   onRotationChange,
   showGrid = false,
@@ -441,6 +495,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
           testIDPrefix={itemTestIDPrefix}
           dragActivation={dragActivation}
           onSelect={onSelect}
+          onTap={onItemTap}
           onPositionChange={onPositionChange}
           onScaleChange={onScaleChange}
           onRotationChange={onRotationChange}
@@ -463,6 +518,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   draggableItem: {
+    position: 'absolute',
+  },
+  // Centered content-box touch target overlaid on each item (see canvas-hit-area).
+  hitArea: {
     position: 'absolute',
   },
   selectedItem: {

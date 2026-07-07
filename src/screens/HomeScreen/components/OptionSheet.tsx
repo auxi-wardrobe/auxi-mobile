@@ -266,6 +266,7 @@ export const OptionSheet = React.memo(
           <OutfitCardCaption
             testID={`home-card-caption-${cellKey}`}
             caption={outfit.caption}
+            scheduled={outfit.scheduled}
           />
 
           <ScrollView
@@ -285,6 +286,7 @@ export const OptionSheet = React.memo(
                   surfaceWidth={COLLAGE_SURFACE_WIDTH}
                   surfaceHeight={COLLAGE_SURFACE_HEIGHT}
                   onDragActiveChange={onCollageDragActiveChange}
+                  onItemPress={onItemPress}
                 />
               ) : (
                 renderLayout()

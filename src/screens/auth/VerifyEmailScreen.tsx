@@ -35,7 +35,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { toast } from '../../components/design-system/lib';
-import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
@@ -48,6 +49,7 @@ import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
 
 type Route = RouteProp<AuthStackParamList, 'VerifyEmail'>;
+type Navigation = NativeStackNavigationProp<AuthStackParamList, 'VerifyEmail'>;
 
 // Per spec note (open Q 9): final cooldown duration TBD. 60s is the
 // sensible default — same as typical OTP flows. Centralise here so a
@@ -66,6 +68,7 @@ const SpinnerGlyph = () => (
 );
 
 export const VerifyEmailScreen = () => {
+  const navigation = useNavigation<Navigation>();
   const route = useRoute<Route>();
   const { t } = useTranslation();
   const { pendingVerifyEmail, logout } = useAuth();
@@ -171,8 +174,17 @@ export const VerifyEmailScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* Logout top-right text button (spec §header) */}
+      {/* Header: back (left) + logout (right) */}
       <View style={styles.topBar}>
+        <Pressable
+          testID="verify-back-button"
+          accessibilityRole="button"
+          accessibilityLabel={t('uac.common.back')}
+          onPress={() => navigation.popToTop()}
+          style={({ pressed }) => [styles.logoutBtn, pressed && styles.pressed]}
+        >
+          <Text style={styles.logoutText}>{t('uac.common.back')}</Text>
+        </Pressable>
         <Pressable
           testID="verify-logout-button"
           accessibilityRole="button"
@@ -254,7 +266,7 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.uacBodyPadding,
     paddingTop: theme.spacing.uacDimension16,
   },

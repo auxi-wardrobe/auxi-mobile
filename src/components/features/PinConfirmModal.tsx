@@ -266,12 +266,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.uacTextBase,
+    ...theme.typography.aliases.interSemiboldXsSm,
+    color: theme.colors.figmaTextPrimary,
   },
   subtitle: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.uacTextBase,
+    color: theme.colors.figmaTextSecondary,
   },
   itemPreview: {
     alignSelf: 'stretch',

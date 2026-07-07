@@ -26,7 +26,16 @@ import { theme } from './src/theme/theme';
 import { configureGoogleSignIn } from './src/services/oauth/googleSignIn';
 import { grantAnalyticsConsent, initAnalytics } from './src/services/analytics';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Data stays "fresh" for 60s so revisiting a screen serves cache instead
+      // of refetching on every mount/focus. Per-query staleTime still overrides.
+      staleTime: 60_000,
+      retry: 1,
+    },
+  },
+});
 
 // Configure the Google Sign-In SDK once at module-load. Idempotent; the
 // wrapper guards against double-configure. Apple's SDK is stateless and

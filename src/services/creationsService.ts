@@ -58,6 +58,19 @@ export interface Creation {
 
 export type NewCreation = Omit<Creation, 'id' | 'created_at'>;
 
+// A canvas item id looks like `item-<wardrobeId>-<stamp>-<index>` (see
+// OutfitCanvasScreen.handlePickerConfirm). Newer creations also store the raw
+// `wardrobeItemId`; for older ones we recover it from that synthetic id.
+const SYNTHETIC_ITEM_ID = /^item-(.+)-\d+-\d+$/;
+
+/** The real wardrobe item id behind a creation item: the stored
+ *  `wardrobeItemId` when present (newer saves), otherwise recovered from the
+ *  synthetic canvas id. Returns undefined when neither yields one — callers use
+ *  this to gate flows that need a real wardrobe id (try-on, item detail). */
+export function resolveWardrobeItemId(item: CreationItem): string | undefined {
+  return item.wardrobeItemId ?? SYNTHETIC_ITEM_ID.exec(item.id)?.[1];
+}
+
 /** How a save failed, for the UI to react. `auth` = the session expired: the
  *  apiClient 401 interceptor has already cleared tokens and fired
  *  session-expired (which redirects to login), so the caller should stay silent

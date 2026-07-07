@@ -5,13 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  Animated,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -25,24 +19,15 @@ import { AppStackParamList } from '../../types/navigation';
 import { useSidebar } from '../../context/SidebarContext';
 import { useFavouritesSeen } from '../../context/FavouritesSeenContext';
 import { useAuth } from '../../context/AuthContext';
+import { useSchedule } from '../../context/ScheduleContext';
+import { toDayKey } from '../../utils/dateKey';
 import { ContextChipsModal } from '../../components/features/ContextChipsModal';
-import { EditContextModal } from '../../components/features/EditContextModal';
+import { EditContextView } from '../../components/features/EditContextView';
 import { OutfitLimitSheet } from '../../components/features/OutfitLimitSheet';
 import { WelcomeDialog } from '../../components/features/WelcomeDialog';
 import { MoodFeedbackSheet } from '../../components/features/MoodFeedbackSheet';
-import { FeedbackSheet } from '../../components/features/FeedbackSheet';
+import { FeedbackFab } from '../../components/features/FeedbackFab';
 import { useMoodFeedback } from '../../hooks/use-mood-feedback';
-import {
-  PillButton,
-  TopIconButton,
-} from '../../components/primitives/FigmaPrimitives';
-import IconMenu from '../../assets/images/icon_menu.svg';
-import IconHomeHeartOutline from '../../assets/images/icon_home_heart_outline.svg';
-import IconFeedback from '../../assets/images/feedback.svg';
-import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
-import IconChevronRight from '../../assets/images/icon_chevron_right.svg';
-import { DotsLoader } from '../../components/atoms/DotsLoader';
-import { theme } from '../../theme/theme';
 import { Item } from '../../types/item';
 import {
   DEFAULT_RECOMMENDATION_MODE,
@@ -52,10 +37,11 @@ import {
 import { recommendV05, resetV05Session } from '../../services/v05Api';
 import { moodForMode } from '../../services/mood/mood-vocabulary';
 import { favouriteService } from '../../services/favouriteService';
-import { wardrobeService } from '../../services/wardrobeService';
+import { wardrobeService, wardrobeKeys } from '../../services/wardrobeService';
 import {
   track,
   trackRecommendationViewedOnce,
+  trackRecommendationFailed,
   trackTemperatureModalOpened,
   trackTemperatureOptionSelected,
   trackTemperatureApplyClicked,
@@ -63,43 +49,34 @@ import {
   trackTemperatureOverrideRemoved,
   trackRecommendationGeneratedByTemperatureOnce,
 } from '../../services/analytics';
+import {
+  AI_DAILY_LIMIT_CODE,
+  AI_UNAVAILABLE_CODE,
+  classifyRecommendationError,
+  getApiErrorCode,
+} from '../../utils/aiError';
 import { resolveItemImage } from '../../utils/url';
-import { WeatherWidget } from '../../components/features/WeatherWidget';
 import {
   TemperatureOverrideSheet,
   type TemperatureSheetErrorKey,
 } from '../../components/features/TemperatureOverrideSheet';
-import { TemperatureOverrideIndicator } from '../../components/features/TemperatureOverrideIndicator';
 import { useTemperatureOverride } from '../../hooks/useTemperatureOverride';
 import {
-  bucketLabel,
   isOverrideBucket,
   repTempCFor,
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
-import { MSnackbar } from '../../components/design-system/lib';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
-import {
-  HomeView,
-  HomeViewToggleFooter,
-} from '../../components/features/HomeViewToggleFooter';
+import { HomeView } from '../../components/features/HomeViewToggleFooter';
+import { HomeWardrobeNavFooter } from '../../components/features/HomeWardrobeNavFooter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OUTFITS_PER_SET } from '../../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../../hooks/usePinReducer';
 import { PinConfirmModal } from '../../components/features/PinConfirmModal';
-import {
-  PinGenerationError,
-  type PinErrorKind,
-} from '../../components/features/PinGenerationError';
-import { PinFallbackNotice } from '../../components/features/PinFallbackNotice';
-import { PinnedItemUnavailableNotice } from '../../components/features/PinnedItemUnavailableNotice';
+import { type PinErrorKind } from '../../components/features/PinGenerationError';
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
-  MOOD_BANNER_DURATION_MS,
-  TEMP_TOAST_DURATION_MS,
-  REFINE_TOAST_DURATION_MS,
-  AI_NOTICE_DISMISSED_KEY,
   PIN_DONT_SHOW_STORAGE_KEY,
   REFINE_AFTER_OUTFITS,
   TARGET_AHEAD,
@@ -116,26 +93,28 @@ import {
   mapV05Item,
   normalizeOutfits,
 } from './outfit-normalize';
+import {
+  buildScheduledOutfitSheets,
+  withScheduledPrefix,
+} from './scheduled-outfits';
 import { styles } from './styles';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
+import { useHomeToasts } from './hooks/useHomeToasts';
 import { EDIT_CONTEXT_SUGGESTIONS } from './context-chips';
-import { HomeErrorState } from './components/HomeErrorState';
+import {
+  HomeErrorState,
+  type HomeErrorVariant,
+} from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
+import { DeckCue } from './components/DeckCue';
+import { HomeHeader } from './components/HomeHeader';
 import { HomeLoadingState } from './components/HomeLoadingState';
+import { HomeToastLayer } from './components/HomeToastLayer';
+import { PinStatusBanners } from './components/PinStatusBanners';
+import { WearThisFooter } from './components/WearThisFooter';
 import { OptionSheet } from './components/OptionSheet';
 import { OutfitActionRow } from '../../components/features/OutfitActionRow';
-
-const clearTimeoutRef = (
-  timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
-) => {
-  if (!timeoutRef.current) {
-    return;
-  }
-
-  clearTimeout(timeoutRef.current);
-  timeoutRef.current = null;
-};
 
 export const HomeScreen = () => {
   const navigation =
@@ -146,6 +125,25 @@ export const HomeScreen = () => {
   const { user } = useAuth();
   const { hasUnseen: hasUnseenFavourites, markSaved: markFavouriteSaved } =
     useFavouritesSeen();
+  const { scheduledByDay } = useSchedule();
+
+  // Today's calendar day, captured once per mount. Not reactive to a midnight
+  // rollover mid-session — reopening the app re-captures it, which is enough for
+  // "the outfit you planned for today leads the deck".
+  const todayKey = useMemo(() => toDayKey(new Date()), []);
+  // The user's outfits planned for today (favourites only — see
+  // scheduled-outfits.ts), synthesised into deck sheets flagged `scheduled` so
+  // they render the calendar badge. These lead the recommendation deck.
+  const scheduledSheets = useMemo(
+    () => buildScheduledOutfitSheets(scheduledByDay[todayKey]),
+    [scheduledByDay, todayKey],
+  );
+  // Read by the recommendation onSuccess (cold start) so it can prepend the
+  // plan without depending on it directly.
+  const scheduledSheetsRef = useRef<OutfitSheet[]>(scheduledSheets);
+  useEffect(() => {
+    scheduledSheetsRef.current = scheduledSheets;
+  }, [scheduledSheets]);
 
   // Persona preferences threaded into every `/build` `user` payload so the
   // engine biases formality (style_direction) + statement level
@@ -168,7 +166,6 @@ export const HomeScreen = () => {
   }, [buildPersona]);
   const [homeView, setHomeView] = useState<HomeView>('grid');
   const [collageDragActive, setCollageDragActive] = useState(false);
-  const snackbarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [listOutfits, setListOutfits] = useState<OutfitSheet[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -216,7 +213,6 @@ export const HomeScreen = () => {
   const [styleFeedback, setStyleFeedback] = useState<string | null>(null);
   const [hasCycled, setHasCycled] = useState(false);
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
-  const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   // "You've explored most combinations" sheet — shown when the user reaches the
   // end of the available outfits (pool depleted). `shownRef` keeps it to once
@@ -249,14 +245,17 @@ export const HomeScreen = () => {
     text: string;
     isChip: boolean;
   } | null>(null);
-  const refineToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  // onSuccess is declared before showRefineToast (which needs `t`), so reach the
-  // shower through a ref — same indirection the buffer trampoline uses.
-  const showRefineToastRef = useRef<(text: string, isChip: boolean) => void>(
-    () => {},
-  );
+
+  const {
+    moodBannerText,
+    refineToastText,
+    tempToastText,
+    tempToastVisible,
+    dismissRefineToast,
+    showMoodBanner,
+    showRefineToastRef,
+    showTempToastRef,
+  } = useHomeToasts();
 
   const { weather } = useWeather();
 
@@ -268,17 +267,6 @@ export const HomeScreen = () => {
   } = useTemperatureOverride();
   const [isTempSheetOpen, setIsTempSheetOpen] = useState(false);
   const [isApplyingTemp, setIsApplyingTemp] = useState(false);
-  // Transient toast shown once a temperature change actually takes effect
-  // (recommendations regenerated). Fired from the recommendation onSuccess via
-  // a ref so it can reach the later-declared `t`/timeout helpers.
-  const [tempToastText, setTempToastText] = useState('');
-  const [tempToastVisible, setTempToastVisible] = useState(false);
-  const tempToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const showTempToastRef = useRef<(key: TemperatureBucketKey) => void>(
-    () => {},
-  );
   const [tempErrorKey, setTempErrorKey] =
     useState<TemperatureSheetErrorKey | null>(null);
   const tempApplyIdRef = useRef(0);
@@ -316,6 +304,43 @@ export const HomeScreen = () => {
       setPinnedItemId(null);
     };
   }, [setPinnedItemId]);
+
+  // Keep today's scheduled outfit(s) seated as the leading card(s) of the deck.
+  // The schedule store loads asynchronously (and can change while Home is up as
+  // the user plans/removes outfits), so this reconciles whenever the plan
+  // changes — prepending new scheduled sheets and dropping ones that were
+  // unscheduled. Guarded to the first card so a late-arriving plan can never
+  // yank the user back from a recommendation they've already swiped to; the
+  // recommendation cold-start also prepends (see the mutation onSuccess) to
+  // cover the common case where the plan is already loaded on first render.
+  useEffect(() => {
+    if (activeIndexRef.current !== 0) {
+      return;
+    }
+    setListOutfits(current => {
+      const next = withScheduledPrefix(current, scheduledSheets);
+      const unchanged =
+        current.length === next.length &&
+        current.every((o, i) => o.outfitHash === next[i].outfitHash);
+      return unchanged ? current : next;
+    });
+    // Scheduled outfits are already saved favourites — seed their save state so
+    // the heart reads "saved" and re-tapping is a no-op (their namespaced
+    // `scheduled-*` hash is never a valid save payload).
+    if (scheduledSheets.length > 0) {
+      setSaveStateByHash(current => {
+        let changed = false;
+        const next = { ...current };
+        for (const sheet of scheduledSheets) {
+          if (next[sheet.outfitHash] !== 'saved') {
+            next[sheet.outfitHash] = 'saved';
+            changed = true;
+          }
+        }
+        return changed ? next : current;
+      });
+    }
+  }, [scheduledSheets]);
 
   const buildViaV05 = useCallback(
     async (
@@ -403,9 +428,23 @@ export const HomeScreen = () => {
         isFirstLoadRef.current = false;
         isColdStart = true;
         const incoming = normalizeOutfits(data, 0);
-        addedCount = incoming.length;
-        settledHash = incoming[0]?.outfitHash;
-        setListOutfits(incoming);
+        // Lead the fresh deck with the user's outfit(s) scheduled for today.
+        // `withScheduledPrefix` is a no-op when nothing is planned, so the deck
+        // is recommendations-only on ordinary days.
+        const scheduled = scheduledSheetsRef.current;
+        const combined = withScheduledPrefix(incoming, scheduled);
+        addedCount = combined.length;
+        settledHash = combined[0]?.outfitHash;
+        setListOutfits(combined);
+        if (scheduled.length > 0) {
+          setSaveStateByHash(current => {
+            const next = { ...current };
+            for (const sheet of scheduled) {
+              next[sheet.outfitHash] = 'saved';
+            }
+            return next;
+          });
+        }
         setActiveIndex(0);
         activeIndexRef.current = 0;
         unfavoritedSwipeCountRef.current = 0;
@@ -466,6 +505,10 @@ export const HomeScreen = () => {
     onError: (error, variables) => {
       console.error('Failed to load recommendation', error);
       inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
+
+      // B4: record the failure with a sanitized error_kind (+ HTTP status).
+      const { kind, status } = classifyRecommendationError(error);
+      trackRecommendationFailed(kind, status);
 
       const tempApplyId = variables?.__tempApplyId;
       if (tempApplyId != null && tempApplyId === tempApplyIdRef.current) {
@@ -606,13 +649,6 @@ export const HomeScreen = () => {
   }, [tierViewedCount, refineIsOpen, openRefine]);
 
   useEffect(() => {
-    return () => {
-      clearTimeoutRef(snackbarTimeoutRef);
-      clearTimeoutRef(tempToastTimeoutRef);
-    };
-  }, []);
-
-  useEffect(() => {
     if (pinState.outfit !== 'generating') {
       return;
     }
@@ -668,6 +704,17 @@ export const HomeScreen = () => {
           setListOutfits(mapped);
           setActiveIndex(0);
           activeIndexRef.current = 0;
+          // A fresh pinned deck is a new generation cycle: clear the
+          // depletion/limit flags so buffering resumes for the pinned context
+          // and the limit sheet can fire again once the pinned pool is truly
+          // exhausted. Without this, pinning after a prior depletion leaves the
+          // user on a dead-end swipe with no OutfitLimitSheet. Mirrors the
+          // cold-start reset above.
+          unfavoritedSwipeCountRef.current = 0;
+          poolDepletedRef.current = false;
+          limitSheetShownRef.current = false;
+          setHasCycled(false);
+          setIsWardrobeGap(false);
         }
         pinDispatch({
           type: result.lowConfidence ? 'GENERATE_FALLBACK' : 'GENERATE_SUCCESS',
@@ -677,18 +724,35 @@ export const HomeScreen = () => {
         if (pinAbortRef.current !== controller) {
           return;
         }
-        const status = (error as { response?: { status?: number } })?.response
-          ?.status;
+        const response = (
+          error as {
+            response?: {
+              status?: number;
+              data?: { detail?: string | { code?: string } };
+            };
+          }
+        )?.response;
+        const status = response?.status;
+        // 422 is overloaded on the BE: pinned-item validation (item gone /
+        // not owned) shares it with `pool_insufficient:<reason>` — the engine
+        // couldn't compose an outfit at all. Only the former means the item
+        // is unavailable; pool exhaustion must NOT unpin or claim the item
+        // vanished (it's alive in the wardrobe the user just came from).
+        const detail = response?.data?.detail;
+        const detailCode = typeof detail === 'string' ? detail : detail?.code;
+        const isPoolInsufficient =
+          typeof detailCode === 'string' &&
+          detailCode.startsWith('pool_insufficient');
         if (status === 401) {
           pinDispatch({ type: 'AUTH_BLOCK' });
-        } else if (status === 410) {
+        } else if (status === 410 || (status === 422 && !isPoolInsufficient)) {
           setPinErrorKind('item_unavailable');
           setPinnedItemGoneAt(Date.now());
           pinDispatch({ type: 'PINNED_ITEM_GONE' });
         } else if (status === 422) {
-          setPinErrorKind('item_unavailable');
-          setPinnedItemGoneAt(Date.now());
-          pinDispatch({ type: 'PINNED_ITEM_GONE' });
+          // pool_insufficient — keep the pin, show the retryable error.
+          setPinErrorKind('generic');
+          pinDispatch({ type: 'GENERATE_ERROR' });
         } else {
           const code = (error as { code?: string })?.code;
           const isNetwork =
@@ -780,11 +844,28 @@ export const HomeScreen = () => {
     navigation.setParams({ swapItem: undefined });
   }, [route.params?.swapItem, navigation]);
 
-  const { data: wardrobeItemsData } = useQuery({
-    queryKey: ['home-wardrobe-items'],
+  const {
+    data: wardrobeItemsData,
+    dataUpdatedAt: wardrobeItemsUpdatedAt,
+    refetch: refetchWardrobeItems,
+  } = useQuery({
+    // Shared with the Wardrobe screen's "All" tab (wardrobeKeys.list('All')) so
+    // the two screens reuse one cache entry. Home keeps its tighter 30s stale.
+    queryKey: wardrobeKeys.list(),
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 30_000,
   });
+  // When the current pin was set. The gone-check below may only trust a
+  // wardrobe list fetched AFTER this moment — a cached list that predates the
+  // pin (e.g. "Build around this" on an item added since Home last fetched)
+  // would report a live item as gone. Declared before the gone-check so it
+  // runs first within the same commit.
+  const pinSetAtRef = useRef(0);
+  useEffect(() => {
+    if (pinState.pinnedItemId) {
+      pinSetAtRef.current = Date.now();
+    }
+  }, [pinState.pinnedItemId]);
   useEffect(() => {
     if (!pinState.pinnedItemId) {
       return;
@@ -795,11 +876,24 @@ export const HomeScreen = () => {
     const stillExists = wardrobeItemsData.some(
       i => i.id === pinState.pinnedItemId,
     );
-    if (!stillExists) {
-      pinDispatch({ type: 'PINNED_ITEM_GONE' });
-      setPinnedItemGoneAt(Date.now());
+    if (stillExists) {
+      return;
     }
-  }, [wardrobeItemsData, pinState.pinnedItemId, pinDispatch]);
+    if (wardrobeItemsUpdatedAt < pinSetAtRef.current) {
+      // The cached list can't prove the item is gone. Refetch; this effect
+      // re-runs with post-pin data and decides for real.
+      refetchWardrobeItems();
+      return;
+    }
+    pinDispatch({ type: 'PINNED_ITEM_GONE' });
+    setPinnedItemGoneAt(Date.now());
+  }, [
+    wardrobeItemsData,
+    wardrobeItemsUpdatedAt,
+    refetchWardrobeItems,
+    pinState.pinnedItemId,
+    pinDispatch,
+  ]);
 
   useEffect(() => {
     if (pinnedItemGoneAt === null) {
@@ -818,6 +912,15 @@ export const HomeScreen = () => {
   }, [pinState.outfit]);
 
   const loading = isStartPending && listOutfits.length === 0;
+
+  // B4/B5: map the backend AI error code to a specific error state (daily limit
+  // / temporarily unavailable) — everything else keeps the generic message.
+  const homeErrorVariant = useMemo<HomeErrorVariant>(() => {
+    const code = getApiErrorCode(startError);
+    if (code === AI_DAILY_LIMIT_CODE) return 'ai_limit';
+    if (code === AI_UNAVAILABLE_CODE) return 'ai_unavailable';
+    return 'generic';
+  }, [startError]);
 
   const pinnedItem = useMemo<Item | null>(() => {
     if (!pinnedItemId) {
@@ -934,16 +1037,6 @@ export const HomeScreen = () => {
     ensureBufferRef.current = ensureBuffer;
   }, [ensureBuffer]);
 
-  const [refineToastText, setRefineToastText] = useState<string | null>(null);
-
-  // Clears the refine toast early the moment the user starts interacting with
-  // the refreshed deck (swipe, like, …). Declared above the interaction
-  // handlers so they can depend on it without hitting the temporal dead zone.
-  const dismissRefineToast = useCallback(() => {
-    clearTimeoutRef(refineToastTimeoutRef);
-    setRefineToastText(current => (current === null ? current : null));
-  }, []);
-
   const handleHeartTapForOutfit = useCallback(
     (outfit: OutfitSheetWithGrid | OutfitSheet | undefined) => {
       if (!outfit) {
@@ -1000,72 +1093,6 @@ export const HomeScreen = () => {
   }, [navigation, hasUnseenFavourites]);
 
   const { t } = useTranslation();
-  const [moodBannerText, setMoodBannerText] = useState<string | null>(null);
-
-  const showMoodBanner = useCallback(
-    (text: string) => {
-      // The mood banner and refine toast share the bottom slot. Every path that
-      // surfaces the banner already runs through an interaction handler that
-      // dismisses the toast, but clear it here too so mutual exclusion is
-      // structurally enforced rather than merely relied upon.
-      dismissRefineToast();
-      clearTimeoutRef(snackbarTimeoutRef);
-      setMoodBannerText(text);
-      snackbarTimeoutRef.current = setTimeout(() => {
-        setMoodBannerText(null);
-        snackbarTimeoutRef.current = null;
-      }, MOOD_BANNER_DURATION_MS);
-    },
-    [dismissRefineToast],
-  );
-
-  // Refine confirmation toast ("Relaxed applied!") — builds the localized copy.
-  // Fired from the mutation's onSuccess (via showRefineToastRef) once the
-  // refreshed deck has loaded, then auto-dismisses after REFINE_TOAST_DURATION_MS.
-  const showRefineToast = useCallback(
-    (feedback: string, isChip: boolean) => {
-      clearTimeoutRef(refineToastTimeoutRef);
-      // Ship `mode` always; the label only for chips. Custom refine text is
-      // free-form user input (PII) and must never reach analytics — same gate
-      // as the sibling `refine_submitted` event.
-      track('refine_confirmation_shown', {
-        mode: isChip ? 'chip' : 'custom',
-        ...(isChip ? { value: feedback } : {}),
-      });
-      // The toast itself still shows the user's own words back to them.
-      setRefineToastText(t('home.refineAppliedToast', { feedback }));
-      refineToastTimeoutRef.current = setTimeout(() => {
-        setRefineToastText(null);
-        refineToastTimeoutRef.current = null;
-      }, REFINE_TOAST_DURATION_MS);
-    },
-    [t],
-  );
-
-  useEffect(() => {
-    showRefineToastRef.current = showRefineToast;
-  }, [showRefineToast]);
-
-  const showTempToast = useCallback(
-    (key: TemperatureBucketKey) => {
-      clearTimeoutRef(tempToastTimeoutRef);
-      setTempToastText(
-        isOverrideBucket(key)
-          ? t('home.temp_toast_override', { temp: repTempCFor(key) ?? 0 })
-          : t('home.temp_toast_current'),
-      );
-      setTempToastVisible(true);
-      tempToastTimeoutRef.current = setTimeout(() => {
-        setTempToastVisible(false);
-        tempToastTimeoutRef.current = null;
-      }, TEMP_TOAST_DURATION_MS);
-    },
-    [t],
-  );
-
-  useEffect(() => {
-    showTempToastRef.current = showTempToast;
-  }, [showTempToast]);
 
   const handleMoodSaveSuccess = useCallback(
     (outfitHash: string, updated: boolean) => {
@@ -1193,9 +1220,23 @@ export const HomeScreen = () => {
     ensureBuffer();
   }, [ensureBuffer, openLimitSheet]);
 
+  // "Refine" on the limit sheet swaps one native modal for another. Opening
+  // the refine sheet while the limit sheet is still dismissing races UIKit
+  // (same bug class as the edit-context fix) — so only close here, and let
+  // the sheet's onDismissed callback open the refine flow once its modal is
+  // fully gone.
+  const pendingLimitRefineRef = useRef(false);
   const handleLimitRefine = useCallback(() => {
+    pendingLimitRefineRef.current = true;
     setLimitSheetVisible(false);
     track('outfit_limit_refine_tapped');
+  }, []);
+
+  const handleLimitSheetDismissed = useCallback(() => {
+    if (!pendingLimitRefineRef.current) {
+      return;
+    }
+    pendingLimitRefineRef.current = false;
     openRefine('explore_limit');
   }, [openRefine]);
 
@@ -1358,59 +1399,15 @@ export const HomeScreen = () => {
       style={styles.container}
       edges={['top']}
     >
-      <View style={styles.header}>
-        <TopIconButton
-          testID="home-menu-button"
-          accessibilityRole="button"
-          accessibilityLabel={t('home.a11y_open_menu')}
-          onPress={handleLeadingAction}
-          icon={<IconMenu width={24} height={24} />}
-          style={styles.headerIconButton}
-        />
-
-        {isOverrideActive ? (
-          <TemperatureOverrideIndicator
-            label={bucketLabel(t, activeBucketKey, weather.tempC)}
-            onPress={openTempSheet}
-          />
-        ) : (
-          <TouchableOpacity
-            testID="home-weather-temp-trigger"
-            accessibilityRole="button"
-            accessibilityLabel={t('home.a11y_temp_idle')}
-            activeOpacity={0.82}
-            onPress={openTempSheet}
-          >
-            <WeatherWidget
-              tempC={weather.tempC}
-              iconCode={weather.iconCode}
-              showChevron
-            />
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          testID="home-favourites-shortcut"
-          accessibilityRole="button"
-          accessibilityLabel={
-            hasUnseenFavourites
-              ? t('home.a11y_open_favourites_new')
-              : t('home.a11y_open_favourites')
-          }
-          activeOpacity={0.82}
-          style={styles.headerIconButton}
-          onPress={handleOpenFavourites}
-        >
-          <IconHomeHeartOutline width={24} height={24} />
-          {hasUnseenFavourites ? (
-            <View
-              testID="home-favourites-badge"
-              style={styles.favDot}
-              pointerEvents="none"
-            />
-          ) : null}
-        </TouchableOpacity>
-      </View>
+      <HomeHeader
+        onOpenMenu={handleLeadingAction}
+        isOverrideActive={isOverrideActive}
+        activeBucketKey={activeBucketKey}
+        weather={weather}
+        onOpenTemp={openTempSheet}
+        homeView={homeView}
+        onSelectView={setHomeView}
+      />
 
       {/* Floating toast layer (z-index tier 5) — sits on top of the grid,
           never stacks with the cards. */}
@@ -1440,6 +1437,7 @@ export const HomeScreen = () => {
         />
       ) : optionSets.length === 0 && startError ? (
         <HomeErrorState
+          variant={homeErrorVariant}
           onRetry={() => {
             resetStartMutation();
             requestRecommendation({
@@ -1480,38 +1478,13 @@ export const HomeScreen = () => {
               />
             )}
             renderCue={(backOpacity, nextOpacity) => (
-              <>
-                {/* Swipe right → previous: back chevron on the right edge
-                    (hidden on the first card — nothing to return to). */}
-                {clampedActiveIndex > 0 ? (
-                  <Animated.View
-                    pointerEvents="none"
-                    style={[
-                      styles.deckCue,
-                      styles.deckCueLike,
-                      { opacity: backOpacity },
-                    ]}
-                  >
-                    <IconChevronLeft width={20} height={20} />
-                    <Text style={styles.deckCueSkipText}>
-                      {t('home.back_label')}
-                    </Text>
-                  </Animated.View>
-                ) : null}
-                {/* Swipe left → next: cue on the left edge. */}
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.deckCue,
-                    styles.deckCueSkip,
-                    { opacity: nextOpacity },
-                  ]}
-                >
-                  <Text style={styles.deckCueSkipText}>
-                    {t('home.skip_label')}
-                  </Text>
-                </Animated.View>
-              </>
+              <DeckCue
+                backOpacity={backOpacity}
+                nextOpacity={nextOpacity}
+                showBack={clampedActiveIndex > 0}
+                backLabel={t('home.back_label')}
+                skipLabel={t('home.skip_label')}
+              />
             )}
           />
           {/* Fixed action row — Remix · dots · Refine stay put while only the
@@ -1530,138 +1503,47 @@ export const HomeScreen = () => {
         </View>
       )}
 
-      {pinState.outfit === 'error' ? (
-        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
-          <PinGenerationError
-            kind={pinErrorKind}
-            onRetry={() => {
-              setPinErrorKind('generic');
-              pinDispatch({ type: 'RETRY' });
-            }}
-          />
-        </View>
-      ) : pinState.outfit === 'fallback' ? (
-        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
-          <PinFallbackNotice />
-        </View>
-      ) : pinState.outfit === 'auth_required' ? (
-        <View
-          testID="pin-guest-banner"
-          pointerEvents="box-none"
-          style={styles.pinBannerFloat}
-        >
-          <View style={styles.pinGuestBox} accessibilityRole="alert">
-            <Text style={styles.pinGuestText} numberOfLines={3}>
-              {t('pin.guest_blocker')}
-            </Text>
-            <TouchableOpacity
-              testID="pin-guest-signin-cta"
-              accessibilityRole="button"
-              accessibilityLabel={t('pin.guest_blocker')}
-              activeOpacity={0.7}
-              onPress={() => {
-                navigation.navigate('Auth', {
-                  screen: 'EmailInput',
-                  params: { mode: 'signin' },
-                });
-              }}
-              style={styles.pinGuestCta}
-            >
-              <Text style={styles.pinGuestCtaText}>
-                {t('pin.guest_signin_cta')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : null}
-
-      {pinnedItemGoneAt !== null ? (
-        <View pointerEvents="box-none" style={styles.pinBannerFloat}>
-          <PinnedItemUnavailableNotice />
-        </View>
-      ) : null}
-
-      {optionSets.length > 0 ? (
-        <View style={styles.wearThisFooter}>
-          {activeSaveState === 'saved' ? (
-            <TouchableOpacity
-              testID="home-wear-this-saved-favourites"
-              accessibilityRole="button"
-              accessibilityLabel={t('home.saved_open_favourites')}
-              activeOpacity={0.7}
-              style={styles.savedFavouritesCta}
-              onPress={handleOpenFavourites}
-            >
-              <Text style={styles.savedFavouritesCtaText} numberOfLines={2}>
-                {t('home.saved_open_favourites')}
-              </Text>
-              <IconChevronRight width={20} height={20} />
-            </TouchableOpacity>
-          ) : (
-            <PillButton
-              testID="home-wear-this"
-              title={
-                pinState.outfit === 'generating'
-                  ? t('pin.generating_header')
-                  : t('home.wear_this')
-              }
-              variant="outline"
-              onPress={() =>
-                activeOutfit && handleWearThisForOutfit(activeOutfit)
-              }
-              disabled={!activeOutfit || pinState.outfit === 'generating'}
-              loading={activeSaveState === 'saving'}
-              trailing={
-                pinState.outfit === 'generating' ? (
-                  <DotsLoader
-                    color={theme.colors.figmaAction}
-                    testID="home-wear-this-generating-spinner"
-                  />
-                ) : (
-                  <IconHomeHeartOutline width={24} height={24} />
-                )
-              }
-              style={styles.primaryActionFull}
-              textStyle={styles.primaryActionLabel}
-            />
-          )}
-          {activeSaveState === 'error' ? (
-            <Text style={styles.saveErrorText}>
-              {t('home.save_failed_retry')}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      {/* Feedback affordance — 44px floating button, bottom-left of the
-          footer, Home only. Opens the in-app Feedback bottom sheet. AI-result
-          feedback now lives on the try-on result (see OutfitPreview). */}
-      {optionSets.length > 0 ? (
-        <TouchableOpacity
-          testID="home-feedback-fab"
-          accessibilityRole="button"
-          accessibilityLabel={t('feedback.title')}
-          activeOpacity={0.85}
-          onPress={() => setFeedbackVisible(true)}
-          style={styles.aiFeedbackFab}
-        >
-          <IconFeedback
-            width={24}
-            height={24}
-            color={theme.colors.uacTextBase}
-          />
-        </TouchableOpacity>
-      ) : null}
-
-      <HomeViewToggleFooter
-        testID="home-footer-view-toggle"
-        source="home"
-        activeView={homeView}
-        onSelectView={setHomeView}
+      <PinStatusBanners
+        pinOutfit={pinState.outfit}
+        pinErrorKind={pinErrorKind}
+        onRetry={() => {
+          setPinErrorKind('generic');
+          pinDispatch({ type: 'RETRY' });
+        }}
+        onSignIn={() => {
+          navigation.navigate('Auth', {
+            screen: 'EmailInput',
+            params: { mode: 'signin' },
+          });
+        }}
+        pinnedItemGoneAt={pinnedItemGoneAt}
       />
 
+      <WearThisFooter
+        visible={optionSets.length > 0}
+        activeSaveState={activeSaveState}
+        pinOutfit={pinState.outfit}
+        activeOutfit={activeOutfit}
+        onOpenFavourites={handleOpenFavourites}
+        onWearThis={handleWearThisForOutfit}
+      />
+
+      <HomeWardrobeNavFooter active="home" testID="home-footer-nav-toggle" />
+
+      {/* Shared bottom-left feedback FAB — the same component Wardrobe mounts,
+          so the footer cluster reads identically across the nav toggle. Keeps
+          the historical `optionSets.length > 0` gate (hidden during initial
+          load / error states, like the Wear-this cluster). */}
+      {optionSets.length > 0 ? (
+        <FeedbackFab testID="home-feedback-fab" />
+      ) : null}
+
+      {/* Single native modal for the whole refine flow. The full-screen
+          "Edit context" view is swapped in for the chip card INSIDE this
+          modal (editView) — presenting it as a second sibling <Modal> raced
+          the sheet's dismissal on iOS and the editor never survived. */}
       <ContextChipsModal
-        visible={refine.isOpen && !refine.isEditing}
+        visible={refine.isOpen}
         chipOptions={refine.displayChipOptions}
         selectedChipId={refine.selectedChipId}
         isSubmitting={false}
@@ -1669,29 +1551,31 @@ export const HomeScreen = () => {
         onSelectChip={refine.onSelectChip}
         onShuffle={refine.onShuffle}
         onEdit={refine.onEdit}
+        isEditing={refine.isEditing}
+        onEditBack={refine.onCancelEdit}
+        editView={
+          <EditContextView
+            value={refine.customText}
+            suggestions={EDIT_CONTEXT_SUGGESTIONS}
+            submitDisabled={refine.confirmDisabled}
+            onChangeText={refine.onChangeText}
+            onSelectSuggestion={refine.onChangeText}
+            onBack={refine.onCancelEdit}
+            onSubmit={refine.onConfirm}
+          />
+        }
         onCancel={refine.onCancel}
         onConfirm={refine.onConfirm}
         onSkip={refine.onSkip}
       />
 
-      {/* Full-screen "Edit context" view — opened from the refine sheet's Edit
-          chip. Submitting applies the typed context through the same feedback
-          path; backing out returns to the chip row. */}
-      <EditContextModal
-        visible={refine.isOpen && refine.isEditing}
-        value={refine.customText}
-        suggestions={EDIT_CONTEXT_SUGGESTIONS}
-        submitDisabled={refine.confirmDisabled}
-        onChangeText={refine.onChangeText}
-        onSelectSuggestion={refine.onChangeText}
-        onBack={refine.onCancelEdit}
-        onSubmit={refine.onConfirm}
-      />
+
 
       <OutfitLimitSheet
         visible={limitSheetVisible}
         onRefine={handleLimitRefine}
         onKeepBrowsing={handleLimitKeepBrowsing}
+        onDismissed={handleLimitSheetDismissed}
       />
 
       <PinConfirmModal
@@ -1721,47 +1605,12 @@ export const HomeScreen = () => {
         onCancel={closeTempSheet}
       />
 
-      <FeedbackSheet
-        visible={feedbackVisible}
-        onClose={() => setFeedbackVisible(false)}
+      <HomeToastLayer
+        refineToastText={refineToastText}
+        moodBannerText={moodBannerText}
+        tempToastVisible={tempToastVisible}
+        tempToastText={tempToastText}
       />
-
-      {refineToastText ? (
-        <View pointerEvents="none" style={styles.refineToastWrap}>
-          <View
-            testID="home-refine-applied-toast"
-            accessibilityRole="alert"
-            style={styles.refineToast}
-          >
-            <Text style={styles.refineToastText} numberOfLines={1}>
-              {refineToastText}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-
-      {moodBannerText ? (
-        <View
-          testID="mood-feedback-banner"
-          accessibilityRole="alert"
-          pointerEvents="none"
-          style={styles.moodBanner}
-        >
-          <Text style={styles.moodBannerText}>{moodBannerText}</Text>
-        </View>
-      ) : null}
-
-      <View
-        accessibilityRole="alert"
-        pointerEvents="none"
-        style={styles.tempToast}
-      >
-        <MSnackbar
-          visible={tempToastVisible}
-          message={tempToastText}
-          testID="home-temp-toast"
-        />
-      </View>
     </SafeAreaView>
   );
 };

@@ -15,11 +15,13 @@
  */
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 
 import type { AuthStackParamList } from '../../types/navigation';
+import { AuthHeader } from '../../components/auth/AuthHeader';
 import { theme } from '../../theme/theme';
 
 type Navigation = NativeStackNavigationProp<
@@ -36,28 +38,20 @@ export const ForgotPasswordCheckMailScreen: React.FC = () => {
   const email = route.params?.email ?? '';
 
   const handleBackToLogin = () => {
-    // Reset to SignIn pre-filled with the email so the user can re-enter
-    // the password once the reset email lands. Using `navigate` to let
-    // React Nav re-use the existing SignIn instance if it's already in
-    // the stack (typical flow: SignIn -> ForgotRequest -> CheckMail).
-    navigation.navigate('SignIn', { email });
+    // pop(2) removes ForgotPasswordCheckMail + ForgotPasswordRequest,
+    // landing on the existing SignIn screen. Using navigate() instead
+    // creates a new SignIn on top of the stack — pressing Back from it
+    // leads back to CheckMail instead of Welcome (navigation loop).
+    navigation.pop(2);
   };
 
   return (
-    <View style={styles.screen}>
-      {/* Header */}
-      <View style={styles.header} testID="forgot-checkmail-header">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('uac.common.back') as string}
-          testID="forgot-checkmail-back"
-          onPress={() => navigation.goBack()}
-          style={styles.headerBackHit}
-          hitSlop={8}
-        >
-          <Text style={styles.headerBackChevron}>‹</Text>
-        </Pressable>
-      </View>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <AuthHeader
+        onBack={() => navigation.goBack()}
+        backTestID="forgot-checkmail-back"
+        testID="forgot-checkmail-header"
+      />
 
       <ScrollView
         contentContainerStyle={styles.body}
@@ -108,7 +102,7 @@ export const ForgotPasswordCheckMailScreen: React.FC = () => {
           </Text>
         </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -116,23 +110,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.colors.uacBackgroundNeutralSubtlest,
-  },
-  header: {
-    height: theme.spacing.uacHeaderHeight,
-    paddingHorizontal: theme.spacing.uacBodyPadding,
-    justifyContent: 'flex-end',
-    paddingBottom: theme.spacing.uacDimension16,
-  },
-  headerBackHit: {
-    width: 45,
-    height: 45,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerBackChevron: {
-    fontSize: 32,
-    lineHeight: 32,
-    color: theme.colors.uacTextBase,
   },
   body: {
     paddingHorizontal: theme.spacing.uacBodyPadding,

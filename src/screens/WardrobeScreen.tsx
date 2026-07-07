@@ -1,19 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
-import { MacgieLoader } from '../components/macgie';
 import {
   RouteProp,
   useIsFocused,
@@ -22,132 +12,58 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../components/design-system/lib';
-import {
-  launchCamera,
-  launchImageLibrary,
-  Asset,
-} from 'react-native-image-picker';
 import { CategoryTabs } from '../components/features/CategoryTabs';
+import { HomeWardrobeNavFooter } from '../components/features/HomeWardrobeNavFooter';
+import { FeedbackFab } from '../components/features/FeedbackFab';
 import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
 import { Header } from '../components/layout/Header';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
-import {
-  MActionSheet,
-  MBottomSheet,
-  MButton,
-} from '../components/design-system/lib';
+import { MActionSheet, MButton } from '../components/design-system/lib';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { useSidebar } from '../context/SidebarContext';
 import {
   wardrobeService,
   WardrobeItem,
-  getItemUsageFrequency,
+  wardrobeKeys,
 } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
 import { useWardrobeViewed } from '../context/WardrobeViewedContext';
 import { AppStackParamList } from '../types/navigation';
-import { resolveItemImage } from '../utils/url';
 import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
-
-const { width: screenWidth } = Dimensions.get('window');
-
-// Wardrobe filter chips — design order (node 3234:17793).
-const FILTER_TABS = [
-  'All',
-  'Top',
-  'Bottoms',
-  'One-Piece',
-  'Shoes',
-  'Ac',
-] as const;
-type FilterTab = (typeof FILTER_TABS)[number];
-
-// Grid — Figma node 2850:16492: 3 columns, 24px side padding, 4px gaps, 3:4 tiles.
-const HORIZONTAL_PADDING = 12;
-const GRID_GAP = 4;
-const GRID_COLUMNS = 3;
-const TILE_WIDTH =
-  (screenWidth - HORIZONTAL_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) /
-  GRID_COLUMNS;
-const TILE_HEIGHT = TILE_WIDTH * (4 / 3);
+import { AiConsentDialog } from '../components/features/AiConsentDialog';
+import { AddItemSheet } from './wardrobe/AddItemSheet';
+import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
+import { PreparingOverlay } from './wardrobe/PreparingOverlay';
+import { useAddWardrobeItem, UploadMode } from './wardrobe/useAddWardrobeItem';
+import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
+import { useStalePreparingCleanup } from './wardrobe/useStalePreparingCleanup';
+import { anyBeautifying } from './wardrobe/beautify-status';
+import {
+  FILTER_TABS,
+  FilterTab,
+  GRID_GAP,
+  HORIZONTAL_PADDING,
+  PENDING_IMPORT_ID,
+  PREPARING_POLL_MS,
+  TILE_HEIGHT,
+  TILE_WIDTH,
+  anyPreparing,
+  isCommonItem,
+  isPreparing,
+  resolveFilterQuery,
+} from './wardrobe/wardrobe-grid';
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
   'Wardrobe'
 >;
 type ScreenRoute = RouteProp<AppStackParamList, 'Wardrobe'>;
-
-const resolveFilterQuery = (selectedTab: FilterTab): string | undefined => {
-  switch (selectedTab) {
-    case 'Top':
-      return 'top';
-    case 'Bottoms':
-      return 'bottom';
-    case 'Shoes':
-      return 'shoes';
-    case 'One-Piece':
-      return 'one_piece';
-    case 'Ac':
-      return 'accessory';
-    case 'All':
-    default:
-      return undefined;
-  }
-};
-
-const isCommonItem = (item: WardrobeItem): boolean =>
-  item.is_common_item === true ||
-  item.user_id === null ||
-  item.user_id === undefined;
-
-// AU-361: items are uploaded then processed (bg-removal + auto-tagging) in the
-// background. `is_preparing` flips true→false when processing finishes and the
-// item becomes ready to use. The grid renders a "preparing" overlay while true.
-const isPreparing = (item: WardrobeItem): boolean => item.is_preparing === true;
-
-// A grid tile shows at most one status pill (Figma: bottom-centre). The four
-// states are mutually exclusive and resolved with the precedence
-// new > less use > common (product decision):
-//   • new      — one of the user's OWN items (not a catalog/common item) that
-//     they uploaded but have not opened the detail for yet. "Viewed" is tracked
-//     locally per-user (see WardrobeViewedContext); opening the detail clears
-//     the tag. Checked first so a fresh upload reads as "new".
-//   • less use — user explicitly demoted the item (NORMAL ↔ LESS_USED). Wins
-//     over "common" so a demoted catalog item still reads as "less use".
-//   • common   — item originates from our shared database (catalog).
-//   • (none)   — a user item that has been seen.
-type TileStatus = 'new' | 'less_use' | 'common' | null;
-
-const resolveTileStatus = (item: WardrobeItem, viewed: boolean): TileStatus => {
-  // "New" only applies to the user's own uploads, never to catalog/common
-  // items — those carry the "common" tag regardless of whether they've been
-  // opened.
-  if (!isCommonItem(item) && !viewed) {
-    return 'new';
-  }
-  if (getItemUsageFrequency(item) === 'LESS_USED') {
-    return 'less_use';
-  }
-  if (isCommonItem(item)) {
-    return 'common';
-  }
-  return null;
-};
-
-// While any item is still preparing we poll the wardrobe so the ready
-// transition can actually be observed (the screen otherwise only refetches on
-// focus). Kept light: a single refetch every few seconds, stopped once nothing
-// is preparing.
-const PREPARING_POLL_MS = 4000;
-
-// AU-361: how long the self-controlled "item ready" snackbar stays on screen
-// before auto-hiding.
-const READY_SNACKBAR_MS = 4000;
 
 export const WardrobeScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
@@ -167,169 +83,177 @@ export const WardrobeScreen = () => {
 
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<WardrobeItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  // F7: distinguish a genuine empty wardrobe from a failed load. `loadError`
-  // is set on a (non-silent) fetch failure so the screen shows a dedicated
-  // error state + Retry rather than the misleading "add your first item" copy.
-  const [loadError, setLoadError] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadingPhotoUri, setUploadingPhotoUri] = useState<string | null>(
-    null,
-  );
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
-  // Add-item sheet visibility. The slide/fade ENTER + faster CLOSE motion +
-  // reduce-motion fallback are now encapsulated inside MBottomSheet (it keeps
-  // itself mounted through the close animation), so the screen only tracks the
-  // boolean.
+  // Add-item sheet visibility. The full-width panel + "Refine suggestions"
+  // reveal motion + reduce-motion fallback are encapsulated inside
+  // ContextualBottomSheet (it keeps itself mounted through the close
+  // animation), so the screen only tracks the boolean.
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   // Take-photo source chooser. Migrated from a 3-button Alert.alert to the DS
   // MActionSheet (GH-364); driven by this controlled boolean.
   const [photoSourceSheetVisible, setPhotoSourceSheetVisible] = useState(false);
 
-  // AU-361: item-ready snackbar. `preparingIdsRef` holds IDs that were still
-  // preparing on the previous fetch; `readyToastedIdsRef` dedups so an item
-  // only ever fires one "ready" snackbar per session even across
-  // refetches/polls.
-  const preparingIdsRef = useRef<Set<string>>(new Set());
-  const readyToastedIdsRef = useRef<Set<string>>(new Set());
+  // AU-361: item-ready snackbar concern (preparing→ready transition detection,
+  // dedup refs, auto-hide timer, overlay state). `showReadySnackbar` is also
+  // reused by the add-item flow for the "item added" confirmation.
+  const {
+    readySnackbarVisible,
+    readySnackbarMessage,
+    showReadySnackbar,
+    reconcileReadyItems,
+    beautifySnackbarVisible,
+    beautifySnackbarItemId,
+    beautifySnackbarOriginalUri,
+  } = useItemReadySnackbar();
 
-  // AU-361: self-controlled in-screen snackbar state. The library's
-  // custom-config render path never mounted the snackbar, so we render it
-  // ourselves as an absolute overlay (see ItemReadySnackbar). `snackbarTimerRef`
-  // holds the auto-hide timeout so it can be cleared on re-trigger / unmount.
-  const [readySnackbarVisible, setReadySnackbarVisible] = useState(false);
-  const [readySnackbarMessage, setReadySnackbarMessage] = useState('');
-  const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const queryClient = useQueryClient();
 
-  const showReadySnackbar = useCallback((message: string) => {
-    if (snackbarTimerRef.current) {
-      clearTimeout(snackbarTimerRef.current);
+  const wardrobeQuery = useQuery({
+    queryKey: wardrobeKeys.list(selectedTab),
+    queryFn: () => {
+      const category = resolveFilterQuery(selectedTab);
+      return category
+        ? wardrobeService.filterWardrobeItems({ category })
+        : wardrobeService.getWardrobeItems();
+    },
+    staleTime: 60_000,
+    // AU-361 + Task 14: while focused AND something is preparing OR beautifying,
+    // poll so the preparing→ready / beautify pending→ready transitions are
+    // observed (their snackbars fire off reconcileReadyItems). Stops otherwise.
+    refetchInterval: query =>
+      isFocused &&
+      (anyPreparing(query.state.data) || anyBeautifying(query.state.data ?? []))
+        ? PREPARING_POLL_MS
+        : false,
+    refetchIntervalInBackground: false,
+  });
+
+  const { refetch } = wardrobeQuery;
+  const items = wardrobeQuery.data ?? [];
+  // Skeleton only on the first load (no cached data yet) — never on a
+  // background revalidate, so revisiting the screen doesn't flash.
+  const loading = wardrobeQuery.isLoading;
+  // F7: only show the dedicated error state when we have nothing to display;
+  // a failed background refetch over cached data stays silent.
+  const loadError = wardrobeQuery.isError && items.length === 0;
+
+  // Invalidate ALL wardrobe list caches after an upload — a new item may land
+  // in any category, so refresh every filter variant.
+  const refetchWardrobe = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: wardrobeKeys.all }),
+    [queryClient],
+  );
+
+  // Detect preparing→ready transitions whenever the list changes (fetch/poll).
+  useEffect(() => {
+    if (wardrobeQuery.data) {
+      reconcileReadyItems(wardrobeQuery.data);
     }
-    setReadySnackbarMessage(message);
-    setReadySnackbarVisible(true);
-    snackbarTimerRef.current = setTimeout(() => {
-      setReadySnackbarVisible(false);
-      snackbarTimerRef.current = null;
-    }, READY_SNACKBAR_MS);
-  }, []);
+  }, [wardrobeQuery.data, reconcileReadyItems]);
 
-  // Clear any pending auto-hide timer on unmount.
-  useEffect(
-    () => () => {
-      if (snackbarTimerRef.current) {
-        clearTimeout(snackbarTimerRef.current);
-      }
-    },
-    [],
-  );
+  // Stale-upload watchdog: an item stuck in the preparing state for more than
+  // PREPARING_TIMEOUT_MS is assumed failed — auto-removed with an error toast
+  // telling the user to try again.
+  useStalePreparingCleanup({ items: wardrobeQuery.data, enabled: isFocused });
 
-  // AU-361: detect preparing→ready transitions and surface the toast once per
-  // item. Compares this fetch against the prior fetch's preparing set.
-  const reconcileReadyItems = useCallback(
-    (data: WardrobeItem[]) => {
-      const prevPreparing = preparingIdsRef.current;
-      const nextPreparing = new Set<string>();
+  // Non-blocking web import: ImportFromWeb hands the picked image URL back via
+  // `pendingImportUrl` and navigates here immediately — this screen owns the
+  // create call so the user is never held in the preview watching a spinner
+  // (mirrors the take-photo flow's ownership). On consume: clear the param
+  // (re-focus must not refire the import), show the same "item added"
+  // snackbar as the photo path, and render an optimistic preparing placeholder
+  // tile until the backend item lands, at which point the refetched
+  // is_preparing item takes over and rides the normal preparing→ready
+  // lifecycle. On failure the placeholder is removed and the error surfaces
+  // via the root toast (no Modal above it anymore, so it's visible).
+  const [pendingImportUri, setPendingImportUri] = useState<string | null>(null);
+  useEffect(() => {
+    const imageUrl = route.params?.pendingImportUrl;
+    if (!imageUrl) {
+      return;
+    }
+    navigation.setParams({ pendingImportUrl: undefined });
+    showReadySnackbar(t('wardrobe.list.added_title'));
+    setPendingImportUri(imageUrl);
 
-      for (const item of data) {
-        if (!item.id) {
-          continue;
-        }
-        if (isPreparing(item)) {
-          nextPreparing.add(item.id);
-          continue;
-        }
-        // Item is ready now. Toast only if it was preparing last fetch and
-        // hasn't been toasted yet (dedup across polls/refocus).
-        if (
-          prevPreparing.has(item.id) &&
-          !readyToastedIdsRef.current.has(item.id)
-        ) {
-          readyToastedIdsRef.current.add(item.id);
-          // Self-controlled M3 snackbar (Figma node 3915:30077) — see
-          // ItemReadySnackbar. The library's custom-config render path never
-          // mounted, so we drive an in-screen overlay instead. Visual only; the
-          // transition-detection / dedup / analytics logic is unchanged.
-          showReadySnackbar(t('wardrobe.list.item_ready_title'));
-          const readyProps: Record<string, unknown> = {};
-          if (item.category) {
-            readyProps.item_category = item.category;
-          }
-          track('item_ready_toast_shown', readyProps);
-        }
-      }
-
-      preparingIdsRef.current = nextPreparing;
-    },
-    [t, showReadySnackbar],
-  );
-
-  // `silent` skips the skeleton spinner — used by the AU-361 background poll so
-  // it doesn't flash the loading grid on every tick.
-  const fetchItems = useCallback(
-    async (options?: { silent?: boolean }) => {
+    (async () => {
       try {
-        if (!options?.silent) {
-          setLoading(true);
-          setLoadError(false);
+        const created = await wardrobeService.importWardrobeItemFromUrl(
+          imageUrl,
+          user!,
+        );
+        const props: Record<string, unknown> = { method: 'import_web' };
+        if (created?.id) {
+          props.item_id = created.id;
         }
-        const category = resolveFilterQuery(selectedTab);
-        const data = category
-          ? await wardrobeService.filterWardrobeItems({ category })
-          : await wardrobeService.getWardrobeItems();
-        setItems(data);
-        reconcileReadyItems(data);
+        if (created?.category) {
+          props.category = created.category;
+        }
+        track('wardrobe_url_import_completed', props);
+        track('wardrobe_item_added', props);
+        // Awaited so the placeholder is only removed once the real
+        // is_preparing tile is in the list — one visual swap, no gap.
+        await refetchWardrobe();
       } catch (error) {
-        console.error('Error fetching wardrobe items', error);
-        if (!options?.silent) {
-          // F7: surface a dedicated, recoverable error state (icon + message +
-          // Retry) instead of falling through to the empty-wardrobe copy. The
-          // toast stays as the transient confirmation; the inline state is the
-          // journey-continuity fix.
-          setLoadError(true);
-          track('wardrobe_load_failed', { category: selectedTab });
-          toast.show({
-            type: 'error',
-            text1: t('common.load_wardrobe_failed_title'),
-            text2: t('common.try_again_moment'),
-            position: 'bottom',
-          });
-        }
+        console.error('Import from web failed', error);
+        track('wardrobe_url_import_failed', {});
+        toast.show({
+          type: 'error',
+          text1: t('wardrobe.import_web.import_failed'),
+          text2: t('common.try_again_moment'),
+          position: 'bottom',
+        });
       } finally {
-        if (!options?.silent) {
-          setLoading(false);
-        }
+        // Functional update: don't clobber the placeholder if a newer import
+        // has replaced it while this one was in flight.
+        setPendingImportUri(prev => (prev === imageUrl ? null : prev));
       }
-    },
-    [selectedTab, t, reconcileReadyItems],
-  );
+    })();
+  }, [
+    route.params?.pendingImportUrl,
+    showReadySnackbar,
+    refetchWardrobe,
+    navigation,
+    user,
+    t,
+  ]);
+
+  // Analytics: screen viewed — decoupled from data fetching, fires on focus and
+  // on filter change (preserves the prior wardrobe_viewed cadence).
+  useEffect(() => {
+    if (isFocused) {
+      track('wardrobe_viewed', { category: selectedTab });
+    }
+  }, [isFocused, selectedTab]);
+
+  // F7: surface the load-failed toast + analytics once per error episode.
+  const loadFailedRef = useRef(false);
+
+  // A tab change starts a fresh error episode — allow the load-failed toast +
+  // analytics to fire once for the newly selected tab.
+  useEffect(() => {
+    loadFailedRef.current = false;
+  }, [selectedTab]);
+
+  useEffect(() => {
+    if (loadError && !loadFailedRef.current) {
+      loadFailedRef.current = true;
+      track('wardrobe_load_failed', { category: selectedTab });
+      toast.show({
+        type: 'error',
+        text1: t('common.load_wardrobe_failed_title'),
+        text2: t('common.try_again_moment'),
+        position: 'bottom',
+      });
+    } else if (!loadError) {
+      loadFailedRef.current = false;
+    }
+  }, [loadError, selectedTab, t]);
 
   const handleRetryLoad = useCallback(() => {
     track('wardrobe_load_retry_tapped', { category: selectedTab });
-    fetchItems();
-  }, [fetchItems, selectedTab]);
-
-  useEffect(() => {
-    if (isFocused) {
-      fetchItems();
-      track('wardrobe_viewed', { category: selectedTab });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchItems, isFocused]);
-
-  // AU-361: while focused AND any item is still preparing, poll the wardrobe so
-  // the preparing→ready transition is observed and the toast fires. Stops as
-  // soon as nothing is preparing or the screen loses focus.
-  const hasPreparingItems = items.some(isPreparing);
-  useEffect(() => {
-    if (!isFocused || !hasPreparingItems) {
-      return;
-    }
-    const interval = setInterval(() => {
-      fetchItems({ silent: true });
-    }, PREPARING_POLL_MS);
-    return () => clearInterval(interval);
-  }, [isFocused, hasPreparingItems, fetchItems]);
+    refetch();
+  }, [refetch, selectedTab]);
 
   const handleSelectTab = (category: FilterTab) => {
     setSelectedTab(category);
@@ -337,6 +261,11 @@ export const WardrobeScreen = () => {
   };
 
   const handleItemPress = (item: WardrobeItem) => {
+    // The optimistic web-import placeholder is display-only — there's no
+    // backend item to open yet.
+    if (item.id === PENDING_IMPORT_ID) {
+      return;
+    }
     if (isSelectMode) {
       // Don't let the user anchor an item that isn't ready yet.
       if (isPreparing(item)) {
@@ -400,208 +329,33 @@ export const WardrobeScreen = () => {
     navigation.navigate('Database');
   };
 
-  const handleImageSelection = async (type: 'camera' | 'gallery') => {
+  const handleImportFromWeb = () => {
+    track('add_item_method_selected', { method: 'import_web' });
     setAddSheetVisible(false);
-
-    setTimeout(async () => {
-      const options = {
-        mediaType: 'photo' as const,
-        selectionLimit: 1,
-      };
-
-      const result =
-        type === 'camera'
-          ? await launchCamera(options)
-          : await launchImageLibrary(options);
-
-      if (result.didCancel) {
-        return;
-      }
-
-      if (result.errorCode) {
-        Alert.alert(
-          t('common.error_title'),
-          result.errorMessage || t('common.pick_image_failed'),
-        );
-        return;
-      }
-
-      const asset: Asset | undefined = result.assets?.[0];
-      if (!asset) {
-        return;
-      }
-
-      try {
-        setUploadingPhotoUri(asset.uri ?? null);
-        setUploading(true);
-        track('add_item_upload_started', { source: type });
-        if (type === 'camera') {
-          track('wardrobe_photo_captured', { source: 'add_item' });
-        }
-
-        const createdItem = await wardrobeService.uploadWardrobeItem(
-          asset,
-          user!,
-          resolveFilterQuery(selectedTab),
-        );
-
-        track('add_item_upload_succeeded', { source: type });
-        const addedProps: Record<string, unknown> = {
-          source: type,
-          method: 'take_photo',
-        };
-        if (createdItem?.id) {
-          addedProps.item_id = createdItem.id;
-        }
-        if (createdItem?.category) {
-          addedProps.category = createdItem.category;
-        }
-        track('wardrobe_item_added', addedProps);
-        // AU-372: surface add-success via the mint M3 ItemReadySnackbar overlay
-        // (same component as the ready moment), not the default bottom toast.
-        // Copy reads "Item added. We'll finish preparing it in the background."
-        showReadySnackbar(t('wardrobe.list.added_title'));
-
-        await fetchItems();
-      } catch (error) {
-        console.error('Upload error', error);
-        track('add_item_upload_failed', { source: type });
-        toast.show({
-          type: 'error',
-          text1: t('wardrobe.list.upload_failed_title'),
-          text2: t('wardrobe.list.upload_failed_body'),
-          position: 'bottom',
-        });
-      } finally {
-        setUploading(false);
-        setUploadingPhotoUri(null);
-      }
-    }, 250);
+    navigation.navigate('ImportFromWeb');
   };
 
-  const handleTakePhoto = () => {
-    track('add_item_method_selected', { method: 'take_photo' });
-    setAddSheetVisible(false);
-    // Let the add sheet finish its close animation before the source chooser
-    // slides up (matches the prior Alert timing).
-    setTimeout(() => {
-      setPhotoSourceSheetVisible(true);
-    }, 250);
-  };
+  // Add-item upload orchestration (image pick → upload → analytics →
+  // add-success snackbar → refetch) + the take-photo source chooser hand-off.
+  // `uploading` / `uploadingPhotoUri` drive the header spinner + PreparingOverlay.
+  // Holds the mode chosen in AddItemSheet so it's available when the
+  // MActionSheet fires handleImageSelection after the sheet is dismissed.
+  const pendingUploadModeRef = useRef<UploadMode>('remove_bg');
 
-  const renderGridTile = (item: WardrobeItem, index: number) => {
-    const imageUrl = resolveItemImage({
-      image_png: item.image_png ?? null,
-      image_url: item.image_url ?? '',
-    });
-
-    // qa-ui: the first tile gets a stable `wardrobe-item-first` testID so
-    // Maestro flows can deterministically open the first item without relying
-    // on the implicit `wardrobe-item-.*` prefix + index:0 match. Subsequent
-    // tiles keep the backend-dynamic `wardrobe-item-<id>` testID (both match
-    // the `wardrobe-item-.*` prefix, so existing flows still work).
-    const tileTestID =
-      index === 0 ? 'wardrobe-item-first' : `wardrobe-item-${item.id}`;
-
-    // A tile shows at most one status pill, bottom-centre. Preparing items show
-    // the processing overlay instead of a status pill.
-    const status = item.is_preparing
-      ? null
-      : resolveTileStatus(item, isViewed(item.id));
-
-    const isSelected = isSelectMode && selectedItemId === item.id;
-
-    return (
-      <PressableScale
-        key={item.id}
-        style={[styles.tile, isSelected && styles.tileSelected]}
-        activeOpacity={0.88}
-        onPress={() => handleItemPress(item)}
-        testID={tileTestID}
-        accessibilityLabel={item.name || t('wardrobe.list.a11y_item_fallback')}
-      >
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl, cache: 'force-cache' }}
-            style={styles.tileImage}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={styles.tileFallback}>
-            <Text style={styles.tileFallbackText}>{t('common.no_image')}</Text>
-          </View>
-        )}
-
-        {item.is_preparing ? (
-          <View style={styles.tilePreparingOverlay}>
-            <Text style={styles.tilePreparingText}>
-              {t('wardrobe.list.preparing_tile')}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* A single status pill, bottom-centre (Figma): "less use" (demoted),
-            "common" (catalog item) or "new" (fresh upload, not yet opened). */}
-        {status === 'new' ? (
-          <View style={styles.tileBadgeWrap}>
-            <View
-              style={[styles.tileBadge, styles.tileNewBadge]}
-              testID={`wardrobe-item-new-${item.id}`}
-              accessibilityLabel={t('wardrobe.new_badge')}
-            >
-              <Text numberOfLines={1} style={styles.tileNewBadgeText}>
-                {t('wardrobe.new_badge')}
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
-        {status === 'less_use' ? (
-          <View style={styles.tileBadgeWrap}>
-            <View
-              style={[styles.tileBadge, styles.tileLessUsedBadge]}
-              testID={`wardrobe-item-less-used-${item.id}`}
-              accessibilityLabel={t('wardrobe.less_used_badge')}
-            >
-              <Text numberOfLines={1} style={styles.tileLessUsedBadgeText}>
-                {t('wardrobe.less_used_badge')}
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
-        {status === 'common' ? (
-          <View style={styles.tileBadgeWrap}>
-            <View
-              style={styles.tileBadge}
-              testID={`wardrobe-item-common-${item.id}`}
-              accessibilityLabel={t('common.badge_common')}
-            >
-              <Text numberOfLines={1} style={styles.tileBadgeText}>
-                {t('common.badge_common')}
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
-        {/* Single-select check — top-right, only the picked tile in select
-            mode. Pure visual confirmation of the current selection. */}
-        {isSelected ? (
-          <View
-            style={styles.tileSelectedCheck}
-            testID={`wardrobe-select-check-${item.id}`}
-            pointerEvents="none"
-          >
-            <Icons.CheckCircle
-              width={24}
-              height={24}
-              color={theme.colors.figmaAction}
-            />
-          </View>
-        ) : null}
-      </PressableScale>
-    );
-  };
+  const {
+    uploading,
+    uploadingPhotoUri,
+    handleImageSelection,
+    handleTakePhoto,
+    aiConsentDialogProps,
+  } = useAddWardrobeItem({
+    selectedTab,
+    user,
+    showReadySnackbar,
+    refetch: refetchWardrobe,
+    closeAddSheet: () => setAddSheetVisible(false),
+    openPhotoSourceSheet: () => setPhotoSourceSheetVisible(true),
+  });
 
   const renderLoadingGrid = () => (
     <View style={styles.grid}>
@@ -616,7 +370,22 @@ export const WardrobeScreen = () => {
     isSelectMode && excludeItemId
       ? items.filter(item => item.id !== excludeItemId)
       : items;
-  const hasItems = displayItems.length > 0;
+
+  // Optimistic preparing placeholder for an in-flight web import, prepended so
+  // the freshly added image is immediately visible with its processing status.
+  // WardrobeGridTile renders the standard preparing overlay off `is_preparing`;
+  // presses are ignored via the PENDING_IMPORT_ID guard in handleItemPress.
+  const gridItems = pendingImportUri
+    ? [
+        {
+          id: PENDING_IMPORT_ID,
+          image_url: pendingImportUri,
+          is_preparing: true,
+        } as WardrobeItem,
+        ...displayItems,
+      ]
+    : displayItems;
+  const hasItems = gridItems.length > 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -654,6 +423,7 @@ export const WardrobeScreen = () => {
       )}
 
       <ScrollView
+        style={styles.scroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
@@ -692,7 +462,17 @@ export const WardrobeScreen = () => {
           </View>
         ) : hasItems ? (
           <View testID="wardrobe-grid-root" style={styles.grid}>
-            {displayItems.map(renderGridTile)}
+            {gridItems.map((item, index) => (
+              <WardrobeGridTile
+                key={item.id}
+                item={item}
+                index={index}
+                isSelectMode={isSelectMode}
+                selectedItemId={selectedItemId}
+                viewed={isViewed(item.id)}
+                onPress={handleItemPress}
+              />
+            ))}
           </View>
         ) : (
           <View style={styles.emptyState}>
@@ -720,56 +500,16 @@ export const WardrobeScreen = () => {
         )}
       </ScrollView>
 
-      {/* Add item — bottom sheet (Figma node 2852:19750), migrated to the DS
-          MBottomSheet primitive (GH-364): the slide/fade ENTER + faster CLOSE +
-          reduce-motion fallback + scrim/backdrop-dismiss are now encapsulated
-          inside the primitive (replaces the bespoke Modal + Animated +
-          BottomSheetSurface). The two methods stay as the Wardrobe-only
-          AddMethodRow composite because they carry a title + description
-          two-line layout that no generic M* row primitive (MSheetOption /
-          MListRow are single-line) expresses — keeping content faithful. */}
-      <MBottomSheet
+      <AddItemSheet
         visible={addSheetVisible}
         onDismiss={() => setAddSheetVisible(false)}
-        testID="wardrobe-add-sheet"
-      >
-        <View style={[styles.addSheetBody, { paddingBottom: insets.bottom }]}>
-          <Text style={styles.addSheetTitle}>
-            {t('wardrobe.list.add_item_sheet_title')}
-          </Text>
-          <Text style={styles.addSheetSubtitle}>
-            {t('wardrobe.list.add_item_sheet_subtitle')}
-          </Text>
-
-          <AddMethodRow
-            icon={
-              <Icons.Database
-                width={24}
-                height={24}
-                color={theme.colors.uacBackgroundBase}
-              />
-            }
-            title={t('wardrobe.list.method_search_title')}
-            description={t('wardrobe.list.method_search_desc')}
-            onPress={handleSearchDatabase}
-            testID="wardrobe-add-search"
-          />
-          <AddMethodRow
-            icon={
-              <Icons.Camera
-                width={24}
-                height={24}
-                color={theme.colors.uacBackgroundBase}
-              />
-            }
-            title={t('common.take_photo')}
-            description={t('wardrobe.list.method_photo_desc')}
-            onPress={handleTakePhoto}
-            testID="wardrobe-add-photo"
-            isLast
-          />
-        </View>
-      </MBottomSheet>
+        onSearchDatabase={handleSearchDatabase}
+        onTakePhoto={mode => {
+          pendingUploadModeRef.current = mode;
+          handleTakePhoto();
+        }}
+        onImportFromWeb={handleImportFromWeb}
+      />
 
       {/* Take-photo source chooser — DS MActionSheet (GH-364, replaces the
           3-button Alert.alert). The per-source upload/capture analytics still
@@ -783,14 +523,14 @@ export const WardrobeScreen = () => {
             label: t('common.take_photo'),
             onPress: () => {
               setPhotoSourceSheetVisible(false);
-              handleImageSelection('camera');
+              handleImageSelection('camera', pendingUploadModeRef.current);
             },
           },
           {
             label: t('common.choose_from_library'),
             onPress: () => {
               setPhotoSourceSheetVisible(false);
-              handleImageSelection('gallery');
+              handleImageSelection('gallery', pendingUploadModeRef.current);
             },
           },
         ]}
@@ -798,38 +538,11 @@ export const WardrobeScreen = () => {
         testID="wardrobe-photo-source-sheet"
       />
 
-      {/* AI processing overlay (Figma node 2852:20021) */}
-      <Modal visible={uploading} transparent animationType="fade">
-        <View style={styles.preparingContainer}>
-          <View style={styles.preparingPhotoWrap}>
-            {uploadingPhotoUri ? (
-              <Image
-                source={{ uri: uploadingPhotoUri }}
-                style={styles.preparingPhoto}
-                resizeMode="contain"
-              />
-            ) : null}
-          </View>
-          <View style={styles.preparingPanel}>
-            <MacgieLoader
-              variant="inline"
-              size={40}
-              testID="wardrobe-preparing-macgie"
-            />
-            <Text style={styles.preparingTitle}>
-              {t('wardrobe.list.preparing_title')}
-            </Text>
-            <Text style={styles.preparingStep}>
-              {'• '}
-              {t('wardrobe.list.preparing_step1')}
-            </Text>
-            <Text style={styles.preparingStep}>
-              {'• '}
-              {t('wardrobe.list.preparing_step2')}
-            </Text>
-          </View>
-        </View>
-      </Modal>
+      {/* B1: AI data-sharing consent prompt — gated by useAiConsentGate inside
+          useAddWardrobeItem; shown before the first beautify upload. */}
+      <AiConsentDialog {...aiConsentDialogProps} />
+
+      <PreparingOverlay visible={uploading} photoUri={uploadingPhotoUri} />
 
       {/* AU-361: self-controlled "item ready" snackbar overlay. Sits above the
           grid near the bottom (Figma node 3915:30077). Informational only, so
@@ -846,6 +559,31 @@ export const WardrobeScreen = () => {
           testID="wardrobe-item-ready-snackbar-overlay"
         >
           <ItemReadySnackbar message={readySnackbarMessage} />
+        </View>
+      ) : null}
+
+      {/* Task 14: "Studio shot ready — Review" snackbar. Actionable (tappable
+          → BeautifyReview), so the overlay does NOT carry pointerEvents="none".
+          Sits at the same bottom anchor; auto-hides after READY_SNACKBAR_MS. */}
+      {beautifySnackbarVisible && beautifySnackbarItemId ? (
+        <View
+          style={[
+            styles.readySnackbarOverlay,
+            { bottom: insets.bottom + 24 },
+          ]}
+          testID="beautify-ready-snackbar-overlay"
+        >
+          <ItemReadySnackbar
+            message={t('wardrobe.list.beautify_ready_title')}
+            testID="beautify-ready-snackbar"
+            onPress={() => {
+              navigation.navigate('BeautifyReview', {
+                itemId: beautifySnackbarItemId,
+                originalUri: beautifySnackbarOriginalUri ?? '',
+                from: 'snackbar',
+              });
+            }}
+          />
         </View>
       ) : null}
 
@@ -872,42 +610,23 @@ export const WardrobeScreen = () => {
             style={styles.changeCta}
           />
         </View>
-      ) : null}
+      ) : (
+        // Shared Home | Wardrobe bottom nav — the wardrobe tab reads as active
+        // here; tapping the home tab returns to Home. Hidden in picker mode,
+        // where the "Change" commit bar owns the bottom. The feedback FAB
+        // mounts alongside so the footer cluster matches Home pixel-for-pixel
+        // across the animation-less nav swap.
+        <>
+          <HomeWardrobeNavFooter
+            active="wardrobe"
+            testID="wardrobe-footer-nav-toggle"
+          />
+          <FeedbackFab testID="wardrobe-feedback-fab" />
+        </>
+      )}
     </SafeAreaView>
   );
 };
-
-interface AddMethodRowProps {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  onPress: () => void;
-  testID: string;
-  isLast?: boolean;
-}
-
-const AddMethodRow: React.FC<AddMethodRowProps> = ({
-  icon,
-  title,
-  description,
-  onPress,
-  testID,
-  isLast,
-}) => (
-  <PressableScale
-    style={[styles.methodRow, !isLast && styles.methodRowDivider]}
-    activeOpacity={0.7}
-    onPress={onPress}
-    testID={testID}
-    accessibilityLabel={title}
-  >
-    <View style={styles.methodIcon}>{icon}</View>
-    <View style={styles.methodTexts}>
-      <Text style={styles.methodTitle}>{title}</Text>
-      <Text style={styles.methodDescription}>{description}</Text>
-    </View>
-  </PressableScale>
-);
 
 const styles = StyleSheet.create({
   container: {
@@ -953,6 +672,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.m,
     ...theme.ds.shadow.headerIcon,
   },
+  scroll: {
+    flex: 1,
+  },
   scrollContent: {
     paddingTop: 12,
     paddingBottom: 32,
@@ -966,94 +688,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: GRID_GAP,
     paddingHorizontal: HORIZONTAL_PADDING,
-  },
-  tile: {
-    width: TILE_WIDTH,
-    height: TILE_HEIGHT,
-    borderRadius: theme.borderRadius.figmaTile,
-    overflow: 'hidden',
-    backgroundColor: theme.colors.figmaDetailSurface,
-  },
-  tileImage: {
-    width: '100%',
-    height: '100%',
-  },
-  // Single-select highlight ring (picker mode).
-  tileSelected: {
-    borderWidth: 2,
-    borderColor: theme.colors.figmaAction,
-  },
-  tileSelectedCheck: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-  },
-  tileFallback: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  tileFallbackText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
-  },
-  tileBadgeWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 8,
-    alignItems: 'center',
-  },
-  // Base status pill (bottom-centre). The "common" variant uses this as-is
-  // (dark fill, white text); "new" / "less use" override only the colours.
-  // F5: reuse the existing token instead of re-inlining the rgba duplicate
-  // (figmaCardTag === rgba(18,18,18,0.75), theme.ts:23). DRY.
-  tileBadge: {
-    height: 24, // chip size SM
-    paddingHorizontal: 12,
-    borderRadius: 9999,
-    backgroundColor: theme.colors.figmaCardTag,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tileBadgeText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.white,
-  },
-  // "New" — mint fill (reuses the success/200 token) + dark text.
-  tileNewBadge: {
-    backgroundColor: theme.colors.figmaSnackbarSuccessBg,
-  },
-  tileNewBadgeText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.figmaTextPrimary,
-  },
-  // "Less use" — soft coral fill + danger-red text (matches the item-detail
-  // "Less used" affordance colour).
-  tileLessUsedBadge: {
-    backgroundColor: theme.colors.figmaTileLessUsedBadgeBg,
-  },
-  tileLessUsedBadgeText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.figmaItemDetailDanger,
-  },
-  tilePreparingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  tilePreparingText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.figmaTextPrimary,
-    textAlign: 'center',
   },
   tileSkeleton: {
     width: TILE_WIDTH,
@@ -1106,86 +740,5 @@ const styles = StyleSheet.create({
   // spacing stays on the screen, not the primitive.
   errorRetryWrap: {
     marginTop: 20,
-  },
-  // Add-item bottom sheet body — MBottomSheet provides the surface, top radius,
-  // scrim, grab handle and slide motion; this is just the content padding.
-  // The safe-area bottom inset is applied inline.
-  addSheetBody: {
-    paddingTop: 8,
-    paddingHorizontal: 24,
-    paddingBottom: 36,
-  },
-  addSheetTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-  },
-  addSheetSubtitle: {
-    ...theme.typography.aliases.interBodyMd,
-    color: theme.colors.figmaTextPrimary,
-    marginTop: 2,
-    marginBottom: 8,
-  },
-  methodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    paddingVertical: 16,
-  },
-  methodRowDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.figmaListDivider,
-  },
-  methodIcon: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  methodTexts: {
-    flex: 1,
-  },
-  methodTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-  },
-  methodDescription: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
-    marginTop: 2,
-  },
-  // AI processing overlay
-  preparingContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.figmaBackground,
-  },
-  preparingPhotoWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 64,
-    paddingHorizontal: 24,
-  },
-  preparingPhoto: {
-    width: '100%',
-    height: '100%',
-  },
-  preparingPanel: {
-    backgroundColor: theme.colors.figmaDetailSurface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    gap: 8,
-  },
-  preparingTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-    marginTop: 4,
-  },
-  preparingStep: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
   },
 });

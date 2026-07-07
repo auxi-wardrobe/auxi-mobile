@@ -15,6 +15,7 @@
  */
 import React from 'react';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WardrobeScreen } from '../WardrobeScreen';
 
 // ---- mocks ------------------------------------------------------------------
@@ -82,6 +83,10 @@ jest.mock('../../services/wardrobeService', () => ({
     (item?.style_tags ?? []).includes('less-used')
       ? 'LESS_USED'
       : 'NORMAL',
+  wardrobeKeys: {
+    all: ['wardrobe-items'],
+    list: (filter: string = 'All') => ['wardrobe-items', filter],
+  },
 }));
 
 // Local "viewed" tracking — back the hook with a mutable set the tests control.
@@ -117,7 +122,22 @@ jest.mock('../../context/SidebarContext', () => ({
 
 // Feature children out of scope for this test — render nothing / passthrough.
 jest.mock('../../components/layout/Header', () => ({
-  Header: () => null,
+  Header: { MenuTitleAction: () => null, BackTitle: () => null },
+}));
+jest.mock('../../components/features/HomeWardrobeNavFooter', () => ({
+  HomeWardrobeNavFooter: () => null,
+}));
+jest.mock('../../components/features/WardrobeWelcomeDialog', () => ({
+  WardrobeWelcomeDialog: () => null,
+}));
+jest.mock('../wardrobe/AddItemSheet', () => ({
+  AddItemSheet: () => null,
+}));
+jest.mock('../wardrobe/PreparingOverlay', () => ({
+  PreparingOverlay: () => null,
+}));
+jest.mock('../../components/feedback/ItemReadySnackbar', () => ({
+  ItemReadySnackbar: () => null,
 }));
 jest.mock('../../components/features/CategoryTabs', () => ({
   CategoryTabs: () => null,
@@ -177,13 +197,37 @@ const flushPromises = async () => {
 
 const liveRenderers: TestRenderer.ReactTestRenderer[] = [];
 
+// gcTime: 0 — prevents Jest's event loop from being kept alive by the default
+// 5-minute garbage-collection timer on unmounted queries.
+const makeTestClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false, gcTime: 0 },
+    },
+  });
+
+// Drain any queued setTimeout(0) callbacks (e.g. TanStack Query internal
+// scheduler) plus pending microtasks.
+const flushTimersAndPromises = async () => {
+  await act(async () => {
+    await new Promise<void>(resolve => setTimeout(() => resolve(), 0));
+    await Promise.resolve();
+  });
+};
+
 const renderScreen = async () => {
   let renderer!: TestRenderer.ReactTestRenderer;
   await act(async () => {
-    renderer = TestRenderer.create(<WardrobeScreen />);
+    renderer = TestRenderer.create(
+      <QueryClientProvider client={makeTestClient()}>
+        <WardrobeScreen />
+      </QueryClientProvider>,
+    );
   });
   liveRenderers.push(renderer);
-  await flushPromises(); // settle the focus-effect fetchItems()
+  await flushPromises(); // settle the wardrobe useQuery initial fetch
+  await flushTimersAndPromises(); // drain any chained scheduler callbacks
   return renderer;
 };
 

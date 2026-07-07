@@ -168,10 +168,13 @@ const styles = StyleSheet.create({
     gap: theme.spacing.l,
   },
   headline: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.uacTextBase,
+    ...theme.typography.aliases.interSemiboldXsSm,
+    color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing.m,
+    // Sheet applies a uniform gap: theme.spacing.l (24px) between children;
+    // trim 8px so the headline→carousel gap lands at 16px (theme.spacing.m).
+    marginBottom: -theme.spacing.s,
   },
   carousel: {
     height: screenWidth * (4 / 3) * 0.7,
