@@ -125,7 +125,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `wardrobe_photo_captured` | Camera capture for take-photo flow | `useAddWardrobeItem.ts:122` | `source` (`add_item`) |
 | `add_item_opened` (pre-existing) | Add-item entry | `WardrobeScreen.tsx:147` | `source` |
 | `add_item_method_selected` (pre-existing) | Method pick | `useAddWardrobeItem.ts:205` | `method` |
-| `add_item_mode_selected` | User selects Beautify mode in the add-item sheet (only fires for `beautify`; `remove_bg` selection is silent — it is the default) | `AddItemSheet.tsx:106` | `mode` (`beautify`) |
+| `add_item_mode_selected` | **RETIRED** — the upload-time mode selector was removed from the add-item sheet (uploads always run remove-background; the AI step moved on-demand to Item Detail, §5.21). Historical data only | — (was `AddItemSheet.tsx`) | `mode` (`beautify`) |
 | `add_item_upload_started` (pre-existing, extended) | Upload initiated after image pick | `useAddWardrobeItem.ts:120` | `source` (`camera`/`gallery`), `mode` (`remove_bg`/`beautify`) |
 | `add_item_upload_succeeded` (pre-existing) | Non-beautify upload succeeded (fires only for `mode: 'remove_bg'`; beautify path fires `beautify_started` instead) | `useAddWardrobeItem.ts:174` | `source` |
 | `add_item_upload_failed` (pre-existing, extended) | Upload errored (network / unexpected). Beautify-specific path also fires this when the upload response is missing `item_id` | `useAddWardrobeItem.ts:150, 180` | `source`; `reason` (`missing_item_id`) on the beautify id-guard path only |
@@ -429,11 +429,15 @@ The web-preview ("sandbox") surface now boots through the real login screen (coo
 
 - **Push opt-in + engagement funnel (push Phase 1):** `push_permission_requested` → `push_permission_granted` → `device_token_registered` measures registration completion (denominator: requested; `push_permission_denied` is the drop branch). Engagement: `push_opened` ÷ `push_received` (foreground) plus cold/background opens — break down by `type` to compare `daily_reminder` vs `planned_outfit` vs `admin_*` open rates.
 
-- **Beautify funnel:** `beautify_started` → `beautify_ready` → `beautify_review_opened` → `beautify_accepted`. Drop-off between `beautify_started` and `beautify_ready` = job failure / timeout rate (see §6.7 gap — `beautify_failed` not yet wired so failures are only visible as missing continuations). `beautify_wait_continued_browsing` between `started` and `ready` is the leave-during-wait branch — segment `beautify_review_opened` by `from` (`loader` vs `snackbar`) to compare users who watched the full loader vs returned via the Wardrobe snackbar. `beautify_kept_original` and `beautify_regenerated` are exits or re-entry loops from the review step; `beautify_regenerated` broken down by `source` (`review` vs `retry_pending`) distinguishes deliberate re-rolls from failure-recovery retries. `add_item_mode_selected { mode: 'beautify' }` is the top-of-funnel intent signal (fires before upload).
+- **Beautify funnel:** `beautify_started` → `beautify_ready` → `beautify_review_opened` → `beautify_accepted`. Drop-off between `beautify_started` and `beautify_ready` = job failure / timeout rate (see §6.7 gap — `beautify_failed` not yet wired so failures are only visible as missing continuations). `beautify_wait_continued_browsing` between `started` and `ready` is the leave-during-wait branch — segment `beautify_review_opened` by `from` (`loader` vs `snackbar`) to compare users who watched the full loader vs returned via the Wardrobe snackbar. `beautify_kept_original` and `beautify_regenerated` are exits or re-entry loops from the review step; `beautify_regenerated` broken down by `source` (`review` vs `retry_pending`) distinguishes deliberate re-rolls from failure-recovery retries. `add_item_mode_selected { mode: 'beautify' }` is historical only because the upload-time selector was removed.
+
+- **Enhance funnel (on-demand, §5.21):** `enhance_started` → `enhance_completed` → `enhance_applied`. Drop between `started` and `completed` = failure rate — break `enhance_failed` down by `reason` (`timeout` specifically tests the "under 10 seconds" promise). Drop between `completed` and `applied` splits into `enhance_discarded` (user rejected the result — a quality signal on the studio-shot model) vs silent exits (backed out of the preview). `enhance_apply_failed` between `completed` and `applied` is the save-error branch. Keep separate from the `beautify_*` upload-time funnel — same backend, different intent.
 
 Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`, `type`. Super properties (`platform`, `app_environment`) are available globally.
 
 ### 5.20 AI Beautify (studio-shot)
+
+> **DORMANT** — the add-item sheet's mode selector was removed, so this upload-time flow is no longer user-reachable; new studio shots come from the on-demand Enhance flow (§5.21). The screens/events below stay wired for the dormant path and for historical data.
 
 The Beautify flow lets a user upload a garment photo and have GPT image-editing produce a studio-style shot. The flow is: upload → job submitted (`beautify_started`) → pending/polling screen → job resolves (`beautify_ready`) → review screen → accept / keep original / regenerate.
 
@@ -450,3 +454,20 @@ The Beautify flow lets a user upload a garment photo and have GPT image-editing 
 > PII: none. `from` and `source` are closed enums; `attempt` is an unquoted integer (server-side counter). No garment names, URLs, or user identifiers.
 >
 > Note: `beautify_failed` is NOT wired — see §6.7. The pending screen shows a "Couldn't beautify" UI when polling times out or `status === 'failed'` but tracks no event at that point.
+
+### 5.21 AI Image Enhancement (on-demand, Item Detail)
+
+The on-demand v2 of the beautify branch: an existing wardrobe item is enhanced from Item Detail's sparkle FAB. Same backend endpoints as §5.20 but a synchronous preview UX ("under 10 seconds", 2s poll, 15s client timeout) with an explicit Discard / Replace-original decision. Distinct `enhance_*` event names keep this funnel separate from the upload-time `beautify_*` one.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `enhance_started` | Enhance session begins — `POST /items/{id}/beautify` submitted from the EnhanceImage screen (mount and every Retry) | `EnhanceImageScreen.tsx` (`startSession`) | `item_id` |
+| `enhance_completed` | Polling detects `status === 'ready'` with a candidate — preview swaps to the enhanced image | `EnhanceImageScreen.tsx` | `item_id`, `duration_ms` |
+| `enhance_failed` | Session ends in the error state | `EnhanceImageScreen.tsx` (`fail`) | `item_id`, `reason` (`network` / `timeout` / `server_error`) |
+| `enhance_discarded` | User taps Discard — candidate dropped, original untouched | `EnhanceImageScreen.tsx` | `item_id` |
+| `enhance_applied` | User taps Replace original — `acceptBeautify` resolves, studio shot becomes the display image | `EnhanceImageScreen.tsx` | `item_id` |
+| `enhance_apply_failed` | Replace original errored (server/storage) — user stays on the preview, candidate preserved | `EnhanceImageScreen.tsx` | `item_id` |
+
+> PII: none. `reason` is a closed enum; `item_id` is the backend UUID (consistent with `item_detail_opened` / `wardrobe_item_edited`).
+>
+> Not wired (deliberate MVP cut): a compare-used event for the long-press original preview, and `enhance_restore_original` — the restore-from-Edit affordance does not exist yet (no backend endpoint or UI).

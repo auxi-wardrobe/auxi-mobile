@@ -238,6 +238,22 @@
         "value_unset": "—",
         "name_edit_placeholder": "Enter a name"
       },
+      "enhance": {
+        "title": "Enhance Image",
+        "loading": "Preparing this item\nin under 10 seconds",
+        "compare_hint": "Long press to see the original image",
+        "discard": "Discard",
+        "replace_original": "Replace original",
+        "retry": "Retry",
+        "cancel": "Cancel",
+        "error_generic": "Couldn't enhance the image. Please try again.",
+        "error_network": "Connection lost. Check your internet and try again.",
+        "error_timeout": "Enhancement is taking longer than expected.",
+        "toast_saved": "Image updated",
+        "toast_save_failed": "Unable to save the enhanced image. Please try again.",
+        "a11y_enhance": "Enhance image",
+        "a11y_preview": "Enhanced image preview"
+      },
       "welcome": {
         "title": "Welcome to your wardrobe",
         "body": "We've pre-filled your wardrobe with sample items so you can start exploring Macgie right away.\n\nAdd your own clothes to receive outfit recommendations personalized to your wardrobe and style.",

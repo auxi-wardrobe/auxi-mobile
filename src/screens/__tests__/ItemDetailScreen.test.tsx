@@ -29,6 +29,8 @@ import { formatItemDate } from '../../utils/wardrobeItemMappers';
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
 const mockPopTo = jest.fn();
+const mockPush = jest.fn();
+const mockSetParams = jest.fn();
 let mockRouteParams: Record<string, unknown> = { itemId: 'item-1' };
 
 // The screen's load effect depends on `navigation` and `t` — both MUST be
@@ -39,6 +41,9 @@ jest.mock('@react-navigation/native', () => {
     navigate: (...args: unknown[]) => mockNavigate(...args),
     goBack: (...args: unknown[]) => mockGoBack(...args),
     popTo: (...args: unknown[]) => mockPopTo(...args),
+    push: (...args: unknown[]) => mockPush(...args),
+    setParams: (...args: unknown[]) => mockSetParams(...args),
+    addListener: jest.fn(() => jest.fn()),
     dispatch: jest.fn(),
   };
   return {
@@ -47,6 +52,20 @@ jest.mock('@react-navigation/native', () => {
     useIsFocused: () => true,
   };
 });
+
+// AI-consent gate: run actions straight through (consent granted) so the
+// enhance FAB tests assert navigation, not the consent dialog internals.
+jest.mock('../../hooks/useAiConsentGate', () => ({
+  useAiConsentGate: () => ({
+    run: (action: () => void) => action(),
+    dialogProps: {
+      visible: false,
+      onAccept: jest.fn(),
+      onDecline: jest.fn(),
+      onOpenPrivacyPolicy: jest.fn(),
+    },
+  }),
+}));
 
 // Resolve t() against the real en-EN resources so copy assertions ("Build
 // around this", "Date: …") catch translation regressions. Keys live under
@@ -391,6 +410,159 @@ describe('exploration waiting status (AU-351)', () => {
 
     const r = await renderScreen();
     expect(byTestID(r.root, 'item-detail-waiting-status').length).toBe(0);
+  });
+});
+
+// =============================================================================
+// AI Image Enhancement — sparkle FAB entry (ItemDetail → EnhanceImage)
+// =============================================================================
+describe('enhance FAB', () => {
+  // The 3:4 image frame (which hosts the FAB) mounts only after the flexible
+  // region reports a size — react-test-renderer has no layout pass, so fire
+  // onLayout manually.
+  const measureImageRegion = (root: ReactTestInstance) => {
+    const region = root.findAll(
+      n => typeof n.props?.onLayout === 'function',
+    )[0];
+    act(() => {
+      region.props.onLayout({
+        nativeEvent: { layout: { width: 414, height: 600 } },
+      });
+    });
+  };
+
+  // A user upload whose processing succeeded (rembg cutout present) — the
+  // ONLY kind of item that offers the Enhance step.
+  const PROCESSED_UPLOAD = {
+    ...USER_ITEM,
+    image_png: 'https://cdn.example/denim-cutout.png',
+  };
+
+  it('shows the FAB for a processed upload and pushes EnhanceImage once on rapid taps', async () => {
+    mockGetWardrobeItem.mockResolvedValue(PROCESSED_UPLOAD);
+
+    const r = await renderScreen();
+    measureImageRegion(r.root);
+
+    const fab = oneByTestID(r.root, 'item-detail-enhance-fab');
+    press(fab);
+    press(fab); // second rapid tap must NOT start a second session
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith('EnhanceImage', {
+      itemId: 'item-1',
+      // displayUri is what the detail shows: the processed cutout
+      displayUri: 'https://cdn.example/denim-cutout.png',
+    });
+  });
+
+  it('hides the FAB when the upload has no processed cutout yet', async () => {
+    // pipeline done but rembg produced nothing (processing failed) — the
+    // "next step" is only offered after SUCCESSFUL processing
+    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+
+    const r = await renderScreen();
+    measureImageRegion(r.root);
+
+    expect(byTestID(r.root, 'item-detail-enhance-fab').length).toBe(0);
+  });
+
+  it('hides the FAB for hrid-seeded (non-upload) items', async () => {
+    mockGetWardrobeItem.mockResolvedValue({
+      ...PROCESSED_UPLOAD,
+      human_readable_id: 'TOP_L1_001_WHT_REG_01',
+    });
+
+    const r = await renderScreen();
+    measureImageRegion(r.root);
+
+    expect(byTestID(r.root, 'item-detail-enhance-fab').length).toBe(0);
+  });
+
+  it('hides the FAB for catalog items', async () => {
+    mockRouteParams = {
+      itemId: 'sys-1',
+      fallbackItem: {
+        id: 'sys-1',
+        image_url: 'https://cdn.example/sys.jpg',
+        category: 'Top',
+        is_common_item: true,
+      },
+    };
+    mockGetWardrobeItem.mockResolvedValue(null);
+
+    const r = await renderScreen();
+    measureImageRegion(r.root);
+
+    expect(byTestID(r.root, 'item-detail-enhance-fab').length).toBe(0);
+  });
+
+  it('hides the FAB once a studio shot is accepted, which also wins display precedence', async () => {
+    mockGetWardrobeItem.mockResolvedValue({
+      ...PROCESSED_UPLOAD,
+      image_studio: 'https://cdn.example/studio.png',
+      beautify_status: 'accepted',
+    });
+
+    const r = await renderScreen();
+    measureImageRegion(r.root);
+
+    // One enhancement per image version — affordance gone after accept
+    expect(byTestID(r.root, 'item-detail-enhance-fab').length).toBe(0);
+    // image_studio → image_png → image_url precedence
+    expect(
+      r.root.findAll(
+        n => n.props?.source?.uri === 'https://cdn.example/studio.png',
+      ).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('merges the popped-back enhancedItem result and clears the param', async () => {
+    mockGetWardrobeItem.mockResolvedValue(PROCESSED_UPLOAD);
+
+    const client = makeTestClient();
+    const makeElement = () => (
+      <QueryClientProvider client={client}>
+        <ItemDetailScreen />
+      </QueryClientProvider>
+    );
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(makeElement());
+    });
+    liveRenderers.push(renderer);
+    await flushPromises();
+    measureImageRegion(renderer.root);
+
+    // FAB offered pre-enhancement
+    expect(
+      byTestID(renderer.root, 'item-detail-enhance-fab').length,
+    ).toBeGreaterThan(0);
+
+    // EnhanceImage's "Replace original" pops back with `enhancedItem` merged
+    // into this route's params
+    mockRouteParams = {
+      itemId: 'item-1',
+      enhancedItem: {
+        id: 'item-1',
+        image_studio: 'https://cdn.example/studio.png',
+        beautify_status: 'accepted',
+      },
+    };
+    await act(async () => {
+      renderer.update(makeElement());
+    });
+
+    // Accepted studio shot renders without a refetch…
+    expect(
+      renderer.root.findAll(
+        n => n.props?.source?.uri === 'https://cdn.example/studio.png',
+      ).length,
+    ).toBeGreaterThan(0);
+    // …the FAB disappears (already enhanced), and the return param is cleared
+    // so a re-render can't re-apply it
+    expect(byTestID(renderer.root, 'item-detail-enhance-fab').length).toBe(0);
+    expect(mockSetParams).toHaveBeenCalledWith({ enhancedItem: undefined });
   });
 });
 

@@ -40,7 +40,7 @@ import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
 import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
 import { PreparingOverlay } from './wardrobe/PreparingOverlay';
-import { useAddWardrobeItem, UploadMode } from './wardrobe/useAddWardrobeItem';
+import { useAddWardrobeItem } from './wardrobe/useAddWardrobeItem';
 import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
 import { useStalePreparingCleanup } from './wardrobe/useStalePreparingCleanup';
 import { anyBeautifying } from './wardrobe/beautify-status';
@@ -338,10 +338,9 @@ export const WardrobeScreen = () => {
   // Add-item upload orchestration (image pick → upload → analytics →
   // add-success snackbar → refetch) + the take-photo source chooser hand-off.
   // `uploading` / `uploadingPhotoUri` drive the header spinner + PreparingOverlay.
-  // Holds the mode chosen in AddItemSheet so it's available when the
-  // MActionSheet fires handleImageSelection after the sheet is dismissed.
-  const pendingUploadModeRef = useRef<UploadMode>('remove_bg');
-
+  // Uploads always run the default remove-background processing — the AI
+  // studio-shot step moved on-demand to Item Detail's Enhance flow, so the
+  // upload-time mode selector (and its pending-mode ref) is gone.
   const {
     uploading,
     uploadingPhotoUri,
@@ -504,10 +503,7 @@ export const WardrobeScreen = () => {
         visible={addSheetVisible}
         onDismiss={() => setAddSheetVisible(false)}
         onSearchDatabase={handleSearchDatabase}
-        onTakePhoto={mode => {
-          pendingUploadModeRef.current = mode;
-          handleTakePhoto();
-        }}
+        onTakePhoto={handleTakePhoto}
         onImportFromWeb={handleImportFromWeb}
       />
 
@@ -523,14 +519,14 @@ export const WardrobeScreen = () => {
             label: t('common.take_photo'),
             onPress: () => {
               setPhotoSourceSheetVisible(false);
-              handleImageSelection('camera', pendingUploadModeRef.current);
+              handleImageSelection('camera');
             },
           },
           {
             label: t('common.choose_from_library'),
             onPress: () => {
               setPhotoSourceSheetVisible(false);
-              handleImageSelection('gallery', pendingUploadModeRef.current);
+              handleImageSelection('gallery');
             },
           },
         ]}

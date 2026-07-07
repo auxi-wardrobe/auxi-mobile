@@ -7,6 +7,7 @@ import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
 import { AppWelcomeScreen } from '../screens/AppWelcomeScreen';
 import { ItemDetailScreen } from '../screens/ItemDetailScreen';
+import { EnhanceImageScreen } from '../screens/item-detail/EnhanceImageScreen';
 import { LocationPermissionScreen } from '../screens/LocationPermissionScreen';
 import { OnboardingWardrobeScreen } from '../onboarding/v2/OnboardingWardrobeScreen';
 import { OnboardingFitScreen } from '../onboarding/v2/OnboardingFitScreen';
@@ -243,6 +244,14 @@ export const AppNavigator = () => {
                 name="ItemDetail"
                 component={ItemDetailScreen}
                 options={{ presentation: 'modal' }}
+              />
+              {/* AI Image Enhancement preview — pushed ON TOP of the
+                  ItemDetail modal (same push-on-modal pattern as the
+                  select-mode Wardrobe picker; never navigate below a
+                  presented modal). Default card presentation. */}
+              <Stack.Screen
+                name="EnhanceImage"
+                component={EnhanceImageScreen}
               />
               <Stack.Screen name="Database" component={DatabaseScreen} />
               <Stack.Screen
