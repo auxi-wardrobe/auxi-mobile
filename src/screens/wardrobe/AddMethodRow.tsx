@@ -64,9 +64,11 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.m,
     paddingHorizontal: theme.spacing.s,
   },
+  // Add-method icons are authored on a 32px grid with a 2px stroke — render
+  // them at full size so the stroke weight isn't scaled down.
   methodIcon: {
-    width: 24,
-    height: 24,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },

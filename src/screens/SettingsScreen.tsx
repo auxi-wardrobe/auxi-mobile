@@ -14,10 +14,12 @@ import { useAuth } from '../context/AuthContext';
 import { ensurePushPermissionAndRegister } from '../services/notificationService';
 import { useSidebar } from '../context/SidebarContext';
 import { SettingsScreenScaffold } from '../components/settings/SettingsScreenScaffold';
+import { SettingsProfileHeader } from '../components/settings/SettingsProfileHeader';
 import { SettingsRow, SettingsDivider } from '../components/settings/SettingsRow';
 import { SettingsDialog } from '../components/settings/SettingsDialog';
 import { Radio, RadioOptionList } from '../components/settings/RadioOptionList';
 import { SettingsSwitch } from '../components/settings/SettingsSwitch';
+import { TimeStepper } from '../components/settings/TimeStepper';
 import { Icons } from '../assets/icons';
 import {
   DailyNotificationFrequency,
@@ -56,6 +58,9 @@ export const SettingsScreen = () => {
 
   const [settings, setSettings] =
     useState<ResolvedSettingsState>(DEFAULT_SETTINGS);
+  const [pendingTime, setPendingTime] = useState<string>(
+    DEFAULT_SETTINGS.dailyNotification.time,
+  );
   const [pendingPeriod, setPendingPeriod] = useState<DailyNotificationPeriod>(
     DEFAULT_SETTINGS.dailyNotification.period,
   );
@@ -78,6 +83,7 @@ export const SettingsScreen = () => {
   const syncFromUser = useCallback((nextUser: User | null) => {
     const nextSettings = resolveSettings(nextUser?.user_metadata);
     setSettings(nextSettings);
+    setPendingTime(nextSettings.dailyNotification.time);
     setPendingPeriod(nextSettings.dailyNotification.period);
     setPendingFrequency(nextSettings.dailyNotification.frequency);
   }, []);
@@ -133,12 +139,14 @@ export const SettingsScreen = () => {
     frequencyLabelMap[settings.dailyNotification.frequency];
 
   const openChangeTimeModal = () => {
+    setPendingTime(settings.dailyNotification.time);
     setPendingPeriod(settings.dailyNotification.period);
     setActiveModal('changeTime');
   };
 
   const closeChangeTimeModal = () => {
     if (isSavingTime) return;
+    setPendingTime(settings.dailyNotification.time);
     setPendingPeriod(settings.dailyNotification.period);
     setActiveModal('none');
   };
@@ -217,9 +225,6 @@ export const SettingsScreen = () => {
     }, 500);
   };
 
-  // Reminder-time dialog. Per CEO (Q12) the "06:15" time value is READ-ONLY
-  // display; only AM/PM (period) is interactive here — Weekdays/Everydays moved
-  // to its own "Repeat Schedule" row.
   const applyChangeTime = async () => {
     if (isSavingTime) return;
 
@@ -227,15 +232,17 @@ export const SettingsScreen = () => {
     try {
       await persistUserMetadata(
         // Backend deep-merges user_metadata (routers/auth.py _deep_merge), so a
-        // partial daily_notification patch preserves enabled/time/frequency.
+        // partial daily_notification patch preserves enabled/frequency.
         {
           daily_notification: {
+            time: pendingTime,
             period: pendingPeriod,
           },
         },
         t('settings.error_update_time'),
       );
       track('notifications_schedule_changed', {
+        time: pendingTime,
         period: pendingPeriod,
         frequency: settings.dailyNotification.frequency,
       });
@@ -393,6 +400,9 @@ export const SettingsScreen = () => {
         leftTestID="settings-menu-button"
         leftAccessibilityLabel={t('settings.a11y_open_menu')}
       >
+        {/* ── Profile ────────────────────────────────────────────────────── */}
+        <SettingsProfileHeader email={user?.email} />
+
         {/* ── Daily reminder ─────────────────────────────────────────────── */}
         <SettingsRow
           testID="settings-daily-toggle-row"
@@ -496,7 +506,7 @@ export const SettingsScreen = () => {
         />
       </SettingsScreenScaffold>
 
-      {/* Reminder-time dialog — read-only time + AM/PM period */}
+      {/* Reminder-time dialog — editable time + AM/PM period */}
       <SettingsDialog
         visible={activeModal === 'changeTime'}
         onClose={closeChangeTimeModal}
@@ -509,10 +519,15 @@ export const SettingsScreen = () => {
         primaryTestID="settings-time-update"
       >
         <View style={styles.timeDialogRow}>
-          {/* Time value is READ-ONLY display (CEO Q12) — no editor. */}
-          <Text style={styles.timeDialogValue} allowFontScaling={false}>
-            {settings.dailyNotification.time.replace(':', ' : ')}
-          </Text>
+          <TimeStepper
+            value={pendingTime}
+            onChange={setPendingTime}
+            testIDPrefix="settings-time"
+            hourUpA11yLabel={t('settings.a11y_time_hour_up')}
+            hourDownA11yLabel={t('settings.a11y_time_hour_down')}
+            minuteUpA11yLabel={t('settings.a11y_time_minute_up')}
+            minuteDownA11yLabel={t('settings.a11y_time_minute_down')}
+          />
 
           <View style={styles.periodStack}>
             {(['AM', 'PM'] as DailyNotificationPeriod[]).map(period => (
@@ -588,10 +603,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 16,
-  },
-  timeDialogValue: {
-    ...theme.typography.aliases.uacH1Bold,
-    color: theme.colors.uacTextBase,
   },
   periodStack: {
     gap: 4,

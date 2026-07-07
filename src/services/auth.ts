@@ -478,8 +478,9 @@ export const signInWithApple = async (
 
 /**
  * POST /api/auth/email-precheck — look up which provider an email is linked
- * to. Anonymous callers ALWAYS receive `"password"` (enumeration safety);
- * authenticated callers see the real provider.
+ * to. Anonymous legacy/signup callers receive `"password"` (enumeration
+ * safety); anonymous sign-in callers may pass `intent: "signin"` to see
+ * `"none"` and avoid a dead-end password screen for unknown email.
  *
  * Errors: RATE_LIMITED (429).
  */

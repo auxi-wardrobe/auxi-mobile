@@ -7,7 +7,6 @@
 import React, { useState } from 'react';
 import {
   Dimensions,
-  Image,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -18,6 +17,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
@@ -91,10 +91,11 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
                 style={styles.page}
                 testID={`stom-shape-page-${option.shape}`}
               >
-                <Image
-                  source={{ uri: option.image_url }}
+                <LoadableRemoteImage
+                  uri={option.image_url}
                   style={styles.shapeImage}
                   resizeMode="cover"
+                  skeletonTestID={`stom-shape-carousel-image-skeleton-${option.shape}`}
                 />
                 <Text style={styles.shapeLabel}>
                   {t(`seeThisOnMe.shapes.${option.shape}`)}

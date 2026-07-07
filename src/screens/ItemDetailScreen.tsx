@@ -1,5 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,6 +21,9 @@ import { MacgieLoader } from '../components/macgie';
 import { ItemDetailEditPanel } from './item-detail/ItemDetailEditPanel';
 import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
 import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
+import { canEnhanceItem } from './item-detail/enhance-session';
+import { AiConsentDialog } from '../components/features/AiConsentDialog';
+import { useAiConsentGate } from '../hooks/useAiConsentGate';
 import { Icons } from '../assets/icons';
 import {
   getItemFitLabel,
@@ -65,7 +75,7 @@ export const ItemDetailScreen = () => {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { itemId, fallbackItem } = route.params;
+  const { itemId, fallbackItem, enhancedItem } = route.params;
 
   const [item, setItem] = useState<WardrobeItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -183,13 +193,30 @@ export const ItemDetailScreen = () => {
     };
   }, [itemId, fallbackItem, navigation, t]);
 
+  // AI Image Enhancement return path: EnhanceImage pops back here with
+  // `enhancedItem` set after "Replace original" succeeds. Merge it into the
+  // loaded item (so the accepted studio shot renders immediately, no refetch)
+  // and clear the param so re-focus / re-render never re-applies it.
+  useEffect(() => {
+    if (!enhancedItem) {
+      return;
+    }
+    setItem(currentItem =>
+      currentItem && currentItem.id === enhancedItem.id
+        ? { ...currentItem, ...enhancedItem }
+        : currentItem,
+    );
+    navigation.setParams({ enhancedItem: undefined });
+  }, [enhancedItem, navigation]);
+
   // AU-312 review fix: prefer the background-removed cutout (`image_png`)
   // like every other surface (see utils/url.ts resolveItemImage). That
   // helper's input requires a non-optional `image_url` (legacy Item shape),
-  // which WardrobeItem doesn't satisfy — apply the same png-first
-  // preference via getImageUrl directly.
+  // which WardrobeItem doesn't satisfy — apply the same precedence
+  // (image_studio → image_png → image_url) via getImageUrl directly. The
+  // accepted studio shot (AI enhancement) wins when present.
   const imageUrl = useMemo(
-    () => getImageUrl(item?.image_png || item?.image_url),
+    () => getImageUrl(item?.image_studio || item?.image_png || item?.image_url),
     [item],
   );
 
@@ -516,6 +543,46 @@ export const ItemDetailScreen = () => {
     }
   };
 
+  // AI Image Enhancement (on-demand beautify). Gated behind the persisted AI
+  // data-sharing consent (B1) like every flow that sends a user photo to an
+  // AI provider — the same AiConsentDialog the beautify upload mode uses.
+  const consentGate = useAiConsentGate();
+  // Multiple rapid taps on the FAB must create ONE enhancement session: the
+  // ref latches on first tap and only releases when this screen regains focus
+  // (back from EnhanceImage) or the consent dialog is declined.
+  const enhanceLatchRef = useRef(false);
+  useEffect(
+    () =>
+      navigation.addListener('focus', () => {
+        enhanceLatchRef.current = false;
+      }),
+    [navigation],
+  );
+
+  const enhanceDialogProps = {
+    ...consentGate.dialogProps,
+    onDecline: () => {
+      enhanceLatchRef.current = false;
+      consentGate.dialogProps.onDecline();
+    },
+  };
+
+  const handleEnhance = () => {
+    if (enhanceLatchRef.current || !item || !imageUrl) {
+      return;
+    }
+    enhanceLatchRef.current = true;
+    consentGate.run(() => {
+      navigation.push('EnhanceImage', { itemId: item.id, displayUri: imageUrl });
+    });
+  };
+
+  // Offer Enhance only as the next step after a user's own upload finished
+  // processing successfully (cutout exists) — catalog/seeded items, items
+  // still preparing, failed processing, and already-enhanced items never get
+  // the FAB. Full rules: enhance-session.ts#canEnhanceItem.
+  const canEnhance = !!item && !!imageUrl && canEnhanceItem(item);
+
   const handleBuildAround = () => {
     // ItemDetail is presented as a modal layer (AppNavigator
     // presentation:'modal'). navigate('Home',…) to a screen BELOW the modal
@@ -602,6 +669,27 @@ export const ItemDetailScreen = () => {
                 </Text>
               </View>
             ) : null}
+
+            {/* AI Image Enhancement entry — sparkle FAB pinned to the image's
+                bottom-right corner. Hidden while editing (the edit panel owns
+                its own save state) and whenever the item is not enhanceable
+                (catalog / preparing / already enhanced — see canEnhance). */}
+            {canEnhance && !isEditing ? (
+              <TouchableOpacity
+                testID="item-detail-enhance-fab"
+                accessibilityRole="button"
+                accessibilityLabel={t('wardrobe.enhance.a11y_enhance')}
+                style={styles.enhanceFab}
+                onPress={handleEnhance}
+                disabled={saving}
+              >
+                <Icons.Sparkle
+                  width={20}
+                  height={20}
+                  color={theme.colors.figmaAiSparkle}
+                />
+              </TouchableOpacity>
+            ) : null}
           </View>
         ) : null}
       </View>
@@ -655,6 +743,10 @@ export const ItemDetailScreen = () => {
         onSelect={handleSelectOption}
         onClose={() => setPickerField(null)}
       />
+
+      {/* B1 consent gate for the AI enhancement flow — shown on first FAB tap
+          when AI data-sharing consent hasn't been granted yet. */}
+      <AiConsentDialog {...enhanceDialogProps} />
     </View>
   );
 };
@@ -731,6 +823,20 @@ const styles = StyleSheet.create({
   imageBadgeText: {
     ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.uacBackgroundNeutral50,
+  },
+  // AI enhancement FAB: 36pt white rounded square pinned to the image's
+  // bottom-right corner, same soft warm shadow as the header back button.
+  enhanceFab: {
+    position: 'absolute',
+    bottom: theme.spacing.uacDimension12,
+    right: theme.spacing.uacDimension12,
+    width: 36,
+    height: 36,
+    borderRadius: theme.borderRadius.m,
+    backgroundColor: theme.colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.ds.shadow.headerIcon,
   },
   sheet: {
     paddingHorizontal: theme.spacing.m,

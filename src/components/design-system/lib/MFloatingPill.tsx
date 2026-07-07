@@ -36,6 +36,12 @@ import { color, radius, role, shadow, type } from '../m-tokens';
 
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
+// Total height of the md icon-mode pill: 6px frame (fbarIconMd) + 40px icon
+// tabs (fitemIcon: 24px glyph + 8px inset) + 6px frame. Exported so screens
+// can centre-align neighbours against the footer nav pill (e.g. the Home
+// feedback FAB). Keep in sync with fbarIconMd / fitemIcon below.
+export const M_PILL_ICON_MD_HEIGHT = 52;
+
 export interface MFloatingPillProps {
   tabs: string[];
   value: string;
@@ -67,6 +73,9 @@ export const MFloatingPill: React.FC<MFloatingPillProps> = ({
   size = 'md',
 }) => {
   const sm = size === 'sm';
+  // md icon mode gets its own compact frame (see fbarIconMd) — the footer nav
+  // spec is a 52px-tall pill: 6px frame, 40×40 thumb, 24px glyph.
+  const iconMd = !!renderIcon && !sm;
   const reduce = useReducedMotion();
   const idx = Math.max(0, tabs.indexOf(value));
   const x = useRef(new Animated.Value(0)).current;
@@ -105,9 +114,17 @@ export const MFloatingPill: React.FC<MFloatingPillProps> = ({
   };
 
   return (
-    <View style={[styles.fbar, sm && styles.fbarSm]} testID={testID}>
+    <View
+      style={[styles.fbar, sm && styles.fbarSm, iconMd && styles.fbarIconMd]}
+      testID={testID}
+    >
       <Animated.View
-        style={[styles.fthumb, sm && styles.fthumbSm, { left: x, width: w }]}
+        style={[
+          styles.fthumb,
+          sm && styles.fthumbSm,
+          iconMd && styles.fthumbIconMd,
+          { left: x, width: w },
+        ]}
       />
       {tabs.map((tb, i) => {
         const sel = tb === value;
@@ -156,6 +173,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: 6,
   },
+  // md icon (footer nav): 6px frame + 40px icon tabs (24px glyph + 8px
+  // padding) → a 52px-tall pill with a 40×40 thumb.
+  fbarIconMd: {
+    padding: 6,
+  },
   fthumb: {
     position: 'absolute',
     top: 8,
@@ -169,10 +191,15 @@ const styles = StyleSheet.create({
     bottom: 6,
     borderRadius: radius.md,
   },
+  fthumbIconMd: {
+    top: 6,
+    bottom: 6,
+  },
   fitem: { paddingVertical: 10, paddingHorizontal: 22, alignItems: 'center' },
-  // Icon mode: squarer ~48×48 tabs (icon 24 + 12 padding) — text-mode's wide
-  // label padding (22) reads too spread around a single glyph.
-  fitemIcon: { paddingVertical: 12, paddingHorizontal: 12 },
+  // Icon mode: square 40×40 tabs (24px glyph + 8px inset) — text-mode's wide
+  // label padding (22) reads too spread around a single icon. sm overrides
+  // below.
+  fitemIcon: { paddingVertical: 8, paddingHorizontal: 8 },
   // sm icon tab: 16px icon + 8px padding → a 32×32 square thumb; with the 6px
   // frame two of them measure 76 wide × 44 tall.
   fitemIconSm: { paddingVertical: 8, paddingHorizontal: 8 },

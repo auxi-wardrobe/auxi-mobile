@@ -23,10 +23,10 @@
  *     and routes to `EmailGoogleNotice`. So gmail flows normally through the
  *     password path here.
  *   - Call `useEmailPrecheckMutation`. The precheck is
- *     enumeration-safe: ANONYMOUS callers (every public caller on this
- *     screen) ALWAYS get `provider: 'password'` regardless of real linkage —
- *     only authenticated admin/self lookups see the true value. So routing
- *     branches on `mode`, NOT on the provider value (except the OAuth hint):
+ *     enumeration-safe for legacy/signup callers. In signin mode this screen
+ *     sends `intent: 'signin'`, so the backend can return `provider: 'none'`
+ *     for unknown emails and avoid sending them to a dead-end password screen.
+ *     Routing:
  *       * 'google' / 'apple' → navigate `EmailGoogleNotice` (OAuth path).
  *       * signup mode, any other provider → happy path → `PasswordCreation`.
  *         The genuinely-already-registered case is detected server-side at
@@ -106,28 +106,31 @@ export const EmailInputScreen = () => {
     }
 
     precheck.mutate(
-      { email: trimmed },
+      { email: trimmed, intent: mode },
       {
         onSuccess: result => {
-          if (result.provider === 'google' || result.provider === 'apple') {
+          // AU-313 design intent: in signup mode, intercept OAuth-linked emails
+          // to prevent duplicate account creation on top of an existing OAuth
+          // account. In signin mode we skip this gate — the login endpoint
+          // itself returns OAUTH_ACCOUNT (403) for Google-only accounts, and
+          // SignInScreen handles the redirect to EmailGoogleNotice then. This
+          // lets dual-auth accounts (Google + password) reach the password
+          // screen without being blocked.
+          if (
+            mode === 'signup' &&
+            (result.provider === 'google' || result.provider === 'apple')
+          ) {
             navigation.navigate('EmailGoogleNotice', { email: trimmed });
             return;
           }
 
-          // AU-356: the precheck is enumeration-safe — an ANONYMOUS caller
-          // (every public sign-up / sign-in here) ALWAYS receives
-          // `provider: 'password'` regardless of whether the email actually
-          // exists. Only authenticated admin/self lookups ever see the real
-          // `'none' | 'google' | 'apple'`. So in signup mode we must NOT treat
-          // `'password'` as "account exists, go log in" — that wrongly bounced
-          // brand-new users (e.g. viettran@macgie.com) to SignIn and blocked
-          // them from reaching the password-creation step. The genuine
-          // already-registered case is caught server-side at register time
-          // (409 EMAIL_ALREADY_EXISTS → PasswordCreationScreen routes to
-          // SignIn), which is the only enumeration-safe place to detect it.
+          // AU-356: in signup mode we must NOT treat `'password'` as "account
+          // exists, go log in" — that wrongly bounced brand-new users to SignIn.
+          // The genuine already-registered case is caught server-side at
+          // register time (409 EMAIL_ALREADY_EXISTS → PasswordCreationScreen
+          // routes to SignIn), which is the only enumeration-safe place.
           //
-          // Routing therefore branches on `mode`, not on the (unreliable for
-          // anonymous callers) provider value:
+          // Routing branches on `mode`, not on provider value:
           if (mode === 'signup') {
             // Signup happy path: any non-OAuth result → create a password.
             // This is the moment the user commits to a new account.

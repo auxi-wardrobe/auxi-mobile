@@ -183,6 +183,10 @@ export const bodyService = {
           'Content-Type': 'multipart/form-data',
         },
         transformRequest: data => data,
+        // Image uploads over a slow connection can exceed apiClient's 30s
+        // default; give the multipart POST generous headroom so a legit upload
+        // isn't cut short by the global timeout.
+        timeout: 60000,
       });
 
       // Route returns `{ message, body }`.

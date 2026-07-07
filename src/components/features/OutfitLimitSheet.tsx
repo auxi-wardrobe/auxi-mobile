@@ -16,12 +16,23 @@ import { useBackgroundScale } from '../../context/BackgroundScaleContext';
 
 const { height: screenHeight } = Dimensions.get('window');
 
+// Grace period between unmounting this sheet's native modal and telling the
+// parent it can present another one. The dismissal is animated:NO
+// (animationType="none") so it completes within a runloop; 80ms is safely
+// past it and imperceptible after the 240ms slide-out.
+const MODAL_HANDOFF_DELAY_MS = 80;
+
 interface OutfitLimitSheetProps {
   visible: boolean;
   // Primary CTA — close the sheet and open the Refine sheet.
   onRefine: () => void;
   // Secondary CTA — dismiss and let the user keep swiping the existing looks.
   onKeepBrowsing: () => void;
+  // Fires once the sheet's native modal is FULLY gone (exit animation done +
+  // dismissal handoff). Chain any follow-up modal presentation (e.g. the
+  // refine sheet) from here — presenting while this modal is still
+  // dismissing fails silently on iOS and the new modal never appears.
+  onDismissed?: () => void;
 }
 
 /**
@@ -34,11 +45,27 @@ export const OutfitLimitSheet: React.FC<OutfitLimitSheetProps> = ({
   visible,
   onRefine,
   onKeepBrowsing,
+  onDismissed,
 }) => {
   const { t } = useTranslation();
   const [shouldRender, setShouldRender] = useState(visible);
   const { pushSheet, popSheet } = useBackgroundScale();
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
+  // Ref-mirror the callback so the animation effect below doesn't re-run (and
+  // replay the enter animation) when the parent re-creates it.
+  const onDismissedRef = useRef(onDismissed);
+  useEffect(() => {
+    onDismissedRef.current = onDismissed;
+  });
+  const handoffTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (handoffTimerRef.current != null) {
+        clearTimeout(handoffTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!visible) {
@@ -76,6 +103,10 @@ export const OutfitLimitSheet: React.FC<OutfitLimitSheetProps> = ({
       useNativeDriver: true,
     }).start(() => {
       setShouldRender(false);
+      handoffTimerRef.current = setTimeout(() => {
+        handoffTimerRef.current = null;
+        onDismissedRef.current?.();
+      }, MODAL_HANDOFF_DELAY_MS);
     });
   }, [shouldRender, slideAnim, visible]);
 

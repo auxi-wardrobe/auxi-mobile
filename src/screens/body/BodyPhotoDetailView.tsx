@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Dimensions,
-  Image,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -9,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { TopIconButton } from '../../components/primitives/FigmaPrimitives';
 import { DotsLoader } from '../../components/atoms/DotsLoader';
 import { Icons } from '../../assets/icons';
@@ -57,10 +57,11 @@ export const BodyPhotoDetailView: React.FC<BodyPhotoDetailViewProps> = ({
     <SafeAreaView style={styles.detailContainer}>
       <View style={styles.detailImageWrap}>
         {detailImageUrl ? (
-          <Image
-            source={{ uri: detailImageUrl }}
+          <LoadableRemoteImage
+            uri={detailImageUrl}
             style={styles.detailImage}
             resizeMode="cover"
+            skeletonTestID="body-detail-image-skeleton"
           />
         ) : (
           <View style={[styles.detailImage, styles.detailImagePlaceholder]}>

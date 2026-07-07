@@ -1,15 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Image,
   LayoutChangeEvent,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  type ImageSourcePropType,
 } from 'react-native';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { resolveItemImage } from '../../utils/url';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
 import {
@@ -53,6 +54,13 @@ const moodLabel = (id: string, t: TFunction): string => {
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : id;
 };
 
+const remoteUriFromSource = (source: ImageSourcePropType): string => {
+  if (typeof source === 'number' || Array.isArray(source)) {
+    return '';
+  }
+  return source.uri ?? '';
+};
+
 // One saved outfit (Figma `2852:22063`), top→bottom: date → bold outfit title
 // → filled mood/vibe-tag pill → 2-column 3:4 tile grid. The ⊖ remove /
 // "Self visualization" actions are NO LONGER per-card — they live in the
@@ -93,10 +101,10 @@ const Tile: React.FC<{
       onPress={onItemPress ? () => onItemPress(item.id) : undefined}
     >
       {imageUrl ? (
-        <Image
-          source={{ uri: imageUrl }}
-          style={styles.tileImage}
+        <LoadableRemoteImage
+          uri={imageUrl}
           resizeMode="cover"
+          skeletonTestID={`${testIDPrefix}-image-skeleton-${item.id}`}
         />
       ) : (
         <View style={styles.tileFallback} />
@@ -184,10 +192,10 @@ const CollageView: React.FC<{
             },
           ]}
         >
-          <Image
-            source={node.imageSource}
-            style={styles.collageImage}
+          <LoadableRemoteImage
+            uri={remoteUriFromSource(node.imageSource)}
             resizeMode="contain"
+            skeletonTestID={`${testIDPrefix}-image-skeleton-${node.id}`}
           />
         </TouchableOpacity>
       ))}
@@ -360,10 +368,6 @@ const styles = StyleSheet.create({
   collageItem: {
     position: 'absolute',
   },
-  collageImage: {
-    width: '100%',
-    height: '100%',
-  },
   row: {
     flexDirection: 'row',
     gap: theme.spacing.xs,
@@ -379,10 +383,6 @@ const styles = StyleSheet.create({
   },
   tileSpacer: {
     flex: 1,
-  },
-  tileImage: {
-    width: '100%',
-    height: '100%',
   },
   tileFallback: {
     width: '100%',
