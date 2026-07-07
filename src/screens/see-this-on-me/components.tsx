@@ -5,7 +5,6 @@
  */
 import React from 'react';
 import {
-  Image,
   Modal,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { Header } from '../../components/layout/Header';
 import { theme } from '../../theme/theme';
 import { ImageSource } from '../../hooks/use-image-picker';
@@ -67,11 +67,12 @@ interface PhotoThumbProps {
 /** Right-aligned user photo thumbnail (96×127 3:4, Figma `Image 3:4`). */
 export const PhotoThumb: React.FC<PhotoThumbProps> = ({ uri, testID }) => (
   <View style={styles.thumbRow}>
-    <Image
-      source={{ uri }}
+    <LoadableRemoteImage
+      uri={uri}
       style={styles.thumb}
       resizeMode="cover"
-      testID={testID}
+      imageTestID={testID}
+      skeletonTestID={testID ? `${testID}-skeleton` : undefined}
     />
   </View>
 );

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { PressableScale } from '../../components/primitives/PressableScale';
 import { WardrobeItem } from '../../services/wardrobeService';
 import { theme } from '../../theme/theme';
@@ -57,10 +58,11 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
       accessibilityLabel={item.name || t('wardrobe.list.a11y_item_fallback')}
     >
       {imageUrl ? (
-        <Image
-          source={{ uri: imageUrl, cache: 'force-cache' }}
-          style={styles.tileImage}
+        <LoadableRemoteImage
+          uri={imageUrl}
+          cache="force-cache"
           resizeMode="contain"
+          skeletonTestID={`wardrobe-image-skeleton-${item.id}`}
         />
       ) : (
         <View style={styles.tileFallback}>
@@ -117,10 +119,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.figmaTile,
     overflow: 'hidden',
     backgroundColor: theme.colors.figmaDetailSurface,
-  },
-  tileImage: {
-    width: '100%',
-    height: '100%',
   },
   // Single-select highlight ring (picker mode).
   tileSelected: {

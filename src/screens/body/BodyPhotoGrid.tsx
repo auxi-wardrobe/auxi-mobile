@@ -1,11 +1,6 @@
 import React from 'react';
-import {
-  Dimensions,
-  Image,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { BodyItem } from '../../services/bodyService';
 import { resolveImageUrl } from '../../utils/body';
 import { theme } from '../../theme/theme';
@@ -84,10 +79,10 @@ export const BodyPhotoGrid: React.FC<BodyPhotoGridProps> = ({
               isTryOnMode && isSelected && styles.imageCardSelected,
             ]}
           >
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.previewImage}
+            <LoadableRemoteImage
+              uri={imageUri}
               resizeMode="cover"
+              skeletonTestID={`body-photo-grid-skeleton-${item.id}`}
             />
           </TouchableOpacity>
         );
@@ -111,10 +106,6 @@ const styles = StyleSheet.create({
   imageCardSelected: {
     borderWidth: 2,
     borderColor: '#3BA3D0',
-  },
-  previewImage: {
-    width: '100%',
-    height: '100%',
   },
   placeholderCard: {
     backgroundColor: '#E5E6EA',
