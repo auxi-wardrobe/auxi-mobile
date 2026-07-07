@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dimensions,
   Image,
@@ -23,6 +23,29 @@ interface ImportSelectImageSheetProps {
 
 const { width: screenWidth } = Dimensions.get('window');
 const SHEET_PADDING = theme.spacing.m;
+
+const tileImageStyles = StyleSheet.create({
+  image: { width: '100%', height: '100%' },
+  placeholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: theme.colors.figmaDetailSurface,
+  },
+});
+
+const TileImage: React.FC<{ uri: string }> = ({ uri }) => {
+  const [error, setError] = useState(false);
+  return error ? (
+    <View style={tileImageStyles.placeholder} />
+  ) : (
+    <Image
+      source={{ uri }}
+      style={tileImageStyles.image}
+      resizeMode="cover"
+      onError={() => setError(true)}
+    />
+  );
+};
 const GRID_GAP = theme.spacing.s;
 const COLUMNS = 3;
 const TILE_SIZE =
@@ -50,7 +73,9 @@ export const ImportSelectImageSheet: React.FC<ImportSelectImageSheetProps> = ({
       testID="import-select-sheet"
     >
       <View style={styles.body}>
-        <Text style={styles.title}>{t('wardrobe.import_web.select_title')}</Text>
+        <Text style={styles.title}>
+          {t('wardrobe.import_web.select_title')}
+        </Text>
 
         <ScrollView
           style={styles.scroll}
@@ -68,11 +93,7 @@ export const ImportSelectImageSheet: React.FC<ImportSelectImageSheetProps> = ({
                 index: index + 1,
               })}
             >
-              <Image
-                source={{ uri: image.url }}
-                style={styles.tileImage}
-                resizeMode="cover"
-              />
+              <TileImage uri={image.url} />
             </PressableScale>
           ))}
         </ScrollView>
@@ -117,10 +138,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.figmaTile,
     overflow: 'hidden',
     backgroundColor: theme.colors.figmaDetailSurface,
-  },
-  tileImage: {
-    width: '100%',
-    height: '100%',
   },
   cancelWrap: {
     marginTop: theme.spacing.l,

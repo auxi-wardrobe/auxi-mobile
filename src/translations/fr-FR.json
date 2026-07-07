@@ -343,6 +343,7 @@
         "empty_no_images": "Aucune image trouvée sur cette page. Essayez une autre recherche.",
         "empty_unsupported": "Aucune image adaptée trouvée.",
         "extract_failed": "Impossible d'extraire les images. Veuillez réessayer.",
+        "preview_load_error": "Impossible de charger cette image.",
         "import_failed": "Impossible d'importer cet article. Veuillez réessayer."
       },
       "new_badge": "Nouveau",
