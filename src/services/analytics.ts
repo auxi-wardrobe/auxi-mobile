@@ -258,6 +258,16 @@ export const trackLegalDocumentViewed = (
   track('legal_document_viewed', { document, source });
 };
 
+// ── See this on me (try-on preview) ────────────────────────────────────────
+// The rendered try-on image can be saved to the device photo library (native)
+// or downloaded (web). Fired on both outcomes so the download success rate is
+// measurable. Literal event name; `surface`/`status` are bounded enums, no PII.
+
+/** The try-on preview image was saved to Photos (native) or downloaded (web). */
+export const trackTryOnImageSaved = (status: 'success' | 'error'): void => {
+  track('try_on_image_saved', { surface: 'tryon', status });
+};
+
 // ── Schedule (outfit planning) ─────────────────────────────────────────────
 // Adding to the schedule is ALREADY tracked at the screen level
 // (`favourite_added_to_schedule` / `creation_added_to_schedule`, tracking-plan

@@ -15,28 +15,60 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/layout/Header';
+import { TopIconButton } from '../../components/primitives/FigmaPrimitives';
+import { Icons } from '../../assets/icons';
+import { useSaveImage } from '../../hooks/use-save-image';
 import { theme } from '../../theme/theme';
 import { ImageSource } from '../../hooks/use-image-picker';
 
 interface StomHeaderProps {
   title: string;
   onBack: () => void;
+  /** Optional right-slot action (e.g. the preview download button). */
+  rightAction?: React.ReactNode;
 }
 
 /**
  * Centered-title header (Figma `header` 3395:8500) — back chevron + title +
- * opacity-0 trailing spacer to keep the title optically centered. Mirrors the
- * FavouriteScreen header treatment (interMediumSm 14/20, blurred white bg).
+ * optional right action (kept optically centered by the 44px slots). Mirrors
+ * the FavouriteScreen header treatment (interMediumSm 14/20, blurred white bg).
  */
-export const StomHeader: React.FC<StomHeaderProps> = ({ title, onBack }) => (
+export const StomHeader: React.FC<StomHeaderProps> = ({
+  title,
+  onBack,
+  rightAction,
+}) => (
   <Header.BackTitle
     title={title}
     background="tint"
     leftTestID="stom-back"
     leftAccessibilityLabel="Go back"
     onBack={onBack}
+    right={rightAction}
   />
 );
+
+/**
+ * Header download affordance for the preview screen (Figma 3398:17581, the
+ * top-right icon): saves the rendered try-on image to the device photo
+ * library. Its own component so it can own the `useSaveImage` hook state —
+ * the step router (`renderStomStepScreen`) is a plain function, not a
+ * component, so it can't call hooks itself.
+ */
+export const StomDownloadButton: React.FC<{ uri: string }> = ({ uri }) => {
+  const { t } = useTranslation();
+  const { saveImage } = useSaveImage();
+  return (
+    <TopIconButton
+      testID="stom-download"
+      accessibilityLabel={t('seeThisOnMe.downloadA11y')}
+      onPress={() => {
+        saveImage(uri);
+      }}
+      icon={<Icons.Download width={24} height={24} />}
+    />
+  );
+};
 
 interface PromptBubbleProps {
   text: string;

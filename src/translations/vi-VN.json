@@ -760,6 +760,11 @@
       "retake": "Chụp lại",
       "useThisPhoto": "Dùng ảnh này",
       "backToHome": "Về trang chủ",
+      "download": {
+        "success": "Đã lưu vào Ảnh",
+        "error": "Không thể lưu ảnh. Vui lòng thử lại."
+      },
+      "downloadA11y": "Lưu ảnh",
       "optIn": "Dùng ảnh này cho các bản xem trước trang phục sau này",
       "retakeProfile": "Chụp lại ảnh",
       "privacy": "Ảnh của bạn được gửi an toàn đến các nhà cung cấp AI (Google, OpenAI) để tạo kết quả, và không bao giờ được bán hay chia sẻ cho nhà quảng cáo.",
