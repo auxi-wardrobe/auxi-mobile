@@ -442,6 +442,7 @@ export const WardrobeScreen = () => {
         <Header.MenuTitleAction
           title={t('wardrobe.list.title')}
           leftTestID="wardrobe-menu-button"
+          leftAccessibilityLabel={t('wardrobe.list.a11y_open_menu')}
           onBack={openSidebar}
           right={
             <PressableScale

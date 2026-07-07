@@ -274,6 +274,7 @@
         "a11y_item_fallback": "Món trong tủ đồ",
         "title": "Tủ đồ",
         "change_title": "Đổi món đồ",
+        "a11y_open_menu": "Mở menu",
         "change_cta": "Đổi",
         "empty_first_title": "Thêm món đầu tiên",
         "empty_filtered_title": "Chưa có món nào trong mục này",
@@ -637,6 +638,7 @@
       "a11y_open_personalization": "Mở cài đặt cá nhân hóa",
       "a11y_open_privacy": "Mở cài đặt quyền riêng tư",
       "a11y_open_about": "Mở giới thiệu",
+      "a11y_open_menu": "Mở menu",
       "a11y_back": "Quay lại",
       "delete_my_data": "Xóa dữ liệu của tôi",
       "privacy_control_body": "Kiểm soát những gì bạn chia sẻ với Auxi và các nhà cung cấp AI. Bạn có thể thay đổi bất cứ lúc nào."

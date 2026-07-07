@@ -1,7 +1,7 @@
 import React from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { BottomSheetSurface } from '../components/primitives/FigmaPrimitives';
 import { Header } from '../components/layout/Header';
 import { FeedbackForm } from '../components/features/FeedbackForm';
 import { useSidebar } from '../context/SidebarContext';
@@ -12,19 +12,16 @@ export const FeedbackScreen: React.FC = () => {
   const { open: openSidebar } = useSidebar();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <BottomSheetSurface style={styles.sheet}>
-        {/* Canonical header — hamburger-left + centred title (no right action). */}
-        <Header.MenuTitle
-          title={t('feedback.title')}
-          background="transparent"
-          leftTestID="feedback-menu-button"
-          leftAccessibilityLabel={t('feedback.a11y_open_menu')}
-          onBack={openSidebar}
-        />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Canonical header — hamburger-left + centred title (no right action). */}
+      <Header.MenuTitle
+        title={t('feedback.title')}
+        leftTestID="feedback-menu-button"
+        leftAccessibilityLabel={t('feedback.a11y_open_menu')}
+        onBack={openSidebar}
+      />
 
-        <FeedbackForm fill />
-      </BottomSheetSurface>
+      <FeedbackForm fill />
     </SafeAreaView>
   );
 };
@@ -32,9 +29,6 @@ export const FeedbackScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.figmaSurface,
-  },
-  sheet: {
-    flex: 1,
+    backgroundColor: theme.colors.figmaBackground,
   },
 });

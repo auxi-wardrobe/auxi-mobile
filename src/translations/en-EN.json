@@ -274,6 +274,7 @@
         "a11y_item_fallback": "Wardrobe item",
         "title": "Wardrobe",
         "change_title": "Change item",
+        "a11y_open_menu": "Open menu",
         "change_cta": "Change",
         "empty_first_title": "Add your first item",
         "empty_filtered_title": "No items in this category yet",
@@ -637,6 +638,7 @@
       "a11y_open_personalization": "Open personalization settings",
       "a11y_open_privacy": "Open privacy settings",
       "a11y_open_about": "Open about",
+      "a11y_open_menu": "Open menu",
       "a11y_back": "Back",
       "delete_my_data": "Delete My Data",
       "privacy_control_body": "Control what you share with Auxi and our AI providers. You can change these anytime."
