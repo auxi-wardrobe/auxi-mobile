@@ -724,18 +724,35 @@ export const HomeScreen = () => {
         if (pinAbortRef.current !== controller) {
           return;
         }
-        const status = (error as { response?: { status?: number } })?.response
-          ?.status;
+        const response = (
+          error as {
+            response?: {
+              status?: number;
+              data?: { detail?: string | { code?: string } };
+            };
+          }
+        )?.response;
+        const status = response?.status;
+        // 422 is overloaded on the BE: pinned-item validation (item gone /
+        // not owned) shares it with `pool_insufficient:<reason>` — the engine
+        // couldn't compose an outfit at all. Only the former means the item
+        // is unavailable; pool exhaustion must NOT unpin or claim the item
+        // vanished (it's alive in the wardrobe the user just came from).
+        const detail = response?.data?.detail;
+        const detailCode = typeof detail === 'string' ? detail : detail?.code;
+        const isPoolInsufficient =
+          typeof detailCode === 'string' &&
+          detailCode.startsWith('pool_insufficient');
         if (status === 401) {
           pinDispatch({ type: 'AUTH_BLOCK' });
-        } else if (status === 410) {
+        } else if (status === 410 || (status === 422 && !isPoolInsufficient)) {
           setPinErrorKind('item_unavailable');
           setPinnedItemGoneAt(Date.now());
           pinDispatch({ type: 'PINNED_ITEM_GONE' });
         } else if (status === 422) {
-          setPinErrorKind('item_unavailable');
-          setPinnedItemGoneAt(Date.now());
-          pinDispatch({ type: 'PINNED_ITEM_GONE' });
+          // pool_insufficient — keep the pin, show the retryable error.
+          setPinErrorKind('generic');
+          pinDispatch({ type: 'GENERATE_ERROR' });
         } else {
           const code = (error as { code?: string })?.code;
           const isNetwork =
@@ -827,13 +844,28 @@ export const HomeScreen = () => {
     navigation.setParams({ swapItem: undefined });
   }, [route.params?.swapItem, navigation]);
 
-  const { data: wardrobeItemsData } = useQuery({
+  const {
+    data: wardrobeItemsData,
+    dataUpdatedAt: wardrobeItemsUpdatedAt,
+    refetch: refetchWardrobeItems,
+  } = useQuery({
     // Shared with the Wardrobe screen's "All" tab (wardrobeKeys.list('All')) so
     // the two screens reuse one cache entry. Home keeps its tighter 30s stale.
     queryKey: wardrobeKeys.list(),
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 30_000,
   });
+  // When the current pin was set. The gone-check below may only trust a
+  // wardrobe list fetched AFTER this moment — a cached list that predates the
+  // pin (e.g. "Build around this" on an item added since Home last fetched)
+  // would report a live item as gone. Declared before the gone-check so it
+  // runs first within the same commit.
+  const pinSetAtRef = useRef(0);
+  useEffect(() => {
+    if (pinState.pinnedItemId) {
+      pinSetAtRef.current = Date.now();
+    }
+  }, [pinState.pinnedItemId]);
   useEffect(() => {
     if (!pinState.pinnedItemId) {
       return;
@@ -844,11 +876,24 @@ export const HomeScreen = () => {
     const stillExists = wardrobeItemsData.some(
       i => i.id === pinState.pinnedItemId,
     );
-    if (!stillExists) {
-      pinDispatch({ type: 'PINNED_ITEM_GONE' });
-      setPinnedItemGoneAt(Date.now());
+    if (stillExists) {
+      return;
     }
-  }, [wardrobeItemsData, pinState.pinnedItemId, pinDispatch]);
+    if (wardrobeItemsUpdatedAt < pinSetAtRef.current) {
+      // The cached list can't prove the item is gone. Refetch; this effect
+      // re-runs with post-pin data and decides for real.
+      refetchWardrobeItems();
+      return;
+    }
+    pinDispatch({ type: 'PINNED_ITEM_GONE' });
+    setPinnedItemGoneAt(Date.now());
+  }, [
+    wardrobeItemsData,
+    wardrobeItemsUpdatedAt,
+    refetchWardrobeItems,
+    pinState.pinnedItemId,
+    pinDispatch,
+  ]);
 
   useEffect(() => {
     if (pinnedItemGoneAt === null) {
