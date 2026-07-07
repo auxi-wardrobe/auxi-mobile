@@ -450,4 +450,3 @@ The Beautify flow lets a user upload a garment photo and have GPT image-editing 
 > PII: none. `from` and `source` are closed enums; `attempt` is an unquoted integer (server-side counter). No garment names, URLs, or user identifiers.
 >
 > Note: `beautify_failed` is NOT wired — see §6.7. The pending screen shows a "Couldn't beautify" UI when polling times out or `status === 'failed'` but tracks no event at that point.
-
