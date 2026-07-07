@@ -16,6 +16,13 @@ import IconWardrobe from '../../assets/images/icon_wardrobe.svg';
 // reads as selected; tapping the other tab navigates to it. Built on the same
 // springy DS pill (`MFloatingPill`, icon mode) as the Home header view toggle
 // so the two controls read as one system.
+//
+// The Home↔Wardrobe transition is Facebook-tabs style: the Wardrobe route uses
+// `animation: 'none'` (AppNavigator), and both hosts render this bar at the
+// same bottom anchor (last in-flow child of an edges={['top']} SafeAreaView,
+// fixed 84px height), so on navigation the footer appears to stay put while
+// only the thumb switches and the page content swaps in place. Keep the
+// placement identical on both screens or the illusion breaks.
 
 export type HomeWardrobeNavTab = 'home' | 'wardrobe';
 
@@ -37,7 +44,9 @@ export const HomeWardrobeNavFooter: React.FC<Props> = ({ active, testID }) => {
   const isFocused = useIsFocused();
 
   // Active icon = ink (#070707); inactive dims to the muted tan token, matching
-  // the header view toggle's treatment.
+  // the header view toggle's treatment. Standard 24px glyphs centered in the
+  // pill's 40px tabs (6px frame + 40×40 thumb = the 52px footer-nav spec in
+  // MFloatingPill).
   const renderIcon = (tab: string, on: boolean) => {
     const iconColor = on
       ? theme.colors.figmaTextDark
@@ -62,7 +71,18 @@ export const HomeWardrobeNavFooter: React.FC<Props> = ({ active, testID }) => {
       return;
     }
     track('home_footer_nav_tapped', { destination: next });
-    navigation.navigate(next === 'home' ? 'Home' : 'Wardrobe');
+    if (next === 'home') {
+      // popTo, NOT navigate: under React Navigation 7 navigate() no longer
+      // pops back to a screen already in the stack — it pushes a SECOND Home
+      // on top of Wardrobe, which animates with Home's default slide and
+      // stacks duplicates. popTo pops back to the existing Home, so the
+      // Wardrobe→Home direction dismisses Wardrobe under its `animation:
+      // 'none'` option and stays as instant as Home→Wardrobe. (Same pitfall
+      // as ImportFromWebScreen → Wardrobe.)
+      navigation.popTo('Home');
+    } else {
+      navigation.navigate('Wardrobe');
+    }
   };
 
   return (

@@ -10,7 +10,13 @@
 // so a rightward drag there rubber-bands and springs home instead of
 // committing. The card revealed behind the active one is direction-aware: the
 // previous card while dragging right, the next card while dragging left.
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import {
   Animated,
   Dimensions,
@@ -81,6 +87,11 @@ export function OutfitSwipeDeck<T>({
   // True while a commit fling is in flight — drops a second rapid swipe so it
   // cannot double-save / double-advance the same card.
   const committingRef = useRef(false);
+  // Set when a commit fling has landed and we're waiting for the parent to
+  // advance activeIndex. Cleared by the index-change layout effect (normal
+  // path) or by the rAF fallback below (parent didn't advance — e.g. forward
+  // swipe on the last card while the buffer is still empty).
+  const awaitingAdvanceRef = useRef(false);
 
   const commit = useCallback(
     (dir: 1 | -1) => {
@@ -95,19 +106,57 @@ export function OutfitSwipeDeck<T>({
         easing: motion.easing.exit,
         useNativeDriver: true,
       }).start(() => {
-        // Reset the shared pan BEFORE advancing so the promoted card mounts at
-        // centre (not at the flung offset) — avoids a one-frame centre-flash.
-        pan.setValue({ x: 0, y: 0 });
-        committingRef.current = false;
+        // Advance FIRST and leave the pan at the flung offset. Resetting the
+        // pan here (before the parent's setState re-renders) snaps the OLD
+        // card back to centre on the native side for the frame(s) it takes
+        // React to commit the new index — the visible "old card flashes then
+        // disappears" glitch. Keeping the pan flung means the screen keeps
+        // showing the revealed peek card, and the layout effect below resets
+        // the pan inside the SAME commit that promotes it to active.
+        awaitingAdvanceRef.current = true;
         if (dir === 1) {
           onSwipeBackRef.current(item);
         } else {
           onSwipeNextRef.current(item);
         }
+        // Fallback: if the parent could not advance (last card, buffer still
+        // filling), the index never changes and no layout effect fires —
+        // spring the stranded card back home so the deck isn't left blank.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (awaitingAdvanceRef.current) {
+              awaitingAdvanceRef.current = false;
+              committingRef.current = false;
+              Animated.spring(pan, {
+                toValue: { x: 0, y: 0 },
+                stiffness: motion.spring.standard.stiffness,
+                damping: motion.spring.standard.damping,
+                mass: 1,
+                useNativeDriver: true,
+              }).start();
+            }
+          });
+        });
       });
     },
     [pan],
   );
+
+  // Runs inside the same React commit that changes the active card, before the
+  // frame paints — so the pan reset and the role swap are atomic: the promoted
+  // card takes the active slot already centred, and the demoted card becomes a
+  // peek (hidden at pan 0) in the same frame. No intermediate frame can show
+  // the old card at centre.
+  const prevActiveIndexRef = useRef(activeIndex);
+  useLayoutEffect(() => {
+    if (prevActiveIndexRef.current === activeIndex) {
+      return;
+    }
+    prevActiveIndexRef.current = activeIndex;
+    pan.setValue({ x: 0, y: 0 });
+    awaitingAdvanceRef.current = false;
+    committingRef.current = false;
+  }, [activeIndex, pan]);
 
   const cancel = useCallback(() => {
     Animated.spring(pan, {

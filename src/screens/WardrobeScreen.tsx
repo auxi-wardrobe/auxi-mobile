@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../components/design-system/lib';
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { HomeWardrobeNavFooter } from '../components/features/HomeWardrobeNavFooter';
+import { FeedbackFab } from '../components/features/FeedbackFab';
 import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
 import { Header } from '../components/layout/Header';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -41,12 +42,14 @@ import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
 import { PreparingOverlay } from './wardrobe/PreparingOverlay';
 import { useAddWardrobeItem } from './wardrobe/useAddWardrobeItem';
 import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
+import { useStalePreparingCleanup } from './wardrobe/useStalePreparingCleanup';
 import { anyBeautifying } from './wardrobe/beautify-status';
 import {
   FILTER_TABS,
   FilterTab,
   GRID_GAP,
   HORIZONTAL_PADDING,
+  PENDING_IMPORT_ID,
   PREPARING_POLL_MS,
   TILE_HEIGHT,
   TILE_WIDTH,
@@ -148,6 +151,73 @@ export const WardrobeScreen = () => {
     }
   }, [wardrobeQuery.data, reconcileReadyItems]);
 
+  // Stale-upload watchdog: an item stuck in the preparing state for more than
+  // PREPARING_TIMEOUT_MS is assumed failed — auto-removed with an error toast
+  // telling the user to try again.
+  useStalePreparingCleanup({ items: wardrobeQuery.data, enabled: isFocused });
+
+  // Non-blocking web import: ImportFromWeb hands the picked image URL back via
+  // `pendingImportUrl` and navigates here immediately — this screen owns the
+  // create call so the user is never held in the preview watching a spinner
+  // (mirrors the take-photo flow's ownership). On consume: clear the param
+  // (re-focus must not refire the import), show the same "item added"
+  // snackbar as the photo path, and render an optimistic preparing placeholder
+  // tile until the backend item lands, at which point the refetched
+  // is_preparing item takes over and rides the normal preparing→ready
+  // lifecycle. On failure the placeholder is removed and the error surfaces
+  // via the root toast (no Modal above it anymore, so it's visible).
+  const [pendingImportUri, setPendingImportUri] = useState<string | null>(null);
+  useEffect(() => {
+    const imageUrl = route.params?.pendingImportUrl;
+    if (!imageUrl) {
+      return;
+    }
+    navigation.setParams({ pendingImportUrl: undefined });
+    showReadySnackbar(t('wardrobe.list.added_title'));
+    setPendingImportUri(imageUrl);
+
+    (async () => {
+      try {
+        const created = await wardrobeService.importWardrobeItemFromUrl(
+          imageUrl,
+          user!,
+        );
+        const props: Record<string, unknown> = { method: 'import_web' };
+        if (created?.id) {
+          props.item_id = created.id;
+        }
+        if (created?.category) {
+          props.category = created.category;
+        }
+        track('wardrobe_url_import_completed', props);
+        track('wardrobe_item_added', props);
+        // Awaited so the placeholder is only removed once the real
+        // is_preparing tile is in the list — one visual swap, no gap.
+        await refetchWardrobe();
+      } catch (error) {
+        console.error('Import from web failed', error);
+        track('wardrobe_url_import_failed', {});
+        toast.show({
+          type: 'error',
+          text1: t('wardrobe.import_web.import_failed'),
+          text2: t('common.try_again_moment'),
+          position: 'bottom',
+        });
+      } finally {
+        // Functional update: don't clobber the placeholder if a newer import
+        // has replaced it while this one was in flight.
+        setPendingImportUri(prev => (prev === imageUrl ? null : prev));
+      }
+    })();
+  }, [
+    route.params?.pendingImportUrl,
+    showReadySnackbar,
+    refetchWardrobe,
+    navigation,
+    user,
+    t,
+  ]);
+
   // Analytics: screen viewed — decoupled from data fetching, fires on focus and
   // on filter change (preserves the prior wardrobe_viewed cadence).
   useEffect(() => {
@@ -191,6 +261,11 @@ export const WardrobeScreen = () => {
   };
 
   const handleItemPress = (item: WardrobeItem) => {
+    // The optimistic web-import placeholder is display-only — there's no
+    // backend item to open yet.
+    if (item.id === PENDING_IMPORT_ID) {
+      return;
+    }
     if (isSelectMode) {
       // Don't let the user anchor an item that isn't ready yet.
       if (isPreparing(item)) {
@@ -254,6 +329,12 @@ export const WardrobeScreen = () => {
     navigation.navigate('Database');
   };
 
+  const handleImportFromWeb = () => {
+    track('add_item_method_selected', { method: 'import_web' });
+    setAddSheetVisible(false);
+    navigation.navigate('ImportFromWeb');
+  };
+
   // Add-item upload orchestration (image pick → upload → analytics →
   // add-success snackbar → refetch) + the take-photo source chooser hand-off.
   // `uploading` / `uploadingPhotoUri` drive the header spinner + PreparingOverlay.
@@ -288,7 +369,22 @@ export const WardrobeScreen = () => {
     isSelectMode && excludeItemId
       ? items.filter(item => item.id !== excludeItemId)
       : items;
-  const hasItems = displayItems.length > 0;
+
+  // Optimistic preparing placeholder for an in-flight web import, prepended so
+  // the freshly added image is immediately visible with its processing status.
+  // WardrobeGridTile renders the standard preparing overlay off `is_preparing`;
+  // presses are ignored via the PENDING_IMPORT_ID guard in handleItemPress.
+  const gridItems = pendingImportUri
+    ? [
+        {
+          id: PENDING_IMPORT_ID,
+          image_url: pendingImportUri,
+          is_preparing: true,
+        } as WardrobeItem,
+        ...displayItems,
+      ]
+    : displayItems;
+  const hasItems = gridItems.length > 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -365,7 +461,7 @@ export const WardrobeScreen = () => {
           </View>
         ) : hasItems ? (
           <View testID="wardrobe-grid-root" style={styles.grid}>
-            {displayItems.map((item, index) => (
+            {gridItems.map((item, index) => (
               <WardrobeGridTile
                 key={item.id}
                 item={item}
@@ -408,6 +504,7 @@ export const WardrobeScreen = () => {
         onDismiss={() => setAddSheetVisible(false)}
         onSearchDatabase={handleSearchDatabase}
         onTakePhoto={handleTakePhoto}
+        onImportFromWeb={handleImportFromWeb}
       />
 
       {/* Take-photo source chooser — DS MActionSheet (GH-364, replaces the
@@ -512,11 +609,16 @@ export const WardrobeScreen = () => {
       ) : (
         // Shared Home | Wardrobe bottom nav — the wardrobe tab reads as active
         // here; tapping the home tab returns to Home. Hidden in picker mode,
-        // where the "Change" commit bar owns the bottom.
-        <HomeWardrobeNavFooter
-          active="wardrobe"
-          testID="wardrobe-footer-nav-toggle"
-        />
+        // where the "Change" commit bar owns the bottom. The feedback FAB
+        // mounts alongside so the footer cluster matches Home pixel-for-pixel
+        // across the animation-less nav swap.
+        <>
+          <HomeWardrobeNavFooter
+            active="wardrobe"
+            testID="wardrobe-footer-nav-toggle"
+          />
+          <FeedbackFab testID="wardrobe-feedback-fab" />
+        </>
       )}
     </SafeAreaView>
   );

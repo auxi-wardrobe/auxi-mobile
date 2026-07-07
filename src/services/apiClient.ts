@@ -9,8 +9,16 @@ import {
 
 export { ROOT_URL, BASE_URL };
 
+// Global per-request ceiling so a stalled recommendation build / poll (or any
+// other call) can never hang the UI forever. The AI ops are async (fast submit
+// + a poll loop with its own overall ceiling), so 30s per individual HTTP
+// request is safe. Calls that legitimately run longer (image uploads) set their
+// own higher per-request `timeout`, which wins over this default.
+const DEFAULT_TIMEOUT_MS = 30000;
+
 export const apiClient = axios.create({
   baseURL: BASE_URL,
+  timeout: DEFAULT_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
