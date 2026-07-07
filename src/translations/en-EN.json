@@ -144,6 +144,7 @@
         "forgot_link": "Forgot your password?",
         "submit_a11y": "Sign in",
         "error_invalid_credentials": "Incorrect email or password.",
+        "error_unknown_email_or_password": "No account found for this email or the password is incorrect.",
         "error_email_not_verified": "Please verify your email before signing in.",
         "error_oauth_account": "This email uses {{provider}}. Sign in with {{provider}} instead.",
         "error_rate_limited": "Too many attempts. Please try again later.",

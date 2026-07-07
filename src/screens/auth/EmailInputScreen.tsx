@@ -23,10 +23,10 @@
  *     and routes to `EmailGoogleNotice`. So gmail flows normally through the
  *     password path here.
  *   - Call `useEmailPrecheckMutation`. The precheck is
- *     enumeration-safe: ANONYMOUS callers (every public caller on this
- *     screen) ALWAYS get `provider: 'password'` regardless of real linkage —
- *     only authenticated admin/self lookups see the true value. So routing
- *     branches on `mode`, NOT on the provider value (except the OAuth hint):
+ *     enumeration-safe for legacy/signup callers. In signin mode this screen
+ *     sends `intent: 'signin'`, so the backend can return `provider: 'none'`
+ *     for unknown emails and avoid sending them to a dead-end password screen.
+ *     Routing:
  *       * 'google' / 'apple' → navigate `EmailGoogleNotice` (OAuth path).
  *       * signup mode, any other provider → happy path → `PasswordCreation`.
  *         The genuinely-already-registered case is detected server-side at
@@ -106,7 +106,7 @@ export const EmailInputScreen = () => {
     }
 
     precheck.mutate(
-      { email: trimmed },
+      { email: trimmed, intent: mode },
       {
         onSuccess: result => {
           // AU-313 design intent: in signup mode, intercept OAuth-linked emails

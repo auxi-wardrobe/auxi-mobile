@@ -144,6 +144,7 @@
         "forgot_link": "Quên mật khẩu?",
         "submit_a11y": "Đăng nhập",
         "error_invalid_credentials": "Email hoặc mật khẩu không đúng.",
+        "error_unknown_email_or_password": "Không tìm thấy tài khoản cho email này hoặc mật khẩu chưa đúng.",
         "error_email_not_verified": "Vui lòng xác minh email trước khi đăng nhập.",
         "error_oauth_account": "Email này dùng {{provider}}. Vui lòng đăng nhập bằng {{provider}}.",
         "error_rate_limited": "Quá nhiều lần thử. Vui lòng thử lại sau.",
