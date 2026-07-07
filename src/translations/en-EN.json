@@ -295,7 +295,24 @@
         "preparing_step1": "Removing the background and identifying details…",
         "preparing_step2": "Auto tagging your items…",
         "preparing_tile": "Preparing this item",
-        "error_body": "We couldn't load your wardrobe. Check your connection and try again."
+        "error_body": "We couldn't load your wardrobe. Check your connection and try again.",
+        "sort": {
+          "label": "Sort",
+          "title": "Sort by",
+          "a11y_open": "Open sort options, currently {{option}}",
+          "newest": "Newest first",
+          "oldest": "Oldest first",
+          "name_az": "Name (A–Z)",
+          "name_za": "Name (Z–A)",
+          "most_worn": "Most worn",
+          "least_worn": "Least worn",
+          "short_newest": "Newest",
+          "short_oldest": "Oldest",
+          "short_name_az": "A–Z",
+          "short_name_za": "Z–A",
+          "short_most_worn": "Most worn",
+          "short_least_worn": "Least worn"
+        }
       },
       "database": {
         "title": "Database",

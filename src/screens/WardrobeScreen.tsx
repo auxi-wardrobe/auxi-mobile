@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   SafeAreaView,
@@ -22,7 +28,12 @@ import { Header } from '../components/layout/Header';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
-import { MActionSheet, MButton } from '../components/design-system/lib';
+import {
+  MActionSheet,
+  MBottomSheet,
+  MButton,
+  MRadioMenu,
+} from '../components/design-system/lib';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { useSidebar } from '../context/SidebarContext';
 import {
@@ -58,6 +69,13 @@ import {
   isPreparing,
   resolveFilterQuery,
 } from './wardrobe/wardrobe-grid';
+import {
+  DEFAULT_SORT,
+  SORT_OPTIONS,
+  SORT_OPTION_BY_VALUE,
+  SortValue,
+  sortWardrobeItems,
+} from './wardrobe/wardrobe-sort';
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
@@ -92,6 +110,11 @@ export const WardrobeScreen = () => {
   // Take-photo source chooser. Migrated from a 3-button Alert.alert to the DS
   // MActionSheet (GH-364); driven by this controlled boolean.
   const [photoSourceSheetVisible, setPhotoSourceSheetVisible] = useState(false);
+  // Client-side sort of the (already category-filtered) grid. Session-only:
+  // resets to newest-first on app restart. Default matches the backend's
+  // created_at DESC ordering, so first paint is unchanged.
+  const [sortValue, setSortValue] = useState<SortValue>(DEFAULT_SORT);
+  const [sortSheetVisible, setSortSheetVisible] = useState(false);
 
   // AU-361: item-ready snackbar concern (preparing→ready transition detection,
   // dedup refs, auto-hide timer, overlay state). `showReadySnackbar` is also
@@ -260,6 +283,19 @@ export const WardrobeScreen = () => {
     track('wardrobe_filter_changed', { category });
   };
 
+  const handleSelectSort = (value: SortValue) => {
+    setSortSheetVisible(false);
+    if (value === sortValue) {
+      return;
+    }
+    setSortValue(value);
+    const opt = SORT_OPTION_BY_VALUE[value];
+    track('wardrobe_sort_changed', {
+      sort_by: opt.sortBy,
+      direction: opt.direction,
+    });
+  };
+
   const handleItemPress = (item: WardrobeItem) => {
     // The optimistic web-import placeholder is display-only — there's no
     // backend item to open yet.
@@ -365,10 +401,15 @@ export const WardrobeScreen = () => {
   );
 
   // In select mode hide the item being changed so it can't be re-picked.
-  const displayItems =
+  const filteredItems =
     isSelectMode && excludeItemId
       ? items.filter(item => item.id !== excludeItemId)
       : items;
+  // Client-side reorder of the category-filtered set (pure, non-mutating).
+  const displayItems = useMemo(
+    () => sortWardrobeItems(filteredItems, sortValue),
+    [filteredItems, sortValue],
+  );
 
   // Optimistic preparing placeholder for an in-flight web import, prepended so
   // the freshly added image is immediately visible with its processing status.
@@ -435,6 +476,24 @@ export const WardrobeScreen = () => {
           onSelectCategory={category => handleSelectTab(category as FilterTab)}
           wrap
         />
+
+        {!isSelectMode && hasItems ? (
+          <View style={styles.sortRow}>
+            <MButton
+              variant="secondary"
+              size="sm"
+              onPress={() => setSortSheetVisible(true)}
+              testID="wardrobe-sort-trigger"
+              accessibilityLabel={t('wardrobe.list.sort.a11y_open', {
+                option: t(SORT_OPTION_BY_VALUE[sortValue].shortKey),
+              })}
+            >
+              {`${t('wardrobe.list.sort.label')} · ${t(
+                SORT_OPTION_BY_VALUE[sortValue].shortKey,
+              )}`}
+            </MButton>
+          </View>
+        ) : null}
 
         {loading ? (
           renderLoadingGrid()
@@ -533,6 +592,29 @@ export const WardrobeScreen = () => {
         cancelLabel={t('common.cancel')}
         testID="wardrobe-photo-source-sheet"
       />
+
+      {/* Sort chooser — MBottomSheet + MRadioMenu (single-select of six flat
+          options). onChange sets sort + fires wardrobe_sort_changed. */}
+      <MBottomSheet
+        visible={sortSheetVisible}
+        onDismiss={() => setSortSheetVisible(false)}
+        testID="wardrobe-sort-sheet"
+      >
+        <Text style={styles.sortSheetTitle}>
+          {t('wardrobe.list.sort.title')}
+        </Text>
+        <View style={styles.sortSheetBody}>
+          <MRadioMenu
+            options={SORT_OPTIONS.map(o => ({
+              value: o.value,
+              label: t(o.labelKey),
+            }))}
+            value={sortValue}
+            onChange={value => handleSelectSort(value as SortValue)}
+            testID="wardrobe-sort-menu"
+          />
+        </View>
+      </MBottomSheet>
 
       {/* B1: AI data-sharing consent prompt — gated by useAiConsentGate inside
           useAddWardrobeItem; shown before the first beautify upload. */}
@@ -647,6 +729,23 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sortRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: HORIZONTAL_PADDING,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  sortSheetTitle: {
+    ...theme.typography.aliases.interSemiboldSm,
+    color: theme.colors.figmaTextPrimary,
+    textAlign: 'center',
+    paddingVertical: 8,
+  },
+  sortSheetBody: {
+    alignItems: 'center',
+    paddingBottom: 8,
   },
   // Pinned picker-mode commit bar.
   changeFooter: {

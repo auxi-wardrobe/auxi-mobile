@@ -295,7 +295,24 @@
         "preparing_step1": "Đang xóa nền và nhận diện chi tiết…",
         "preparing_step2": "Đang tự động gắn thẻ cho món…",
         "preparing_tile": "Đang chuẩn bị món này",
-        "error_body": "Không thể tải tủ đồ của bạn. Kiểm tra kết nối và thử lại."
+        "error_body": "Không thể tải tủ đồ của bạn. Kiểm tra kết nối và thử lại.",
+        "sort": {
+          "label": "Sắp xếp",
+          "title": "Sắp xếp theo",
+          "a11y_open": "Mở tùy chọn sắp xếp, hiện tại {{option}}",
+          "newest": "Mới nhất trước",
+          "oldest": "Cũ nhất trước",
+          "name_az": "Tên (A–Z)",
+          "name_za": "Tên (Z–A)",
+          "most_worn": "Mặc nhiều nhất",
+          "least_worn": "Mặc ít nhất",
+          "short_newest": "Mới nhất",
+          "short_oldest": "Cũ nhất",
+          "short_name_az": "A–Z",
+          "short_name_za": "Z–A",
+          "short_most_worn": "Mặc nhiều nhất",
+          "short_least_worn": "Mặc ít nhất"
+        }
       },
       "database": {
         "title": "Cơ sở dữ liệu",
