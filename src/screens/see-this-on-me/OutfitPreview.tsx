@@ -8,8 +8,9 @@
  * generate. This screen is now purely the result + back-home affordance.
  */
 import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
 import { theme } from '../../theme/theme';
@@ -28,11 +29,11 @@ export const OutfitPreview: React.FC<OutfitPreviewProps> = ({
   return (
     <View style={styles.container} testID="stom-preview">
       <View style={styles.imageWrap}>
-        <Image
-          testID="stom-preview-image"
-          source={{ uri: imageUri }}
-          style={styles.image}
+        <LoadableRemoteImage
+          uri={imageUri}
+          imageTestID="stom-preview-image"
           resizeMode="cover"
+          skeletonTestID="stom-preview-image-skeleton"
         />
       </View>
 
@@ -63,10 +64,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.l,
     overflow: 'hidden',
     backgroundColor: theme.colors.figmaCardSurface,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
   },
   footer: {
     paddingBottom: theme.spacing.xl,

@@ -7,6 +7,7 @@ import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
 import { AppWelcomeScreen } from '../screens/AppWelcomeScreen';
 import { ItemDetailScreen } from '../screens/ItemDetailScreen';
+import { EnhanceImageScreen } from '../screens/item-detail/EnhanceImageScreen';
 import { LocationPermissionScreen } from '../screens/LocationPermissionScreen';
 import { OnboardingWardrobeScreen } from '../onboarding/v2/OnboardingWardrobeScreen';
 import { OnboardingFitScreen } from '../onboarding/v2/OnboardingFitScreen';
@@ -210,10 +211,17 @@ export const AppNavigator = () => {
                 name="SettingsAbout"
                 component={SettingsAboutScreen}
               />
+              {/* Facebook-style tab swap for the Home | Wardrobe footer toggle:
+                  both screens render the identical HomeWardrobeNavFooter at the
+                  same bottom anchor, so with no push/pop slide the footer reads
+                  as one persistent bar whose thumb switches while only the page
+                  content swaps in place. `animation: 'none'` on Wardrobe covers
+                  both directions — Home→Wardrobe pushes it, Wardrobe→Home pops
+                  it, and each transition uses Wardrobe's own animation option. */}
               <Stack.Screen
                 name="Wardrobe"
                 component={WardrobeScreen}
-                options={{ gestureEnabled: false }}
+                options={{ gestureEnabled: false, animation: 'none' }}
               />
               <Stack.Screen name="Favourite" component={FavouriteScreen} />
               <Stack.Screen
@@ -236,6 +244,14 @@ export const AppNavigator = () => {
                 name="ItemDetail"
                 component={ItemDetailScreen}
                 options={{ presentation: 'modal' }}
+              />
+              {/* AI Image Enhancement preview — pushed ON TOP of the
+                  ItemDetail modal (same push-on-modal pattern as the
+                  select-mode Wardrobe picker; never navigate below a
+                  presented modal). Default card presentation. */}
+              <Stack.Screen
+                name="EnhanceImage"
+                component={EnhanceImageScreen}
               />
               <Stack.Screen name="Database" component={DatabaseScreen} />
               <Stack.Screen

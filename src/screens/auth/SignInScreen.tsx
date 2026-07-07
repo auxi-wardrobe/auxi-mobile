@@ -53,7 +53,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 
 import { theme } from '../../theme/theme';
-import { MButton, MInput } from '../../components/design-system/lib';
+import { MButton, MInput, toast } from '../../components/design-system/lib';
 import { AuthHeader } from '../../components/auth/AuthHeader';
 import { useLoginMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
@@ -64,6 +64,7 @@ import {
 } from '../../services/authTypes';
 import type { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
+import { getSignInInlineErrorMessage } from './signInErrorMessage';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignIn'>;
 
@@ -87,7 +88,7 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
         submitA11y: t('uac.signin.submit_a11y'),
         showPassword: t('uac.signin.show_password'),
         hidePassword: t('uac.signin.hide_password'),
-        errorInvalid: t('uac.signin.error_invalid_credentials'),
+        errorInvalid: t('uac.signin.error_unknown_email_or_password'),
         errorEmailNotVerified: t('uac.signin.error_email_not_verified'),
         errorOauthAccount: t('uac.signin.error_oauth_account', {
           provider: 'Google',
@@ -100,8 +101,15 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const handleError = (err: AuthErrorEnvelope) => {
-    // OAuth-linked email → reroute to the EmailGoogleNotice screen.
+    // OAuth-linked email → inform the user then reroute to EmailGoogleNotice.
+    // Toast explains the redirect before the screen unmounts.
     if (isOAuthAccountError(err) && err.detail.provider === 'google') {
+      toast.show({
+        type: 'info',
+        text1: tr.errorOauthAccount,
+        position: 'bottom',
+        visibilityTime: 4000,
+      });
       navigation.navigate('EmailGoogleNotice', { email });
       return;
     }
@@ -110,16 +118,13 @@ export const SignInScreen: React.FC<Props> = ({ navigation, route }) => {
       navigation.navigate('VerifyEmail', { email: err.detail.email });
       return;
     }
-    // Everything else → inline error message under the password field.
-    if (err.code === 'INVALID_CREDENTIALS') {
-      setInlineError(tr.errorInvalid);
-      return;
-    }
-    if (err.code === 'RATE_LIMITED') {
-      setInlineError(tr.errorRateLimited);
-      return;
-    }
-    setInlineError(tr.errorGeneric);
+    setInlineError(
+      getSignInInlineErrorMessage(err, {
+        invalidCredentials: tr.errorInvalid,
+        rateLimited: tr.errorRateLimited,
+        generic: tr.errorGeneric,
+      }),
+    );
   };
 
   const onSubmit = () => {

@@ -25,6 +25,7 @@
 import { tryOnService } from '../../services/tryOnService';
 import { bodyShapeService } from '../../services/bodyShapeService';
 import { pollJob } from '../../services/job-polling';
+import { getApiErrorCode } from '../../utils/aiError';
 import { TryOnOutfitContext } from '../../types/navigation';
 import { BodyShapeId, GeneratedShape, sortShapes } from './body-shapes';
 
@@ -58,6 +59,13 @@ export interface TryOnGenerationState {
   /** Resolved composite URL once the render `status === 'success'`. */
   resultUrl: string | null;
 
+  /**
+   * Backend `detail.code` from a failed submit (e.g. `ai_daily_limit_reached`
+   * on 429), or null. Lets the screen surface the specific AI-limit copy
+   * instead of collapsing into the generic "render failed" message (B5).
+   */
+  errorCode: string | null;
+
   /** True while the loading screen is NOT mounted (user quit / backgrounded). */
   backgrounded: boolean;
 }
@@ -74,6 +82,7 @@ const initialState: TryOnGenerationState = {
   bodyId: null,
   shape: null,
   resultUrl: null,
+  errorCode: null,
   backgrounded: false,
 };
 
@@ -170,6 +179,7 @@ export const tryOnGenerationStore = {
       partial: false,
       // clear any stale render output from a prior run
       resultUrl: null,
+      errorCode: null,
     });
 
     (async () => {
@@ -200,9 +210,14 @@ export const tryOnGenerationStore = {
           setState({ status: 'error', shapes: null, partial: false });
           notifyIfBackgrounded('error', 'shapes');
         }
-      } catch {
+      } catch (err) {
         if (token !== runToken) return;
-        setState({ status: 'error', shapes: null, partial: false });
+        setState({
+          status: 'error',
+          shapes: null,
+          partial: false,
+          errorCode: getApiErrorCode(err) ?? null,
+        });
         notifyIfBackgrounded('error', 'shapes');
       }
     })();
@@ -232,6 +247,7 @@ export const tryOnGenerationStore = {
       bodyId: input.bodyId,
       shape: input.shape,
       resultUrl: null,
+      errorCode: null,
     });
 
     (async () => {
@@ -258,9 +274,13 @@ export const tryOnGenerationStore = {
           setState({ status: 'error', resultUrl: null });
           notifyIfBackgrounded('error', 'render');
         }
-      } catch {
+      } catch (err) {
         if (token !== runToken) return;
-        setState({ status: 'error', resultUrl: null });
+        setState({
+          status: 'error',
+          resultUrl: null,
+          errorCode: getApiErrorCode(err) ?? null,
+        });
         notifyIfBackgrounded('error', 'render');
       }
     })();

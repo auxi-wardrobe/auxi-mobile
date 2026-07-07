@@ -85,7 +85,8 @@
         "oauth_conflict_other_provider": "This email is linked to {{provider}}. Sign in with {{provider}} instead.",
         "oauth_conflict_password": "This email already has a password. Sign in with your password.",
         "qa_bypass_cta": "QA: Skip to Onboarding",
-        "qa_bypass_error": "QA bypass login failed. Check the backend on :5001."
+        "qa_bypass_error": "QA bypass login failed. Check the backend on :5001.",
+        "sign_in_link": "Already have an account? Sign in"
       },
       "language_settings": {
         "title": "Language",
@@ -134,7 +135,7 @@
         "google_cta": "Continue with Google"
       },
       "signin": {
-        "section_heading": "Enter password to signin",
+        "section_heading": "Enter password to sign in",
         "email_label": "Your email",
         "password_label": "Password",
         "password_placeholder": "Enter your password",
@@ -143,6 +144,7 @@
         "forgot_link": "Forgot your password?",
         "submit_a11y": "Sign in",
         "error_invalid_credentials": "Incorrect email or password.",
+        "error_unknown_email_or_password": "No account found for this email or the password is incorrect.",
         "error_email_not_verified": "Please verify your email before signing in.",
         "error_oauth_account": "This email uses {{provider}}. Sign in with {{provider}} instead.",
         "error_rate_limited": "Too many attempts. Please try again later.",
@@ -150,10 +152,10 @@
       },
       "forgot_request": {
         "section_heading": "Reset your password",
-        "body": "We'll send a password reseting to your email",
+        "body": "We'll send a password reset link to your email",
         "gmail_notice": "This email uses Google. Reset your password in the Gmail app or your Google account settings.",
         "email_label": "Your email",
-        "submit_cta": "Send reset password",
+        "submit_cta": "Send reset link",
         "error_rate_limited": "Too many requests. Please try again later.",
         "error_generic": "Couldn't send reset email. Please try again."
       },
@@ -237,6 +239,22 @@
         "value_unset": "—",
         "name_edit_placeholder": "Enter a name"
       },
+      "enhance": {
+        "title": "Enhance Image",
+        "loading": "Preparing this item\nin under 10 seconds",
+        "compare_hint": "Long press to see the original image",
+        "discard": "Discard",
+        "replace_original": "Replace original",
+        "retry": "Retry",
+        "cancel": "Cancel",
+        "error_generic": "Couldn't enhance the image. Please try again.",
+        "error_network": "Connection lost. Check your internet and try again.",
+        "error_timeout": "Enhancement is taking longer than expected.",
+        "toast_saved": "Image updated",
+        "toast_save_failed": "Unable to save the enhanced image. Please try again.",
+        "a11y_enhance": "Enhance image",
+        "a11y_preview": "Enhanced image preview"
+      },
       "welcome": {
         "title": "Welcome to your wardrobe",
         "body": "We've pre-filled your wardrobe with sample items so you can start exploring Macgie right away.\n\nAdd your own clothes to receive outfit recommendations personalized to your wardrobe and style.",
@@ -249,6 +267,8 @@
         "beautify_ready_title": "✨ Studio shot ready — Review",
         "upload_failed_title": "Upload failed",
         "upload_failed_body": "We could not save that item.",
+        "preparing_timeout_title": "Processing took too long",
+        "preparing_timeout_body": "We removed the item — please try uploading it again.",
         "add_photo_title": "Add a photo",
         "add_photo_body": "Use your camera or pick from your library.",
         "a11y_item_fallback": "Wardrobe item",
@@ -277,11 +297,27 @@
         "preparing_step1": "Removing the background and identifying details…",
         "preparing_step2": "Auto tagging your items…",
         "preparing_tile": "Preparing this item",
-        "error_body": "We couldn't load your wardrobe. Check your connection and try again."
+        "error_body": "We couldn't load your wardrobe. Check your connection and try again.",
+        "sort": {
+          "label": "Sort",
+          "title": "Sort by",
+          "a11y_open": "Open sort options, currently {{option}}",
+          "newest": "Newest first",
+          "oldest": "Oldest first",
+          "name_az": "Name (A–Z)",
+          "name_za": "Name (Z–A)",
+          "most_worn": "Most worn",
+          "least_worn": "Least worn",
+          "short_newest": "Newest",
+          "short_oldest": "Oldest",
+          "short_name_az": "A–Z",
+          "short_name_za": "Z–A",
+          "short_most_worn": "Most worn",
+          "short_least_worn": "Least worn"
+        }
       },
       "database": {
         "title": "Database",
-        "a11y_open_menu": "Open menu",
         "empty": "No items to select yet",
         "add_item": "Add Item",
         "added_toast": "Added {{count}} item(s) to your wardrobe",
@@ -453,6 +489,10 @@
       "error_load_title": "Couldn't load your outfits",
       "error_load_body": "Check your connection and try again.",
       "a11y_retry_load": "Retry loading outfits",
+      "ai_limit_title": "You've reached today's styling limit",
+      "ai_limit_body": "You've used all your AI outfits for today. Come back tomorrow for more.",
+      "ai_unavailable_title": "Styling is busy right now",
+      "ai_unavailable_body": "Our AI stylist is catching its breath. Try again in a moment.",
       "wardrobe_gap_title": "Your wardrobe isn't full enough for more suggestions",
       "wardrobe_gap_body": "Add a few items so Auxi can suggest more.",
       "a11y_add_to_wardrobe": "Add an item to your wardrobe",
@@ -553,6 +593,10 @@
       "daily_time": "Daily Time",
       "a11y_toggle_reminder": "Toggle daily reminder",
       "a11y_change_time": "Change daily time",
+      "a11y_time_hour_up": "Increase hour",
+      "a11y_time_hour_down": "Decrease hour",
+      "a11y_time_minute_up": "Increase minute",
+      "a11y_time_minute_down": "Decrease minute",
       "style_direction": "Style Direction",
       "privacy_control": "Privacy control",
       "share_analytics": "Share usage analytics",
@@ -578,6 +622,7 @@
       "error_update_language": "Failed to change language",
       "notification_reset": "Reset to default setting",
       "a11y_notification_reset": "Reset daily notification to default",
+      "a11y_profile_photo": "Profile photo",
       "notification_reset_toast_title": "Notifications reset to default",
       "notification_reset_toast_body": "Tap to undo",
       "notification_reset_undone_title": "Reset undone",
