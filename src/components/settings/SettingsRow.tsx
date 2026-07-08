@@ -1,13 +1,6 @@
 import React from 'react';
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ViewStyle,
-} from 'react-native';
-import { theme } from '../../theme/theme';
-import { Icons } from '../../assets/icons';
+import { StyleProp, ViewStyle } from 'react-native';
+import { MListRow } from '../design-system/lib';
 
 type SettingsRowProps = {
   testID: string;
@@ -21,7 +14,7 @@ type SettingsRowProps = {
   onPress?: () => void;
   disabled?: boolean;
   accessibilityLabel?: string;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 };
 
 /**
@@ -43,80 +36,19 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
   accessibilityLabel,
   style,
 }) => {
-  const content = (
-    <>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.trailingWrap}>
-        {value ? <Text style={styles.value}>{value}</Text> : null}
-        {trailing}
-        {chevron ? (
-          <Icons.ChevronRight
-            width={24}
-            height={24}
-            color={theme.colors.figmaOnboardingStepLabel}
-          />
-        ) : null}
-      </View>
-    </>
-  );
-
-  if (!onPress) {
-    return (
-      <View
-        testID={testID}
-        accessibilityLabel={accessibilityLabel}
-        style={[styles.row, disabled && styles.disabled, style]}
-      >
-        {content}
-      </View>
-    );
-  }
-
   return (
-    <TouchableOpacity
+    <MListRow
       testID={testID}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      activeOpacity={0.82}
-      disabled={disabled}
-      style={[styles.row, disabled && styles.disabled, style]}
+      label={label}
+      value={value}
+      trailing={trailing}
+      chevron={chevron}
       onPress={onPress}
-    >
-      {content}
-    </TouchableOpacity>
+      disabled={disabled}
+      accessibilityLabel={accessibilityLabel}
+      style={style}
+    />
   );
 };
 
-export const SettingsDivider = () => <View style={styles.divider} />;
-
-const styles = StyleSheet.create({
-  row: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    gap: 12,
-  },
-  label: {
-    ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.uacTextBase,
-    flexShrink: 1,
-  },
-  trailingWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  value: {
-    ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.figmaOnboardingStepLabel,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: theme.colors.figmaListDivider,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-});
+export const SettingsDivider = () => null;

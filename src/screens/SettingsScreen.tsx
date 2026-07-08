@@ -1,14 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Linking,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { toast } from '../components/design-system/lib';
+import { MButton, MRadioMenu, toast } from '../components/design-system/lib';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { ensurePushPermissionAndRegister } from '../services/notificationService';
@@ -17,7 +11,7 @@ import { SettingsScreenScaffold } from '../components/settings/SettingsScreenSca
 import { SettingsProfileHeader } from '../components/settings/SettingsProfileHeader';
 import { SettingsRow, SettingsDivider } from '../components/settings/SettingsRow';
 import { SettingsDialog } from '../components/settings/SettingsDialog';
-import { Radio, RadioOptionList } from '../components/settings/RadioOptionList';
+import { RadioOptionList } from '../components/settings/RadioOptionList';
 import { SettingsSwitch } from '../components/settings/SettingsSwitch';
 import { TimeStepper } from '../components/settings/TimeStepper';
 import { Icons } from '../assets/icons';
@@ -398,7 +392,6 @@ export const SettingsScreen = () => {
         headerVariant="menu"
         onLeftPress={openSidebar}
         leftTestID="settings-menu-button"
-        leftAccessibilityLabel={t('settings.a11y_open_menu')}
       >
         {/* ── Profile ────────────────────────────────────────────────────── */}
         <SettingsProfileHeader email={user?.email} />
@@ -443,19 +436,16 @@ export const SettingsScreen = () => {
 
         {/* AU-316 RST-1: notification-scoped reset link (distinct from the
             account-wide "Delete My Data" row). Lightweight text affordance. */}
-        <TouchableOpacity
+        <MButton
+          variant="text"
+          size="sm"
           testID="settings-notification-reset"
           accessibilityLabel={t('settings.a11y_notification_reset')}
-          activeOpacity={0.82}
           disabled={isResettingNotifications}
-          style={[
-            styles.resetRow,
-            isResettingNotifications && styles.disabledRow,
-          ]}
           onPress={handleResetNotifications}
         >
-          <Text style={styles.resetLabel}>{t('settings.notification_reset')}</Text>
-        </TouchableOpacity>
+          {t('settings.notification_reset')}
+        </MButton>
 
         <View style={styles.sectionGap} />
 
@@ -499,7 +489,7 @@ export const SettingsScreen = () => {
             <Icons.Delete
               width={24}
               height={24}
-              color={theme.colors.uacTextBase}
+              color={theme.ds.color.ink}
             />
           }
           onPress={() => setActiveModal('deleteConfirm')}
@@ -529,20 +519,18 @@ export const SettingsScreen = () => {
             minuteDownA11yLabel={t('settings.a11y_time_minute_down')}
           />
 
-          <View style={styles.periodStack}>
-            {(['AM', 'PM'] as DailyNotificationPeriod[]).map(period => (
-              <TouchableOpacity
-                key={period}
-                testID={`settings-time-period-${period.toLowerCase()}`}
-                activeOpacity={0.82}
-                style={styles.periodRow}
-                onPress={() => setPendingPeriod(period)}
-              >
-                <Text style={styles.optionTitle}>{period}</Text>
-                <Radio selected={pendingPeriod === period} />
-              </TouchableOpacity>
-            ))}
-          </View>
+          <MRadioMenu
+            options={(['AM', 'PM'] as DailyNotificationPeriod[]).map(period => ({
+              value: period,
+              label: period,
+              testID: `settings-time-period-${period.toLowerCase()}`,
+            }))}
+            value={pendingPeriod}
+            onChange={value =>
+              setPendingPeriod(value as DailyNotificationPeriod)
+            }
+            testID="settings-time-period"
+          />
         </View>
       </SettingsDialog>
 
@@ -584,17 +572,6 @@ export const SettingsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  // AU-316 RST-1: calm/lightweight reset link — muted greige, left-aligned,
-  // 44px tap target. Visually subordinate to the primary settings rows.
-  resetRow: {
-    minHeight: 44,
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  resetLabel: {
-    ...theme.typography.aliases.poppinsBodySm,
-    color: theme.colors.figmaOnboardingStepLabel,
-  },
   sectionGap: {
     height: 16,
   },
@@ -603,22 +580,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 16,
-  },
-  periodStack: {
-    gap: 4,
-  },
-  periodRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
-    minWidth: 80,
-  },
-  optionTitle: {
-    ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.uacTextBase,
-  },
-  disabledRow: {
-    opacity: 0.5,
   },
 });

@@ -6,7 +6,7 @@
 # Run: ./scripts/auxi-lint-ds-primitives.sh
 set -uo pipefail
 cd "$(dirname "$0")/.."
-SCAN="src/screens src/components/features src/components/layout"
+SCAN="src/screens src/components/features src/components/layout src/components/settings"
 echo "🔎 DS-primitive lint (warn-mode) — raw primitives with an M* equivalent"
 echo "   scope: $SCAN   rule: .claude/rules/design-system-primitives-required.md"
 total=0

@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { MIconButton } from '../design-system/lib';
 import { theme } from '../../theme/theme';
 import { Icons } from '../../assets/icons';
 
@@ -38,22 +39,32 @@ const parseTime = (value: string): { hour: number; minute: number } => {
 
 // Up/down chevrons reuse the horizontal ChevronRight glyph rotated 90° — the
 // icon set ships no dedicated vertical chevron.
-const ChevronUp = () => (
+type IconProps = {
+  width?: number;
+  height?: number;
+  color?: string;
+};
+
+const ChevronUp: React.FC<IconProps> = ({ width = 20, height = 20, color }) => (
   <View style={styles.chevronUp}>
     <Icons.ChevronRight
-      width={20}
-      height={20}
-      color={theme.colors.figmaTextDark}
+      width={width}
+      height={height}
+      color={color ?? theme.ds.color.black}
     />
   </View>
 );
 
-const ChevronDown = () => (
+const ChevronDown: React.FC<IconProps> = ({
+  width = 20,
+  height = 20,
+  color,
+}) => (
   <View style={styles.chevronDown}>
     <Icons.ChevronRight
-      width={20}
-      height={20}
-      color={theme.colors.figmaTextDark}
+      width={width}
+      height={height}
+      color={color ?? theme.ds.color.black}
     />
   </View>
 );
@@ -81,16 +92,13 @@ export const TimeStepper = ({
   return (
     <View style={styles.container}>
       <View style={styles.column}>
-        <TouchableOpacity
+        <MIconButton
           testID={`${testIDPrefix}-hour-up`}
           accessibilityLabel={hourUpA11yLabel}
-          activeOpacity={0.7}
-          hitSlop={8}
-          style={styles.stepButton}
+          icon={ChevronUp}
+          size="sm"
           onPress={() => stepHour(1)}
-        >
-          <ChevronUp />
-        </TouchableOpacity>
+        />
         <Text
           testID={`${testIDPrefix}-hour-value`}
           style={styles.digit}
@@ -98,16 +106,13 @@ export const TimeStepper = ({
         >
           {pad(hour)}
         </Text>
-        <TouchableOpacity
+        <MIconButton
           testID={`${testIDPrefix}-hour-down`}
           accessibilityLabel={hourDownA11yLabel}
-          activeOpacity={0.7}
-          hitSlop={8}
-          style={styles.stepButton}
+          icon={ChevronDown}
+          size="sm"
           onPress={() => stepHour(-1)}
-        >
-          <ChevronDown />
-        </TouchableOpacity>
+        />
       </View>
 
       <Text style={styles.separator} allowFontScaling={false}>
@@ -115,16 +120,13 @@ export const TimeStepper = ({
       </Text>
 
       <View style={styles.column}>
-        <TouchableOpacity
+        <MIconButton
           testID={`${testIDPrefix}-minute-up`}
           accessibilityLabel={minuteUpA11yLabel}
-          activeOpacity={0.7}
-          hitSlop={8}
-          style={styles.stepButton}
+          icon={ChevronUp}
+          size="sm"
           onPress={() => stepMinute(1)}
-        >
-          <ChevronUp />
-        </TouchableOpacity>
+        />
         <Text
           testID={`${testIDPrefix}-minute-value`}
           style={styles.digit}
@@ -132,16 +134,13 @@ export const TimeStepper = ({
         >
           {pad(minute)}
         </Text>
-        <TouchableOpacity
+        <MIconButton
           testID={`${testIDPrefix}-minute-down`}
           accessibilityLabel={minuteDownA11yLabel}
-          activeOpacity={0.7}
-          hitSlop={8}
-          style={styles.stepButton}
+          icon={ChevronDown}
+          size="sm"
           onPress={() => stepMinute(-1)}
-        >
-          <ChevronDown />
-        </TouchableOpacity>
+        />
       </View>
     </View>
   );
@@ -157,12 +156,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  stepButton: {
-    width: 40,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   chevronUp: {
     transform: [{ rotate: '-90deg' }],
   },
@@ -171,12 +164,12 @@ const styles = StyleSheet.create({
   },
   digit: {
     ...theme.typography.aliases.poppinsTimeLg,
-    color: theme.colors.figmaTextDark,
+    color: theme.ds.color.black,
     minWidth: 48,
     textAlign: 'center',
   },
   separator: {
     ...theme.typography.aliases.poppinsTimeLg,
-    color: theme.colors.figmaTextDark,
+    color: theme.ds.color.black,
   },
 });

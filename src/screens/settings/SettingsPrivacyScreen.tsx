@@ -160,10 +160,10 @@ const styles = StyleSheet.create({
   },
   introTitle: {
     ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.uacTextBase,
+    color: theme.ds.color.ink,
   },
   introBody: {
     ...theme.typography.aliases.poppinsBodySm,
-    color: theme.colors.figmaOnboardingStepLabel,
+    color: theme.ds.color.warm500,
   },
 });

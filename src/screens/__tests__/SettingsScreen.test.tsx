@@ -93,23 +93,12 @@ const oneByTestID = (
   return matches[0];
 };
 
-// The dialogs render their children inside an RN Modal whose `visible` prop
-// gates display. react-test-renderer keeps Modal children in the tree
-// regardless of visibility, so "dialog open" == the Modal wrapping the
-// primary button has visible===true.
+// DS dialogs mount only while visible, so the confirm action's presence proves
+// the dialog is open without coupling the test to a native Modal.
 const isDialogOpen = (
   root: ReactTestInstance,
   primaryTestID: string,
-): boolean => {
-  const modals = root.findAll(
-    n =>
-      typeof n.type !== 'string' &&
-      // RN Modal element — has a `visible` prop and (when open) contains the button.
-      n.props?.visible !== undefined &&
-      n.findAll(c => c.props?.testID === primaryTestID).length > 0,
-  );
-  return modals.some(m => m.props.visible === true);
-};
+): boolean => byTestID(root, primaryTestID).length > 0;
 
 const press = (node: ReactTestInstance) => {
   act(() => {
