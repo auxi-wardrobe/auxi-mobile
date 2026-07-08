@@ -85,7 +85,7 @@ export const MCheckbox: React.FC<MCheckboxProps> = ({
 
 export interface MRadioProps {
   selected: boolean;
-  onSelect: () => void;
+  onSelect?: () => void;
   label?: string;
   disabled?: boolean;
   testID?: string;
@@ -112,7 +112,7 @@ export const MRadio: React.FC<MRadioProps> = ({
     <Pressable
       style={styles.row}
       onPress={disabled ? undefined : onSelect}
-      disabled={disabled}
+      disabled={disabled || !onSelect}
       testID={selected && testID ? `${testID}-selected` : testID}
       accessibilityRole="radio"
       accessibilityState={{ selected, disabled }}

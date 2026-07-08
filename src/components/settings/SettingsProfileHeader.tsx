@@ -77,6 +77,6 @@ const styles = StyleSheet.create({
   },
   email: {
     ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.uacTextBase,
+    color: theme.ds.color.ink,
   },
 });

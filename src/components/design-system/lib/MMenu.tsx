@@ -15,8 +15,10 @@ import { useSpringToggle, useToggleValue } from '../MMotion';
 export interface MMenuOption {
   value: string;
   label: string;
+  description?: string;
   /** small mono trailing tag, e.g. "all" / "02" */
   tag?: string;
+  testID?: string;
 }
 
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
@@ -47,7 +49,8 @@ const Row: React.FC<{
     <Pressable
       onPress={onPress}
       testID={
-        testID ? `${testID}-${slug(option.value)}${on ? '-on' : ''}` : undefined
+        option.testID ??
+        (testID ? `${testID}-${slug(option.value)}${on ? '-on' : ''}` : undefined)
       }
       accessibilityRole={kind === 'check' ? 'checkbox' : 'radio'}
       accessibilityState={kind === 'check' ? { checked: on } : { selected: on }}
@@ -87,7 +90,12 @@ const Row: React.FC<{
             />
           </Animated.View>
         )}
-        <Text style={styles.label}>{option.label}</Text>
+        <View style={styles.copy}>
+          <Text style={styles.label}>{option.label}</Text>
+          {!!option.description && (
+            <Text style={styles.description}>{option.description}</Text>
+          )}
+        </View>
         {!!option.tag && <Text style={styles.tag}>{option.tag}</Text>}
       </Animated.View>
     </Pressable>
@@ -165,7 +173,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.s4,
   },
   divider: { borderTopWidth: 1, borderTopColor: role.lineCream },
-  label: { ...type.bodySm, color: role.ink, flex: 1 },
+  copy: { flex: 1, gap: space.s1 },
+  label: { ...type.bodySm, color: role.ink },
+  description: { ...type.caption, color: role.ink2 },
   tag: { fontFamily: MONO, fontSize: 10.5, color: role.ink3 },
   box: {
     width: 20,
