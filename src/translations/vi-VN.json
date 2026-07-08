@@ -345,6 +345,7 @@
         "empty_no_images": "Không tìm thấy ảnh nào trên trang này. Hãy thử tìm khác.",
         "empty_unsupported": "Không tìm thấy ảnh phù hợp.",
         "extract_failed": "Không thể trích xuất ảnh. Vui lòng thử lại.",
+        "preview_load_error": "Không thể tải ảnh này.",
         "import_failed": "Không thể nhập món này. Vui lòng thử lại."
       },
       "new_badge": "Mới",

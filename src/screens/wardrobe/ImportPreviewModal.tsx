@@ -1,5 +1,12 @@
-import React from 'react';
-import { Image, Modal, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
@@ -28,6 +35,18 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+
+  // Reset load state when the URL changes so the spinner shows for each new
+  // image. Keyed on imageUrl (not the modal animation) avoids an onShow race
+  // where a fast-loading image's onLoadEnd fires before the animation callback.
+  useEffect(() => {
+    if (imageUrl) {
+      setImageLoading(true);
+      setImageError(false);
+    }
+  }, [imageUrl]);
 
   return (
     <Modal
@@ -37,28 +56,46 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
       transparent={false}
     >
       <View
-        style={[
-          styles.container,
-          { paddingTop: insets.top + theme.spacing.m },
-        ]}
+        style={[styles.container, { paddingTop: insets.top + theme.spacing.m }]}
       >
         <Text style={styles.title}>
           {t('wardrobe.import_web.preview_title')}
         </Text>
 
         <View style={styles.imageWrap}>
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.image}
-              resizeMode="contain"
-              testID="import-preview-image"
-            />
-          ) : null}
+          {imageUrl && !imageError ? (
+            <>
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.image}
+                resizeMode="contain"
+                testID="import-preview-image"
+                onLoadEnd={() => setImageLoading(false)}
+                onError={() => {
+                  setImageLoading(false);
+                  setImageError(true);
+                }}
+              />
+              {imageLoading && (
+                <ActivityIndicator
+                  style={styles.loadingOverlay}
+                  size="large"
+                  color={theme.colors.figmaTextSecondary}
+                />
+              )}
+            </>
+          ) : (
+            <Text style={styles.errorText}>
+              {t('wardrobe.import_web.preview_load_error')}
+            </Text>
+          )}
         </View>
 
         <View
-          style={[styles.actions, { paddingBottom: insets.bottom + theme.spacing.m }]}
+          style={[
+            styles.actions,
+            { paddingBottom: insets.bottom + theme.spacing.m },
+          ]}
         >
           <PillButton
             variant="outline"
@@ -68,6 +105,9 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
             testID="import-preview-cancel"
             accessibilityLabel={t('wardrobe.import_web.cancel')}
           />
+          {/* Import stays enabled even when the preview fails to render —
+              CORS rules that block RN's Image don't apply to the backend
+              download, so the server-side import may still succeed. */}
           <PillButton
             variant="filled"
             title={t('wardrobe.import_web.import_cta')}
@@ -104,6 +144,17 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    ...theme.typography.aliases.interCaptionXxs,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
+    paddingHorizontal: theme.spacing.m,
   },
   actions: {
     flexDirection: 'row',

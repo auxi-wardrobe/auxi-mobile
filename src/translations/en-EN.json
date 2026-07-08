@@ -345,6 +345,7 @@
         "empty_no_images": "No images found on this page. Try another search.",
         "empty_unsupported": "No suitable images found.",
         "extract_failed": "Couldn't extract images. Please try again.",
+        "preview_load_error": "Couldn't load this image.",
         "import_failed": "Couldn't import this item. Please try again."
       },
       "new_badge": "New",
