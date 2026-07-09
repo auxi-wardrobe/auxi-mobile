@@ -48,8 +48,11 @@ const TileImage: React.FC<{ uri: string }> = ({ uri }) => {
 };
 const GRID_GAP = theme.spacing.s;
 const COLUMNS = 3;
-const TILE_SIZE =
-  (screenWidth - SHEET_PADDING * 2 - GRID_GAP * (COLUMNS - 1)) / COLUMNS;
+// Floor to keep the exact-fit flexWrap row from collapsing to 2 columns on @2x
+// devices — see the TILE_WIDTH note in wardrobe-grid.ts for the rounding cause.
+const TILE_SIZE = Math.floor(
+  (screenWidth - SHEET_PADDING * 2 - GRID_GAP * (COLUMNS - 1)) / COLUMNS,
+);
 
 /**
  * "Select an image" — the extracted-image grid (Figma: Select an image sheet).

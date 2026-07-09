@@ -21,9 +21,18 @@ export type FilterTab = (typeof FILTER_TABS)[number];
 export const HORIZONTAL_PADDING = 12;
 export const GRID_GAP = 4;
 export const GRID_COLUMNS = 3;
-export const TILE_WIDTH =
+// `Math.floor` is load-bearing, not cosmetic. The container is an exact-fit
+// flexWrap row (3 * TILE_WIDTH + 2 * GRID_GAP === screenWidth - padding), so it
+// has ZERO horizontal slack. The /3 division yields a fractional width (e.g.
+// 127.33 on a 414pt screen). On @2x devices (iPhone 11 / XR / SE) the pixel
+// grid is 0.5pt, so each tile rounds UP to 127.5 and the three rounded tiles
+// overflow the row by ~0.5pt — the third tile wraps and the grid collapses to
+// 2 columns. Flooring makes every tile slightly narrower than the exact third
+// so the row always keeps ≥1pt of slack and holds 3 columns on all devices.
+export const TILE_WIDTH = Math.floor(
   (screenWidth - HORIZONTAL_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) /
-  GRID_COLUMNS;
+    GRID_COLUMNS,
+);
 export const TILE_HEIGHT = TILE_WIDTH * (4 / 3);
 
 export const resolveFilterQuery = (
