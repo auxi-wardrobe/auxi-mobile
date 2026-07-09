@@ -2,6 +2,7 @@ import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import { OutfitPreview } from '../OutfitPreview';
 import { StepBodyShape } from '../StepBodyShape';
+import { StepBodyShapeSkeleton } from '../StepBodyShapeSkeleton';
 import { PhotoThumb } from '../components';
 import type { GeneratedShape } from '../body-shapes';
 
@@ -16,6 +17,12 @@ jest.mock('../../../theme/motion', () => {
 
 jest.mock('../../../components/features/AiContentDisclosure', () => ({
   AiContentDisclosure: () => null,
+}));
+
+jest.mock('@react-native-camera-roll/camera-roll', () => ({
+  CameraRoll: {
+    saveAsset: jest.fn(),
+  },
 }));
 
 const shapes: GeneratedShape[] = [
@@ -71,4 +78,17 @@ test('body-shape options render skeletons for generated shape images', () => {
   expect(hasTestID(r, 'stom-shape-option-image-skeleton-slim')).toBe(true);
   expect(hasTestID(r, 'stom-shape-option-image-skeleton-average')).toBe(true);
   expect(hasTestID(r, 'stom-shape-option-image-skeleton-fuller')).toBe(true);
+});
+
+test('body-shape generation renders three full option skeleton cards', () => {
+  let r!: TestRenderer.ReactTestRenderer;
+  act(() => {
+    r = TestRenderer.create(<StepBodyShapeSkeleton />);
+  });
+
+  [0, 1, 2].forEach(index => {
+    expect(hasTestID(r, `stom-shape-skeleton-option-${index}`)).toBe(true);
+    expect(hasTestID(r, `stom-shape-skeleton-${index}`)).toBe(true);
+    expect(hasTestID(r, `stom-shape-skeleton-label-${index}`)).toBe(true);
+  });
 });
