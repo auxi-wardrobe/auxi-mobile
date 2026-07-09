@@ -25,6 +25,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
 import { motion, useReducedMotion } from '../../theme/motion';
@@ -62,6 +63,8 @@ export const ContextualBottomSheet: React.FC<ContextualBottomSheetProps> = ({
   const progress = useRef(new Animated.Value(0)).current;
   // Keep the Modal mounted through the exit so the slide-down plays.
   const [mounted, setMounted] = useState(visible);
+  // Extra drag offset for swipe-to-dismiss gesture (clamp to >= 0, downward only).
+  const dragY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
@@ -87,6 +90,32 @@ export const ContextualBottomSheet: React.FC<ContextualBottomSheetProps> = ({
     });
   }, [visible, reduced, progress]);
 
+  // Swipe-down-to-dismiss pan gesture.
+  const panGesture = Gesture.Pan()
+    .onUpdate(e => {
+      // Only allow downward drag — clamp negative values to 0.
+      dragY.setValue(Math.max(0, e.translationY));
+    })
+    .onEnd(e => {
+      const shouldDismiss = e.velocityY > 500 || e.translationY > 80;
+      if (shouldDismiss) {
+        dragY.setValue(0);
+        onDismiss();
+      } else if (reduced) {
+        // Skip spring animation under reduce-motion.
+        dragY.setValue(0);
+      } else {
+        // Spring back to resting position.
+        Animated.spring(dragY, {
+          toValue: 0,
+          stiffness: motion.spring.standard.stiffness,
+          damping: motion.spring.standard.damping,
+          useNativeDriver: true,
+        }).start();
+      }
+    })
+    .runOnJS(true);
+
   if (!mounted) {
     return null;
   }
@@ -94,16 +123,13 @@ export const ContextualBottomSheet: React.FC<ContextualBottomSheetProps> = ({
   const scrimStyle = {
     opacity: progress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
   };
-  const sheetStyle = {
-    transform: [
-      {
-        translateY: progress.interpolate({
-          inputRange: [0, 1],
-          outputRange: [screenHeight, 0],
-        }),
-      },
-    ],
-  };
+  const sheetTranslateY = Animated.add(
+    progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [screenHeight, 0],
+    }),
+    dragY,
+  );
 
   return (
     <Modal
@@ -120,16 +146,18 @@ export const ContextualBottomSheet: React.FC<ContextualBottomSheetProps> = ({
           <Animated.View style={[styles.scrim, scrimStyle]} />
         </TouchableWithoutFeedback>
 
-        <Animated.View
-          style={[
-            styles.sheet,
-            { paddingBottom: insets.bottom + theme.spacing.l },
-            sheetStyle,
-          ]}
-          testID={testID}
-        >
-          {children}
-        </Animated.View>
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              { paddingBottom: insets.bottom + theme.spacing.l },
+              { transform: [{ translateY: sheetTranslateY }] },
+            ]}
+            testID={testID}
+          >
+            {children}
+          </Animated.View>
+        </GestureDetector>
       </View>
     </Modal>
   );

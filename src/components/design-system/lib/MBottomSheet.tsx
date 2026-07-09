@@ -11,9 +11,13 @@
  * Slide-up + fade ENTER (spring), faster exit CLOSE; action rows stagger off the
  * shared progress. Absolute-fill scrim into the nearest positioned parent. Tokens
  * + motion encapsulated INSIDE. Honors reduce-motion.
+ *
+ * Swipe-to-dismiss: drag the sheet downward — dismiss if velocityY > 500 or
+ * translationY > 80, otherwise spring back to resting position.
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   color,
   radius,
@@ -24,6 +28,7 @@ import {
   type,
 } from '../m-tokens';
 import { useOverlayProgress } from './useOverlayProgress';
+import { motion } from '../../../theme/motion';
 
 const SHEET_TRAVEL = 320;
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
@@ -42,11 +47,43 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
   testID,
 }) => {
   const { progress, mounted } = useOverlayProgress(visible);
+  // Extra drag offset for swipe-to-dismiss gesture (clamp to >= 0, downward only).
+  const dragY = useRef(new Animated.Value(0)).current;
+
+  // Swipe-down-to-dismiss pan gesture.
+  const panGesture = Gesture.Pan()
+    .onUpdate(e => {
+      // Only allow downward drag — clamp negative values to 0.
+      dragY.setValue(Math.max(0, e.translationY));
+    })
+    .onEnd(e => {
+      const shouldDismiss = e.velocityY > 500 || e.translationY > 80;
+      if (shouldDismiss) {
+        // Let RN Animated handle the dismiss call on the JS thread.
+        dragY.setValue(0);
+        onDismiss();
+      } else {
+        // Spring back to resting position.
+        Animated.spring(dragY, {
+          toValue: 0,
+          stiffness: motion.spring.standard.stiffness,
+          damping: motion.spring.standard.damping,
+          useNativeDriver: true,
+        }).start();
+      }
+    })
+    .runOnJS(true);
+
   if (!mounted) return null;
-  const translateY = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [SHEET_TRAVEL, 0],
-  });
+
+  const translateY = Animated.add(
+    progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [SHEET_TRAVEL, 0],
+    }),
+    dragY,
+  );
+
   return (
     <View style={styles.scrim} testID={testID}>
       <Animated.View
@@ -60,16 +97,18 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
         accessibilityRole="button"
         accessibilityLabel="Dismiss"
       >
-        <Animated.View
-          style={[
-            styles.sheet,
-            shadow.sheetCard,
-            { transform: [{ translateY }] },
-          ]}
-        >
-          <View style={styles.grab} />
-          {children}
-        </Animated.View>
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              shadow.sheetCard,
+              { transform: [{ translateY }] },
+            ]}
+          >
+            <View style={styles.grab} />
+            {children}
+          </Animated.View>
+        </GestureDetector>
       </Pressable>
     </View>
   );
