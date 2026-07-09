@@ -14,6 +14,7 @@
  * tracking-plan §6.7 and the AU-358 report. KISS/YAGNI: we do not add a push
  * stack here.
  */
+import { StackActions } from '@react-navigation/native';
 import { toast } from '../../components/design-system/lib';
 import { i18n } from '../../i18n/init';
 import { track } from '../../services/analytics';
@@ -55,9 +56,19 @@ export const showTryOnCompletionNotice = (result: {
     position: 'top',
     visibilityTime: 6000,
     // Tap-to-view: re-open the flow so the user lands back on the result.
+    // StackActions.popTo (not navigate) — the tap can land while a
+    // presentation:'modal' screen (e.g. ItemDetail) is on top. navigate() only
+    // updates JS nav state and leaves the native modal stuck on screen (see
+    // ItemDetailScreen's handleBuildAround for the same fix). popTo dismisses
+    // it and either pops back to an existing SeeThisOnMe instance or pushes a
+    // fresh one. navigationRef is the generic container ref (no `.popTo`
+    // sugar like a screen's `navigation` prop has), so dispatch the action
+    // directly.
     onPress: () => {
       if (result.outfit && navigationRef.isReady()) {
-        navigationRef.navigate('SeeThisOnMe', { outfit: result.outfit });
+        navigationRef.dispatch(
+          StackActions.popTo('SeeThisOnMe', { outfit: result.outfit }),
+        );
       }
     },
   });

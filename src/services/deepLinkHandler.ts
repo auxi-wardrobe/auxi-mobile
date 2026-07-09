@@ -281,6 +281,22 @@ export const resolveNotificationData = (
       fallbackHome();
       return;
     }
+
+    // Try-on render result (backend `tryon_render_completed`/`_failed`, see
+    // `notification_service._tryon_payload`). The backend's generic
+    // `screen:'Creations'` is a route-SAFE fallback — Creations is curated so
+    // an old client never crashes — but Creations is the saved-canvas list,
+    // unrelated to a rendered try-on photo; it can't show the result. Handle
+    // the richer `action`/`composite_url` fields first so a tap actually lands
+    // on the rendered image instead of an unrelated screen.
+    if (data.type === 'tryon_render' && data.action === 'tryon_result') {
+      if (data.status === 'completed' && data.composite_url) {
+        navRef.navigate('TryOnResult', { compositeUrl: data.composite_url });
+      } else {
+        fallbackHome();
+      }
+      return;
+    }
     if (data.kind === 'route') {
       if (data.screen && isCuratedScreen(data.screen)) {
         navigate(PUSH_SCREEN_ROUTE[data.screen]);

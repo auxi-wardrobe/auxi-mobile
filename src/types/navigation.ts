@@ -224,6 +224,12 @@ export type AppStackParamList = {
   // the saved outfit onto it via POST /api/tryon/highres. `outfit` carries the
   // serializable TryOnOutfitContext the flow needs (hash, item ids/urls, note).
   SeeThisOnMe: { outfit: TryOnOutfitContext };
+  // Landing screen for a tapped "your try-on is ready" push notification
+  // (backend `tryon_render_completed`, see `deepLinkHandler.resolveNotificationData`).
+  // A push can only carry the rendered image URL, not the full outfit context
+  // SeeThisOnMe needs to resume its flow — so this is a minimal read-only
+  // viewer reusing the same preview UI (Figma 3398:17581) instead.
+  TryOnResult: { compositeUrl: string };
   Database: undefined;
   // "Import from web" (Figma: Import from web flow) — reached from the Add-item
   // sheet's "Search images" option. Self-contained flow: query input → embedded
