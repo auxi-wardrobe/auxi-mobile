@@ -29,6 +29,7 @@ import { FavouriteScreen } from '../screens/FavouriteScreen';
 import { ScheduleScreen } from '../screens/ScheduleScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { SeeThisOnMeScreen } from '../screens/see-this-on-me/SeeThisOnMeScreen';
+import { TryOnResultScreen } from '../screens/see-this-on-me/TryOnResultScreen';
 import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
 import { ImportFromWebScreen } from '../screens/ImportFromWebScreen';
@@ -239,6 +240,10 @@ export const AppNavigator = () => {
                 name="SeeThisOnMe"
                 component={SeeThisOnMeScreen}
                 options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="TryOnResult"
+                component={TryOnResultScreen}
               />
               <Stack.Screen
                 name="ItemDetail"
