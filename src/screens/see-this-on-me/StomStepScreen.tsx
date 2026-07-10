@@ -14,7 +14,7 @@ import type { TFunction } from 'i18next';
 import { theme } from '../../theme/theme';
 import { MacgieLoader } from '../../components/macgie/MacgieLoader';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
-import { StomHeader } from './components';
+import { StomHeader, StomDownloadButton } from './components';
 import { StepReuseConfirm } from './StepReuseConfirm';
 import { OutfitPreview } from './OutfitPreview';
 import { GeneratingView } from './GeneratingView';
@@ -52,10 +52,11 @@ interface StomStepScreenProps {
 const StepShell: React.FC<{
   title: string;
   onBack: () => void;
+  right?: React.ReactNode;
   children: React.ReactNode;
-}> = ({ title, onBack, children }) => (
+}> = ({ title, onBack, right, children }) => (
   <SafeAreaView style={styles.container}>
-    <StomHeader title={title} onBack={onBack} />
+    <StomHeader title={title} onBack={onBack} rightAction={right} />
     {children}
   </SafeAreaView>
 );
@@ -143,7 +144,11 @@ export function renderStomStepScreen(
   // ── Preview state ─────────────────────────────────────────────────────────
   if (step === 'preview' && resultUrl) {
     return (
-      <StepShell title={title} onBack={handleBack}>
+      <StepShell
+        title={title}
+        onBack={handleBack}
+        right={<StomDownloadButton uri={resultUrl} />}
+      >
         <OutfitPreview imageUri={resultUrl} onBackHome={goHome} />
         {/* Reuse path: let the user discard the saved profile and recapture. */}
         {reuseMode ? (

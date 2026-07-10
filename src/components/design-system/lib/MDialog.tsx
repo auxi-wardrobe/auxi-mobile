@@ -12,7 +12,16 @@
  * action buttons (MButton) encapsulated INSIDE. Honors reduce-motion.
  */
 import React from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextStyle,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { radius, role, shadow, space, type } from '../m-tokens';
 import { useOverlayProgress } from './useOverlayProgress';
 import { MButton } from './MButton';
@@ -21,24 +30,36 @@ export interface MDialogProps {
   visible: boolean;
   title: string;
   message?: string;
+  children?: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
+  busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   testID?: string;
+  confirmTestID?: string;
+  cancelTestID?: string;
+  titleStyle?: StyleProp<TextStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
 }
 
 export const MDialog: React.FC<MDialogProps> = ({
   visible,
   title,
   message,
+  children,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   destructive,
+  busy,
   onConfirm,
   onCancel,
   testID,
+  confirmTestID,
+  cancelTestID,
+  titleStyle,
+  contentStyle,
 }) => {
   const { progress, mounted } = useOverlayProgress(visible);
   if (!mounted) return null;
@@ -52,13 +73,14 @@ export const MDialog: React.FC<MDialogProps> = ({
         style={[styles.backdrop, { opacity: progress }]}
         pointerEvents="none"
       />
-      <Pressable
-        style={styles.anchor}
-        onPress={onCancel}
-        testID={testID ? `${testID}-backdrop` : undefined}
-        accessibilityRole="button"
-        accessibilityLabel="Dismiss"
-      >
+      <View style={styles.anchor}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onCancel}
+          testID={testID ? `${testID}-backdrop` : undefined}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
+        />
         <Animated.View
           style={[
             styles.dialog,
@@ -66,14 +88,16 @@ export const MDialog: React.FC<MDialogProps> = ({
             { opacity: progress, transform: [{ scale }] },
           ]}
         >
-          <Text style={styles.dialogTitle}>{title}</Text>
+          <Text style={[styles.dialogTitle, titleStyle]}>{title}</Text>
           {!!message && <Text style={styles.dialogBody}>{message}</Text>}
+          {children ? <View style={contentStyle}>{children}</View> : null}
           <View style={styles.dialogActions}>
             <MButton
               variant="secondary"
               size="md"
               onPress={onCancel}
-              testID={testID ? `${testID}-cancel` : undefined}
+              disabled={busy}
+              testID={cancelTestID ?? (testID ? `${testID}-cancel` : undefined)}
             >
               {cancelLabel}
             </MButton>
@@ -81,13 +105,17 @@ export const MDialog: React.FC<MDialogProps> = ({
               variant={destructive ? 'danger' : 'primary'}
               size="md"
               onPress={onConfirm}
-              testID={testID ? `${testID}-confirm` : undefined}
+              disabled={busy}
+              loading={busy}
+              testID={
+                confirmTestID ?? (testID ? `${testID}-confirm` : undefined)
+              }
             >
               {confirmLabel}
             </MButton>
           </View>
         </Animated.View>
-      </Pressable>
+      </View>
     </View>
   );
 };

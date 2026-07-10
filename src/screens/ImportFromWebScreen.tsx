@@ -362,7 +362,7 @@ export const ImportFromWebScreen = () => {
       <ImportSelectImageSheet
         visible={selectSheetVisible}
         images={images}
-        onSelect={handleSelectImage}
+        onPreview={handleSelectImage}
         onCancel={() => setSelectSheetVisible(false)}
       />
 

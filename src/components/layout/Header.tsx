@@ -211,15 +211,16 @@ interface PresetProps {
 /** Menu (hamburger) on the left, centred title. e.g. Settings, Feedback, Database. */
 const MenuTitle: React.FC<PresetProps> = props => <HeaderBase {...props} />;
 
-/** Back chevron on the left, centred title. e.g. My Body, See-this-on-me, Legal. */
-const BackTitle: React.FC<PresetProps & { leftIconStyle?: ViewStyle }> = ({
-    leftIconStyle,
-    ...props
-}) => (
+/** Back chevron on the left, centred title, optional action chip on the right.
+ *  e.g. My Body, See-this-on-me, Legal. */
+const BackTitle: React.FC<
+    PresetProps & { leftIconStyle?: ViewStyle; right?: React.ReactNode }
+> = ({ leftIconStyle, right, ...props }) => (
     <HeaderBase
         {...props}
         leftIconStyle={leftIconStyle}
         leftIcon={<Icons.ChevronLeft width={24} height={24} />}
+        rightComponent={right}
     />
 );
 

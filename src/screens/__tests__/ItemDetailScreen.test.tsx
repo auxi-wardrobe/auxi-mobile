@@ -26,6 +26,20 @@ import { formatItemDate } from '../../utils/wardrobeItemMappers';
 
 // ---- mocks ------------------------------------------------------------------
 
+jest.mock('react-native-gesture-handler', () => {
+  const React = require('react');
+  const chain = {
+    onUpdate: () => chain,
+    onEnd: () => chain,
+    runOnJS: () => chain,
+  };
+  return {
+    Gesture: { Pan: () => chain },
+    GestureDetector: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+  };
+});
+
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
 const mockPopTo = jest.fn();
@@ -97,6 +111,7 @@ jest.mock('react-i18next', () => {
 
 const mockGetWardrobeItem = jest.fn();
 const mockDeleteWardrobeItem = jest.fn();
+const mockMarkWardrobeItemReviewed = jest.fn();
 
 jest.mock('../../services/wardrobeService', () => ({
   wardrobeService: {
@@ -104,6 +119,8 @@ jest.mock('../../services/wardrobeService', () => ({
     toggleFavorite: jest.fn(),
     updateUsageFrequency: jest.fn(),
     deleteWardrobeItem: (...args: unknown[]) => mockDeleteWardrobeItem(...args),
+    markWardrobeItemReviewed: (...args: unknown[]) =>
+      mockMarkWardrobeItemReviewed(...args),
     updateWardrobeItemAttributes: jest.fn(),
   },
   getItemFitLabel: () => 'Regular',
@@ -189,6 +206,12 @@ const renderScreen = async (queryClient?: QueryClient) => {
 beforeEach(() => {
   jest.clearAllMocks();
   mockRouteParams = { itemId: 'item-1' };
+  mockMarkWardrobeItemReviewed.mockImplementation(async itemId => ({
+    ...USER_ITEM,
+    id: itemId,
+    is_new: false,
+    reviewed_at: '2026-07-10T07:00:00+00:00',
+  }));
 });
 
 afterEach(() => {
@@ -221,6 +244,15 @@ describe('formatItemDate', () => {
 // 2. read mode — Figma 2852:14557
 // =============================================================================
 describe('read mode', () => {
+  it('marks backend-new items reviewed after loading item detail', async () => {
+    mockGetWardrobeItem.mockResolvedValue({ ...USER_ITEM, is_new: true });
+
+    await renderScreen();
+    await flushPromises();
+
+    expect(mockMarkWardrobeItemReviewed).toHaveBeenCalledWith('item-1');
+  });
+
   it('renders title + Date line + "Build around this" CTA', async () => {
     mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
 

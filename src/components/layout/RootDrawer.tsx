@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { useSidebar } from '../../context/SidebarContext';
@@ -19,10 +20,15 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const { isOpen, close } = useSidebar();
   const progress = useRef(new Animated.Value(0)).current;
+  // Extra drag offset for swipe-left-to-close gesture (clamp to <= 0, leftward only).
+  const dragX = useRef(new Animated.Value(0)).current;
   // Drives borderRadius / shadow / the tap-to-close catcher, none of which can
   // run on the native driver alongside the translate. Stays true through the
   // close animation, then clears so the app is fully interactive when shut.
   const [revealed, setRevealed] = useState(false);
+  // Track isOpen in a ref so the gesture can read it without stale closure.
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
 
   useEffect(() => {
     if (isOpen) {
@@ -35,6 +41,8 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
       useNativeDriver: true,
     }).start();
     if (!isOpen) {
+      // Reset drag offset when drawer closes.
+      dragX.setValue(0);
       // Clear the revealed chrome (rounding + shadow + tap-catcher) after the
       // close completes. A timer is more reliable than the animation's
       // `finished` flag — an interrupted close left `revealed` stuck true,
@@ -46,13 +54,50 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
       );
       return () => clearTimeout(timer);
     }
-  }, [isOpen, progress]);
+  }, [isOpen, progress, dragX]);
 
-  const translateX = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, PUSH_X],
-  });
+  // Active while the drawer is open OR its close animation is still running.
+  const drawerGestureActive = isOpen || revealed;
 
+  // Swipe-left-to-close pan gesture — enabled only when drawer is open.
+  // `.enabled()` is used instead of conditional GestureDetector mounting so
+  // the tree structure (and the NavigationContainer inside) never remounts.
+  const panGesture = Gesture.Pan()
+    .enabled(drawerGestureActive)
+    .onUpdate(e => {
+      if (!isOpenRef.current) {
+        return;
+      }
+      // Only allow leftward drag — clamp positive values to 0.
+      dragX.setValue(Math.min(0, e.translationX));
+    })
+    .onEnd(e => {
+      if (!isOpenRef.current) {
+        return;
+      }
+      const shouldClose = e.velocityX < -500 || e.translationX < -60;
+      if (shouldClose) {
+        dragX.setValue(0);
+        close();
+      } else {
+        // Spring back to open position.
+        Animated.spring(dragX, {
+          toValue: 0,
+          stiffness: motion.spring.standard.stiffness,
+          damping: motion.spring.standard.damping,
+          useNativeDriver: true,
+        }).start();
+      }
+    })
+    .runOnJS(true);
+
+  const translateX = Animated.add(
+    progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, PUSH_X],
+    }),
+    dragX,
+  );
   return (
     <View style={styles.root}>
       {/* Back layer (tier base) — the menu the content is pushed aside to reveal. */}
@@ -60,24 +105,28 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
         <SidebarMenu />
       </View>
 
-      {/* App content (tier content) — pushed right; rounded + shadowed when open. */}
-      <Animated.View
-        style={[
-          styles.content,
-          revealed && styles.contentRevealed,
-          { transform: [{ translateX }] },
-        ]}
-      >
-        {children}
-        {revealed ? (
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={close}
-            accessibilityLabel="Close menu"
-            testID="drawer-close-catcher"
-          />
-        ) : null}
-      </Animated.View>
+      {/* App content (tier content) — pushed right; rounded + shadowed when open.
+          GestureDetector is always in the tree so the NavigationContainer inside
+          never remounts; the gesture is disabled via .enabled() when closed. */}
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          style={[
+            styles.content,
+            revealed && styles.contentRevealed,
+            { transform: [{ translateX }] },
+          ]}
+        >
+          {children}
+          {revealed ? (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={close}
+              accessibilityLabel="Close menu"
+              testID="drawer-close-catcher"
+            />
+          ) : null}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 };

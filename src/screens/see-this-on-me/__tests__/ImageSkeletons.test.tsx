@@ -1,7 +1,9 @@
 import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
+import { StyleSheet } from 'react-native';
 import { OutfitPreview } from '../OutfitPreview';
 import { StepBodyShape } from '../StepBodyShape';
+import { StepBodyShapeSkeleton } from '../StepBodyShapeSkeleton';
 import { PhotoThumb } from '../components';
 import type { GeneratedShape } from '../body-shapes';
 
@@ -16,6 +18,12 @@ jest.mock('../../../theme/motion', () => {
 
 jest.mock('../../../components/features/AiContentDisclosure', () => ({
   AiContentDisclosure: () => null,
+}));
+
+jest.mock('@react-native-camera-roll/camera-roll', () => ({
+  CameraRoll: {
+    saveAsset: jest.fn(),
+  },
 }));
 
 const shapes: GeneratedShape[] = [
@@ -41,6 +49,22 @@ test('outfit preview renders a skeleton while the generated try-on image loads',
   });
 
   expect(hasTestID(r, 'stom-preview-image-skeleton')).toBe(true);
+});
+
+test('outfit preview uses a 9:16 portrait image frame', () => {
+  let r!: TestRenderer.ReactTestRenderer;
+  act(() => {
+    r = TestRenderer.create(
+      <OutfitPreview
+        imageUri="https://cdn.example/result.jpg"
+        onBackHome={jest.fn()}
+      />,
+    );
+  });
+
+  const frame = r.root.findByProps({ testID: 'stom-preview-image-frame' });
+  const style = StyleSheet.flatten(frame.props.style);
+  expect(style?.aspectRatio).toBe(9 / 16);
 });
 
 test('photo thumbnail renders a skeleton while the selected user photo loads', () => {
@@ -71,4 +95,17 @@ test('body-shape options render skeletons for generated shape images', () => {
   expect(hasTestID(r, 'stom-shape-option-image-skeleton-slim')).toBe(true);
   expect(hasTestID(r, 'stom-shape-option-image-skeleton-average')).toBe(true);
   expect(hasTestID(r, 'stom-shape-option-image-skeleton-fuller')).toBe(true);
+});
+
+test('body-shape generation renders three full option skeleton cards', () => {
+  let r!: TestRenderer.ReactTestRenderer;
+  act(() => {
+    r = TestRenderer.create(<StepBodyShapeSkeleton />);
+  });
+
+  [0, 1, 2].forEach(index => {
+    expect(hasTestID(r, `stom-shape-skeleton-option-${index}`)).toBe(true);
+    expect(hasTestID(r, `stom-shape-skeleton-${index}`)).toBe(true);
+    expect(hasTestID(r, `stom-shape-skeleton-label-${index}`)).toBe(true);
+  });
 });

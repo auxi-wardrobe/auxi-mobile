@@ -57,7 +57,7 @@ export const SettingsScreenScaffold: React.FC<SettingsScreenScaffoldProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.figmaSurface,
+    backgroundColor: theme.ds.color.white,
   },
   sheet: {
     flex: 1,
@@ -66,11 +66,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 8,
-    paddingHorizontal: 27,
-    paddingBottom: 24,
+    paddingTop: theme.spacing.s,
+    paddingHorizontal: theme.spacing.l,
+    paddingBottom: theme.spacing.l,
   },
   inner: {
-    paddingTop: 8,
+    paddingTop: theme.spacing.s,
   },
 });

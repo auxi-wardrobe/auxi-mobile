@@ -29,6 +29,7 @@ import { FavouriteScreen } from '../screens/FavouriteScreen';
 import { ScheduleScreen } from '../screens/ScheduleScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { SeeThisOnMeScreen } from '../screens/see-this-on-me/SeeThisOnMeScreen';
+import { TryOnResultScreen } from '../screens/see-this-on-me/TryOnResultScreen';
 import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
 import { ImportFromWebScreen } from '../screens/ImportFromWebScreen';
@@ -47,10 +48,15 @@ import {
   getPendingNavIntent,
   setPendingNavIntent,
 } from '../services/reviewOverrides';
+import { useUnleashForegroundRefresh } from '../hooks/useUnleashForegroundRefresh';
 
 const Stack = createAppStack<AppStackParamList>();
 
 export const AppNavigator = () => {
+  // Force a flag re-fetch on app foreground (in addition to interval polling).
+  // Mounted once here — AppNavigator renders under FlagProvider (see App.tsx).
+  useUnleashForegroundRefresh();
+
   useEffect(() => {
     // Register Linking listeners for the verify-email and reset-password deep
     // links, driving them through the shared navigationRef (also used by the
@@ -239,6 +245,10 @@ export const AppNavigator = () => {
                 name="SeeThisOnMe"
                 component={SeeThisOnMeScreen}
                 options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="TryOnResult"
+                component={TryOnResultScreen}
               />
               <Stack.Screen
                 name="ItemDetail"

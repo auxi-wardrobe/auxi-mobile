@@ -1,6 +1,6 @@
 /**
  * Your outfit preview (Figma node 3398:17581). Full-bleed rendered try-on image
- * (3:4) + a "Back to home" pill.
+ * (9:16) + a "Back to home" pill.
  *
  * AU-346 (1.1): the "use this photo for future outfit previews" opt-in checkbox
  * moved off this preview screen to the body-shape capture step (BodyShapeCarousel),
@@ -28,7 +28,7 @@ export const OutfitPreview: React.FC<OutfitPreviewProps> = ({
 
   return (
     <View style={styles.container} testID="stom-preview">
-      <View style={styles.imageWrap}>
+      <View style={styles.imageWrap} testID="stom-preview-image-frame">
         <LoadableRemoteImage
           uri={imageUri}
           imageTestID="stom-preview-image"
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   },
   imageWrap: {
     width: '100%',
-    aspectRatio: 3 / 4,
+    aspectRatio: 9 / 16,
     borderRadius: theme.borderRadius.l,
     overflow: 'hidden',
     backgroundColor: theme.colors.figmaCardSurface,

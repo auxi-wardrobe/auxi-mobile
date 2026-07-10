@@ -23,17 +23,15 @@
  *     and routes to `EmailGoogleNotice`. So gmail flows normally through the
  *     password path here.
  *   - Call `useEmailPrecheckMutation`. The precheck is
- *     enumeration-safe: ANONYMOUS callers (every public caller on this
- *     screen) ALWAYS get `provider: 'password'` regardless of real linkage —
- *     only authenticated admin/self lookups see the true value. So routing
- *     branches on `mode`, NOT on the provider value (except the OAuth hint):
+ *     enumeration-safe for legacy/signup callers. In signin mode this screen
+ *     sends `intent: 'signin'`, so the backend can return the real provider
+ *     under rate limits and avoid dead-end password/account-creation screens.
+ *     Routing:
  *       * 'google' / 'apple' → navigate `EmailGoogleNotice` (OAuth path).
- *       * signup mode, any other provider → happy path → `PasswordCreation`.
- *         The genuinely-already-registered case is detected server-side at
- *         register time (409 EMAIL_ALREADY_EXISTS → routed to SignIn there),
- *         the only enumeration-safe place to catch it.
- *       * signin mode, 'none' → inform via Toast + bounce to Welcome.
- *       * signin mode, otherwise → `SignIn` (returning user logs in).
+ *       * signup + 'none' → `PasswordCreation`.
+ *       * signup + 'password' → `SignIn` (email already exists).
+ *       * signin + 'none' → inform via Toast + bounce to Welcome.
+ *       * signin + 'password' → `SignIn`.
  *   - 429 RATE_LIMITED → error_rate_limited copy.
  *   - NETWORK_ERROR → inline error (error_network copy, NOT "invalid email").
  *
@@ -68,6 +66,7 @@ import { AuthHeader } from '../../components/auth/AuthHeader';
 import { useEmailPrecheckMutation } from '../../hooks/auth/useAuthMutations';
 import { track } from '../../services/analytics';
 import type { AuthStackParamList } from '../../types/navigation';
+import { resolveEmailInputRoute } from './email-input-routing';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'EmailInput'>;
 type Route = RouteProp<AuthStackParamList, 'EmailInput'>;
@@ -106,46 +105,23 @@ export const EmailInputScreen = () => {
     }
 
     precheck.mutate(
-      { email: trimmed },
+      { email: trimmed, intent: 'signin' },
       {
         onSuccess: result => {
-          // AU-313 design intent: in signup mode, intercept OAuth-linked emails
-          // to prevent duplicate account creation on top of an existing OAuth
-          // account. In signin mode we skip this gate — the login endpoint
-          // itself returns OAUTH_ACCOUNT (403) for Google-only accounts, and
-          // SignInScreen handles the redirect to EmailGoogleNotice then. This
-          // lets dual-auth accounts (Google + password) reach the password
-          // screen without being blocked.
-          if (
-            mode === 'signup' &&
-            (result.provider === 'google' || result.provider === 'apple')
-          ) {
+          const routeDecision = resolveEmailInputRoute(mode, result.provider);
+
+          if (routeDecision.kind === 'email-provider-notice') {
             navigation.navigate('EmailGoogleNotice', { email: trimmed });
             return;
           }
 
-          // AU-356: in signup mode we must NOT treat `'password'` as "account
-          // exists, go log in" — that wrongly bounced brand-new users to SignIn.
-          // The genuine already-registered case is caught server-side at
-          // register time (409 EMAIL_ALREADY_EXISTS → PasswordCreationScreen
-          // routes to SignIn), which is the only enumeration-safe place.
-          //
-          // Routing branches on `mode`, not on provider value:
-          if (mode === 'signup') {
-            // Signup happy path: any non-OAuth result → create a password.
-            // This is the moment the user commits to a new account.
+          if (routeDecision.kind === 'password-creation') {
             track('sign_up_started', { method: 'email' });
             navigation.navigate('PasswordCreation', { email: trimmed });
             return;
           }
 
-          // signin mode below.
-          // `'none'` is only reachable for authenticated callers, but handle
-          // it defensively: the user expected to log in and there's no
-          // account. Inform via a Toast (an inline error would die with this
-          // unmounting screen) and bounce back to Welcome so they can pick a
-          // sign-up path or try a different email.
-          if (result.provider === 'none') {
+          if (routeDecision.kind === 'unknown-signin-email') {
             toast.show({
               type: 'info',
               text1: t('uac.email_input.error_no_account'),
@@ -155,8 +131,6 @@ export const EmailInputScreen = () => {
             navigation.navigate('Welcome');
             return;
           }
-          // signin + `'password'` (or any other value) → existing
-          // password-based account → route to SignIn so the user logs in.
           navigation.navigate('SignIn', { email: trimmed });
         },
         onError: err => {

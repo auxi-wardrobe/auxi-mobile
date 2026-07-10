@@ -61,10 +61,10 @@ import type { LegalDocumentType } from '../../content/legal';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
-// Temporarily hide the Apple + email sign-in CTAs while those flows are
-// buggy. Google is the only supported entry point for now. Flip back to
-// `true` to restore the full action stack once the flows are fixed.
-const SHOW_APPLE_AND_EMAIL_SIGN_IN = true;
+// Keep Apple OAuth wired but hidden until the App Store / entitlement path is
+// ready. Email sign-in stays available.
+const SHOW_APPLE_SIGN_IN = false;
+const SHOW_EMAIL_SIGN_IN = true;
 
 // Minimal inline glyphs — keep diff small (no new SVG assets).
 // Sizes match the Figma 24×24 trailing-icon slot.
@@ -369,7 +369,7 @@ export const WelcomeScreen = () => {
                 )}
               </Pressable>
 
-              {SHOW_APPLE_AND_EMAIL_SIGN_IN && isAppleAvailable && (
+              {SHOW_APPLE_SIGN_IN && isAppleAvailable && (
                 <Pressable
                   testID="welcome-cta-apple"
                   accessibilityRole="button"
@@ -403,7 +403,7 @@ export const WelcomeScreen = () => {
               )}
             </View>
 
-            {SHOW_APPLE_AND_EMAIL_SIGN_IN && (
+            {SHOW_EMAIL_SIGN_IN && (
               <>
                 {/* 3b. "or" divider — line · "or" · line (Figma Frame 2135) */}
                 <View style={styles.orDivider}>

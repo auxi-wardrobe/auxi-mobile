@@ -43,7 +43,6 @@ import {
 } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
-import { useWardrobeViewed } from '../context/WardrobeViewedContext';
 import { AppStackParamList } from '../types/navigation';
 import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
@@ -97,7 +96,6 @@ export const WardrobeScreen = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const { open: openSidebar } = useSidebar();
-  const { isViewed, markViewed } = useWardrobeViewed();
 
   const insets = useSafeAreaInsets();
 
@@ -315,8 +313,6 @@ export const WardrobeScreen = () => {
       item_id: item.id,
       is_common: isCommonItem(item),
     });
-    // Opening the detail clears the item's "new" tag (uploaded → seen).
-    markViewed(item.id);
     navigation.navigate('ItemDetail', { itemId: item.id });
   };
 
@@ -442,6 +438,7 @@ export const WardrobeScreen = () => {
         <Header.MenuTitleAction
           title={t('wardrobe.list.title')}
           leftTestID="wardrobe-menu-button"
+          leftAccessibilityLabel={t('wardrobe.list.a11y_open_menu')}
           onBack={openSidebar}
           right={
             <PressableScale
@@ -527,7 +524,6 @@ export const WardrobeScreen = () => {
                 index={index}
                 isSelectMode={isSelectMode}
                 selectedItemId={selectedItemId}
-                viewed={isViewed(item.id)}
                 onPress={handleItemPress}
               />
             ))}

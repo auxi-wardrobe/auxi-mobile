@@ -17,6 +17,7 @@ export interface MSwitchProps {
   disabled?: boolean;
   testID?: string;
   accessibilityLabel?: string;
+  appendStateToTestID?: boolean;
 }
 
 export const MSwitch: React.FC<MSwitchProps> = ({
@@ -25,6 +26,7 @@ export const MSwitch: React.FC<MSwitchProps> = ({
   disabled,
   testID,
   accessibilityLabel,
+  appendStateToTestID = true,
 }) => {
   const v = useToggleValue(value);
   const left = v.interpolate({ inputRange: [0, 1], outputRange: [4, 24] });
@@ -34,7 +36,7 @@ export const MSwitch: React.FC<MSwitchProps> = ({
   });
   return (
     <Pressable
-      testID={value && testID ? `${testID}-on` : testID}
+      testID={appendStateToTestID && value && testID ? `${testID}-on` : testID}
       disabled={disabled}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
