@@ -1,0 +1,50 @@
+<svg width="260" height="193" viewBox="0 0 260 193" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="weather icons">
+<g clip-path="url(#clip0_441_833)">
+<g id="Property 1=Group 1">
+<g id="Ellipse 5" filter="url(#filter0_f_441_833)">
+<circle cx="129.794" cy="62.6262" r="29.7942" fill="#FFC701" fill-opacity="0.35"/>
+</g>
+<circle id="Ellipse 4" cx="129.794" cy="63.603" r="27.8173" fill="url(#paint0_linear_441_833)" stroke="url(#paint1_linear_441_833)" stroke-width="2"/>
+<g id="Mask group">
+<mask id="mask0_441_833" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="100" y="51" width="59" height="42">
+<path id="Ellipse 5_2" d="M158.612 63.6031C158.612 79.5185 145.71 92.4204 129.794 92.4204C113.879 92.4204 100.977 79.5185 100.977 63.6031C100.977 47.6877 111.681 51.3924 127.596 51.3924C143.512 51.3924 158.612 47.6877 158.612 63.6031Z" fill="url(#paint2_linear_441_833)"/>
+</mask>
+<g mask="url(#mask0_441_833)">
+<g id="Union" filter="url(#filter1_f_441_833)">
+<path d="M152.507 95.354C152.588 95.3531 152.669 95.3511 152.751 95.3511C164.35 95.3513 173.753 104.755 173.753 116.354C173.752 127.953 164.35 137.356 152.751 137.356C152.669 137.356 152.588 137.353 152.507 137.352V137.356H78.7537L78.7556 137.353C78.6737 137.354 78.5917 137.357 78.5095 137.357C66.9102 137.357 57.5066 127.953 57.5066 116.354C57.5066 104.755 66.9102 95.3511 78.5095 95.3511C88.5077 95.3513 96.8729 102.339 98.9919 111.696L106.105 102.677L128.329 95.3511H152.507V95.354Z" fill="#E18700"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+<rect x="-935.577" y="0.5" width="1655.86" height="1752.49" rx="4.5" stroke="#9747FF" stroke-dasharray="10 5"/>
+</g>
+<defs>
+<filter id="filter0_f_441_833" x="0" y="-67.168" width="259.588" height="259.588" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="50" result="effect1_foregroundBlur_441_833"/>
+</filter>
+<filter id="filter1_f_441_833" x="43.5066" y="81.3511" width="144.246" height="70.0059" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="7" result="effect1_foregroundBlur_441_833"/>
+</filter>
+<linearGradient id="paint0_linear_441_833" x1="129.794" y1="34.7856" x2="129.794" y2="92.4203" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FFE600"/>
+<stop offset="1" stop-color="#FF7A00"/>
+</linearGradient>
+<linearGradient id="paint1_linear_441_833" x1="129.794" y1="34.7856" x2="129.794" y2="92.4203" gradientUnits="userSpaceOnUse">
+<stop stop-color="white"/>
+<stop offset="1" stop-color="white" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="paint2_linear_441_833" x1="129.794" y1="34.7858" x2="129.794" y2="92.4204" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FFD600"/>
+<stop offset="1" stop-color="#FF7A00"/>
+</linearGradient>
+<clipPath id="clip0_441_833">
+<rect x="-936.077" width="1656.86" height="1753.49" rx="5" fill="white"/>
+</clipPath>
+</defs>
+</svg>
