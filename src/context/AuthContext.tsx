@@ -11,7 +11,6 @@ import { authService } from '../services/auth';
 import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { registerSessionExpiredListener } from '../services/apiClient';
 import { identifyUser, resetAnalytics, track } from '../services/analytics';
-import { identifyFlagUser, resetFlagUser } from '../services/feature-flags';
 import {
   registerDeviceForPush,
   unregisterDevice,
@@ -260,7 +259,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // Key Unleash rollouts on the same identity as analytics, so % rollouts
       // and role/gender targeting are stable per logged-in user. Fires on the
       // same transitions: login, cold-start restore, post-verify.
-      identifyFlagUser(user);
       if (justLoggedInRef.current) {
         justLoggedInRef.current = false;
         const method = pendingAuthMethodRef.current;
@@ -283,8 +281,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } else if (analyticsIdRef.current !== null) {
       analyticsIdRef.current = null;
       resetAnalytics();
-      // Clear Unleash identity on logout → back to anonymous evaluation.
-      resetFlagUser();
       // User left (logout / session expiry): drop the in-memory recommendation
       // memory and the cached V05 session so neither outlives the user it
       // belongs to (the per-user persisted memory blob stays for re-login).
