@@ -81,14 +81,16 @@ describe('RootDrawer gesture ownership', () => {
     mockClose.mockClear();
   });
 
-  it('does not mount the drawer pan host while closed', () => {
+  it('always mounts the drawer pan host (never remounts NavigationContainer)', () => {
     const renderer = renderDrawer();
 
+    // GestureDetector is always in the tree — closed or open — so the
+    // NavigationContainer inside children is never unmounted on open/close.
     expect(findByTestID(renderer.root, 'app-content')).toHaveLength(1);
-    expect(findByTestID(renderer.root, 'drawer-pan-host')).toHaveLength(0);
+    expect(findByTestID(renderer.root, 'drawer-pan-host')).toHaveLength(1);
   });
 
-  it('mounts the drawer pan host while open', () => {
+  it('mounts the close-catcher while open', () => {
     mockSidebarOpen = true;
 
     const renderer = renderDrawer();

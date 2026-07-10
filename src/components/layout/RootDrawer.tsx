@@ -56,8 +56,14 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [isOpen, progress, dragX]);
 
-  // Swipe-left-to-close pan gesture — only active when drawer is open.
+  // Active while the drawer is open OR its close animation is still running.
+  const drawerGestureActive = isOpen || revealed;
+
+  // Swipe-left-to-close pan gesture — enabled only when drawer is open.
+  // `.enabled()` is used instead of conditional GestureDetector mounting so
+  // the tree structure (and the NavigationContainer inside) never remounts.
   const panGesture = Gesture.Pan()
+    .enabled(drawerGestureActive)
     .onUpdate(e => {
       if (!isOpenRef.current) {
         return;
@@ -92,27 +98,6 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
     }),
     dragX,
   );
-  const content = (
-    <Animated.View
-      style={[
-        styles.content,
-        revealed && styles.contentRevealed,
-        { transform: [{ translateX }] },
-      ]}
-    >
-      {children}
-      {revealed ? (
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={close}
-          accessibilityLabel="Close menu"
-          testID="drawer-close-catcher"
-        />
-      ) : null}
-    </Animated.View>
-  );
-  const drawerGestureActive = isOpen || revealed;
-
   return (
     <View style={styles.root}>
       {/* Back layer (tier base) — the menu the content is pushed aside to reveal. */}
@@ -120,12 +105,28 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
         <SidebarMenu />
       </View>
 
-      {/* App content (tier content) — pushed right; rounded + shadowed when open. */}
-      {drawerGestureActive ? (
-        <GestureDetector gesture={panGesture}>{content}</GestureDetector>
-      ) : (
-        content
-      )}
+      {/* App content (tier content) — pushed right; rounded + shadowed when open.
+          GestureDetector is always in the tree so the NavigationContainer inside
+          never remounts; the gesture is disabled via .enabled() when closed. */}
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          style={[
+            styles.content,
+            revealed && styles.contentRevealed,
+            { transform: [{ translateX }] },
+          ]}
+        >
+          {children}
+          {revealed ? (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={close}
+              accessibilityLabel="Close menu"
+              testID="drawer-close-catcher"
+            />
+          ) : null}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 };
