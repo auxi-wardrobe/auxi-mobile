@@ -92,6 +92,26 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
     }),
     dragX,
   );
+  const content = (
+    <Animated.View
+      style={[
+        styles.content,
+        revealed && styles.contentRevealed,
+        { transform: [{ translateX }] },
+      ]}
+    >
+      {children}
+      {revealed ? (
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={close}
+          accessibilityLabel="Close menu"
+          testID="drawer-close-catcher"
+        />
+      ) : null}
+    </Animated.View>
+  );
+  const drawerGestureActive = isOpen || revealed;
 
   return (
     <View style={styles.root}>
@@ -101,25 +121,11 @@ export const RootDrawer: React.FC<{ children: React.ReactNode }> = ({
       </View>
 
       {/* App content (tier content) — pushed right; rounded + shadowed when open. */}
-      <GestureDetector gesture={panGesture}>
-        <Animated.View
-          style={[
-            styles.content,
-            revealed && styles.contentRevealed,
-            { transform: [{ translateX }] },
-          ]}
-        >
-          {children}
-          {revealed ? (
-            <Pressable
-              style={StyleSheet.absoluteFill}
-              onPress={close}
-              accessibilityLabel="Close menu"
-              testID="drawer-close-catcher"
-            />
-          ) : null}
-        </Animated.View>
-      </GestureDetector>
+      {drawerGestureActive ? (
+        <GestureDetector gesture={panGesture}>{content}</GestureDetector>
+      ) : (
+        content
+      )}
     </View>
   );
 };
