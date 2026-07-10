@@ -50,7 +50,9 @@ const Row: React.FC<{
       onPress={onPress}
       testID={
         option.testID ??
-        (testID ? `${testID}-${slug(option.value)}${on ? '-on' : ''}` : undefined)
+        (testID
+          ? `${testID}-${slug(option.value)}${on ? '-on' : ''}`
+          : undefined)
       }
       accessibilityRole={kind === 'check' ? 'checkbox' : 'radio'}
       accessibilityState={kind === 'check' ? { checked: on } : { selected: on }}
@@ -135,6 +137,7 @@ export interface MRadioMenuProps {
   value: string;
   onChange: (value: string) => void;
   testID?: string;
+  style?: import('react-native').StyleProp<import('react-native').ViewStyle>;
 }
 
 export const MRadioMenu: React.FC<MRadioMenuProps> = ({
@@ -142,8 +145,9 @@ export const MRadioMenu: React.FC<MRadioMenuProps> = ({
   value,
   onChange,
   testID,
+  style,
 }) => (
-  <View style={[styles.menu, shadow.card]} testID={testID}>
+  <View style={[styles.menu, shadow.card, style]} testID={testID}>
     {options.map((o, i) => (
       <Row
         key={o.value}
@@ -160,7 +164,8 @@ export const MRadioMenu: React.FC<MRadioMenuProps> = ({
 
 const styles = StyleSheet.create({
   menu: {
-    width: 280,
+    width: '100%',
+    maxWidth: 280,
     backgroundColor: role.surface2,
     borderRadius: radius['2xl'],
     overflow: 'hidden',
