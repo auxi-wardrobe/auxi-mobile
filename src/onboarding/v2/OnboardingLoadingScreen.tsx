@@ -22,7 +22,7 @@
  * "You selected" chips, Poppins H2 headline, helper + footer lines, and a set
  * of loading rows each with a rotating 24×24 `Icons.Loading` spinner.
  */
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -40,6 +40,7 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
+import { useAuth } from '../../context/AuthContext';
 import { track } from '../../services/analytics';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { SelectedChips } from './SelectedChips';
@@ -149,6 +150,8 @@ export const OnboardingLoadingScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<ScreenRoute>();
   const { selection } = route.params;
+  const { completeOnboarding } = useAuth();
+  const [isContinuing, setIsContinuing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -197,6 +200,31 @@ export const OnboardingLoadingScreen = () => {
     });
   }, [navigation, selection]);
 
+  // Escape hatch when `/generate` keeps failing: complete onboarding via the
+  // profile-update path (`is_first_login=false`) INDEPENDENT of the generate
+  // call, so a generate failure never traps the user in onboarding on every
+  // relaunch. Home degrades gracefully on an empty/partial wardrobe (it now
+  // renders an "add items / try again" empty state instead of a blank screen),
+  // and the starter wardrobe can be re-generated later. Completion flips
+  // is_first_login → AppNavigator swaps to Home (unmounts this stack).
+  const handleContinueAnyway = useCallback(async () => {
+    if (isContinuing) return;
+    setIsContinuing(true);
+    try {
+      await completeOnboarding();
+      track('onboarding_completed', {
+        styles_selected: selection.style_preferences.length,
+        wardrobe_direction: selection.wardrobe_direction,
+        fit_preference: selection.fit_preference,
+        generate_failed: true,
+      });
+    } catch (error) {
+      // Completion itself failed (network) — keep the CTA tappable for retry.
+      console.error('Failed to complete onboarding after generate error', error);
+      setIsContinuing(false);
+    }
+  }, [completeOnboarding, isContinuing, selection]);
+
   const chips = selectionChipLabels(selection);
   const isError = generateMutation.isError;
   const parsed = isError ? parseGenerateError(generateMutation.error) : null;
@@ -236,13 +264,27 @@ export const OnboardingLoadingScreen = () => {
             title="Try again"
             variant="filled"
             onPress={() => generateMutation.mutate()}
+            disabled={isContinuing}
             style={styles.cta}
             testID="onboarding-loading-retry"
+          />
+          {/* Non-trapping escape: complete onboarding and go to Home even if
+              the starter-wardrobe generate keeps failing (it can be re-run
+              later; Home handles an empty wardrobe gracefully). */}
+          <PillButton
+            title={LOADING_COPY.continueAnyway}
+            variant="text"
+            onPress={handleContinueAnyway}
+            loading={isContinuing}
+            disabled={isContinuing}
+            style={styles.cta}
+            testID="onboarding-loading-continue-anyway"
           />
           <PillButton
             title="Retake"
             variant="text"
             onPress={handleRetake}
+            disabled={isContinuing}
             style={styles.cta}
             testID="onboarding-loading-retake"
           />

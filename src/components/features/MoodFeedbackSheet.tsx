@@ -196,13 +196,30 @@ export const MoodFeedbackSheet: React.FC<MoodFeedbackSheetProps> = ({
 
           <PillButton
             testID="mood-feedback-done"
-            title={t('mood.done')}
+            title={errorMessage ? t('mood.retry') : t('mood.done')}
             variant="filled"
             disabled={selectedIds.size === 0 || isSubmitting}
             loading={isSubmitting}
             onPress={() => onSubmit(Array.from(selectedIds))}
             style={styles.doneButton}
           />
+
+          {/* Always-available explicit escape so the user is never trapped —
+              critical in the save-failure state where "Done" only re-errors.
+              Backdrop tap + swipe-down also dismiss (both already wired to
+              onDismiss); this is the discoverable affordance. Hidden only while
+              a submit is genuinely in flight. */}
+          {!isSubmitting ? (
+            <Pressable
+              testID="mood-feedback-cancel"
+              accessibilityRole="button"
+              accessibilityLabel={t('mood.cancel')}
+              onPress={onDismiss}
+              style={styles.cancelButton}
+            >
+              <Text style={styles.cancelLabel}>{t('mood.cancel')}</Text>
+            </Pressable>
+          ) : null}
         </Animated.View>
       </View>
     </Modal>
@@ -262,5 +279,16 @@ const styles = StyleSheet.create({
   doneButton: {
     alignSelf: 'stretch',
     marginTop: theme.spacing.m,
+  },
+  cancelButton: {
+    alignSelf: 'center',
+    marginTop: theme.spacing.s,
+    paddingVertical: theme.spacing.s,
+    paddingHorizontal: theme.spacing.l,
+  },
+  cancelLabel: {
+    ...theme.typography.aliases.interBodySm,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
   },
 });

@@ -15,6 +15,7 @@ import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { BodyItem } from '../../services/bodyService';
 import { formatPhotoTimestamp, resolveImageUrl } from '../../utils/body';
+import { track } from '../../services/analytics';
 import { PhotoSourceModal } from './PhotoSourceModal';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -68,6 +69,29 @@ export const BodyPhotoDetailView: React.FC<BodyPhotoDetailViewProps> = ({
             <Text style={styles.detailPlaceholderText}>
               {loading ? t('common.loading') : t('body.no_photo_hint')}
             </Text>
+            {/* Empty state previously instructed "Tap Retake to add one" but
+                offered no obvious CTA — a new user couldn't add a first body
+                photo. Surface an explicit add button that opens the same
+                camera/gallery source picker as Retake (→ handleImageSelection). */}
+            {!loading ? (
+              <TouchableOpacity
+                testID="body-detail-empty-add"
+                accessibilityRole="button"
+                accessibilityLabel={t('body.a11y_add_photo')}
+                activeOpacity={0.82}
+                disabled={uploading}
+                style={[
+                  styles.emptyAddButton,
+                  uploading && styles.detailActionDisabled,
+                ]}
+                onPress={() => {
+                  track('body_photo_add_started', { source: 'empty_detail' });
+                  onOpenSourceModal();
+                }}
+              >
+                <Text style={styles.emptyAddLabel}>{t('body.add_photo')}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         )}
 
@@ -200,6 +224,23 @@ const styles = StyleSheet.create({
   },
   detailActionDisabled: {
     opacity: 0.5,
+  },
+  // Empty-state primary CTA — bordered pill so it reads as a tappable button
+  // (the placeholder text alone did not).
+  emptyAddButton: {
+    marginTop: 16,
+    minHeight: 48,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.uacRadioPill,
+    borderWidth: 1.5,
+    borderColor: theme.colors.uacTextBase,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyAddLabel: {
+    ...theme.typography.aliases.poppinsButton,
+    color: theme.colors.uacTextBase,
   },
   detailDeleteLabel: {
     ...theme.typography.aliases.poppinsBody,

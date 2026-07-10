@@ -396,6 +396,18 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.figmaText,
   },
+  // Borderless secondary action beneath the primary bordered CTA (e.g. the
+  // "Try again" under "Add items" on the Home empty state).
+  errorStateSecondary: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+  },
+  errorStateSecondaryLabel: {
+    ...theme.typography.aliases.poppinsBody,
+    fontSize: 14,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
+  },
   loadingMoreIndicator: {
     marginHorizontal: 24,
     minHeight: 44,

@@ -676,6 +676,11 @@ const buildAndStore = async (
     outfits: data.outfits,
     lowConfidence: data.low_confidence === true,
     sessionId: data.session_id ?? null,
+    // Cold-start `/build` can also come back empty on a climate-starved slot
+    // (`wardrobe_gap`) — propagate it so HomeScreen shows the terminal CTA
+    // instead of a blank deck. Previously only `/try_another` surfaced this,
+    // so a NEW user whose first `/build` returned no outfit saw a blank screen.
+    wardrobeGap: data.wardrobe_gap === true,
   };
 };
 
