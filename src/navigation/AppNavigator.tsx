@@ -48,15 +48,9 @@ import {
   getPendingNavIntent,
   setPendingNavIntent,
 } from '../services/reviewOverrides';
-import { useUnleashForegroundRefresh } from '../hooks/useUnleashForegroundRefresh';
-
 const Stack = createAppStack<AppStackParamList>();
 
 export const AppNavigator = () => {
-  // Force a flag re-fetch on app foreground (in addition to interval polling).
-  // Mounted once here — AppNavigator renders under FlagProvider (see App.tsx).
-  useUnleashForegroundRefresh();
-
   useEffect(() => {
     // Register Linking listeners for the verify-email and reset-password deep
     // links, driving them through the shared navigationRef (also used by the
@@ -246,10 +240,7 @@ export const AppNavigator = () => {
                 component={SeeThisOnMeScreen}
                 options={{ gestureEnabled: false }}
               />
-              <Stack.Screen
-                name="TryOnResult"
-                component={TryOnResultScreen}
-              />
+              <Stack.Screen name="TryOnResult" component={TryOnResultScreen} />
               <Stack.Screen
                 name="ItemDetail"
                 component={ItemDetailScreen}

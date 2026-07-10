@@ -6,7 +6,6 @@ type Props = {
   size?: number; // square px, default 32
 };
 
-// Static map: OpenWeather icon code → require(). No dynamic require() allowed.
 const ICON_MAP: Record<string, ImageSourcePropType> = {
   '01d': require('../../assets/images/weather/weather_clear_day.png'),
   '01n': require('../../assets/images/weather/weather_clear_night.png'),
@@ -35,7 +34,6 @@ export const WeatherIcon: React.FC<Props> = ({ code = '01d', size = 32 }) => (
     source={ICON_MAP[code] ?? FALLBACK}
     style={{ width: size, height: size }}
     resizeMode="contain"
-    accessible
     accessibilityLabel="current weather icon"
   />
 );
