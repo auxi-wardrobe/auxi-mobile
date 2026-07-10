@@ -107,6 +107,7 @@ import {
   type HomeErrorVariant,
 } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
+import { HomeEmptyState } from './components/HomeEmptyState';
 import { DeckCue } from './components/DeckCue';
 import { HomeHeader } from './components/HomeHeader';
 import { HomeLoadingState } from './components/HomeLoadingState';
@@ -1444,6 +1445,30 @@ export const HomeScreen = () => {
               mode: selectedModeRef.current,
               style_feedback: styleFeedbackRef.current ?? undefined,
             });
+          }}
+        />
+      ) : optionSets.length === 0 ? (
+        // Recommendation resolved but surfaced no outfit (empty wardrobe /
+        // nothing composable) — NOT a climate gap and NOT an error. Previously
+        // this fell through to an empty deck = blank white screen for new users.
+        <HomeEmptyState
+          onAddItems={() => {
+            track('home_empty_state_cta_tapped', { action: 'add_items' });
+            navigation.navigate('Wardrobe');
+          }}
+          onRetry={() => {
+            track('home_empty_state_cta_tapped', { action: 'try_again' });
+            resetV05Session();
+            fetchGenerationRef.current += 1;
+            poolDepletedRef.current = false;
+            isFirstLoadRef.current = true;
+            requestRecommendation(
+              {
+                mode: selectedModeRef.current,
+                style_feedback: styleFeedbackRef.current ?? undefined,
+              },
+              { force: true },
+            );
           }}
         />
       ) : (

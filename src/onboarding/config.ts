@@ -257,6 +257,11 @@ export interface LoadingCopy {
   /** Step rows shown while the wardrobe materialises. */
   rows: string[];
   footer: string;
+  /**
+   * Error-state escape hatch label — completes onboarding and proceeds to Home
+   * even when the starter-wardrobe generate keeps failing (non-trapping).
+   */
+  continueAnyway: string;
 }
 
 export const LOADING_COPY: LoadingCopy = {
@@ -268,6 +273,7 @@ export const LOADING_COPY: LoadingCopy = {
     'Building your starter wardrobe',
   ],
   footer: 'This only takes a moment.',
+  continueAnyway: 'Continue to app',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

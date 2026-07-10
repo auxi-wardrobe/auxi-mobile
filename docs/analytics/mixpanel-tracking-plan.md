@@ -86,7 +86,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `style_selected` | Style chip add | `OnboardingStylesScreen.tsx:96` | `style_name` |
 | `style_deselected` | Style chip remove | `OnboardingStylesScreen.tsx:92` | `style_name` |
 | `onboarding_generated` (pre-existing) | Wardrobe generated | `OnboardingLoadingScreen.tsx:160` | `wardrobe_direction`, `fit_preference`, `styles_selected` |
-| `onboarding_completed` (pre-existing) | Outro completes | `OnboardingOutroScreen.tsx:51` | `wardrobe_direction`, `fit_preference`, `styles_selected` |
+| `onboarding_completed` (pre-existing) | Outro "See my outfit" completes onboarding. ALSO fires from the Loading screen's "Continue to app" escape hatch when the starter-wardrobe generate keeps failing — a non-trapping completion so a generate failure never re-throws the user into onboarding on relaunch. | `OnboardingOutroScreen.tsx:51`; `OnboardingLoadingScreen.tsx` (`handleContinueAnyway`) | `wardrobe_direction`, `fit_preference`, `styles_selected`, `generate_failed?` (`true` only on the Loading escape-hatch path; omitted on the normal Outro completion) |
 
 ### 5.3 Home + outfit recommendation engagement
 
@@ -94,6 +94,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 |---|---|---|---|
 | **`outfit_recommendation_viewed`** | Active sheet settles on a new `outfit_hash`. Dedup'd via module-level `Set<outfit_hash>` per session — see `trackRecommendationViewedOnce()` helper. | `HomeScreen.tsx:564` via `analytics.ts:173` | `outfit_hash`, `position`, `source` (`feed`/`refine`) |
 | **`recommendation_failed`** | The Home recommendation build/poll mutation rejects (`onError`). Makes launch-week AI failures visible (previously only `console.error`'d). | `HomeScreen/index.tsx` (`startMutation.onError`) via `analytics.ts` (`trackRecommendationFailed`) | `error_kind` (`network` / `rate_limited` / `ai_unavailable` / `server` / `unknown` — sanitized from the axios error, NO raw message/URL/PII); `status` (HTTP status number, omitted when no response reached the app) |
+| `home_empty_state_cta_tapped` | CTA on the Home empty state — shown when the recommendation resolved but surfaced no outfit (empty wardrobe / nothing composable) and it is NOT a climate wardrobe-gap (own CTA) nor an error. Fixes the blank-white-screen a new user hit. Distinct from the wardrobe-gap and error states, which have their own CTAs. | `HomeScreen/index.tsx` (`HomeEmptyState` handlers) | `action` (`add_items` → Wardrobe / `try_again` → re-request recommendation) |
 | **`outfit_favorited`** ★ (pre-existing) | `saveFavourite` success | `HomeScreen.tsx:973` | `outfit_hash`, `item_count`, `source` |
 | `outfit_unfavorited` (pre-existing) | Favourite removed | `FavouriteScreen.tsx:53` | `favorite_id` |
 | `outfit_swiped` | Swipe left → next suggestion / swipe right → previous (navigation only; favouriting moved to "Wear this"). Right-swipe is blocked on the first card, so `previous` only fires from index ≥ 1. | `HomeScreen/index.tsx` (`handleSkip`, `handleSwipeBack`) | `outfit_hash`, `direction` (`next`/`previous`), `method` (`gesture`) |
@@ -165,6 +166,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `body_photo_added` | First photo set in slot | `BodyScreen.tsx:263` | `slot` (`full_body`) |
 | `body_photo_replaced` | Existing photo replaced | `BodyScreen.tsx:263` (same call, branched by `wasEmpty && !isRetake`) | `slot` |
 | `body_photo_deleted` | Photo cleared | `BodyScreen.tsx:208` | `slot` |
+| `body_photo_add_started` | Empty-state "Add photo" CTA tapped on the body-photo detail view (opens the camera/gallery source picker) — the intent step before an upload. Fixes the empty state that instructed "Tap Retake" but rendered no obvious button. | `BodyPhotoDetailView.tsx` (empty-add `onPress`) | `source` (`empty_detail`) |
 
 ### 5.7 Settings
 
@@ -177,6 +179,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `settings_language_changed` | Locale switch | `SettingsScreen.tsx:403` | `locale` (`en-EN`/`vi-VN`/`fr-FR`) |
 | `style_direction_changed` | Style direction save | `SettingsScreen.tsx:507` | `direction` |
 | `analytics_consent_changed` | Consent toggle (fires AFTER grant, BEFORE revoke) | `SettingsScreen.tsx:460, 466` | `granted` |
+| `account_logged_out` | "Log out" row confirmed (Account section). Fires when the confirm dialog's primary is tapped, before `AuthContext.logout()` clears the session. Resolves the §6.1 gap ("no logout button on SettingsScreen"). | `SettingsScreen.tsx` (`handleLogout`) | `source` (`settings`) |
 
 > PII: all settings events carry bounded enums only (`period`, `frequency`, `direction`, `locale`, `granted`, `enabled`) — no raw text, no identifiers. The read-only hour value (`'06:15'`) is NOT tracked. `notifications_reset` props echo the constant defaults (so the dashboard can confirm what "default" was at fire time); `notifications_reset_undone` echoes the restored prior values for symmetry.
 
@@ -326,7 +329,7 @@ These hooks were spec'd but cannot fire today — the UI surface, control, or AP
 
 - `daily_reminder_time_changed` — no hour-picker on `SettingsScreen` (only the AM/PM + frequency cadence is interactive — now tracked as `notifications_schedule_changed`, §5.7; the hour value `'06:15'` stays read-only display per CEO Q12, so a dedicated hour-change event remains a gap until a picker ships)
 - `confidence_level_changed` — no confidence-level control
-- `account_logged_out` — no logout button on `SettingsScreen` (likely lives in a Drawer/Sidebar component — re-locate and wire)
+- ~~`account_logged_out`~~ — **SHIPPED** (§5.7): a "Log out" row now exists in the Account section (confirm dialog → `AuthContext.logout()`).
 - `account_deleted` — "Delete data" row resets preferences (`resetUserPreferences`), doesn't delete the account
 - `support_link_tapped` — no support/help/TOS/privacy links exist on this screen
 
