@@ -29,7 +29,7 @@ export interface WardrobeAttributeUpdate {
 
 export interface WardrobeItem {
   id: string;
-  user_id?: string | number;
+  user_id?: string | number | null;
   owner_id?: string | number;
   category?: string;
   image_url?: string;
@@ -49,6 +49,8 @@ export interface WardrobeItem {
   // AU-361: true while the backend is still processing the upload (bg-removal
   // + auto-tagging); flips false once the item is ready to use.
   is_preparing?: boolean;
+  is_new?: boolean;
+  reviewed_at?: string | null;
   is_favorited?: boolean;
   usage_frequency?: UsageFrequency;
   updated_at?: string;
@@ -450,6 +452,16 @@ export const wardrobeService = {
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error importing wardrobe item from URL', error);
+      throw error;
+    }
+  },
+
+  markWardrobeItemReviewed: async (id: string): Promise<WardrobeItem> => {
+    try {
+      const response = await wardrobeApi.post(`/wardrobe/items/${id}/reviewed`);
+      return getSingleItem(response.data);
+    } catch (error) {
+      console.error('Error marking wardrobe item reviewed', error);
       throw error;
     }
   },

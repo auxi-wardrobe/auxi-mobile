@@ -336,6 +336,7 @@
         "extract_cta": "Extract images",
         "extracting": "Collecting images…",
         "select_title": "Select an image",
+        "preview_cta": "Preview",
         "cancel": "Cancel",
         "preview_title": "Preview image",
         "import_cta": "Import",
