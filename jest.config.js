@@ -25,6 +25,7 @@ module.exports = {
         'react-native-localize',
         'react-native-geolocation-service',
         'react-native-image-picker',
+        'react-native-gesture-handler',
       ].join('|') +
       ')/)',
   ],

@@ -1,5 +1,6 @@
 import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
+import { StyleSheet } from 'react-native';
 import { OutfitPreview } from '../OutfitPreview';
 import { StepBodyShape } from '../StepBodyShape';
 import { StepBodyShapeSkeleton } from '../StepBodyShapeSkeleton';
@@ -48,6 +49,22 @@ test('outfit preview renders a skeleton while the generated try-on image loads',
   });
 
   expect(hasTestID(r, 'stom-preview-image-skeleton')).toBe(true);
+});
+
+test('outfit preview uses a 9:16 portrait image frame', () => {
+  let r!: TestRenderer.ReactTestRenderer;
+  act(() => {
+    r = TestRenderer.create(
+      <OutfitPreview
+        imageUri="https://cdn.example/result.jpg"
+        onBackHome={jest.fn()}
+      />,
+    );
+  });
+
+  const frame = r.root.findByProps({ testID: 'stom-preview-image-frame' });
+  const style = StyleSheet.flatten(frame.props.style);
+  expect(style?.aspectRatio).toBe(9 / 16);
 });
 
 test('photo thumbnail renders a skeleton while the selected user photo loads', () => {
