@@ -106,6 +106,22 @@ jest.mock('@react-navigation/native-stack', () => {
   };
 });
 
+// react-native-gesture-handler: native gesture bridge, absent in jest. Tests that
+// import DS sheets only need imports/rendering to resolve; gestures are inert.
+jest.mock('react-native-gesture-handler', () => {
+  const React = require('react');
+  const chain = {
+    onEnd: jest.fn(() => chain),
+    onUpdate: jest.fn(() => chain),
+    runOnJS: jest.fn(() => chain),
+  };
+  return {
+    Gesture: { Pan: jest.fn(() => chain) },
+    GestureDetector: ({ children }) =>
+      React.createElement(React.Fragment, null, children),
+  };
+});
+
 // react-native-keychain: in-memory stub. AuthContext bootstrap reads the token
 // bundle on mount (App.test.tsx render path); without this the real native
 // module is undefined and logs post-test async errors.
