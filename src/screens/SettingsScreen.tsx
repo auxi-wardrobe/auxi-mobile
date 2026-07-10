@@ -530,6 +530,7 @@ export const SettingsScreen = () => {
               setPendingPeriod(value as DailyNotificationPeriod)
             }
             testID="settings-time-period"
+            style={{ width: 110 }}
           />
         </View>
       </SettingsDialog>
