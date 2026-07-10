@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
   Image,
@@ -17,7 +17,7 @@ import { ExtractedImage } from './import-from-web';
 interface ImportSelectImageSheetProps {
   visible: boolean;
   images: ExtractedImage[];
-  onSelect: (image: ExtractedImage) => void;
+  onPreview: (image: ExtractedImage) => void;
   onCancel: () => void;
 }
 
@@ -57,17 +57,30 @@ const TILE_SIZE = Math.floor(
 /**
  * "Select an image" — the extracted-image grid (Figma: Select an image sheet).
  * Rides the shared ContextualBottomSheet shell. Exactly one image can be
- * picked; tapping a tile opens Preview. Cancel dismisses back to the results
- * page without any data change. The grid is capped upstream (24 images) so the
- * ScrollView never has to virtualize.
+ * picked; tapping a tile marks it selected, then Preview opens the full-screen
+ * review. Cancel dismisses back to the results page without any data change.
+ * The grid is capped upstream (24 images) so the ScrollView never virtualizes.
  */
 export const ImportSelectImageSheet: React.FC<ImportSelectImageSheetProps> = ({
   visible,
   images,
-  onSelect,
+  onPreview,
   onCancel,
 }) => {
   const { t } = useTranslation();
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
+  const selectedImage = images.find(image => image.url === selectedUrl) ?? null;
+
+  useEffect(() => {
+    setSelectedUrl(null);
+  }, [images, visible]);
+
+  const handlePreview = () => {
+    if (!selectedImage) {
+      return;
+    }
+    onPreview(selectedImage);
+  };
 
   return (
     <ContextualBottomSheet
@@ -88,18 +101,43 @@ export const ImportSelectImageSheet: React.FC<ImportSelectImageSheetProps> = ({
           {images.map((image, index) => (
             <PressableScale
               key={image.url}
-              style={styles.tile}
+              style={[
+                styles.tile,
+                selectedUrl === image.url && styles.tileSelected,
+              ]}
               activeOpacity={0.85}
-              onPress={() => onSelect(image)}
+              onPress={() => setSelectedUrl(image.url)}
               testID={`import-image-${index}`}
               accessibilityLabel={t('wardrobe.import_web.image_a11y', {
                 index: index + 1,
               })}
+              accessibilityState={{ selected: selectedUrl === image.url }}
             >
               <TileImage uri={image.url} />
+              {selectedUrl === image.url ? (
+                <View
+                  style={styles.selectionBadge}
+                  testID={`import-image-selected-${index}`}
+                  pointerEvents="none"
+                >
+                  <Text style={styles.selectionBadgeText}>1</Text>
+                </View>
+              ) : null}
             </PressableScale>
           ))}
         </ScrollView>
+
+        <View style={styles.actionWrap}>
+          <MButton
+            variant="primary"
+            onPress={handlePreview}
+            disabled={!selectedImage}
+            testID="import-select-preview"
+            accessibilityLabel={t('wardrobe.import_web.preview_cta')}
+          >
+            {t('wardrobe.import_web.preview_cta')}
+          </MButton>
+        </View>
 
         <View style={styles.cancelWrap}>
           <MButton
@@ -141,8 +179,33 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.figmaTile,
     overflow: 'hidden',
     backgroundColor: theme.colors.figmaDetailSurface,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  tileSelected: {
+    borderColor: theme.colors.figmaAction,
+  },
+  selectionBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 24,
+    height: 24,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.figmaAction,
+    borderWidth: 2,
+    borderColor: theme.colors.white,
+  },
+  selectionBadgeText: {
+    ...theme.typography.aliases.interCaptionXxs,
+    color: theme.colors.white,
+  },
+  actionWrap: {
+    marginTop: theme.spacing.l,
   },
   cancelWrap: {
-    marginTop: theme.spacing.l,
+    marginTop: theme.spacing.s,
   },
 });

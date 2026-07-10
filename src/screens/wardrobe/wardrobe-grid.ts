@@ -74,24 +74,20 @@ export const anyPreparing = (items?: WardrobeItem[] | null): boolean =>
 // A grid tile shows at most one status pill (Figma: bottom-centre). The four
 // states are mutually exclusive and resolved with the precedence
 // new > less use > common (product decision):
-//   • new      — one of the user's OWN items (not a catalog/common item) that
-//     they uploaded but have not opened the detail for yet. "Viewed" is tracked
-//     locally per-user (see WardrobeViewedContext); opening the detail clears
-//     the tag. Checked first so a fresh upload reads as "new".
+//   • new      — one of the user's OWN items (not a catalog/common item) whose
+//     backend review state is still `is_new=true`. Opening item detail persists
+//     review state server-side so the tag is stable across devices.
 //   • less use — user explicitly demoted the item (NORMAL ↔ LESS_USED). Wins
 //     over "common" so a demoted catalog item still reads as "less use".
 //   • common   — item originates from our shared database (catalog).
 //   • (none)   — a user item that has been seen.
 export type TileStatus = 'new' | 'less_use' | 'common' | null;
 
-export const resolveTileStatus = (
-  item: WardrobeItem,
-  viewed: boolean,
-): TileStatus => {
+export const resolveTileStatus = (item: WardrobeItem): TileStatus => {
   // "New" only applies to the user's own uploads, never to catalog/common
   // items — those carry the "common" tag regardless of whether they've been
   // opened.
-  if (!isCommonItem(item) && !viewed) {
+  if (!isCommonItem(item) && item.is_new === true) {
     return 'new';
   }
   if (getItemUsageFrequency(item) === 'LESS_USED') {

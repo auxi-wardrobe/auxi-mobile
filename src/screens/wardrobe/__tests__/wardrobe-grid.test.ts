@@ -2,6 +2,7 @@ import {
   PREPARING_TIMEOUT_MS,
   anyPreparing,
   findExpiredPreparingIds,
+  resolveTileStatus,
   syncPreparingFirstSeen,
 } from '../wardrobe-grid';
 import { WardrobeItem } from '../../../services/wardrobeService';
@@ -24,6 +25,38 @@ describe('anyPreparing', () => {
     expect(
       anyPreparing([item({ is_preparing: false }), item({ is_preparing: true })]),
     ).toBe(true);
+  });
+});
+
+describe('resolveTileStatus', () => {
+  it('renders New only when the backend marks a personal item as new', () => {
+    expect(
+      resolveTileStatus(item({ user_id: 'u1', is_common_item: false, is_new: true })),
+    ).toBe('new');
+  });
+
+  it('does not infer New from missing local viewed state', () => {
+    expect(
+      resolveTileStatus(item({ user_id: 'u1', is_common_item: false })),
+    ).toBeNull();
+  });
+
+  it('keeps less use and common precedence when is_new is false', () => {
+    expect(
+      resolveTileStatus(
+        item({
+          user_id: 'u1',
+          is_common_item: false,
+          is_new: false,
+          usage_frequency: 'LESS_USED',
+        }),
+      ),
+    ).toBe('less_use');
+    expect(
+      resolveTileStatus(
+        item({ user_id: null, is_common_item: true, is_new: true }),
+      ),
+    ).toBe('common');
   });
 });
 

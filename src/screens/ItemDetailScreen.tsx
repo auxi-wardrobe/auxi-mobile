@@ -137,6 +137,29 @@ export const ItemDetailScreen = () => {
       return true;
     };
 
+    const markNewItemReviewed = async (loadedItem: WardrobeItem) => {
+      if (loadedItem.is_new !== true) {
+        return;
+      }
+
+      try {
+        const reviewedItem = await wardrobeService.markWardrobeItemReviewed(
+          loadedItem.id,
+        );
+        if (cancelled) {
+          return;
+        }
+        setItem(currentItem =>
+          currentItem?.id === reviewedItem.id
+            ? { ...currentItem, ...reviewedItem }
+            : currentItem,
+        );
+        queryClient.invalidateQueries({ queryKey: wardrobeKeys.all });
+      } catch (error) {
+        console.error('Failed to mark wardrobe item reviewed', error);
+      }
+    };
+
     const loadItem = async () => {
       try {
         setLoading(true);
@@ -161,6 +184,7 @@ export const ItemDetailScreen = () => {
 
         setItem(data);
         syncDraftsFromItem(data);
+        void markNewItemReviewed(data);
       } catch (error) {
         console.error('Failed to load wardrobe item', error);
 
@@ -191,7 +215,7 @@ export const ItemDetailScreen = () => {
     return () => {
       cancelled = true;
     };
-  }, [itemId, fallbackItem, navigation, t]);
+  }, [itemId, fallbackItem, navigation, queryClient, t]);
 
   // AI Image Enhancement return path: EnhanceImage pops back here with
   // `enhancedItem` set after "Replace original" succeeds. Merge it into the

@@ -3,10 +3,10 @@
  *
  * A tile shows at most one status pill, with precedence new > less use >
  * common:
- *  1. "new"      — a user-owned item not yet opened (detail unviewed)
+ *  1. "new"      — a backend-marked new user-owned item
  *  2. "less use" — an item the user demoted (usage_frequency LESS_USED)
  *  3. "common"   — a catalog/database item
- *  4. (none)     — a user-owned item that has been viewed
+ *  4. (none)     — a user-owned item backend marked reviewed
  *
  * Patterns follow ItemDetailScreen.test.tsx / SettingsScreen.test.tsx
  * (react-test-renderer, query by testID, flush microtasks inside act).
@@ -69,6 +69,20 @@ jest.mock('../../theme/motion', () => {
   return { ...actual, useReducedMotion: () => true };
 });
 
+jest.mock('react-native-gesture-handler', () => {
+  const React = require('react');
+  const chain = {
+    onUpdate: () => chain,
+    onEnd: () => chain,
+    runOnJS: () => chain,
+  };
+  return {
+    Gesture: { Pan: () => chain },
+    GestureDetector: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
+  };
+});
+
 const mockGetWardrobeItems = jest.fn();
 const mockFilterWardrobeItems = jest.fn();
 
@@ -93,17 +107,6 @@ jest.mock('../../services/wardrobeService', () => ({
     all: ['wardrobe-items'],
     list: (filter: string = 'All') => ['wardrobe-items', filter],
   },
-}));
-
-// Local "viewed" tracking — back the hook with a mutable set the tests control.
-const mockViewedSet = new Set<string>();
-jest.mock('../../context/WardrobeViewedContext', () => ({
-  useWardrobeViewed: () => ({
-    isViewed: (id: string) => mockViewedSet.has(id),
-    markViewed: (id: string) => {
-      mockViewedSet.add(id);
-    },
-  }),
 }));
 
 // Cuts the utils/url → apiClient → react-native-keychain import chain.
@@ -154,12 +157,13 @@ jest.mock('../../components/macgie', () => ({
 
 // ---- fixtures / helpers -----------------------------------------------------
 
-// User-owned items (user_id set, not common). Unviewed → "new"; viewed → no tag.
+// User-owned items (user_id set, not common). Backend is_new drives the tag.
 const USER_ITEM = {
   id: 'mine-1',
   name: 'New tee',
   category: 'top',
   user_id: 'u1',
+  is_new: true,
   image_url: 'https://cdn.example/tee.jpg',
 };
 
@@ -168,6 +172,7 @@ const USER_ITEM_2 = {
   name: 'Old jeans',
   category: 'bottom',
   user_id: 'u1',
+  is_new: false,
   image_url: 'https://cdn.example/jeans.jpg',
 };
 
@@ -187,6 +192,7 @@ const LESS_USED_ITEM = {
   name: 'Rarely worn',
   category: 'top',
   user_id: 'u1',
+  is_new: false,
   usage_frequency: 'LESS_USED',
   image_url: 'https://cdn.example/rare.jpg',
 };
@@ -245,7 +251,6 @@ const renderScreen = async () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockViewedSet.clear();
 });
 
 afterEach(() => {
@@ -262,7 +267,7 @@ afterEach(() => {
 // Tile status tags
 // =============================================================================
 describe('WardrobeScreen tile status tags', () => {
-  it('renders the New tag for an unviewed, user-owned item', async () => {
+  it('renders the New tag for a backend-marked new user-owned item', async () => {
     // index 1 keeps the tile on its dynamic `wardrobe-item-<id>` testID
     // (index 0 would override with `wardrobe-item-first`); the New badge
     // testID is always `wardrobe-item-new-<id>` regardless.
@@ -296,14 +301,15 @@ describe('WardrobeScreen tile status tags', () => {
     expect(byTestID(root, 'wardrobe-image-skeleton-mine-1')).toHaveLength(0);
   });
 
-  it('does NOT render the New tag once the item has been viewed', async () => {
-    mockViewedSet.add('mine-1');
-    mockGetWardrobeItems.mockResolvedValue([USER_ITEM_2, USER_ITEM]);
+  it('does NOT render the New tag once the backend marks it reviewed', async () => {
+    const reviewedItem = { ...USER_ITEM, is_new: false };
+    const newItem = { ...USER_ITEM_2, is_new: true };
+    mockGetWardrobeItems.mockResolvedValue([newItem, reviewedItem]);
 
     const r = await renderScreen();
     const root = r.root;
 
-    // mine-1 is viewed → no tag at all; mine-2 is unviewed → still "new".
+    // mine-1 is reviewed → no tag at all; mine-2 is still backend-new.
     expect(byTestID(root, 'wardrobe-item-new-mine-1').length).toBe(0);
     expect(byTestID(root, 'wardrobe-item-less-used-mine-1').length).toBe(0);
     expect(byTestID(root, 'wardrobe-item-common-mine-1').length).toBe(0);
@@ -324,8 +330,7 @@ describe('WardrobeScreen tile status tags', () => {
     expect(byTestID(root, 'wardrobe-item-new-cat-1').length).toBe(0);
   });
 
-  it('renders the less use tag for a viewed, demoted item', async () => {
-    mockViewedSet.add('less-1');
+  it('renders the less use tag for a reviewed, demoted item', async () => {
     mockGetWardrobeItems.mockResolvedValue([USER_ITEM_2, LESS_USED_ITEM]);
 
     const r = await renderScreen();
@@ -337,7 +342,7 @@ describe('WardrobeScreen tile status tags', () => {
     const badge = byTestID(root, 'wardrobe-item-less-used-less-1')[0];
     const label = badge.findAll(n => n.props?.children === 'less use');
     expect(label.length).toBeGreaterThan(0);
-    // "less use" wins over "new" only because the item is viewed; not common.
+    // "less use" wins when backend is_new is false; not common.
     expect(byTestID(root, 'wardrobe-item-new-less-1').length).toBe(0);
   });
 });

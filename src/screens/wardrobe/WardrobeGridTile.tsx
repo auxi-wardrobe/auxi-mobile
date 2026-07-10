@@ -15,7 +15,6 @@ interface WardrobeGridTileProps {
   index: number;
   isSelectMode: boolean;
   selectedItemId: string | null;
-  viewed: boolean;
   onPress: (item: WardrobeItem) => void;
 }
 
@@ -24,7 +23,6 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
   index,
   isSelectMode,
   selectedItemId,
-  viewed,
   onPress,
 }) => {
   const { t } = useTranslation();
@@ -45,7 +43,7 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
 
   // A tile shows at most one status pill, bottom-centre. Preparing items show
   // the processing overlay instead of a status pill.
-  const status = item.is_preparing ? null : resolveTileStatus(item, viewed);
+  const status = item.is_preparing ? null : resolveTileStatus(item);
 
   const isSelected = isSelectMode && selectedItemId === item.id;
 
