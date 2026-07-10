@@ -8,7 +8,15 @@
  * check/dot. Tokens + motion encapsulated INSIDE. Honors reduce-motion.
  */
 import React from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { color, MONO, radius, role, shadow, space, type } from '../m-tokens';
 import { useSpringToggle, useToggleValue } from '../MMotion';
 
@@ -109,6 +117,7 @@ export interface MCheckMenuProps {
   selected: Record<string, boolean>;
   onToggle: (value: string) => void;
   testID?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const MCheckMenu: React.FC<MCheckMenuProps> = ({
@@ -116,8 +125,9 @@ export const MCheckMenu: React.FC<MCheckMenuProps> = ({
   selected,
   onToggle,
   testID,
+  style,
 }) => (
-  <View style={[styles.menu, shadow.card]} testID={testID}>
+  <View style={[styles.menu, shadow.card, style]} testID={testID}>
     {options.map((o, i) => (
       <Row
         key={o.value}
@@ -137,7 +147,7 @@ export interface MRadioMenuProps {
   value: string;
   onChange: (value: string) => void;
   testID?: string;
-  style?: import('react-native').StyleProp<import('react-native').ViewStyle>;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const MRadioMenu: React.FC<MRadioMenuProps> = ({
