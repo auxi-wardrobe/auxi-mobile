@@ -2,11 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import { reactNativeSvg } from './web/svg-plugin';
+import { rnAssetResolver } from './web/rn-asset-resolver';
 
 const stub = (p: string) => path.resolve(process.cwd(), p);
 
 export default defineConfig({
-  plugins: [reactNativeSvg(), react()],
+  plugins: [rnAssetResolver(), reactNativeSvg(), react()],
   define: {
     __DEV__: 'false',
     global: 'globalThis',
