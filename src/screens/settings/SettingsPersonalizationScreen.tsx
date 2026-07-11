@@ -167,7 +167,7 @@ export const SettingsPersonalizationScreen = () => {
           testID="settings-manage-body-row"
           label={t('settings.manage_body_photo')}
           chevron
-          onPress={() => navigation.navigate('Body', { mode: 'photoDetail' })}
+          onPress={() => navigation.navigate('Body', { mode: 'gallery' })}
         />
       </SettingsScreenScaffold>
 

@@ -576,7 +576,17 @@
       "upload_my_photo": "Tải ảnh của tôi lên",
       "generate_again": "Tạo lại",
       "generate_my_look": "Tạo bộ đồ của tôi",
-      "upload_body_photo": "Tải ảnh cơ thể lên"
+      "upload_body_photo": "Tải ảnh cơ thể lên",
+      "gallery_title": "Quản lý ảnh cơ thể",
+      "gallery_hero_title": "Ảnh cơ thể của bạn",
+      "gallery_hero_body": "Tất cả ảnh liên kết với hồ sơ của bạn — ảnh tải lên, kết quả AI và dáng người.",
+      "gallery_helper": "Chạm vào ảnh để xem chi tiết hoặc xóa.",
+      "gallery_empty": "Chưa có ảnh nào. Tải lên ảnh cơ thể đầu tiên để bắt đầu.",
+      "gallery_type_uploaded": "Đã tải lên",
+      "gallery_type_selfie": "Ảnh selfie",
+      "gallery_type_ai_result": "Kết quả AI",
+      "gallery_type_body_shape": "Dáng người",
+      "a11y_view_photo": "Xem chi tiết ảnh"
     },
     "settings": {
       "direction_balanced_label": "Giữ cân bằng",

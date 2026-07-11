@@ -576,7 +576,17 @@
       "upload_my_photo": "Importer ma photo",
       "generate_again": "Générer à nouveau",
       "generate_my_look": "Générer mon look",
-      "upload_body_photo": "Importer la photo du corps"
+      "upload_body_photo": "Importer la photo du corps",
+      "gallery_title": "Gérer la photo du corps",
+      "gallery_hero_title": "Vos photos du corps",
+      "gallery_hero_body": "Toutes les photos liées à votre profil — imports, résultats IA et morphologies.",
+      "gallery_helper": "Touchez une photo pour voir les détails ou la supprimer.",
+      "gallery_empty": "Aucune photo pour le moment. Importez votre première photo pour commencer.",
+      "gallery_type_uploaded": "Importée",
+      "gallery_type_selfie": "Selfie",
+      "gallery_type_ai_result": "Résultat IA",
+      "gallery_type_body_shape": "Morphologie",
+      "a11y_view_photo": "Voir les détails de la photo"
     },
     "settings": {
       "direction_balanced_label": "Rester équilibré",

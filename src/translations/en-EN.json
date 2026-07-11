@@ -576,7 +576,17 @@
       "upload_my_photo": "Upload my photo",
       "generate_again": "Generate again",
       "generate_my_look": "Generate my look",
-      "upload_body_photo": "Upload body photo"
+      "upload_body_photo": "Upload body photo",
+      "gallery_title": "Manage body photo",
+      "gallery_hero_title": "Your body photos",
+      "gallery_hero_body": "Every photo linked to your profile — uploads, AI results and body shapes.",
+      "gallery_helper": "Tap a photo to view details or delete it.",
+      "gallery_empty": "No photos yet. Upload your first body photo to get started.",
+      "gallery_type_uploaded": "Uploaded",
+      "gallery_type_selfie": "Selfie",
+      "gallery_type_ai_result": "AI result",
+      "gallery_type_body_shape": "Body shape",
+      "a11y_view_photo": "View photo details"
     },
     "settings": {
       "direction_balanced_label": "Stay Balanced",

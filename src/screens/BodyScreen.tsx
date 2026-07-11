@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Alert,
   SafeAreaView,
@@ -6,7 +12,12 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { toast } from '../components/design-system/lib';
@@ -26,6 +37,7 @@ import { Header } from '../components/layout/Header';
 import { PhotoSourceModal } from './body/PhotoSourceModal';
 import { BodyImageLightbox } from './body/BodyImageLightbox';
 import { BodyPhotoDetailView } from './body/BodyPhotoDetailView';
+import { BodyGalleryView } from './body/BodyGalleryView';
 import { BodyTryOnView } from './body/BodyTryOnView';
 import { BodyManageView } from './body/BodyManageView';
 
@@ -33,7 +45,7 @@ type Navigation = NativeStackNavigationProp<AppStackParamList, 'Body'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'Body'>;
 
 // Modes the Body route can resolve to. `manage` is the default (undefined params).
-type BodyMode = 'manage' | 'tryOn' | 'photoDetail';
+type BodyMode = 'manage' | 'gallery' | 'tryOn' | 'photoDetail';
 
 // Exhaustiveness guard for the discriminated Body route union. A `never` arg
 // means every mode is handled; a new mode added later forces a compile error here.
@@ -65,6 +77,8 @@ export const BodyScreen = () => {
       detailBodyId =
         params && params.mode === 'photoDetail' ? params.bodyId : undefined;
       break;
+    case 'gallery':
+      break;
     case 'manage':
       break;
     default:
@@ -72,6 +86,7 @@ export const BodyScreen = () => {
   }
   const isTryOnMode = mode === 'tryOn' && !!tryOnOutfit;
   const isPhotoDetailMode = mode === 'photoDetail';
+  const isGalleryMode = mode === 'gallery';
 
   const [items, setItems] = useState<BodyItem[]>([]);
   const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
@@ -135,6 +150,24 @@ export const BodyScreen = () => {
     // when bodyId is absent).
     fetchItems(detailBodyId);
   }, [fetchItems, detailBodyId]);
+
+  // Gallery mode pushes a photoDetail screen on top; deleting a photo there
+  // pops back here. Refetch on RE-focus so the removed tile disappears from the
+  // grid. The mount effect above owns the initial load — skip the first focus
+  // so we don't double-fetch on entry.
+  const galleryFirstFocusRef = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (!isGalleryMode) {
+        return;
+      }
+      if (galleryFirstFocusRef.current) {
+        galleryFirstFocusRef.current = false;
+        return;
+      }
+      fetchItems();
+    }, [isGalleryMode, fetchItems]),
+  );
 
   const selectedBody = useMemo(
     () => items.find(item => item.id === selectedBodyId) || null,
@@ -308,6 +341,27 @@ export const BodyScreen = () => {
     setSelectedImageUrl(imageUri);
     setLargeImageModalVisible(true);
   };
+
+  // Manage body photo (Settings) — wardrobe-style grid of ALL the user's body
+  // photos. Tapping a tile pushes a photoDetail screen (view + delete) on top,
+  // so back returns here to the grid.
+  if (isGalleryMode) {
+    return (
+      <BodyGalleryView
+        loading={loading}
+        items={items}
+        uploading={uploading}
+        modalVisible={modalVisible}
+        onBack={() => navigation.goBack()}
+        onTilePress={item =>
+          navigation.push('Body', { mode: 'photoDetail', bodyId: item.id })
+        }
+        onAddPhoto={() => setModalVisible(true)}
+        onImageSelect={handleImageSelection}
+        onCloseSourceModal={() => setModalVisible(false)}
+      />
+    );
+  }
 
   // Body-photo detail view (Settings redesign Frame 5) — same isPhotoDetailMode
   // condition, just moved to its own component (no routing change).
