@@ -207,16 +207,16 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.uacTextBase,
   },
   body: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
   },
   tipsIntro: {
     ...theme.typography.aliases.poppinsBodySm,
-    color: theme.colors.figmaTextSecondary,
+    color: theme.colors.uacTextBase,
     marginTop: theme.spacing.m,
   },
   tipList: {
@@ -228,12 +228,12 @@ const styles = StyleSheet.create({
   },
   tipBullet: {
     ...theme.typography.aliases.poppinsBodySm,
-    color: theme.colors.figmaTextSecondary,
+    color: theme.colors.uacTextBase,
     width: 16,
   },
   tipText: {
     ...theme.typography.aliases.poppinsBodySm,
-    color: theme.colors.figmaTextSecondary,
+    color: theme.colors.uacTextBase,
     flex: 1,
   },
   // Full-width primary CTA. Height / radius / fill / text match the refine

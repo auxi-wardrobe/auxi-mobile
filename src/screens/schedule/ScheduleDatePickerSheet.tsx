@@ -247,14 +247,14 @@ export const ScheduleDatePickerSheet: React.FC<Props> = ({
 const styles = StyleSheet.create({
   eyebrow: {
     ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.uacTextBase,
   },
   selectedDate: {
     ...theme.typography.aliases.poppinsBodyBold,
     fontSize: 28,
     lineHeight: 36,
     letterSpacing: 0,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.uacTextBase,
     marginTop: 8,
   },
   divider: {
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   },
   monthLabel: {
     ...theme.typography.aliases.interMediumSm,
-    color: theme.colors.figmaTextSecondary,
+    color: theme.colors.uacTextBase,
   },
   monthNav: {
     flexDirection: 'row',
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   },
   dowLabel: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    color: theme.colors.uacTextBase,
     width: `${100 / 7}%`,
     textAlign: 'center',
   },
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   },
   dayText: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.uacTextBase,
   },
   dayTextSelected: {
     color: theme.colors.white,
@@ -340,6 +340,6 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.uacTextBase,
   },
 });
