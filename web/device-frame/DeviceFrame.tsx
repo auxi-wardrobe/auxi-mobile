@@ -260,6 +260,7 @@ export const DeviceFrame: React.FC = () => {
           key={screenKey}
           title="auxi web review"
           src={iframeSrc()}
+          allow="identity-credentials-read"
           style={{
             width: '100vw',
             height: '100dvh',
@@ -293,6 +294,7 @@ export const DeviceFrame: React.FC = () => {
         key={`${idx}-${screenKey}-${bleed}`}
         title="auxi web review"
         src={iframeSrc()}
+        allow="identity-credentials-read"
         style={{
           width: bleed ? '100%' : d.w,
           height: bleed ? '92vh' : d.h,
