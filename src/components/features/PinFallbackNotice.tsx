@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   message: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.figmaTextPrimary,
   },
 });

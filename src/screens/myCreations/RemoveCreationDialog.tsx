@@ -72,11 +72,11 @@ export const RemoveCreationDialog: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   title: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   body: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
   },

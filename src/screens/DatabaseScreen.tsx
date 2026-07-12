@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   tileFallbackText: {
-    ...theme.typography.aliases.interCaptionXxs,
+    ...theme.typography.aliases.poppinsCaptionXxs,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
   },
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
+    ...theme.typography.aliases.poppinsSemiboldSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },

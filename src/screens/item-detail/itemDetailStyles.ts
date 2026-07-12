@@ -69,7 +69,7 @@ export const itemDetailStyles = StyleSheet.create({
     gap: 8,
   },
   rowLabel: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.figmaItemDetailRowText,
   },
   rowValue: {

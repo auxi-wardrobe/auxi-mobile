@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.xs,
   },
   title: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
     color: theme.colors.uacTextBase,
     marginBottom: theme.spacing.m,
   },
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.white,
   },
   selectionBadgeText: {
-    ...theme.typography.aliases.interCaptionXxs,
+    ...theme.typography.aliases.poppinsCaptionXxs,
     color: theme.colors.white,
   },
   actionWrap: {

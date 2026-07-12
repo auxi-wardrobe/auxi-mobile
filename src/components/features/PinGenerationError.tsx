@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.figmaDivider,
   },
   message: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.figmaTextPrimary,
     flex: 1,
   },
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   retryLabel: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     fontFamily: 'Poppins-Medium',
     color: theme.colors.figmaPrimaryButtonText,
   },

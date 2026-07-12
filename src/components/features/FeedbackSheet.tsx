@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   // Drop the shared TopIconButton gray surface — plain X, no chip background.
