@@ -29,6 +29,7 @@ export const HomeLoadingState = () => {
                 <ShimmerSlot
                   testID={`home-loading-slot-${row}-${column}`}
                   showPin={row === 1}
+                  style={styles.loadingSlotCard}
                 />
               </View>
             ))}
