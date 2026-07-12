@@ -145,6 +145,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 |---|---|---|---|
 | `favourite_try_on_tapped` | "See on me" from a favourite card | `FavouriteScreen.tsx:112` | `favorite_id` |
 | `try_on_outcome_retaken` | Retake from try-on outcome | `SeeThisOnMeScreen.tsx:229` | `outfit_hash` |
+| `try_on_cached_result_shown` | On re-entering "See on me" for an outfit that already produced a successful AI result, the persisted result photo is shown immediately (with a Retake affordance) instead of re-running the capture/reuse flow | `SeeThisOnMeScreen.tsx` (mount effect) | `outfit_hash` |
 | `try_on_image_saved` (download) | Header download icon on the try-on preview → saves the rendered image to the device photo library (native) or downloads it (web). Fires on both outcomes | `hooks/use-save-image.ts` (+ `.web.ts`) via `components.tsx` `StomDownloadButton`; wrapper `analytics.ts` `trackTryOnImageSaved` | `surface` (`tryon`), `status` (`success` / `error`) |
 | `try_on_started` (pre-existing) | Try-on initiated | `BodyScreen.tsx:282`, `SeeThisOnMeScreen.tsx:147` | `outfit_hash`, `item_count`, `has_body_photo` |
 | `try_on_completed` (pre-existing) | Try-on succeeded | `BodyScreen.tsx:300`, `SeeThisOnMeScreen.tsx:166` | `outfit_hash`, `step_count?` |

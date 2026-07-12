@@ -46,6 +46,10 @@ interface StomStepScreenProps {
   reusePhotoUri: string | null;
   handleReuseConfirm: () => void;
   handleReuseRetake: () => void;
+  // Persisted-result re-entry: the preview is showing a cached AI result, so a
+  // Retake affordance replaces the profile-retake row and drives a fresh run.
+  isCachedResult: boolean;
+  handleCachedRetake: () => void;
 }
 
 // Shared shell — the SafeAreaView + StomHeader wrapper every step screen used.
@@ -85,12 +89,17 @@ export function renderStomStepScreen(
     reusePhotoUri,
     handleReuseConfirm,
     handleReuseRetake,
+    isCachedResult,
+    handleCachedRetake,
   } = props;
 
   const title = t('seeThisOnMe.title');
 
   // ── Loading the reusable profile ──────────────────────────────────────────
-  if (profileLoading) {
+  // Skip the loader when we already have a result to show (a cached or
+  // rehydrated preview) — that view doesn't depend on the active profile, so
+  // there's no reason to flash a spinner while the profile query resolves.
+  if (profileLoading && !(step === 'preview' && resultUrl)) {
     return (
       <StepShell title={title} onBack={handleBack}>
         <MacgieLoader testID="stom-profile-loading" />
@@ -149,9 +158,16 @@ export function renderStomStepScreen(
         onBack={handleBack}
         right={<StomDownloadButton uri={resultUrl} />}
       >
-        <OutfitPreview imageUri={resultUrl} onBackHome={goHome} />
-        {/* Reuse path: let the user discard the saved profile and recapture. */}
-        {reuseMode ? (
+        <OutfitPreview
+          imageUri={resultUrl}
+          onBackHome={goHome}
+          // Persisted-result re-entry: the in-preview Retake pill starts a fresh
+          // run; the profile-retake row below is suppressed to avoid two retakes.
+          onRetake={isCachedResult ? handleCachedRetake : undefined}
+        />
+        {/* Reuse path (live result): let the user discard the saved profile and
+            recapture. Hidden on a cached result — Retake above covers it. */}
+        {!isCachedResult && reuseMode ? (
           <View style={styles.retakeProfileRow}>
             <PillButton
               testID="stom-retake-profile"

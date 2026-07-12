@@ -24,6 +24,7 @@
  */
 import { tryOnService } from '../../services/tryOnService';
 import { bodyShapeService } from '../../services/bodyShapeService';
+import { recordTryOnResult } from '../../services/tryOnResultStore';
 import { pollJob } from '../../services/job-polling';
 import { getApiErrorCode } from '../../utils/aiError';
 import { TryOnOutfitContext } from '../../types/navigation';
@@ -269,6 +270,11 @@ export const tryOnGenerationStore = {
 
         if (result?.status === 'completed' && result.composite_url) {
           setState({ status: 'success', resultUrl: result.composite_url });
+          // Persist the successful result keyed by outfit so re-tapping "See on
+          // me" on this outfit shows the last AI photo instead of regenerating.
+          // Done here (the single render-success choke point) so it captures
+          // both foreground and background completions.
+          recordTryOnResult(input.outfit.outfitHash, result.composite_url);
           notifyIfBackgrounded('success', 'render');
         } else {
           setState({ status: 'error', resultUrl: null });
