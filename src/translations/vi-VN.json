@@ -579,7 +579,6 @@
       "upload_body_photo": "Tải ảnh cơ thể lên",
       "library_title": "Quản lý ảnh cơ thể",
       "library_empty": "Chưa có ảnh cơ thể nào. Thêm ảnh đầu tiên để bắt đầu.",
-      "a11y_add_photo_library": "Thêm ảnh cơ thể",
       "a11y_open_photo": "Xem ảnh cơ thể: {{label}}",
       "type_uploaded": "Đã tải lên",
       "type_selfie": "Ảnh tự chụp",

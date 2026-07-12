@@ -579,7 +579,6 @@
       "upload_body_photo": "Importer la photo du corps",
       "library_title": "Gérer les photos du corps",
       "library_empty": "Aucune photo du corps pour le moment. Ajoutez la première pour commencer.",
-      "a11y_add_photo_library": "Ajouter une photo du corps",
       "a11y_open_photo": "Voir la photo du corps : {{label}}",
       "type_uploaded": "Importée",
       "type_selfie": "Selfie",

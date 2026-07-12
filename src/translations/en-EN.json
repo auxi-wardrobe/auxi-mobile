@@ -579,7 +579,6 @@
       "upload_body_photo": "Upload body photo",
       "library_title": "Manage body photos",
       "library_empty": "No body photos yet. Add your first one to get started.",
-      "a11y_add_photo_library": "Add body photo",
       "a11y_open_photo": "View body photo: {{label}}",
       "type_uploaded": "Uploaded",
       "type_selfie": "Selfie",

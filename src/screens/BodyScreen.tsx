@@ -335,33 +335,21 @@ export const BodyScreen = () => {
 
   // Body-photo library (Settings › Personalization → Manage body photo):
   // wardrobe-style grid of every body photo. Tapping a tile pushes the
-  // photoDetail view for that body (view + delete live there). Reuses the
-  // shared upload flow (handleImageSelection) via the header add button.
+  // photoDetail view for that body (view + delete live there). View-only —
+  // adding a photo is intentionally not offered on this page.
   if (isPhotoLibraryMode) {
     return (
-      <>
-        <BodyPhotoLibraryView
-          loading={loading}
-          uploading={uploading}
-          items={items}
-          onBack={() => navigation.goBack()}
-          onOpenPhoto={item =>
-            navigation.navigate('Body', {
-              mode: 'photoDetail',
-              bodyId: item.id,
-            })
-          }
-          onAddPhoto={() => setModalVisible(true)}
-        />
-
-        <PhotoSourceModal
-          visible={modalVisible}
-          title={t('body.upload_body_photo')}
-          onCamera={() => handleImageSelection('camera')}
-          onGallery={() => handleImageSelection('gallery')}
-          onClose={() => setModalVisible(false)}
-        />
-      </>
+      <BodyPhotoLibraryView
+        loading={loading}
+        items={items}
+        onBack={() => navigation.goBack()}
+        onOpenPhoto={item =>
+          navigation.navigate('Body', {
+            mode: 'photoDetail',
+            bodyId: item.id,
+          })
+        }
+      />
     );
   }
 

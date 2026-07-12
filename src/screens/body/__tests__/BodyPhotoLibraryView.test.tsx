@@ -37,11 +37,9 @@ test('library grid renders a tile per body photo with its origin label', () => {
     r = TestRenderer.create(
       <BodyPhotoLibraryView
         loading={false}
-        uploading={false}
         items={[uploaded, aiShape]}
         onBack={jest.fn()}
         onOpenPhoto={onOpenPhoto}
-        onAddPhoto={jest.fn()}
       />,
     );
   });
@@ -72,11 +70,9 @@ test('library grid shows the empty state when there are no photos', () => {
     r = TestRenderer.create(
       <BodyPhotoLibraryView
         loading={false}
-        uploading={false}
         items={[]}
         onBack={jest.fn()}
         onOpenPhoto={jest.fn()}
-        onAddPhoto={jest.fn()}
       />,
     );
   });

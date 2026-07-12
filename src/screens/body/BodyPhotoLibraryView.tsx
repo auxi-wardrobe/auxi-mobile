@@ -9,10 +9,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
-import { TopIconButton } from '../../components/primitives/FigmaPrimitives';
-import { DotsLoader } from '../../components/atoms/DotsLoader';
 import { Header } from '../../components/layout/Header';
-import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { BodyItem } from '../../services/bodyService';
 import { bodyPhotoLabelKey, resolveImageUrl } from '../../utils/body';
@@ -25,11 +22,9 @@ import {
 
 interface BodyPhotoLibraryViewProps {
   loading: boolean;
-  uploading: boolean;
   items: BodyItem[];
   onBack: () => void;
   onOpenPhoto: (item: BodyItem) => void;
-  onAddPhoto: () => void;
 }
 
 // "Manage body photo" library (Settings › Personalization → Manage body photo).
@@ -37,13 +32,13 @@ interface BodyPhotoLibraryViewProps {
 // AI-generated body shapes, selfies — each tagged with its origin. Tapping a
 // tile opens the body-photo detail view (view + delete). Mirrors the wardrobe
 // grid geometry (3 columns, 3:4 tiles) so the two managers read as one system.
+// View + delete only: adding a photo is not offered here (that lives in the
+// capture / try-on flows), so there's no add affordance.
 export const BodyPhotoLibraryView: React.FC<BodyPhotoLibraryViewProps> = ({
   loading,
-  uploading,
   items,
   onBack,
   onOpenPhoto,
-  onAddPhoto,
 }) => {
   const { t } = useTranslation();
 
@@ -54,21 +49,6 @@ export const BodyPhotoLibraryView: React.FC<BodyPhotoLibraryViewProps> = ({
         leftTestID="body-library-back"
         leftAccessibilityLabel={t('uac.common.back')}
         onBack={onBack}
-        right={
-          <TopIconButton
-            testID="body-library-add"
-            accessibilityLabel={t('body.a11y_add_photo_library')}
-            onPress={onAddPhoto}
-            disabled={uploading}
-            icon={
-              uploading ? (
-                <DotsLoader color={theme.colors.figmaAction} />
-              ) : (
-                <Icons.Plus width={24} height={24} />
-              )
-            }
-          />
-        }
       />
 
       <ScrollView
