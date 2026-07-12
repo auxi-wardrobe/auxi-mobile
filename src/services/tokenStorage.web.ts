@@ -31,7 +31,10 @@ let _pendingReturnUrl: string | null = null;
 export const setPendingReturnUrl = (url: string): void => {
   try {
     const h = new URL(url).hostname;
-    if (h === 'auxi-web-review.pages.dev' || h.endsWith('.auxi-web-review.pages.dev')) {
+    if (
+      h === 'auxi-web-review.pages.dev' ||
+      h.endsWith('.auxi-web-review.pages.dev')
+    ) {
       _pendingReturnUrl = url;
     }
   } catch {
@@ -113,7 +116,9 @@ export const setTokens = async (input: SetTokensInput): Promise<void> => {
     _pendingReturnUrl = null;
     // Defer one tick so the login screen's success handler can finish its own
     // state update before we navigate away. Cookie write above is synchronous.
-    setTimeout(() => { location.href = url; }, 50);
+    setTimeout(() => {
+      location.href = url;
+    }, 50);
   }
 };
 

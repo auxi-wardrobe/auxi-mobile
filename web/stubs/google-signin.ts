@@ -116,11 +116,20 @@ export const GoogleSignin = {
     return new Promise((resolve, reject) => {
       const g = typeof window !== 'undefined' ? window.google : undefined;
       if (!g) {
-        reject(Object.assign(new Error('GIS unavailable'), { code: statusCodes.SIGN_IN_CANCELLED }));
+        reject(
+          Object.assign(new Error('GIS unavailable'), {
+            code: statusCodes.SIGN_IN_CANCELLED,
+          }),
+        );
         return;
       }
       if (!_clientId) {
-        reject(Object.assign(new Error('GoogleSignin.configure() missing webClientId'), { code: statusCodes.SIGN_IN_CANCELLED }));
+        reject(
+          Object.assign(
+            new Error('GoogleSignin.configure() missing webClientId'),
+            { code: statusCodes.SIGN_IN_CANCELLED },
+          ),
+        );
         return;
       }
 
@@ -150,14 +159,22 @@ export const GoogleSignin = {
         if (notification.isNotDisplayed() || notification.isDismissedMoment()) {
           // User-initiated cancellation — caller silences the error via isOAuthCancelled().
           once(() =>
-            reject(Object.assign(new Error('Cancelled'), { code: statusCodes.SIGN_IN_CANCELLED })),
+            reject(
+              Object.assign(new Error('Cancelled'), {
+                code: statusCodes.SIGN_IN_CANCELLED,
+              }),
+            ),
           );
         } else if (notification.isSkippedMoment()) {
           // Browser throttled One Tap (cooldown heuristic) — not a user action.
           // Reject with a distinct code so the caller can show a retry prompt
           // instead of a "login cancelled" toast.
           once(() =>
-            reject(Object.assign(new Error('Suppressed'), { code: 'GIS_SUPPRESSED' })),
+            reject(
+              Object.assign(new Error('Suppressed'), {
+                code: 'GIS_SUPPRESSED',
+              }),
+            ),
           );
         }
       });
