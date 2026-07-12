@@ -353,20 +353,16 @@ export const BodyScreen = () => {
     );
   }
 
-  // Body-photo detail view (Settings redesign Frame 5) — same isPhotoDetailMode
-  // condition, just moved to its own component (no routing change).
+  // Body-photo detail view — opened from the "Manage body photos" library grid.
+  // View + Delete only; Back returns to the library grid (goBack pops the
+  // pushed detail screen). No retake/add affordance here.
   if (isPhotoDetailMode) {
     return (
       <BodyPhotoDetailView
         selectedBody={selectedBody}
         loading={loading}
-        uploading={uploading}
-        modalVisible={modalVisible}
         onBack={() => navigation.goBack()}
         onDelete={handleDelete}
-        onImageSelect={handleImageSelection}
-        onOpenSourceModal={() => setModalVisible(true)}
-        onCloseSourceModal={() => setModalVisible(false)}
       />
     );
   }
