@@ -113,7 +113,22 @@ export const setTokens = async (input: SetTokensInput): Promise<void> => {
     _pendingReturnUrl = null;
     // Defer one tick so the login screen's success handler can finish its own
     // state update before we navigate away. Cookie write above is synchronous.
-    setTimeout(() => { location.href = url; }, 50);
+    // Navigate window.top so the entire browser tab moves, not just the iframe.
+    setTimeout(() => {
+      try {
+        if (
+          typeof window !== 'undefined' &&
+          window.top &&
+          window.top !== window
+        ) {
+          window.top.location.href = url;
+          return;
+        }
+      } catch {
+        /* cross-origin top — fall through to location.href */
+      }
+      location.href = url;
+    }, 50);
   }
 };
 
