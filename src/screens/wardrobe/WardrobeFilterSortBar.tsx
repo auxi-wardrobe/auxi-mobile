@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaInsightPillBg,
   },
   chipText: {
-    ...theme.typography.aliases.interMediumSm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextPrimary,
     flexShrink: 1,
   },
