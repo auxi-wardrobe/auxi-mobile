@@ -576,7 +576,17 @@
       "upload_my_photo": "Tải ảnh của tôi lên",
       "generate_again": "Tạo lại",
       "generate_my_look": "Tạo bộ đồ của tôi",
-      "upload_body_photo": "Tải ảnh cơ thể lên"
+      "upload_body_photo": "Tải ảnh cơ thể lên",
+      "library_title": "Quản lý ảnh cơ thể",
+      "library_empty": "Chưa có ảnh cơ thể nào. Thêm ảnh đầu tiên để bắt đầu.",
+      "a11y_add_photo_library": "Thêm ảnh cơ thể",
+      "a11y_open_photo": "Xem ảnh cơ thể: {{label}}",
+      "type_uploaded": "Đã tải lên",
+      "type_selfie": "Ảnh tự chụp",
+      "type_ai_result": "Kết quả AI",
+      "type_shape_slim": "Dáng người · Thon",
+      "type_shape_average": "Dáng người · Trung bình",
+      "type_shape_fuller": "Dáng người · Đầy đặn"
     },
     "settings": {
       "direction_balanced_label": "Giữ cân bằng",

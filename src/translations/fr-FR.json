@@ -576,7 +576,17 @@
       "upload_my_photo": "Importer ma photo",
       "generate_again": "Générer à nouveau",
       "generate_my_look": "Générer mon look",
-      "upload_body_photo": "Importer la photo du corps"
+      "upload_body_photo": "Importer la photo du corps",
+      "library_title": "Gérer les photos du corps",
+      "library_empty": "Aucune photo du corps pour le moment. Ajoutez la première pour commencer.",
+      "a11y_add_photo_library": "Ajouter une photo du corps",
+      "a11y_open_photo": "Voir la photo du corps : {{label}}",
+      "type_uploaded": "Importée",
+      "type_selfie": "Selfie",
+      "type_ai_result": "Résultat IA",
+      "type_shape_slim": "Silhouette · Fine",
+      "type_shape_average": "Silhouette · Moyenne",
+      "type_shape_fuller": "Silhouette · Ronde"
     },
     "settings": {
       "direction_balanced_label": "Rester équilibré",

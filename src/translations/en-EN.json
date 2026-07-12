@@ -576,7 +576,17 @@
       "upload_my_photo": "Upload my photo",
       "generate_again": "Generate again",
       "generate_my_look": "Generate my look",
-      "upload_body_photo": "Upload body photo"
+      "upload_body_photo": "Upload body photo",
+      "library_title": "Manage body photos",
+      "library_empty": "No body photos yet. Add your first one to get started.",
+      "a11y_add_photo_library": "Add body photo",
+      "a11y_open_photo": "View body photo: {{label}}",
+      "type_uploaded": "Uploaded",
+      "type_selfie": "Selfie",
+      "type_ai_result": "AI result",
+      "type_shape_slim": "Body shape · Slim",
+      "type_shape_average": "Body shape · Average",
+      "type_shape_fuller": "Body shape · Fuller"
     },
     "settings": {
       "direction_balanced_label": "Stay Balanced",

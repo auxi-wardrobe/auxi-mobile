@@ -6,7 +6,12 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { toast } from '../components/design-system/lib';
@@ -26,6 +31,7 @@ import { Header } from '../components/layout/Header';
 import { PhotoSourceModal } from './body/PhotoSourceModal';
 import { BodyImageLightbox } from './body/BodyImageLightbox';
 import { BodyPhotoDetailView } from './body/BodyPhotoDetailView';
+import { BodyPhotoLibraryView } from './body/BodyPhotoLibraryView';
 import { BodyTryOnView } from './body/BodyTryOnView';
 import { BodyManageView } from './body/BodyManageView';
 
@@ -33,7 +39,7 @@ type Navigation = NativeStackNavigationProp<AppStackParamList, 'Body'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'Body'>;
 
 // Modes the Body route can resolve to. `manage` is the default (undefined params).
-type BodyMode = 'manage' | 'tryOn' | 'photoDetail';
+type BodyMode = 'manage' | 'tryOn' | 'photoLibrary' | 'photoDetail';
 
 // Exhaustiveness guard for the discriminated Body route union. A `never` arg
 // means every mode is handled; a new mode added later forces a compile error here.
@@ -65,12 +71,14 @@ export const BodyScreen = () => {
       detailBodyId =
         params && params.mode === 'photoDetail' ? params.bodyId : undefined;
       break;
+    case 'photoLibrary':
     case 'manage':
       break;
     default:
       assertNever(mode);
   }
   const isTryOnMode = mode === 'tryOn' && !!tryOnOutfit;
+  const isPhotoLibraryMode = mode === 'photoLibrary';
   const isPhotoDetailMode = mode === 'photoDetail';
 
   const [items, setItems] = useState<BodyItem[]>([]);
@@ -130,11 +138,27 @@ export const BodyScreen = () => {
   );
 
   useEffect(() => {
+    // The library manages its own refetch-on-focus below (so returning from a
+    // deleted photoDetail refreshes the grid); other modes load once on mount.
+    if (isPhotoLibraryMode) {
+      return;
+    }
     // In photoDetail mode, prefer the explicitly-passed bodyId; otherwise
     // fetchItems falls back to current/first selected body (preserves behavior
     // when bodyId is absent).
     fetchItems(detailBodyId);
-  }, [fetchItems, detailBodyId]);
+  }, [fetchItems, detailBodyId, isPhotoLibraryMode]);
+
+  // Library mode: refetch every time the grid regains focus. Deleting a photo
+  // happens on the pushed photoDetail screen; on goBack the grid must drop it,
+  // so a one-time mount fetch isn't enough.
+  useFocusEffect(
+    useCallback(() => {
+      if (isPhotoLibraryMode) {
+        fetchItems();
+      }
+    }, [isPhotoLibraryMode, fetchItems]),
+  );
 
   const selectedBody = useMemo(
     () => items.find(item => item.id === selectedBodyId) || null,
@@ -308,6 +332,38 @@ export const BodyScreen = () => {
     setSelectedImageUrl(imageUri);
     setLargeImageModalVisible(true);
   };
+
+  // Body-photo library (Settings › Personalization → Manage body photo):
+  // wardrobe-style grid of every body photo. Tapping a tile pushes the
+  // photoDetail view for that body (view + delete live there). Reuses the
+  // shared upload flow (handleImageSelection) via the header add button.
+  if (isPhotoLibraryMode) {
+    return (
+      <>
+        <BodyPhotoLibraryView
+          loading={loading}
+          uploading={uploading}
+          items={items}
+          onBack={() => navigation.goBack()}
+          onOpenPhoto={item =>
+            navigation.navigate('Body', {
+              mode: 'photoDetail',
+              bodyId: item.id,
+            })
+          }
+          onAddPhoto={() => setModalVisible(true)}
+        />
+
+        <PhotoSourceModal
+          visible={modalVisible}
+          title={t('body.upload_body_photo')}
+          onCamera={() => handleImageSelection('camera')}
+          onGallery={() => handleImageSelection('gallery')}
+          onClose={() => setModalVisible(false)}
+        />
+      </>
+    );
+  }
 
   // Body-photo detail view (Settings redesign Frame 5) — same isPhotoDetailMode
   // condition, just moved to its own component (no routing change).
