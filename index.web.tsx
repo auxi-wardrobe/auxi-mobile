@@ -22,6 +22,65 @@ const isEmbed =
   new URLSearchParams(location.search).has('embed');
 
 async function boot() {
+  if (isEmbed) {
+    // RN Web's flex:1 children need a *bounded* height to compute scroll correctly.
+    // index.html uses min-height:100vh which allows expansion; inside the fixed-size
+    // DeviceFrame iframe that means ScrollViews never overflow → nothing scrolls.
+    // Pinning to height:100% resolves to the iframe's actual pixel height (e.g. 844px)
+    // so every flex:1 View is bounded and ScrollViews can compute overflow properly.
+    const pin = (el: HTMLElement | null) => {
+      if (!el) return;
+      el.style.height = '100%';
+      el.style.minHeight = '';
+    };
+    pin(document.documentElement);
+    pin(document.body);
+    pin(document.getElementById('root'));
+
+    // Wheel fallback: when cursor is over a non-scrollable element (header,
+    // tab bar, card overlay), wheel events bubble to document without hitting
+    // a ScrollView. Find the largest visible scrollable element and forward.
+    document.addEventListener(
+      'wheel',
+      (e: WheelEvent) => {
+        // Walk up to see if a scrollable ancestor handled this naturally
+        let el = e.target as HTMLElement | null;
+        while (el && el !== document.documentElement) {
+          const cs = getComputedStyle(el);
+          if (
+            (cs.overflowY === 'scroll' || cs.overflowY === 'auto') &&
+            el.scrollHeight > el.clientHeight + 1
+          ) {
+            return; // native ScrollView scroll — leave it alone
+          }
+          el = el.parentElement;
+        }
+        // No scrollable ancestor — proxy scroll to the largest visible scrollable
+        let best: HTMLElement | null = null;
+        let bestArea = 0;
+        document.querySelectorAll<HTMLElement>('*').forEach(node => {
+          const cs = getComputedStyle(node);
+          if (
+            (cs.overflowY === 'scroll' || cs.overflowY === 'auto') &&
+            node.scrollHeight > node.clientHeight + 1
+          ) {
+            const r = node.getBoundingClientRect();
+            const area = r.width * r.height;
+            if (area > bestArea && r.top >= -1 && r.bottom <= window.innerHeight + 1) {
+              best = node;
+              bestArea = area;
+            }
+          }
+        });
+        if (best) {
+          (best as HTMLElement).scrollTop += e.deltaY;
+          e.preventDefault();
+        }
+      },
+      { passive: false },
+    );
+  }
+
   const root = createRoot(document.getElementById('root')!);
   if (!isEmbed) {
     root.render(<DeviceFrame />);
