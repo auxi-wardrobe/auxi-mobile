@@ -21,6 +21,24 @@ export const enableEphemeralMode = (): void => {
   ephemeral = true;
 };
 
+// After-login redirect URL for the Google OAuth relay flow:
+// set in index.web.tsx when ?return= is present (preview subdomain → main URL login).
+let _pendingReturnUrl: string | null = null;
+
+/** Register a URL to redirect to after the next successful setTokens call.
+ *  Only accepts *.auxi-web-review.pages.dev to prevent open redirects.
+ *  Anchors on a '.' boundary to block evil-auxi-web-review.pages.dev bypass. */
+export const setPendingReturnUrl = (url: string): void => {
+  try {
+    const h = new URL(url).hostname;
+    if (h === 'auxi-web-review.pages.dev' || h.endsWith('.auxi-web-review.pages.dev')) {
+      _pendingReturnUrl = url;
+    }
+  } catch {
+    /* invalid URL — ignore */
+  }
+};
+
 const write = (f: string, v: string | null | undefined) => {
   if (v === undefined) return;
   if (v === null) localStorage.removeItem(KEY(f));
@@ -87,6 +105,16 @@ export const setTokens = async (input: SetTokensInput): Promise<void> => {
     refresh_token_expires_at: input.refresh_token_expires_at ?? 0,
     user_email: input.user_email ?? '',
   });
+
+  // Relay flow: after login at the main URL on behalf of a preview subdomain,
+  // redirect back so the shared cookie auto-authenticates there.
+  if (_pendingReturnUrl && !ephemeral) {
+    const url = _pendingReturnUrl;
+    _pendingReturnUrl = null;
+    // Defer one tick so the login screen's success handler can finish its own
+    // state update before we navigate away. Cookie write above is synchronous.
+    setTimeout(() => { location.href = url; }, 50);
+  }
 };
 
 export const getAccessToken = async (): Promise<string | null> =>
