@@ -860,9 +860,10 @@
         "expandedTitle": "Chọn dáng người giống bạn nhất."
       },
       "reuseConfirm": {
-        "prompt": "Đây là ảnh cơ thể bạn đã lưu. Dùng lại ảnh này, hoặc chụp lại.",
+        "title": "Ảnh cơ thể của bạn",
+        "prompt": "Đây là ảnh cơ thể mới nhất bạn đã lưu. Dùng lại ảnh này, hoặc chụp lại.",
         "confirm": "Dùng ảnh này",
-        "retake": "Chụp lại ảnh"
+        "retake": "Chụp lại"
       },
       "shapes": {
         "slim": "Thon gọn",

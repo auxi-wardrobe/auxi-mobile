@@ -861,9 +861,10 @@
         "expandedTitle": "Choisissez la forme qui vous ressemble le plus."
       },
       "reuseConfirm": {
-        "prompt": "Voici la photo de votre corps enregistrée. Réutilisez-la ou reprenez vos photos.",
+        "title": "Votre photo corporelle",
+        "prompt": "Voici la dernière photo de votre corps enregistrée. Réutilisez-la ou reprenez vos photos.",
         "confirm": "Utiliser cette photo",
-        "retake": "Reprendre les photos"
+        "retake": "Reprendre"
       },
       "shapes": {
         "slim": "Mince",

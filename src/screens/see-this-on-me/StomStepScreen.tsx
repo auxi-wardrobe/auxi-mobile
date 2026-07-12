@@ -166,6 +166,9 @@ export function renderStomStepScreen(
   }
 
   // ── Reuse-confirm re-entry (AU-354 pt.3) ─────────────────────────────────
+  // The saved photo is presented in a bottom sheet (per design) layered over the
+  // flow's header shell; the sheet's scrim dims it. Backdrop / swipe-down leaves
+  // the flow (same as the header back).
   if (
     reuseMode &&
     !reuseConfirmed &&
@@ -179,6 +182,7 @@ export function renderStomStepScreen(
           photoUri={reusePhotoUri}
           onConfirm={handleReuseConfirm}
           onRetake={handleReuseRetake}
+          onDismiss={handleBack}
         />
       </StepShell>
     );
