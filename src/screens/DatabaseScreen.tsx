@@ -14,6 +14,7 @@ import { theme } from '../theme/theme';
 import { Icons } from '../assets/icons';
 
 import { CategoryTabs } from '../components/features/CategoryTabs';
+import { Shimmer } from '../components/features/Shimmer';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { PressableScale } from '../components/primitives/PressableScale';
 
@@ -86,7 +87,12 @@ export const DatabaseScreen = () => {
   const renderLoadingGrid = () => (
     <View style={styles.grid}>
       {Array.from({ length: 6 }).map((_, index) => (
-        <View key={`skeleton-${index}`} style={styles.tileSkeleton} />
+        <Shimmer
+          key={`skeleton-${index}`}
+          width={TILE_WIDTH}
+          height={TILE_HEIGHT}
+          testID={`database-loading-tile-${index}`}
+        />
       ))}
     </View>
   );
@@ -301,12 +307,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: GRID_GAP,
     paddingHorizontal: HORIZONTAL_PADDING,
-  },
-  tileSkeleton: {
-    width: TILE_WIDTH,
-    height: TILE_HEIGHT,
-    borderRadius: theme.borderRadius.figmaTile,
-    backgroundColor: theme.colors.figmaDetailSurface,
   },
   tile: {
     width: TILE_WIDTH,

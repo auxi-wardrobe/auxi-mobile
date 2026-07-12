@@ -1,20 +1,18 @@
 /**
  * AU-307 phase 04 — Skeleton tile rendered in non-pinned outfit slots while
- * the pin-driven `/build` (or `/try_another`) request is in flight.
+ * the pin-driven `/build` (or `/try_another`) request is in flight, and, via
+ * `LoadableRemoteImage`, over every card image across the app until it loads.
  *
- * Matches the dims of the `GarmentPreview` tile exactly so the swap to the
- * real tile on success doesn't shift layout. Subtle opacity pulse (0.4 →
- * 0.8 → 0.4 over 1.2s) using react-native's Animated.loop — no native
- * gradient lib needed. Halted under OS "Reduce Motion".
+ * Matches the dims of the `GarmentPreview` tile exactly so the swap to the real
+ * tile on success doesn't shift layout. The loading motion is the shared
+ * `Shimmer` sweep — a cream (#f2efec) highlight travelling across a tan
+ * (#e0d2c4) base — so all card loading states read as one language. Halted on a
+ * static base frame under OS "Reduce Motion" (handled by `Shimmer`).
  */
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, type ViewStyle } from 'react-native';
+import React from 'react';
+import { StyleSheet, type ViewStyle } from 'react-native';
 import { theme } from '../../theme/theme';
-import { useReducedMotion } from '../../theme/motion';
-
-const PULSE_DURATION_MS = 1200;
-const PULSE_MIN_OPACITY = 0.4;
-const PULSE_MAX_OPACITY = 0.8;
+import { Shimmer } from './Shimmer';
 
 export interface SkeletonTileProps {
   width?: number;
@@ -28,59 +26,18 @@ export const SkeletonTile: React.FC<SkeletonTileProps> = ({
   height,
   style,
   testID = 'skeleton-tile',
-}) => {
-  const reduced = useReducedMotion();
-  const pulse = useRef(new Animated.Value(PULSE_MIN_OPACITY)).current;
-
-  useEffect(() => {
-    if (reduced) {
-      pulse.setValue(PULSE_MIN_OPACITY);
-      return;
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: PULSE_MAX_OPACITY,
-          duration: PULSE_DURATION_MS / 2,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: PULSE_MIN_OPACITY,
-          duration: PULSE_DURATION_MS / 2,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => {
-      loop.stop();
-    };
-  }, [reduced, pulse]);
-
-  const sizeStyle: ViewStyle = {};
-  if (typeof width === 'number') {
-    sizeStyle.width = width;
-  }
-  if (typeof height === 'number') {
-    sizeStyle.height = height;
-  }
-
-  return (
-    <Animated.View
-      testID={testID}
-      accessible
-      accessibilityRole="progressbar"
-      accessibilityLabel="Loading"
-      style={[styles.base, sizeStyle, style, { opacity: pulse }]}
-    />
-  );
-};
+}) => (
+  <Shimmer
+    width={width}
+    height={height}
+    style={[styles.tile, ...(Array.isArray(style) ? style : style ? [style] : [])]}
+    testID={testID}
+  />
+);
 
 const styles = StyleSheet.create({
-  base: {
+  tile: {
     flex: 1,
-    backgroundColor: theme.colors.figmaCardSurface,
-    borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.colors.figmaDivider,
   },
