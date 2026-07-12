@@ -18,13 +18,19 @@ export const HomeLoadingState = () => {
         </View>
       </View>
 
-      <View style={styles.loadingCards}>
+      {/* Mirror the real 4-item outfit grid (`twoByTwo` in OptionSheet): a
+          flex-filling 2×2 of card-shaped cells, so the load→loaded swap keeps
+          the exact same layout. */}
+      <View style={[styles.gridWrap, styles.gridWrapStart, styles.gridFill]}>
         {[0, 1].map(row => (
-          <View key={`loading-row-${row}`} style={styles.cardRow}>
+          <View
+            key={`loading-row-${row}`}
+            style={[styles.cardRow, styles.cardRowFill]}
+          >
             {[0, 1].map(column => (
               <View
                 key={`loading-card-${row}-${column}`}
-                style={[styles.cardShellFixed, styles.loadingSlotShell]}
+                style={styles.cardShellFixed}
               >
                 <ShimmerSlot
                   testID={`home-loading-slot-${row}-${column}`}
