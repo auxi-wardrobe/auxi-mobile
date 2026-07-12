@@ -7,9 +7,7 @@ import {
   GRID_CONTENT_PAD,
   GRID_GAP,
   OPTION_ACTIONS_HEIGHT,
-  OPTION_SHEET_HEIGHT,
   screenWidth,
-  SHEET_GAP,
   SHEET_PADDING,
   SMALL_CARD_HEIGHT,
   SMALL_CARD_WIDTH,
@@ -49,11 +47,6 @@ export const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: theme.colors.figmaFavouriteDot,
-  },
-  scrollContent: {
-    paddingTop: 4,
-    paddingBottom: 24,
-    gap: SHEET_GAP,
   },
   deckWrap: {
     flex: 1,
@@ -126,11 +119,17 @@ export const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     gap: 8,
   },
-  // Loading skeleton reuses optionSheet but isn't inside the flex deck, so it
-  // needs an explicit height instead of flex-filling.
-  optionSheetLoading: {
-    flex: 0,
-    height: OPTION_SHEET_HEIGHT,
+  // Loading caption slot — same 40px footprint as OutfitCardCaption's pill so
+  // the shimmer grid below starts at the same y as a loaded sheet's grid.
+  loadingCaptionSlot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40,
+  },
+  // Generating chrome (action row + wear-this) is present for layout parity but
+  // dimmed — nothing is interactive yet.
+  loadingChromeDim: {
+    opacity: motion.opacity.subtle,
   },
   gridWrap: {
     gap: GRID_GAP,
@@ -238,10 +237,6 @@ export const styles = StyleSheet.create({
     lineHeight: 12,
     color: theme.colors.uacTextPrimaryBase,
   },
-  loadingPillRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   loadingPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -265,10 +260,6 @@ export const styles = StyleSheet.create({
     maxWidth: '100%',
     alignSelf: 'center',
     aspectRatio: CARD_ASPECT,
-  },
-  loadingFooterChrome: {
-    opacity: motion.opacity.subtle,
-    gap: theme.spacing.uacDimension8,
   },
   loadingWearThis: {
     minHeight: 56,

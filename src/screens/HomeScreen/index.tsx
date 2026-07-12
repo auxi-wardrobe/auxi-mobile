@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -1426,12 +1426,7 @@ export const HomeScreen = () => {
       </View>
 
       {loading ? (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          scrollEnabled={false}
-        >
-          <HomeLoadingState />
-        </ScrollView>
+        <HomeLoadingState />
       ) : optionSets.length === 0 && isWardrobeGap ? (
         <HomeWardrobeGapState
           onAddItems={() => navigation.navigate('Wardrobe')}
