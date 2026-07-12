@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.l,
   },
   headline: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing.m,

@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.m,
   },
   errorText: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.figmaRed,
     textAlign: 'center',
   },

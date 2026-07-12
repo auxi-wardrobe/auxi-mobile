@@ -319,11 +319,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   subtitle: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
   },

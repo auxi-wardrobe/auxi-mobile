@@ -237,7 +237,7 @@ export const styles = StyleSheet.create({
   },
   yourPieceBadgeText: {
     // Chip size SM (24px height) → 10px font per chip sizing spec.
-    ...theme.typography.aliases.interSemiboldXs,
+    ...theme.typography.aliases.poppinsSemiboldXs,
     fontSize: 10,
     lineHeight: 12,
     color: theme.colors.uacTextPrimaryBase,
@@ -461,7 +461,7 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   pinGuestText: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.figmaTextPrimary,
     flexShrink: 1,
   },
@@ -472,7 +472,7 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   pinGuestCtaText: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     fontFamily: 'Poppins-Medium',
     color: theme.colors.figmaPrimaryButtonText,
   },

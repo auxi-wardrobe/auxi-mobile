@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   temp: {
-    ...theme.typography.aliases.interSemiboldXs,
+    ...theme.typography.aliases.poppinsSemiboldXs,
     color: theme.colors.uacTextBase,
   },
   tempUnit: {

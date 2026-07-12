@@ -105,11 +105,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   addSheetTitle: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   addSheetSubtitle: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
     marginBottom: theme.spacing.m,
