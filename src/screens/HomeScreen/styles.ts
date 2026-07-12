@@ -263,6 +263,16 @@ export const styles = StyleSheet.create({
   loadingSlotShell: {
     height: CARD_HEIGHT,
   },
+  // The loading slot must read at the same 3:4 ratio as a real outfit tile
+  // (`card`) so the load→loaded swap doesn't reflow. Height-driven + aspectRatio
+  // + centered, mirroring `card`, so the ShimmerSlot fills the exact card rect
+  // instead of the full (wider) shell.
+  loadingSlotCard: {
+    height: '100%',
+    maxWidth: '100%',
+    alignSelf: 'center',
+    aspectRatio: CARD_ASPECT,
+  },
   loadingFooterChrome: {
     opacity: motion.opacity.subtle,
     gap: theme.spacing.uacDimension8,
