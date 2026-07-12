@@ -20,7 +20,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../components/design-system/lib';
-import { CategoryTabs } from '../components/features/CategoryTabs';
 import { HomeWardrobeNavFooter } from '../components/features/HomeWardrobeNavFooter';
 import { FeedbackFab } from '../components/features/FeedbackFab';
 import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
@@ -28,12 +27,7 @@ import { Header } from '../components/layout/Header';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { ItemReadySnackbar } from '../components/feedback/ItemReadySnackbar';
 import { PressableScale } from '../components/primitives/PressableScale';
-import {
-  MActionSheet,
-  MBottomSheet,
-  MButton,
-  MRadioMenu,
-} from '../components/design-system/lib';
+import { MActionSheet, MButton } from '../components/design-system/lib';
 import { DotsLoader } from '../components/atoms/DotsLoader';
 import { useSidebar } from '../context/SidebarContext';
 import {
@@ -48,6 +42,9 @@ import { Icons } from '../assets/icons';
 import { track } from '../services/analytics';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
+import { WardrobeFilterSortBar } from './wardrobe/WardrobeFilterSortBar';
+import { WardrobeTypeSheet } from './wardrobe/WardrobeTypeSheet';
+import { WardrobeSortSheet } from './wardrobe/WardrobeSortSheet';
 import { WardrobeGridTile } from './wardrobe/WardrobeGridTile';
 import { PreparingOverlay } from './wardrobe/PreparingOverlay';
 import { useAddWardrobeItem } from './wardrobe/useAddWardrobeItem';
@@ -55,8 +52,6 @@ import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
 import { useStalePreparingCleanup } from './wardrobe/useStalePreparingCleanup';
 import { anyBeautifying } from './wardrobe/beautify-status';
 import {
-  FILTER_TABS,
-  FilterTab,
   GRID_GAP,
   HORIZONTAL_PADDING,
   PENDING_IMPORT_ID,
@@ -66,15 +61,20 @@ import {
   anyPreparing,
   isCommonItem,
   isPreparing,
-  resolveFilterQuery,
 } from './wardrobe/wardrobe-grid';
 import {
   DEFAULT_SORT,
-  SORT_OPTIONS,
   SORT_OPTION_BY_VALUE,
   SortValue,
   sortWardrobeItems,
 } from './wardrobe/wardrobe-sort';
+import {
+  CategoryFilter,
+  categorySummaryLabel,
+  filterItemsByCategories,
+  isAllSelected,
+  uploadCategoryHint,
+} from './wardrobe/wardrobe-filter';
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
@@ -99,7 +99,14 @@ export const WardrobeScreen = () => {
 
   const insets = useSafeAreaInsets();
 
-  const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
+  // Multi-select category filter. Empty === "All" (no category constrained).
+  // Applied client-side over the full item list so several types can be shown
+  // at once (Figma "item type" sheet) — the backend filter endpoint only takes
+  // one category, so the grid fetches everything and narrows locally.
+  const [selectedCategories, setSelectedCategories] = useState<
+    CategoryFilter[]
+  >([]);
+  const [typeSheetVisible, setTypeSheetVisible] = useState(false);
   // Add-item sheet visibility. The full-width panel + "Refine suggestions"
   // reveal motion + reduce-motion fallback are encapsulated inside
   // ContextualBottomSheet (it keeps itself mounted through the close
@@ -129,14 +136,18 @@ export const WardrobeScreen = () => {
 
   const queryClient = useQueryClient();
 
+  // Analytics dimension for the active filter — 'All' or the selected categories
+  // joined (e.g. "Top,Bottoms"). Kept as a stable string so filter-change and
+  // screen-view events split cleanly.
+  const categoryParam = isAllSelected(selectedCategories)
+    ? 'All'
+    : selectedCategories.join(',');
+
   const wardrobeQuery = useQuery({
-    queryKey: wardrobeKeys.list(selectedTab),
-    queryFn: () => {
-      const category = resolveFilterQuery(selectedTab);
-      return category
-        ? wardrobeService.filterWardrobeItems({ category })
-        : wardrobeService.getWardrobeItems();
-    },
+    // One cache entry for the whole wardrobe — category narrowing happens
+    // client-side (multi-select), so the fetch never varies by filter.
+    queryKey: wardrobeKeys.list('All'),
+    queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 60_000,
     // AU-361 + Task 14: while focused AND something is preparing OR beautifying,
     // poll so the preparing→ready / beautify pending→ready transitions are
@@ -150,7 +161,12 @@ export const WardrobeScreen = () => {
   });
 
   const { refetch } = wardrobeQuery;
-  const items = wardrobeQuery.data ?? [];
+  // Stable empty-array fallback so the downstream filter/sort useMemo doesn't
+  // re-run every render on a fresh `[]` reference.
+  const items = useMemo(
+    () => wardrobeQuery.data ?? [],
+    [wardrobeQuery.data],
+  );
   // Skeleton only on the first load (no cached data yet) — never on a
   // background revalidate, so revisiting the screen doesn't flash.
   const loading = wardrobeQuery.isLoading;
@@ -243,23 +259,23 @@ export const WardrobeScreen = () => {
   // on filter change (preserves the prior wardrobe_viewed cadence).
   useEffect(() => {
     if (isFocused) {
-      track('wardrobe_viewed', { category: selectedTab });
+      track('wardrobe_viewed', { category: categoryParam });
     }
-  }, [isFocused, selectedTab]);
+  }, [isFocused, categoryParam]);
 
   // F7: surface the load-failed toast + analytics once per error episode.
   const loadFailedRef = useRef(false);
 
-  // A tab change starts a fresh error episode — allow the load-failed toast +
-  // analytics to fire once for the newly selected tab.
+  // A filter change starts a fresh error episode — allow the load-failed toast +
+  // analytics to fire once for the newly selected categories.
   useEffect(() => {
     loadFailedRef.current = false;
-  }, [selectedTab]);
+  }, [categoryParam]);
 
   useEffect(() => {
     if (loadError && !loadFailedRef.current) {
       loadFailedRef.current = true;
-      track('wardrobe_load_failed', { category: selectedTab });
+      track('wardrobe_load_failed', { category: categoryParam });
       toast.show({
         type: 'error',
         text1: t('common.load_wardrobe_failed_title'),
@@ -269,20 +285,21 @@ export const WardrobeScreen = () => {
     } else if (!loadError) {
       loadFailedRef.current = false;
     }
-  }, [loadError, selectedTab, t]);
+  }, [loadError, categoryParam, t]);
 
   const handleRetryLoad = useCallback(() => {
-    track('wardrobe_load_retry_tapped', { category: selectedTab });
+    track('wardrobe_load_retry_tapped', { category: categoryParam });
     refetch();
-  }, [refetch, selectedTab]);
+  }, [refetch, categoryParam]);
 
-  const handleSelectTab = (category: FilterTab) => {
-    setSelectedTab(category);
-    track('wardrobe_filter_changed', { category });
+  const handleApplyFilter = (categories: CategoryFilter[]) => {
+    setSelectedCategories(categories);
+    track('wardrobe_filter_changed', {
+      category: isAllSelected(categories) ? 'All' : categories.join(','),
+    });
   };
 
-  const handleSelectSort = (value: SortValue) => {
-    setSortSheetVisible(false);
+  const handleApplySort = (value: SortValue) => {
     if (value === sortValue) {
       return;
     }
@@ -380,7 +397,7 @@ export const WardrobeScreen = () => {
     handleTakePhoto,
     aiConsentDialogProps,
   } = useAddWardrobeItem({
-    selectedTab,
+    selectedTab: uploadCategoryHint(selectedCategories),
     user,
     showReadySnackbar,
     refetch: refetchWardrobe,
@@ -396,16 +413,17 @@ export const WardrobeScreen = () => {
     </View>
   );
 
-  // In select mode hide the item being changed so it can't be re-picked.
-  const filteredItems =
-    isSelectMode && excludeItemId
-      ? items.filter(item => item.id !== excludeItemId)
-      : items;
-  // Client-side reorder of the category-filtered set (pure, non-mutating).
-  const displayItems = useMemo(
-    () => sortWardrobeItems(filteredItems, sortValue),
-    [filteredItems, sortValue],
-  );
+  // Client-side pipeline: category multi-filter → (select-mode exclusion) →
+  // sort. All pure/non-mutating. The category narrowing lives here (not in the
+  // query) so the multi-select "item type" sheet can show several types at once.
+  const displayItems = useMemo(() => {
+    const byCategory = filterItemsByCategories(items, selectedCategories);
+    const withoutExcluded =
+      isSelectMode && excludeItemId
+        ? byCategory.filter(item => item.id !== excludeItemId)
+        : byCategory;
+    return sortWardrobeItems(withoutExcluded, sortValue);
+  }, [items, selectedCategories, isSelectMode, excludeItemId, sortValue]);
 
   // Optimistic preparing placeholder for an in-flight web import, prepended so
   // the freshly added image is immediately visible with its processing status.
@@ -467,29 +485,21 @@ export const WardrobeScreen = () => {
           isSelectMode && styles.scrollContentSelect,
         ]}
       >
-        <CategoryTabs
-          categories={[...FILTER_TABS]}
-          selectedCategory={selectedTab}
-          onSelectCategory={category => handleSelectTab(category as FilterTab)}
-          wrap
-        />
-
-        {!isSelectMode && hasItems ? (
-          <View style={styles.sortRow}>
-            <MButton
-              variant="secondary"
-              size="sm"
-              onPress={() => setSortSheetVisible(true)}
-              testID="wardrobe-sort-trigger"
-              accessibilityLabel={t('wardrobe.list.sort.a11y_open', {
-                option: t(SORT_OPTION_BY_VALUE[sortValue].shortKey),
-              })}
-            >
-              {`${t('wardrobe.list.sort.label')} · ${t(
-                SORT_OPTION_BY_VALUE[sortValue].shortKey,
-              )}`}
-            </MButton>
-          </View>
+        {items.length > 0 ? (
+          <WardrobeFilterSortBar
+            filterLabel={categorySummaryLabel(
+              selectedCategories,
+              c => t(`common.categoryFilters.${c}`, { defaultValue: c }),
+              t('common.categoryFilters.All'),
+            )}
+            sortLabel={t(SORT_OPTION_BY_VALUE[sortValue].labelKey)}
+            onOpenFilter={() => setTypeSheetVisible(true)}
+            onOpenSort={() => setSortSheetVisible(true)}
+            filterAccessibilityLabel={t('wardrobe.list.filter.a11y_open')}
+            sortAccessibilityLabel={t('wardrobe.list.sort.a11y_open', {
+              option: t(SORT_OPTION_BY_VALUE[sortValue].labelKey),
+            })}
+          />
         ) : null}
 
         {loading ? (
@@ -531,12 +541,12 @@ export const WardrobeScreen = () => {
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>
-              {selectedTab === 'All'
+              {isAllSelected(selectedCategories)
                 ? t('wardrobe.list.empty_first_title')
                 : t('wardrobe.list.empty_filtered_title')}
             </Text>
             <Text style={styles.emptySubtitle}>
-              {selectedTab === 'All'
+              {isAllSelected(selectedCategories)
                 ? t('wardrobe.list.empty_first_body')
                 : t('wardrobe.list.empty_filtered_body')}
             </Text>
@@ -589,28 +599,23 @@ export const WardrobeScreen = () => {
         testID="wardrobe-photo-source-sheet"
       />
 
-      {/* Sort chooser — MBottomSheet + MRadioMenu (single-select of six flat
-          options). onChange sets sort + fires wardrobe_sort_changed. */}
-      <MBottomSheet
+      {/* Type filter chooser — multi-select chips + Default/Show, committed on
+          apply (Figma "item type"). */}
+      <WardrobeTypeSheet
+        visible={typeSheetVisible}
+        selected={selectedCategories}
+        onDismiss={() => setTypeSheetVisible(false)}
+        onApply={handleApplyFilter}
+      />
+
+      {/* Sort chooser — single-select radio list + Default/Save, committed on
+          apply (Figma "item sort"). onApply fires wardrobe_sort_changed. */}
+      <WardrobeSortSheet
         visible={sortSheetVisible}
+        value={sortValue}
         onDismiss={() => setSortSheetVisible(false)}
-        testID="wardrobe-sort-sheet"
-      >
-        <Text style={styles.sortSheetTitle}>
-          {t('wardrobe.list.sort.title')}
-        </Text>
-        <View style={styles.sortSheetBody}>
-          <MRadioMenu
-            options={SORT_OPTIONS.map(o => ({
-              value: o.value,
-              label: t(o.labelKey),
-            }))}
-            value={sortValue}
-            onChange={value => handleSelectSort(value as SortValue)}
-            testID="wardrobe-sort-menu"
-          />
-        </View>
-      </MBottomSheet>
+        onApply={handleApplySort}
+      />
 
       {/* B1: AI data-sharing consent prompt — gated by useAiConsentGate inside
           useAddWardrobeItem; shown before the first beautify upload. */}
@@ -725,23 +730,6 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sortRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: HORIZONTAL_PADDING,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  sortSheetTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
-    color: theme.colors.figmaTextPrimary,
-    textAlign: 'center',
-    paddingVertical: 8,
-  },
-  sortSheetBody: {
-    alignItems: 'center',
-    paddingBottom: 8,
   },
   // Pinned picker-mode commit bar.
   changeFooter: {

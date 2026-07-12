@@ -298,9 +298,16 @@
         "preparing_step2": "Étiquetage automatique de vos articles…",
         "preparing_tile": "Préparation de cet article",
         "error_body": "Impossible de charger votre garde-robe. Vérifiez votre connexion et réessayez.",
+        "filter": {
+          "title": "Sélectionner",
+          "a11y_open": "Ouvrir le filtre par type",
+          "reset": "Par défaut",
+          "apply": "Afficher"
+        },
         "sort": {
           "label": "Trier",
-          "title": "Trier par",
+          "title": "Trier",
+          "reset": "Par défaut",
           "a11y_open": "Ouvrir les options de tri, actuellement {{option}}",
           "newest": "Plus récent d'abord",
           "oldest": "Plus ancien d'abord",

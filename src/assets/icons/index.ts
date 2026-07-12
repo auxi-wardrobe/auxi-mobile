@@ -18,6 +18,7 @@ import IconSort from '../images/sort_icon.svg';
 import IconPlus from '../images/icon_plus.svg';
 import IconChevronLeft from '../images/icon_chevron_left.svg';
 import IconChevronRight from '../images/icon_chevron_right.svg';
+import IconChevronDown from '../images/icon_chevron_down.svg';
 import IconArrowRight from '../images/icon_arrow_right.svg';
 import IconDelete from '../images/icon_delete.svg';
 import IconMenu from '../images/icon_menu.svg';
@@ -72,6 +73,7 @@ export const Icons = {
   Plus: IconPlus,
   ChevronLeft: IconChevronLeft,
   ChevronRight: IconChevronRight,
+  ChevronDown: IconChevronDown,
   ArrowRight: IconArrowRight,
   Delete: IconDelete,
   Menu: IconMenu,
@@ -127,6 +129,7 @@ export {
   IconPlus,
   IconChevronLeft,
   IconChevronRight,
+  IconChevronDown,
   IconArrowRight,
   IconDelete,
   IconMenu,
