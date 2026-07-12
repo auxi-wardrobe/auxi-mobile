@@ -4,7 +4,6 @@ import { motion } from '../../theme/motion';
 import { HOME_VIEW_TOGGLE_FOOTER_HEIGHT } from '../../components/features/HomeViewToggleFooter';
 import {
   CARD_ASPECT,
-  CARD_HEIGHT,
   GRID_CONTENT_PAD,
   GRID_GAP,
   OPTION_ACTIONS_HEIGHT,
@@ -161,9 +160,6 @@ export const styles = StyleSheet.create({
   cardRowFill: {
     flex: 1,
   },
-  loadingCards: {
-    gap: GRID_GAP,
-  },
   cardRow: {
     flexDirection: 'row',
     gap: GRID_GAP,
@@ -259,9 +255,6 @@ export const styles = StyleSheet.create({
   loadingPillText: {
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextDark,
-  },
-  loadingSlotShell: {
-    height: CARD_HEIGHT,
   },
   // The loading slot must read at the same 3:4 ratio as a real outfit tile
   // (`card`) so the load→loaded swap doesn't reflow. Height-driven + aspectRatio
