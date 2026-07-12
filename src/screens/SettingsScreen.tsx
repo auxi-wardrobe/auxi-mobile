@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,7 +15,10 @@ import { ensurePushPermissionAndRegister } from '../services/notificationService
 import { useSidebar } from '../context/SidebarContext';
 import { SettingsScreenScaffold } from '../components/settings/SettingsScreenScaffold';
 import { SettingsProfileHeader } from '../components/settings/SettingsProfileHeader';
-import { SettingsRow, SettingsDivider } from '../components/settings/SettingsRow';
+import {
+  SettingsRow,
+  SettingsDivider,
+} from '../components/settings/SettingsRow';
 import { SettingsDialog } from '../components/settings/SettingsDialog';
 import { RadioOptionList } from '../components/settings/RadioOptionList';
 import { SettingsSwitch } from '../components/settings/SettingsSwitch';
@@ -486,11 +495,7 @@ export const SettingsScreen = () => {
           label={t('settings.delete_my_data')}
           // Main-list "Delete My Data" row is NEUTRAL (qa-ui C2) — not red.
           trailing={
-            <Icons.Delete
-              width={24}
-              height={24}
-              color={theme.ds.color.ink}
-            />
+            <Icons.Delete width={24} height={24} color={theme.ds.color.ink} />
           }
           onPress={() => setActiveModal('deleteConfirm')}
         />
@@ -520,11 +525,13 @@ export const SettingsScreen = () => {
           />
 
           <MRadioMenu
-            options={(['AM', 'PM'] as DailyNotificationPeriod[]).map(period => ({
-              value: period,
-              label: period,
-              testID: `settings-time-period-${period.toLowerCase()}`,
-            }))}
+            options={(['AM', 'PM'] as DailyNotificationPeriod[]).map(
+              period => ({
+                value: period,
+                label: period,
+                testID: `settings-time-period-${period.toLowerCase()}`,
+              }),
+            )}
             value={pendingPeriod}
             onChange={value =>
               setPendingPeriod(value as DailyNotificationPeriod)
