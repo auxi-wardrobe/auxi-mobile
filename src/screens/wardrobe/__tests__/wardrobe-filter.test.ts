@@ -67,7 +67,7 @@ describe('filterItemsByCategories', () => {
 });
 
 describe('categorySummaryLabel', () => {
-  const labelFor = (c: CategoryFilter) => ({ Ac: 'Acc.' } as const)[c] ?? c;
+  const labelFor = (c: CategoryFilter) => (c === 'Ac' ? 'Acc.' : c);
 
   it('shows the All label when nothing is selected', () => {
     expect(categorySummaryLabel([], labelFor, 'All')).toBe('All');

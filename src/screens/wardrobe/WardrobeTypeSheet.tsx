@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { MBottomSheet, MButton, MChip } from '../../components/design-system/lib';
+import { MButton, MChip } from '../../components/design-system/lib';
+import { ContextualBottomSheet } from '../../components/features/ContextualBottomSheet';
 import { theme } from '../../theme/theme';
 import {
   CATEGORY_FILTERS,
@@ -42,7 +43,7 @@ export const WardrobeTypeSheet = ({
     t(`common.categoryFilters.${category}`, { defaultValue: category });
 
   return (
-    <MBottomSheet
+    <ContextualBottomSheet
       visible={visible}
       onDismiss={onDismiss}
       testID="wardrobe-type-sheet"
@@ -94,23 +95,23 @@ export const WardrobeTypeSheet = ({
           </MButton>
         </View>
       </View>
-    </MBottomSheet>
+    </ContextualBottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
+  // ContextualBottomSheet provides the full-width surface, top radius, scrim,
+  // horizontal + top padding and the home-indicator bottom inset — this content
+  // only owns its vertical rhythm.
   title: {
     ...theme.typography.aliases.poppinsSemiboldSm,
     color: theme.colors.figmaTextPrimary,
-    paddingHorizontal: 4,
-    paddingTop: 4,
     paddingBottom: 12,
   },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    paddingHorizontal: 4,
     paddingBottom: 20,
   },
   actions: {
