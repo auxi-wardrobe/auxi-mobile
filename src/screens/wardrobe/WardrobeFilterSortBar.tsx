@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaInsightPillBg,
   },
   chipText: {
-    ...theme.typography.aliases.poppinsMediumSm,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.figmaTextPrimary,
     flexShrink: 1,
   },
