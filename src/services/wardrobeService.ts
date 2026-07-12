@@ -143,7 +143,7 @@ const replaceFitTag = (tags: string[], fitLabel: string): string[] => {
   return nextTags;
 };
 
-const matchesCategoryFilter = (itemCategory: string | undefined, filterCategory: string): boolean => {
+export const matchesCategoryFilter = (itemCategory: string | undefined, filterCategory: string): boolean => {
   const normalizedItem = itemCategory?.trim().toLowerCase() || '';
   const normalizedFilter = filterCategory.trim().toLowerCase();
 

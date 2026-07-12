@@ -298,9 +298,16 @@
         "preparing_step2": "Auto tagging your items…",
         "preparing_tile": "Preparing this item",
         "error_body": "We couldn't load your wardrobe. Check your connection and try again.",
+        "filter": {
+          "title": "Select",
+          "a11y_open": "Open type filter",
+          "reset": "Default",
+          "apply": "Show"
+        },
         "sort": {
           "label": "Sort",
-          "title": "Sort by",
+          "title": "Sort",
+          "reset": "Default",
           "a11y_open": "Open sort options, currently {{option}}",
           "newest": "Newest first",
           "oldest": "Oldest first",
