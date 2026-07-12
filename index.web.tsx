@@ -51,11 +51,22 @@ async function boot() {
   } else if (authState !== 'logged-out') {
     // Designer flow: adopt a shared cross-subdomain session if one exists;
     // otherwise the app boots unauthenticated and the real login screen mounts.
-    // If we arrived here via the Google OAuth relay (?return=<preview-url>),
-    // register the return URL so setTokens redirects back after login.
-    const returnParam = new URLSearchParams(search).get('return');
-    if (returnParam) setPendingReturnUrl(returnParam);
-    await hydrateFromSharedCookie();
+    const hydrated = await hydrateFromSharedCookie();
+    if (!hydrated) {
+      // No active session — if we arrived via the Google OAuth relay
+      // (?return=<preview-url>), register the URL so setTokens fires the
+      // redirect after the user completes login. Register AFTER hydration so
+      // hydrateFromSharedCookie's internal setTokens call never sees it.
+      const returnParam = new URLSearchParams(search).get('return');
+      if (returnParam) {
+        setPendingReturnUrl(returnParam);
+        // Strip from URL so a bookmark/share of this page doesn't replay the relay.
+        const qs = new URLSearchParams(search);
+        qs.delete('return');
+        const q = qs.toString();
+        history.replaceState(null, '', location.pathname + (q ? '?' + q : ''));
+      }
+    }
   }
 
   root.render(<App />);

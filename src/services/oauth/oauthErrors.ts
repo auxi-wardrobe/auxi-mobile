@@ -36,6 +36,9 @@ export const isOAuthCancelled = (err: unknown): boolean => {
 
   // Google: code is one of statusCodes.SIGN_IN_CANCELLED / IN_PROGRESS.
   if (e.code === statusCodes.SIGN_IN_CANCELLED) return true;
+  // Web GIS: browser throttled One Tap via cooldown heuristic — not a user action,
+  // treat as silent like cancellation (no error toast).
+  if (e.code === 'GIS_SUPPRESSED') return true;
 
   // Apple: returns Error with code === '1001' (CANCELED) per
   // appleAuth.Error.CANCELED. Native iOS authorization controller

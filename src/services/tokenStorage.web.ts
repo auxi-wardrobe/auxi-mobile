@@ -26,12 +26,14 @@ export const enableEphemeralMode = (): void => {
 let _pendingReturnUrl: string | null = null;
 
 /** Register a URL to redirect to after the next successful setTokens call.
- *  Only accepts *.auxi-web-review.pages.dev to prevent open redirects. */
+ *  Only accepts *.auxi-web-review.pages.dev to prevent open redirects.
+ *  Anchors on a '.' boundary to block evil-auxi-web-review.pages.dev bypass. */
 export const setPendingReturnUrl = (url: string): void => {
   try {
-    const u = new URL(url);
-    if (u.hostname.endsWith('auxi-web-review.pages.dev'))
+    const h = new URL(url).hostname;
+    if (h === 'auxi-web-review.pages.dev' || h.endsWith('.auxi-web-review.pages.dev')) {
       _pendingReturnUrl = url;
+    }
   } catch {
     /* invalid URL — ignore */
   }
@@ -109,9 +111,9 @@ export const setTokens = async (input: SetTokensInput): Promise<void> => {
   if (_pendingReturnUrl && !ephemeral) {
     const url = _pendingReturnUrl;
     _pendingReturnUrl = null;
-    setTimeout(() => {
-      location.href = url;
-    }, 50);
+    // Defer one tick so the login screen's success handler can finish its own
+    // state update before we navigate away. Cookie write above is synchronous.
+    setTimeout(() => { location.href = url; }, 50);
   }
 };
 

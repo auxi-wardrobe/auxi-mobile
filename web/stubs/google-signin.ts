@@ -56,7 +56,11 @@ function loadGIS(): Promise<void> {
     s.async = true;
     s.defer = true;
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error('GIS script failed to load'));
+    s.onerror = () => {
+      // Reset so a retry (e.g. after network recovery) can re-attempt the load.
+      _scriptPromise = null;
+      reject(new Error('GIS script failed to load'));
+    };
     document.head.appendChild(s);
   });
   return _scriptPromise;
@@ -112,11 +116,11 @@ export const GoogleSignin = {
     return new Promise((resolve, reject) => {
       const g = typeof window !== 'undefined' ? window.google : undefined;
       if (!g) {
-        reject(
-          Object.assign(new Error('GIS unavailable'), {
-            code: statusCodes.SIGN_IN_CANCELLED,
-          }),
-        );
+        reject(Object.assign(new Error('GIS unavailable'), { code: statusCodes.SIGN_IN_CANCELLED }));
+        return;
+      }
+      if (!_clientId) {
+        reject(Object.assign(new Error('GoogleSignin.configure() missing webClientId'), { code: statusCodes.SIGN_IN_CANCELLED }));
         return;
       }
 
@@ -127,6 +131,8 @@ export const GoogleSignin = {
         fn();
       };
 
+      // Cancel any in-flight prompt from a prior signIn call before re-initializing.
+      g.accounts.id.cancel();
       g.accounts.id.initialize({
         client_id: _clientId,
         cancel_on_tap_outside: true,
@@ -141,17 +147,17 @@ export const GoogleSignin = {
       });
 
       g.accounts.id.prompt((notification: GISPromptNotification) => {
-        if (
-          notification.isNotDisplayed() ||
-          notification.isSkippedMoment() ||
-          notification.isDismissedMoment()
-        ) {
+        if (notification.isNotDisplayed() || notification.isDismissedMoment()) {
+          // User-initiated cancellation — caller silences the error via isOAuthCancelled().
           once(() =>
-            reject(
-              Object.assign(new Error('Cancelled'), {
-                code: statusCodes.SIGN_IN_CANCELLED,
-              }),
-            ),
+            reject(Object.assign(new Error('Cancelled'), { code: statusCodes.SIGN_IN_CANCELLED })),
+          );
+        } else if (notification.isSkippedMoment()) {
+          // Browser throttled One Tap (cooldown heuristic) — not a user action.
+          // Reject with a distinct code so the caller can show a retry prompt
+          // instead of a "login cancelled" toast.
+          once(() =>
+            reject(Object.assign(new Error('Suppressed'), { code: 'GIS_SUPPRESSED' })),
           );
         }
       });
