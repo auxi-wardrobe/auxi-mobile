@@ -71,9 +71,9 @@ export const WardrobeSortSheet = ({
               onDismiss();
             }}
             testID="wardrobe-sort-apply"
-            accessibilityLabel={t('common.save')}
+            accessibilityLabel={t('wardrobe.list.sort.apply')}
           >
-            {t('common.save')}
+            {t('wardrobe.list.sort.apply')}
           </MButton>
         </View>
       </View>

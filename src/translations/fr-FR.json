@@ -308,6 +308,7 @@
           "label": "Trier",
           "title": "Trier",
           "reset": "Par défaut",
+          "apply": "Afficher",
           "a11y_open": "Ouvrir les options de tri, actuellement {{option}}",
           "newest": "Plus récent d'abord",
           "oldest": "Plus ancien d'abord",

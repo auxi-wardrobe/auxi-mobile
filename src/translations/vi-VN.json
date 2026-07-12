@@ -308,6 +308,7 @@
           "label": "Sắp xếp",
           "title": "Sắp xếp",
           "reset": "Mặc định",
+          "apply": "Hiển thị",
           "a11y_open": "Mở tùy chọn sắp xếp, hiện tại {{option}}",
           "newest": "Mới nhất trước",
           "oldest": "Cũ nhất trước",
