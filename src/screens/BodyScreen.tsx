@@ -334,9 +334,13 @@ export const BodyScreen = () => {
   };
 
   // Body-photo library (Settings › Personalization → Manage body photo):
-  // wardrobe-style grid of every body photo. Tapping a tile pushes the
-  // photoDetail view for that body (view + delete live there). View-only —
-  // adding a photo is intentionally not offered on this page.
+  // wardrobe-style grid of every body photo. Tapping a tile PUSHES the
+  // photoDetail view for that body (view + delete live there). `push` — not
+  // `navigate` — is load-bearing: `navigate('Body', …)` would reuse this same
+  // Body screen (already in the stack) and just swap its params, so the detail
+  // view's Back / post-delete goBack would skip the grid and land on Settings.
+  // Pushing keeps the grid beneath, so Back and delete both return here.
+  // View-only — adding a photo is intentionally not offered on this page.
   if (isPhotoLibraryMode) {
     return (
       <BodyPhotoLibraryView
@@ -344,7 +348,7 @@ export const BodyScreen = () => {
         items={items}
         onBack={() => navigation.goBack()}
         onOpenPhoto={item =>
-          navigation.navigate('Body', {
+          navigation.push('Body', {
             mode: 'photoDetail',
             bodyId: item.id,
           })
