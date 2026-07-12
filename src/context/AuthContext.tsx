@@ -18,6 +18,7 @@ import {
 import { getForcedFirstLogin } from '../services/reviewOverrides';
 import { resetV05Session } from '../services/v05Api';
 import { setRecommendationMemoryUser } from '../services/recommendationMemory';
+import { setTryOnResultUser } from '../services/tryOnResultStore';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
 
 /**
@@ -219,6 +220,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // Point long-term recommendation memory at this user (hydrates their
       // persisted last-5 signatures from disk) on every real identity change.
       setRecommendationMemoryUser(distinctId);
+      // Point the See-this-on-me result cache at this user (hydrates their
+      // persisted last-successful try-on results so re-tapping "See on me"
+      // shows the previous AI photo instead of regenerating).
+      setTryOnResultUser(distinctId);
       // People profile — full user attributes (incl. reserved $email/$created).
       const profile: Record<string, unknown> = {
         $email: user.email,
@@ -285,6 +290,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // memory and the cached V05 session so neither outlives the user it
       // belongs to (the per-user persisted memory blob stays for re-login).
       setRecommendationMemoryUser(null);
+      // Drop the in-memory try-on result cache too (the per-user persisted blob
+      // stays for re-login, matching the recommendation memory).
+      setTryOnResultUser(null);
       resetV05Session();
     }
   }, [user]);
