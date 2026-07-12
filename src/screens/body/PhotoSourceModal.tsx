@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     ...theme.typography.aliases.interSemiboldXsSm,
     textAlign: 'center',
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.figmaSheetText,
     marginBottom: theme.spacing.m,
   },
   modalAction: {

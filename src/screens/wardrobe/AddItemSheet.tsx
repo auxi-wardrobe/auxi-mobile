@@ -106,11 +106,11 @@ const styles = StyleSheet.create({
   },
   addSheetTitle: {
     ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.figmaSheetText,
   },
   addSheetSubtitle: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    color: theme.colors.figmaSheetText,
     marginTop: theme.spacing.s,
     marginBottom: theme.spacing.m,
   },

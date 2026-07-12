@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.figmaSheetText,
     marginBottom: theme.spacing.m,
   },
   // Cap the grid height so a big result set scrolls inside the sheet instead of

@@ -247,14 +247,14 @@ export const ScheduleDatePickerSheet: React.FC<Props> = ({
 const styles = StyleSheet.create({
   eyebrow: {
     ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.figmaSheetText,
   },
   selectedDate: {
     ...theme.typography.aliases.poppinsBodyBold,
     fontSize: 28,
     lineHeight: 36,
     letterSpacing: 0,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.figmaSheetText,
     marginTop: 8,
   },
   divider: {

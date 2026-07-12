@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.figmaSheetText,
   },
   // Drop the shared TopIconButton gray surface — plain X, no chip background.
   closeButton: {

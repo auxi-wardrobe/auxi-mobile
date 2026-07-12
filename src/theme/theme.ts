@@ -41,6 +41,11 @@ export const theme = {
     figmaText: '#272A32',
     figmaTextPrimary: '#272A32',
     figmaTextSecondary: '#616161',
+    // Canonical bottom-sheet text tone (color/neutral/800). Every bottom-sheet
+    // title (interSemiboldXsSm, 14/20) and subtitle/body (interBodySm, 14/20)
+    // reads at this ONE ink color — no primary/secondary split inside sheets.
+    // Same hex as figmaPrimaryButtonBg; named separately for text intent.
+    figmaSheetText: '#1D1F23',
     figmaTextMuted: '#49454F',
     figmaDivider: '#D1D3D8',
     // Barely-there hairline — Figma `border/neutral/subtle_300` (#f2f4f7).

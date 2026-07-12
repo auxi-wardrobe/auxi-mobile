@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.figmaSheetText,
   },
   modalClose: {
     ...theme.typography.aliases.uacBodyMdMedium,

@@ -207,11 +207,11 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.figmaSheetText,
   },
   body: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    color: theme.colors.figmaSheetText,
     marginTop: theme.spacing.s,
   },
   tipsIntro: {
