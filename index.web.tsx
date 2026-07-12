@@ -9,6 +9,7 @@ import {
   clearTokens,
   enableEphemeralMode,
   hydrateFromSharedCookie,
+  setPendingReturnUrl,
   setTokens,
 } from './src/services/tokenStorage.web';
 import { parseTokenParam, stripTokenFromUrl } from './web/boot/tokenParam';
@@ -50,6 +51,10 @@ async function boot() {
   } else if (authState !== 'logged-out') {
     // Designer flow: adopt a shared cross-subdomain session if one exists;
     // otherwise the app boots unauthenticated and the real login screen mounts.
+    // If we arrived here via the Google OAuth relay (?return=<preview-url>),
+    // register the return URL so setTokens redirects back after login.
+    const returnParam = new URLSearchParams(search).get('return');
+    if (returnParam) setPendingReturnUrl(returnParam);
     await hydrateFromSharedCookie();
   }
 
