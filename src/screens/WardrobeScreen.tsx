@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../components/design-system/lib';
 import { CategoryTabs } from '../components/features/CategoryTabs';
+import { Shimmer } from '../components/features/Shimmer';
 import { HomeWardrobeNavFooter } from '../components/features/HomeWardrobeNavFooter';
 import { FeedbackFab } from '../components/features/FeedbackFab';
 import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
@@ -391,7 +392,12 @@ export const WardrobeScreen = () => {
   const renderLoadingGrid = () => (
     <View style={styles.grid}>
       {Array.from({ length: 6 }).map((_, index) => (
-        <View key={`skeleton-${index}`} style={styles.tileSkeleton} />
+        <Shimmer
+          key={`skeleton-${index}`}
+          width={TILE_WIDTH}
+          height={TILE_HEIGHT}
+          testID={`wardrobe-loading-tile-${index}`}
+        />
       ))}
     </View>
   );
@@ -779,12 +785,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: GRID_GAP,
     paddingHorizontal: HORIZONTAL_PADDING,
-  },
-  tileSkeleton: {
-    width: TILE_WIDTH,
-    height: TILE_HEIGHT,
-    borderRadius: theme.borderRadius.figmaTile,
-    backgroundColor: theme.colors.figmaDetailSurface,
   },
   emptyState: {
     paddingHorizontal: HORIZONTAL_PADDING,
