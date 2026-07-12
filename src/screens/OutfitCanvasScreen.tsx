@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -25,7 +24,6 @@ import {
 } from '../components/features/OutfitCanvasSurface';
 import { seedCanvasLayout } from '../components/features/collage-seed-layout';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
-import { MInput } from '../components/design-system/lib';
 import { useSidebar } from '../context/SidebarContext';
 import { useCreationsSeen } from '../context/CreationsSeenContext';
 import { track } from '../services/analytics';
@@ -33,9 +31,11 @@ import {
   requestCanvasExit,
   setCanvasExitGuard,
 } from '../navigation/canvasExitGuard';
+import { AddTagView } from './canvas/AddTagView';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import { ItemPickerPanel } from './canvas/ItemPickerPanel';
 import { TagChip } from './canvas/TagChip';
+import { TAG_SUGGESTIONS } from './canvas/tag-suggestions';
 import { ToolbarBtn } from './canvas/ToolbarBtn';
 import { useCanvasHistory } from './canvas/useCanvasHistory';
 import { useCanvasAddItems } from './canvas/useCanvasAddItems';
@@ -53,9 +53,6 @@ import IconNewCanvas from '../assets/images/icon_outfit_canvas.svg';
 import IconCanvasUndo from '../assets/images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../assets/images/canvas-icons/redo.svg';
 import IconCanvasAdd from '../assets/images/canvas-icons/add.svg';
-// Arrow-right submit glyph — mirrors the refine "Edit context" input's send
-// button so the tag input reads as the same control.
-import IconArrowRight from '../assets/images/icon_arrow_right.svg';
 import IconCanvasLayerUp from '../assets/images/canvas-icons/layer_up.svg';
 import IconCanvasLayerDown from '../assets/images/canvas-icons/layer_down.svg';
 import IconCanvasDuplicate from '../assets/images/canvas-icons/duplicate.svg';
@@ -232,10 +229,16 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     setAddingTag(false);
   }, [tagInput, tags]);
 
-  // Dismiss the tag input without adding anything (backdrop tap / cancel).
+  // Dismiss the tag editor without adding anything (back chevron / cancel).
   const handleCancelAddTag = useCallback(() => {
     setTagInput('');
     setAddingTag(false);
+  }, []);
+
+  // Quick-fill: drop a suggested tag's label into the field (mirrors the refine
+  // editor — the user can submit it as-is or tweak it first).
+  const handleSelectTagSuggestion = useCallback((label: string) => {
+    setTagInput(label);
   }, []);
 
   // The arrow submit is inert until there's something to add — mirrors the
@@ -470,12 +473,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           top, Save pinned at the bottom. Backdrop tap deselects. */}
         <Pressable
           testID="canvas-backdrop"
-          onPress={() => {
-            setSelectedId(null);
-            if (addingTag) {
-              handleCancelAddTag();
-            }
-          }}
+          onPress={() => setSelectedId(null)}
           style={styles.body}
         >
           {/* Top group — gap 16 (theme.spacing.m) between card / add-row / tags */}
@@ -567,70 +565,33 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               </ToolbarBtn>
             </View>
 
-            {/* Tags row — tapping "+" swaps the chip row for a refine-style
-              input (MInput + arrow submit), matching the "Edit context" refine
-              editor's field/send-button pairing. */}
-            {addingTag ? (
-              <View style={styles.tagInputRow}>
-                <View style={styles.tagInputFill}>
-                  <MInput
-                    testID="canvas-tag-input"
-                    value={tagInput}
-                    onChangeText={setTagInput}
-                    placeholder={t('outfitCanvas.tag_placeholder')}
-                    accessibilityLabel={t('outfitCanvas.a11y_tag_input')}
-                    autoFocus
-                    returnKeyType="done"
-                    onSubmitEditing={
-                      tagSubmitDisabled ? undefined : handleConfirmTag
-                    }
+            {/* Tags row — chips + "+". Tapping "+" opens the full-screen
+              AddTagView editor (input + arrow + suggested tags), mirroring the
+              refine "Edit context" design. */}
+            <View style={styles.tagsRow}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.tagsScroll}
+                keyboardShouldPersistTaps="handled"
+              >
+                {tags.map(tag => (
+                  <TagChip
+                    key={tag}
+                    label={tag}
+                    onRemove={() => handleRemoveTag(tag)}
                   />
-                </View>
-                <TouchableOpacity
-                  testID="canvas-tag-submit"
-                  accessibilityRole="button"
-                  accessibilityLabel={t('outfitCanvas.a11y_submit_tag')}
-                  activeOpacity={0.85}
-                  style={[
-                    styles.tagSubmitBtn,
-                    tagSubmitDisabled && styles.tagSubmitBtnDisabled,
-                  ]}
-                  disabled={tagSubmitDisabled}
-                  onPress={handleConfirmTag}
+                ))}
+                <Pressable
+                  testID="canvas-tag-add"
+                  onPress={() => setAddingTag(true)}
+                  accessibilityLabel={t('outfitCanvas.a11y_add_tag')}
+                  style={styles.tagAddBtn}
                 >
-                  <IconArrowRight
-                    width={24}
-                    height={24}
-                    color={theme.colors.figmaPrimaryButtonText}
-                  />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.tagsRow}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.tagsScroll}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  {tags.map(tag => (
-                    <TagChip
-                      key={tag}
-                      label={tag}
-                      onRemove={() => handleRemoveTag(tag)}
-                    />
-                  ))}
-                  <Pressable
-                    testID="canvas-tag-add"
-                    onPress={() => setAddingTag(true)}
-                    accessibilityLabel={t('outfitCanvas.a11y_add_tag')}
-                    style={styles.tagAddBtn}
-                  >
-                    <IconCanvasAdd width={12} height={12} />
-                  </Pressable>
-                </ScrollView>
-              </View>
-            )}
+                  <IconCanvasAdd width={12} height={12} />
+                </Pressable>
+              </ScrollView>
+            </View>
 
             {/* Footer — 56×56 outline "new canvas" button (canvas glyph, distinct
               from the toolbar add "+"; starts a new blank canvas, disabled only
@@ -668,6 +629,19 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </Pressable>
       </SafeAreaView>
+
+      {/* Full-screen "Add tag" editor — input + arrow + suggested tags,
+          mirroring the refine "Edit context" design. */}
+      <AddTagView
+        visible={addingTag}
+        value={tagInput}
+        suggestions={TAG_SUGGESTIONS}
+        submitDisabled={tagSubmitDisabled}
+        onChangeText={setTagInput}
+        onClose={handleCancelAddTag}
+        onSubmit={handleConfirmTag}
+        onSelectSuggestion={handleSelectTagSuggestion}
+      />
 
       {/* Item picker panel */}
       <ItemPickerPanel
@@ -846,29 +820,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaCardSurface,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  // Refine-style tag input: field (fills) + square arrow submit, mirroring
-  // EditContextView's inputRow/submitButton pairing.
-  tagInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.s,
-  },
-  tagInputFill: {
-    flex: 1,
-  },
-  // Square submit button paired to MInput's 54px height + 12px corners so the
-  // field and its action read as one control (matches the refine editor).
-  tagSubmitBtn: {
-    width: 54,
-    height: 54,
-    borderRadius: 12,
-    backgroundColor: theme.colors.figmaPrimaryButtonBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tagSubmitBtnDisabled: {
-    opacity: 0.4,
   },
   // Save button — Figma: 1.5px border border/neutral/base (#1d1f23), radius 16,
   // height 56, transparent fill, label Poppins Medium 16/24 #262421.
