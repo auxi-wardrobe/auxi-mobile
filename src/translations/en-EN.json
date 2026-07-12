@@ -674,6 +674,7 @@
       "tag_placeholder": "Tag name",
       "a11y_tag_input": "Tag name input",
       "a11y_add_tag": "Add tag",
+      "a11y_submit_tag": "Confirm tag",
       "a11y_save_outfit": "Save outfit",
       "a11y_new_canvas": "New canvas",
       "saved_body": "Saved to My Creations",
