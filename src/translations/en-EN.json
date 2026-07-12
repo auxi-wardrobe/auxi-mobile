@@ -308,6 +308,7 @@
           "label": "Sort",
           "title": "Sort",
           "reset": "Default",
+          "apply": "Show",
           "a11y_open": "Open sort options, currently {{option}}",
           "newest": "Newest first",
           "oldest": "Oldest first",
