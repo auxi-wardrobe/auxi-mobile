@@ -100,15 +100,40 @@ export const GoogleSignin = {
     // Preview subdomains have random prefixes and can't be pre-registered as
     // GCC JS origins. Route the login to the fixed main URL; after login there
     // the shared cookie (Domain=auxi-web-review.pages.dev) propagates back here.
+    //
+    // We must navigate window.top (the outer DeviceFrame), not just `location`
+    // (which only moves the iframe). GIS One Tap is blocked in cross-origin iframes,
+    // so login must happen with the main URL as the top-level context.
     if (isPreviewSubdomain()) {
       const dest = new URL('https://auxi-web-review.pages.dev');
-      const qs = new URLSearchParams(
-        typeof location !== 'undefined' ? location.search : '',
-      );
-      if (qs.has('embed')) dest.searchParams.set('embed', '1');
-      if (typeof location !== 'undefined')
-        dest.searchParams.set('return', location.href);
-      location.replace(dest.toString());
+      // Return to the outer DeviceFrame URL so after login the DeviceFrame
+      // re-renders and its iframe auto-auths via the shared cookie.
+      let returnUrl = typeof location !== 'undefined' ? location.origin : '';
+      try {
+        if (
+          typeof window !== 'undefined' &&
+          window.top &&
+          window.top !== window
+        ) {
+          returnUrl = window.top.location.href;
+        }
+      } catch {
+        /* cross-origin top — shouldn't reach here for *.auxi-web-review.pages.dev */
+      }
+      if (returnUrl) dest.searchParams.set('return', returnUrl);
+      try {
+        if (
+          typeof window !== 'undefined' &&
+          window.top &&
+          window.top !== window
+        ) {
+          window.top.location.href = dest.toString();
+        } else {
+          location.replace(dest.toString());
+        }
+      } catch {
+        location.replace(dest.toString());
+      }
       return new Promise<never>(() => {}); // navigation takes over
     }
 
