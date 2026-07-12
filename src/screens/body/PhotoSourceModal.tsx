@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingHorizontal: 22,
+    paddingHorizontal: theme.spacing.m,
     paddingTop: 20,
     paddingBottom: 34,
   },
