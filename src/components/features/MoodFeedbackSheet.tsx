@@ -260,12 +260,12 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
   subtitle: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    color: theme.colors.uacTextBase,
     textAlign: 'center',
     marginTop: theme.spacing.s,
     marginBottom: theme.spacing.m,

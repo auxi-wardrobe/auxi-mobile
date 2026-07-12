@@ -132,11 +132,11 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.uacTextBase,
   },
   modalClose: {
     ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.figmaItemDetailModalClose,
+    color: theme.colors.uacTextBase,
   },
   optionItem: {
     flexDirection: 'row',

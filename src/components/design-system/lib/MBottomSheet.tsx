@@ -20,6 +20,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   color,
+  FONT,
   radius,
   role,
   shadow,
@@ -289,8 +290,11 @@ const styles = StyleSheet.create({
     paddingBottom: space.s2,
   },
   aHead: {
-    ...type.caption,
-    color: role.ink3,
+    // Sheet head standardised to the app's title spec: SemiBold 14/20, ink.
+    fontFamily: FONT.semibold,
+    fontSize: 14,
+    lineHeight: 20,
+    color: role.ink,
     textAlign: 'center',
     paddingVertical: space.s3,
   },

@@ -255,8 +255,8 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   subtitle: {
-    ...theme.typography.aliases.uacBodyMdRegular,
-    color: theme.colors.figmaTextSecondary,
+    ...theme.typography.aliases.interBodySm,
+    color: theme.colors.uacTextBase,
     marginBottom: theme.spacing.l,
   },
   categoryRow: {
