@@ -565,9 +565,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               </ToolbarBtn>
             </View>
 
-            {/* Tags row — chips + "+". Tapping "+" opens the full-screen
-              AddTagView editor (input + arrow + suggested tags), mirroring the
-              refine "Edit context" design. */}
+            {/* Tags row — chips + an "Add tag" text chip. Tapping it opens the
+              full-screen AddTagView editor (input + arrow + suggested tags),
+              mirroring the refine "Edit context" design. */}
             <View style={styles.tagsRow}>
               <ScrollView
                 horizontal
@@ -588,7 +588,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                   accessibilityLabel={t('outfitCanvas.a11y_add_tag')}
                   style={styles.tagAddBtn}
                 >
-                  <IconCanvasAdd width={12} height={12} />
+                  <Text style={styles.tagAddLabel}>
+                    {t('outfitCanvas.add_tag')}
+                  </Text>
                 </Pressable>
               </ScrollView>
             </View>
@@ -812,14 +814,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   // Add chip — Figma: bg background/primary/subtle_50 (#f2efec), radius 6,
-  // height 32, icon-only "+".
+  // height 32. Carries the "Add tag" text label instead of the "+" icon.
   tagAddBtn: {
-    width: 38,
     height: 32,
     borderRadius: theme.borderRadius.chip,
     backgroundColor: theme.colors.figmaCardSurface,
+    paddingHorizontal: theme.spacing.uacDimension12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tagAddLabel: {
+    ...theme.typography.aliases.uacBodyXsRegular, // Inter Regular 12/16
+    color: theme.colors.figmaTextDark,
   },
   // Save button — Figma: 1.5px border border/neutral/base (#1d1f23), radius 16,
   // height 56, transparent fill, label Poppins Medium 16/24 #262421.

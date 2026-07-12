@@ -673,6 +673,7 @@
       "a11y_delete_item": "Delete item",
       "tag_placeholder": "Tag name",
       "a11y_tag_input": "Tag name input",
+      "add_tag": "Add tag",
       "a11y_add_tag": "Add tag",
       "a11y_submit_tag": "Confirm tag",
       "tag_input_placeholder": "eg: Working",

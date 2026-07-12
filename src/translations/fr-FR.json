@@ -673,6 +673,7 @@
       "a11y_delete_item": "Supprimer l'article",
       "tag_placeholder": "Nom de l'étiquette",
       "a11y_tag_input": "Champ nom d'étiquette",
+      "add_tag": "Ajouter une étiquette",
       "a11y_add_tag": "Ajouter une étiquette",
       "a11y_submit_tag": "Confirmer l'étiquette",
       "tag_input_placeholder": "ex. : Travail",
