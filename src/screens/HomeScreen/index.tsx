@@ -71,6 +71,7 @@ import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
 import { HomeWardrobeNavFooter } from '../../components/features/HomeWardrobeNavFooter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { OUTFITS_PER_SET } from '../../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../../hooks/usePinReducer';
 import { PinConfirmModal } from '../../components/features/PinConfirmModal';
 import { type PinErrorKind } from '../../components/features/PinGenerationError';
@@ -1514,8 +1515,8 @@ export const HomeScreen = () => {
               />
             )}
           />
-          {/* Fixed action row — Remix · Refine stay put while only the card
-              photo swipes beneath them (it lives outside the deck). */}
+          {/* Fixed action row — Remix · dots · Refine stay put while only the
+              card photo swipes beneath them (it lives outside the deck). */}
           <View style={styles.deckActionRow}>
             <OutfitActionRow
               testID="home-action-row"
@@ -1523,6 +1524,8 @@ export const HomeScreen = () => {
               onRefine={() => {
                 refine.open('refine_button');
               }}
+              dotCount={OUTFITS_PER_SET}
+              activeDot={clampedActiveIndex % OUTFITS_PER_SET}
             />
           </View>
         </View>
