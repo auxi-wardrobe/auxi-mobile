@@ -1,7 +1,6 @@
 import { Dimensions } from 'react-native';
 import { COLLAGE_ASPECT } from '../../components/features/collage-seed-layout';
 import { HOME_VIEW_TOGGLE_FOOTER_HEIGHT } from '../../components/features/HomeViewToggleFooter';
-import { OUTFITS_PER_SET } from '../../utils/groupOutfitsIntoSets';
 
 export const { width: screenWidth, height: screenHeight } =
   Dimensions.get('window');
@@ -67,7 +66,12 @@ export const COLLAGE_SURFACE_HEIGHT = Math.round(
   COLLAGE_SURFACE_WIDTH * COLLAGE_ASPECT,
 );
 
-export const TARGET_AHEAD = OUTFITS_PER_SET;
+// How many outfits to keep buffered ahead of the active card. Set to 1 so the
+// next batch is only requested once the user reaches the LAST card of the
+// current set — suggestions are discovered on demand as you swipe to the end,
+// not pre-loaded in the background. (Previously OUTFITS_PER_SET, which kept a
+// full set primed ahead and generated new suggestions before the user asked.)
+export const TARGET_AHEAD = 1;
 
 // Progressive refinement: after this many distinct outfits are viewed within a
 // tier (2 batches of 3), auto-generation pauses and the Refine sheet opens so

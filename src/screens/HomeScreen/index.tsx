@@ -71,7 +71,6 @@ import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
 import { HomeWardrobeNavFooter } from '../../components/features/HomeWardrobeNavFooter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { OUTFITS_PER_SET } from '../../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../../hooks/usePinReducer';
 import { PinConfirmModal } from '../../components/features/PinConfirmModal';
 import { type PinErrorKind } from '../../components/features/PinGenerationError';
@@ -422,12 +421,10 @@ export const HomeScreen = () => {
         setHasCycled(true);
       }
 
-      let isColdStart = false;
       let addedCount = 0;
       let settledHash: string | undefined;
       if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
         isFirstLoadRef.current = false;
-        isColdStart = true;
         const incoming = normalizeOutfits(data, 0);
         // Lead the fresh deck with the user's outfit(s) scheduled for today.
         // `withScheduledPrefix` is a no-op when nothing is planned, so the deck
@@ -499,8 +496,13 @@ export const HomeScreen = () => {
         showRefineToastRef.current(pendingToast.text, pendingToast.isChip);
       }
 
+      // Do NOT force a look-ahead fetch on cold start: the fresh set stays as
+      // the whole deck until the user swipes to its last card, at which point
+      // `ensureBuffer` (TARGET_AHEAD = 1) requests the next batch on demand.
+      // Passing `false` still lets the ahead-gate top up an unusually small
+      // initial batch (fewer than a full set).
       setTimeout(() => {
-        ensureBufferRef.current(isColdStart);
+        ensureBufferRef.current(false);
       }, 0);
     },
     onError: (error, variables) => {
@@ -1512,8 +1514,8 @@ export const HomeScreen = () => {
               />
             )}
           />
-          {/* Fixed action row — Remix · dots · Refine stay put while only the
-              card photo swipes beneath them (it lives outside the deck). */}
+          {/* Fixed action row — Remix · Refine stay put while only the card
+              photo swipes beneath them (it lives outside the deck). */}
           <View style={styles.deckActionRow}>
             <OutfitActionRow
               testID="home-action-row"
@@ -1521,8 +1523,6 @@ export const HomeScreen = () => {
               onRefine={() => {
                 refine.open('refine_button');
               }}
-              dotCount={OUTFITS_PER_SET}
-              activeDot={clampedActiveIndex % OUTFITS_PER_SET}
             />
           </View>
         </View>
