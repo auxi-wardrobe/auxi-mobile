@@ -61,8 +61,17 @@ import type { LegalDocumentType } from '../../content/legal';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
-// Keep Apple OAuth wired but hidden until the App Store / entitlement path is
-// ready. Email sign-in stays available.
+// Welcome action-stack visibility gates — Apple and email are independent.
+//
+// Apple Sign-In is NOT provisioned end-to-end: there is no `apple` entry in
+// OAUTH_CONFIG, the App ID's "Sign in with Apple" capability is not enabled on
+// the Apple Developer portal, and the backend `APPLE_OAUTH_CLIENT_ID` is unset.
+// So tapping the Apple CTA fails at the native `appleAuth.performRequest`
+// boundary and surfaces a generic error toast. Keep it hidden until Apple
+// Sign-In is fully wired (see src/services/oauth/oauthConfig.ts), then flip
+// `SHOW_APPLE_SIGN_IN` back to `true`.
+//
+// Email/password sign-in is enabled for auth-flow testing.
 const SHOW_APPLE_SIGN_IN = false;
 const SHOW_EMAIL_SIGN_IN = true;
 
