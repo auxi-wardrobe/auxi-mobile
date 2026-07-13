@@ -1,5 +1,5 @@
 /**
- * Reuse-confirm re-entry view (AU-354 pt.3 / UAC).
+ * Reuse-confirm re-entry sheet (AU-354 pt.3 / UAC).
  *
  * WHY THIS EXISTS
  * ---------------
@@ -10,73 +10,123 @@
  * the previously selected photo with CONFIRM and RETAKE actions instead of
  * either redoing capture from scratch OR generating blindly.
  *
- * This is a pure presentational step: it shows the persisted photo in the same
- * conversational transcript style as the capture steps (prompt bubble + 3:4
- * thumbnail) and surfaces two pills. The screen owns the actual confirm/retake
- * behaviour (generate vs restart capture) + analytics.
+ * PRESENTATION
+ * ------------
+ * A bottom sheet (per design) rather than a full transcript step: the saved
+ * body photo sits in a rounded 3:4 frame under a title + helper line, with the
+ * two actions pinned below — "Retake" (drops the saved profile, restarts
+ * capture from step 1) and "Use this photo" (renders the current outfit on the
+ * saved body, moving to the generating step). Rides the shared
+ * `ContextualBottomSheet` shell (full-width, scrim, reveal motion, safe-area)
+ * and the `M*` button primitives so the look/motion match the app's other
+ * contextual sheets.
+ *
+ * Behaviour (confirm → generate / retake → restart) + analytics stay owned by
+ * SeeThisOnMeScreen; this file is pure presentation.
  */
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { PillButton } from '../../components/primitives/FigmaPrimitives';
+import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
+import { ContextualBottomSheet } from '../../components/features/ContextualBottomSheet';
+import { MButton } from '../../components/design-system/lib';
 import { theme } from '../../theme/theme';
-import { PromptBubble, PhotoThumb } from './components';
 
 interface StepReuseConfirmProps {
   /** The persisted body photo to show (full-body preferred, else selfie). */
   photoUri: string;
   onConfirm: () => void;
   onRetake: () => void;
+  /** Dismiss (backdrop / swipe-down) — leaves the See-this-on-me flow. */
+  onDismiss: () => void;
 }
 
 export const StepReuseConfirm: React.FC<StepReuseConfirmProps> = ({
   photoUri,
   onConfirm,
   onRetake,
+  onDismiss,
 }) => {
   const { t } = useTranslation();
 
   return (
-    <View style={styles.container} testID="stom-reuse-confirm">
-      <ScrollView contentContainerStyle={styles.transcript}>
-        <PromptBubble
-          testID="stom-reuse-confirm-prompt"
-          text={t('seeThisOnMe.reuseConfirm.prompt')}
-        />
-        <PhotoThumb uri={photoUri} testID="stom-reuse-confirm-thumb" />
-      </ScrollView>
-      <View style={styles.actions}>
-        <PillButton
-          testID="stom-reuse-confirm-use"
-          title={t('seeThisOnMe.reuseConfirm.confirm')}
-          variant="filled"
-          onPress={onConfirm}
-        />
-        <PillButton
-          testID="stom-reuse-confirm-retake"
-          title={t('seeThisOnMe.reuseConfirm.retake')}
-          variant="text"
-          onPress={onRetake}
+    <ContextualBottomSheet
+      visible
+      onDismiss={onDismiss}
+      testID="stom-reuse-confirm"
+    >
+      <Text style={styles.title} testID="stom-reuse-confirm-title">
+        {t('seeThisOnMe.reuseConfirm.title')}
+      </Text>
+      <Text style={styles.subtitle}>
+        {t('seeThisOnMe.reuseConfirm.prompt')}
+      </Text>
+
+      <View style={styles.photoFrame}>
+        <LoadableRemoteImage
+          uri={photoUri}
+          style={styles.photo}
+          resizeMode="cover"
+          imageTestID="stom-reuse-confirm-thumb"
+          skeletonTestID="stom-reuse-confirm-thumb-skeleton"
         />
       </View>
-    </View>
+
+      <View style={styles.actions}>
+        <MButton
+          variant="text"
+          size="lg"
+          onPress={onRetake}
+          testID="stom-reuse-confirm-retake"
+        >
+          {t('seeThisOnMe.reuseConfirm.retake')}
+        </MButton>
+        <View style={styles.confirmSlot}>
+          <MButton
+            variant="primary"
+            size="lg"
+            onPress={onConfirm}
+            testID="stom-reuse-confirm-use"
+          >
+            {t('seeThisOnMe.reuseConfirm.confirm')}
+          </MButton>
+        </View>
+      </View>
+    </ContextualBottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'space-between',
+  title: {
+    ...theme.typography.aliases.uacBodyMdSemibold,
+    color: theme.colors.figmaTextPrimary,
+    textAlign: 'center',
   },
-  transcript: {
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingTop: theme.spacing.m,
-    paddingBottom: theme.spacing.xl,
-    gap: theme.spacing.l,
+  subtitle: {
+    ...theme.typography.aliases.poppinsBodySm,
+    color: theme.colors.figmaTextSecondary,
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
+  },
+  photoFrame: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    borderRadius: theme.borderRadius.uacPanel,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.figmaCardSurface,
+    marginTop: theme.spacing.l,
+    marginBottom: theme.spacing.l,
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
   },
   actions: {
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingBottom: theme.spacing.m,
-    gap: theme.spacing.s,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.m,
+  },
+  confirmSlot: {
+    flex: 1,
   },
 });

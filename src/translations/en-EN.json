@@ -861,9 +861,10 @@
         "expandedTitle": "Choose the shape that feels most like you."
       },
       "reuseConfirm": {
-        "prompt": "Here's the body photo you saved. Use it again, or retake your photos.",
+        "title": "Your body photo",
+        "prompt": "Here's the latest body photo you saved. Use it again, or retake your photos.",
         "confirm": "Use this photo",
-        "retake": "Retake photos"
+        "retake": "Retake"
       },
       "shapes": {
         "slim": "Slim",

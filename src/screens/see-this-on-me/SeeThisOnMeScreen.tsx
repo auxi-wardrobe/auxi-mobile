@@ -395,6 +395,15 @@ export const SeeThisOnMeScreen: React.FC = () => {
     restartCapture();
   }, [outfit.outfitHash, restartCapture]);
 
+  // DISMISS the reuse-confirm bottom sheet via backdrop-tap / swipe-down. This
+  // is a THIRD funnel exit alongside confirm + retake — track it so the reuse-
+  // confirm drop-off stays visible, THEN fall back to the same nav as the header
+  // back (leaves the flow / steps back).
+  const handleReuseDismiss = useCallback(() => {
+    track('body_photo_reuse_dismissed', { outfit_hash: outfit.outfitHash });
+    handleBack();
+  }, [outfit.outfitHash, handleBack]);
+
   // Validate a just-picked photo immediately by uploading it. On success, hand
   // the created `body_id` to `onValid` (which stores it + advances). On a
   // body-photo rejection (any 422), show the friendly inline message, clear the
@@ -555,6 +564,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
     reusePhotoUri,
     handleReuseConfirm,
     handleReuseRetake,
+    handleReuseDismiss,
   });
   if (stepScreen) {
     return (
