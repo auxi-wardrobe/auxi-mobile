@@ -148,16 +148,10 @@ export const itemDetailStyles = StyleSheet.create({
   },
   skeletonTitle: {
     width: '100%',
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: theme.colors.figmaDetailSurface,
     alignSelf: 'center',
   },
   skeletonDate: {
     width: '60%',
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: theme.colors.figmaDetailSurface,
     alignSelf: 'center',
   },
 });

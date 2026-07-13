@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
+import { Shimmer } from '../../components/features/Shimmer';
 import { Icons } from '../../assets/icons';
 import { UsageFrequency } from '../../services/wardrobeService';
 import { theme } from '../../theme/theme';
@@ -53,8 +54,18 @@ export const ItemDetailReadPanel: React.FC<ItemDetailReadPanelProps> = ({
       <View style={styles.titleBlock}>
         {isPreparing ? (
           <>
-            <View style={styles.skeletonTitle} />
-            <View style={styles.skeletonDate} />
+            <Shimmer
+              height={28}
+              borderRadius={8}
+              style={styles.skeletonTitle}
+              testID="item-detail-skeleton-title"
+            />
+            <Shimmer
+              height={16}
+              borderRadius={8}
+              style={styles.skeletonDate}
+              testID="item-detail-skeleton-date"
+            />
           </>
         ) : (
           <>
