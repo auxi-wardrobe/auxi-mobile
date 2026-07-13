@@ -10,16 +10,10 @@
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { PressScale } from '../design-system/MMotion';
 import { color } from '../design-system/m-tokens';
 import { theme } from '../../theme/theme';
-import {
-  MACGIE_GRADIENT_OFFSETS,
-  MACGIE_GRADIENT_STOPS,
-} from './brandGradient';
-
-const GRAD_ID = 'macgie-pill-gradient';
+import { BrandGradientFill } from './BrandGradientFill';
 
 export interface GradientPillButtonProps {
   children: React.ReactNode;
@@ -51,29 +45,7 @@ export const GradientPillButton: React.FC<GradientPillButtonProps> = ({
       onPress={onPress}
       style={[styles.pill, disabled && styles.disabled]}
     >
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Svg width="100%" height="100%">
-          <Defs>
-            <LinearGradient id={GRAD_ID} x1="0" y1="0" x2="1" y2="0">
-              {MACGIE_GRADIENT_STOPS.map((stop, i) => (
-                <Stop
-                  key={stop}
-                  offset={MACGIE_GRADIENT_OFFSETS[i]}
-                  stopColor={stop}
-                  stopOpacity="1"
-                />
-              ))}
-            </LinearGradient>
-          </Defs>
-          <Rect
-            x="0"
-            y="0"
-            width="100%"
-            height="100%"
-            fill={`url(#${GRAD_ID})`}
-          />
-        </Svg>
-      </View>
+      <BrandGradientFill testID={testID ? `${testID}-gradient` : undefined} />
       <View style={styles.inner}>
         {leading}
         {typeof children === 'string' ? (
