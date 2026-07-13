@@ -14,6 +14,7 @@ import { MacgiePlusWordmark } from '../components/upgrade/MacgiePlusWordmark';
 import { Icons } from '../assets/icons';
 import EnhanceIcon from '../assets/images/icon_upgrade_enhance.svg';
 import SuggestionsIcon from '../assets/images/icon_upgrade_suggestions.svg';
+import SecureIcon from '../assets/images/icon_upgrade_secure.svg';
 import { theme } from '../theme/theme';
 import { track } from '../services/analytics';
 import { AppStackParamList } from '../types/navigation';
@@ -209,10 +210,13 @@ export const UpgradeScreen = () => {
         {/* Trust row */}
         <View style={styles.trustRow}>
           <View style={styles.trustItem}>
-            <Text style={styles.trustTitle}>{t('upgrade.secure_title')}</Text>
-            <Text style={styles.trustSubtitle}>
-              {t('upgrade.secure_subtitle')}
-            </Text>
+            <SecureIcon width={24} height={24} color={theme.ds.color.ink} />
+            <View style={styles.trustTextCol}>
+              <Text style={styles.trustTitle}>{t('upgrade.secure_title')}</Text>
+              <Text style={styles.trustSubtitle}>
+                {t('upgrade.secure_subtitle')}
+              </Text>
+            </View>
           </View>
           <PressScale
             testID="upgrade-restore-button"
@@ -220,7 +224,10 @@ export const UpgradeScreen = () => {
             accessibilityLabel={t('upgrade.restore')}
             style={styles.trustItem}
           >
-            <Text style={styles.trustTitle}>{t('upgrade.restore')}</Text>
+            <Icons.Change width={24} height={24} color={theme.ds.color.ink} />
+            <View style={styles.trustTextCol}>
+              <Text style={styles.trustTitle}>{t('upgrade.restore')}</Text>
+            </View>
           </PressScale>
         </View>
 
@@ -425,7 +432,11 @@ const styles = StyleSheet.create({
   },
   trustItem: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  trustTextCol: {
     gap: 2,
   },
   trustTitle: {
