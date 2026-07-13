@@ -46,6 +46,7 @@ interface StomStepScreenProps {
   reusePhotoUri: string | null;
   handleReuseConfirm: () => void;
   handleReuseRetake: () => void;
+  handleReuseDismiss: () => void;
 }
 
 // Shared shell — the SafeAreaView + StomHeader wrapper every step screen used.
@@ -85,6 +86,7 @@ export function renderStomStepScreen(
     reusePhotoUri,
     handleReuseConfirm,
     handleReuseRetake,
+    handleReuseDismiss,
   } = props;
 
   const title = t('seeThisOnMe.title');
@@ -182,7 +184,7 @@ export function renderStomStepScreen(
           photoUri={reusePhotoUri}
           onConfirm={handleReuseConfirm}
           onRetake={handleReuseRetake}
-          onDismiss={handleBack}
+          onDismiss={handleReuseDismiss}
         />
       </StepShell>
     );

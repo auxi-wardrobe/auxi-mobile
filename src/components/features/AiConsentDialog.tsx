@@ -65,21 +65,7 @@ export const AiConsentDialog: React.FC<AiConsentDialogProps> = ({
                 </Text>
               </TouchableOpacity>
 
-              {/* Stacked vertically: primary Accept on top, Decline below. */}
               <View style={styles.actions}>
-                <TouchableOpacity
-                  testID="ai-consent-accept"
-                  accessibilityRole="button"
-                  accessibilityLabel={t('aiConsent.accept')}
-                  activeOpacity={0.82}
-                  style={[styles.action, styles.primaryAction]}
-                  onPress={onAccept}
-                >
-                  <Text style={styles.primaryActionLabel}>
-                    {t('aiConsent.accept')}
-                  </Text>
-                </TouchableOpacity>
-
                 <TouchableOpacity
                   testID="ai-consent-decline"
                   accessibilityRole="button"
@@ -90,6 +76,19 @@ export const AiConsentDialog: React.FC<AiConsentDialogProps> = ({
                 >
                   <Text style={styles.textActionLabel}>
                     {t('aiConsent.decline')}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  testID="ai-consent-accept"
+                  accessibilityRole="button"
+                  accessibilityLabel={t('aiConsent.accept')}
+                  activeOpacity={0.82}
+                  style={[styles.action, styles.primaryAction]}
+                  onPress={onAccept}
+                >
+                  <Text style={styles.primaryActionLabel}>
+                    {t('aiConsent.accept')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -133,12 +132,13 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaAiSparkle,
   },
   actions: {
-    flexDirection: 'column',
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.s,
     marginTop: theme.spacing.uacDimension12,
   },
   action: {
-    alignSelf: 'stretch',
+    flex: 1,
     height: theme.spacing.uacButtonHeight,
     alignItems: 'center',
     justifyContent: 'center',
