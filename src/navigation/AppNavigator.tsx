@@ -22,6 +22,7 @@ import { MacgieLoader } from '../components/macgie';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
 import { BodyScreen } from '../screens/BodyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { UpgradeScreen } from '../screens/UpgradeScreen';
 import { SettingsPersonalizationScreen } from '../screens/settings/SettingsPersonalizationScreen';
 import { SettingsPrivacyScreen } from '../screens/settings/SettingsPrivacyScreen';
 import { SettingsAboutScreen } from '../screens/settings/SettingsAboutScreen';
@@ -197,6 +198,9 @@ export const AppNavigator = () => {
                 component={SettingsScreen}
                 options={{ gestureEnabled: false }}
               />
+              {/* Macgie+ paywall — pushed on top of Settings; keeps the
+                  default back gesture / chevron. */}
+              <Stack.Screen name="Upgrade" component={UpgradeScreen} />
               {/* Settings sub-screens (grouped IA) — pushed on top of Settings,
                   so they keep the default back gesture / chevron. */}
               <Stack.Screen

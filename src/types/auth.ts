@@ -31,6 +31,11 @@ export interface User {
   is_active: boolean;
   gender?: string | null;
   is_first_login?: boolean;
+  // Macgie+ subscription flag. Absent/false → free user (shows the avatar
+  // "free" ring + the Settings "Upgrade to Macgie+" entry). No subscription
+  // backend exists yet, so this is undefined for everyone today; the UI is
+  // wired to flip cleanly once the backend starts returning it.
+  is_premium?: boolean;
   user_metadata?: UserMetadata | null;
 }
 

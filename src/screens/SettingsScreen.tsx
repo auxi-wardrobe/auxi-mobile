@@ -33,6 +33,8 @@ import {
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
 import { track } from '../services/analytics';
+import { isFreeUser } from '../services/subscription';
+import { GradientPillButton } from '../components/upgrade/GradientPillButton';
 import {
   DEFAULT_SETTINGS,
   ResolvedSettingsState,
@@ -136,6 +138,7 @@ export const SettingsScreen = () => {
   const frequencyOptions = useMemo(() => buildFrequencyOptions(t), [t]);
   const frequencyLabelMap = useMemo(() => buildFrequencyLabelMap(t), [t]);
 
+  const isFree = isFreeUser(user);
   const reminderEnabled = settings.dailyNotification.enabled;
   const timeValue = `${settings.dailyNotification.time} ${settings.dailyNotification.period}`;
   const currentFrequencyLabel =
@@ -403,7 +406,28 @@ export const SettingsScreen = () => {
         leftTestID="settings-menu-button"
       >
         {/* ── Profile ────────────────────────────────────────────────────── */}
-        <SettingsProfileHeader email={user?.email} />
+        <SettingsProfileHeader
+          email={user?.email}
+          showFreeRing={isFree}
+        />
+
+        {/* Macgie+ upgrade entry — free users only. The 2px avatar ring above
+            indicates the free plan; this pill opens the paywall. */}
+        {isFree ? (
+          <>
+            <GradientPillButton
+              testID="settings-upgrade-button"
+              accessibilityLabel={t('upgrade.cta')}
+              onPress={() => {
+                track('upgrade_entry_tapped', { source: 'settings' });
+                navigation.navigate('Upgrade');
+              }}
+            >
+              {t('upgrade.cta')}
+            </GradientPillButton>
+            <View style={styles.sectionGap} />
+          </>
+        ) : null}
 
         {/* ── Daily reminder ─────────────────────────────────────────────── */}
         <SettingsRow
