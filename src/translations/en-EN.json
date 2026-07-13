@@ -881,6 +881,11 @@
       "report_subject": "Report AI-generated content",
       "report_body": "I'd like to report an issue with an AI-generated result in the app. Please describe what went wrong:"
     },
+    "aiLimit": {
+      "title": "You've reached today's AI limit",
+      "body": "You've used all your AI generations for today. Come back tomorrow for more.",
+      "dismiss": "Got it"
+    },
     "welcome": {
       "title": "Welcome to Macgie",
       "body": "These first outfits come from our starter wardrobe.\nAdd your own clothes to get recommendations that match what you actually own.",
