@@ -881,6 +881,11 @@
       "report_subject": "Signaler du contenu généré par IA",
       "report_body": "Je souhaite signaler un problème avec un résultat généré par IA dans l'application. Veuillez décrire ce qui n'a pas fonctionné :"
     },
+    "aiLimit": {
+      "title": "Vous avez atteint la limite IA du jour",
+      "body": "Vous avez utilisé toutes vos générations IA pour aujourd'hui. Revenez demain pour en découvrir plus.",
+      "dismiss": "Compris"
+    },
     "welcome": {
       "title": "Bienvenue sur Macgie",
       "body": "Ces premières tenues proviennent de notre garde-robe de départ.\nAjoutez vos propres vêtements pour obtenir des recommandations adaptées à ce que vous possédez vraiment.",

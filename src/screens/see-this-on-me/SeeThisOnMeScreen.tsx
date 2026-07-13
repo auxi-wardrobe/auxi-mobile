@@ -30,7 +30,9 @@ import {
 import { bodyShapeService } from '../../services/bodyShapeService';
 import { track } from '../../services/analytics';
 import { useAiConsentGate } from '../../hooks/useAiConsentGate';
+import { useAiLimitGate } from '../../hooks/useAiLimitGate';
 import { AiConsentDialog } from '../../components/features/AiConsentDialog';
+import { AiLimitSheet } from '../../components/features/AiLimitSheet';
 import { theme } from '../../theme/theme';
 import { AppStackParamList } from '../../types/navigation';
 import {
@@ -67,6 +69,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
   const { pickImage } = useImagePicker();
   // B1: gate the AI photo upload behind explicit, persisted consent.
   const aiConsentGate = useAiConsentGate();
+  // Daily-limit gate: on a `ai_daily_limit_reached` 429 (either phase) show the
+  // "out for today" sheet with NO retry, instead of the generic error view.
+  const aiLimitGate = useAiLimitGate();
 
   const [step, setStep] = useState<Step>('selfie');
   const [selfie, setSelfie] = useState<Asset | null>(null);
@@ -207,6 +212,19 @@ export const SeeThisOnMeScreen: React.FC = () => {
         setShapesErrored(false);
         setStep('bodyShape');
       } else if (generation.status === 'error') {
+        // Daily-limit 429 → dedicated "out for today" sheet, NO retry. Fires the
+        // gate analytics once (deduped by the same resolvedHashRef key) and
+        // skips the generic error view.
+        if (aiLimitGate.check(generation.errorCode)) {
+          if (resolvedHashRef.current !== key) {
+            resolvedHashRef.current = key;
+            track('ai_limit_gate_shown', {
+              feature: 'try_on',
+              phase: 'shapes',
+            });
+          }
+          return;
+        }
         if (resolvedHashRef.current !== key) {
           resolvedHashRef.current = key;
           track('body_shape_generation_failed', {
@@ -235,6 +253,19 @@ export const SeeThisOnMeScreen: React.FC = () => {
       setErrored(false);
       setStep('preview');
     } else if (generation.status === 'error') {
+      // Daily-limit 429 → dedicated "out for today" sheet, NO retry. Fires the
+      // gate analytics once (deduped by the same resolvedHashRef key) and skips
+      // the generic error view (which would render the retry-storm "Try again").
+      if (aiLimitGate.check(generation.errorCode)) {
+        if (resolvedHashRef.current !== key) {
+          resolvedHashRef.current = key;
+          track('ai_limit_gate_shown', {
+            feature: 'try_on',
+            phase: 'render',
+          });
+        }
+        return;
+      }
       if (resolvedHashRef.current !== key) {
         resolvedHashRef.current = key;
         track('try_on_failed', {
@@ -257,6 +288,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
     generation.errorKind,
     generation.errorCode,
     outfit.outfitHash,
+    aiLimitGate,
   ]);
 
   // AU-358 mount lifecycle: register the in-app completion notifier (idempotent)
@@ -486,6 +518,20 @@ export const SeeThisOnMeScreen: React.FC = () => {
     selectedProfileId ?? (reuseMode ? activeProfile?.id ?? null : null);
   const renderShape = selectedShape ?? activeProfile?.body_shape ?? null;
 
+  // Daily-limit sheet dismiss: hide the sheet + leave (nothing to retry today).
+  // Rendered above BOTH return branches (step-screen shell + capture transcript)
+  // so it overlays whichever view is showing when the 429 resolves.
+  const handleAiLimitDismiss = useCallback(() => {
+    aiLimitGate.sheetProps.onDismiss();
+    navigation.goBack();
+  }, [aiLimitGate, navigation]);
+  const aiLimitSheet = (
+    <AiLimitSheet
+      visible={aiLimitGate.sheetProps.visible}
+      onDismiss={handleAiLimitDismiss}
+    />
+  );
+
   // Non-transcript screens (loading / generating / preview / reuse-confirm).
   // Returns the matching shell, or null → render the capture transcript below.
   const stepScreen = renderStomStepScreen({
@@ -511,7 +557,12 @@ export const SeeThisOnMeScreen: React.FC = () => {
     handleReuseRetake,
   });
   if (stepScreen) {
-    return stepScreen;
+    return (
+      <>
+        {stepScreen}
+        {aiLimitSheet}
+      </>
+    );
   }
 
   // ── Capture transcript (selfie / fullBody / bodyShape) ────────────────────
@@ -596,6 +647,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
 
       {/* B1: AI data-sharing consent prompt — gates the AI uploads. */}
       <AiConsentDialog {...aiConsentGate.dialogProps} />
+
+      {/* Daily-limit gate — "out of AI for today", no retry. */}
+      {aiLimitSheet}
     </SafeAreaView>
   );
 };

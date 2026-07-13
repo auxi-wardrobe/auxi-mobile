@@ -880,6 +880,11 @@
       "report_subject": "Báo cáo nội dung do AI tạo",
       "report_body": "Tôi muốn báo cáo một vấn đề với kết quả do AI tạo trong ứng dụng. Vui lòng mô tả điều gì đã xảy ra:"
     },
+    "aiLimit": {
+      "title": "Bạn đã đạt giới hạn AI hôm nay",
+      "body": "Bạn đã dùng hết lượt tạo bằng AI hôm nay. Quay lại vào ngày mai nhé.",
+      "dismiss": "Đã hiểu"
+    },
     "welcome": {
       "title": "Chào mừng đến với Macgie",
       "body": "Những bộ trang phục đầu tiên này đến từ tủ đồ khởi đầu của chúng tôi.\nThêm quần áo của riêng bạn để nhận gợi ý phù hợp với những gì bạn thực sự sở hữu.",
