@@ -298,9 +298,17 @@
         "preparing_step2": "Đang tự động gắn thẻ cho món…",
         "preparing_tile": "Đang chuẩn bị món này",
         "error_body": "Không thể tải tủ đồ của bạn. Kiểm tra kết nối và thử lại.",
+        "filter": {
+          "title": "Chọn",
+          "a11y_open": "Mở bộ lọc loại",
+          "reset": "Mặc định",
+          "apply": "Hiển thị"
+        },
         "sort": {
           "label": "Sắp xếp",
-          "title": "Sắp xếp theo",
+          "title": "Sắp xếp",
+          "reset": "Mặc định",
+          "apply": "Hiển thị",
           "a11y_open": "Mở tùy chọn sắp xếp, hiện tại {{option}}",
           "newest": "Mới nhất trước",
           "oldest": "Cũ nhất trước",
