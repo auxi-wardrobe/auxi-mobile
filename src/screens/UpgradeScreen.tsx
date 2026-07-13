@@ -9,6 +9,7 @@ import { PressScale } from '../components/design-system/MMotion';
 import { toast } from '../components/design-system/lib';
 import { MacgieFace } from '../components/macgie';
 import { GradientPillButton } from '../components/upgrade/GradientPillButton';
+import { BrandGradientFill } from '../components/upgrade/BrandGradientFill';
 import { MacgiePlusWordmark } from '../components/upgrade/MacgiePlusWordmark';
 import { Icons } from '../assets/icons';
 import { theme } from '../theme/theme';
@@ -67,6 +68,7 @@ const PlanCard: React.FC<{
   >
     {badge ? (
       <View style={styles.bestValueBadge}>
+        <BrandGradientFill />
         <Text style={styles.bestValueText}>{badge}</Text>
       </View>
     ) : null}
@@ -274,6 +276,8 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...theme.typography.aliases.poppinsBody,
+    fontSize: 12,
+    lineHeight: 16,
     color: theme.ds.color.onVariant,
     textAlign: 'center',
     marginTop: theme.spacing.s,
@@ -338,10 +342,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -12,
     left: theme.spacing.m,
-    backgroundColor: '#7C4DFF',
     borderRadius: theme.borderRadius.round,
     paddingHorizontal: 12,
     paddingVertical: 4,
+    overflow: 'hidden',
   },
   bestValueText: {
     ...theme.typography.aliases.poppinsSemiboldXs,
