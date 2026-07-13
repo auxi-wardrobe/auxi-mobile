@@ -34,11 +34,12 @@ export const motion = {
   },
 } as const;
 
-// Swipe-deck card scale: a card sits slightly small while peeking behind the
-// active one, then a promoted card overshoots full size and settles back for a
-// subtle "pop" (0.98 → 1.02 → 1.0) instead of reading as a lagging scale-up.
-export const DECK_PEEK_SCALE = 0.98;
-export const DECK_POP_SCALE = 1.02;
+// Swipe-deck carousel depth: the active card sits foregrounded at full size
+// (1.0) while its neighbours rest smaller behind it at DECK_PEEK_SCALE. The
+// scale is driven live by the drag, so as a card is held and swiped it recedes
+// to the neighbour scale while the incoming card grows to full — a carousel
+// cross-scale rather than a card popping in after it lands.
+export const DECK_PEEK_SCALE = 0.92;
 
 // Swipe-deck geometry constants (spec §2.2).
 export const SWIPE_ROTATION_CAP_DEG = 6;

@@ -30,7 +30,6 @@ import {
   isCommit,
   useReducedMotion,
   DECK_PEEK_SCALE,
-  DECK_POP_SCALE,
 } from '../../theme/motion';
 import { theme } from '../../theme/theme';
 
@@ -70,9 +69,6 @@ export function OutfitSwipeDeck<T>({
 }: Props<T>) {
   const reduced = useReducedMotion();
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
-  // Scale of the active card. Each time a new card takes the active slot it
-  // overshoots full size then settles (see the pop effect below).
-  const activeScale = useRef(new Animated.Value(1)).current;
   const active = items[activeIndex];
   // The card revealed behind the active one depends on swipe direction: the
   // previous card when dragging right (back), the next card when dragging left.
@@ -167,42 +163,6 @@ export function OutfitSwipeDeck<T>({
     committingRef.current = false;
   }, [activeIndex, pan]);
 
-  // "Pop": whenever a new card takes the active slot (first mount or after a
-  // swipe promotes a peek), lift it from the peek resting scale up past full
-  // size and settle back to 1 — a deliberate bounce, not a lagging scale-up.
-  // Runs in a layout effect so the start scale is applied before the promoted
-  // card paints (no one-frame flash at the previous card's scale).
-  const activeKey = active ? keyOf(active) : undefined;
-  useLayoutEffect(() => {
-    if (activeKey == null) {
-      return;
-    }
-    if (reduced) {
-      activeScale.setValue(1);
-      return;
-    }
-    activeScale.setValue(DECK_PEEK_SCALE);
-    const pop = Animated.sequence([
-      Animated.timing(activeScale, {
-        toValue: DECK_POP_SCALE,
-        duration: motion.duration.fast,
-        easing: motion.easing.enter,
-        useNativeDriver: true,
-      }),
-      Animated.spring(activeScale, {
-        toValue: 1,
-        stiffness: motion.spring.confident.stiffness,
-        damping: motion.spring.confident.damping,
-        mass: 1,
-        useNativeDriver: true,
-      }),
-    ]);
-    pop.start();
-    return () => pop.stop();
-    // Keyed on the active card's identity (activeKey) so it fires once per new
-    // card, not on every re-render while the same card stays active.
-  }, [activeKey, reduced, activeScale]);
-
   const cancel = useCallback(() => {
     Animated.spring(pan, {
       toValue: { x: 0, y: 0 },
@@ -272,6 +232,29 @@ export function OutfitSwipeDeck<T>({
     extrapolate: 'clamp',
   });
 
+  // Carousel cross-scale, driven live by the drag. At rest the active card is
+  // foregrounded at full size and its neighbours sit smaller behind it. As the
+  // card is held and swiped it recedes toward the neighbour scale while the
+  // incoming card grows to full — so the two swap depth continuously instead of
+  // the active card popping in after it lands.
+  const activeCardScale = pan.x.interpolate({
+    inputRange: [-SCREEN_W, 0, SCREEN_W],
+    outputRange: [DECK_PEEK_SCALE, 1, DECK_PEEK_SCALE],
+    extrapolate: 'clamp',
+  });
+  // Prev card grows toward full as the deck is dragged right, next card as it
+  // is dragged left; both rest at the smaller neighbour scale at x=0.
+  const prevPeekScale = pan.x.interpolate({
+    inputRange: [0, SCREEN_W],
+    outputRange: [DECK_PEEK_SCALE, 1],
+    extrapolate: 'clamp',
+  });
+  const nextPeekScale = pan.x.interpolate({
+    inputRange: [-SCREEN_W, 0],
+    outputRange: [1, DECK_PEEK_SCALE],
+    extrapolate: 'clamp',
+  });
+
   // Cards fill the deck via absolute insets (see cardBase), so the deck stack
   // flex-fills its parent and the card height follows the available space.
   const cardStyle: ViewStyle = { width: '100%' };
@@ -306,6 +289,7 @@ export function OutfitSwipeDeck<T>({
       {windowCards.map(({ item, role, peek }) => {
         const isActive = role === 'active';
         const peekOpacity = peek === 'prev' ? prevPeekOpacity : nextPeekOpacity;
+        const peekScale = peek === 'prev' ? prevPeekScale : nextPeekScale;
         return (
           <Animated.View
             key={keyOf(item)}
@@ -331,11 +315,16 @@ export function OutfitSwipeDeck<T>({
               isActive
                 ? [
                     styles.activeCard,
-                    { transform: [{ translateX: pan.x }, { scale: activeScale }] },
+                    {
+                      transform: [
+                        { translateX: pan.x },
+                        { scale: activeCardScale },
+                      ],
+                    },
                   ]
                 : {
                     opacity: peekOpacity,
-                    transform: [{ scale: DECK_PEEK_SCALE }],
+                    transform: [{ scale: peekScale }],
                   },
             ]}
             pointerEvents={isActive ? 'auto' : 'none'}
