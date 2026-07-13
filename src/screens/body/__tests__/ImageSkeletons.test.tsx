@@ -85,13 +85,8 @@ test('body photo grid, detail, and lightbox render image skeletons', () => {
       <BodyPhotoDetailView
         selectedBody={bodyItem}
         loading={false}
-        uploading={false}
-        modalVisible={false}
         onBack={jest.fn()}
         onDelete={jest.fn()}
-        onImageSelect={jest.fn()}
-        onOpenSourceModal={jest.fn()}
-        onCloseSourceModal={jest.fn()}
       />,
     );
     lightbox = TestRenderer.create(

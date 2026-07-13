@@ -154,14 +154,18 @@ export type AppStackParamList = {
   Feedback: undefined;
   // Discriminated union on `mode` so call sites are type-checked:
   //  - tryOn MUST carry an `outfit` (removes the old `outfit!` assertion in BodyScreen)
+  //  - photoLibrary → wardrobe-style grid of ALL the user's body photos
+  //    (uploaded, AI body-shape, selfie …). Reached from Settings "Manage body
+  //    photo"; tapping a tile opens `photoDetail` for that body.
   //  - photoDetail (Settings redesign Frame 5) opens the single body-photo
   //    detail view (full 3:4 image + metadata + Delete/Retake) instead of the
-  //    multi-photo manager grid. Reached from Settings "Manage body photo".
+  //    multi-photo manager grid. Reached from the photoLibrary grid.
   //    `bodyId` optional — absent means show current/first selected body.
   //  - manage / undefined → multi-photo manager grid (default).
   Body:
     | { mode?: 'manage' }
     | { mode: 'tryOn'; outfit: TryOnOutfitContext }
+    | { mode: 'photoLibrary' }
     | { mode: 'photoDetail'; bodyId?: string }
     | undefined;
   Welcome: undefined;

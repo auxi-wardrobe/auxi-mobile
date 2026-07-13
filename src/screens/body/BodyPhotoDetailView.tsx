@@ -10,13 +10,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { TopIconButton } from '../../components/primitives/FigmaPrimitives';
-import { DotsLoader } from '../../components/atoms/DotsLoader';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { BodyItem } from '../../services/bodyService';
 import { formatPhotoTimestamp, resolveImageUrl } from '../../utils/body';
-import { track } from '../../services/analytics';
-import { PhotoSourceModal } from './PhotoSourceModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 // Body-photo detail (Settings redesign Frame 5): full-bleed 3:4 image.
@@ -25,28 +22,19 @@ const DETAIL_IMAGE_HEIGHT = Math.round(screenWidth * (4 / 3));
 interface BodyPhotoDetailViewProps {
   selectedBody: BodyItem | null;
   loading: boolean;
-  uploading: boolean;
-  modalVisible: boolean;
   onBack: () => void;
   onDelete: (id: string) => void;
-  onImageSelect: (type: 'camera' | 'gallery') => void;
-  onOpenSourceModal: () => void;
-  onCloseSourceModal: () => void;
 }
 
-// Body-photo detail view (Settings redesign Frame 5).
-// Single photo: full 3:4 image + metadata caption + Delete (red, left) / Retake (right).
-// Reuses the host's handleDelete + handleImageSelection (Retake = re-capture/upload).
+// Body-photo detail view — opened from the "Manage body photos" library grid.
+// View-only + Delete: the full 3:4 image, a metadata caption, and a single
+// Delete action. Adding/retaking a photo is not offered here (nor in the
+// library grid), so there's no capture affordance. Back returns to the library.
 export const BodyPhotoDetailView: React.FC<BodyPhotoDetailViewProps> = ({
   selectedBody,
   loading,
-  uploading,
-  modalVisible,
   onBack,
   onDelete,
-  onImageSelect,
-  onOpenSourceModal,
-  onCloseSourceModal,
 }) => {
   const { t } = useTranslation();
   const detailImageUrl = selectedBody
@@ -69,35 +57,13 @@ export const BodyPhotoDetailView: React.FC<BodyPhotoDetailViewProps> = ({
             <Text style={styles.detailPlaceholderText}>
               {loading ? t('common.loading') : t('body.no_photo_hint')}
             </Text>
-            {/* Empty state previously instructed "Tap Retake to add one" but
-                offered no obvious CTA — a new user couldn't add a first body
-                photo. Surface an explicit add button that opens the same
-                camera/gallery source picker as Retake (→ handleImageSelection). */}
-            {!loading ? (
-              <TouchableOpacity
-                testID="body-detail-empty-add"
-                accessibilityRole="button"
-                accessibilityLabel={t('body.a11y_add_photo')}
-                activeOpacity={0.82}
-                disabled={uploading}
-                style={[
-                  styles.emptyAddButton,
-                  uploading && styles.detailActionDisabled,
-                ]}
-                onPress={() => {
-                  track('body_photo_add_started', { source: 'empty_detail' });
-                  onOpenSourceModal();
-                }}
-              >
-                <Text style={styles.emptyAddLabel}>{t('body.add_photo')}</Text>
-              </TouchableOpacity>
-            ) : null}
           </View>
         )}
 
         <View style={styles.detailBackWrap}>
           <TopIconButton
             testID="body-detail-back"
+            accessibilityLabel={t('uac.common.back')}
             onPress={onBack}
             icon={<Icons.ChevronLeft width={24} height={24} />}
           />
@@ -118,6 +84,8 @@ export const BodyPhotoDetailView: React.FC<BodyPhotoDetailViewProps> = ({
         <View style={styles.detailActions}>
           <TouchableOpacity
             testID="body-detail-delete"
+            accessibilityRole="button"
+            accessibilityLabel={t('common.delete')}
             activeOpacity={0.82}
             disabled={!selectedBody}
             style={[
@@ -132,36 +100,8 @@ export const BodyPhotoDetailView: React.FC<BodyPhotoDetailViewProps> = ({
           >
             <Text style={styles.detailDeleteLabel}>{t('common.delete')}</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            testID="body-detail-retake"
-            activeOpacity={0.82}
-            disabled={uploading}
-            style={[
-              styles.detailActionButton,
-              uploading && styles.detailActionDisabled,
-            ]}
-            onPress={onOpenSourceModal}
-          >
-            {uploading ? (
-              <DotsLoader color={theme.colors.uacTextBase} />
-            ) : (
-              <Text style={styles.detailRetakeLabel}>{t('body.retake')}</Text>
-            )}
-          </TouchableOpacity>
         </View>
       </View>
-
-      <PhotoSourceModal
-        visible={modalVisible}
-        title={t('body.retake_body')}
-        onCamera={() => onImageSelect('camera')}
-        onGallery={() => onImageSelect('gallery')}
-        onClose={onCloseSourceModal}
-        cameraTestID="body-detail-retake-camera"
-        galleryTestID="body-detail-retake-gallery"
-        cancelTestID="body-detail-retake-cancel"
-      />
     </SafeAreaView>
   );
 };
@@ -210,11 +150,12 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextBase,
   },
   detailActions: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
+  // Single destructive action, stretched to full width so it reads as the one
+  // primary control on the panel.
   detailActionButton: {
+    alignSelf: 'stretch',
     minHeight: 56,
     paddingHorizontal: 24,
     paddingVertical: 16,
@@ -225,29 +166,8 @@ const styles = StyleSheet.create({
   detailActionDisabled: {
     opacity: 0.5,
   },
-  // Empty-state primary CTA — bordered pill so it reads as a tappable button
-  // (the placeholder text alone did not).
-  emptyAddButton: {
-    marginTop: 16,
-    minHeight: 48,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: theme.borderRadius.uacRadioPill,
-    borderWidth: 1.5,
-    borderColor: theme.colors.uacTextBase,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyAddLabel: {
-    ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.uacTextBase,
-  },
   detailDeleteLabel: {
     ...theme.typography.aliases.poppinsBody,
     color: theme.colors.figmaRed,
-  },
-  detailRetakeLabel: {
-    ...theme.typography.aliases.poppinsBody,
-    color: theme.colors.uacTextBase,
   },
 });
