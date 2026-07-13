@@ -1,7 +1,7 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../../theme/theme';
-import { BottomSheetSurface } from '../primitives/FigmaPrimitives';
 import { Header } from '../layout/Header';
 
 type SettingsScreenScaffoldProps = {
@@ -15,11 +15,13 @@ type SettingsScreenScaffoldProps = {
 };
 
 /**
- * Shared chrome for every Settings screen — SafeArea + bottom-sheet surface +
- * canonical header + a scrollable, consistently-padded content column. The main
- * screen passes the menu (sidebar) header; the sub-screens pass the back
- * (chevron) header. Centralising this keeps all four screens visually identical
- * and makes adding a new sub-screen a one-liner.
+ * Shared chrome for every Settings screen — SafeArea + canonical header + a
+ * scrollable, consistently-padded content column. The main screen passes the
+ * menu (sidebar) header; the sub-screens pass the back (chevron) header.
+ * Centralising this keeps all four screens visually identical to each other
+ * and to the rest of the app: a flat, solid canonical header flush to the
+ * screen top (same as Feedback / Wardrobe / Database / Body), not a lifted
+ * bottom-sheet card.
  */
 export const SettingsScreenScaffold: React.FC<SettingsScreenScaffoldProps> = ({
   title,
@@ -33,23 +35,20 @@ export const SettingsScreenScaffold: React.FC<SettingsScreenScaffoldProps> = ({
     headerVariant === 'menu' ? Header.MenuTitle : Header.BackTitle;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <BottomSheetSurface style={styles.sheet}>
-        <HeaderPreset
-          title={title}
-          background="transparent"
-          leftTestID={leftTestID}
-          leftAccessibilityLabel={leftAccessibilityLabel}
-          onBack={onLeftPress}
-        />
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.inner}>{children}</View>
-        </ScrollView>
-      </BottomSheetSurface>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <HeaderPreset
+        title={title}
+        leftTestID={leftTestID}
+        leftAccessibilityLabel={leftAccessibilityLabel}
+        onBack={onLeftPress}
+      />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.inner}>{children}</View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -57,10 +56,7 @@ export const SettingsScreenScaffold: React.FC<SettingsScreenScaffoldProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.ds.color.white,
-  },
-  sheet: {
-    flex: 1,
+    backgroundColor: theme.colors.figmaBackground,
   },
   scroll: {
     flex: 1,
