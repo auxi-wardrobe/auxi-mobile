@@ -109,6 +109,13 @@ export const SHAREABLE_SCREENS: ShareableScreen[] = [
     target: { kind: 'app', name: 'Settings' },
   },
   {
+    key: 'upgrade',
+    label: 'Upgrade (Macgie+)',
+    group: 'App',
+    authState: 'app',
+    target: { kind: 'app', name: 'Upgrade' },
+  },
+  {
     key: 'body',
     label: 'Body',
     group: 'App',
