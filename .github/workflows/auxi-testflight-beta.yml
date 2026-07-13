@@ -107,6 +107,18 @@ jobs:
             > ~/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
           echo "Wrote AuthKey_${ASC_API_KEY_ID}.p8"
 
+      - name: Revoke stale CI signing certs (self-heal cert cap)
+        # Every clean runner mints a new "Apple Development: Created via API" cert
+        # via -allowProvisioningUpdates. Apple caps certs per account, so these
+        # single-use throwaways accumulate until the archive dies with "maximum
+        # number of certificates". This revokes the stale ones (keeps the newest
+        # 2 + all named human certs) BEFORE the build. Best-effort — always green.
+        working-directory: ios
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER: ${{ secrets.ASC_API_ISSUER }}
+        run: bundle exec ruby ../scripts/asc-revoke-stale-dev-certs.rb || true
+
       - name: Build & upload to TestFlight (fastlane beta)
         working-directory: ios
         env:
