@@ -30,10 +30,13 @@ import {
   isCommit,
   useReducedMotion,
   DECK_PEEK_SCALE,
+  DECK_PEEK_OFFSET_RATIO,
 } from '../../theme/motion';
 import { theme } from '../../theme/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
+// Resting horizontal offset of the peek neighbours (prev left, next right).
+const PEEK_OFFSET = SCREEN_W * DECK_PEEK_OFFSET_RATIO;
 
 type Role = 'active' | 'peek';
 
@@ -254,6 +257,19 @@ export function OutfitSwipeDeck<T>({
     outputRange: [1, DECK_PEEK_SCALE],
     extrapolate: 'clamp',
   });
+  // Neighbours rest offset to their side — prev to the left, next to the
+  // right — and slide to centre (0) as the drag brings them forward, so each
+  // reads as coming from that edge rather than straight up from behind.
+  const prevPeekTranslate = pan.x.interpolate({
+    inputRange: [0, SCREEN_W],
+    outputRange: [-PEEK_OFFSET, 0],
+    extrapolate: 'clamp',
+  });
+  const nextPeekTranslate = pan.x.interpolate({
+    inputRange: [-SCREEN_W, 0],
+    outputRange: [0, PEEK_OFFSET],
+    extrapolate: 'clamp',
+  });
 
   // Cards fill the deck via absolute insets (see cardBase), so the deck stack
   // flex-fills its parent and the card height follows the available space.
@@ -290,6 +306,8 @@ export function OutfitSwipeDeck<T>({
         const isActive = role === 'active';
         const peekOpacity = peek === 'prev' ? prevPeekOpacity : nextPeekOpacity;
         const peekScale = peek === 'prev' ? prevPeekScale : nextPeekScale;
+        const peekTranslate =
+          peek === 'prev' ? prevPeekTranslate : nextPeekTranslate;
         return (
           <Animated.View
             key={keyOf(item)}
@@ -324,7 +342,10 @@ export function OutfitSwipeDeck<T>({
                   ]
                 : {
                     opacity: peekOpacity,
-                    transform: [{ scale: peekScale }],
+                    transform: [
+                      { translateX: peekTranslate },
+                      { scale: peekScale },
+                    ],
                   },
             ]}
             pointerEvents={isActive ? 'auto' : 'none'}

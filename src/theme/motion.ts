@@ -40,6 +40,11 @@ export const motion = {
 // to the neighbour scale while the incoming card grows to full — a carousel
 // cross-scale rather than a card popping in after it lands.
 export const DECK_PEEK_SCALE = 0.92;
+// Neighbours rest offset behind the active card — the previous card a bit to
+// the left, the next a bit to the right — and slide to centre as they come
+// forward. Expressed as a fraction of screen width so the offset scales across
+// devices.
+export const DECK_PEEK_OFFSET_RATIO = 0.08;
 
 // Swipe-deck geometry constants (spec §2.2).
 export const SWIPE_ROTATION_CAP_DEG = 6;
