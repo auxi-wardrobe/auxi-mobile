@@ -112,7 +112,6 @@ import {
 } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { HomeEmptyState } from './components/HomeEmptyState';
-import { DeckCue } from './components/DeckCue';
 import { HomeHeader } from './components/HomeHeader';
 import { HomeLoadingState } from './components/HomeLoadingState';
 import { HomeToastLayer } from './components/HomeToastLayer';
@@ -1534,15 +1533,6 @@ export const HomeScreen = () => {
                 isGenerating={
                   role !== 'peek' && pinState.outfit === 'generating'
                 }
-              />
-            )}
-            renderCue={(backOpacity, nextOpacity) => (
-              <DeckCue
-                backOpacity={backOpacity}
-                nextOpacity={nextOpacity}
-                showBack={clampedActiveIndex > 0}
-                backLabel={t('home.back_label')}
-                skipLabel={t('home.skip_label')}
               />
             )}
           />
