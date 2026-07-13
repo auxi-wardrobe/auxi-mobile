@@ -73,12 +73,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   label: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.poppinsBodySmTight,
     color: theme.colors.uacTextSubtle200,
     flexShrink: 1,
   },
   reportText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.poppinsBodySmTight,
     color: theme.colors.figmaAiSparkle,
   },
 });

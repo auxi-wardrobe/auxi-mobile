@@ -349,12 +349,22 @@ export const theme = {
         fontSize: 16,
         lineHeight: 24,
       },
-      // Text-sm Regular 14/20 (sheet subtitles / body). Merged the former
-      // Settings 14/16 poppinsBodySm into this 14/20 spec.
+      // Text-sm Regular 14/20 (sheet subtitles / body). This is the former
+      // interBodySm, renamed to poppinsBodySm in the Poppins-alias sweep.
       poppinsBodySm: {
         fontFamily: 'Poppins-Regular',
         fontSize: 14,
         lineHeight: 20,
+      },
+      // Text-sm Regular 14/16 — tight-leading body/sm. This is the ORIGINAL
+      // poppinsBodySm (Settings/legal/disclosure copy) that predates the
+      // Poppins-alias sweep; kept distinct so the 14/16 consumers don't
+      // inherit the 14/20 leading of the renamed alias above.
+      poppinsBodySmTight: {
+        fontFamily: 'Poppins-Regular',
+        fontSize: 14,
+        lineHeight: 16,
+        letterSpacing: 0,
       },
       poppinsMediumSm: {
         fontFamily: 'Poppins-Medium',
