@@ -40,7 +40,7 @@ const FeatureItem: React.FC<{
 }> = ({ icon: Icon, title, subtitle, testID }) => (
   <View style={styles.feature} testID={testID}>
     <View style={styles.featureIcon}>
-      <Icon width={22} height={22} color={theme.ds.color.ink} />
+      <Icon width={16} height={16} color={theme.ds.color.ink} />
     </View>
     <View style={styles.featureText}>
       <Text style={styles.featureTitle}>{title}</Text>
@@ -293,8 +293,8 @@ const styles = StyleSheet.create({
     paddingRight: theme.spacing.s,
   },
   featureIcon: {
-    width: 44,
-    height: 44,
+    width: 28,
+    height: 28,
     borderRadius: theme.ds.radius.sm,
     backgroundColor: theme.ds.color.cream,
     alignItems: 'center',
