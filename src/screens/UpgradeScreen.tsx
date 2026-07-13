@@ -349,8 +349,8 @@ const styles = StyleSheet.create({
   },
   bestValueText: {
     ...theme.typography.aliases.poppinsSemiboldXs,
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     color: theme.ds.color.white,
   },
   planRow: {
