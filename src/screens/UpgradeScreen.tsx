@@ -416,11 +416,14 @@ const styles = StyleSheet.create({
   },
   trustTitle: {
     ...theme.typography.aliases.uacBodyMdSemibold,
-    fontSize: 14,
+    fontSize: 10,
+    lineHeight: 14,
     color: theme.ds.color.ink,
   },
   trustSubtitle: {
     ...theme.typography.aliases.poppinsBodySm,
+    fontSize: 10,
+    lineHeight: 14,
     color: theme.ds.color.onVariant,
   },
   legalRow: {
@@ -430,6 +433,8 @@ const styles = StyleSheet.create({
   },
   legalLink: {
     ...theme.typography.aliases.poppinsBodySm,
+    fontSize: 10,
+    lineHeight: 14,
     color: theme.ds.color.onVariant,
   },
 });
