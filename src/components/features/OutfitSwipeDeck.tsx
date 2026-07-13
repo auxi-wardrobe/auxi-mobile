@@ -25,7 +25,13 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { motion, isCommit, useReducedMotion } from '../../theme/motion';
+import {
+  motion,
+  isCommit,
+  useReducedMotion,
+  DECK_PEEK_SCALE,
+  DECK_POP_SCALE,
+} from '../../theme/motion';
 import { theme } from '../../theme/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -64,6 +70,9 @@ export function OutfitSwipeDeck<T>({
 }: Props<T>) {
   const reduced = useReducedMotion();
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  // Scale of the active card. Each time a new card takes the active slot it
+  // overshoots full size then settles (see the pop effect below).
+  const activeScale = useRef(new Animated.Value(1)).current;
   const active = items[activeIndex];
   // The card revealed behind the active one depends on swipe direction: the
   // previous card when dragging right (back), the next card when dragging left.
@@ -157,6 +166,42 @@ export function OutfitSwipeDeck<T>({
     awaitingAdvanceRef.current = false;
     committingRef.current = false;
   }, [activeIndex, pan]);
+
+  // "Pop": whenever a new card takes the active slot (first mount or after a
+  // swipe promotes a peek), lift it from the peek resting scale up past full
+  // size and settle back to 1 — a deliberate bounce, not a lagging scale-up.
+  // Runs in a layout effect so the start scale is applied before the promoted
+  // card paints (no one-frame flash at the previous card's scale).
+  const activeKey = active ? keyOf(active) : undefined;
+  useLayoutEffect(() => {
+    if (activeKey == null) {
+      return;
+    }
+    if (reduced) {
+      activeScale.setValue(1);
+      return;
+    }
+    activeScale.setValue(DECK_PEEK_SCALE);
+    const pop = Animated.sequence([
+      Animated.timing(activeScale, {
+        toValue: DECK_POP_SCALE,
+        duration: motion.duration.fast,
+        easing: motion.easing.enter,
+        useNativeDriver: true,
+      }),
+      Animated.spring(activeScale, {
+        toValue: 1,
+        stiffness: motion.spring.confident.stiffness,
+        damping: motion.spring.confident.damping,
+        mass: 1,
+        useNativeDriver: true,
+      }),
+    ]);
+    pop.start();
+    return () => pop.stop();
+    // Keyed on the active card's identity (activeKey) so it fires once per new
+    // card, not on every re-render while the same card stays active.
+  }, [activeKey, reduced, activeScale]);
 
   const cancel = useCallback(() => {
     Animated.spring(pan, {
@@ -284,8 +329,14 @@ export function OutfitSwipeDeck<T>({
               styles.cardBase,
               cardStyle,
               isActive
-                ? [styles.activeCard, { transform: [{ translateX: pan.x }] }]
-                : { opacity: peekOpacity },
+                ? [
+                    styles.activeCard,
+                    { transform: [{ translateX: pan.x }, { scale: activeScale }] },
+                  ]
+                : {
+                    opacity: peekOpacity,
+                    transform: [{ scale: DECK_PEEK_SCALE }],
+                  },
             ]}
             pointerEvents={isActive ? 'auto' : 'none'}
             // Peek cards are decorative until promoted: keep their subtree out

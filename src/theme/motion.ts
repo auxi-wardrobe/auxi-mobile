@@ -34,6 +34,12 @@ export const motion = {
   },
 } as const;
 
+// Swipe-deck card scale: a card sits slightly small while peeking behind the
+// active one, then a promoted card overshoots full size and settles back for a
+// subtle "pop" (0.98 → 1.1 → 1.0) instead of reading as a lagging scale-up.
+export const DECK_PEEK_SCALE = 0.98;
+export const DECK_POP_SCALE = 1.1;
+
 // Swipe-deck geometry constants (spec §2.2).
 export const SWIPE_ROTATION_CAP_DEG = 6;
 export const SWIPE_COMMIT_RATIO = 0.3; // fraction of screen width
