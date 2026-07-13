@@ -22,10 +22,14 @@
  * which matches the linear flow (shapes → pick → render). Subscribe from React
  * via `useTryOnGeneration`.
  */
+import * as Sentry from '@sentry/react-native';
 import { tryOnService } from '../../services/tryOnService';
 import { bodyShapeService } from '../../services/bodyShapeService';
 import { pollJob } from '../../services/job-polling';
-import { getApiErrorCode } from '../../utils/aiError';
+import {
+  classifyRecommendationError,
+  getApiErrorCode,
+} from '../../utils/aiError';
 import { TryOnOutfitContext } from '../../types/navigation';
 import { BodyShapeId, GeneratedShape, sortShapes } from './body-shapes';
 
@@ -66,6 +70,16 @@ export interface TryOnGenerationState {
    */
   errorCode: string | null;
 
+  /**
+   * Differentiated, sanitized failure kind for analytics (NOT a raw message):
+   *   - poll paths: `timed_out` (120s ceiling hit) / `job_failed` (terminal
+   *     `failed`, or `completed` without a usable result)
+   *   - thrown paths: `classifyRecommendationError().kind`
+   *     (`network` / `rate_limited` / `ai_unavailable` / `server` / `unknown`)
+   * Null when no error. The raw backend reason goes to Sentry only — never here.
+   */
+  errorKind: string | null;
+
   /** True while the loading screen is NOT mounted (user quit / backgrounded). */
   backgrounded: boolean;
 }
@@ -83,6 +97,7 @@ const initialState: TryOnGenerationState = {
   shape: null,
   resultUrl: null,
   errorCode: null,
+  errorKind: null,
   backgrounded: false,
 };
 
@@ -180,6 +195,7 @@ export const tryOnGenerationStore = {
       // clear any stale render output from a prior run
       resultUrl: null,
       errorCode: null,
+      errorKind: null,
     });
 
     (async () => {
@@ -191,7 +207,7 @@ export const tryOnGenerationStore = {
         });
         if (token !== runToken) return; // superseded before poll
         setState({ jobId: job_id });
-        const { result } = await pollJob(
+        const { result, timedOut } = await pollJob(
           () => bodyShapeService.getBodyShapeResult(job_id),
           r => r.status === 'completed' || r.status === 'failed',
           { shouldContinue: () => token === runToken },
@@ -207,16 +223,39 @@ export const tryOnGenerationStore = {
           });
           notifyIfBackgrounded('success', 'shapes');
         } else {
-          setState({ status: 'error', shapes: null, partial: false });
+          const errorKind = timedOut ? 'timed_out' : 'job_failed';
+          Sentry.captureMessage('try_on_shapes_failed', {
+            level: 'error',
+            tags: { feature: 'try_on', phase: 'shapes', error_kind: errorKind },
+            extra: {
+              job_id,
+              backend_status: result?.status ?? null,
+              backend_error: result?.error ?? null,
+              timed_out: timedOut,
+            },
+          });
+          setState({
+            status: 'error',
+            shapes: null,
+            partial: false,
+            errorKind,
+          });
           notifyIfBackgrounded('error', 'shapes');
         }
       } catch (err) {
         if (token !== runToken) return;
+        const errorKind = classifyRecommendationError(err).kind;
+        const errorCode = getApiErrorCode(err) ?? null;
+        Sentry.captureException(err, {
+          tags: { feature: 'try_on', phase: 'shapes', error_kind: errorKind },
+          extra: { job_id: state.jobId, error_code: errorCode },
+        });
         setState({
           status: 'error',
           shapes: null,
           partial: false,
-          errorCode: getApiErrorCode(err) ?? null,
+          errorCode,
+          errorKind,
         });
         notifyIfBackgrounded('error', 'shapes');
       }
@@ -248,6 +287,7 @@ export const tryOnGenerationStore = {
       shape: input.shape,
       resultUrl: null,
       errorCode: null,
+      errorKind: null,
     });
 
     (async () => {
@@ -260,7 +300,7 @@ export const tryOnGenerationStore = {
         });
         if (token !== runToken) return; // superseded before poll
         setState({ jobId: job_id });
-        const { result } = await pollJob(
+        const { result, timedOut } = await pollJob(
           () => tryOnService.getTryOnResult(job_id),
           r => r.status === 'completed' || r.status === 'failed',
           { shouldContinue: () => token === runToken },
@@ -271,15 +311,33 @@ export const tryOnGenerationStore = {
           setState({ status: 'success', resultUrl: result.composite_url });
           notifyIfBackgrounded('success', 'render');
         } else {
-          setState({ status: 'error', resultUrl: null });
+          const errorKind = timedOut ? 'timed_out' : 'job_failed';
+          Sentry.captureMessage('try_on_render_failed', {
+            level: 'error',
+            tags: { feature: 'try_on', phase: 'render', error_kind: errorKind },
+            extra: {
+              job_id,
+              backend_status: result?.status ?? null,
+              backend_error: result?.error ?? null,
+              timed_out: timedOut,
+            },
+          });
+          setState({ status: 'error', resultUrl: null, errorKind });
           notifyIfBackgrounded('error', 'render');
         }
       } catch (err) {
         if (token !== runToken) return;
+        const errorKind = classifyRecommendationError(err).kind;
+        const errorCode = getApiErrorCode(err) ?? null;
+        Sentry.captureException(err, {
+          tags: { feature: 'try_on', phase: 'render', error_kind: errorKind },
+          extra: { job_id: state.jobId, error_code: errorCode },
+        });
         setState({
           status: 'error',
           resultUrl: null,
-          errorCode: getApiErrorCode(err) ?? null,
+          errorCode,
+          errorKind,
         });
         notifyIfBackgrounded('error', 'render');
       }
