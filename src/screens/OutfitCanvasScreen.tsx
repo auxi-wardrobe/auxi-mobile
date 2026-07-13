@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,9 +31,11 @@ import {
   requestCanvasExit,
   setCanvasExitGuard,
 } from '../navigation/canvasExitGuard';
+import { AddTagView } from './canvas/AddTagView';
 import { DiscardCreationDialog } from './canvas/DiscardCreationDialog';
 import { ItemPickerPanel } from './canvas/ItemPickerPanel';
 import { TagChip } from './canvas/TagChip';
+import { TAG_SUGGESTIONS } from './canvas/tag-suggestions';
 import { ToolbarBtn } from './canvas/ToolbarBtn';
 import { useCanvasHistory } from './canvas/useCanvasHistory';
 import { useCanvasAddItems } from './canvas/useCanvasAddItems';
@@ -95,7 +96,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   ).current;
   const [items, setItems] = useState<CanvasItemData[]>(initialItems);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [tags, setTags] = useState<string[]>(['Low Energy', 'Calm']);
+  const [tags, setTags] = useState<string[]>([]);
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -227,6 +228,22 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
     setTagInput('');
     setAddingTag(false);
   }, [tagInput, tags]);
+
+  // Dismiss the tag editor without adding anything (back chevron / cancel).
+  const handleCancelAddTag = useCallback(() => {
+    setTagInput('');
+    setAddingTag(false);
+  }, []);
+
+  // Quick-fill: drop a suggested tag's label into the field (mirrors the refine
+  // editor — the user can submit it as-is or tweak it first).
+  const handleSelectTagSuggestion = useCallback((label: string) => {
+    setTagInput(label);
+  }, []);
+
+  // The arrow submit is inert until there's something to add — mirrors the
+  // refine "Edit context" editor's disabled-when-empty send button.
+  const tagSubmitDisabled = tagInput.trim().length === 0;
 
   // Clears the unsaved-changes flag on a successful save. Stable so
   // persistCreation keeps identical identity to the previous inline version.
@@ -548,7 +565,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               </ToolbarBtn>
             </View>
 
-            {/* Tags row */}
+            {/* Tags row — chips + an "Add tag" text chip. Tapping it opens the
+              full-screen AddTagView editor (input + arrow + suggested tags),
+              mirroring the refine "Edit context" design. */}
             <View style={styles.tagsRow}>
               <ScrollView
                 horizontal
@@ -563,29 +582,16 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                     onRemove={() => handleRemoveTag(tag)}
                   />
                 ))}
-                {addingTag ? (
-                  <TextInput
-                    testID="canvas-tag-input"
-                    value={tagInput}
-                    onChangeText={setTagInput}
-                    onSubmitEditing={handleConfirmTag}
-                    onBlur={handleConfirmTag}
-                    autoFocus
-                    returnKeyType="done"
-                    placeholder={t('outfitCanvas.tag_placeholder')}
-                    style={styles.tagInput}
-                    accessibilityLabel={t('outfitCanvas.a11y_tag_input')}
-                  />
-                ) : (
-                  <Pressable
-                    testID="canvas-tag-add"
-                    onPress={() => setAddingTag(true)}
-                    accessibilityLabel={t('outfitCanvas.a11y_add_tag')}
-                    style={styles.tagAddBtn}
-                  >
-                    <IconCanvasAdd width={12} height={12} />
-                  </Pressable>
-                )}
+                <Pressable
+                  testID="canvas-tag-add"
+                  onPress={() => setAddingTag(true)}
+                  accessibilityLabel={t('outfitCanvas.a11y_add_tag')}
+                  style={styles.tagAddBtn}
+                >
+                  <Text style={styles.tagAddLabel}>
+                    {t('outfitCanvas.add_tag')}
+                  </Text>
+                </Pressable>
               </ScrollView>
             </View>
 
@@ -625,6 +631,19 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </Pressable>
       </SafeAreaView>
+
+      {/* Full-screen "Add tag" editor — input + arrow + suggested tags,
+          mirroring the refine "Edit context" design. */}
+      <AddTagView
+        visible={addingTag}
+        value={tagInput}
+        suggestions={TAG_SUGGESTIONS}
+        submitDisabled={tagSubmitDisabled}
+        onChangeText={setTagInput}
+        onClose={handleCancelAddTag}
+        onSubmit={handleConfirmTag}
+        onSelectSuggestion={handleSelectTagSuggestion}
+      />
 
       {/* Item picker panel */}
       <ItemPickerPanel
@@ -795,22 +814,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   // Add chip — Figma: bg background/primary/subtle_50 (#f2efec), radius 6,
-  // height 32, icon-only "+".
+  // height 32. Carries the "Add tag" text label instead of the "+" icon.
   tagAddBtn: {
-    width: 38,
     height: 32,
     borderRadius: theme.borderRadius.chip,
     backgroundColor: theme.colors.figmaCardSurface,
+    paddingHorizontal: theme.spacing.uacDimension12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tagInput: {
+  tagAddLabel: {
     ...theme.typography.aliases.uacBodyXsRegular, // Inter Regular 12/16
-    height: 32,
-    minWidth: 80,
-    backgroundColor: theme.colors.figmaCardSurface,
-    borderRadius: theme.borderRadius.chip,
-    paddingHorizontal: theme.spacing.uacDimension12,
     color: theme.colors.figmaTextDark,
   },
   // Save button — Figma: 1.5px border border/neutral/base (#1d1f23), radius 16,
