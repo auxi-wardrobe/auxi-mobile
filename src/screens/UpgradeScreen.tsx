@@ -306,14 +306,14 @@ const styles = StyleSheet.create({
   },
   featureTitle: {
     ...theme.typography.aliases.uacBodyMdSemibold,
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     color: theme.ds.color.ink,
   },
   featureSubtitle: {
     ...theme.typography.aliases.poppinsBodySm,
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     color: theme.ds.color.onVariant,
   },
   plans: {
@@ -416,14 +416,14 @@ const styles = StyleSheet.create({
   },
   trustTitle: {
     ...theme.typography.aliases.uacBodyMdSemibold,
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     color: theme.ds.color.ink,
   },
   trustSubtitle: {
     ...theme.typography.aliases.poppinsBodySm,
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     color: theme.ds.color.onVariant,
   },
   legalRow: {
@@ -433,8 +433,8 @@ const styles = StyleSheet.create({
   },
   legalLink: {
     ...theme.typography.aliases.poppinsBodySm,
-    fontSize: 10,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     color: theme.ds.color.onVariant,
   },
 });
