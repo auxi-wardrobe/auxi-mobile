@@ -6,14 +6,13 @@
  * Bundled Poppins-SemiBold is used as the SVG font family. Width is derived
  * from the font size (generous, overflow visible) so the glyphs never clip.
  */
-import React from 'react';
+import React, { useId } from 'react';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import {
   MACGIE_GRADIENT_OFFSETS,
   MACGIE_GRADIENT_STOPS,
 } from './brandGradient';
 
-const GRAD_ID = 'macgie-wordmark-gradient';
 const TEXT = 'Macgie+';
 
 export interface MacgiePlusWordmarkProps {
@@ -30,6 +29,10 @@ export const MacgiePlusWordmark: React.FC<MacgiePlusWordmarkProps> = ({
   // clips at any font size.
   const width = Math.ceil(fontSize * TEXT.length * 0.66);
   const height = Math.ceil(fontSize * 1.32);
+  // Unique id per instance + userSpaceOnUse span so the gradient fills the
+  // glyphs identically on native and the react-native-web build (a shared id or
+  // objectBoundingBox on <Text> can drop the fill on web).
+  const gradId = `mg-wordmark-${useId().replace(/:/g, '')}`;
   return (
     <Svg
       width={width}
@@ -38,7 +41,14 @@ export const MacgiePlusWordmark: React.FC<MacgiePlusWordmarkProps> = ({
       accessibilityLabel="Macgie plus"
     >
       <Defs>
-        <LinearGradient id={GRAD_ID} x1="0" y1="0" x2="1" y2="0">
+        <LinearGradient
+          id={gradId}
+          x1="0"
+          y1="0"
+          x2={width}
+          y2="0"
+          gradientUnits="userSpaceOnUse"
+        >
           {MACGIE_GRADIENT_STOPS.map((stop, i) => (
             <Stop
               key={stop}
@@ -52,7 +62,7 @@ export const MacgiePlusWordmark: React.FC<MacgiePlusWordmarkProps> = ({
       <SvgText
         x="0"
         y={fontSize}
-        fill={`url(#${GRAD_ID})`}
+        fill={`url(#${gradId})`}
         fontFamily="Poppins-SemiBold"
         fontSize={fontSize}
         fontWeight="600"
