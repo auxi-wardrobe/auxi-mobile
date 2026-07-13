@@ -345,6 +345,8 @@ const styles = StyleSheet.create({
   },
   bestValueText: {
     ...theme.typography.aliases.poppinsSemiboldXs,
+    fontSize: 14,
+    lineHeight: 18,
     color: theme.ds.color.white,
   },
   planRow: {
@@ -377,12 +379,14 @@ const styles = StyleSheet.create({
   },
   planTitle: {
     ...theme.typography.aliases.uacH4Bold,
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 14,
+    lineHeight: 18,
     color: theme.ds.color.ink,
   },
   planBilling: {
     ...theme.typography.aliases.poppinsBodySm,
+    fontSize: 14,
+    lineHeight: 18,
     color: theme.ds.color.onVariant,
   },
   planPriceCol: {
@@ -391,6 +395,8 @@ const styles = StyleSheet.create({
   },
   planPrice: {
     ...theme.typography.aliases.uacBodyMdSemibold,
+    fontSize: 14,
+    lineHeight: 18,
     color: theme.ds.color.ink,
   },
   saveTag: {
@@ -401,6 +407,8 @@ const styles = StyleSheet.create({
   },
   saveTagText: {
     ...theme.typography.aliases.poppinsSemiboldXs,
+    fontSize: 14,
+    lineHeight: 18,
     color: theme.ds.color.white,
   },
   trustRow: {
