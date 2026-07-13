@@ -214,11 +214,6 @@ export function OutfitSwipeDeck<T>({
     outputRange: [motion.opacity.visible, motion.opacity.hidden],
     extrapolate: 'clamp',
   });
-  const peekScale = pan.x.interpolate({
-    inputRange: [-SCREEN_W, 0, SCREEN_W],
-    outputRange: [1, 0.98, 1],
-    extrapolate: 'clamp',
-  });
   // Reveal the previous card only while dragging right, the next card only
   // while dragging left — a step at x=0 so the wrong card never bleeds through.
   const prevPeekOpacity = pan.x.interpolate({
@@ -290,7 +285,7 @@ export function OutfitSwipeDeck<T>({
               cardStyle,
               isActive
                 ? [styles.activeCard, { transform: [{ translateX: pan.x }] }]
-                : { opacity: peekOpacity, transform: [{ scale: peekScale }] },
+                : { opacity: peekOpacity },
             ]}
             pointerEvents={isActive ? 'auto' : 'none'}
             // Peek cards are decorative until promoted: keep their subtree out
@@ -320,7 +315,7 @@ const styles = StyleSheet.create({
   // app surface keeps its edge clean as it slides — the peek card's cream tile
   // surface (figmaCardSurface) never bleeds a hairline at the screen edge, and
   // the corners read white-on-white against the screen. Applied to the ACTIVE
-  // card only; the peek cards stay unclipped so their scale affordance reads.
+  // card only; the peek cards stay unclipped.
   activeCard: {
     overflow: 'hidden',
     backgroundColor: theme.colors.figmaSurface,
