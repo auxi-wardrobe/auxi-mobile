@@ -46,6 +46,13 @@ export const MChip: React.FC<MChipProps> = ({
     outputRange: [color.p200, color.p500],
   });
 
+  // The chip's `transform`/`opacity` animations MUST use the JS driver
+  // (useNativeDriver: false), not the native one. They share a single
+  // Animated.View with the `backgroundColor` crossfade (`bg`), which is JS-driven
+  // because colour interpolation can't run natively. Mixing a native-driven and
+  // a JS-driven animation on the SAME node throws the "native/non-native driver"
+  // invariant on iOS/Android — a native-only crash that react-native-web
+  // silently tolerates (so it never showed in the web preview).
   const handleSelect = () => {
     onPress?.();
     if (reduce) return;
@@ -55,14 +62,14 @@ export const MChip: React.FC<MChipProps> = ({
         stiffness: motion.spring.confident.stiffness,
         damping: 12,
         mass: 1,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.spring(pop, {
         toValue: 1,
         stiffness: motion.spring.confident.stiffness,
         damping: motion.spring.confident.damping,
         mass: 1,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start();
   };
@@ -76,7 +83,7 @@ export const MChip: React.FC<MChipProps> = ({
       toValue: 0,
       duration: motion.duration.fast,
       easing: motion.easing.exit,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start(() => onRemove?.());
   };
 
