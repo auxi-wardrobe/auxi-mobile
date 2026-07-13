@@ -3,8 +3,8 @@
  * gradient (see `brandGradient.ts`). Rendered as SVG <Text> so the gradient
  * clips to the glyphs (RN has no gradient-fill Text and no masked-view dep).
  *
- * Bundled Poppins-Bold is used as the SVG font family. Width is derived from
- * the font size (generous, overflow visible) so the glyphs never clip.
+ * Bundled Poppins-SemiBold is used as the SVG font family. Width is derived
+ * from the font size (generous, overflow visible) so the glyphs never clip.
  */
 import React from 'react';
 import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
@@ -53,9 +53,9 @@ export const MacgiePlusWordmark: React.FC<MacgiePlusWordmarkProps> = ({
         x="0"
         y={fontSize}
         fill={`url(#${GRAD_ID})`}
-        fontFamily="Poppins-Bold"
+        fontFamily="Poppins-SemiBold"
         fontSize={fontSize}
-        fontWeight="bold"
+        fontWeight="600"
       >
         {TEXT}
       </SvgText>

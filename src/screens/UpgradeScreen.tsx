@@ -150,9 +150,9 @@ export const UpgradeScreen = () => {
       >
         {/* Hero — cat mark + "Upgrade to" + gradient wordmark + paws */}
         <View style={styles.hero}>
-          <MacgieFace size={30} />
+          <MacgieFace size={18} />
           <Text style={styles.heroLead}>{t('upgrade.hero_lead')}</Text>
-          <MacgiePlusWordmark fontSize={30} />
+          <MacgiePlusWordmark fontSize={14} />
           <Text style={styles.paws}>🐾</Text>
         </View>
         <Text style={styles.subtitle}>{t('upgrade.subtitle')}</Text>
@@ -266,11 +266,11 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.s,
   },
   heroLead: {
-    ...theme.typography.aliases.uacH4Bold,
+    ...theme.typography.aliases.poppinsSemiboldXsSm, // Poppins SemiBold 14/20
     color: theme.ds.color.ink,
   },
   paws: {
-    fontSize: 18,
+    fontSize: 14,
   },
   subtitle: {
     ...theme.typography.aliases.poppinsBody,
