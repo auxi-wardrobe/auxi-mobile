@@ -109,7 +109,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             }
             accessibilityLabel={t('sidebar.a11y_see_outfits')}
             onPress={() => {
-              navigation.navigate('Home');
+              // popTo (not navigate): reuse the existing Home instance so the
+              // current outfit suggestions + swipe position survive the
+              // round-trip. navigate() can push a duplicate Home under RN7 (see
+              // HomeWardrobeNavFooter), remounting it and resetting the deck.
+              // popTo falls back to pushing a fresh Home if none is in the stack.
+              navigation.popTo('Home');
               onClose();
             }}
           >
