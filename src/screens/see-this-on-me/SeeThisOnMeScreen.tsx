@@ -53,6 +53,7 @@ import { BodyShapeId, GeneratedShape } from './body-shapes';
 import { Step, CaptureStep, stepOrder, captureStepConfig } from './stom-steps';
 import { decideEntryMode } from './profile-entry';
 import { tryOnGenerationStore } from './try-on-generation-store';
+import { getTryOnResult } from '../../services/tryOnResultStore';
 import { useTryOnGeneration } from './use-try-on-generation';
 import { setTryOnBackgroundCompleteHandler } from './try-on-background-notify';
 
@@ -90,6 +91,10 @@ export const SeeThisOnMeScreen: React.FC = () => {
     null,
   );
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  // Persisted-result re-entry: true when the preview is showing the last
+  // successful AI result loaded from the on-device cache (not a fresh render),
+  // so the preview offers a Retake affordance that starts a new run.
+  const [showCachedResult, setShowCachedResult] = useState(false);
   // AU-346: opt-in to keep the reusable profile is ON by default. AU-358 note:
   // `select` always creates the primary profile server-side (the render needs a
   // durable body_id through the async job), so this checkbox is informational —
@@ -322,6 +327,20 @@ export const SeeThisOnMeScreen: React.FC = () => {
         setErrored(existing.status === 'error');
         setStep('generating');
       }
+    } else {
+      // No in-flight/finished job for this outfit — if this outfit already
+      // produced a successful AI photo in a prior session, show that cached
+      // result immediately (with a Retake affordance) instead of re-running
+      // the capture/reuse flow.
+      const cached = getTryOnResult(outfit.outfitHash);
+      if (cached) {
+        setResultUrl(cached);
+        setShowCachedResult(true);
+        setStep('preview');
+        track('try_on_cached_result_shown', {
+          outfit_hash: outfit.outfitHash,
+        });
+      }
     }
     return () => {
       tryOnGenerationStore.setBackgrounded(true);
@@ -403,6 +422,21 @@ export const SeeThisOnMeScreen: React.FC = () => {
     track('body_photo_reuse_dismissed', { outfit_hash: outfit.outfitHash });
     handleBack();
   }, [outfit.outfitHash, handleBack]);
+
+  // Retake from a persisted-result preview: drop the cached photo view and fall
+  // back into the normal flow (reuse-confirm when a saved profile exists, else
+  // capture) so the user generates a fresh result. The cached result is LEFT on
+  // disk until a new render succeeds, so backing out of the retake keeps the
+  // previous photo available on the next entry.
+  const handleCachedRetake = useCallback(() => {
+    setShowCachedResult(false);
+    setResultUrl(null);
+    resolvedHashRef.current = null;
+    reuseFiredRef.current = false;
+    setReuseConfirmed(false);
+    setStep('selfie');
+    track('try_on_outcome_retaken', { outfit_hash: outfit.outfitHash });
+  }, [outfit.outfitHash]);
 
   // Validate a just-picked photo immediately by uploading it. On success, hand
   // the created `body_id` to `onValid` (which stores it + advances). On a
@@ -565,6 +599,8 @@ export const SeeThisOnMeScreen: React.FC = () => {
     handleReuseConfirm,
     handleReuseRetake,
     handleReuseDismiss,
+    isCachedResult: showCachedResult,
+    handleCachedRetake,
   });
   if (stepScreen) {
     return (
