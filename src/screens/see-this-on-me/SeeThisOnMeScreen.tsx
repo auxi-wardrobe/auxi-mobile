@@ -211,6 +211,11 @@ export const SeeThisOnMeScreen: React.FC = () => {
           resolvedHashRef.current = key;
           track('body_shape_generation_failed', {
             outfit_hash: outfit.outfitHash,
+            error_kind: generation.errorKind ?? 'generate',
+            // Omit entirely when absent — never ship null/empty (analytics rule).
+            ...(generation.errorCode
+              ? { error_code: generation.errorCode }
+              : {}),
           });
         }
         setShapesErrored(true);
@@ -234,7 +239,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
         resolvedHashRef.current = key;
         track('try_on_failed', {
           outfit_hash: outfit.outfitHash,
-          error_kind: 'generate',
+          error_kind: generation.errorKind ?? 'generate',
+          // Omit entirely when absent — never ship null/empty (analytics rule).
+          ...(generation.errorCode ? { error_code: generation.errorCode } : {}),
         });
       }
       setErrored(true);
@@ -247,6 +254,8 @@ export const SeeThisOnMeScreen: React.FC = () => {
     generation.shapes,
     generation.partial,
     generation.outfit,
+    generation.errorKind,
+    generation.errorCode,
     outfit.outfitHash,
   ]);
 
