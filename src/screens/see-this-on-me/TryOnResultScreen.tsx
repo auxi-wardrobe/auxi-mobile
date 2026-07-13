@@ -25,7 +25,12 @@ export const TryOnResultScreen: React.FC = () => {
   const navigation = useNavigation<Navigation>();
   const { compositeUrl } = useRoute<ScreenRoute>().params;
 
-  const goHome = () => navigation.navigate('Home');
+  // popTo (not navigate): reuse the existing Home instance so the current
+  // outfit suggestions + swipe position survive the round-trip. navigate() can
+  // push a duplicate Home under RN7 (see HomeWardrobeNavFooter), remounting it
+  // and resetting the deck. popTo falls back to pushing a fresh Home if none is
+  // in the stack.
+  const goHome = () => navigation.popTo('Home');
 
   return (
     <SafeAreaView style={styles.container}>

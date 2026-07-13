@@ -98,6 +98,10 @@ import {
   withScheduledPrefix,
 } from './scheduled-outfits';
 import { styles } from './styles';
+import {
+  readHomeDeckSnapshot,
+  saveHomeDeckSnapshot,
+} from './deck-cache';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
 import { useHomeToasts } from './hooks/useHomeToasts';
@@ -422,12 +426,10 @@ export const HomeScreen = () => {
         setHasCycled(true);
       }
 
-      let isColdStart = false;
       let addedCount = 0;
       let settledHash: string | undefined;
       if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
         isFirstLoadRef.current = false;
-        isColdStart = true;
         const incoming = normalizeOutfits(data, 0);
         // Lead the fresh deck with the user's outfit(s) scheduled for today.
         // `withScheduledPrefix` is a no-op when nothing is planned, so the deck
@@ -499,8 +501,13 @@ export const HomeScreen = () => {
         showRefineToastRef.current(pendingToast.text, pendingToast.isChip);
       }
 
+      // Do NOT force a look-ahead fetch on cold start: the fresh set stays as
+      // the whole deck until the user swipes to its last card, at which point
+      // `ensureBuffer` (TARGET_AHEAD = 1) requests the next batch on demand.
+      // Passing `false` still lets the ahead-gate top up an unusually small
+      // initial batch (fewer than a full set).
       setTimeout(() => {
-        ensureBufferRef.current(isColdStart);
+        ensureBufferRef.current(false);
       }, 0);
     },
     onError: (error, variables) => {
@@ -536,11 +543,43 @@ export const HomeScreen = () => {
   );
 
   useEffect(() => {
+    // On the web build the JS stack unmounts Home when the user navigates away
+    // (Wardrobe, etc.), so this effect re-runs on every return. If we still have
+    // the previous deck cached for this user, restore it — same suggestions,
+    // same swipe position — instead of cold-starting a fresh batch. New
+    // suggestions then only load once the user swipes to the last card. On
+    // native (native-stack) Home stays mounted, so this runs once and the cache
+    // is simply never hit.
+    const snap = readHomeDeckSnapshot(user?.id);
+    if (snap) {
+      isFirstLoadRef.current = false;
+      listOutfitsRef.current = snap.listOutfits;
+      setListOutfits(snap.listOutfits);
+      activeIndexRef.current = snap.activeIndex;
+      setActiveIndex(snap.activeIndex);
+      setSaveStateByHash(snap.saveStateByHash);
+      return;
+    }
     requestRecommendation({
       mode: selectedModeRef.current,
       style_feedback: styleFeedbackRef.current ?? undefined,
     });
-  }, [requestRecommendation]);
+  }, [requestRecommendation, user?.id]);
+
+  // Keep the module-level deck snapshot in sync so a remount (see the effect
+  // above) can restore the current suggestions + position. Keyed by user id so
+  // it never leaks across accounts.
+  useEffect(() => {
+    if (user?.id == null || listOutfits.length === 0) {
+      return;
+    }
+    saveHomeDeckSnapshot({
+      userId: user.id,
+      listOutfits,
+      activeIndex,
+      saveStateByHash,
+    });
+  }, [user?.id, listOutfits, activeIndex, saveStateByHash]);
 
   // Reset the progressive-refinement tier (run synchronously on submit/skip so
   // the gate effect can't re-fire in the window before the new batch resolves).

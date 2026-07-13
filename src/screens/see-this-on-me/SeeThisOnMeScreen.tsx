@@ -123,7 +123,12 @@ export const SeeThisOnMeScreen: React.FC = () => {
     ((asset: Asset) => void | Promise<void>) | null
   >(null);
 
-  const goHome = useCallback(() => navigation.navigate('Home'), [navigation]);
+  // popTo (not navigate): reuse the existing Home instance so the current
+  // outfit suggestions + swipe position survive the round-trip. navigate() can
+  // push a duplicate Home under RN7 (see HomeWardrobeNavFooter), remounting it
+  // and resetting the deck. popTo falls back to pushing a fresh Home if none is
+  // in the stack.
+  const goHome = useCallback(() => navigation.popTo('Home'), [navigation]);
 
   // Subscribe to the background-safe generation store (AU-358). Both async
   // steps (shapes gen + render) run OUTSIDE this component so they survive the
