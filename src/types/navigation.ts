@@ -111,6 +111,10 @@ export type AppStackParamList = {
   // pinning (distinct from `pinFromDetail`, which pins + rebuilds around it).
   Home: { pinFromDetail?: string; swapItem?: HomeOutfitSwap } | undefined;
   Settings: undefined;
+  // Macgie+ paywall — reached from the Settings "Upgrade to Macgie+" pill
+  // (shown to free users). Pushed on top of Settings so it keeps the standard
+  // back gesture / chevron.
+  Upgrade: undefined;
   // Settings sub-screens (grouped IA). The main Settings screen keeps the
   // daily-reminder controls + "Delete My Data"; these three carry the grouped
   // secondary settings, pushed on top so they get the standard back gesture.
