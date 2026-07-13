@@ -4,25 +4,27 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import IconRemix from '../../assets/images/icon_remix.svg';
 
-// Home action row — [Remix]  ·  [Refine suggestions].
+// Home action row — [Remix]  ·  [• • • dots]  ·  [Refine suggestions].
+// The dots are a set-position indicator (OUTFITS_PER_SET outfits per set).
 // "Refine suggestions" opens the context-refine bottom sheet — a deliberate
 // tweak affordance. (The old "Show another" tap was dropped: a left-swipe
 // already advances/explores, so the forward step needed no button.) All props
 // optional so the loading-state caller (no handlers) renders a static
-// [Remix] · disabled "Refine suggestions".
-//
-// The old set-position dots between the two actions were removed: users
-// discover suggestions by swiping, so a position indicator added noise
-// without helping navigation.
+// [Remix] · dots · disabled "Refine suggestions".
 type Props = {
   onRemix?: () => void;
   onRefine?: () => void;
+  /** Set-position dots: total count + active index (0-based). */
+  dotCount?: number;
+  activeDot?: number;
   testID?: string;
 };
 
 export const OutfitActionRow: React.FC<Props> = ({
   onRemix,
   onRefine,
+  dotCount = 3,
+  activeDot = 0,
   testID,
 }) => {
   const { t } = useTranslation();
@@ -42,6 +44,19 @@ export const OutfitActionRow: React.FC<Props> = ({
         </Text>
         <IconRemix width={16} height={16} color={theme.colors.uacTextBase} />
       </TouchableOpacity>
+
+      {/* Set-position dots (Figma Frame 2124) — 4px dots, 8px gap. */}
+      <View style={styles.dots} pointerEvents="none">
+        {Array.from({ length: Math.max(1, dotCount) }).map((_, i) => (
+          <View
+            key={`dot-${i}`}
+            style={[
+              styles.dot,
+              i === activeDot ? styles.dotActive : styles.dotInactive,
+            ]}
+          />
+        ))}
+      </View>
 
       <TouchableOpacity
         testID="home-refine"
@@ -93,5 +108,21 @@ const styles = StyleSheet.create({
   },
   showAnotherDisabled: {
     color: theme.colors.figmaTextSecondary,
+  },
+  dots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  dotActive: {
+    backgroundColor: theme.colors.uacTextBase,
+  },
+  dotInactive: {
+    backgroundColor: theme.colors.figmaDivider,
   },
 });
