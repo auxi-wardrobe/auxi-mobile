@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   label: {
-    ...theme.typography.aliases.interSemiboldXs,
+    ...theme.typography.aliases.poppinsSemiboldXs,
     color: theme.colors.uacTextBase,
   },
   chevron: {

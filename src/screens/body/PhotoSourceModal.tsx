@@ -98,14 +98,14 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingHorizontal: 22,
+    paddingHorizontal: theme.spacing.m,
     paddingTop: 20,
     paddingBottom: 34,
   },
   modalTitle: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
     textAlign: 'center',
-    color: theme.colors.figmaTextPrimary,
+    color: theme.colors.uacTextBase,
     marginBottom: theme.spacing.m,
   },
   modalAction: {

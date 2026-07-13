@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   tileFallbackText: {
-    ...theme.typography.aliases.interCaptionXxs,
+    ...theme.typography.aliases.poppinsCaptionXxs,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
   },
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   tilePreparingText: {
-    ...theme.typography.aliases.interCaptionXxs,
+    ...theme.typography.aliases.poppinsCaptionXxs,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   beautifyBadgeText: {
-    ...theme.typography.aliases.interCaptionXxs,
+    ...theme.typography.aliases.poppinsCaptionXxs,
     color: theme.colors.white,
   },
 });

@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.l,
   },
   title: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     marginBottom: theme.spacing.m,
   },
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   errorText: {
-    ...theme.typography.aliases.interCaptionXxs,
+    ...theme.typography.aliases.poppinsCaptionXxs,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing.m,

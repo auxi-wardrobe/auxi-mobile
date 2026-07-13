@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   },
   // Title — 14px semibold (Poppins-SemiBold 14/20).
   title: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   // Body — 14px regular; bump line-height for a readable two-line paragraph.

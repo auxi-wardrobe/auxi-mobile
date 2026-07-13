@@ -82,12 +82,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   preparingTitle: {
-    ...theme.typography.aliases.interSemiboldSm,
+    ...theme.typography.aliases.poppinsSemiboldSm,
     color: theme.colors.figmaTextPrimary,
     marginTop: 4,
   },
   preparingStep: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.poppinsBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
   },

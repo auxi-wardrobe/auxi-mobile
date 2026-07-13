@@ -101,16 +101,18 @@ const styles = StyleSheet.create({
   // top radius, scrim, slide motion AND the safe-area bottom inset; this is
   // just the inner content padding.
   addSheetBody: {
+    // Horizontal padding comes from the ContextualBottomSheet shell (16) so this
+    // sheet's content lines up with every other sheet — no extra inset. (Was an
+    // extra 24 here, giving a too-wide 40px gutter.)
     paddingTop: 8,
-    paddingHorizontal: 24,
   },
   addSheetTitle: {
-    ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    color: theme.colors.uacTextBase,
   },
   addSheetSubtitle: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    ...theme.typography.aliases.poppinsBodySm,
+    color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
     marginBottom: theme.spacing.m,
   },

@@ -74,12 +74,12 @@ export const RemoveFavouriteDialog: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   title: {
-    ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    color: theme.colors.uacTextBase,
   },
   body: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    ...theme.typography.aliases.poppinsBodySm,
+    color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
   },
   actions: {

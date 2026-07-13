@@ -268,14 +268,6 @@ export const theme = {
         lineHeight: 40,
         letterSpacing: -0.64,
       },
-      // Settings redesign — small Poppins body (body/sm).
-      // Figma body/sm = Poppins Regular 14/16 (main-list "AM" period label).
-      poppinsBodySm: {
-        fontFamily: 'Poppins-Regular',
-        fontSize: 14,
-        lineHeight: 16,
-        letterSpacing: 0,
-      },
       // UAC (Account-access flow) typography — AU-242 spec
       // Spec: plans/260521-2335-au-242-figma-spec/00-index.md "Typography"
       uacH1Bold: {
@@ -303,15 +295,15 @@ export const theme = {
       },
       // Settings redesign — Delete-data dialog title (Frame 4).
       // Inter SemiBold 16/20 (Text-md l-20/Semibold) — line-height 20, not 24.
-      interSemiboldSm: {
+      poppinsSemiboldSm: {
         fontFamily: 'Poppins-SemiBold',
         fontSize: 16,
         lineHeight: 20,
       },
       // Favourite remove bottom-sheet title (Figma 3539:23380).
-      // Inter SemiBold 14/20 (body/sm Semibold) — one size smaller than
-      // interSemiboldSm (16/20); the sheet header reads at body/sm, not Text-md.
-      interSemiboldXsSm: {
+      // Poppins SemiBold 14/20 (body/sm Semibold) — one size smaller than
+      // poppinsSemiboldSm (16/20); the sheet header reads at body/sm, not Text-md.
+      poppinsSemiboldXsSm: {
         fontFamily: 'Poppins-SemiBold',
         fontSize: 14,
         lineHeight: 20,
@@ -336,33 +328,45 @@ export const theme = {
         fontSize: 12,
         lineHeight: 16,
       },
-      // Home header weather temperature — Figma 3227:19834 (Inter SemiBold 12/16).
-      interSemiboldXs: {
+      // Home header weather temperature — Figma 3227:19834 (Poppins SemiBold 12/16).
+      poppinsSemiboldXs: {
         fontFamily: 'Poppins-SemiBold',
         fontSize: 12,
         lineHeight: 16,
       },
       // Onboarding redesign (node 2849:8331) — Text-xxs caption pill label.
-      // Figma Text-xxs = Inter Regular 10/12. No existing 10/12 Inter alias.
+      // Figma Text-xxs = Poppins Regular 10/12. No existing 10/12 alias.
       // Source: figma-extraction-onboarding.md §4.2
-      interCaptionXxs: {
+      poppinsCaptionXxs: {
         fontFamily: 'Poppins-Regular',
         fontSize: 10,
         lineHeight: 12,
       },
-      // Wardrobe add-item flow (node 2852:19750) — Inter body text.
+      // Wardrobe add-item flow (node 2852:19750) — Poppins body text.
       // Text-md (l-24) Regular 16/24, Text-sm (l-20) Regular/Medium 14/20.
-      interBodyMd: {
+      poppinsBodyMd: {
         fontFamily: 'Poppins-Regular',
         fontSize: 16,
         lineHeight: 24,
       },
-      interBodySm: {
+      // Text-sm Regular 14/20 (sheet subtitles / body). This is the former
+      // interBodySm, renamed to poppinsBodySm in the Poppins-alias sweep.
+      poppinsBodySm: {
         fontFamily: 'Poppins-Regular',
         fontSize: 14,
         lineHeight: 20,
       },
-      interMediumSm: {
+      // Text-sm Regular 14/16 — tight-leading body/sm. This is the ORIGINAL
+      // poppinsBodySm (Settings/legal/disclosure copy) that predates the
+      // Poppins-alias sweep; kept distinct so the 14/16 consumers don't
+      // inherit the 14/20 leading of the renamed alias above.
+      poppinsBodySmTight: {
+        fontFamily: 'Poppins-Regular',
+        fontSize: 14,
+        lineHeight: 16,
+        letterSpacing: 0,
+      },
+      poppinsMediumSm: {
         fontFamily: 'Poppins-Medium',
         fontSize: 14,
         lineHeight: 20,

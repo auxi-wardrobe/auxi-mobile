@@ -206,17 +206,17 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   title: {
-    ...theme.typography.aliases.interSemiboldXsSm,
-    color: theme.colors.figmaTextPrimary,
+    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    color: theme.colors.uacTextBase,
   },
   body: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
+    ...theme.typography.aliases.poppinsBodySm,
+    color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
   },
   tipsIntro: {
-    ...theme.typography.aliases.poppinsBodySm,
-    color: theme.colors.figmaTextSecondary,
+    ...theme.typography.aliases.poppinsBodySmTight,
+    color: theme.colors.uacTextBase,
     marginTop: theme.spacing.m,
   },
   tipList: {
@@ -227,13 +227,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   tipBullet: {
-    ...theme.typography.aliases.poppinsBodySm,
-    color: theme.colors.figmaTextSecondary,
+    ...theme.typography.aliases.poppinsBodySmTight,
+    color: theme.colors.uacTextBase,
     width: 16,
   },
   tipText: {
-    ...theme.typography.aliases.poppinsBodySm,
-    color: theme.colors.figmaTextSecondary,
+    ...theme.typography.aliases.poppinsBodySmTight,
+    color: theme.colors.uacTextBase,
     flex: 1,
   },
   // Full-width primary CTA. Height / radius / fill / text match the refine
