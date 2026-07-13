@@ -12,6 +12,8 @@ import { GradientPillButton } from '../components/upgrade/GradientPillButton';
 import { BrandGradientFill } from '../components/upgrade/BrandGradientFill';
 import { MacgiePlusWordmark } from '../components/upgrade/MacgiePlusWordmark';
 import { Icons } from '../assets/icons';
+import EnhanceIcon from '../assets/images/icon_upgrade_enhance.svg';
+import SuggestionsIcon from '../assets/images/icon_upgrade_suggestions.svg';
 import { theme } from '../theme/theme';
 import { track } from '../services/analytics';
 import { AppStackParamList } from '../types/navigation';
@@ -27,8 +29,8 @@ type SvgIcon = React.FC<{ width?: number; height?: number; color?: string }>;
 const FEATURES: Array<{ key: string; icon: SvgIcon }> = [
   { key: 'wardrobe', icon: Icons.Wardrobe },
   { key: 'see_on_me', icon: Icons.Sparkle },
-  { key: 'suggestions', icon: Icons.GetDressed },
-  { key: 'enhance', icon: Icons.Remix },
+  { key: 'suggestions', icon: SuggestionsIcon },
+  { key: 'enhance', icon: EnhanceIcon },
   { key: 'schedule', icon: Icons.Calendar },
   { key: 'canvas', icon: Icons.OutfitCanvas },
 ];
