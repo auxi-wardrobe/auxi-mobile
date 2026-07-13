@@ -306,12 +306,14 @@ const styles = StyleSheet.create({
   },
   featureTitle: {
     ...theme.typography.aliases.uacBodyMdSemibold,
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 10,
+    lineHeight: 14,
     color: theme.ds.color.ink,
   },
   featureSubtitle: {
     ...theme.typography.aliases.poppinsBodySm,
+    fontSize: 10,
+    lineHeight: 14,
     color: theme.ds.color.onVariant,
   },
   plans: {
