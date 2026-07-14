@@ -328,6 +328,43 @@ export const resetAnalytics = (): void => {
   mixpanel?.reset();
 };
 
+// ── Purchase lifecycle (Macgie+ IAP via RevenueCat) ────────────────────────
+// Fired around the RevenueCat purchase/restore flow on the paywall. Literal
+// event names (no template strings). Props are bounded enums only — `plan`
+// (yearly | monthly), `product_id` (the store product identifier, not PII), a
+// sanitized `reason` enum, and a `restored` boolean. NEVER a raw StoreKit /
+// RevenueCat error string, receipt data, transaction id, or price.
+
+/** A purchase reason code — sanitized enum, never a raw store error string. */
+export type PurchaseFailureReason =
+  | 'user_cancelled'
+  | 'store_error'
+  | 'not_configured'
+  | 'unknown';
+
+/** Subscribe tapped → native purchase flow about to start. */
+export const trackPurchaseStarted = (plan: string): void => {
+  track('purchase_started', { plan });
+};
+
+/** Purchase completed and the macgie_plus entitlement is active. */
+export const trackPurchaseSucceeded = (
+  plan: string,
+  productId: string,
+): void => {
+  track('purchase_succeeded', { plan, product_id: productId });
+};
+
+/** Purchase failed or was cancelled. `reason` is a sanitized enum. */
+export const trackPurchaseFailed = (reason: PurchaseFailureReason): void => {
+  track('purchase_failed', { reason });
+};
+
+/** Restore completed. `restored` = whether an active entitlement was found. */
+export const trackPurchaseRestored = (restored: boolean): void => {
+  track('purchase_restored', { restored });
+};
+
 // ── Push notifications (Phase 1) ───────────────────────────────────────────
 // Literal event names (no template strings). The only property is `type`
 // (notification type enum — daily_reminder | planned_outfit | admin_*) — no

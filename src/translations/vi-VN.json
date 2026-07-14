@@ -947,7 +947,17 @@
       "restore": "Khôi phục giao dịch",
       "coming_soon_title": "Sắp ra mắt",
       "coming_soon_body": "Tính năng đăng ký chưa khả dụng.",
-      "restore_body": "Tính năng khôi phục giao dịch chưa khả dụng."
+      "restore_body": "Tính năng khôi phục giao dịch chưa khả dụng.",
+      "offerings_error_title": "Không tải được gói",
+      "offerings_error_body": "Vui lòng kiểm tra kết nối và thử lại.",
+      "purchase_error_title": "Thanh toán thất bại",
+      "purchase_error_body": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+      "purchase_success_title": "Chào mừng đến Macgie+",
+      "purchase_success_body": "Gói đăng ký của bạn đã được kích hoạt.",
+      "restore_success_title": "Đã khôi phục giao dịch",
+      "restore_success_body": "Gói Macgie+ của bạn đã được kích hoạt lại.",
+      "restore_none_title": "Không có gì để khôi phục",
+      "restore_none_body": "Không tìm thấy gói đăng ký đang hoạt động cho tài khoản này."
     }
   }
 }

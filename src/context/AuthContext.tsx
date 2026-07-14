@@ -19,6 +19,11 @@ import { getForcedFirstLogin } from '../services/reviewOverrides';
 import { resetV05Session } from '../services/v05Api';
 import { setRecommendationMemoryUser } from '../services/recommendationMemory';
 import { setTryOnResultUser } from '../services/tryOnResultStore';
+import {
+  configureRevenueCat,
+  logInRevenueCat,
+  logOutRevenueCat,
+} from '../services/revenueCat';
 import { LoginRequest, RegisterRequest, User } from '../types/auth';
 
 /**
@@ -50,6 +55,13 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
   updateCurrentUser: (data: Partial<User>) => Promise<User>;
+  /**
+   * Optimistically flip the in-memory user to premium for instant post-purchase
+   * UX. This does NOT persist to the backend — the RevenueCat webhook is the
+   * durable authority for `is_premium`; a subsequent `refreshUser()` reconciles
+   * with server truth. No-op when there is no current user.
+   */
+  markPremiumOptimistic: () => void;
   resetUserPreferences: () => Promise<User>;
   checkAuth: () => Promise<void>;
   completeOnboarding: (data?: Partial<User>) => Promise<void>;
@@ -109,6 +121,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
+  const markPremiumOptimistic = useCallback((): void => {
+    setUser(prev =>
+      prev && !prev.is_premium ? { ...prev, is_premium: true } : prev,
+    );
+  }, []);
+
   const resetUserPreferences = useCallback(async (): Promise<User> => {
     const updatedUser = await authService.resetPreferences();
     setUser(updatedUser);
@@ -160,6 +178,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [refreshUser]);
 
   useEffect(() => {
+    // Bring the RevenueCat SDK up once on app start (anonymous). No-op until a
+    // key is provisioned + on non-iOS; logInRevenueCat below aliases it to our
+    // user id on the next identity transition. Safe/dark by default.
+    configureRevenueCat();
     checkAuth();
   }, [checkAuth]);
 
@@ -261,6 +283,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         superProps.display_state = user.user_metadata.display_state;
       }
       identifyUser(distinctId, profile, superProps);
+      // Alias RevenueCat's app_user_id to our user id so the backend webhook
+      // (which keys on app_user_id) attributes purchases to this account. Fires
+      // on the same transitions as analytics identify (login, cold-start
+      // restore, post-verify). No-op until RC is configured; never throws.
+      logInRevenueCat(distinctId);
       // Key Unleash rollouts on the same identity as analytics, so % rollouts
       // and role/gender targeting are stable per logged-in user. Fires on the
       // same transitions: login, cold-start restore, post-verify.
@@ -286,6 +313,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } else if (analyticsIdRef.current !== null) {
       analyticsIdRef.current = null;
       resetAnalytics();
+      // Reset RevenueCat identity to a fresh anonymous id so the next user
+      // isn't merged into this user's entitlements. No-op until configured.
+      logOutRevenueCat();
       // User left (logout / session expiry): drop the in-memory recommendation
       // memory and the cached V05 session so neither outlives the user it
       // belongs to (the per-user persisted memory blob stays for re-login).
@@ -381,6 +411,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         logout,
         refreshUser,
         updateCurrentUser,
+        markPremiumOptimistic,
         resetUserPreferences,
         checkAuth,
         completeOnboarding,

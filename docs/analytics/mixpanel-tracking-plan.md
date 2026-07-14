@@ -327,7 +327,7 @@ literal-named via `analytics.ts` helpers.
 
 ### 5.22 Upgrade / Paywall (Macgie+)
 
-The Macgie+ paywall (`UpgradeScreen`, reached from the Settings "Upgrade" pill for free users). Display-only today — there is no StoreKit/IAP or backend entitlement, so Subscribe/Restore surface a "coming soon" toast (the purchase lifecycle itself is a gap, §6.9). `paywall_viewed` is the funnel denominator; the entry tap, plan selection, Subscribe/Restore taps, and back-dismiss round out the view→tap conversion. The entry points are behind a `SHOW_UPGRADE_PAYWALL` kill-switch (currently **dark**), so no paywall events fire in production until the flag is flipped.
+The Macgie+ paywall (`UpgradeScreen`, reached from the Settings "Upgrade" pill for free users). Now backed by real IAP via RevenueCat (AU-415): Subscribe purchases the selected offering package and Restore restores prior purchases; the purchase lifecycle is instrumented in §5.23. `paywall_viewed` is the funnel denominator; the entry tap, plan selection, Subscribe/Restore taps, and back-dismiss round out the view→tap conversion. The entry points are behind a `SHOW_UPGRADE_PAYWALL` kill-switch (currently **dark**), so no paywall events fire in production until the flag is flipped.
 
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
@@ -338,7 +338,20 @@ The Macgie+ paywall (`UpgradeScreen`, reached from the Settings "Upgrade" pill f
 | `upgrade_restore_tapped` | "Restore purchase" tapped (shows "coming soon" toast — no restore). Fires from two surfaces, disambiguated by `source` | `UpgradeScreen.tsx:156` (trust row `:229`, legal row `:258`) | `source` (`trust_row` / `legal_row`) |
 | `paywall_dismissed` | Paywall closed via the header back button (`Header.BackTitle` onBack) | `UpgradeScreen.tsx:140` | `source` (entry origin) |
 
-> PII: none. `source` / `plan` / `default_plan` are bounded enums (UI-surface + plan-id keys) — no prices, no user text, no ids. Prices are static localized display strings, never tracked. The screen is display-only; no purchase event fires from it (see §6.9 for the un-wired purchase lifecycle).
+> PII: none. `source` / `plan` / `default_plan` are bounded enums (UI-surface + plan-id keys) — no prices, no user text, no ids. Prices come from RevenueCat's localized `priceString` for display only, never tracked. The purchase lifecycle fires from §5.23.
+
+### 5.23 Purchase lifecycle (Macgie+ IAP via RevenueCat)
+
+The RevenueCat purchase/restore flow on the paywall (AU-415). Subscribe → `Purchases.purchasePackage`; Restore → `Purchases.restorePurchases`. RevenueCat validates the receipt with Apple and pushes the `macgie_plus` entitlement to the backend via webhook (the durable authority for `is_premium`); these client events measure the store-side funnel. Fired via typed helpers in `analytics.ts` (no template strings). Still behind the `SHOW_UPGRADE_PAYWALL` kill-switch (dark) + RevenueCat stays unconfigured until a key is provisioned, so no data flows in production yet.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `purchase_started` | Subscribe CTA tapped → the RevenueCat purchase call is about to run (or the not-configured/no-package bail) | `analytics.ts` `trackPurchaseStarted`; called `UpgradeScreen.tsx` `handleSubscribe` | `plan` (`yearly` / `monthly`) |
+| `purchase_succeeded` | Purchase resolved with an active `macgie_plus` entitlement | `analytics.ts` `trackPurchaseSucceeded`; `UpgradeScreen.tsx` `handleSubscribe` | `plan` (`yearly` / `monthly`), `product_id` (store product identifier) |
+| `purchase_failed` | Purchase threw or cancelled, or offerings/package unavailable | `analytics.ts` `trackPurchaseFailed`; `UpgradeScreen.tsx` `handleSubscribe` | `reason` (sanitized enum: `user_cancelled` / `store_error` / `not_configured` / `unknown`) |
+| `purchase_restored` | Restore completed | `analytics.ts` `trackPurchaseRestored`; `UpgradeScreen.tsx` `handleRestore` | `restored` (bool — whether an active entitlement was found) |
+
+> PII: bounded enums only — `plan` (plan-id), `product_id` (store product identifier, not user data), a sanitized `reason` enum, and a `restored` boolean. NEVER a raw StoreKit / RevenueCat error string, receipt data, transaction id, or price. `upgrade_restore_tapped` (§5.22, the tap) and `purchase_restored` (§5.23, the outcome) are distinct: intent vs result.
 
 ## 6. Events — DESIGNED, awaiting UI/API (gaps)
 
@@ -397,16 +410,16 @@ Only `canvas_item_layer_reordered` ships today (§5.11). The other `OutfitCanvas
 
 The web-preview ("sandbox") surface now boots through the real login screen (cookie auto-login across `*.auxi-web-review.pages.dev`) or an admin `?token=` impersonation param, instead of a forced review account. Mixpanel is stubbed on web (`web/stubs/mixpanel.ts`), so no auth events fire from the sandbox; impersonation auto-boot is not a user action. No new events — re-wire only if web analytics is ever un-stubbed. Spec: `docs/superpowers/specs/2026-07-06-web-sandbox-cookie-auth-and-admin-impersonation-design.md`.
 
-### 6.9 Upgrade — purchase lifecycle not wired (no IAP)
+### 6.9 Upgrade — purchase lifecycle (SHIPPED · AU-415, RevenueCat)
 
-The paywall (§5.22) is display-only: Subscribe/Restore surface a "coming soon" toast, and `is_premium` is an optional client field the backend never sets today. The actual purchase funnel therefore cannot fire — there is no StoreKit/IAP integration and no backend entitlement. **No code shipped for these** (we don't fake events). Re-wire condition for all four: **when StoreKit/IAP is integrated** (purchase transaction observer + receipt validation + backend entitlement).
+**SHIPPED** and documented in §5.23. The paywall now integrates RevenueCat IAP: Subscribe → `Purchases.purchasePackage`, Restore → `Purchases.restorePurchases`, with the entitlement pushed to the backend via webhook. All four events are WIRED via typed helpers in `analytics.ts` (`trackPurchaseStarted` / `trackPurchaseSucceeded` / `trackPurchaseFailed` / `trackPurchaseRestored`) and fire from `UpgradeScreen.tsx`.
 
-- `purchase_started` — fires when the native purchase sheet is presented (Subscribe → StoreKit `purchase()`); props `plan` (`yearly` / `monthly`)
-- `purchase_succeeded` — transaction verified + entitlement granted; props `plan`
-- `purchase_failed` — transaction failed / cancelled; props `plan`, `reason` (sanitized enum — `user_cancelled` / `payment_declined` / `network_error` / `verification_failed`, never a raw StoreKit message)
-- `purchase_restored` — a prior purchase is restored (Restore → StoreKit `restorePurchases()`); no props (or `plan` if the restored product is known)
+Two deltas from the original spec:
+- `purchase_succeeded` also carries `product_id` (the store product identifier) alongside `plan`, so revenue-by-product is segmentable.
+- `purchase_restored` carries a `restored` boolean (entitlement found or not) rather than being prop-less, so the restore success rate is measurable.
+- `reason` enum is `user_cancelled` / `store_error` / `not_configured` / `unknown` (RevenueCat surfaces cancellation via `error.userCancelled`; other failures collapse to `store_error` to avoid leaking raw store error strings).
 
-> PII: bounded enums only when wired — `plan` (plan-id) and a sanitized `reason` enum; never raw receipt data, transaction ids, prices, or StoreKit error strings.
+Note: these still don't flow in production until `SHOW_UPGRADE_PAYWALL` is flipped AND a RevenueCat key is provisioned (the SDK stays unconfigured otherwise, so purchases can't start).
 
 ## 7. Consent (EU/CA) — mechanism DONE, UI PENDING ⚠️
 
@@ -464,7 +477,7 @@ The paywall (§5.22) is display-only: Subscribe/Restore surface a "coming soon" 
 
 - **Push opt-in + engagement funnel (push Phase 1):** `push_permission_requested` → `push_permission_granted` → `device_token_registered` measures registration completion (denominator: requested; `push_permission_denied` is the drop branch). Engagement: `push_opened` ÷ `push_received` (foreground) plus cold/background opens — break down by `type` to compare `daily_reminder` vs `planned_outfit` vs `admin_*` open rates.
 
-- **Upgrade / paywall funnel (Macgie+, §5.22):** `paywall_viewed` → `upgrade_plan_selected` → `upgrade_subscribe_tapped` → `purchase_succeeded` *(gap — §6.9, un-wired until StoreKit/IAP lands)*. Measures paywall view→intent→purchase conversion; `paywall_viewed` is the denominator, `upgrade_entry_tapped` ÷ Settings `screen_viewed` (`screen_name = Settings`) measures pill CTR into the paywall. `paywall_dismissed` ÷ `paywall_viewed` is the bounce rate. Break down by `source` (paywall entry origin) and `default_plan` / `plan` (which plan users start on vs commit to). **Note:** the paywall entry points are currently behind the `SHOW_UPGRADE_PAYWALL` kill-switch (dark), so this funnel has no data until the flag is flipped for funnel collection / App-Store screenshots.
+- **Upgrade / paywall funnel (Macgie+, §5.22 + §5.23):** `paywall_viewed` → `upgrade_plan_selected` → `upgrade_subscribe_tapped` → `purchase_started` → `purchase_succeeded` *(now WIRED — §5.23, RevenueCat IAP; flows once `SHOW_UPGRADE_PAYWALL` is flipped + a RC key is provisioned)*. Measures paywall view→intent→purchase conversion; `paywall_viewed` is the denominator, `upgrade_entry_tapped` ÷ Settings `screen_viewed` (`screen_name = Settings`) measures pill CTR into the paywall. `paywall_dismissed` ÷ `paywall_viewed` is the bounce rate. Break down by `source` (paywall entry origin) and `default_plan` / `plan` (which plan users start on vs commit to). **Note:** the paywall entry points are currently behind the `SHOW_UPGRADE_PAYWALL` kill-switch (dark), so this funnel has no data until the flag is flipped for funnel collection / App-Store screenshots.
 
 - **Beautify funnel:** `beautify_started` → `beautify_ready` → `beautify_review_opened` → `beautify_accepted`. Drop-off between `beautify_started` and `beautify_ready` = job failure / timeout rate (see §6.7 gap — `beautify_failed` not yet wired so failures are only visible as missing continuations). `beautify_wait_continued_browsing` between `started` and `ready` is the leave-during-wait branch — segment `beautify_review_opened` by `from` (`loader` vs `snackbar`) to compare users who watched the full loader vs returned via the Wardrobe snackbar. `beautify_kept_original` and `beautify_regenerated` are exits or re-entry loops from the review step; `beautify_regenerated` broken down by `source` (`review` vs `retry_pending`) distinguishes deliberate re-rolls from failure-recovery retries. `add_item_mode_selected { mode: 'beautify' }` is historical only because the upload-time selector was removed.
 
