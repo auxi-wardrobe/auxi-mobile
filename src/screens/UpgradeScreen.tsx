@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+  RouteProp,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../components/layout/Header';
@@ -21,7 +26,12 @@ import { AppStackParamList } from '../types/navigation';
 import type { LegalDocumentType } from '../content/legal';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Upgrade'>;
+type UpgradeRoute = RouteProp<AppStackParamList, 'Upgrade'>;
 type PlanId = 'yearly' | 'monthly';
+
+// The plan pre-selected when the paywall opens. Reported as `default_plan` on
+// `paywall_viewed` so the view→select funnel knows the starting state.
+const DEFAULT_PLAN: PlanId = 'yearly';
 
 type SvgIcon = React.FC<{ width?: number; height?: number; color?: string }>;
 
@@ -108,11 +118,27 @@ const PlanCard: React.FC<{
 export const UpgradeScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Navigation>();
-  const [plan, setPlan] = useState<PlanId>('yearly');
+  const route = useRoute<UpgradeRoute>();
+  const source = route.params?.source ?? 'settings';
+  const [plan, setPlan] = useState<PlanId>(DEFAULT_PLAN);
+
+  // Funnel denominator: fire once per focus so view→tap→subscribe conversion is
+  // computable. `source` mirrors `upgrade_entry_tapped`; `default_plan` is the
+  // initially-selected plan.
+  useFocusEffect(
+    useCallback(() => {
+      track('paywall_viewed', { source, default_plan: DEFAULT_PLAN });
+    }, [source]),
+  );
 
   const selectPlan = (next: PlanId) => {
     setPlan(next);
     track('upgrade_plan_selected', { plan: next });
+  };
+
+  const handleBack = () => {
+    track('paywall_dismissed', { source });
+    navigation.goBack();
   };
 
   const handleSubscribe = () => {
@@ -126,8 +152,8 @@ export const UpgradeScreen = () => {
     });
   };
 
-  const handleRestore = () => {
-    track('upgrade_restore_tapped');
+  const handleRestore = (restoreSource: 'trust_row' | 'legal_row') => {
+    track('upgrade_restore_tapped', { source: restoreSource });
     toast.show({
       type: 'info',
       text1: t('upgrade.coming_soon_title'),
@@ -145,7 +171,7 @@ export const UpgradeScreen = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header.BackTitle
         title={t('upgrade.title')}
-        onBack={navigation.goBack}
+        onBack={handleBack}
         leftTestID="upgrade-back-button"
         leftAccessibilityLabel={t('settings.a11y_back')}
       />
@@ -220,7 +246,7 @@ export const UpgradeScreen = () => {
           </View>
           <PressScale
             testID="upgrade-restore-button"
-            onPress={handleRestore}
+            onPress={() => handleRestore('trust_row')}
             accessibilityLabel={t('upgrade.restore')}
             style={styles.trustItem}
           >
@@ -249,7 +275,7 @@ export const UpgradeScreen = () => {
           </PressScale>
           <PressScale
             testID="upgrade-restore-link"
-            onPress={handleRestore}
+            onPress={() => handleRestore('legal_row')}
             accessibilityLabel={t('upgrade.restore')}
           >
             <Text style={styles.legalLink}>{t('upgrade.restore')}</Text>

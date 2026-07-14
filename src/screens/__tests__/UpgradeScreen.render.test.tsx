@@ -29,11 +29,19 @@ jest.mock('react-i18next', () => ({
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
+// useFocusEffect runs its callback immediately (mirrors focus on mount) so the
+// `paywall_viewed` view event fires; useRoute returns no params so `source`
+// falls back to its 'settings' default.
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack }),
+  useRoute: () => ({ params: undefined }),
+  useFocusEffect: (cb: () => void) => cb(),
 }));
 
-jest.mock('../../services/analytics', () => ({ track: jest.fn() }));
+const mockTrack = jest.fn();
+jest.mock('../../services/analytics', () => ({
+  track: (...args: unknown[]) => mockTrack(...args),
+}));
 
 const mockToastShow = jest.fn();
 jest.mock('../../components/design-system/lib', () => ({
@@ -66,6 +74,15 @@ describe('UpgradeScreen', () => {
     mockNavigate.mockClear();
     mockGoBack.mockClear();
     mockToastShow.mockClear();
+    mockTrack.mockClear();
+  });
+
+  it('fires paywall_viewed on focus with source + default_plan', () => {
+    render(<UpgradeScreen />);
+    expect(mockTrack).toHaveBeenCalledWith('paywall_viewed', {
+      source: 'settings',
+      default_plan: 'yearly',
+    });
   });
 
   it('mounts the hero, features, both plans and the subscribe CTA', () => {
@@ -122,11 +139,14 @@ describe('UpgradeScreen', () => {
     );
   });
 
-  it('goes back from the header', () => {
+  it('goes back from the header and tracks paywall_dismissed', () => {
     const r = render(<UpgradeScreen />);
     act(() => {
       pressableWith(r.root, 'upgrade-back-button').props.onPress();
     });
     expect(mockGoBack).toHaveBeenCalledTimes(1);
+    expect(mockTrack).toHaveBeenCalledWith('paywall_dismissed', {
+      source: 'settings',
+    });
   });
 });
