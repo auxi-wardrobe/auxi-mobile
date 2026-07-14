@@ -948,7 +948,17 @@
       "restore": "Restore purchase",
       "coming_soon_title": "Coming soon",
       "coming_soon_body": "Subscriptions aren't available just yet.",
-      "restore_body": "Purchase restore isn't available just yet."
+      "restore_body": "Purchase restore isn't available just yet.",
+      "offerings_error_title": "Couldn't load plans",
+      "offerings_error_body": "Please check your connection and try again.",
+      "purchase_error_title": "Purchase failed",
+      "purchase_error_body": "Something went wrong. Please try again.",
+      "purchase_success_title": "Welcome to Macgie+",
+      "purchase_success_body": "Your subscription is now active.",
+      "restore_success_title": "Purchases restored",
+      "restore_success_body": "Your Macgie+ subscription is active again.",
+      "restore_none_title": "Nothing to restore",
+      "restore_none_body": "We couldn't find an active subscription for this account."
     }
   }
 }

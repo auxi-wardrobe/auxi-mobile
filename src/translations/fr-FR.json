@@ -948,7 +948,17 @@
       "restore": "Restaurer les achats",
       "coming_soon_title": "Bientôt disponible",
       "coming_soon_body": "Les abonnements ne sont pas encore disponibles.",
-      "restore_body": "La restauration des achats n'est pas encore disponible."
+      "restore_body": "La restauration des achats n'est pas encore disponible.",
+      "offerings_error_title": "Impossible de charger les offres",
+      "offerings_error_body": "Vérifiez votre connexion et réessayez.",
+      "purchase_error_title": "Échec de l'achat",
+      "purchase_error_body": "Une erreur est survenue. Veuillez réessayer.",
+      "purchase_success_title": "Bienvenue dans Macgie+",
+      "purchase_success_body": "Votre abonnement est maintenant actif.",
+      "restore_success_title": "Achats restaurés",
+      "restore_success_body": "Votre abonnement Macgie+ est à nouveau actif.",
+      "restore_none_title": "Rien à restaurer",
+      "restore_none_body": "Aucun abonnement actif trouvé pour ce compte."
     }
   }
 }

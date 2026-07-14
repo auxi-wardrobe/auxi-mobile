@@ -1,5 +1,11 @@
-import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useFocusEffect,
@@ -9,6 +15,7 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import type { PurchasesPackage } from 'react-native-purchases';
 import { Header } from '../components/layout/Header';
 import { PressScale } from '../components/design-system/MMotion';
 import { toast } from '../components/design-system/lib';
@@ -21,13 +28,45 @@ import EnhanceIcon from '../assets/images/icon_upgrade_enhance.svg';
 import SuggestionsIcon from '../assets/images/icon_upgrade_suggestions.svg';
 import SecureIcon from '../assets/images/icon_upgrade_secure.svg';
 import { theme } from '../theme/theme';
-import { track } from '../services/analytics';
+import {
+  track,
+  trackPurchaseStarted,
+  trackPurchaseSucceeded,
+  trackPurchaseFailed,
+  trackPurchaseRestored,
+  type PurchaseFailureReason,
+} from '../services/analytics';
+import {
+  getOfferings,
+  purchasePackage,
+  restorePurchases,
+  hasMacgiePlusEntitlement,
+  isUserCancelled,
+} from '../services/revenueCat';
+import { useAuth } from '../context/AuthContext';
 import { AppStackParamList } from '../types/navigation';
 import type { LegalDocumentType } from '../content/legal';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Upgrade'>;
 type UpgradeRoute = RouteProp<AppStackParamList, 'Upgrade'>;
 type PlanId = 'yearly' | 'monthly';
+
+// Maps our two plan ids onto RevenueCat package identifiers. RevenueCat's
+// standard package types are '$rc_annual' / '$rc_monthly'; we match on the
+// identifier suffix so a custom offering naming also resolves. The resolved
+// package carries the localized `priceString` (AU-418) and is what we purchase.
+const findPackage = (
+  packages: PurchasesPackage[],
+  planId: PlanId,
+): PurchasesPackage | undefined => {
+  const needle = planId === 'yearly' ? 'annual' : 'monthly';
+  const rcType = planId === 'yearly' ? '$rc_annual' : '$rc_monthly';
+  return (
+    packages.find(p => p.identifier === rcType) ??
+    packages.find(p => p.identifier.toLowerCase().includes(needle)) ??
+    packages.find(p => p.packageType.toLowerCase().includes(needle))
+  );
+};
 
 // The plan pre-selected when the paywall opens. Reported as `default_plan` on
 // `paywall_viewed` so the view→select funnel knows the starting state.
@@ -111,16 +150,63 @@ const PlanCard: React.FC<{
 /**
  * Upgrade — the Macgie+ paywall (reached from the Settings "Upgrade to Macgie+"
  * pill). Brand wordmark hero, a 6-item feature grid, selectable Yearly/Monthly
- * plans and the gradient Subscribe CTA. There is no billing backend yet (see
- * CLAUDE.md), so Subscribe / Restore surface a toast placeholder; the plan
- * selection is local state.
+ * plans and the gradient Subscribe CTA.
+ *
+ * Real IAP via RevenueCat: offerings load on mount and drive the localized
+ * plan prices (`priceString`, AU-418); Subscribe purchases the selected package
+ * and Restore restores prior purchases. On a successful purchase/restore that
+ * carries the `macgie_plus` entitlement the user is flipped to premium
+ * optimistically for instant UX — the backend webhook is the durable authority.
+ *
+ * The whole screen is still gated dark by `SHOW_UPGRADE_PAYWALL` (false) in
+ * SettingsScreen, and RC stays unconfigured until a key is provisioned, so this
+ * flow is not reachable in production yet.
  */
 export const UpgradeScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Navigation>();
   const route = useRoute<UpgradeRoute>();
+  const { markPremiumOptimistic, refreshUser } = useAuth();
   const source = route.params?.source ?? 'settings';
   const [plan, setPlan] = useState<PlanId>(DEFAULT_PLAN);
+
+  // Offerings state. `packages` empty + not-loading = offerings failed / none
+  // available → the plan cards fall back to the static i18n prices and Subscribe
+  // reports a not-configured failure rather than crashing.
+  const [packages, setPackages] = useState<PurchasesPackage[]>([]);
+  const [offeringsLoading, setOfferingsLoading] = useState(true);
+  const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+
+  const yearlyPkg = findPackage(packages, 'yearly');
+  const monthlyPkg = findPackage(packages, 'monthly');
+  const selectedPkg = plan === 'yearly' ? yearlyPkg : monthlyPkg;
+
+  // Load the current offering once on mount. Failure is non-fatal: we keep the
+  // static i18n prices and surface a soft error toast.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setOfferingsLoading(true);
+      const offering = await getOfferings();
+      if (!active) return;
+      if (offering) {
+        setPackages(offering.availablePackages);
+      } else {
+        toast.show({
+          type: 'error',
+          text1: t('upgrade.offerings_error_title'),
+          text2: t('upgrade.offerings_error_body'),
+          position: 'bottom',
+          visibilityTime: 4000,
+        });
+      }
+      setOfferingsLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [t]);
 
   // Funnel denominator: fire once per focus so view→tap→subscribe conversion is
   // computable. `source` mirrors `upgrade_entry_tapped`; `default_plan` is the
@@ -141,26 +227,121 @@ export const UpgradeScreen = () => {
     navigation.goBack();
   };
 
-  const handleSubscribe = () => {
+  // On a successful purchase/restore that carries the entitlement, flip to
+  // premium optimistically then reconcile with server truth (webhook-synced
+  // is_premium). refreshUser failure is non-fatal — the optimistic flip stands.
+  const applyPremium = useCallback(async () => {
+    markPremiumOptimistic();
+    try {
+      await refreshUser();
+    } catch {
+      /* server reconcile is best-effort; optimistic flip already applied */
+    }
+  }, [markPremiumOptimistic, refreshUser]);
+
+  const handleSubscribe = async () => {
     track('upgrade_subscribe_tapped', { plan });
-    toast.show({
-      type: 'info',
-      text1: t('upgrade.coming_soon_title'),
-      text2: t('upgrade.coming_soon_body'),
-      position: 'bottom',
-      visibilityTime: 4000,
-    });
+    if (purchasing) return;
+    // Offerings not loaded / package missing → can't purchase; report as a
+    // sanitized failure and bail with a soft error.
+    if (!selectedPkg) {
+      trackPurchaseStarted(plan);
+      trackPurchaseFailed('not_configured');
+      toast.show({
+        type: 'error',
+        text1: t('upgrade.offerings_error_title'),
+        text2: t('upgrade.offerings_error_body'),
+        position: 'bottom',
+        visibilityTime: 4000,
+      });
+      return;
+    }
+    trackPurchaseStarted(plan);
+    setPurchasing(true);
+    try {
+      const customerInfo = await purchasePackage(selectedPkg);
+      if (hasMacgiePlusEntitlement(customerInfo)) {
+        trackPurchaseSucceeded(plan, selectedPkg.product.identifier);
+        await applyPremium();
+        toast.show({
+          type: 'success',
+          text1: t('upgrade.purchase_success_title'),
+          text2: t('upgrade.purchase_success_body'),
+          position: 'bottom',
+          visibilityTime: 4000,
+        });
+        navigation.goBack();
+      } else {
+        // Purchase resolved but entitlement not active (rare — e.g. deferred /
+        // pending). Treat as a store error rather than a success.
+        trackPurchaseFailed('store_error');
+        toast.show({
+          type: 'error',
+          text1: t('upgrade.purchase_error_title'),
+          text2: t('upgrade.purchase_error_body'),
+          position: 'bottom',
+          visibilityTime: 4000,
+        });
+      }
+    } catch (err) {
+      const reason: PurchaseFailureReason = isUserCancelled(err)
+        ? 'user_cancelled'
+        : 'store_error';
+      trackPurchaseFailed(reason);
+      // Don't nag the user with a toast when they deliberately backed out.
+      if (reason !== 'user_cancelled') {
+        toast.show({
+          type: 'error',
+          text1: t('upgrade.purchase_error_title'),
+          text2: t('upgrade.purchase_error_body'),
+          position: 'bottom',
+          visibilityTime: 4000,
+        });
+      }
+    } finally {
+      setPurchasing(false);
+    }
   };
 
-  const handleRestore = (restoreSource: 'trust_row' | 'legal_row') => {
+  const handleRestore = async (restoreSource: 'trust_row' | 'legal_row') => {
     track('upgrade_restore_tapped', { source: restoreSource });
-    toast.show({
-      type: 'info',
-      text1: t('upgrade.coming_soon_title'),
-      text2: t('upgrade.restore_body'),
-      position: 'bottom',
-      visibilityTime: 4000,
-    });
+    if (restoring) return;
+    setRestoring(true);
+    try {
+      const customerInfo = await restorePurchases();
+      const found = hasMacgiePlusEntitlement(customerInfo);
+      trackPurchaseRestored(found);
+      if (found) {
+        await applyPremium();
+        toast.show({
+          type: 'success',
+          text1: t('upgrade.restore_success_title'),
+          text2: t('upgrade.restore_success_body'),
+          position: 'bottom',
+          visibilityTime: 4000,
+        });
+        navigation.goBack();
+      } else {
+        toast.show({
+          type: 'info',
+          text1: t('upgrade.restore_none_title'),
+          text2: t('upgrade.restore_none_body'),
+          position: 'bottom',
+          visibilityTime: 4000,
+        });
+      }
+    } catch {
+      // A real store error during restore. Not counted as a restore outcome.
+      toast.show({
+        type: 'error',
+        text1: t('upgrade.purchase_error_title'),
+        text2: t('upgrade.purchase_error_body'),
+        position: 'bottom',
+        visibilityTime: 4000,
+      });
+    } finally {
+      setRestoring(false);
+    }
   };
 
   const openLegalDocument = (documentType: LegalDocumentType) => {
@@ -201,7 +382,9 @@ export const UpgradeScreen = () => {
           ))}
         </View>
 
-        {/* Plans */}
+        {/* Plans — prices come from RevenueCat `priceString` (localized,
+            store-authoritative); fall back to the static i18n price only while
+            offerings are loading or unavailable. */}
         <View style={styles.plans}>
           <PlanCard
             testID="upgrade-plan-yearly"
@@ -209,7 +392,9 @@ export const UpgradeScreen = () => {
             onPress={() => selectPlan('yearly')}
             title={t('upgrade.plan_yearly_title')}
             billing={t('upgrade.plan_yearly_billing')}
-            price={t('upgrade.plan_yearly_price')}
+            price={
+              yearlyPkg?.product.priceString ?? t('upgrade.plan_yearly_price')
+            }
             badge={t('upgrade.plan_best_value')}
             saveTag={t('upgrade.plan_yearly_save')}
           />
@@ -219,7 +404,9 @@ export const UpgradeScreen = () => {
             onPress={() => selectPlan('monthly')}
             title={t('upgrade.plan_monthly_title')}
             billing={t('upgrade.plan_monthly_billing')}
-            price={t('upgrade.plan_monthly_price')}
+            price={
+              monthlyPkg?.product.priceString ?? t('upgrade.plan_monthly_price')
+            }
           />
         </View>
 
@@ -228,9 +415,14 @@ export const UpgradeScreen = () => {
           testID="upgrade-subscribe-button"
           accessibilityLabel={t('upgrade.subscribe')}
           onPress={handleSubscribe}
-          rightIcon={Icons.ChevronRight}
+          disabled={purchasing || offeringsLoading}
+          rightIcon={purchasing ? undefined : Icons.ChevronRight}
         >
-          {t('upgrade.subscribe')}
+          {purchasing ? (
+            <ActivityIndicator color={theme.ds.color.white} />
+          ) : (
+            t('upgrade.subscribe')
+          )}
         </GradientPillButton>
 
         {/* Trust row */}
@@ -264,7 +456,9 @@ export const UpgradeScreen = () => {
             onPress={() => openLegalDocument('terms')}
             accessibilityLabel={t('settings.terms_of_service')}
           >
-            <Text style={styles.legalLink}>{t('settings.terms_of_service')}</Text>
+            <Text style={styles.legalLink}>
+              {t('settings.terms_of_service')}
+            </Text>
           </PressScale>
           <PressScale
             testID="upgrade-privacy-link"
