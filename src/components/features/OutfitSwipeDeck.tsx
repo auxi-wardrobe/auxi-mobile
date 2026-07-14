@@ -25,7 +25,12 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { motion, isCommit, useReducedMotion } from '../../theme/motion';
+import {
+  motion,
+  isCommit,
+  useReducedMotion,
+  DECK_PEEK_SCALE,
+} from '../../theme/motion';
 import { theme } from '../../theme/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -214,11 +219,6 @@ export function OutfitSwipeDeck<T>({
     outputRange: [motion.opacity.visible, motion.opacity.hidden],
     extrapolate: 'clamp',
   });
-  const peekScale = pan.x.interpolate({
-    inputRange: [-SCREEN_W, 0, SCREEN_W],
-    outputRange: [1, 0.98, 1],
-    extrapolate: 'clamp',
-  });
   // Reveal the previous card only while dragging right, the next card only
   // while dragging left — a step at x=0 so the wrong card never bleeds through.
   const prevPeekOpacity = pan.x.interpolate({
@@ -229,6 +229,29 @@ export function OutfitSwipeDeck<T>({
   const nextPeekOpacity = pan.x.interpolate({
     inputRange: [-1, 0],
     outputRange: [motion.opacity.visible, motion.opacity.hidden],
+    extrapolate: 'clamp',
+  });
+
+  // Carousel cross-scale, driven live by the drag. At rest the active card is
+  // foregrounded at full size and its neighbours sit smaller behind it. As the
+  // card is held and swiped it recedes toward the neighbour scale while the
+  // incoming card grows to full — so the two swap depth continuously instead of
+  // the active card popping in after it lands.
+  const activeCardScale = pan.x.interpolate({
+    inputRange: [-SCREEN_W, 0, SCREEN_W],
+    outputRange: [DECK_PEEK_SCALE, 1, DECK_PEEK_SCALE],
+    extrapolate: 'clamp',
+  });
+  // Prev card grows toward full as the deck is dragged right, next card as it
+  // is dragged left; both rest at the smaller neighbour scale at x=0.
+  const prevPeekScale = pan.x.interpolate({
+    inputRange: [0, SCREEN_W],
+    outputRange: [DECK_PEEK_SCALE, 1],
+    extrapolate: 'clamp',
+  });
+  const nextPeekScale = pan.x.interpolate({
+    inputRange: [-SCREEN_W, 0],
+    outputRange: [1, DECK_PEEK_SCALE],
     extrapolate: 'clamp',
   });
 
@@ -266,6 +289,7 @@ export function OutfitSwipeDeck<T>({
       {windowCards.map(({ item, role, peek }) => {
         const isActive = role === 'active';
         const peekOpacity = peek === 'prev' ? prevPeekOpacity : nextPeekOpacity;
+        const peekScale = peek === 'prev' ? prevPeekScale : nextPeekScale;
         return (
           <Animated.View
             key={keyOf(item)}
@@ -289,8 +313,19 @@ export function OutfitSwipeDeck<T>({
               styles.cardBase,
               cardStyle,
               isActive
-                ? [styles.activeCard, { transform: [{ translateX: pan.x }] }]
-                : { opacity: peekOpacity, transform: [{ scale: peekScale }] },
+                ? [
+                    styles.activeCard,
+                    {
+                      transform: [
+                        { translateX: pan.x },
+                        { scale: activeCardScale },
+                      ],
+                    },
+                  ]
+                : {
+                    opacity: peekOpacity,
+                    transform: [{ scale: peekScale }],
+                  },
             ]}
             pointerEvents={isActive ? 'auto' : 'none'}
             // Peek cards are decorative until promoted: keep their subtree out
@@ -320,7 +355,7 @@ const styles = StyleSheet.create({
   // app surface keeps its edge clean as it slides — the peek card's cream tile
   // surface (figmaCardSurface) never bleeds a hairline at the screen edge, and
   // the corners read white-on-white against the screen. Applied to the ACTIVE
-  // card only; the peek cards stay unclipped so their scale affordance reads.
+  // card only; the peek cards stay unclipped.
   activeCard: {
     overflow: 'hidden',
     backgroundColor: theme.colors.figmaSurface,
