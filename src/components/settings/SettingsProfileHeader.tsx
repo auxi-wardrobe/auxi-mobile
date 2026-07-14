@@ -7,6 +7,11 @@ import { theme } from '../../theme/theme';
 
 type SettingsProfileHeaderProps = {
   email: string | null | undefined;
+  /**
+   * Free users get a 2px ring around the avatar (the "you're on the free plan"
+   * indicator that pairs with the Upgrade pill). Premium users show no ring.
+   */
+  showFreeRing?: boolean;
 };
 
 /**
@@ -30,6 +35,7 @@ const initialsFromEmail = (email: string): string => {
  */
 export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
   email,
+  showFreeRing = false,
 }) => {
   const { t } = useTranslation();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -52,13 +58,18 @@ export const SettingsProfileHeader: React.FC<SettingsProfileHeaderProps> = ({
 
   return (
     <View style={styles.container}>
-      <MAvatar
-        size="lg"
-        source={photoUrl ? { uri: photoUrl } : undefined}
-        initials={email ? initialsFromEmail(email) : undefined}
-        testID="settings-profile-avatar"
-        accessibilityLabel={t('settings.a11y_profile_photo')}
-      />
+      <View
+        style={showFreeRing ? styles.avatarRing : undefined}
+        testID="settings-profile-avatar-ring"
+      >
+        <MAvatar
+          size="lg"
+          source={photoUrl ? { uri: photoUrl } : undefined}
+          initials={email ? initialsFromEmail(email) : undefined}
+          testID="settings-profile-avatar"
+          accessibilityLabel={t('settings.a11y_profile_photo')}
+        />
+      </View>
       {email ? (
         <Text style={styles.email} testID="settings-profile-email">
           {email}
@@ -74,6 +85,15 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingTop: 8,
     paddingBottom: 24,
+  },
+  // 2px "free plan" ring — sits just outside the 88px avatar with a hairline
+  // gap (padding) so the ring reads as a distinct band, not a border baked
+  // onto the photo edge.
+  avatarRing: {
+    padding: 3,
+    borderWidth: 2,
+    borderColor: theme.ds.color.ink,
+    borderRadius: 49, // 44 (avatar) + 3 (padding) + 2 (border)
   },
   email: {
     ...theme.typography.aliases.poppinsBody,

@@ -33,6 +33,8 @@ import {
 import { AppStackParamList } from '../types/navigation';
 import { theme } from '../theme/theme';
 import { track } from '../services/analytics';
+import { isFreeUser } from '../services/subscription';
+import { GradientPillButton } from '../components/upgrade/GradientPillButton';
 import {
   DEFAULT_SETTINGS,
   ResolvedSettingsState,
@@ -51,6 +53,15 @@ export { resolveSettings } from './settings/settingsShared';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Settings'>;
 type ActiveModal = 'none' | 'changeTime' | 'schedule' | 'deleteConfirm';
+
+// Kill-switch for the Macgie+ paywall entry points. The paywall shows real
+// prices + a "secure payment" claim but cannot transact yet (no StoreKit/IAP,
+// no backend entitlement), so exposing it risks App-Store rejection. Ship dark:
+// while false, neither the Settings "Upgrade" pill nor the free-user avatar ring
+// renders → the paywall is unreachable (route stays registered, code intact).
+// Flip to true to expose the paywall for funnel data / App-Store screenshots
+// once IAP + backend entitlement are wired.
+const SHOW_UPGRADE_PAYWALL = false;
 
 export const SettingsScreen = () => {
   const { t } = useTranslation();
@@ -136,6 +147,10 @@ export const SettingsScreen = () => {
   const frequencyOptions = useMemo(() => buildFrequencyOptions(t), [t]);
   const frequencyLabelMap = useMemo(() => buildFrequencyLabelMap(t), [t]);
 
+  // Gate the free-user upgrade affordances (avatar ring + Upgrade pill) on the
+  // paywall kill-switch: both only render for a free user AND while the paywall
+  // is exposed. Keep the isFreeUser logic intact — just AND it with the flag.
+  const isFree = SHOW_UPGRADE_PAYWALL && isFreeUser(user);
   const reminderEnabled = settings.dailyNotification.enabled;
   const timeValue = `${settings.dailyNotification.time} ${settings.dailyNotification.period}`;
   const currentFrequencyLabel =
@@ -403,7 +418,28 @@ export const SettingsScreen = () => {
         leftTestID="settings-menu-button"
       >
         {/* ── Profile ────────────────────────────────────────────────────── */}
-        <SettingsProfileHeader email={user?.email} />
+        <SettingsProfileHeader
+          email={user?.email}
+          showFreeRing={isFree}
+        />
+
+        {/* Macgie+ upgrade entry — free users only. The 2px avatar ring above
+            indicates the free plan; this pill opens the paywall. */}
+        {isFree ? (
+          <>
+            <GradientPillButton
+              testID="settings-upgrade-button"
+              accessibilityLabel={t('upgrade.cta')}
+              onPress={() => {
+                track('upgrade_entry_tapped', { source: 'settings' });
+                navigation.navigate('Upgrade', { source: 'settings' });
+              }}
+            >
+              {t('upgrade.cta')}
+            </GradientPillButton>
+            <View style={styles.sectionGap} />
+          </>
+        ) : null}
 
         {/* ── Daily reminder ─────────────────────────────────────────────── */}
         <SettingsRow
