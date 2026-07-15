@@ -239,7 +239,7 @@ export type AppStackParamList = {
   // call and the optimistic preparing tile.
   ImportFromWeb: undefined;
   BeautifyPending: { itemId: string; originalUri: string };
-  BeautifyReview: { itemId: string; originalUri: string; from?: 'loader' | 'snackbar' };
+  BeautifyReview: { itemId: string; originalUri: string; from?: 'loader' | 'snackbar' | 'push' };
   OutfitCanvas:
     | {
         outfitId?: string;
