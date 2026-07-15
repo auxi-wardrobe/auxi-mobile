@@ -34,13 +34,6 @@ export const motion = {
   },
 } as const;
 
-// Swipe-deck carousel depth: the active card sits foregrounded at full size
-// (1.0) while its neighbours rest smaller behind it at DECK_PEEK_SCALE. The
-// scale is driven live by the drag, so as a card is held and swiped it recedes
-// to the neighbour scale while the incoming card grows to full — a carousel
-// cross-scale rather than a card popping in after it lands.
-export const DECK_PEEK_SCALE = 0.92;
-
 // Swipe-deck geometry constants (spec §2.2).
 export const SWIPE_ROTATION_CAP_DEG = 6;
 export const SWIPE_COMMIT_RATIO = 0.3; // fraction of screen width

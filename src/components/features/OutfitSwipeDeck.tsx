@@ -25,12 +25,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import {
-  motion,
-  isCommit,
-  useReducedMotion,
-  DECK_PEEK_SCALE,
-} from '../../theme/motion';
+import { motion, isCommit, useReducedMotion } from '../../theme/motion';
 import { theme } from '../../theme/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -232,28 +227,13 @@ export function OutfitSwipeDeck<T>({
     extrapolate: 'clamp',
   });
 
-  // Carousel cross-scale, driven live by the drag. At rest the active card is
-  // foregrounded at full size and its neighbours sit smaller behind it. As the
-  // card is held and swiped it recedes toward the neighbour scale while the
-  // incoming card grows to full — so the two swap depth continuously instead of
-  // the active card popping in after it lands.
-  const activeCardScale = pan.x.interpolate({
-    inputRange: [-SCREEN_W, 0, SCREEN_W],
-    outputRange: [DECK_PEEK_SCALE, 1, DECK_PEEK_SCALE],
-    extrapolate: 'clamp',
-  });
-  // Prev card grows toward full as the deck is dragged right, next card as it
-  // is dragged left; both rest at the smaller neighbour scale at x=0.
-  const prevPeekScale = pan.x.interpolate({
-    inputRange: [0, SCREEN_W],
-    outputRange: [DECK_PEEK_SCALE, 1],
-    extrapolate: 'clamp',
-  });
-  const nextPeekScale = pan.x.interpolate({
-    inputRange: [-SCREEN_W, 0],
-    outputRange: [1, DECK_PEEK_SCALE],
-    extrapolate: 'clamp',
-  });
+  // Every card renders at its true size. An earlier build drove a live
+  // "carousel cross-scale" (active recedes to 0.92 while the incoming card
+  // grows to full) off the drag position, but because scale and translateX
+  // share `pan.x`, back-and-forth swiping left cards momentarily shrunk below
+  // full size — the "cards appear smaller than their real size" glitch. The
+  // deck is a simple stack: peek cards fade in behind the active one (opacity
+  // only) and the active card slides on the live drag; nothing scales.
 
   // Cards fill the deck via absolute insets (see cardBase), so the deck stack
   // flex-fills its parent and the card height follows the available space.
@@ -289,7 +269,6 @@ export function OutfitSwipeDeck<T>({
       {windowCards.map(({ item, role, peek }) => {
         const isActive = role === 'active';
         const peekOpacity = peek === 'prev' ? prevPeekOpacity : nextPeekOpacity;
-        const peekScale = peek === 'prev' ? prevPeekScale : nextPeekScale;
         return (
           <Animated.View
             key={keyOf(item)}
@@ -315,17 +294,9 @@ export function OutfitSwipeDeck<T>({
               isActive
                 ? [
                     styles.activeCard,
-                    {
-                      transform: [
-                        { translateX: pan.x },
-                        { scale: activeCardScale },
-                      ],
-                    },
+                    { transform: [{ translateX: pan.x }] },
                   ]
-                : {
-                    opacity: peekOpacity,
-                    transform: [{ scale: peekScale }],
-                  },
+                : { opacity: peekOpacity },
             ]}
             pointerEvents={isActive ? 'auto' : 'none'}
             // Peek cards are decorative until promoted: keep their subtree out
