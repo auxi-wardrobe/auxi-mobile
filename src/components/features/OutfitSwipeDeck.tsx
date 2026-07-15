@@ -152,16 +152,26 @@ export function OutfitSwipeDeck<T>({
   // card takes the active slot already centred, and the demoted card becomes a
   // peek (hidden at pan 0) in the same frame. No intermediate frame can show
   // the old card at centre.
-  const prevActiveIndexRef = useRef(activeIndex);
+  //
+  // Keyed on the active card's IDENTITY, not the numeric activeIndex: the deck
+  // can swap which item sits at a given index without the index moving — the
+  // scheduled-prefix prepend seats a new leading card at index 0, and a buffer
+  // refill can reconcile the list. If we only watched the index, those swaps
+  // would leave the active card's live pan.x (and the scale it drives) stranded
+  // at a flung/dragged offset, so the promoted card renders shrunk. Watching
+  // identity resets the pan whenever the card under the active slot actually
+  // changes.
+  const activeKey = active ? keyOf(active) : undefined;
+  const prevActiveKeyRef = useRef(activeKey);
   useLayoutEffect(() => {
-    if (prevActiveIndexRef.current === activeIndex) {
+    if (prevActiveKeyRef.current === activeKey) {
       return;
     }
-    prevActiveIndexRef.current = activeIndex;
+    prevActiveKeyRef.current = activeKey;
     pan.setValue({ x: 0, y: 0 });
     awaitingAdvanceRef.current = false;
     committingRef.current = false;
-  }, [activeIndex, pan]);
+  }, [activeKey, pan]);
 
   const cancel = useCallback(() => {
     Animated.spring(pan, {
@@ -208,52 +218,74 @@ export function OutfitSwipeDeck<T>({
     [swipeEnabled, reduced, pan, commit, cancel],
   );
 
-  // Back cue rises as the card is dragged right; next cue as it's dragged left.
-  const backOpacity = pan.x.interpolate({
-    inputRange: [0, SCREEN_W * 0.3],
-    outputRange: [motion.opacity.hidden, motion.opacity.visible],
-    extrapolate: 'clamp',
-  });
-  const nextOpacity = pan.x.interpolate({
-    inputRange: [-SCREEN_W * 0.3, 0],
-    outputRange: [motion.opacity.visible, motion.opacity.hidden],
-    extrapolate: 'clamp',
-  });
-  // Reveal the previous card only while dragging right, the next card only
-  // while dragging left — a step at x=0 so the wrong card never bleeds through.
-  const prevPeekOpacity = pan.x.interpolate({
-    inputRange: [0, 1],
-    outputRange: [motion.opacity.hidden, motion.opacity.visible],
-    extrapolate: 'clamp',
-  });
-  const nextPeekOpacity = pan.x.interpolate({
-    inputRange: [-1, 0],
-    outputRange: [motion.opacity.visible, motion.opacity.hidden],
-    extrapolate: 'clamp',
-  });
-
-  // Carousel cross-scale, driven live by the drag. At rest the active card is
-  // foregrounded at full size and its neighbours sit smaller behind it. As the
-  // card is held and swiped it recedes toward the neighbour scale while the
-  // incoming card grows to full — so the two swap depth continuously instead of
-  // the active card popping in after it lands.
-  const activeCardScale = pan.x.interpolate({
-    inputRange: [-SCREEN_W, 0, SCREEN_W],
-    outputRange: [DECK_PEEK_SCALE, 1, DECK_PEEK_SCALE],
-    extrapolate: 'clamp',
-  });
-  // Prev card grows toward full as the deck is dragged right, next card as it
-  // is dragged left; both rest at the smaller neighbour scale at x=0.
-  const prevPeekScale = pan.x.interpolate({
-    inputRange: [0, SCREEN_W],
-    outputRange: [DECK_PEEK_SCALE, 1],
-    extrapolate: 'clamp',
-  });
-  const nextPeekScale = pan.x.interpolate({
-    inputRange: [-SCREEN_W, 0],
-    outputRange: [1, DECK_PEEK_SCALE],
-    extrapolate: 'clamp',
-  });
+  // Interpolations are memoised so they are created ONCE per deck, not rebuilt
+  // every render. Rebuilding them detaches the old native animated nodes and
+  // attaches fresh ones; when a re-render lands mid-animation (the classic case:
+  // swiping the last card flings the pan and the rAF fallback springs it home,
+  // then the buffered fetch resolves and re-renders the deck DURING that spring),
+  // a freshly-attached scale node can miss the remaining native updates and
+  // freeze at the value it captured on attach — leaving the active card stranded
+  // at the smaller neighbour scale (AU: "cards sometimes stay in smaller size").
+  // Stable nodes stay wired to the running pan animation, so the card always
+  // settles back to full size.
+  const {
+    backOpacity,
+    nextOpacity,
+    prevPeekOpacity,
+    nextPeekOpacity,
+    activeCardScale,
+    prevPeekScale,
+    nextPeekScale,
+  } = useMemo(
+    () => ({
+      // Back cue rises as the card is dragged right; next cue as it's dragged left.
+      backOpacity: pan.x.interpolate({
+        inputRange: [0, SCREEN_W * 0.3],
+        outputRange: [motion.opacity.hidden, motion.opacity.visible],
+        extrapolate: 'clamp',
+      }),
+      nextOpacity: pan.x.interpolate({
+        inputRange: [-SCREEN_W * 0.3, 0],
+        outputRange: [motion.opacity.visible, motion.opacity.hidden],
+        extrapolate: 'clamp',
+      }),
+      // Reveal the previous card only while dragging right, the next card only
+      // while dragging left — a step at x=0 so the wrong card never bleeds through.
+      prevPeekOpacity: pan.x.interpolate({
+        inputRange: [0, 1],
+        outputRange: [motion.opacity.hidden, motion.opacity.visible],
+        extrapolate: 'clamp',
+      }),
+      nextPeekOpacity: pan.x.interpolate({
+        inputRange: [-1, 0],
+        outputRange: [motion.opacity.visible, motion.opacity.hidden],
+        extrapolate: 'clamp',
+      }),
+      // Carousel cross-scale, driven live by the drag. At rest the active card is
+      // foregrounded at full size and its neighbours sit smaller behind it. As the
+      // card is held and swiped it recedes toward the neighbour scale while the
+      // incoming card grows to full — so the two swap depth continuously instead of
+      // the active card popping in after it lands.
+      activeCardScale: pan.x.interpolate({
+        inputRange: [-SCREEN_W, 0, SCREEN_W],
+        outputRange: [DECK_PEEK_SCALE, 1, DECK_PEEK_SCALE],
+        extrapolate: 'clamp',
+      }),
+      // Prev card grows toward full as the deck is dragged right, next card as it
+      // is dragged left; both rest at the smaller neighbour scale at x=0.
+      prevPeekScale: pan.x.interpolate({
+        inputRange: [0, SCREEN_W],
+        outputRange: [DECK_PEEK_SCALE, 1],
+        extrapolate: 'clamp',
+      }),
+      nextPeekScale: pan.x.interpolate({
+        inputRange: [-SCREEN_W, 0],
+        outputRange: [1, DECK_PEEK_SCALE],
+        extrapolate: 'clamp',
+      }),
+    }),
+    [pan],
+  );
 
   // Cards fill the deck via absolute insets (see cardBase), so the deck stack
   // flex-fills its parent and the card height follows the available space.

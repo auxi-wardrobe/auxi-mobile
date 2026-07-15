@@ -56,4 +56,60 @@ describe('OutfitSwipeDeck reconciliation', () => {
     expect(mountCounts.b).toBe(1); // preserved — no remount, no reveal replay
     expect(mountCounts.a).toBe(1); // former active, now prev-peek — preserved
   });
+
+  // Regression (AU: "cards sometimes stay in smaller size"): the deck can swap
+  // which item sits at the active slot without moving the numeric activeIndex —
+  // e.g. a scheduled-outfit prefix is prepended at index 0. The pan reset that
+  // returns the active card to full scale must key off the active card's
+  // IDENTITY, not the index, or the newly-seated leading card renders stranded
+  // at the smaller neighbour scale. Here we prepend a new card at index 0 and
+  // assert the deck reconciles cleanly (the surviving card is not remounted).
+  it('reconciles when a new item is seated at the active slot (index unchanged)', () => {
+    const mountCounts: Record<string, number> = {};
+
+    const Probe = ({ id }: { id: string; role: 'active' | 'peek' }) => {
+      useEffect(() => {
+        mountCounts[id] = (mountCounts[id] ?? 0) + 1;
+      }, [id]);
+      return <Text>{id}</Text>;
+    };
+
+    const baseProps = {
+      swipeEnabled: true,
+      keyOf: (c: Card) => c.id,
+      renderCard: (c: Card, role: 'active' | 'peek') => (
+        <Probe id={c.id} role={role} />
+      ),
+      onSwipeNext: jest.fn(),
+      onSwipeBack: jest.fn(),
+    };
+
+    let renderer!: ReturnType<typeof TestRenderer.create>;
+    act(() => {
+      renderer = TestRenderer.create(
+        <OutfitSwipeDeck
+          {...baseProps}
+          items={[{ id: 'a' }, { id: 'b' }]}
+          activeIndex={0}
+        />,
+      );
+    });
+    expect(mountCounts.a).toBe(1);
+
+    // Prepend 'sched' at index 0: activeIndex stays 0 but the active card is now
+    // a different item. Former active 'a' slides to the next-peek slot; it must
+    // not be remounted, and the deck must not throw resetting the pan.
+    act(() => {
+      renderer.update(
+        <OutfitSwipeDeck
+          {...baseProps}
+          items={[{ id: 'sched' }, { id: 'a' }, { id: 'b' }]}
+          activeIndex={0}
+        />,
+      );
+    });
+
+    expect(mountCounts.sched).toBe(1); // new leading card mounted once
+    expect(mountCounts.a).toBe(1); // survivor preserved, no remount
+  });
 });
