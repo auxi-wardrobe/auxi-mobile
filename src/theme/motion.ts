@@ -41,16 +41,6 @@ export const motion = {
 // cross-scale rather than a card popping in after it lands.
 export const DECK_PEEK_SCALE = 0.92;
 
-// Home outfit carousel (coverflow) geometry. The active suggestion sits centred
-// at CARD_CAROUSEL_WIDTH_RATIO of the screen width; the previous and next
-// suggestions peek either side, separated by CARD_CAROUSEL_GAP, receding to
-// DECK_PEEK_SCALE and dimming to motion.opacity.subtle. Neighbour centres sit
-// one (card width + gap) apart, so a card is centred when the drag offsets it
-// exactly onto the middle slot.
-export const CARD_CAROUSEL_WIDTH_RATIO = 0.78;
-export const CARD_CAROUSEL_GAP = 12;
-export const CARD_CAROUSEL_SIDE_OPACITY = 0.6;
-
 // Swipe-deck geometry constants (spec §2.2).
 export const SWIPE_ROTATION_CAP_DEG = 6;
 export const SWIPE_COMMIT_RATIO = 0.3; // fraction of screen width

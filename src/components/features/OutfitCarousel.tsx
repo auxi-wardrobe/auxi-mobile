@@ -1,24 +1,25 @@
-// OutfitCarousel — center-focused (coverflow) card carousel for Home.
+// OutfitCarousel — full-width paging carousel for Home.
 //
-// Replaces the single-card OutfitSwipeDeck: the active suggestion sits centred
-// at full size while the PREVIOUS and NEXT suggestions peek at either edge,
-// smaller and dimmed. The whole strip follows the finger on a horizontal drag;
-// on release it snaps to the nearest card (commit) or springs back (cancel).
+// The card DESIGN is unchanged from the swipe deck it replaces: one full-bleed,
+// full-size suggestion fills the screen at rest, exactly as before. What changes
+// is only the TRANSITION between suggestions — instead of the active card
+// flinging off-screen while a hidden card is revealed behind it, the deck slides
+// like a carousel: the current card slides out one side while the next slides in
+// from the other, moving together as a strip. The neighbouring cards live one
+// full screen-width away, so at rest they sit off-screen and only the active
+// card is visible; they come into view only during the slide.
 //
 // Navigation semantics match the old deck (NOT like/skip): swipe LEFT advances
 // to the next suggestion, swipe RIGHT goes BACK to the previous one. The
-// back-swipe is blocked on the first card (index 0) — there is nothing older to
-// return to — so a rightward drag there rubber-bands and springs home.
+// back-swipe is blocked on the first card (index 0) — nothing older to return
+// to — so a rightward drag there rubber-bands and springs home.
 //
-// Built on PanResponder + Animated (no new dep), same as the deck it replaces.
-// Two hard-won lessons carry over:
-//   * interpolations are MEMOISED so their native animated nodes are stable —
-//     a re-render landing mid-animation (e.g. the buffered fetch resolving
-//     while the strip springs home) can't strand a card at the wrong scale;
-//   * the drag reset keys off the active card's IDENTITY, not the numeric
-//     index, so a list reconcile that swaps which item sits at the active slot
-//     (scheduled-prefix prepend, buffer refill) never leaves the strip
-//     off-centre.
+// Built on PanResponder + Animated (no new dep). Two lessons carry over from the
+// deck sizing fix: the slot translations are memoised (stable native nodes
+// survive a re-render mid-slide, e.g. the buffered fetch resolving while the
+// strip settles), and the drag reset keys off the active card's IDENTITY, not
+// the numeric index, so a list reconcile that swaps the active item never
+// strands the strip off-centre.
 import React, {
   useCallback,
   useEffect,
@@ -33,28 +34,13 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import {
-  motion,
-  isCommit,
-  useReducedMotion,
-  DECK_PEEK_SCALE,
-  CARD_CAROUSEL_WIDTH_RATIO,
-  CARD_CAROUSEL_GAP,
-  CARD_CAROUSEL_SIDE_OPACITY,
-} from '../../theme/motion';
+import { motion, isCommit, useReducedMotion } from '../../theme/motion';
 import { theme } from '../../theme/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-// Card width and the centre-to-centre distance between neighbouring cards.
-const CARD_W = Math.round(SCREEN_W * CARD_CAROUSEL_WIDTH_RATIO);
-const STRIDE = CARD_W + CARD_CAROUSEL_GAP;
-// Horizontal inset that centres a CARD_W card in the full-width stack.
-const CENTER_OFFSET = Math.round((SCREEN_W - CARD_W) / 2);
-
-// Fixed render window: the previous (-1), active (0), and next (1)
-// suggestions. Painted side-by-side (not stacked) and driven by a single drag
-// value.
+// Fixed render window: previous (-1), active (0), next (1). Cards are one full
+// screen-width apart, so the slide pages exactly one card per commit.
 type Offset = -1 | 0 | 1;
 
 type Role = 'active' | 'peek';
@@ -132,10 +118,10 @@ export function OutfitCarousel<T>({
       }
       committingRef.current = true;
       const item = itemsRef.current[activeIndexRef.current];
-      // Slide the strip exactly one slot in the swipe direction so the incoming
-      // card lands dead-centre before the index advances.
+      // Slide the strip exactly one screen-width in the swipe direction so the
+      // incoming card lands centred before the index advances.
       Animated.timing(drag, {
-        toValue: dir * STRIDE,
+        toValue: dir * SCREEN_W,
         duration: motion.duration.normal,
         easing: motion.easing.exit,
         useNativeDriver: true,
@@ -171,12 +157,11 @@ export function OutfitCarousel<T>({
 
   // Runs inside the same React commit that changes the active card, before the
   // frame paints — so the drag reset and the window re-index are atomic: the
-  // promoted card takes the centre slot already at drag 0 (full size), and the
-  // demoted card becomes a peek in the same frame. Keyed on the active card's
-  // IDENTITY, not the numeric index: the deck can swap which item sits at the
-  // active slot without the index moving (scheduled-prefix prepend at index 0,
-  // buffer reconcile); watching identity resets the strip whenever the centred
-  // card actually changes.
+  // promoted card takes the centre slot already at drag 0, and the demoted card
+  // slides off in the same frame. Keyed on the active card's IDENTITY, not the
+  // numeric index: the deck can swap which item sits at the active slot without
+  // the index moving (scheduled-prefix prepend at index 0, buffer reconcile);
+  // watching identity resets the strip whenever the centred card changes.
   const activeKey = active ? keyOf(active) : undefined;
   const prevActiveKeyRef = useRef(activeKey);
   useLayoutEffect(() => {
@@ -224,38 +209,21 @@ export function OutfitCarousel<T>({
     [swipeEnabled, reduced, drag, commit, cancel],
   );
 
-  // Per-slot animated transforms, driven by the single drag value and memoised
-  // so the native nodes stay stable across re-renders (a re-render mid-slide/
-  // spring can't strand a card at the wrong scale). A card in slot k is centred
-  // when drag === -k * STRIDE; one slot away it sits at DECK_PEEK_SCALE, dimmed.
-  const slotAnims = useMemo(() => {
-    const build = (k: Offset) => {
-      const centered = -k * STRIDE;
-      return {
-        // translateX = drag + k * STRIDE (linear pass-through, no clamp).
-        translateX: drag.interpolate({
-          inputRange: [-STRIDE, STRIDE],
-          outputRange: [centered - STRIDE, centered + STRIDE],
-        }),
-        scale: drag.interpolate({
-          inputRange: [centered - STRIDE, centered, centered + STRIDE],
-          outputRange: [DECK_PEEK_SCALE, 1, DECK_PEEK_SCALE],
-          extrapolate: 'clamp',
-        }),
-        opacity: drag.interpolate({
-          inputRange: [centered - STRIDE, centered, centered + STRIDE],
-          outputRange: [
-            CARD_CAROUSEL_SIDE_OPACITY,
-            motion.opacity.visible,
-            CARD_CAROUSEL_SIDE_OPACITY,
-          ],
-          extrapolate: 'clamp',
-        }),
-      };
-    };
+  // Per-slot translateX, driven by the single drag value and memoised so the
+  // native nodes stay stable across re-renders (a re-render mid-slide/spring
+  // can't strand a card off-centre). Card in slot k sits at k * SCREEN_W + drag,
+  // so at rest (drag 0) the active card fills the screen and its neighbours are
+  // one full width away, off-screen either side.
+  const slotTranslate = useMemo(() => {
+    const build = (k: Offset) =>
+      // Linear pass-through of drag with a constant k * SCREEN_W offset.
+      drag.interpolate({
+        inputRange: [-SCREEN_W, SCREEN_W],
+        outputRange: [k * SCREEN_W - SCREEN_W, k * SCREEN_W + SCREEN_W],
+      });
     return { '-1': build(-1), '0': build(0), '1': build(1) } as Record<
       string,
-      { translateX: Animated.AnimatedInterpolation<number>; scale: Animated.AnimatedInterpolation<number>; opacity: Animated.AnimatedInterpolation<number> }
+      Animated.AnimatedInterpolation<number>
     >;
   }, [drag]);
 
@@ -271,7 +239,7 @@ export function OutfitCarousel<T>({
     return null;
   }
 
-  // Painted back-to-front: peeks first, active last (on top). Keyed by ITEM
+  // Painted back-to-front: neighbours first, active last (on top). Keyed by ITEM
   // IDENTITY (keyOf), NEVER by slot — so a card promoted from peek → active is
   // the SAME React instance (no remount, no reveal-animation replay).
   const windowCards: { item: T; role: Role; offset: Offset }[] = [];
@@ -287,7 +255,6 @@ export function OutfitCarousel<T>({
     <View testID={testID} style={styles.stack}>
       {windowCards.map(({ item, role, offset }) => {
         const isActive = role === 'active';
-        const anims = slotAnims[String(offset)];
         return (
           <Animated.View
             key={keyOf(item)}
@@ -308,19 +275,14 @@ export function OutfitCarousel<T>({
                 : undefined
             }
             style={[
-              styles.card,
-              {
-                opacity: anims.opacity,
-                transform: [
-                  { translateX: anims.translateX },
-                  { scale: anims.scale },
-                ],
-              },
+              styles.cardBase,
+              isActive && styles.activeCard,
+              { transform: [{ translateX: slotTranslate[String(offset)] }] },
             ]}
             pointerEvents={isActive ? 'auto' : 'none'}
-            // Peek cards are decorative until promoted: keep their subtree out of
+            // Neighbours are decorative until promoted: keep their subtree out of
             // the accessibility / test tree so VoiceOver doesn't announce the
-            // hidden card and duplicate testIDs don't clash.
+            // off-screen card and duplicate testIDs don't clash.
             accessibilityElementsHidden={!isActive}
             importantForAccessibility={isActive ? 'auto' : 'no-hide-descendants'}
             {...(isActive ? responder.panHandlers : {})}
@@ -334,17 +296,14 @@ export function OutfitCarousel<T>({
 }
 
 const styles = StyleSheet.create({
-  stack: { flex: 1, width: '100%', position: 'relative', overflow: 'visible' },
-  // Each card is a fixed-width panel centred in the stack via CENTER_OFFSET; the
-  // live translateX slides it from there. Clipped + white-backed so the rounded
-  // corners read cleanly as the cards cross-scale past one another.
-  card: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: CENTER_OFFSET,
-    width: CARD_W,
-    borderRadius: theme.borderRadius.figmaTile,
+  stack: { flex: 1, width: '100%', position: 'relative' },
+  // Full-bleed cards, one screen wide, positioned by translateX — identical
+  // footprint to the swipe deck's cards.
+  cardBase: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  // The moving active card carries a live translateX; clipping it to its own
+  // bounds and backing it with the app surface keeps its edge clean as it slides
+  // (the incoming card never bleeds a hairline at the screen edge).
+  activeCard: {
     overflow: 'hidden',
     backgroundColor: theme.colors.figmaSurface,
   },

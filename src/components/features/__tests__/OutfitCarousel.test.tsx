@@ -11,6 +11,10 @@
  *
  * A probe renderCard counts mounts per item id via a mount-only effect; a
  * remount pushes that id's count above 1.
+ *
+ * The neighbours sit one full screen-width off either side at rest (only the
+ * active card is visible) — "mounted" below means present in the render window,
+ * ready to slide in, not on-screen.
  */
 import React, { useEffect } from 'react';
 import { Text } from 'react-native';
@@ -38,7 +42,7 @@ const makeProps = (mountCounts: Record<string, number>) => {
 };
 
 describe('OutfitCarousel', () => {
-  it('mounts the active card and its visible neighbours at rest', () => {
+  it('windows the active card and both neighbours at rest', () => {
     const mountCounts: Record<string, number> = {};
     const props = makeProps(mountCounts);
     const items: Card[] = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
@@ -49,7 +53,7 @@ describe('OutfitCarousel', () => {
       );
     });
 
-    // prev 'a', active 'b', next 'c' — all painted so the peeks are visible.
+    // prev 'a', active 'b', next 'c' — all in the window, ready to slide.
     expect(mountCounts.a).toBe(1);
     expect(mountCounts.b).toBe(1);
     expect(mountCounts.c).toBe(1);

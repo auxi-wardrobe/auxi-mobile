@@ -7,6 +7,7 @@ import {
   GRID_CONTENT_PAD,
   GRID_GAP,
   OPTION_ACTIONS_HEIGHT,
+  screenWidth,
   SHEET_PADDING,
   SMALL_CARD_HEIGHT,
   SMALL_CARD_WIDTH,
@@ -76,10 +77,7 @@ export const styles = StyleSheet.create({
   },
   outfitCell: {
     flex: 1,
-    // Fill the parent card (the carousel sizes each card narrower than the
-    // screen so neighbours peek); previously pinned to the full screen width
-    // for the old full-bleed swipe deck.
-    width: '100%',
+    width: screenWidth,
   },
   optionSheet: {
     flex: 1,
