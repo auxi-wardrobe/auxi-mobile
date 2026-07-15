@@ -67,7 +67,7 @@ import {
   type TemperatureBucketKey,
 } from '../../config/temperature-buckets';
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
-import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
+import { OutfitCarousel } from '../../components/features/OutfitCarousel';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
 import { HomeWardrobeNavFooter } from '../../components/features/HomeWardrobeNavFooter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -1506,7 +1506,7 @@ export const HomeScreen = () => {
         />
       ) : (
         <View style={styles.deckWrap}>
-          <OutfitSwipeDeck
+          <OutfitCarousel
             testID="home-swipe-deck"
             items={optionSets}
             activeIndex={clampedActiveIndex}
