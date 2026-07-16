@@ -5,16 +5,22 @@ import type { WardrobeItem } from '../../services/wardrobeService';
  * constants + pure helpers, kept out of the screen for unit testing
  * (mirrors `wardrobe/beautify-status.ts`).
  *
- * Unlike the upload-time beautify flow (30–60s, 4s poll, leave-and-come-back
- * UX), the enhance preview is a SYNCHRONOUS wait: the UI promises "under 10
- * seconds", so we poll fast and time out early instead of letting the user
- * sit behind a dead spinner.
+ * Same backend job as the upload-time beautify flow (BeautifyService /
+ * gpt-image-1, realistically 15-60s+), so the wait budget mirrors that
+ * flow's `BeautifyPendingScreen` MAX_WAIT_MS (3 min) rather than promising
+ * a synchronous "under 10 seconds" turnaround — that promise was
+ * unrealistic and caused this screen to time out and show a false failure
+ * while the job was still legitimately running server-side (AU-422).
+ * Leaving the screen mid-generation is still safe: polling stops
+ * client-side but the job finishes server-side, and WardrobeScreen's own
+ * list poll (useItemReadySnackbar) picks up the pending→ready transition
+ * whenever the user is back on the grid.
  */
 export const ENHANCE_POLL_MS = 2000;
 
-// The UI copy promises "under 10 seconds" — allow a small buffer for network
-// variability before declaring a timeout (product decision: 15s threshold).
-export const ENHANCE_TIMEOUT_MS = 15000;
+// Mirrors BeautifyPendingScreen's MAX_WAIT_MS — same backend job, same
+// realistic ceiling.
+export const ENHANCE_TIMEOUT_MS = 3 * 60 * 1000;
 
 export type EnhanceFailureReason = 'network' | 'timeout' | 'server_error';
 

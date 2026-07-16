@@ -241,7 +241,7 @@
       },
       "enhance": {
         "title": "Enhance Image",
-        "loading": "Preparing this item\nin under 10 seconds",
+        "loading": "Preparing this item…",
         "compare_hint": "Long press to see the original image",
         "discard": "Discard",
         "replace_original": "Replace original",

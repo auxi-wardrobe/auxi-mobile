@@ -298,22 +298,6 @@ export const resolveNotificationData = (
       return;
     }
 
-    // Beautify job result (backend `beautify_result`, AU-422). The generic
-    // `screen:'Home'` is a route-SAFE fallback for old clients — handle the
-    // richer `type`/`action` fields first so a tap lands on the review
-    // screen instead of Home.
-    if (data.type === 'beautify' && data.action === 'beautify_result') {
-      if (data.status === 'completed' && data.item_id) {
-        navRef.navigate('BeautifyReview', {
-          itemId: data.item_id,
-          originalUri: data.original_uri ?? '',
-          from: 'push',
-        });
-      } else {
-        fallbackHome();
-      }
-      return;
-    }
     if (data.kind === 'route') {
       if (data.screen && isCuratedScreen(data.screen)) {
         navigate(PUSH_SCREEN_ROUTE[data.screen]);

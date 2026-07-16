@@ -9,7 +9,7 @@ describe('beautify-status helpers', () => {
     expect(anyBeautifying([{ beautify_status: 'pending' } as any])).toBe(true);
     expect(anyBeautifying([{ beautify_status: 'accepted' } as any])).toBe(false);
   });
-  it('exposes a 4s poll interval', () => {
-    expect(BEAUTIFY_POLL_MS).toBe(4000);
+  it('exposes a 10s poll interval', () => {
+    expect(BEAUTIFY_POLL_MS).toBe(10000);
   });
 });

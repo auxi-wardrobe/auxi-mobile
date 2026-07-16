@@ -94,60 +94,6 @@ describe('resolveNotificationData — try-on render result', () => {
   });
 });
 
-describe('resolveNotificationData — beautify result', () => {
-  it('navigates to BeautifyReview with itemId/originalUri on completed', () => {
-    const nav = makeNavRef();
-    resolveNotificationData(
-      {
-        kind: 'route',
-        screen: 'Home',
-        type: 'beautify',
-        action: 'beautify_result',
-        item_id: 'item-1',
-        original_uri: 'https://cdn.auxi.app/wardrobe/item-1/original.png',
-        status: 'completed',
-      },
-      nav as any,
-    );
-    expect(nav.navigate).toHaveBeenCalledWith('BeautifyReview', {
-      itemId: 'item-1',
-      originalUri: 'https://cdn.auxi.app/wardrobe/item-1/original.png',
-      from: 'push',
-    });
-  });
-
-  it('falls back to Home on a failed beautify job', () => {
-    const nav = makeNavRef();
-    resolveNotificationData(
-      {
-        kind: 'route',
-        screen: 'Home',
-        type: 'beautify',
-        action: 'beautify_result',
-        item_id: 'item-1',
-        status: 'failed',
-      },
-      nav as any,
-    );
-    expect(nav.navigate).toHaveBeenCalledWith('Home');
-  });
-
-  it('falls back to Home when completed but item_id is missing', () => {
-    const nav = makeNavRef();
-    resolveNotificationData(
-      {
-        kind: 'route',
-        screen: 'Home',
-        type: 'beautify',
-        action: 'beautify_result',
-        status: 'completed',
-      },
-      nav as any,
-    );
-    expect(nav.navigate).toHaveBeenCalledWith('Home');
-  });
-});
-
 describe('resolveNotificationData — external kind', () => {
   it('opens a valid https url', () => {
     const nav = makeNavRef();

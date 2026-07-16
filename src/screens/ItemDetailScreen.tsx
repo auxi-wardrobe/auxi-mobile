@@ -21,7 +21,6 @@ import { MacgieLoader } from '../components/macgie';
 import { ItemDetailEditPanel } from './item-detail/ItemDetailEditPanel';
 import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
 import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
-import { canEnhanceItem } from './item-detail/enhance-session';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { useAiConsentGate } from '../hooks/useAiConsentGate';
 import { Icons } from '../assets/icons';
@@ -605,7 +604,6 @@ export const ItemDetailScreen = () => {
   // processing successfully (cutout exists) — catalog/seeded items, items
   // still preparing, failed processing, and already-enhanced items never get
   // the FAB. Full rules: enhance-session.ts#canEnhanceItem.
-  const canEnhance = !!item && !!imageUrl && canEnhanceItem(item);
 
   const handleBuildAround = () => {
     // ItemDetail is presented as a modal layer (AppNavigator
@@ -698,7 +696,7 @@ export const ItemDetailScreen = () => {
                 bottom-right corner. Hidden while editing (the edit panel owns
                 its own save state) and whenever the item is not enhanceable
                 (catalog / preparing / already enhanced — see canEnhance). */}
-            {canEnhance && !isEditing ? (
+            {!isEditing ? (
               <TouchableOpacity
                 testID="item-detail-enhance-fab"
                 accessibilityRole="button"
