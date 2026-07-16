@@ -35,6 +35,13 @@ import { theme } from '../../theme/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
+// Active-card scale for a horizontal drag of `dx`: full size at rest, receding
+// to DECK_PEEK_SCALE by a full screen-width of travel (matches the peek cross-
+// scale). Mirrors the [-W, 0, W] → [PEEK, 1, PEEK] interpolation the peeks use,
+// but computed in JS so the active card can be driven by its OWN animated value.
+const activeScaleForDx = (dx: number): number =>
+  1 - (1 - DECK_PEEK_SCALE) * (Math.min(Math.abs(dx), SCREEN_W) / SCREEN_W);
+
 type Role = 'active' | 'peek';
 
 type Props<T> = {
@@ -69,6 +76,14 @@ export function OutfitSwipeDeck<T>({
 }: Props<T>) {
   const reduced = useReducedMotion();
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  // The active card's scale is its OWN animated value, NOT an interpolation of
+  // pan. Belt-and-suspenders for the "card stays shrunk after you stop swiping"
+  // bug: a pan-derived scale node, freshly attached when a peek is promoted, can
+  // race the pan reset and stick at DECK_PEEK_SCALE. A dedicated value we drive
+  // and reset explicitly (setValue(1) on promotion, spring on cancel) can never
+  // be held hostage by the interpolation graph — the active card is guaranteed
+  // back to full size.
+  const activeScale = useRef(new Animated.Value(1)).current;
   const active = items[activeIndex];
   // The card revealed behind the active one depends on swipe direction: the
   // previous card when dragging right (back), the next card when dragging left.
@@ -105,6 +120,14 @@ export function OutfitSwipeDeck<T>({
       }
       committingRef.current = true;
       const item = itemsRef.current[activeIndexRef.current];
+      // The outgoing card recedes to the neighbour scale as it flies off, in
+      // lockstep with the pan fling.
+      Animated.timing(activeScale, {
+        toValue: DECK_PEEK_SCALE,
+        duration: motion.duration.normal,
+        easing: motion.easing.exit,
+        useNativeDriver: true,
+      }).start();
       Animated.timing(pan, {
         toValue: { x: dir * SCREEN_W * 1.4, y: 0 },
         duration: motion.duration.normal,
@@ -139,12 +162,20 @@ export function OutfitSwipeDeck<T>({
                 mass: 1,
                 useNativeDriver: true,
               }).start();
+              // The stranded card sprang home — settle it back to full size too.
+              Animated.spring(activeScale, {
+                toValue: 1,
+                stiffness: motion.spring.standard.stiffness,
+                damping: motion.spring.standard.damping,
+                mass: 1,
+                useNativeDriver: true,
+              }).start();
             }
           });
         });
       });
     },
-    [pan],
+    [pan, activeScale],
   );
 
   // Runs inside the same React commit that changes the active card, before the
@@ -159,9 +190,14 @@ export function OutfitSwipeDeck<T>({
     }
     prevActiveIndexRef.current = activeIndex;
     pan.setValue({ x: 0, y: 0 });
+    // Explicitly force the newly-promoted card to full size. The incoming peek
+    // has already grown to ~1 via its own scale, so this is seamless, but it is
+    // the load-bearing guarantee: the active card's scale is reset here directly
+    // rather than left to a pan interpolation that might not re-evaluate.
+    activeScale.setValue(1);
     awaitingAdvanceRef.current = false;
     committingRef.current = false;
-  }, [activeIndex, pan]);
+  }, [activeIndex, pan, activeScale]);
 
   const cancel = useCallback(() => {
     Animated.spring(pan, {
@@ -171,7 +207,15 @@ export function OutfitSwipeDeck<T>({
       mass: 1,
       useNativeDriver: true,
     }).start();
-  }, [pan]);
+    // Released without committing — settle the active card back to full size.
+    Animated.spring(activeScale, {
+      toValue: 1,
+      stiffness: motion.spring.standard.stiffness,
+      damping: motion.spring.standard.damping,
+      mass: 1,
+      useNativeDriver: true,
+    }).start();
+  }, [pan, activeScale]);
 
   const responder = useMemo(
     () =>
@@ -188,6 +232,9 @@ export function OutfitSwipeDeck<T>({
           const atStart = activeIndexRef.current <= 0;
           const dx = atStart && g.dx > 0 ? g.dx * 0.2 : g.dx;
           pan.setValue({ x: dx, y: 0 });
+          // Recede the active card live, in step with translateX (same dx), so
+          // it swaps depth with the growing peek.
+          activeScale.setValue(activeScaleForDx(dx));
         },
         onPanResponderRelease: (_, g) => {
           const atStart = activeIndexRef.current <= 0;
@@ -205,55 +252,66 @@ export function OutfitSwipeDeck<T>({
         onPanResponderTerminate: cancel,
         onPanResponderTerminationRequest: () => false,
       }),
-    [swipeEnabled, reduced, pan, commit, cancel],
+    [swipeEnabled, reduced, pan, activeScale, commit, cancel],
   );
 
-  // Back cue rises as the card is dragged right; next cue as it's dragged left.
-  const backOpacity = pan.x.interpolate({
-    inputRange: [0, SCREEN_W * 0.3],
-    outputRange: [motion.opacity.hidden, motion.opacity.visible],
-    extrapolate: 'clamp',
-  });
-  const nextOpacity = pan.x.interpolate({
-    inputRange: [-SCREEN_W * 0.3, 0],
-    outputRange: [motion.opacity.visible, motion.opacity.hidden],
-    extrapolate: 'clamp',
-  });
-  // Reveal the previous card only while dragging right, the next card only
-  // while dragging left — a step at x=0 so the wrong card never bleeds through.
-  const prevPeekOpacity = pan.x.interpolate({
-    inputRange: [0, 1],
-    outputRange: [motion.opacity.hidden, motion.opacity.visible],
-    extrapolate: 'clamp',
-  });
-  const nextPeekOpacity = pan.x.interpolate({
-    inputRange: [-1, 0],
-    outputRange: [motion.opacity.visible, motion.opacity.hidden],
-    extrapolate: 'clamp',
-  });
-
-  // Carousel cross-scale, driven live by the drag. At rest the active card is
-  // foregrounded at full size and its neighbours sit smaller behind it. As the
-  // card is held and swiped it recedes toward the neighbour scale while the
-  // incoming card grows to full — so the two swap depth continuously instead of
-  // the active card popping in after it lands.
-  const activeCardScale = pan.x.interpolate({
-    inputRange: [-SCREEN_W, 0, SCREEN_W],
-    outputRange: [DECK_PEEK_SCALE, 1, DECK_PEEK_SCALE],
-    extrapolate: 'clamp',
-  });
-  // Prev card grows toward full as the deck is dragged right, next card as it
-  // is dragged left; both rest at the smaller neighbour scale at x=0.
-  const prevPeekScale = pan.x.interpolate({
-    inputRange: [0, SCREEN_W],
-    outputRange: [DECK_PEEK_SCALE, 1],
-    extrapolate: 'clamp',
-  });
-  const nextPeekScale = pan.x.interpolate({
-    inputRange: [-SCREEN_W, 0],
-    outputRange: [1, DECK_PEEK_SCALE],
-    extrapolate: 'clamp',
-  });
+  // The pan-driven peek interpolations are memoised into ONE stable set of
+  // nodes (pan is a stable ref, so this runs once). This is load-bearing, not
+  // just a perf tidy: recreating `pan.x.interpolate(...)` every render mints a
+  // fresh native-driven node each time, and a fresh node attached during a
+  // promotion can race the pan reset and stick at its attach-time value. Stable
+  // nodes track pan live forever, so a reset to 0 always lands them correctly.
+  // (The ACTIVE card's scale is the separate `activeScale` value above, reset
+  // explicitly on promotion — so it never depends on this graph at all.)
+  const {
+    backOpacity,
+    nextOpacity,
+    prevPeekOpacity,
+    nextPeekOpacity,
+    prevPeekScale,
+    nextPeekScale,
+  } = useMemo(
+    () => ({
+      // Back cue rises as the card is dragged right; next cue as it's dragged left.
+      backOpacity: pan.x.interpolate({
+        inputRange: [0, SCREEN_W * 0.3],
+        outputRange: [motion.opacity.hidden, motion.opacity.visible],
+        extrapolate: 'clamp',
+      }),
+      nextOpacity: pan.x.interpolate({
+        inputRange: [-SCREEN_W * 0.3, 0],
+        outputRange: [motion.opacity.visible, motion.opacity.hidden],
+        extrapolate: 'clamp',
+      }),
+      // Reveal the previous card only while dragging right, the next card only
+      // while dragging left — a step at x=0 so the wrong card never bleeds through.
+      prevPeekOpacity: pan.x.interpolate({
+        inputRange: [0, 1],
+        outputRange: [motion.opacity.hidden, motion.opacity.visible],
+        extrapolate: 'clamp',
+      }),
+      nextPeekOpacity: pan.x.interpolate({
+        inputRange: [-1, 0],
+        outputRange: [motion.opacity.visible, motion.opacity.hidden],
+        extrapolate: 'clamp',
+      }),
+      // Peek cross-scale: the incoming card grows toward full as it's revealed,
+      // swapping depth with the active card (which recedes via `activeScale`).
+      // Prev card grows as the deck is dragged right, next card as it is dragged
+      // left; both rest at the smaller neighbour scale at x=0.
+      prevPeekScale: pan.x.interpolate({
+        inputRange: [0, SCREEN_W],
+        outputRange: [DECK_PEEK_SCALE, 1],
+        extrapolate: 'clamp',
+      }),
+      nextPeekScale: pan.x.interpolate({
+        inputRange: [-SCREEN_W, 0],
+        outputRange: [1, DECK_PEEK_SCALE],
+        extrapolate: 'clamp',
+      }),
+    }),
+    [pan],
+  );
 
   // Cards fill the deck via absolute insets (see cardBase), so the deck stack
   // flex-fills its parent and the card height follows the available space.
@@ -318,7 +376,7 @@ export function OutfitSwipeDeck<T>({
                     {
                       transform: [
                         { translateX: pan.x },
-                        { scale: activeCardScale },
+                        { scale: activeScale },
                       ],
                     },
                   ]
