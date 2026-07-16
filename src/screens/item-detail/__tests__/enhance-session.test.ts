@@ -107,8 +107,8 @@ describe('enhance-session helpers', () => {
     });
   });
 
-  it('polls fast and times out just past the promised 10s window', () => {
+  it('polls fast, with a wait budget matching the upload-time beautify flow', () => {
     expect(ENHANCE_POLL_MS).toBe(2000);
-    expect(ENHANCE_TIMEOUT_MS).toBe(15000);
+    expect(ENHANCE_TIMEOUT_MS).toBe(3 * 60 * 1000);
   });
 });

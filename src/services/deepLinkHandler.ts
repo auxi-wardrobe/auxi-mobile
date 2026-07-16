@@ -297,6 +297,7 @@ export const resolveNotificationData = (
       }
       return;
     }
+
     if (data.kind === 'route') {
       if (data.screen && isCuratedScreen(data.screen)) {
         navigate(PUSH_SCREEN_ROUTE[data.screen]);

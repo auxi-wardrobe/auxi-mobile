@@ -1,6 +1,6 @@
 import type { WardrobeItem } from '../../services/wardrobeService';
 
-export const BEAUTIFY_POLL_MS = 4000;
+export const BEAUTIFY_POLL_MS = 10000;
 
 const STEPS = [
   'Removing background…',

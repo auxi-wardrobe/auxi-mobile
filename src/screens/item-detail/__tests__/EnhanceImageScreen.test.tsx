@@ -238,14 +238,14 @@ it('shows the original while long-pressed and restores the candidate on release'
 // =============================================================================
 // 3. timeout → Retry restarts a fresh session
 // =============================================================================
-it('times out past 15s, shows the timeout copy, and Retry re-fires the request', async () => {
+it('times out past the 3min wait budget, shows the timeout copy, and Retry re-fires the request', async () => {
   mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
 
   const r = await renderScreen();
   const root = r.root;
 
-  for (let i = 0; i < 8; i += 1) {
-    await pollTick(); // 8 × 2s = 16s > 15s timeout
+  for (let i = 0; i < 91; i += 1) {
+    await pollTick(); // 91 × 2s = 182s > 180s (3min) timeout
   }
 
   expect(mockTrack).toHaveBeenCalledWith('enhance_failed', {
