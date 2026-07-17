@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaChipBg,
   },
   tabText: {
-    ...theme.typography.aliases.poppinsMediumSm,
+    ...theme.typography.aliases.interMediumSm,
     color: theme.colors.figmaText,
   },
   selectedTabText: {

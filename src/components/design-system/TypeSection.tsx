@@ -54,10 +54,10 @@ export const TypeSection: React.FC = () => (
     <SectionHeader
       num="02"
       title="Typography"
-      blurb="Poppins carries the entire UI — display through caption. The mono face is reserved for overlines / spec labels only (platform monospace fallback)."
+      blurb="Inter carries the entire UI — display through caption. The mono face is reserved for overlines / spec labels only (platform monospace fallback)."
     />
 
-    <SubHead label="Poppins" tag="display · ui · numerics" />
+    <SubHead label="Inter" tag="display · ui · numerics" />
     <View style={styles.famCard}>
       {WEIGHTS.map(w => (
         <View key={w.name} style={styles.weightRow}>
@@ -78,8 +78,8 @@ export const TypeSection: React.FC = () => (
     ))}
 
     <NoteCard>
-      <NoteBold>Poppins-only. </NoteBold>
-      Inter / Roboto are retired from the new system. Treat any other family in
+      <NoteBold>Inter-only. </NoteBold>
+      Poppins / Roboto are retired from the new system. Treat any other family in
       the file as exploratory, not system.
     </NoteCard>
   </View>

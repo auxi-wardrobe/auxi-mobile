@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.ds.color.white,
   },
   label: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
   },
   labelPinned: {
     color: theme.ds.color.ink,

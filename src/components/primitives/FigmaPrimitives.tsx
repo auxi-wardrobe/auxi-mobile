@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     ...theme.ds.shadow.headerIcon,
   },
   topIconLabel: {
-    fontFamily: 'Poppins-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     lineHeight: 20,
     color: theme.colors.figmaAction,
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pillText: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.figmaTextDark, // secondary/text button label #070707
   },
   outlineText: {
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaRed,
   },
   textOnly: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.figmaTextDark, // text button label #070707
   },
   bottomSheetSurface: {

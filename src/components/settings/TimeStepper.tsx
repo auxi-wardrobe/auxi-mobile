@@ -163,13 +163,13 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '90deg' }],
   },
   digit: {
-    ...theme.typography.aliases.poppinsTimeLg,
+    ...theme.typography.aliases.interTimeLg,
     color: theme.ds.color.black,
     minWidth: 48,
     textAlign: 'center',
   },
   separator: {
-    ...theme.typography.aliases.poppinsTimeLg,
+    ...theme.typography.aliases.interTimeLg,
     color: theme.ds.color.black,
   },
 });

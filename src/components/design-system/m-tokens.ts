@@ -3,7 +3,7 @@
  *
  * Source of truth: plans/260624-0030-GH-364-design-system-page/reference/
  *                  auxi-showcase.reference.css (exported from claude.ai/design
- *                  project "auxi", 2026-06-24). Poppins-only.
+ *                  project "auxi", 2026-06-24). Inter-only.
  *
  * IMPORTANT — these values INTENTIONALLY DIVERGE from src/theme/theme.ts.
  * They are the NEW target design system. They originated with the in-app
@@ -21,13 +21,13 @@
  */
 import { Platform } from 'react-native';
 
-// ── Type · Poppins only (mono = platform fallback, overlines only) ──────────
-// Poppins ships Regular/Medium/SemiBold/Bold faces (src/assets/fonts/).
+// ── Type · Inter only (mono = platform fallback, overlines only) ──────────
+// Inter ships Regular/Medium/SemiBold/Bold faces (src/assets/fonts/).
 export const FONT = {
-  regular: 'Poppins-Regular',
-  medium: 'Poppins-Medium',
-  semibold: 'Poppins-SemiBold',
-  bold: 'Poppins-Bold',
+  regular: 'Inter-Regular',
+  medium: 'Inter-Medium',
+  semibold: 'Inter-SemiBold',
+  bold: 'Inter-Bold',
 } as const;
 
 // JetBrains Mono is NOT bundled — fall back to the platform monospace face.
@@ -203,7 +203,7 @@ export const shadow = {
 // ── Icon sizes ──────────────────────────────────────────────────────────────
 export const icon = { L: 32, M: 24, S: 16 } as const;
 
-// ── Type scale (Poppins; sizes from the showcase) ──────────────────────────
+// ── Type scale (Inter; sizes from the showcase) ──────────────────────────
 export const type = {
   display: { fontFamily: FONT.bold, fontSize: 40, lineHeight: 46 },
   h1: { fontFamily: FONT.bold, fontSize: 32, lineHeight: 38 },
@@ -232,7 +232,7 @@ export const button = {
   compactHeight: 48,
   px: space.s8, // 32 — paddingHorizontal
   radius: radius['2xl'], // 16
-  labelFont: FONT.medium, // Poppins-Medium === `poppinsButton`
+  labelFont: FONT.medium, // Inter-Medium === `interButton`
 } as const;
 
 export const sheetCardSpec = {

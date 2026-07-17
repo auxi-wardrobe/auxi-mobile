@@ -843,7 +843,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   imageBadgeText: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.uacBackgroundNeutral50,
   },
   // AI enhancement FAB: 36pt white rounded square pinned to the image's

@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.l,
   },
   headline: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing.m,
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaCardSurface,
   },
   shapeLabel: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.uacTextBase,
   },
   dots: {

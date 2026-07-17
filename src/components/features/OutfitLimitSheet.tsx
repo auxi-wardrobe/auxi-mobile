@@ -206,16 +206,16 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   title: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   body: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
   },
   tipsIntro: {
-    ...theme.typography.aliases.poppinsBodySmTight,
+    ...theme.typography.aliases.interBodySmTight,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.m,
   },
@@ -227,12 +227,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   tipBullet: {
-    ...theme.typography.aliases.poppinsBodySmTight,
+    ...theme.typography.aliases.interBodySmTight,
     color: theme.colors.uacTextBase,
     width: 16,
   },
   tipText: {
-    ...theme.typography.aliases.poppinsBodySmTight,
+    ...theme.typography.aliases.interBodySmTight,
     color: theme.colors.uacTextBase,
     flex: 1,
   },
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   refineText: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.figmaPrimaryButtonText,
   },
   // Secondary text button — mirrors the refine sheet's "Skip for now"

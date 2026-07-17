@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextBase,
   },
   body: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.m,
   },
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
   },
   linkText: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.figmaAiSparkle,
   },
   actions: {
@@ -151,11 +151,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   textActionLabel: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.uacTextBase,
   },
   primaryActionLabel: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.figmaPrimaryButtonText,
   },
 });

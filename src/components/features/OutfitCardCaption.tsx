@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   captionText: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextBase,
   },
 });

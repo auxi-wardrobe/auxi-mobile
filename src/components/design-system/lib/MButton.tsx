@@ -87,8 +87,8 @@ export const MButton: React.FC<MButtonProps> = ({
   const borderColor = variant === 'dangerOutline' ? color.da400 : role.ink;
   const isSecondary = variant === 'secondary';
   const label = typeof children === 'string' ? children : accessibilityLabel;
-  // Label face per PR #138: primary solid CTA = `poppinsButton` (Poppins-Medium,
-  // tracking 0); the borderless `text` button = `archivoBody` (Poppins-Regular,
+  // Label face per PR #138: primary solid CTA = `interButton` (Inter-Medium,
+  // tracking 0); the borderless `text` button = `archivoBody` (Inter-Regular,
   // tracking 0.15). Other variants keep the DS SemiBold treatment.
   const labelFont =
     variant === 'primary'

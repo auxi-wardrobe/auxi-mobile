@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     color: theme.ds.color.ink,
   },
   introBody: {
-    ...theme.typography.aliases.poppinsBodySmTight,
+    ...theme.typography.aliases.interBodySmTight,
     color: theme.ds.color.warm500,
   },
 });

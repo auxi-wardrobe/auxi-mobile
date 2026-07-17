@@ -51,7 +51,7 @@ export const theme = {
     figmaButton: '#272A32',
     // Canonical primary (solid) button tokens — the ONE source of truth for
     // every solid-dark primary CTA. Fill = color/neutral/800, label =
-    // color/primary/100, paired with the `poppinsButton` (Poppins-Medium)
+    // color/primary/100, paired with the `interButton` (Inter-Medium)
     // alias and a 16px radius. Don't reintroduce figmaAction/figmaButton/
     // figmaButtonDark or white as a primary-button fill/label.
     figmaPrimaryButtonBg: '#1D1F23', // color/neutral/800 — primary button fill
@@ -186,7 +186,7 @@ export const theme = {
     uacSafeAreaBottom: 12,
   },
   typography: {
-    fontFamily: 'Poppins-Regular', // Use system font for now
+    fontFamily: 'Inter-Regular', // Use system font for now
     sizes: {
       h1: 32,
       h2: 24,
@@ -202,50 +202,50 @@ export const theme = {
     },
     aliases: {
       playfairDisplayTitle: {
-        fontFamily: 'Poppins-Bold',
+        fontFamily: 'Inter-Bold',
         fontSize: 40,
         lineHeight: 52,
       },
       playfairDisplaySection: {
-        fontFamily: 'Poppins-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 24,
         lineHeight: 32,
       },
       playfairDisplayHeader: {
-        fontFamily: 'Poppins-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 40,
         lineHeight: 56,
       },
       manropeBody: {
-        fontFamily: 'Poppins-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 16,
         lineHeight: 24,
       },
       manropeCaption: {
-        fontFamily: 'Poppins-Regular',
+        fontFamily: 'Inter-Regular',
         fontSize: 14,
         lineHeight: 20,
       },
       archivoBody: {
-        fontFamily: 'Poppins-Regular',
+        fontFamily: 'Inter-Regular',
         fontSize: 16,
         lineHeight: 24,
         letterSpacing: 0.15,
       },
       archivoButton: {
-        fontFamily: 'Poppins-SemiBold',
+        fontFamily: 'Inter-SemiBold',
         fontSize: 16,
         lineHeight: 24,
         letterSpacing: 0.15,
       },
-      poppinsBody: {
-        fontFamily: 'Poppins-Regular',
+      interBody: {
+        fontFamily: 'Inter-Regular',
         fontSize: 16,
         lineHeight: 24,
         letterSpacing: 0,
       },
-      poppinsButton: {
-        fontFamily: 'Poppins-Medium',
+      interButton: {
+        fontFamily: 'Inter-Medium',
         fontSize: 16,
         lineHeight: 24,
         letterSpacing: 0,
@@ -253,17 +253,17 @@ export const theme = {
       // Legal documents (Terms / Privacy) — Figma node 3177:6642 document
       // title + section headings render Poppins Bold 16/24, tracking 0.15.
       // Bold via the bundled face (RN `fontWeight` can't restyle a named
-      // custom font reliably), so this is a distinct alias from poppinsBody.
-      poppinsBodyBold: {
-        fontFamily: 'Poppins-Bold',
+      // custom font reliably), so this is a distinct alias from interBody.
+      interBodyBold: {
+        fontFamily: 'Inter-Bold',
         fontSize: 16,
         lineHeight: 24,
         letterSpacing: 0.15,
       },
       // Settings redesign (node 2850:15840) — main-list big time value.
       // Figma heading/H2 = Poppins Bold 32/40, letter-spacing −0.64.
-      poppinsTimeLg: {
-        fontFamily: 'Poppins-Bold',
+      interTimeLg: {
+        fontFamily: 'Inter-Bold',
         fontSize: 32,
         lineHeight: 40,
         letterSpacing: -0.64,
@@ -271,113 +271,112 @@ export const theme = {
       // UAC (Account-access flow) typography — AU-242 spec
       // Spec: plans/260521-2335-au-242-figma-spec/00-index.md "Typography"
       uacH1Bold: {
-        fontFamily: 'Poppins-Bold',
+        fontFamily: 'Inter-Bold',
         fontSize: 40,
         lineHeight: 52,
       },
       uacH4Bold: {
-        fontFamily: 'Poppins-Bold',
+        fontFamily: 'Inter-Bold',
         fontSize: 24,
         lineHeight: 32,
       },
       // AU-312 item-detail title (Figma 2852:14557 "Denim jacket").
       // Figma H4/SemiBold = Poppins SemiBold 24/32 — weight 600, NOT the 700
-      // of uacH4Bold above. Poppins-SemiBold.ttf is bundled.
-      poppinsH4SemiBold: {
-        fontFamily: 'Poppins-SemiBold',
+      // of uacH4Bold above. Inter-SemiBold.ttf is bundled.
+      interH4SemiBold: {
+        fontFamily: 'Inter-SemiBold',
         fontSize: 24,
         lineHeight: 32,
       },
       uacBodyMdSemibold: {
-        fontFamily: 'Poppins-SemiBold',
+        fontFamily: 'Inter-SemiBold',
         fontSize: 16,
         lineHeight: 24,
       },
       // Settings redesign — Delete-data dialog title (Frame 4).
       // Inter SemiBold 16/20 (Text-md l-20/Semibold) — line-height 20, not 24.
-      poppinsSemiboldSm: {
-        fontFamily: 'Poppins-SemiBold',
+      interSemiboldSm: {
+        fontFamily: 'Inter-SemiBold',
         fontSize: 16,
         lineHeight: 20,
       },
       // Favourite remove bottom-sheet title (Figma 3539:23380).
       // Poppins SemiBold 14/20 (body/sm Semibold) — one size smaller than
-      // poppinsSemiboldSm (16/20); the sheet header reads at body/sm, not Text-md.
-      poppinsSemiboldXsSm: {
-        fontFamily: 'Poppins-SemiBold',
+      // interSemiboldSm (16/20); the sheet header reads at body/sm, not Text-md.
+      interSemiboldXsSm: {
+        fontFamily: 'Inter-SemiBold',
         fontSize: 14,
         lineHeight: 20,
       },
       uacBodyMdMedium: {
-        fontFamily: 'Poppins-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 16,
         lineHeight: 24,
       },
       uacBodyMdRegular: {
-        fontFamily: 'Poppins-Regular',
+        fontFamily: 'Inter-Regular',
         fontSize: 16,
         lineHeight: 24,
       },
       uacBodyXsRegular: {
-        fontFamily: 'Poppins-Regular',
+        fontFamily: 'Inter-Regular',
         fontSize: 12,
         lineHeight: 16,
       },
       uacBodyXsMedium: {
-        fontFamily: 'Poppins-Medium',
+        fontFamily: 'Inter-Medium',
         fontSize: 12,
         lineHeight: 16,
       },
       // Home header weather temperature — Figma 3227:19834 (Poppins SemiBold 12/16).
-      poppinsSemiboldXs: {
-        fontFamily: 'Poppins-SemiBold',
+      interSemiboldXs: {
+        fontFamily: 'Inter-SemiBold',
         fontSize: 12,
         lineHeight: 16,
       },
       // Onboarding redesign (node 2849:8331) — Text-xxs caption pill label.
       // Figma Text-xxs = Poppins Regular 10/12. No existing 10/12 alias.
       // Source: figma-extraction-onboarding.md §4.2
-      poppinsCaptionXxs: {
-        fontFamily: 'Poppins-Regular',
+      interCaptionXxs: {
+        fontFamily: 'Inter-Regular',
         fontSize: 10,
         lineHeight: 12,
       },
       // Wardrobe add-item flow (node 2852:19750) — Poppins body text.
       // Text-md (l-24) Regular 16/24, Text-sm (l-20) Regular/Medium 14/20.
-      poppinsBodyMd: {
-        fontFamily: 'Poppins-Regular',
+      interBodyMd: {
+        fontFamily: 'Inter-Regular',
         fontSize: 16,
         lineHeight: 24,
       },
-      // Text-sm Regular 14/20 (sheet subtitles / body). This is the former
-      // interBodySm, renamed to poppinsBodySm in the Poppins-alias sweep.
-      poppinsBodySm: {
-        fontFamily: 'Poppins-Regular',
+      // Text-sm Regular 14/20 (sheet subtitles / body) — the 14/20-leading
+      // body/sm alias; distinct from interBodySmTight (14/16) below.
+      interBodySm: {
+        fontFamily: 'Inter-Regular',
         fontSize: 14,
         lineHeight: 20,
       },
-      // Text-sm Regular 14/16 — tight-leading body/sm. This is the ORIGINAL
-      // poppinsBodySm (Settings/legal/disclosure copy) that predates the
-      // Poppins-alias sweep; kept distinct so the 14/16 consumers don't
-      // inherit the 14/20 leading of the renamed alias above.
-      poppinsBodySmTight: {
-        fontFamily: 'Poppins-Regular',
+      // Text-sm Regular 14/16 — tight-leading body/sm (Settings/legal/
+      // disclosure copy); kept distinct from interBodySm (14/20) above so the
+      // 14/16 consumers don't inherit the 14/20 leading.
+      interBodySmTight: {
+        fontFamily: 'Inter-Regular',
         fontSize: 14,
         lineHeight: 16,
         letterSpacing: 0,
       },
-      poppinsMediumSm: {
-        fontFamily: 'Poppins-Medium',
+      interMediumSm: {
+        fontFamily: 'Inter-Medium',
         fontSize: 14,
         lineHeight: 20,
       },
       uacM3BodyLarge: {
-        fontFamily: 'Poppins-Regular',
+        fontFamily: 'Inter-Regular',
         fontSize: 16,
         lineHeight: 24,
       },
       uacM3BodySmall: {
-        fontFamily: 'Poppins-Regular',
+        fontFamily: 'Inter-Regular',
         fontSize: 12,
         lineHeight: 16,
         letterSpacing: 0.4,
@@ -527,9 +526,9 @@ export const theme = {
     // Type-family ROLES (DS names). RN renders with bundled faces; mono
     // (JetBrains Mono) is NOT bundled, so the screen falls back to platform mono.
     font: {
-      display: 'Poppins', // headings / display
-      ui: 'Poppins', // primary UI
-      uiAlt: 'Poppins', // alternate UI / body
+      display: 'Inter', // headings / display
+      ui: 'Inter', // primary UI
+      uiAlt: 'Inter', // alternate UI / body
       mono: 'JetBrains Mono', // labels / code (not bundled — falls back)
     },
   },

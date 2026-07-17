@@ -20,7 +20,7 @@ import { theme } from '../../theme/theme';
  *    it keeps the flag-OFF fallback flow pixel-stable.
  *  - `v2`: the onboarding-redesign look (Figma node 2849:8331) — `figmaCardSurface`
  *    (#f2efec) bg, radius 12 (`figmaTile`), caption pill `figmaCardTag`
- *    (rgba(18,18,18,0.75), per D5) with Inter 10/12 label (`poppinsCaptionXxs`).
+ *    (rgba(18,18,18,0.75), per D5) with Inter 10/12 label (`interCaptionXxs`).
  *    Selected = 4px `uacTextBase` border; dimmed = opacity 0.5; an optional
  *    numbered pin badge (D6 — View + number, max-2 ranking) sits top-right.
  *
@@ -181,15 +181,15 @@ const styles = StyleSheet.create({
   },
   labelText: {
     // Chip size SM (24px height) → 10px font per chip sizing spec.
-    fontFamily: 'Poppins-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 10,
     lineHeight: 12,
     color: '#87898B',
     textAlign: 'center',
   },
-  // v2 caption label: Inter Regular 10/12 (poppinsCaptionXxs), light on dark pill.
+  // v2 caption label: Inter Regular 10/12 (interCaptionXxs), light on dark pill.
   labelTextV2: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.uacBackgroundNeutral50,
   },
   labelTextSelected: {

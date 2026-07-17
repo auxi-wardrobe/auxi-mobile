@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaIconSurface,
   },
   dayNumber: {
-    ...theme.typography.aliases.poppinsBodyBold,
+    ...theme.typography.aliases.interBodyBold,
     fontSize: 18,
     lineHeight: 24,
     letterSpacing: 0,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
   },
   dayWeekday: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     lineHeight: 18,
     marginTop: 2,
     color: theme.colors.figmaTextSecondary,
@@ -504,12 +504,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyTitle: {
-    ...theme.typography.aliases.poppinsBodyMd,
+    ...theme.typography.aliases.interBodyMd,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
   emptyBody: {
-    ...theme.typography.aliases.poppinsBodyMd,
+    ...theme.typography.aliases.interBodyMd,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
     marginTop: 8,

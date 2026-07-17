@@ -76,11 +76,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   methodTitle: {
-    ...theme.typography.aliases.poppinsSemiboldSm,
+    ...theme.typography.aliases.interSemiboldSm,
     color: theme.colors.figmaTextPrimary,
   },
   methodDescription: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     marginTop: 2,
   },

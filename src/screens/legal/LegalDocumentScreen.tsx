@@ -106,11 +106,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.poppinsBodyBold,
+    ...theme.typography.aliases.interBodyBold,
     color: theme.ds.color.ink,
   },
   effectiveDate: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.ds.color.ink,
     letterSpacing: 0.15,
   },

@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
   },
   modalTitle: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     textAlign: 'center',
     color: theme.colors.uacTextBase,
     marginBottom: theme.spacing.m,

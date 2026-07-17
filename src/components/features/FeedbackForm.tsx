@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
     marginBottom: theme.spacing.l,
   },
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextPrimaryBase,
   },
   fieldLabel: {
-    ...theme.typography.aliases.poppinsMediumSm,
+    ...theme.typography.aliases.interMediumSm,
     color: theme.colors.uacTextBase,
     marginBottom: theme.spacing.s,
   },

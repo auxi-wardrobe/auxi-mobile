@@ -259,12 +259,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
     marginTop: theme.spacing.s,
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.l,
   },
   cancelLabel: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
   },

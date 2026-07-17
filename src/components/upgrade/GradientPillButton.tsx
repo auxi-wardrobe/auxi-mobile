@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     fontSize: 18,
     color: color.white,
   },

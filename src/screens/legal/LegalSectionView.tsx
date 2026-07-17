@@ -9,7 +9,7 @@ import type { LegalSection } from '../../content/legal';
  * LegalDocumentScreen stays small.
  *
  * Typography mirrors Figma node 3177:6642 — Poppins 16/24 body
- * (theme `poppinsBody`), bold for the document title/headings, text colour
+ * (theme `interBody`), bold for the document title/headings, text colour
  * `text/neutral/base` (`ds.color.ink`).
  */
 interface LegalSectionViewProps {
@@ -43,11 +43,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   heading: {
-    ...theme.typography.aliases.poppinsBodyBold,
+    ...theme.typography.aliases.interBodyBold,
     color: theme.ds.color.ink,
   },
   paragraph: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.ds.color.ink,
     letterSpacing: 0.15,
   },
@@ -57,11 +57,11 @@ const styles = StyleSheet.create({
     paddingLeft: theme.spacing.s,
   },
   bulletDot: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.ds.color.ink,
   },
   bulletText: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.ds.color.ink,
     letterSpacing: 0.15,
     flex: 1,

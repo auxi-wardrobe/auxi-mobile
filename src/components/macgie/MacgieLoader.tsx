@@ -189,12 +189,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   label: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
   },
   inlineLabel: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
   },
 });

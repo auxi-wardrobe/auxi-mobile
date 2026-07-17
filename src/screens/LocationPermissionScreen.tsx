@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     gap: 48,
   },
   title: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.figmaText,
     textAlign: 'left',
   },

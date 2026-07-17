@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
     marginTop: theme.spacing.xs,
