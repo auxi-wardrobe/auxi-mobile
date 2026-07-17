@@ -693,6 +693,16 @@ export const HomeScreen = () => {
     }
     const controller = new AbortController();
     pinAbortRef.current = controller;
+    // Fence this request against every other recommendation pipeline
+    // (refine submit, skip, temp-apply, cold-start) via the same counter
+    // they already check in valenGetRecommendation.onSuccess. Bumping it
+    // here invalidates any older in-flight non-pin response so it can't
+    // land after and clobber the freshly-pinned deck; capturing it lets
+    // this request's own `.then()` detect if IT went stale instead (e.g.
+    // the user submitted refine feedback while this pin request was still
+    // in flight) and skip applying outdated results (AU-428).
+    fetchGenerationRef.current += 1;
+    const requestGen = fetchGenerationRef.current;
 
     const activeSheet = listOutfitsRef.current[activeIndexRef.current];
     if (activeSheet) {
@@ -732,28 +742,35 @@ export const HomeScreen = () => {
         if (pinAbortRef.current !== controller) {
           return;
         }
-        v05SessionRef.current = result.sessionId ?? v05SessionRef.current;
-        if (result.outfits.length > 0) {
-          isFirstLoadRef.current = true;
-          const mapped: OutfitSheet[] = result.outfits.map(o => ({
-            items: o.items.map(mapV05Item),
-            outfitHash: o.outfit_hash,
-            caption: o.reasoning_human,
-          }));
-          setListOutfits(mapped);
-          setActiveIndex(0);
-          activeIndexRef.current = 0;
-          // A fresh pinned deck is a new generation cycle: clear the
-          // depletion/limit flags so buffering resumes for the pinned context
-          // and the limit sheet can fire again once the pinned pool is truly
-          // exhausted. Without this, pinning after a prior depletion leaves the
-          // user on a dead-end swipe with no OutfitLimitSheet. Mirrors the
-          // cold-start reset above.
-          unfavoritedSwipeCountRef.current = 0;
-          poolDepletedRef.current = false;
-          limitSheetShownRef.current = false;
-          setHasCycled(false);
-          setIsWardrobeGap(false);
+        // Another pipeline (refine submit/skip, temp-apply) bumped the
+        // counter while this request was in flight — its result already
+        // landed and is newer than ours. Resolve the pin state machine so
+        // taps aren't blocked forever, but don't overwrite the fresher deck.
+        const isStale = requestGen !== fetchGenerationRef.current;
+        if (!isStale) {
+          v05SessionRef.current = result.sessionId ?? v05SessionRef.current;
+          if (result.outfits.length > 0) {
+            isFirstLoadRef.current = true;
+            const mapped: OutfitSheet[] = result.outfits.map(o => ({
+              items: o.items.map(mapV05Item),
+              outfitHash: o.outfit_hash,
+              caption: o.reasoning_human,
+            }));
+            setListOutfits(mapped);
+            setActiveIndex(0);
+            activeIndexRef.current = 0;
+            // A fresh pinned deck is a new generation cycle: clear the
+            // depletion/limit flags so buffering resumes for the pinned context
+            // and the limit sheet can fire again once the pinned pool is truly
+            // exhausted. Without this, pinning after a prior depletion leaves the
+            // user on a dead-end swipe with no OutfitLimitSheet. Mirrors the
+            // cold-start reset above.
+            unfavoritedSwipeCountRef.current = 0;
+            poolDepletedRef.current = false;
+            limitSheetShownRef.current = false;
+            setHasCycled(false);
+            setIsWardrobeGap(false);
+          }
         }
         pinDispatch({
           type: result.lowConfidence ? 'GENERATE_FALLBACK' : 'GENERATE_SUCCESS',
