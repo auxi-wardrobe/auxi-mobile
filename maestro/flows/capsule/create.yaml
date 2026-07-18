@@ -1,0 +1,78 @@
+# auxi/maestro/flows/capsule/create.yaml
+# Capsule Wardrobe — create-a-capsule happy path (spec §5 create wizard).
+#
+# testID-driven end-to-end: sidebar → Capsule Wardrobe → create wizard
+# (name → requirements) → generating → detail. Assumes a logged-in session
+# (run ../_shared/login.yaml first) with a backend that serves /api/capsules.
+#
+# NOTE: authored best-effort; not run headless in this session (no sim). The
+# generating step depends on the synchronous backend generation resolving.
+#
+# Run: maestro test maestro/flows/capsule/create.yaml
+
+appId: com.auxi2026.app
+name: capsule-create
+tags:
+  - capsule
+  - regression
+env:
+  GEN_TIMEOUT_MS: 30000
+---
+# 0. Start logged-in on Home.
+- runFlow: ../_shared/login.yaml
+
+# 1. Open the sidebar drawer and enter Capsule Wardrobe.
+- tapOn:
+    id: home-menu-button
+- extendedWaitUntil:
+    visible:
+      id: sidebar-menu-capsule
+    timeout: 10000
+- tapOn:
+    id: sidebar-menu-capsule
+
+# 2. Empty state → start create (list "+" also works if capsules exist).
+- extendedWaitUntil:
+    visible:
+      id: capsule-list-add
+    timeout: 10000
+- tapOn:
+    id: capsule-list-add
+
+# 3. Step 1 — name.
+- extendedWaitUntil:
+    visible:
+      id: capsule-create-name-input
+    timeout: 10000
+- tapOn:
+    id: capsule-create-name-input
+- inputText: 'Work week'
+- tapOn:
+    id: capsule-create-continue
+
+# 4. Step 2 — requirements.
+- extendedWaitUntil:
+    visible:
+      id: capsule-info-outfit-target
+    timeout: 10000
+- tapOn:
+    id: capsule-info-temp-min
+- inputText: '10'
+- tapOn:
+    id: capsule-info-temp-max
+- inputText: '20'
+- tapOn:
+    id: capsule-info-outfit-target
+- inputText: '3'
+- tapOn:
+    id: capsule-info-create
+
+# 5. Generating screen appears, then resolves into the detail screen.
+- extendedWaitUntil:
+    visible:
+      id: capsule-generating-loader
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: capsule-detail-add
+    timeout: ${GEN_TIMEOUT_MS}

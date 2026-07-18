@@ -40,6 +40,12 @@ import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 import { BeautifyPendingScreen } from '../screens/wardrobe/BeautifyPendingScreen';
 import { BeautifyReviewScreen } from '../screens/wardrobe/BeautifyReviewScreen';
+import { CapsuleWardrobeScreen } from '../screens/capsule/CapsuleWardrobeScreen';
+import { CapsuleCreateScreen } from '../screens/capsule/CapsuleCreateScreen';
+import { CapsuleInfoScreen } from '../screens/capsule/CapsuleInfoScreen';
+import { CapsuleGeneratingScreen } from '../screens/capsule/CapsuleGeneratingScreen';
+import { CapsuleDetailScreen } from '../screens/capsule/CapsuleDetailScreen';
+import { CapsuleItemDetailScreen } from '../screens/capsule/CapsuleItemDetailScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
 import {
   registerPushTapHandlers,
@@ -292,6 +298,31 @@ export const AppNavigator = () => {
                 name="BeautifyReview"
                 component={BeautifyReviewScreen}
                 options={{ headerShown: false }}
+              />
+              {/* Capsule Wardrobe — reached from the sidebar menu. Generating
+                  disables the swipe-back gesture so a mid-flight generation
+                  isn't dismissed by an accidental edge swipe. */}
+              <Stack.Screen
+                name="CapsuleWardrobe"
+                component={CapsuleWardrobeScreen}
+              />
+              <Stack.Screen
+                name="CapsuleCreate"
+                component={CapsuleCreateScreen}
+              />
+              <Stack.Screen name="CapsuleInfo" component={CapsuleInfoScreen} />
+              <Stack.Screen
+                name="CapsuleGenerating"
+                component={CapsuleGeneratingScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="CapsuleDetail"
+                component={CapsuleDetailScreen}
+              />
+              <Stack.Screen
+                name="CapsuleItemDetail"
+                component={CapsuleItemDetailScreen}
               />
             </>
           )

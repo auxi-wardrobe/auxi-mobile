@@ -138,6 +138,13 @@ export const SidebarMenu: React.FC = () => {
           onPress={() => go('OutfitCanvas', close)}
         />
         <MenuItem
+          label={t('capsule.menu')}
+          Icon={Icons.Wardrobe}
+          testID="sidebar-menu-capsule"
+          isActive={routeName === 'CapsuleWardrobe'}
+          onPress={() => go('CapsuleWardrobe', close)}
+        />
+        <MenuItem
           label={t('sidebar.feedback')}
           Icon={Icons.Feedback}
           testID="sidebar-menu-feedback"
