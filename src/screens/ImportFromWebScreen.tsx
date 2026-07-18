@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -80,6 +87,14 @@ export const ImportFromWebScreen = () => {
   const [images, setImages] = useState<ExtractedImage[]>([]);
   const [selectSheetVisible, setSelectSheetVisible] = useState(false);
   const [previewImage, setPreviewImage] = useState<ExtractedImage | null>(null);
+  // The select sheet and the preview are BOTH native Modals. Presenting one
+  // while the other is still mid-dismiss deadlocks touch input on iOS (the
+  // screen goes unresponsive), so the two are never on-screen at once — each
+  // transition waits for the outgoing Modal's close before mounting the next.
+  // `pendingPreviewRef` carries the pick from sheet-close → preview-open;
+  // `reopenSheetRef` carries the intent from preview-close → sheet-reopen.
+  const pendingPreviewRef = useRef<ExtractedImage | null>(null);
+  const reopenSheetRef = useRef(false);
   // Multiple taps on Import must not create duplicate items (high-risk
   // scenario): the first tap navigates away instantly, so a once-only ref is
   // enough — no in-flight state to render.
@@ -180,9 +195,30 @@ export const ImportFromWebScreen = () => {
     [clearExtractTimer, t],
   );
 
+  // Pick an image → remember it and start closing the sheet. The preview only
+  // opens once the sheet's Modal has fully unmounted (handleSheetClosed), so the
+  // two Modals never overlap.
   const handleSelectImage = useCallback((image: ExtractedImage) => {
+    pendingPreviewRef.current = image;
     setSelectSheetVisible(false);
-    setPreviewImage(image);
+  }, []);
+
+  // Sheet finished closing → if it closed because a tile was picked, present the
+  // preview. A plain Cancel leaves the ref null, so this is a no-op. Present on
+  // the NEXT frame so the sheet Modal's unmount commits before the preview Modal
+  // mounts — presenting in the same commit can still race the native dismiss on
+  // iOS and re-trigger the freeze.
+  const handleSheetClosed = useCallback(() => {
+    const image = pendingPreviewRef.current;
+    if (!image) {
+      return;
+    }
+    pendingPreviewRef.current = null;
+    requestAnimationFrame(() => {
+      if (mountedRef.current) {
+        setPreviewImage(image);
+      }
+    });
   }, []);
 
   const handlePreviewCancel = useCallback(() => {
@@ -190,9 +226,25 @@ export const ImportFromWebScreen = () => {
     // Multiple candidates → return to the selection grid; a lone auto-selected
     // image has no grid to return to, so we drop back to the results page.
     if (images.length > 1) {
-      setSelectSheetVisible(true);
+      // iOS: reopen only after the preview Modal reports it has dismissed
+      // (handlePreviewClosed) to avoid stacking Modals. Android has no such
+      // deadlock and no Modal onDismiss, so reopen immediately.
+      if (Platform.OS === 'ios') {
+        reopenSheetRef.current = true;
+      } else {
+        setSelectSheetVisible(true);
+      }
     }
   }, [images.length]);
+
+  // Preview finished dismissing (iOS) → reopen the grid if that's where we came
+  // from. Import navigates away instead, so the flag stays false there.
+  const handlePreviewClosed = useCallback(() => {
+    if (reopenSheetRef.current) {
+      reopenSheetRef.current = false;
+      setSelectSheetVisible(true);
+    }
+  }, []);
 
   // NON-blocking import (mirrors the take-photo flow): tap Import → hand the
   // picked URL straight back to Wardrobe and navigate immediately. Wardrobe
@@ -364,6 +416,7 @@ export const ImportFromWebScreen = () => {
         images={images}
         onPreview={handleSelectImage}
         onCancel={() => setSelectSheetVisible(false)}
+        onClosed={handleSheetClosed}
       />
 
       <ImportPreviewModal
@@ -371,6 +424,7 @@ export const ImportFromWebScreen = () => {
         imageUrl={previewImage?.url ?? null}
         onCancel={handlePreviewCancel}
         onImport={handleImport}
+        onClosed={handlePreviewClosed}
       />
     </SafeAreaView>
   );

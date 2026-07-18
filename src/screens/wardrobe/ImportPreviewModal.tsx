@@ -17,6 +17,9 @@ interface ImportPreviewModalProps {
   imageUrl: string | null;
   onCancel: () => void;
   onImport: () => void;
+  // Fires (iOS) once this Modal has finished dismissing — lets the caller
+  // reopen the selection sheet without stacking two Modals mid-transition.
+  onClosed?: () => void;
 }
 
 /**
@@ -32,6 +35,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
   imageUrl,
   onCancel,
   onImport,
+  onClosed,
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -53,6 +57,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
       visible={visible}
       animationType="slide"
       onRequestClose={onCancel}
+      onDismiss={onClosed}
       transparent={false}
     >
       <View

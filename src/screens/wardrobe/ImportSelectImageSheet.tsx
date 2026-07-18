@@ -19,6 +19,9 @@ interface ImportSelectImageSheetProps {
   images: ExtractedImage[];
   onPreview: (image: ExtractedImage) => void;
   onCancel: () => void;
+  // Fires after the sheet's exit animation completes and its Modal unmounts —
+  // the safe moment to present the preview Modal without an iOS modal deadlock.
+  onClosed?: () => void;
 }
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -66,6 +69,7 @@ export const ImportSelectImageSheet: React.FC<ImportSelectImageSheetProps> = ({
   images,
   onPreview,
   onCancel,
+  onClosed,
 }) => {
   const { t } = useTranslation();
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
@@ -86,6 +90,7 @@ export const ImportSelectImageSheet: React.FC<ImportSelectImageSheetProps> = ({
     <ContextualBottomSheet
       visible={visible}
       onDismiss={onCancel}
+      onClosed={onClosed}
       testID="import-select-sheet"
     >
       <View style={styles.body}>

@@ -38,6 +38,13 @@ export interface ContextualBottomSheetProps {
   onDismiss: () => void;
   children?: React.ReactNode;
   testID?: string;
+  /**
+   * Fires once the exit animation has finished and the underlying Modal has
+   * unmounted. Use this to chain a *second* Modal after this one is fully gone —
+   * presenting a Modal while another is mid-dismiss deadlocks touch input on
+   * iOS. Not called on the initial (never-opened) mount.
+   */
+  onClosed?: () => void;
 }
 
 export const ContextualBottomSheet: React.FC<ContextualBottomSheetProps> = ({
@@ -45,6 +52,7 @@ export const ContextualBottomSheet: React.FC<ContextualBottomSheetProps> = ({
   onDismiss,
   children,
   testID,
+  onClosed,
 }) => {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -66,14 +74,29 @@ export const ContextualBottomSheet: React.FC<ContextualBottomSheetProps> = ({
   // Extra drag offset for swipe-to-dismiss gesture (clamp to >= 0, downward only).
   const dragY = useRef(new Animated.Value(0)).current;
 
+  // Latest onClosed without re-triggering the animation effect on every parent
+  // re-render (the callback is a fresh closure each render).
+  const onClosedRef = useRef(onClosed);
+  onClosedRef.current = onClosed;
+  // Only fire onClosed for a real open→close cycle, never on the initial mount.
+  const openedRef = useRef(false);
+
   useEffect(() => {
     if (visible) {
       setMounted(true);
+      openedRef.current = true;
     }
+    const fireClosed = () => {
+      if (openedRef.current) {
+        openedRef.current = false;
+        onClosedRef.current?.();
+      }
+    };
     if (reduced) {
       progress.setValue(visible ? 1 : 0);
       if (!visible) {
         setMounted(false);
+        fireClosed();
       }
       return;
     }
@@ -86,6 +109,7 @@ export const ContextualBottomSheet: React.FC<ContextualBottomSheetProps> = ({
     }).start(({ finished }) => {
       if (finished && !visible) {
         setMounted(false);
+        fireClosed();
       }
     });
   }, [visible, reduced, progress]);
