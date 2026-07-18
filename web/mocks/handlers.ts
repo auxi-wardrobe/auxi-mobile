@@ -38,7 +38,62 @@ let ta = 0;
 const tryAnotherResponse = () => { ta += 1; return { outfit: OUTFITS[ta % OUTFITS.length], session_id: 'mock-session-1', fallback: false, fallback_flags: [], trace: trace(), message: null }; };
 const tokens = () => ({ access_token: 'mock-access-token', refresh_token: 'mock-refresh-token', expires_in: 31536000, refresh_expires_in: 31536000, token_type: 'Bearer' });
 
+// ── Capsule Wardrobe mock data ───────────────────────────────────────────────
+// Rich WardrobeItem-shaped items so the capsule tiles/detail render with images.
+const cItem = (id: string, name: string, fam: string, category: string, formality: string) => ({
+  id, name, image_url: img(name, fam), image_png: null, image_studio: null,
+  category, category_family: fam.toUpperCase(), color_code: null, colors: [],
+  dominant_color: null, color_hex: null, occasion: [], mood: [], style_tags: ['minimal'],
+  description: null, formality_level: formality, is_common_item: false, is_favorited: false,
+  usage_frequency: 'NORMAL', is_preparing: false, is_exploration_item: false,
+  beautify_status: null, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+});
+const C_ITEMS = [
+  cItem('citm-1', 'White Oxford Shirt', 'top', 'shirt', 'smart_casual'),
+  cItem('citm-2', 'Navy Trousers', 'bottom', 'trousers', 'smart_casual'),
+  cItem('citm-3', 'Leather Loafers', 'footwear', 'shoes', 'smart_casual'),
+  cItem('citm-4', 'Charcoal Blazer', 'outerwear', 'blazer', 'formal'),
+  cItem('citm-5', 'Beige Knit', 'top', 'knit', 'casual'),
+  cItem('citm-6', 'Wool Scarf', 'accessory', 'scarf', 'casual'),
+];
+const cById: Record<string, ReturnType<typeof cItem>> = Object.fromEntries(C_ITEMS.map(i => [i.id, i]));
+const cOutfit = (id: string, ids: string[], note: string) => ({
+  id, outfit_hash: 'cap-' + id, styling_note: note, item_ids: ids, items: ids.map(x => cById[x]),
+});
+const C_OUTFITS = [
+  cOutfit('co-1', ['citm-1', 'citm-2', 'citm-3'], 'Clean weekday: crisp oxford with tailored trousers.'),
+  cOutfit('co-2', ['citm-5', 'citm-2', 'citm-3'], 'Relaxed: soft knit over the same tailored base.'),
+  cOutfit('co-3', ['citm-4', 'citm-1', 'citm-2', 'citm-3'], 'Polished: charcoal blazer for the sharpest days.'),
+];
+const capsuleFull = () => ({
+  id: 'cap-1', name: 'Work Week', status: 'success', item_count: C_ITEMS.length, outfit_count: C_OUTFITS.length,
+  created_at: '2026-07-18T08:00:00Z',
+  requirements: { temp_min: 12, temp_max: 24, formalness_level: 6, outfit_target: 3, shoe_limit: 2 },
+  category_groups: { outer: 1, top: 2, bottom: 1, footwear: 1, accessory: 1 },
+  summary: { outer_count: 1, top_count: 2, bottom_count: 1, shoe_count: 1, accessory_count: 1, weather_range: '12°–24°C', formalness_score: 6 },
+  items: C_ITEMS, outfits: C_OUTFITS, missing_categories: [],
+});
+const capsuleList = () => ({ capsules: [
+  { id: 'cap-1', name: 'Work Week', status: 'success', item_count: 6, outfit_count: 3, created_at: '2026-07-18T08:00:00Z' },
+  { id: 'cap-2', name: 'Weekend Travel', status: 'success_with_gaps', item_count: 4, outfit_count: 2, created_at: '2026-07-15T08:00:00Z' },
+] });
+
+// Registered before the catch-all so capsule calls get real shapes, not `{}`.
+const capsuleHandlers = [
+  http.get('*/api/capsules', () => HttpResponse.json(capsuleList())),
+  http.get('*/api/capsules/:id', () => HttpResponse.json(capsuleFull())),
+  // Slow create so the "generating" progress screen is visible for a preview.
+  http.post('*/api/capsules', async () => { await delay(6000); return HttpResponse.json(capsuleFull(), { status: 201 }); }),
+  http.post('*/api/capsules/:id/generate/retry', () => HttpResponse.json(capsuleFull())),
+  http.post('*/api/capsules/:id/items/from-outfits', () => HttpResponse.json({ items_added: 4, already_existed: 2, new_outfits: 3, capsule: capsuleFull() })),
+  http.post('*/api/capsules/:id/items/:itemId/change', () => HttpResponse.json(capsuleFull())),
+  http.post('*/api/capsules/:id/items', () => HttpResponse.json({ items_added: 3, already_existed: 1, new_outfits: 2, capsule: capsuleFull() })),
+  http.delete('*/api/capsules/:id/items/:itemId', () => HttpResponse.json({ removed: true, capsule: capsuleFull() })),
+  http.delete('*/api/capsules/:id', () => HttpResponse.json({ deleted: true })),
+];
+
 export const handlers = [
+  ...capsuleHandlers,
   http.get('*/api/me', () => HttpResponse.json(user)),
   http.get('*/me', () => HttpResponse.json(user)),
   http.post('*/api/auth/refresh', () => HttpResponse.json(tokens())),

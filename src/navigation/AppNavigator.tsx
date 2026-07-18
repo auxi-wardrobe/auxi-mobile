@@ -129,7 +129,7 @@ export const AppNavigator = () => {
     if (intent.kind === 'auth') {
       navigate('Auth', { screen: intent.name });
     } else {
-      navigate(intent.name);
+      navigate(intent.name, intent.params);
     }
   };
 

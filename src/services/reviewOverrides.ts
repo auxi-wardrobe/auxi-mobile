@@ -24,7 +24,9 @@ export const getForcedFirstLogin = (): boolean => forcedFirstLogin;
  *  - `app`  → top-level screen, navigate by name.
  *  - `auth` → screen nested in the `Auth` navigator.
  */
-export type ReviewNavIntent = { kind: 'app' | 'auth'; name: string } | null;
+export type ReviewNavIntent =
+  | { kind: 'app' | 'auth'; name: string; params?: Record<string, unknown> }
+  | null;
 
 let pendingNavIntent: ReviewNavIntent = null;
 

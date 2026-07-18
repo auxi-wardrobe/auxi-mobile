@@ -23,7 +23,7 @@ export type ShareGroup = 'Logged out' | 'Onboarding' | 'App';
  *             (navigate as `Auth` → { screen: name }).
  */
 export type ShareTarget =
-  | { kind: 'app'; name: string }
+  | { kind: 'app'; name: string; params?: Record<string, unknown> }
   | { kind: 'auth'; name: string };
 
 export interface ShareableScreen {
@@ -149,5 +149,64 @@ export const SHAREABLE_SCREENS: ShareableScreen[] = [
     group: 'App',
     authState: 'app',
     target: { kind: 'app', name: 'DesignSystem' },
+  },
+
+  // ── Capsule Wardrobe (param screens carry safe mock defaults) ────────────
+  {
+    key: 'capsule',
+    label: 'Capsule · list',
+    group: 'App',
+    authState: 'app',
+    target: { kind: 'app', name: 'CapsuleWardrobe' },
+  },
+  {
+    key: 'capsule-create',
+    label: 'Capsule · name',
+    group: 'App',
+    authState: 'app',
+    target: { kind: 'app', name: 'CapsuleCreate' },
+  },
+  {
+    key: 'capsule-info',
+    label: 'Capsule · requirements',
+    group: 'App',
+    authState: 'app',
+    target: { kind: 'app', name: 'CapsuleInfo', params: { name: 'Work Week' } },
+  },
+  {
+    key: 'capsule-generating',
+    label: 'Capsule · generating',
+    group: 'App',
+    authState: 'app',
+    target: {
+      kind: 'app',
+      name: 'CapsuleGenerating',
+      params: {
+        name: 'Work Week',
+        temp_min: 12,
+        temp_max: 24,
+        formalness_level: 6,
+        outfit_target: 3,
+        shoe_limit: 2,
+      },
+    },
+  },
+  {
+    key: 'capsule-detail',
+    label: 'Capsule · detail',
+    group: 'App',
+    authState: 'app',
+    target: { kind: 'app', name: 'CapsuleDetail', params: { capsuleId: 'cap-1' } },
+  },
+  {
+    key: 'capsule-item',
+    label: 'Capsule · item detail',
+    group: 'App',
+    authState: 'app',
+    target: {
+      kind: 'app',
+      name: 'CapsuleItemDetail',
+      params: { capsuleId: 'cap-1', itemId: 'citm-1' },
+    },
   },
 ];
