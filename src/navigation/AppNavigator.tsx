@@ -40,7 +40,6 @@ import { DesignSystemScreen } from '../screens/DesignSystemScreen';
 import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 import { BeautifyPendingScreen } from '../screens/wardrobe/BeautifyPendingScreen';
 import { BeautifyReviewScreen } from '../screens/wardrobe/BeautifyReviewScreen';
-import { CapsuleWardrobeScreen } from '../screens/capsule/CapsuleWardrobeScreen';
 import { CapsuleCreateScreen } from '../screens/capsule/CapsuleCreateScreen';
 import { CapsuleInfoScreen } from '../screens/capsule/CapsuleInfoScreen';
 import { CapsuleGeneratingScreen } from '../screens/capsule/CapsuleGeneratingScreen';
@@ -300,13 +299,10 @@ export const AppNavigator = () => {
                 component={BeautifyReviewScreen}
                 options={{ headerShown: false }}
               />
-              {/* Capsule Wardrobe — reached from the sidebar menu. Generating
-                  disables the swipe-back gesture so a mid-flight generation
-                  isn't dismissed by an accidental edge swipe. */}
-              <Stack.Screen
-                name="CapsuleWardrobe"
-                component={CapsuleWardrobeScreen}
-              />
+              {/* Capsule flow — reached from the wardrobe switcher ("Choose a
+                  wardrobe" → Create Capsule). Generating disables the swipe-back
+                  gesture so a mid-flight generation isn't dismissed by an
+                  accidental edge swipe. */}
               <Stack.Screen
                 name="CapsuleCreate"
                 component={CapsuleCreateScreen}

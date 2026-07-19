@@ -275,10 +275,10 @@ export type AppStackParamList = {
   LegalDocument: LegalScreenParams;
   // ───────────────────────────────────────────────────────────────────────
   // Capsule Wardrobe (spec plans/260718-0433-capsule-wardrobe/spec.md §5).
-  // Reached from the sidebar menu. Create is a 2-step wizard (name → reqs);
-  // the generating screen owns the create mutation and lets the user leave
-  // while it runs in the background (React-Query continuation + toast).
-  CapsuleWardrobe: undefined;
+  // Reached from the wardrobe switcher ("Choose a wardrobe" → Create Capsule).
+  // Create is a 2-step wizard (name → reqs); the generating screen owns the
+  // create mutation and lets the user leave while it runs in the background
+  // (React-Query continuation + toast).
   CapsuleCreate: undefined;
   CapsuleInfo: { name: string };
   CapsuleGenerating: {

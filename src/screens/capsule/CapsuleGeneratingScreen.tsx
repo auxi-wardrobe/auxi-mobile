@@ -121,7 +121,7 @@ export const CapsuleGeneratingScreen: React.FC = () => {
   const leaveInBackground = () => {
     trackCapsuleGenerationBackgrounded();
     leftRef.current = true;
-    navigation.navigate('CapsuleWardrobe');
+    navigation.navigate('Wardrobe');
   };
 
   if (failed) {
@@ -151,7 +151,7 @@ export const CapsuleGeneratingScreen: React.FC = () => {
           </MButton>
           <MButton
             variant="text"
-            onPress={() => navigation.navigate('CapsuleWardrobe')}
+            onPress={() => navigation.navigate('Wardrobe')}
             testID="capsule-generation-cancel"
           >
             {t('capsule.cancel')}
