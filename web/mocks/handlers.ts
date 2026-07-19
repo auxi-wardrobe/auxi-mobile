@@ -120,7 +120,7 @@ export const handlers = [
   http.delete('*/api/favorites/:id', () => HttpResponse.json({ ok: true })),
   http.get('*/api/body*', () => HttpResponse.json([])),
   http.get('*/api/items*', () => HttpResponse.json([])),
-  http.get('*/api/wardrobe*', () => HttpResponse.json([])),
+  http.get('*/api/wardrobe*', () => HttpResponse.json({ items: C_ITEMS })),
   http.get('*/api/weather*', () => HttpResponse.json({ temp_c: 24, is_rainy: false })),
 
   http.all('*/api/*', () => HttpResponse.json({})),

@@ -209,4 +209,11 @@ export const SHAREABLE_SCREENS: ShareableScreen[] = [
       params: { capsuleId: 'cap-1', itemId: 'citm-1' },
     },
   },
+  {
+    key: 'capsule-edit',
+    label: 'Capsule · edit settings',
+    group: 'App',
+    authState: 'app',
+    target: { kind: 'app', name: 'CapsuleEdit', params: { capsuleId: 'cap-1' } },
+  },
 ];
