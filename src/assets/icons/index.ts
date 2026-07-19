@@ -3,6 +3,7 @@ import IconGrid from '../images/icon_grid.svg';
 import IconSetting from '../images/icon_setting.svg';
 import IconWardrobe from '../images/icon_wardrobe.svg';
 import IconWardrobeNew from '../images/icon_wardrobe_new.svg';
+import IconCapsule from '../images/icon_capsule.svg';
 import IconHeart from '../images/icon_heart.svg';
 import IconUser from '../images/icon_user.svg';
 import IconBody from '../images/icon_body.svg';
@@ -58,6 +59,7 @@ export const Icons = {
   Setting: IconSetting,
   Wardrobe: IconWardrobe,
   WardrobeNew: IconWardrobeNew,
+  Capsule: IconCapsule,
   Heart: IconHeart,
   User: IconUser,
   Body: IconBody,
@@ -114,6 +116,7 @@ export {
   IconSetting,
   IconWardrobe,
   IconWardrobeNew,
+  IconCapsule,
   IconHeart,
   IconUser,
   IconBody,

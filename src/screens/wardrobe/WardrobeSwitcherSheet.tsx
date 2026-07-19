@@ -103,7 +103,11 @@ export const WardrobeSwitcherSheet: React.FC<WardrobeSwitcherSheetProps> = ({
         accessibilityLabel={t('capsule.create_capsule_row')}
       >
         <View style={styles.createIcon}>
-          <Icons.Plus width={20} height={20} />
+          <Icons.Capsule
+            width={22}
+            height={22}
+            color={theme.colors.figmaAction}
+          />
         </View>
         <View style={styles.rowText}>
           <Text style={styles.createTitle}>
