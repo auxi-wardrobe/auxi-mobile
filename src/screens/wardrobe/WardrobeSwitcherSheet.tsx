@@ -76,6 +76,21 @@ export const WardrobeSwitcherSheet: React.FC<WardrobeSwitcherSheetProps> = ({
               accessibilityLabel={label}
               accessibilityState={{ selected: row.selected }}
             >
+              <View style={styles.rowIcon}>
+                {isEntire ? (
+                  <Icons.Wardrobe
+                    width={22}
+                    height={22}
+                    color={theme.colors.figmaTextDark}
+                  />
+                ) : (
+                  <Icons.Capsule
+                    width={22}
+                    height={22}
+                    color={theme.colors.figmaTextDark}
+                  />
+                )}
+              </View>
               <View style={styles.rowText}>
                 <Text style={styles.rowName} numberOfLines={1}>
                   {label}
@@ -103,11 +118,7 @@ export const WardrobeSwitcherSheet: React.FC<WardrobeSwitcherSheetProps> = ({
         accessibilityLabel={t('capsule.create_capsule_row')}
       >
         <View style={styles.createIcon}>
-          <Icons.Capsule
-            width={22}
-            height={22}
-            color={theme.colors.figmaAction}
-          />
+          <Icons.Plus width={20} height={20} color={theme.colors.figmaAction} />
         </View>
         <View style={styles.rowText}>
           <Text style={styles.createTitle}>
@@ -140,6 +151,11 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.s,
     borderTopWidth: 1,
     borderTopColor: theme.colors.figmaListDivider,
+  },
+  rowIcon: {
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rowText: {
     flex: 1,
