@@ -80,7 +80,12 @@ const capsuleList = () => ({ capsules: [
 
 // Registered before the catch-all so capsule calls get real shapes, not `{}`.
 const capsuleHandlers = [
-  http.get('*/api/capsules', () => HttpResponse.json(capsuleList())),
+  http.get('*/api/capsules', () => {
+    // `?capsules=empty` on the page URL → no capsules yet (switcher shows just
+    // Entire Wardrobe + Create Capsule).
+    const empty = new URLSearchParams(window.location.search).get('capsules') === 'empty';
+    return HttpResponse.json(empty ? { capsules: [] } : capsuleList());
+  }),
   http.get('*/api/capsules/:id', () => HttpResponse.json(capsuleFull())),
   // Slow create so the "generating" progress screen is visible for a preview.
   http.post('*/api/capsules', async () => { await delay(6000); return HttpResponse.json(capsuleFull(), { status: 201 }); }),
