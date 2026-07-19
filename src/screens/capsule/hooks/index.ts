@@ -7,4 +7,5 @@ export {
   useRemoveCapsuleItem,
   useChangeCapsuleItem,
   useDeleteCapsule,
+  useUpdateCapsule,
 } from './useCapsuleMutations';

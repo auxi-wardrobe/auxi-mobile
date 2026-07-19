@@ -92,6 +92,16 @@ export interface CreateCapsuleInput {
   item_ids?: string[];
 }
 
+/** Body for `PATCH /capsules/{id}` (design revision §9.1 — all optional). */
+export interface UpdateCapsuleInput {
+  name?: string;
+  temp_min?: number | null;
+  temp_max?: number | null;
+  formalness_level?: number | null;
+  outfit_target?: number | null;
+  shoe_limit?: number | null;
+}
+
 /** Envelope returned by the add-items / add-from-outfits endpoints. */
 export interface AddItemsResult {
   items_added: number;
@@ -162,6 +172,24 @@ export const capsuleService = {
       return unwrapCapsule(response.data);
     } catch (error) {
       console.error('Error fetching capsule', error);
+      throw error;
+    }
+  },
+
+  /**
+   * PATCH /capsules/{id} → update provided fields; the backend re-runs
+   * generation when any of the 5 constraints changed (design revision §9.1).
+   * Returns the final CapsuleFull.
+   */
+  updateCapsule: async (
+    id: string,
+    patch: UpdateCapsuleInput,
+  ): Promise<CapsuleFull> => {
+    try {
+      const response = await apiClient.patch(`/capsules/${id}`, patch);
+      return unwrapCapsule(response.data);
+    } catch (error) {
+      console.error('Error updating capsule', error);
       throw error;
     }
   },

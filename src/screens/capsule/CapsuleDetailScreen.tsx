@@ -12,10 +12,20 @@ import { MacgieLoader } from '../../components/macgie';
 import { Icons } from '../../assets/icons';
 import {
   trackCapsuleDeleted,
+  trackCapsuleSwitcherOpened,
   trackCapsuleViewedOnce,
+  trackWardrobeContextSelected,
 } from '../../services/analytics';
+import { wardrobeKeys, wardrobeService } from '../../services/wardrobeService';
+import { useQuery } from '@tanstack/react-query';
 import type { AppStackParamList } from '../../types/navigation';
-import { useCapsule, useDeleteCapsule, useRetryGeneration } from './hooks';
+import { WardrobeSwitcherSheet } from '../wardrobe/WardrobeSwitcherSheet';
+import {
+  useCapsule,
+  useCapsules,
+  useDeleteCapsule,
+  useRetryGeneration,
+} from './hooks';
 import { capsuleItemIdSet, categoryRows } from './capsule-format';
 import { CapsuleItemTile } from './components/CapsuleItemTile';
 import { CapsuleSummaryPanel } from './components/CapsuleSummaryPanel';
@@ -46,9 +56,18 @@ export const CapsuleDetailScreen: React.FC = () => {
   const { data: capsule, isLoading } = useCapsule(capsuleId);
   const deleteCapsule = useDeleteCapsule();
   const retry = useRetryGeneration(capsuleId);
+  const capsulesQuery = useCapsules();
+  // Entire-wardrobe item count for the switcher's "Entire Wardrobe" row. Shares
+  // the wardrobe list cache (hits it warm when arriving from the Wardrobe tab).
+  const wardrobeQuery = useQuery({
+    queryKey: wardrobeKeys.list('All'),
+    queryFn: () => wardrobeService.getWardrobeItems(),
+    staleTime: 60_000,
+  });
 
   const [addVisible, setAddVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
+  const [switcherVisible, setSwitcherVisible] = useState(false);
 
   useEffect(() => {
     if (capsule) {
@@ -82,6 +101,31 @@ export const CapsuleDetailScreen: React.FC = () => {
     });
   };
 
+  const openSwitcher = () => {
+    trackCapsuleSwitcherOpened();
+    setSwitcherVisible(true);
+  };
+
+  const handleSelectEntire = () => {
+    trackWardrobeContextSelected('entire');
+    setSwitcherVisible(false);
+    navigation.navigate('Wardrobe');
+  };
+
+  const handleSelectCapsule = (id: string) => {
+    setSwitcherVisible(false);
+    if (id === capsuleId) {
+      return;
+    }
+    trackWardrobeContextSelected('capsule');
+    navigation.navigate('CapsuleDetail', { capsuleId: id });
+  };
+
+  const handleCreateCapsule = () => {
+    setSwitcherVisible(false);
+    navigation.navigate('CapsuleCreate');
+  };
+
   const rows = categoryRows(capsule?.category_groups);
 
   return (
@@ -91,6 +135,10 @@ export const CapsuleDetailScreen: React.FC = () => {
         leftTestID="capsule-detail-back"
         leftAccessibilityLabel={t('capsule.a11y_back')}
         onBack={() => navigation.goBack()}
+        onTitlePress={openSwitcher}
+        titleChevron
+        titleTestID="capsule-detail-switcher-title"
+        titleAccessibilityLabel={t('capsule.a11y_open_switcher')}
         right={
           <TopIconButton
             onPress={() => setAddVisible(true)}
@@ -164,6 +212,16 @@ export const CapsuleDetailScreen: React.FC = () => {
 
           <View style={s.deleteWrap}>
             <MButton
+              variant="secondary"
+              onPress={() =>
+                navigation.navigate('CapsuleEdit', { capsuleId })
+              }
+              testID="capsule-detail-edit"
+            >
+              {t('capsule.edit')}
+            </MButton>
+            <View style={s.editDeleteGap} />
+            <MButton
               variant="dangerOutline"
               onPress={() => setDeleteVisible(true)}
               testID="capsule-detail-delete"
@@ -173,6 +231,17 @@ export const CapsuleDetailScreen: React.FC = () => {
           </View>
         </ScrollView>
       )}
+
+      <WardrobeSwitcherSheet
+        visible={switcherVisible}
+        onClose={() => setSwitcherVisible(false)}
+        activeContext={capsuleId}
+        wardrobeItemCount={wardrobeQuery.data?.length ?? 0}
+        capsules={capsulesQuery.data ?? []}
+        onSelectEntire={handleSelectEntire}
+        onSelectCapsule={handleSelectCapsule}
+        onCreateCapsule={handleCreateCapsule}
+      />
 
       <CapsuleAddFlow
         capsuleId={capsuleId}

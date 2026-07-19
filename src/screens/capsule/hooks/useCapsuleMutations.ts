@@ -6,6 +6,7 @@ import {
   type CapsuleFull,
   type CapsuleOutfitSource,
   type CreateCapsuleInput,
+  type UpdateCapsuleInput,
 } from '../../../services/capsuleService';
 
 /**
@@ -90,6 +91,16 @@ export const useChangeCapsuleItem = (id: string) => {
         vars.scope,
         vars.outfitId,
       ),
+    onSuccess: () => invalidate(id),
+  });
+};
+
+/** PATCH /capsules/{id} — edit name/constraints (regenerates on constraint change). */
+export const useUpdateCapsule = (id: string) => {
+  const invalidate = useInvalidateCapsule();
+  return useMutation({
+    mutationFn: (patch: UpdateCapsuleInput) =>
+      capsuleService.updateCapsule(id, patch),
     onSuccess: () => invalidate(id),
   });
 };

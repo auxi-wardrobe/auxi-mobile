@@ -217,4 +217,7 @@ export const capsuleStyles = StyleSheet.create({
   deleteWrap: {
     marginTop: theme.spacing.l,
   },
+  editDeleteGap: {
+    height: theme.spacing.s,
+  },
 });

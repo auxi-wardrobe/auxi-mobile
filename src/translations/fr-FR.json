@@ -1036,6 +1036,15 @@
       "network_error": "Impossible de mettre à jour votre capsule. Vérifiez votre connexion et réessayez.",
       "gaps_summary": "Nous avons créé {{made}} tenues au lieu de {{target}}.",
       "gaps_missing_title": "Catégories manquantes",
+      "switcher_title": "Choisir une garde-robe",
+      "entire_wardrobe": "Garde-robe entière",
+      "create_capsule_row": "Créer une capsule",
+      "create_capsule_subtitle": "Créez-en une pour les voyages, le travail, les événements et plus encore.",
+      "edit": "Modifier",
+      "edit_title": "Modifier la capsule",
+      "save": "Enregistrer",
+      "settings_updated_toast": "Capsule mise à jour.",
+      "a11y_open_switcher": "Choisir une garde-robe",
       "a11y_open_menu": "Ouvrir le menu",
       "a11y_back": "Retour"
     }

@@ -46,6 +46,7 @@ import { CapsuleInfoScreen } from '../screens/capsule/CapsuleInfoScreen';
 import { CapsuleGeneratingScreen } from '../screens/capsule/CapsuleGeneratingScreen';
 import { CapsuleDetailScreen } from '../screens/capsule/CapsuleDetailScreen';
 import { CapsuleItemDetailScreen } from '../screens/capsule/CapsuleItemDetailScreen';
+import { CapsuleEditScreen } from '../screens/capsule/CapsuleEditScreen';
 import { registerDeepLinkListeners } from '../services/deepLinkHandler';
 import {
   registerPushTapHandlers,
@@ -323,6 +324,10 @@ export const AppNavigator = () => {
               <Stack.Screen
                 name="CapsuleItemDetail"
                 component={CapsuleItemDetailScreen}
+              />
+              <Stack.Screen
+                name="CapsuleEdit"
+                component={CapsuleEditScreen}
               />
             </>
           )

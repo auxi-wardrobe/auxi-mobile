@@ -399,6 +399,26 @@ export const trackCapsuleDeleted = (): void => {
   track('capsule_deleted');
 };
 
+/** Wardrobe switcher sheet opened (design revision §9.2). */
+export const trackCapsuleSwitcherOpened = (): void => {
+  track('capsule_switcher_opened');
+};
+
+/** A wardrobe context was selected in the switcher (entire vs a capsule). */
+export const trackWardrobeContextSelected = (
+  context: 'entire' | 'capsule',
+): void => {
+  track('wardrobe_context_selected', { context });
+};
+
+/** Capsule settings saved via the edit screen — `changed_constraints`
+ *  is true when any of the 5 numeric constraints changed (name-only = false). */
+export const trackCapsuleSettingsEdited = (
+  changedConstraints: boolean,
+): void => {
+  track('capsule_settings_edited', { changed_constraints: changedConstraints });
+};
+
 /**
  * Link events to a known user. Call after authentication. Uses the database
  * primary key as distinct_id (never email). Profile attributes go to

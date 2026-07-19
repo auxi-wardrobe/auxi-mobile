@@ -2,6 +2,7 @@ import React from 'react';
 import {
   View,
   Text,
+  Pressable,
   StyleSheet,
   TextStyle,
   ViewStyle,
@@ -59,6 +60,12 @@ interface HeaderProps {
     background?: HeaderBackground;
     /** Pad the top by the device safe-area inset (for headers flush to the screen top). */
     safeAreaTop?: boolean;
+    /** When set, the title becomes a Pressable (used by the wardrobe switcher). */
+    onTitlePress?: () => void;
+    /** Render a small chevron-down after the title (paired with onTitlePress). */
+    titleChevron?: boolean;
+    titleTestID?: string;
+    titleAccessibilityLabel?: string;
     style?: ViewStyle;
 }
 
@@ -84,6 +91,10 @@ const HeaderBase: React.FC<HeaderProps> = ({
     rightSlotStyle,
     background = 'solid',
     safeAreaTop = false,
+    onTitlePress,
+    titleChevron = false,
+    titleTestID,
+    titleAccessibilityLabel,
     style,
 }) => {
     const insets = useSafeAreaInsets();
@@ -130,16 +141,45 @@ const HeaderBase: React.FC<HeaderProps> = ({
             <View style={[styles.center, isLeft && styles.centerLeft]}>
                 {centerComponent ??
                     (title ? (
-                        <Text
-                            style={[
-                                styles.title,
-                                isLeft && styles.titleLeft,
-                                titleTextStyle,
-                            ]}
-                            numberOfLines={1}
-                        >
-                            {title}
-                        </Text>
+                        onTitlePress ? (
+                            <Pressable
+                                onPress={onTitlePress}
+                                style={styles.titlePressable}
+                                testID={titleTestID}
+                                accessibilityRole="button"
+                                accessibilityLabel={titleAccessibilityLabel ?? title}
+                                hitSlop={8}
+                            >
+                                <Text
+                                    style={[
+                                        styles.title,
+                                        isLeft && styles.titleLeft,
+                                        titleTextStyle,
+                                    ]}
+                                    numberOfLines={1}
+                                >
+                                    {title}
+                                </Text>
+                                {titleChevron && (
+                                    <Icons.ChevronDown
+                                        width={20}
+                                        height={20}
+                                        style={styles.titleChevron}
+                                    />
+                                )}
+                            </Pressable>
+                        ) : (
+                            <Text
+                                style={[
+                                    styles.title,
+                                    isLeft && styles.titleLeft,
+                                    titleTextStyle,
+                                ]}
+                                numberOfLines={1}
+                            >
+                                {title}
+                            </Text>
+                        )
                     ) : null)}
             </View>
 
@@ -185,6 +225,15 @@ const styles = StyleSheet.create({
     titleLeft: {
         textAlign: 'left',
     },
+    titlePressable: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        columnGap: 4,
+    },
+    titleChevron: {
+        marginTop: 2,
+    },
 });
 
 /* ------------------------------------------------------------------ *
@@ -205,6 +254,11 @@ interface PresetProps {
     onBack?: () => void;
     leftTestID?: string;
     leftAccessibilityLabel?: string;
+    /** Make the title tappable + show a chevron (wardrobe switcher). */
+    onTitlePress?: () => void;
+    titleChevron?: boolean;
+    titleTestID?: string;
+    titleAccessibilityLabel?: string;
     style?: ViewStyle;
 }
 

@@ -541,7 +541,12 @@ Curated wardrobe subsets ("capsules") with rule-based outfit generation (spec `p
 | `capsule_item_removed` | Item removed from capsule | `CapsuleItemDetailScreen.tsx` | `used_in_outfits` |
 | `capsule_item_changed` | Item swapped | `CapsuleItemDetailScreen.tsx` | `scope` (`outfit` / `all`) |
 | `capsule_deleted` | Capsule deleted | `CapsuleDetailScreen.tsx` | — |
+| `capsule_switcher_opened` | "Choose a wardrobe" sheet opened (header title tap) | `WardrobeScreen.tsx`, `CapsuleDetailScreen.tsx` | — |
+| `wardrobe_context_selected` | A wardrobe context chosen in the switcher | `WardrobeScreen.tsx`, `CapsuleDetailScreen.tsx` | `context` (`entire` / `capsule`) |
+| `capsule_settings_edited` | Capsule settings saved via the edit screen | `CapsuleEditScreen.tsx` | `changed_constraints` (bool — a numeric constraint changed vs name-only) |
 
+> Design revision 260719 (wardrobe switcher + capsule edit): the three events above are added by the switcher/edit surface (spec `plans/260718-0433-capsule-wardrobe/spec.md` §9.2). `wardrobe_context_selected.context` is a closed enum; `capsule_settings_edited.changed_constraints` is a boolean (true regenerates outfits server-side). No capsule name is ever sent.
+>
 > PII: none. Constraints (`formalness_level`, `outfit_target`, `shoe_limit`, `temp` via the `has_temp_range` boolean) are numeric/boolean; `error_kind` is a closed enum (`network_error` / `timeout` / `server_error` / `not_found` / `unknown`) derived by `classifyCapsuleError`; counts come from live server joins.
 >
 > Local-notification gap (§6 style): the "notify me when ready" seam (`src/services/capsuleNotifications.ts`) is a logged no-op — the repo ships only remote FCM display (`@react-native-firebase/messaging`), no local-notification lib. Re-wire condition: add a local-notification dependency, then implement `notifyCapsuleReady`. The in-app `toast.success('Your capsule is ready.')` is today's user-visible signal.

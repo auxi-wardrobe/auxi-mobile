@@ -15,12 +15,14 @@ jest.mock('../apiClient', () => ({
   apiClient: {
     get: jest.fn(),
     post: jest.fn(),
+    patch: jest.fn(),
     delete: jest.fn(),
   },
 }));
 
 const mockedGet = apiClient.get as jest.Mock;
 const mockedPost = apiClient.post as jest.Mock;
+const mockedPatch = apiClient.patch as jest.Mock;
 const mockedDelete = apiClient.delete as jest.Mock;
 
 const fullCapsule = (overrides: Partial<CapsuleFull> = {}): CapsuleFull => ({
@@ -58,6 +60,7 @@ const fullCapsule = (overrides: Partial<CapsuleFull> = {}): CapsuleFull => ({
 beforeEach(() => {
   mockedGet.mockReset();
   mockedPost.mockReset();
+  mockedPatch.mockReset();
   mockedDelete.mockReset();
 });
 
@@ -178,6 +181,27 @@ describe('changeItem', () => {
       replacement_item_id: 'i9',
       scope: 'all',
     });
+  });
+});
+
+describe('updateCapsule', () => {
+  it('PATCHes /capsules/{id} with the patch and returns a bare CapsuleFull', async () => {
+    mockedPatch.mockResolvedValue({ data: fullCapsule({ name: 'Renamed' }) });
+    const res = await capsuleService.updateCapsule('cap-1', {
+      name: 'Renamed',
+      shoe_limit: 3,
+    });
+    expect(mockedPatch).toHaveBeenCalledWith('/capsules/cap-1', {
+      name: 'Renamed',
+      shoe_limit: 3,
+    });
+    expect(res.name).toBe('Renamed');
+  });
+
+  it('unwraps a { capsule } envelope', async () => {
+    mockedPatch.mockResolvedValue({ data: { capsule: fullCapsule() } });
+    const res = await capsuleService.updateCapsule('cap-1', { temp_min: 5 });
+    expect(res.id).toBe('cap-1');
   });
 });
 

@@ -292,4 +292,7 @@ export type AppStackParamList = {
   };
   CapsuleDetail: { capsuleId: string };
   CapsuleItemDetail: { capsuleId: string; itemId: string };
+  // Edit a capsule's name + requirements (design revision §9.2). Save PATCHes
+  // /capsules/{id}; a constraint change regenerates outfits server-side.
+  CapsuleEdit: { capsuleId: string };
 };

@@ -1036,6 +1036,15 @@
       "network_error": "Couldn't update your capsule. Check your connection and try again.",
       "gaps_summary": "We created {{made}} outfits instead of {{target}}.",
       "gaps_missing_title": "Missing categories",
+      "switcher_title": "Choose a wardrobe",
+      "entire_wardrobe": "Entire Wardrobe",
+      "create_capsule_row": "Create Capsule",
+      "create_capsule_subtitle": "Create one for travel, work, events, and more.",
+      "edit": "Edit",
+      "edit_title": "Edit capsule",
+      "save": "Save",
+      "settings_updated_toast": "Capsule updated.",
+      "a11y_open_switcher": "Choose a wardrobe",
       "a11y_open_menu": "Open menu",
       "a11y_back": "Go back"
     }
