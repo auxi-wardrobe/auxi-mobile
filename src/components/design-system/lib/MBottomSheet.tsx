@@ -28,6 +28,11 @@ import {
   space,
   type,
 } from '../m-tokens';
+// zIndex tiers live in the main theme (canonical six-tier model). A bottom
+// sheet is tier 4 ("modal") and MUST paint above tier-2 sticky chrome
+// (header/footer/tab-bar/FAB) — otherwise a screen's floating footer overlaps
+// the sheet. See docs/Z_INDEX_LAYERING.md.
+import { theme } from '../../../theme/theme';
 import { useOverlayProgress } from './useOverlayProgress';
 import { motion } from '../../../theme/motion';
 
@@ -247,7 +252,16 @@ const ActionRow: React.FC<{
 };
 
 const styles = StyleSheet.create({
-  scrim: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+    // Tier 4 (modal) so the sheet + its scrim sit above any tier-2 sticky
+    // footer / FAB / tab-bar on the host screen. A high (but sane) elevation
+    // keeps Android's draw order consistent with the zIndex; the scrim is
+    // transparent so it casts no shadow of its own.
+    zIndex: theme.zIndex.modal,
+    elevation: 24,
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: role.scrim, // rgba(0,0,0,0.45) — PR #138 / Figma scrim
