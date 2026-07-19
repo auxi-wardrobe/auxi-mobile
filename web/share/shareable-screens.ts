@@ -152,13 +152,8 @@ export const SHAREABLE_SCREENS: ShareableScreen[] = [
   },
 
   // ── Capsule Wardrobe (param screens carry safe mock defaults) ────────────
-  {
-    key: 'capsule',
-    label: 'Capsule · list',
-    group: 'App',
-    authState: 'app',
-    target: { kind: 'app', name: 'CapsuleWardrobe' },
-  },
+  // Entry point is now the wardrobe switcher (see the 'wardrobe' screen); the
+  // old standalone capsule list screen was removed.
   {
     key: 'capsule-create',
     label: 'Capsule · name',
