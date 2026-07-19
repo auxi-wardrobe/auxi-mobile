@@ -51,6 +51,7 @@ export const WardrobeSwitcherSheet: React.FC<WardrobeSwitcherSheetProps> = ({
     <MBottomSheet
       visible={visible}
       onDismiss={onClose}
+      docked
       testID="wardrobe-switcher-sheet"
     >
       <Text style={styles.title}>{t('capsule.switcher_title')}</Text>

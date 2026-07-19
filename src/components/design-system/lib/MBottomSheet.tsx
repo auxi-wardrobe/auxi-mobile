@@ -18,6 +18,7 @@
 import React, { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   color,
   FONT,
@@ -44,6 +45,12 @@ export interface MBottomSheetProps {
   onDismiss: () => void;
   children?: React.ReactNode;
   testID?: string;
+  /**
+   * Dock the sheet flush to the bottom edge (full-width, rounded top corners
+   * only, safe-area bottom padding) instead of the default floating card. Use
+   * for primary bottom-anchored menus like the wardrobe switcher.
+   */
+  docked?: boolean;
 }
 
 export const MBottomSheet: React.FC<MBottomSheetProps> = ({
@@ -51,7 +58,9 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
   onDismiss,
   children,
   testID,
+  docked = false,
 }) => {
+  const insets = useSafeAreaInsets();
   const { progress, mounted } = useOverlayProgress(visible);
   // Extra drag offset for swipe-to-dismiss gesture (clamp to >= 0, downward only).
   const dragY = useRef(new Animated.Value(0)).current;
@@ -107,6 +116,8 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
           <Animated.View
             style={[
               styles.sheet,
+              docked && styles.sheetDocked,
+              docked && { paddingBottom: sheetCardSpec.pad + insets.bottom },
               shadow.sheetCard,
               { transform: [{ translateY }] },
             ]}
@@ -277,6 +288,15 @@ const styles = StyleSheet.create({
     marginHorizontal: sheetCardSpec.gutter, // 8 each side
     marginBottom: sheetCardSpec.marginBottom, // 8 (=== theme.spacing.s)
     overflow: 'hidden',
+  },
+  // Docked variant — flush to the bottom edge, full width, top corners only.
+  sheetDocked: {
+    marginHorizontal: 0,
+    marginBottom: 0,
+    borderTopLeftRadius: sheetCardSpec.radius,
+    borderTopRightRadius: sheetCardSpec.radius,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   grab: {
     width: 36,
