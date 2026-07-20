@@ -15,6 +15,8 @@ import {
 import { parseTokenParam, stripTokenFromUrl } from './web/boot/tokenParam';
 import { authStateForSearch, screenForSearch } from './web/share/screen-intent';
 import { DeviceFrame } from './web/device-frame/DeviceFrame';
+import { startMocks } from './web/mocks/browser';
+import { seedMockAuth } from './web/boot/MockAuthBoot';
 import App from './App';
 
 const isEmbed =
@@ -94,6 +96,17 @@ async function boot() {
   if (screen) setPendingNavIntent(screen.target);
   // Onboarding screens only mount when is_first_login — force it for review.
   if (authState === 'first-login') setForcedFirstLogin(true);
+
+  // Local sandbox preview: `?mock=1` intercepts the API with MSW and seeds a
+  // mock session so the authenticated stack mounts without a real backend or
+  // shared cookie. Gated so the deployed designer flow (real backend) is
+  // untouched — it never passes `?mock=1`.
+  if (new URLSearchParams(search).has('mock')) {
+    await startMocks();
+    await seedMockAuth();
+    root.render(<App />);
+    return;
+  }
 
   const paramToken = parseTokenParam(search);
   if (paramToken) {

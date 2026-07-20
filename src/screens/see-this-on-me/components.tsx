@@ -31,7 +31,7 @@ interface StomHeaderProps {
 /**
  * Centered-title header (Figma `header` 3395:8500) — back chevron + title +
  * optional right action (kept optically centered by the 44px slots). Mirrors
- * the FavouriteScreen header treatment (poppinsMediumSm 14/20, blurred white bg).
+ * the FavouriteScreen header treatment (interMediumSm 14/20, blurred white bg).
  */
 export const StomHeader: React.FC<StomHeaderProps> = ({
   title,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaCaptionPillBg,
   },
   promptText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
     flexShrink: 1,
   },
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaCaptionPillBg,
   },
   inlineErrorText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaRed,
   },
   sheetOverlay: {
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   sheetTitle: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     textAlign: 'center',
     color: theme.colors.figmaTextPrimary,
     marginBottom: theme.spacing.m,
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sheetActionText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaAction,
   },
   sheetDivider: {
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sheetCancelText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaRed,
   },
 });

@@ -273,4 +273,26 @@ export type AppStackParamList = {
   // B5. Reachable from Settings while authenticated; the auth stack registers
   // the same route+param shape for the Welcome-screen (unauth) entry point.
   LegalDocument: LegalScreenParams;
+  // ───────────────────────────────────────────────────────────────────────
+  // Capsule Wardrobe (spec plans/260718-0433-capsule-wardrobe/spec.md §5).
+  // Reached from the wardrobe switcher ("Choose a wardrobe" → Create Capsule).
+  // Create is a 2-step wizard (name → reqs); the generating screen owns the
+  // create mutation and lets the user leave while it runs in the background
+  // (React-Query continuation + toast).
+  CapsuleCreate: undefined;
+  CapsuleInfo: { name: string };
+  CapsuleGenerating: {
+    name: string;
+    temp_min: number | null;
+    temp_max: number | null;
+    formalness_level: number | null;
+    outfit_target: number | null;
+    shoe_limit: number | null;
+    item_ids?: string[];
+  };
+  CapsuleDetail: { capsuleId: string };
+  CapsuleItemDetail: { capsuleId: string; itemId: string };
+  // Edit a capsule's name + requirements (design revision §9.2). Save PATCHes
+  // /capsules/{id}; a constraint change regenerates outfits server-side.
+  CapsuleEdit: { capsuleId: string };
 };

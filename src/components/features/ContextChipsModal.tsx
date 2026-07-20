@@ -319,11 +319,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
   },
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.figmaDivider,
   },
   confirmText: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.figmaPrimaryButtonText,
   },
   confirmTextDisabled: {

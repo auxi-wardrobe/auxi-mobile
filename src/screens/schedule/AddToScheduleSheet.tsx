@@ -54,11 +54,11 @@ export const AddToScheduleSheet: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   title: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
     marginBottom: theme.spacing.m,

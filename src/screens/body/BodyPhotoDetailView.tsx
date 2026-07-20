@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   detailPlaceholderText: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   detailText: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextBase,
   },
   detailActions: {
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   detailDeleteLabel: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.figmaRed,
   },
 });

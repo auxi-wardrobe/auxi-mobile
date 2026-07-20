@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.figmaItemDetailModalDivider,
   },
   modalTitle: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   modalClose: {
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.figmaItemDetailOptionDotBorder,
   },
   optionText: {
-    ...theme.typography.aliases.poppinsBodyMd,
+    ...theme.typography.aliases.interBodyMd,
     color: theme.colors.figmaItemDetailRowText,
   },
 });

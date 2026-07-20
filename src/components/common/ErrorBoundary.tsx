@@ -91,13 +91,13 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.uacBackgroundBase,
   },
   title: {
-    ...theme.typography.aliases.poppinsBodyBold,
+    ...theme.typography.aliases.interBodyBold,
     color: theme.colors.uacTextPrimaryBase,
     textAlign: 'center',
     marginBottom: theme.spacing.uacDimension12,
   },
   body: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextPrimaryBase,
     textAlign: 'center',
     marginBottom: theme.spacing.xl,
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
   },
   retryText: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.figmaTextDark,
   },
 });

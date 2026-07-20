@@ -283,6 +283,142 @@ export const trackOutfitUnscheduled = (
   track('outfit_unscheduled', { source });
 };
 
+// ── Capsule Wardrobe ───────────────────────────────────────────────────────
+// Literal event names (no template strings). NEVER send the capsule name (free
+// text) — only numeric constraints, sanitized enums, and counts. Sources:
+// spec.md §6. `capsule_viewed` is deduped per capsule id per session (Set
+// pattern, mirrors trackRecommendationViewedOnce).
+
+/** `+` tapped on the capsule list → creation flow entered. */
+export const trackCapsuleCreationStarted = (source: string): void => {
+  track('capsule_creation_started', { source });
+};
+
+/** Create tapped on the requirements step — numeric constraints only. */
+export const trackCapsuleConfigured = (props: {
+  has_temp_range: boolean;
+  formalness_level?: number;
+  outfit_target?: number;
+  shoe_limit?: number;
+}): void => {
+  track('capsule_configured', {
+    has_temp_range: props.has_temp_range,
+    ...(typeof props.formalness_level === 'number'
+      ? { formalness_level: props.formalness_level }
+      : {}),
+    ...(typeof props.outfit_target === 'number'
+      ? { outfit_target: props.outfit_target }
+      : {}),
+    ...(typeof props.shoe_limit === 'number'
+      ? { shoe_limit: props.shoe_limit }
+      : {}),
+  });
+};
+
+/** Generation begins (create mutation fired on the generating screen). */
+export const trackCapsuleGenerationStarted = (outfitTarget?: number): void => {
+  track('capsule_generation_started', {
+    ...(typeof outfitTarget === 'number' ? { outfit_target: outfitTarget } : {}),
+  });
+};
+
+/** "Leave — notify me when ready" tapped. */
+export const trackCapsuleGenerationBackgrounded = (): void => {
+  track('capsule_generation_backgrounded');
+};
+
+/** Generation resolved success / success_with_gaps. */
+export const trackCapsuleGenerated = (props: {
+  status: string;
+  item_count: number;
+  outfit_count: number;
+}): void => {
+  track('capsule_generated', props);
+};
+
+/** Generation API error — `error_kind` is a sanitized enum, never a raw msg. */
+export const trackCapsuleGenerationFailed = (
+  errorKind: string,
+  status?: string,
+): void => {
+  track('capsule_generation_failed', {
+    error_kind: errorKind,
+    ...(status ? { status } : {}),
+  });
+};
+
+/**
+ * Fire `capsule_viewed` at most once per capsule id per session. Detail-screen
+ * re-focus / re-mount would otherwise over-count. Set lives module-level so it
+ * spans re-mounts but resets on app restart (per-session semantics).
+ */
+const seenCapsules = new Set<string>();
+export const trackCapsuleViewedOnce = (
+  capsuleId: string,
+  props: { item_count: number; outfit_count: number },
+): void => {
+  if (!capsuleId || seenCapsules.has(capsuleId)) {
+    return;
+  }
+  seenCapsules.add(capsuleId);
+  track('capsule_viewed', props);
+};
+
+/** Expandable summary opened on the detail screen. */
+export const trackCapsuleSummaryExpanded = (): void => {
+  track('capsule_summary_expanded');
+};
+
+/** An add-source option was chosen (wardrobe | favourites | creations). */
+export const trackCapsuleAddSourceSelected = (source: string): void => {
+  track('capsule_add_source_selected', { source });
+};
+
+/** Items successfully added to a capsule. */
+export const trackCapsuleItemsAdded = (props: {
+  source: string;
+  items_added: number;
+  new_outfits: number;
+  already_existed: number;
+}): void => {
+  track('capsule_items_added', props);
+};
+
+/** An item was removed from a capsule. */
+export const trackCapsuleItemRemoved = (usedInOutfits: number): void => {
+  track('capsule_item_removed', { used_in_outfits: usedInOutfits });
+};
+
+/** An item was swapped (scope = outfit | all). */
+export const trackCapsuleItemChanged = (scope: string): void => {
+  track('capsule_item_changed', { scope });
+};
+
+/** A capsule was deleted. */
+export const trackCapsuleDeleted = (): void => {
+  track('capsule_deleted');
+};
+
+/** Wardrobe switcher sheet opened (design revision §9.2). */
+export const trackCapsuleSwitcherOpened = (): void => {
+  track('capsule_switcher_opened');
+};
+
+/** A wardrobe context was selected in the switcher (entire vs a capsule). */
+export const trackWardrobeContextSelected = (
+  context: 'entire' | 'capsule',
+): void => {
+  track('wardrobe_context_selected', { context });
+};
+
+/** Capsule settings saved via the edit screen — `changed_constraints`
+ *  is true when any of the 5 numeric constraints changed (name-only = false). */
+export const trackCapsuleSettingsEdited = (
+  changedConstraints: boolean,
+): void => {
+  track('capsule_settings_edited', { changed_constraints: changedConstraints });
+};
+
 /**
  * Link events to a known user. Call after authentication. Uses the database
  * primary key as distinct_id (never email). Profile attributes go to

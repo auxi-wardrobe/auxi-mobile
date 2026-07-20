@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     marginBottom: -theme.spacing.s,
   },
   headline: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
@@ -207,6 +207,10 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: theme.borderRadius.l,
     backgroundColor: theme.colors.figmaCardSurface,
+  },
+  shapeLabel: {
+    ...theme.typography.aliases.interButton,
+    color: theme.colors.uacTextBase,
   },
   dots: {
     flexDirection: 'row',

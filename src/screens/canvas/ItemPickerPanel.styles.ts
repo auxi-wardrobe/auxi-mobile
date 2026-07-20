@@ -35,7 +35,7 @@ export const pickerStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontFamily: 'Poppins-SemiBold',
+    fontFamily: 'Inter-SemiBold',
     fontSize: 16,
     color: theme.colors.figmaTextPrimary,
   },
@@ -83,7 +83,7 @@ export const pickerStyles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
     color: theme.colors.figmaTextSecondary,
-    fontFamily: 'Poppins-Regular',
+    fontFamily: 'Inter-Regular',
   },
   footer: {
     paddingHorizontal: 16,
@@ -108,7 +108,7 @@ export const pickerStyles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   confirmBtnLabel: {
-    fontFamily: 'Poppins-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: theme.colors.figmaPrimaryButtonText,
     letterSpacing: 0.15,

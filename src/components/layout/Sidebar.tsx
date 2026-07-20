@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaBackground,
   },
   pillText: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.figmaTextDark,
   },
   // Inactive (not on Home): drop the light pill + use the cream-on-dark
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
   },
   menuText: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextPrimaryBase,
   },
   // Dark text on the white active pill for contrast (light cream base

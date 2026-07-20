@@ -246,11 +246,11 @@ export const ScheduleDatePickerSheet: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   eyebrow: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   selectedDate: {
-    ...theme.typography.aliases.poppinsBodyBold,
+    ...theme.typography.aliases.interBodyBold,
     fontSize: 28,
     lineHeight: 36,
     letterSpacing: 0,
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     height: 44,
   },
   monthLabel: {
-    ...theme.typography.aliases.poppinsMediumSm,
+    ...theme.typography.aliases.interMediumSm,
     color: theme.colors.uacTextBase,
   },
   monthNav: {
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   dowLabel: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
     width: `${100 / 7}%`,
     textAlign: 'center',
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.uacTextBase,
   },
   dayText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
   },
   dayTextSelected: {
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelText: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.uacTextBase,
   },
 });

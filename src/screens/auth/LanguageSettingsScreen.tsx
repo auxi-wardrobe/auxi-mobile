@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   labelVietnamese: {
     // Noto-Sans is bundled per foundation (fonts vendored); fall back to
     // System if the family alias isn't registered (smoke-test safety).
-    fontFamily: 'Poppins-Regular',
+    fontFamily: 'Inter-Regular',
   },
   radioOuter: {
     width: 24,

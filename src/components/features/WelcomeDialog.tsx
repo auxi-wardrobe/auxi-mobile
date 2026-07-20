@@ -109,12 +109,12 @@ const styles = StyleSheet.create({
   },
   // Title — 14px semibold (Poppins-SemiBold 14/20).
   title: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   // Body — 14px regular; bump line-height for a readable two-line paragraph.
   body: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     lineHeight: 20,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.l,
   },
   ctaLabel: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.white,
   },
 });

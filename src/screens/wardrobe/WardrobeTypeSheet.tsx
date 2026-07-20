@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   // horizontal + top padding and the home-indicator bottom inset — this content
   // only owns its vertical rhythm.
   title: {
-    ...theme.typography.aliases.poppinsSemiboldSm,
+    ...theme.typography.aliases.interSemiboldSm,
     color: theme.colors.figmaTextPrimary,
     paddingBottom: 12,
   },

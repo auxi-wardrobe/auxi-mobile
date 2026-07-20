@@ -9,7 +9,7 @@
  *
  * Tokens: filled segment + back glyph = uacTextBase (#1d1f23, border/neutral/base);
  * empty segment = figmaCaptionPillBg (#eee6df) faint greige; step label =
- * figmaOnboardingStepLabel (#9e968e). poppinsCaptionXxs (Inter 10/12) for the label.
+ * figmaOnboardingStepLabel (#9e968e). interCaptionXxs (Inter 10/12) for the label.
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';

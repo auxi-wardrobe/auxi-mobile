@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   heading: {
-    ...theme.typography.aliases.poppinsBodySmTight,
+    ...theme.typography.aliases.interBodySmTight,
     color: theme.colors.figmaTextPrimary,
     marginTop: theme.spacing.l,
   },

@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tileBadgeText: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.white,
   },
   // "New" — mint fill (reuses the success/200 token) + dark text.
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaSnackbarSuccessBg,
   },
   tileNewBadgeText: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.figmaTextPrimary,
   },
   // "Less use" — soft coral fill + danger-red text (matches the item-detail
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaTileLessUsedBadgeBg,
   },
   tileLessUsedBadgeText: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.figmaItemDetailDanger,
   },
 });

@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.l,
   },
   errorText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
   },

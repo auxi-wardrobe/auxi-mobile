@@ -242,11 +242,11 @@ const styles = StyleSheet.create({
     ...theme.ds.shadow.sheet,
   },
   title: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
     marginBottom: theme.spacing.m,
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.uacColorNeutral100,
   },
   radioLabel: {
-    ...theme.typography.aliases.poppinsBodyMd,
+    ...theme.typography.aliases.interBodyMd,
     color: theme.colors.uacTextBase,
     flexShrink: 1,
     paddingRight: theme.spacing.m,
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.m,
   },
   errorText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaRed,
   },
   applyButton: {

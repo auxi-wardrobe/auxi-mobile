@@ -201,7 +201,7 @@ export const styles = StyleSheet.create({
   },
   yourPieceBadgeText: {
     // Chip size SM (24px height) → 10px font per chip sizing spec.
-    ...theme.typography.aliases.poppinsSemiboldXs,
+    ...theme.typography.aliases.interSemiboldXs,
     fontSize: 10,
     lineHeight: 12,
     color: theme.colors.uacTextPrimaryBase,
@@ -239,7 +239,7 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   loadingWearThisText: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.figmaCtaLabel,
   },
   placeholderCard: {
@@ -270,7 +270,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardTagText: {
-    fontFamily: 'Poppins-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 10,
     lineHeight: 12,
     color: theme.colors.white,
@@ -335,13 +335,13 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   errorStateTitle: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     fontSize: 18,
     color: theme.colors.figmaText,
     textAlign: 'center',
   },
   errorStateBody: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     fontSize: 14,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
@@ -355,7 +355,7 @@ export const styles = StyleSheet.create({
     borderColor: theme.colors.uacTextBase,
   },
   errorStateRetryLabel: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     fontSize: 16,
     color: theme.colors.figmaText,
   },
@@ -366,7 +366,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   errorStateSecondaryLabel: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     fontSize: 14,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
@@ -424,7 +424,7 @@ export const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   pinGuestText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextPrimary,
     flexShrink: 1,
   },
@@ -435,8 +435,8 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaPrimaryButtonBg,
   },
   pinGuestCtaText: {
-    ...theme.typography.aliases.poppinsBodySm,
-    fontFamily: 'Poppins-Medium',
+    ...theme.typography.aliases.interBodySm,
+    fontFamily: 'Inter-Medium',
     color: theme.colors.figmaPrimaryButtonText,
   },
   moodBanner: {

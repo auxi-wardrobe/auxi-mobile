@@ -18,6 +18,7 @@
 import React, { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   color,
   FONT,
@@ -28,6 +29,11 @@ import {
   space,
   type,
 } from '../m-tokens';
+// zIndex tiers live in the main theme (canonical six-tier model). A bottom
+// sheet is tier 4 ("modal") and MUST paint above tier-2 sticky chrome
+// (header/footer/tab-bar/FAB) — otherwise a screen's floating footer overlaps
+// the sheet. See docs/Z_INDEX_LAYERING.md.
+import { theme } from '../../../theme/theme';
 import { useOverlayProgress } from './useOverlayProgress';
 import { motion } from '../../../theme/motion';
 
@@ -39,6 +45,12 @@ export interface MBottomSheetProps {
   onDismiss: () => void;
   children?: React.ReactNode;
   testID?: string;
+  /**
+   * Dock the sheet flush to the bottom edge (full-width, rounded top corners
+   * only, safe-area bottom padding) instead of the default floating card. Use
+   * for primary bottom-anchored menus like the wardrobe switcher.
+   */
+  docked?: boolean;
 }
 
 export const MBottomSheet: React.FC<MBottomSheetProps> = ({
@@ -46,7 +58,9 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
   onDismiss,
   children,
   testID,
+  docked = false,
 }) => {
+  const insets = useSafeAreaInsets();
   const { progress, mounted } = useOverlayProgress(visible);
   // Extra drag offset for swipe-to-dismiss gesture (clamp to >= 0, downward only).
   const dragY = useRef(new Animated.Value(0)).current;
@@ -102,6 +116,8 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
           <Animated.View
             style={[
               styles.sheet,
+              docked && styles.sheetDocked,
+              docked && { paddingBottom: sheetCardSpec.pad + insets.bottom },
               shadow.sheetCard,
               { transform: [{ translateY }] },
             ]}
@@ -247,7 +263,16 @@ const ActionRow: React.FC<{
 };
 
 const styles = StyleSheet.create({
-  scrim: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+    // Tier 4 (modal) so the sheet + its scrim sit above any tier-2 sticky
+    // footer / FAB / tab-bar on the host screen. A high (but sane) elevation
+    // keeps Android's draw order consistent with the zIndex; the scrim is
+    // transparent so it casts no shadow of its own.
+    zIndex: theme.zIndex.modal,
+    elevation: 24,
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: role.scrim, // rgba(0,0,0,0.45) — PR #138 / Figma scrim
@@ -263,6 +288,15 @@ const styles = StyleSheet.create({
     marginHorizontal: sheetCardSpec.gutter, // 8 each side
     marginBottom: sheetCardSpec.marginBottom, // 8 (=== theme.spacing.s)
     overflow: 'hidden',
+  },
+  // Docked variant — flush to the bottom edge, full width, top corners only.
+  sheetDocked: {
+    marginHorizontal: 0,
+    marginBottom: 0,
+    borderTopLeftRadius: sheetCardSpec.radius,
+    borderTopRightRadius: sheetCardSpec.radius,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   grab: {
     width: 36,
