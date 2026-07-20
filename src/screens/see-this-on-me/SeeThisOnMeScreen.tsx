@@ -115,6 +115,11 @@ export const SeeThisOnMeScreen: React.FC = () => {
   const [errored, setErrored] = useState(false);
   // Shapes-phase failure flag (drives the 'generatingShapes' error view).
   const [shapesErrored, setShapesErrored] = useState(false);
+  // Daily-limit gate reached (either phase 429'd with ai_daily_limit_reached).
+  // Distinct from `errored`: the limit path shows the AiLimitSheet with NO
+  // retry, and swaps the animated loading screen behind it for a quiet static
+  // backdrop (otherwise the "generating…" loader keeps spinning under the sheet).
+  const [limitReached, setLimitReached] = useState(false);
   // Friendly inline error shown on the active photo step. Set when the backend
   // rejects the chosen photo as not a usable body photo (HTTP 422), or when a
   // generic (network/auth) error blocks validation — distinct copy each.
@@ -237,6 +242,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
         // gate analytics once (deduped by the same resolvedHashRef key) and
         // skips the generic error view.
         if (aiLimitGate.check(generation.errorCode)) {
+          setLimitReached(true);
           if (resolvedHashRef.current !== key) {
             resolvedHashRef.current = key;
             track('ai_limit_gate_shown', {
@@ -278,6 +284,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
       // gate analytics once (deduped by the same resolvedHashRef key) and skips
       // the generic error view (which would render the retry-storm "Try again").
       if (aiLimitGate.check(generation.errorCode)) {
+        setLimitReached(true);
         if (resolvedHashRef.current !== key) {
           resolvedHashRef.current = key;
           track('ai_limit_gate_shown', {
@@ -415,6 +422,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
     setShapesErrored(false);
     setPhotoError(null);
     setOptIn(true);
+    setLimitReached(false);
     setStep('selfie');
     track('try_on_profile_retake', { outfit_hash: outfit.outfitHash });
     // §3.5 #42: outcome-screen retake fires only when a result actually exists
@@ -617,6 +625,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
     handleReuseDismiss,
     isCachedResult: showCachedResult,
     handleCachedRetake,
+    limitReached,
     outfitHash: outfit.outfitHash,
   });
   if (stepScreen) {
