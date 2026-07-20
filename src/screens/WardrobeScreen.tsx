@@ -40,8 +40,15 @@ import { theme } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
 import { AppStackParamList } from '../types/navigation';
 import { Icons } from '../assets/icons';
-import { track } from '../services/analytics';
+import {
+  track,
+  trackCapsuleCreationStarted,
+  trackCapsuleSwitcherOpened,
+  trackWardrobeContextSelected,
+} from '../services/analytics';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
+import { useCapsules } from './capsule/hooks';
+import { WardrobeSwitcherSheet } from './wardrobe/WardrobeSwitcherSheet';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
 import { WardrobeFilterSortBar } from './wardrobe/WardrobeFilterSortBar';
 import { WardrobeTypeSheet } from './wardrobe/WardrobeTypeSheet';
@@ -121,6 +128,10 @@ export const WardrobeScreen = () => {
   // created_at DESC ordering, so first paint is unchanged.
   const [sortValue, setSortValue] = useState<SortValue>(DEFAULT_SORT);
   const [sortSheetVisible, setSortSheetVisible] = useState(false);
+  // Wardrobe switcher ("Choose a wardrobe") — the Wardrobe header always shows
+  // the 'entire' context; picking a capsule navigates to CapsuleDetail.
+  const [switcherVisible, setSwitcherVisible] = useState(false);
+  const capsulesQuery = useCapsules();
 
   // AU-361: item-ready snackbar concern (preparing→ready transition detection,
   // dedup refs, auto-hide timer, overlay state). `showReadySnackbar` is also
@@ -373,6 +384,28 @@ export const WardrobeScreen = () => {
     setAddSheetVisible(true);
   };
 
+  const openSwitcher = () => {
+    trackCapsuleSwitcherOpened();
+    setSwitcherVisible(true);
+  };
+
+  const handleSelectEntire = () => {
+    trackWardrobeContextSelected('entire');
+    setSwitcherVisible(false);
+  };
+
+  const handleSelectCapsule = (capsuleId: string) => {
+    trackWardrobeContextSelected('capsule');
+    setSwitcherVisible(false);
+    navigation.navigate('CapsuleDetail', { capsuleId });
+  };
+
+  const handleCreateCapsule = () => {
+    trackCapsuleCreationStarted('switcher');
+    setSwitcherVisible(false);
+    navigation.navigate('CapsuleCreate');
+  };
+
   const handleSearchDatabase = () => {
     track('add_item_method_selected', { method: 'search_database' });
     setAddSheetVisible(false);
@@ -464,6 +497,10 @@ export const WardrobeScreen = () => {
           leftTestID="wardrobe-menu-button"
           leftAccessibilityLabel={t('wardrobe.list.a11y_open_menu')}
           onBack={openSidebar}
+          onTitlePress={openSwitcher}
+          titleChevron
+          titleTestID="wardrobe-switcher-title"
+          titleAccessibilityLabel={t('capsule.a11y_open_switcher')}
           right={
             <PressableScale
               onPress={() => openAddSheet('header')}
@@ -576,6 +613,19 @@ export const WardrobeScreen = () => {
         onSearchDatabase={handleSearchDatabase}
         onTakePhoto={handleTakePhoto}
         onImportFromWeb={handleImportFromWeb}
+      />
+
+      {/* "Choose a wardrobe" switcher — entire wardrobe (this screen) + each
+          capsule; picking a capsule → CapsuleDetail, create → CapsuleCreate. */}
+      <WardrobeSwitcherSheet
+        visible={switcherVisible}
+        onClose={() => setSwitcherVisible(false)}
+        activeContext="entire"
+        wardrobeItemCount={items.length}
+        capsules={capsulesQuery.data ?? []}
+        onSelectEntire={handleSelectEntire}
+        onSelectCapsule={handleSelectCapsule}
+        onCreateCapsule={handleCreateCapsule}
       />
 
       {/* Take-photo source chooser — DS MActionSheet (GH-364, replaces the
