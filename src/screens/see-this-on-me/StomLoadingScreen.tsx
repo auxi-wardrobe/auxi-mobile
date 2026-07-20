@@ -24,6 +24,7 @@ import { useStaggeredReveal } from '../../hooks/useStaggeredReveal';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
+import { MacgieLoader } from '../../components/macgie';
 import { StomHeader } from './components';
 
 interface StomLoadingScreenProps {
@@ -92,6 +93,7 @@ export const StomLoadingScreen: React.FC<StomLoadingScreenProps> = ({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <MacgieLoader testID={`${testID}-mascot`} style={styles.mascot} />
         <Text style={styles.headline}>{headline}</Text>
 
         <View style={styles.rows} testID={`${testID}-rows`}>
@@ -152,6 +154,15 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing.xl,
     gap: theme.spacing.m,
+  },
+  // MacgieLoader's default `fullScreen` variant sets `flex: 1` (it's meant to
+  // fill its parent when used alone, as in GeneratingView) — override to `flex:
+  // 0` here since it's one item among several in this screen's content column.
+  // `alignItems: 'center'` (kept from fullScreen) still centers it horizontally
+  // in the column layout.
+  mascot: {
+    flex: 0,
+    paddingHorizontal: 0,
   },
   headline: {
     ...theme.typography.aliases.poppinsTimeLg,

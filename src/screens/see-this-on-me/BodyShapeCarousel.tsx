@@ -19,7 +19,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
-import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { BodyShapeId, GeneratedShape } from './body-shapes';
 
@@ -144,9 +143,12 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
             onPress={onToggleOptIn}
           >
             <View style={[styles.checkbox, optIn && styles.checkboxChecked]}>
-              {optIn ? (
-                <Icons.Plus width={14} height={14} color={theme.colors.white} />
-              ) : null}
+              {/* No standalone checkmark SVG exists in assets/icons — the
+                  codebase's other checkbox (MCheckbox, design-system/lib)
+                  already draws its check the same way: a rotated
+                  border-left/border-bottom glyph, no icon asset. Reused that
+                  pattern here instead of the semantically-wrong "+" icon. */}
+              {optIn ? <View style={styles.checkmark} /> : null}
             </View>
             <View style={styles.optInTextBlock}>
               <Text style={styles.optInLabel}>{t('seeThisOnMe.optIn')}</Text>
@@ -212,14 +214,20 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   dot: {
-    width: 16,
-    height: 4,
     borderRadius: theme.borderRadius.s,
   },
+  // Figma 4814:11783: active dot is a wide pill, inactive dots are small
+  // circles — distinct SHAPE, not just color. `dotInactive` gets its own
+  // (smaller, round) dimensions rather than sharing the pill's 16x4 base.
   dotActive: {
+    width: 16,
+    height: 4,
     backgroundColor: theme.colors.figmaChipBg,
   },
   dotInactive: {
+    width: 6,
+    height: 6,
+    borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaDotInactive,
   },
   optInRow: {
@@ -241,6 +249,18 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: theme.colors.figmaAction,
     borderColor: theme.colors.figmaAction,
+  },
+  // Same drawn-glyph technique as MCheckbox (design-system/lib/MCheckbox.tsx):
+  // a rotated border-left/border-bottom "L" reads as a checkmark, no SVG asset
+  // needed.
+  checkmark: {
+    width: 9,
+    height: 5,
+    borderLeftWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: theme.colors.white,
+    transform: [{ rotate: '-45deg' }],
+    marginTop: -1,
   },
   optInTextBlock: {
     flexShrink: 1,

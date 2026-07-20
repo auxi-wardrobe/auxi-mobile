@@ -92,11 +92,16 @@ export const StepBodyShape: React.FC<StepBodyShapeProps> = ({
       ) : null}
 
       {/* B2: Next is disabled until a shape is selected (via the expand sheet's
-          "Use this photo") — tapping fires the real submit + render. */}
+          "Use this photo") — tapping fires the real submit + render. Figma
+          4814:13267 (enabled) is solid filled; 4814:12741 (disabled) is
+          outline-only + faded — PillButton's `disabled` style only applies a
+          50%-opacity overlay on top of the variant, so a disabled `filled`
+          renders as a flat gray pill, not the outlined look. Swap the variant
+          itself, not just the disabled overlay. */}
       <PillButton
         testID="stom-shape-next"
         title={t('seeThisOnMe.next')}
-        variant="filled"
+        variant={selectedShape ? 'filled' : 'outline'}
         disabled={!selectedShape}
         onPress={onConfirm}
       />
