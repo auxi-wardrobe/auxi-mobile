@@ -57,6 +57,10 @@ import {
 } from '../../utils/aiError';
 import { resolveItemImage } from '../../utils/url';
 import {
+  markAiLimitReached,
+  clearAiLimit,
+} from '../../services/aiLimitStore';
+import {
   TemperatureOverrideSheet,
   type TemperatureSheetErrorKey,
 } from '../../components/features/TemperatureOverrideSheet';
@@ -396,6 +400,10 @@ export const HomeScreen = () => {
     mutationFn: buildViaV05,
     onSuccess: (data: unknown, variables) => {
       inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
+      // A recommendation build succeeded → the daily AI budget isn't spent.
+      // Clear any remembered limit so a stale entry-gate mark can't block
+      // See-on-me on another surface.
+      clearAiLimit();
       const capturedGen = variables?.__gen ?? 0;
       if (capturedGen !== fetchGenerationRef.current) {
         return;
@@ -977,6 +985,15 @@ export const HomeScreen = () => {
     if (code === AI_UNAVAILABLE_CODE) return 'ai_unavailable';
     return 'generic';
   }, [startError]);
+
+  // Remember a daily-limit 429 hit here so OTHER AI surfaces (e.g. See-on-me,
+  // opened from Favourites) can gate at entry instead of re-discovering the
+  // limit with their own job. Shared session store; cleared on any AI success.
+  useEffect(() => {
+    if (homeErrorVariant === 'ai_limit') {
+      markAiLimitReached();
+    }
+  }, [homeErrorVariant]);
 
   const pinnedItem = useMemo<Item | null>(() => {
     if (!pinnedItemId) {

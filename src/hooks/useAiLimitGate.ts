@@ -26,6 +26,13 @@ export interface AiLimitGate {
    * already visible — re-calling with the limit code stays open, never re-opens.
    */
   check: (errorCode: string | null | undefined) => boolean;
+  /**
+   * Open the sheet directly, with no error code in hand — for the proactive
+   * entry gate (a surface that already KNOWS the limit is reached, via
+   * `aiLimitStore`, and wants to show the sheet up front rather than wait for
+   * its own job to 429). Idempotent while already visible.
+   */
+  open: () => void;
   /** Spread onto <AiLimitSheet />. */
   sheetProps: { visible: boolean; onDismiss: () => void };
 }
@@ -41,12 +48,17 @@ export const useAiLimitGate = (): AiLimitGate => {
     return false;
   }, []);
 
+  const open = useCallback(() => {
+    setVisible(true);
+  }, []);
+
   const onDismiss = useCallback(() => {
     setVisible(false);
   }, []);
 
   return {
     check,
+    open,
     sheetProps: { visible, onDismiss },
   };
 };

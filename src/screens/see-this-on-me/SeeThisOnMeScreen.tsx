@@ -45,6 +45,11 @@ import { Step, CaptureStep, stepOrder, captureStepConfig } from './stom-steps';
 import { decideEntryMode } from './profile-entry';
 import { tryOnGenerationStore } from './try-on-generation-store';
 import { getTryOnResult } from '../../services/tryOnResultStore';
+import {
+  isAiLimitReached,
+  markAiLimitReached,
+  clearAiLimit,
+} from '../../services/aiLimitStore';
 import { useTryOnGeneration } from './use-try-on-generation';
 import { setTryOnBackgroundCompleteHandler } from './try-on-background-notify';
 
@@ -226,6 +231,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
     if (generation.phase === 'shapes') {
       const key = `shapes:${generation.status}`;
       if (generation.status === 'success' && generation.shapes) {
+        // Proof the daily budget isn't spent — clear any remembered limit so a
+        // stale entry-gate mark can't block the next See-on-me open.
+        clearAiLimit();
         if (resolvedHashRef.current !== key) {
           resolvedHashRef.current = key;
           track('body_shape_generation_completed', {
@@ -243,6 +251,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
         // skips the generic error view.
         if (aiLimitGate.check(generation.errorCode)) {
           setLimitReached(true);
+          // Remember it so the NEXT See-on-me open gates at entry (no re-walk of
+          // the capture flow before the sheet appears).
+          markAiLimitReached();
           if (resolvedHashRef.current !== key) {
             resolvedHashRef.current = key;
             track('ai_limit_gate_shown', {
@@ -272,6 +283,8 @@ export const SeeThisOnMeScreen: React.FC = () => {
     // ── Phase 2: outfit render ──────────────────────────────────────────────
     const key = `render:${generation.status}:${generation.resultUrl ?? ''}`;
     if (generation.status === 'success' && generation.resultUrl) {
+      // Proof the daily budget isn't spent — clear any remembered limit.
+      clearAiLimit();
       if (resolvedHashRef.current !== key) {
         resolvedHashRef.current = key;
         track('try_on_completed', { outfit_hash: outfit.outfitHash });
@@ -285,6 +298,8 @@ export const SeeThisOnMeScreen: React.FC = () => {
       // the generic error view (which would render the retry-storm "Try again").
       if (aiLimitGate.check(generation.errorCode)) {
         setLimitReached(true);
+        // Remember it so the NEXT See-on-me open gates at entry.
+        markAiLimitReached();
         if (resolvedHashRef.current !== key) {
           resolvedHashRef.current = key;
           track('ai_limit_gate_shown', {
@@ -363,6 +378,17 @@ export const SeeThisOnMeScreen: React.FC = () => {
         track('try_on_cached_result_shown', {
           outfit_hash: outfit.outfitHash,
         });
+      } else if (isAiLimitReached()) {
+        // Entry gate: we already know the daily AI budget is spent (a prior
+        // `ai_daily_limit_reached` 429 this session — here or on Home). Show the
+        // "come back tomorrow" sheet the instant See-on-me opens, over the quiet
+        // static backdrop, instead of walking the user through capture +
+        // body-shape selection only to 429 at the render. No AI job is started;
+        // dismiss → goBack. A cached result (above) still shows — it spends no
+        // budget — so only the fresh-generation entry is gated.
+        setLimitReached(true);
+        aiLimitGate.open();
+        track('ai_limit_gate_shown', { feature: 'try_on', phase: 'entry' });
       }
     }
     return () => {

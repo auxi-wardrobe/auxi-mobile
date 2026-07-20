@@ -126,14 +126,16 @@ export function renderStomStepScreen(
 
   const title = t('seeThisOnMe.title');
 
-  // ── Daily-limit reached (429) during a loading phase ──────────────────────
+  // ── Daily-limit reached (429) ─────────────────────────────────────────────
   // The screen overlays the AiLimitSheet ("out of AI for today, come back
-  // tomorrow"); behind its semi-transparent scrim we must NOT keep animating
-  // the full-screen `StomLoadingScreen`, whose spinner + revealing rows read as
-  // "still working". Render a quiet static shell instead — the sheet is a
-  // terminal state (dismiss → goBack), so the header back is all the backdrop
-  // needs. Placed before the loading branches so it wins over both phases.
-  if (limitReached && (step === 'generating' || step === 'generatingShapes')) {
+  // tomorrow"). Behind its semi-transparent scrim we render a quiet static
+  // shell — never the animated `StomLoadingScreen` (whose spinner + revealing
+  // rows read as "still working"), and never the capture/reuse UI (the entry
+  // gate fires while `step` is still 'selfie', before any job starts). Wins
+  // over every branch below so it covers both the mid-flow 429 (step
+  // 'generating'/'generatingShapes') and the up-front entry gate. The sheet is
+  // terminal (dismiss → goBack), so the header back is all the backdrop needs.
+  if (limitReached) {
     return (
       <StepShell title={title} onBack={handleBack}>
         <View style={styles.limitBackdrop} testID="stom-limit-backdrop" />

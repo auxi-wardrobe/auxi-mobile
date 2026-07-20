@@ -106,6 +106,13 @@ describe('renderStomStepScreen — daily-limit backdrop', () => {
     expect(has(r, 'stom-loading-shapes')).toBe(false);
   });
 
+  it('entry gate: shows the backdrop even on the initial selfie step', () => {
+    // The proactive entry gate opens the sheet while `step` is still 'selfie'
+    // (before any job starts), so the backdrop must win over the capture UI too.
+    const r = renderStep('selfie', true);
+    expect(has(r, 'stom-limit-backdrop')).toBe(true);
+  });
+
   it('control: without the limit gate the animated loader still renders', () => {
     const r = renderStep('generating', false);
     expect(has(r, 'stom-loading-result')).toBe(true);
