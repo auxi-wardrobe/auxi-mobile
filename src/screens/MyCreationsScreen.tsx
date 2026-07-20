@@ -128,7 +128,9 @@ export const MyCreationsScreen: React.FC = () => {
       return;
     }
     track('creation_self_visualization_opened', { creation_id: creation.id });
-    navigation.navigate('SeeThisOnMe', {
+    // Via the reuse-confirm gate (see FavouriteScreen) so the confirm sheet
+    // shows over the Creations page rather than an empty See-on-me shell.
+    navigation.navigate('SeeThisOnMeConfirm', {
       outfit: {
         outfitHash: creation.id,
         itemIds: usable.map(u => u.id),

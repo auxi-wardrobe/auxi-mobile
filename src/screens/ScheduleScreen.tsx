@@ -208,7 +208,9 @@ export const ScheduleScreen: React.FC = () => {
   const handleSelfVisualization = (favourite: Favourite) => {
     track('favourite_try_on_tapped', { favorite_id: favourite.id });
     const items = favourite.outfit_items ?? [];
-    navigation.navigate('SeeThisOnMe', {
+    // Via the reuse-confirm gate (see FavouriteScreen) so the confirm sheet
+    // shows over the Schedule page rather than an empty See-on-me shell.
+    navigation.navigate('SeeThisOnMeConfirm', {
       outfit: {
         outfitHash: favourite.outfit_context?.outfit_hash ?? favourite.id,
         itemIds: items.map(item => item.id),

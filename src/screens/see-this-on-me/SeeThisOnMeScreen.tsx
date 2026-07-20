@@ -65,7 +65,13 @@ type ScreenRoute = RouteProp<AppStackParamList, 'SeeThisOnMe'>;
 export const SeeThisOnMeScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Navigation>();
-  const { outfit } = useRoute<ScreenRoute>().params;
+  // `reuseAction` is set by the reuse-confirm gate (SeeThisOnMeConfirm), which
+  // already owns the "reuse your saved body?" sheet — so this screen skips that
+  // sheet and jumps straight to render ('render', with the confirmed
+  // `reuseBodyId`/`reuseShape`) or capture ('capture'). Undefined for resume
+  // entries (e.g. the completion-notice popTo), which rehydrate from the store.
+  const { outfit, reuseAction, reuseBodyId, reuseShape } =
+    useRoute<ScreenRoute>().params;
   const { pickImage } = useImagePicker();
   // B1: gate the AI photo upload behind explicit, persisted consent.
   const aiConsentGate = useAiConsentGate();
@@ -73,7 +79,12 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // "out for today" sheet with NO retry, instead of the generic error view.
   const aiLimitGate = useAiLimitGate();
 
-  const [step, setStep] = useState<Step>('selfie');
+  // On a gated 'render' entry we go straight to the render loading screen (no
+  // capture steps) — initialise there so the selfie step never flashes before
+  // the mount effect kicks off the render.
+  const [step, setStep] = useState<Step>(() =>
+    reuseAction === 'render' ? 'generating' : 'selfie',
+  );
   // B2 redesign: the stepped layout no longer shows a persistent selfie/
   // full-body thumbnail once the user has advanced past that step, so only
   // the setters are read here (the captured Asset itself isn't displayed).
@@ -105,11 +116,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // AU-346: when the user taps "Retake photos" on the reuse path we suppress
   // the saved profile and run the normal capture flow (the saved profile is
   // untouched on the server until a new one is saved).
-  const [forceCapture, setForceCapture] = useState(false);
-  // AU-354 pt.3: on the reuse path, the user must first CONFIRM the persisted
-  // photo (or retake) before we render. False until they tap Confirm — until
-  // then the reuse-confirm screen is shown instead of auto-generating.
-  const [reuseConfirmed, setReuseConfirmed] = useState(false);
+  const [forceCapture, setForceCapture] = useState(
+    reuseAction === 'capture',
+  );
   const [busy, setBusy] = useState(false);
   // Render-phase failure flag (drives the 'generating' error view).
   const [errored, setErrored] = useState(false);
@@ -175,6 +184,19 @@ export const SeeThisOnMeScreen: React.FC = () => {
     },
     [aiConsentGate, outfit],
   );
+
+  // Gated 'render' entry (reuse-confirm gate already confirmed the saved body):
+  // kick off the render straight onto that body. `step` is initialised to
+  // 'generating' above so the loading screen is showing while this fires.
+  const reuseRenderFiredRef = useRef(false);
+  useEffect(() => {
+    if (reuseAction === 'render' && reuseBodyId && !reuseRenderFiredRef.current) {
+      reuseRenderFiredRef.current = true;
+      runRender(reuseBodyId, reuseShape ?? null);
+    }
+    // Mount-only: the gate passes stable params for a given screen instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Phase 1 shapes: kick off the 3 body-shape photo generation. The backend
   // requires two body ids; full-body is optional in capture, so we fall back to
@@ -374,34 +396,19 @@ export const SeeThisOnMeScreen: React.FC = () => {
   });
 
   // True only when a saved profile exists AND the user hasn't asked to retake.
+  // Still needed as the render-retry body fallback (see `renderBodyId`); the
+  // reuse-confirm SHEET itself is now owned by the gate (SeeThisOnMeConfirm).
   const reuseMode = !forceCapture && decideEntryMode(activeProfile) === 'reuse';
 
-  // AU-354 pt.3: the persisted body photo to show on the reuse-confirm screen.
-  const reusePhotoUri =
-    activeProfile?.full_body_url ?? activeProfile?.image_url ?? null;
-
-  // AU-354 pt.3: CONFIRM the reused profile — render the current outfit with the
-  // stored body + shape (no re-capture, no shape generation). On the reuse path
-  // the saved profile id IS the render body_id.
-  const reuseFiredRef = useRef(false);
-  const handleReuseConfirm = useCallback(() => {
-    if (!activeProfile?.id || reuseFiredRef.current) return;
-    reuseFiredRef.current = true;
-    setReuseConfirmed(true);
-    track('body_photo_reuse_confirmed', { outfit_hash: outfit.outfitHash });
-    runRender(activeProfile.id, activeProfile.body_shape ?? null);
-  }, [activeProfile, outfit.outfitHash, runRender]);
-
-  // "Retake photos" on the reuse path: drop reuse and start the normal capture
-  // flow from the selfie step. The saved server profile is left intact.
+  // "Retake photos": drop reuse and start the normal capture flow from the
+  // selfie step. The saved server profile is left intact. Reused by the preview
+  // Retake affordance on a freshly-rendered result.
   const restartCapture = useCallback(() => {
-    reuseFiredRef.current = false;
     rehydratedRef.current = false;
     resolvedHashRef.current = null;
     // Drop any background job result so re-capture starts clean (AU-358).
     tryOnGenerationStore.reset();
     setForceCapture(true);
-    setReuseConfirmed(false);
     setSelfie(null);
     setFullBody(null);
     setSelfieBodyId(null);
@@ -418,38 +425,22 @@ export const SeeThisOnMeScreen: React.FC = () => {
     setStep('selfie');
     track('try_on_profile_retake', { outfit_hash: outfit.outfitHash });
     // §3.5 #42: outcome-screen retake fires only when a result actually exists
-    // (preview UI) — the reuse-confirm retake happens before any render.
+    // (preview UI).
     if (resultUrl) {
       track('try_on_outcome_retaken', { outfit_hash: outfit.outfitHash });
     }
   }, [outfit.outfitHash, resultUrl]);
 
-  // AU-354 pt.3: RETAKE from the reuse-confirm screen.
-  const handleReuseRetake = useCallback(() => {
-    track('body_photo_retake_selected', { outfit_hash: outfit.outfitHash });
-    restartCapture();
-  }, [outfit.outfitHash, restartCapture]);
-
-  // DISMISS the reuse-confirm bottom sheet via backdrop-tap / swipe-down. This
-  // is a THIRD funnel exit alongside confirm + retake — track it so the reuse-
-  // confirm drop-off stays visible, THEN fall back to the same nav as the header
-  // back (leaves the flow / steps back).
-  const handleReuseDismiss = useCallback(() => {
-    track('body_photo_reuse_dismissed', { outfit_hash: outfit.outfitHash });
-    handleBack();
-  }, [outfit.outfitHash, handleBack]);
-
   // Retake from a persisted-result preview: drop the cached photo view and fall
-  // back into the normal flow (reuse-confirm when a saved profile exists, else
-  // capture) so the user generates a fresh result. The cached result is LEFT on
-  // disk until a new render succeeds, so backing out of the retake keeps the
-  // previous photo available on the next entry.
+  // into the capture flow so the user generates a fresh result (same as the
+  // fresh-result Retake — the reuse-confirm sheet is an entry-only affordance
+  // owned by the gate). The cached result is LEFT on disk until a new render
+  // succeeds, so backing out of the retake keeps the previous photo available.
   const handleCachedRetake = useCallback(() => {
     setShowCachedResult(false);
     setResultUrl(null);
     resolvedHashRef.current = null;
-    reuseFiredRef.current = false;
-    setReuseConfirmed(false);
+    setForceCapture(true);
     setStep('selfie');
     track('try_on_outcome_retaken', { outfit_hash: outfit.outfitHash });
   }, [outfit.outfitHash]);
@@ -607,14 +598,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
     runRender,
     resultUrl,
     goHome,
-    reuseMode,
     restartCapture,
-    reuseConfirmed,
-    rehydrated: rehydratedRef.current,
-    reusePhotoUri,
-    handleReuseConfirm,
-    handleReuseRetake,
-    handleReuseDismiss,
     isCachedResult: showCachedResult,
     handleCachedRetake,
     outfitHash: outfit.outfitHash,
