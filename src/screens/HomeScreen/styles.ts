@@ -286,8 +286,9 @@ export const styles = StyleSheet.create({
   wearThisFooter: {
     paddingHorizontal: SHEET_PADDING,
     paddingTop: theme.spacing.uacDimension8,
-    // 12px gap between the button cluster and the view-toggle footer below.
-    paddingBottom: theme.spacing.uacDimension12,
+    // 4px gap to the view-toggle footer below: the action-row + Wear-this
+    // cluster sits 8px lower (12→4) so the card deck above gains 8px of height.
+    paddingBottom: theme.spacing.xs,
   },
   primaryActionFull: {
     alignSelf: 'stretch',
