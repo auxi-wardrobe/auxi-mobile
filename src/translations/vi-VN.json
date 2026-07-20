@@ -828,7 +828,7 @@
       "error_rate_limit": "Bạn vừa gửi khá nhiều phản hồi. Vui lòng thử lại sau một phút."
     },
     "seeThisOnMe": {
-      "title": "Tự hình dung",
+      "title": "Xem thử trên bạn",
       "takePhoto": "Chụp ảnh",
       "chooseFromLibrary": "Chọn từ thư viện",
       "choosePhotoSource": "Thêm ảnh",
@@ -862,10 +862,21 @@
         "generate": "Chúng tôi không thể tạo diện mạo của bạn. Vui lòng thử lại."
       },
       "step1": {
-        "prompt": "1/3 - Bắt đầu bằng một ảnh selfie. Không cần hoàn hảo, bạn có thể thay đổi sau."
+        "headline": "Tải lên một ảnh selfie rõ nét để Macgie tạo phiên bản của bạn.",
+        "tips": [
+          "Nhìn thẳng vào camera, để lộ rõ toàn bộ khuôn mặt.",
+          "Dùng ánh sáng tự nhiên hoặc đủ sáng, tránh bóng đổ mạnh.",
+          "Bỏ kính râm, khẩu trang hoặc bất cứ thứ gì che khuôn mặt."
+        ]
       },
       "step2": {
-        "prompt": "2/3 - Thêm ảnh toàn thân. Không bắt buộc, nhưng giúp Macgie hiểu rõ tỉ lệ và phong cách của bạn hơn."
+        "headline": "Thêm ảnh toàn thân. Không bắt buộc, nhưng giúp Macgie hiểu rõ tỉ lệ và phong cách của bạn hơn.",
+        "tips": [
+          "👕 Mặc trang phục vừa vặn hoặc thường ngày để thấy rõ dáng người.",
+          "📷 Đứng đối diện camera, để toàn thân trong khung hình.",
+          "💡 Dùng ánh sáng tốt và tránh bóng đổ mạnh.",
+          "🧍 Giữ tư thế đứng tự nhiên, tay hơi tách khỏi thân người."
+        ]
       },
       "step3": {
         "prompt": "3/3 - Chọn dáng người giống bạn nhất. Nhấn để mở rộng",

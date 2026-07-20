@@ -13,11 +13,10 @@
  * instead — see `SeeThisOnMeScreen`'s `StomStepLayout` usage.
  */
 import React from 'react';
-import { SafeAreaView, StyleSheet, View } from 'react-native';
+import { SafeAreaView, StyleSheet } from 'react-native';
 import type { TFunction } from 'i18next';
 import { theme } from '../../theme/theme';
 import { MacgieLoader } from '../../components/macgie/MacgieLoader';
-import { PillButton } from '../../components/primitives/FigmaPrimitives';
 import { StomHeader, StomDownloadButton } from './components';
 import { StepReuseConfirm } from './StepReuseConfirm';
 import { OutfitPreview } from './OutfitPreview';
@@ -159,7 +158,6 @@ export function renderStomStepScreen(
         rows={SHAPES_LOADING_ROW_KEYS.map(key => t(key))}
         footerText={t('seeThisOnMe.loading.footer')}
         quitLabel={t('seeThisOnMe.quit.cta')}
-        quitHint={t('seeThisOnMe.quit.hint')}
         onBack={handleQuitGeneration}
         onQuit={handleQuitGeneration}
       />
@@ -190,7 +188,6 @@ export function renderStomStepScreen(
         rows={RESULT_LOADING_ROW_KEYS.map(key => t(key))}
         footerText={t('seeThisOnMe.loading.footer')}
         quitLabel={t('seeThisOnMe.quit.cta')}
-        quitHint={t('seeThisOnMe.quit.hint')}
         onBack={handleQuitGeneration}
         onQuit={handleQuitGeneration}
       />
@@ -208,26 +205,18 @@ export function renderStomStepScreen(
         <OutfitPreview
           imageUri={resultUrl}
           onBackHome={goHome}
-          // Persisted-result re-entry: the in-preview Retake pill starts a fresh
-          // run; the profile-retake row below is suppressed to avoid two retakes.
-          onRetake={isCachedResult ? handleCachedRetake : undefined}
+          // Figma 4814:11877 shows a single Retake affordance inside the
+          // preview footer on every completion path — cached re-entry uses
+          // `handleCachedRetake`; a fresh completion (first-time capture or
+          // reuse-confirm render) reuses `restartCapture`, the same handler
+          // the reuse path's own retake already drove, so both routes now
+          // land back on step 1 with the background job/state reset.
+          onRetake={isCachedResult ? handleCachedRetake : restartCapture}
           // B3: thumbs feedback — jobId is null on a cached result with no live
           // job (the hook still updates the UI + analytics, see its contract).
           jobId={isCachedResult ? null : tryOnGenerationStore.getState().jobId}
           outfitHash={outfitHash}
         />
-        {/* Reuse path (live result): let the user discard the saved profile and
-            recapture. Hidden on a cached result — Retake above covers it. */}
-        {!isCachedResult && reuseMode ? (
-          <View style={styles.retakeProfileRow}>
-            <PillButton
-              testID="stom-retake-profile"
-              title={t('seeThisOnMe.retakeProfile')}
-              variant="text"
-              onPress={restartCapture}
-            />
-          </View>
-        ) : null}
       </StepShell>
     );
   }
@@ -262,10 +251,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
-  },
-  retakeProfileRow: {
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingBottom: theme.spacing.m,
-    alignItems: 'center',
   },
 });

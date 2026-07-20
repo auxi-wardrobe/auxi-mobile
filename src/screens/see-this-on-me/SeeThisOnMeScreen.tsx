@@ -731,8 +731,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
         step={stepNumber}
         stepLabel={stepLabel}
         onBack={handleBack}
-        promptText={t(config.promptKey)}
-        promptIcon={config.icon}
+        promptText={config.promptKey ? t(config.promptKey) : undefined}
         photoError={photoError}
         photoErrorTestID="stom-photo-error"
         privacyText={t('seeThisOnMe.privacyShort')}

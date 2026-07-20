@@ -829,7 +829,7 @@
       "error_rate_limit": "You've sent a lot of feedback just now. Please try again in a minute."
     },
     "seeThisOnMe": {
-      "title": "Self visualization",
+      "title": "See on me",
       "takePhoto": "Take photo",
       "chooseFromLibrary": "Choose from library",
       "choosePhotoSource": "Add a photo",
@@ -863,10 +863,21 @@
         "generate": "We couldn't create your look. Please try again."
       },
       "step1": {
-        "prompt": "1/3 - Start with a selfie photo. No need to be perfect, you can change it later."
+        "headline": "Upload a clear selfie so Macgie can create a version of you.",
+        "tips": [
+          "Look straight at the camera with your full face visible.",
+          "Use natural or bright lighting and avoid strong shadows.",
+          "Remove sunglasses, masks, or anything covering your face."
+        ]
       },
       "step2": {
-        "prompt": "2/3 - Add a full-body photo. Optional, but it helps Macgie understand proportions and styling better."
+        "headline": "Add a full-body photo. Optional, but it helps Macgie understand proportions and styling better.",
+        "tips": [
+          "👕 Wear fitted or everyday clothes so your silhouette is visible.",
+          "📷 Stand facing the camera with your whole body in frame.",
+          "💡 Use good lighting and avoid strong shadows.",
+          "🧍 Keep a natural standing pose with arms slightly away from your body."
+        ]
       },
       "step3": {
         "prompt": "3/3 - Choose the shape that feels most like you. Tap to expand",

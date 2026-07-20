@@ -1,16 +1,24 @@
 /**
- * Step 2/3 · Full body (Figma node 3395:9006). OPTIONAL.
+ * Step 2/3 · Full body (Figma node 4814:11710). OPTIONAL.
  *
- * Controls-only: the selfie thumbnail + full-body prompt bubble are rendered by
- * the screen-level transcript (see SeeThisOnMeScreen `Transcript`). This renders
- * just the "Skip this step" text action and a "Take photo" outline pill row.
+ * Owns its own intro content — bold headline + emoji bullet tips
+ * (`CaptureStepIntro`, no photo placeholder per Figma) — plus the "Skip this
+ * step" text action and a "Take photo" outline pill row.
  */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
+import { CaptureStepIntro } from './components';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
+
+const STEP2_TIP_KEYS = [
+  'seeThisOnMe.step2.tips.0',
+  'seeThisOnMe.step2.tips.1',
+  'seeThisOnMe.step2.tips.2',
+  'seeThisOnMe.step2.tips.3',
+] as const;
 
 interface StepFullBodyProps {
   onTakePhoto: () => void;
@@ -27,6 +35,11 @@ export const StepFullBody: React.FC<StepFullBodyProps> = ({
 
   return (
     <View style={styles.container} testID="stom-step-2">
+      <CaptureStepIntro
+        testID="stom-step-2-intro"
+        headline={t('seeThisOnMe.step2.headline')}
+        tips={STEP2_TIP_KEYS.map(key => t(key))}
+      />
       <View style={styles.actions}>
         <PillButton
           testID="stom-skip"

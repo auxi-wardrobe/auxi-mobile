@@ -149,20 +149,24 @@ export const OutfitPreview: React.FC<OutfitPreviewProps> = ({
       <View style={styles.footer}>
         {/* B2: AI-generated disclosure + Report (this image is AI-generated). */}
         <AiContentDisclosure surface="tryon" testID="stom-ai-disclosure" />
-        {onRetake ? (
+        {/* Figma 4814:11877 — Retake + Back to home render as two plain-text
+            buttons side by side. */}
+        <View style={styles.footerActions}>
+          {onRetake ? (
+            <PillButton
+              testID="stom-preview-retake"
+              title={t('seeThisOnMe.retake')}
+              variant="text"
+              onPress={onRetake}
+            />
+          ) : null}
           <PillButton
-            testID="stom-preview-retake"
-            title={t('seeThisOnMe.retake')}
-            variant="filled"
-            onPress={onRetake}
+            testID="stom-back-home"
+            title={t('seeThisOnMe.backToHome')}
+            variant="text"
+            onPress={onBackHome}
           />
-        ) : null}
-        <PillButton
-          testID="stom-back-home"
-          title={t('seeThisOnMe.backToHome')}
-          variant="outline"
-          onPress={onBackHome}
-        />
+        </View>
       </View>
     </View>
   );
@@ -187,7 +191,7 @@ const styles = StyleSheet.create({
   feedbackButton: {
     width: 32,
     height: 32,
-    borderRadius: theme.borderRadius.s,
+    borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.white,
     alignItems: 'center',
     justifyContent: 'center',
@@ -211,5 +215,11 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.m,
     paddingBottom: theme.spacing.xl,
     gap: theme.spacing.m,
+  },
+  footerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.l,
   },
 });

@@ -18,7 +18,13 @@ interface StomStepLayoutProps {
   step: 1 | 2 | 3;
   stepLabel: string;
   onBack: () => void;
-  promptText: string;
+  /**
+   * Legacy prompt-bubble slot (still used by step 3 / body shape). Steps 1
+   * and 2 own a richer headline + bullet-tips block rendered as `children`
+   * instead (see StepSelfie.tsx / StepFullBody.tsx `CaptureStepIntro`), so
+   * this is omitted for them.
+   */
+  promptText?: string;
   promptIcon?: React.ReactNode;
   photoError?: string | null;
   photoErrorTestID?: string;
@@ -48,10 +54,14 @@ export const StomStepLayout: React.FC<StomStepLayoutProps> = ({
     >
       <StepProgressHeader step={step} stepLabel={stepLabel} />
 
-      <View style={styles.promptBlock}>
-        <Text style={styles.promptText}>{promptText}</Text>
-        {promptIcon ? <View style={styles.promptIcon}>{promptIcon}</View> : null}
-      </View>
+      {promptText ? (
+        <View style={styles.promptBlock}>
+          <Text style={styles.promptText}>{promptText}</Text>
+          {promptIcon ? (
+            <View style={styles.promptIcon}>{promptIcon}</View>
+          ) : null}
+        </View>
+      ) : null}
 
       {photoError ? (
         <InlineError text={photoError} testID={photoErrorTestID} />

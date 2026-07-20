@@ -31,9 +31,14 @@ interface StomLoadingScreenProps {
   title: string;
   headline: string;
   rows: string[];
+  /**
+   * Single 2-line caption (Figma 4814:11737 / 4814:13137): "This can take
+   * longer than expected." / "You can leave – we'll let you know the second
+   * it's ready." Bug fix: this used to be duplicated with a second,
+   * near-identical `quitHint` caption below the quit CTA — removed.
+   */
   footerText: string;
   quitLabel: string;
-  quitHint: string;
   onBack: () => void;
   onQuit: () => void;
   testID?: string;
@@ -74,7 +79,6 @@ export const StomLoadingScreen: React.FC<StomLoadingScreenProps> = ({
   rows,
   footerText,
   quitLabel,
-  quitHint,
   onBack,
   onQuit,
   testID = 'stom-loading',
@@ -124,7 +128,6 @@ export const StomLoadingScreen: React.FC<StomLoadingScreenProps> = ({
       </ScrollView>
 
       <View style={styles.quitBlock}>
-        <Text style={styles.quitHint}>{quitHint}</Text>
         <PillButton
           testID="stom-quit-generating"
           accessibilityLabel={quitLabel}
@@ -178,11 +181,5 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     paddingHorizontal: theme.spacing.l,
     paddingBottom: theme.spacing.xl,
-  },
-  quitHint: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.figmaOnboardingStepLabel,
-    textAlign: 'center',
-    paddingHorizontal: theme.spacing.l,
   },
 });
