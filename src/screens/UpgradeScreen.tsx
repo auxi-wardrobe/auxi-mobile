@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.s,
   },
   heroLead: {
-    ...theme.typography.aliases.interSemiboldXsSm, // Poppins SemiBold 14/20
+    ...theme.typography.aliases.interSemiboldXsSm, // Inter SemiBold 14/20
     color: theme.ds.color.ink,
   },
   paws: {

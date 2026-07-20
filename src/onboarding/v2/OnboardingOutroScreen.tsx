@@ -8,7 +8,7 @@
  * onboarding and mounts Home.
  *
  * Visual (extraction §3.7): cream bg (#eee6df = figmaCaptionPillBg), no header,
- * a Poppins-Bold quote, and a bottom sheet (top corners radius 16) holding the
+ * an Inter-Bold quote, and a bottom sheet (top corners radius 16) holding the
  * "See my outfit" text button with a leading `Icons.SeeOutfit` glyph.
  *
  * Copy comes from `onboarding/config`. The `selection` route param feeds the
