@@ -1,22 +1,22 @@
 /**
  * "See this on me" / Self visualization virtual try-on flow (Workstream 5,
- * Figma node 2852:22266) — AU-358 3-shape generation + async render.
+ * Figma node 2852:22266) — AU-358 3-shape generation + async render; redesigned
+ * (see `plans/260714-0516-see-on-me-redesign/spec.md`) to a full-screen
+ * STEPPED flow (one step fills the screen at a time — `StomStepLayout` +
+ * `StepProgressHeader`'s "Step n/3" + segments) replacing the old
+ * accumulating-transcript layout.
  *
- * A conversational capture flow that renders a saved outfit onto an AI-built
- * body photo via two async worker steps:
- *   selfie (required) → fullBody (optional) → generatingShapes (AI builds 3
- *   body-shape photos) → bodyShape (user picks one) → generating (render the
- *   outfit onto the chosen body) → preview
+ * Capture flow: selfie (required) → fullBody (optional) → generatingShapes
+ * (AI builds 3 body-shape photos, full-screen `StomLoadingScreen`) →
+ * bodyShape (user picks one; B2 Next-button gating — selecting only records
+ * the choice, the bottom Next button fires the actual submit + render) →
+ * generating (render the outfit onto the chosen body, `StomLoadingScreen`) →
+ * preview (B3 thumbs up/down feedback).
  *
  * Both async steps run OUTSIDE React in `tryOnGenerationStore` (submit → poll),
  * so they survive the user quitting the loading screen and notify on completion.
- *
- * The transcript accumulates: each completed capture step leaves its prompt
- * bubble + captured-photo thumbnail on screen while the next step's bubble +
- * actions appear below (matches the cumulative Figma frames).
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Asset } from 'react-native-image-picker';
@@ -33,22 +33,13 @@ import { useAiConsentGate } from '../../hooks/useAiConsentGate';
 import { useAiLimitGate } from '../../hooks/useAiLimitGate';
 import { AiConsentDialog } from '../../components/features/AiConsentDialog';
 import { AiLimitSheet } from '../../components/features/AiLimitSheet';
-import { theme } from '../../theme/theme';
 import { AppStackParamList } from '../../types/navigation';
-import {
-  StomHeader,
-  PromptBubble,
-  PhotoThumb,
-  PrivacyFooter,
-  PhotoSourceSheet,
-  InlineError,
-} from './components';
+import { PhotoSourceSheet } from './components';
 import { renderStomStepScreen } from './StomStepScreen';
-import { StepBodyShapeSkeleton } from './StepBodyShapeSkeleton';
-import {
-  renderStomStepControls,
-  StomStepControlsProps,
-} from './StomStepControls';
+import { StomStepLayout } from './StomStepLayout';
+import { StepSelfie } from './StepSelfie';
+import { StepFullBody } from './StepFullBody';
+import { StepBodyShape } from './StepBodyShape';
 import { BodyShapeId, GeneratedShape } from './body-shapes';
 import { Step, CaptureStep, stepOrder, captureStepConfig } from './stom-steps';
 import { decideEntryMode } from './profile-entry';
@@ -56,6 +47,14 @@ import { tryOnGenerationStore } from './try-on-generation-store';
 import { getTryOnResult } from '../../services/tryOnResultStore';
 import { useTryOnGeneration } from './use-try-on-generation';
 import { setTryOnBackgroundCompleteHandler } from './try-on-background-notify';
+
+// try_on_step_viewed step-name mapping (spec §Analytics) — the local
+// CaptureStep union uses camelCase; the analytics prop is snake_case.
+const STEP_VIEWED_NAME: Record<CaptureStep, string> = {
+  selfie: 'selfie',
+  fullBody: 'full_body',
+  bodyShape: 'body_fit',
+};
 
 // TanStack key for the active reusable self-visualization profile (AU-346).
 const ACTIVE_PROFILE_QUERY_KEY = ['body', 'active'] as const;
@@ -75,8 +74,11 @@ export const SeeThisOnMeScreen: React.FC = () => {
   const aiLimitGate = useAiLimitGate();
 
   const [step, setStep] = useState<Step>('selfie');
-  const [selfie, setSelfie] = useState<Asset | null>(null);
-  const [fullBody, setFullBody] = useState<Asset | null>(null);
+  // B2 redesign: the stepped layout no longer shows a persistent selfie/
+  // full-body thumbnail once the user has advanced past that step, so only
+  // the setters are read here (the captured Asset itself isn't displayed).
+  const [, setSelfie] = useState<Asset | null>(null);
+  const [, setFullBody] = useState<Asset | null>(null);
   // Server-side body record ids, created the moment each photo is picked +
   // validated (so generation reuses them and never re-uploads). The selfie is
   // required; the full body is optional.
@@ -144,6 +146,15 @@ export const SeeThisOnMeScreen: React.FC = () => {
     }
     navigation.goBack();
   }, [navigation, step]);
+
+  // `try_on_step_viewed` — fires when a stepped capture screen becomes the
+  // active one (selfie / full_body / body_fit). Loading/generating/preview
+  // steps are covered by their own existing events.
+  useEffect(() => {
+    if (step === 'selfie' || step === 'fullBody' || step === 'bodyShape') {
+      track('try_on_step_viewed', { step: STEP_VIEWED_NAME[step] });
+    }
+  }, [step]);
 
   // Phase 2 render: render the outfit onto the chosen body. Hands the resolved
   // profile `bodyId` + outfit + shape to the background store, which submits +
@@ -580,8 +591,8 @@ export const SeeThisOnMeScreen: React.FC = () => {
     />
   );
 
-  // Non-transcript screens (loading / generating / preview / reuse-confirm).
-  // Returns the matching shell, or null → render the capture transcript below.
+  // Non-stepped screens (loading / generating / preview / reuse-confirm).
+  // Returns the matching shell, or null → render the active capture step below.
   const stepScreen = renderStomStepScreen({
     t,
     step,
@@ -606,6 +617,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
     handleReuseDismiss,
     isCachedResult: showCachedResult,
     handleCachedRetake,
+    outfitHash: outfit.outfitHash,
   });
   if (stepScreen) {
     return (
@@ -616,79 +628,117 @@ export const SeeThisOnMeScreen: React.FC = () => {
     );
   }
 
-  // ── Capture transcript (selfie / fullBody / bodyShape) ────────────────────
-  const stepThumbUri: Record<CaptureStep, string | null> = {
-    selfie: selfie?.uri ?? null,
-    fullBody: fullBody?.uri ?? null,
-    bodyShape: null,
-  };
+  // ── Active capture step (full-screen stepped flow, B2 Next-gating) ────────
+  const captureStep = step as CaptureStep;
+  const stepIndex = stepOrder.indexOf(captureStep);
+  const stepNumber = (stepIndex + 1) as 1 | 2 | 3;
+  const config = captureStepConfig[captureStep];
+  const stepLabel = t('seeThisOnMe.stepLabel', { step: stepNumber });
 
-  // While generating the 3 body-shape photos we stay in the transcript and treat
-  // the flow as sitting on the `bodyShape` step (skeleton tiles render there).
-  const displayStep = step === 'generatingShapes' ? 'bodyShape' : step;
-  const activeIndex = stepOrder.indexOf(displayStep as CaptureStep);
-  const visibleSteps =
-    activeIndex >= 0 ? stepOrder.slice(0, activeIndex + 1) : [];
-
-  // Wiring for the active step's CTA controls (see StomStepControls).
-  const stepControlsProps: StomStepControlsProps = {
-    busy,
-    capture,
-    validatePickedPhoto,
-    setSelfie,
-    setSelfieBodyId,
-    setStep,
-    setFullBody,
-    setFullBodyId,
-    startShapeGeneration,
-    selfieBodyId,
-    shapes,
-    shapesPartial,
-    selectedShape,
-    optIn,
-    setOptIn,
-    regenerateShapes,
-    handleSelectShape,
-  };
+  let controls: React.ReactNode = null;
+  switch (captureStep) {
+    case 'selfie':
+      controls = (
+        <StepSelfie
+          busy={busy}
+          onTakePhoto={() =>
+            capture(asset => {
+              setSelfie(asset);
+              return validatePickedPhoto(
+                asset,
+                () => {
+                  setSelfie(null);
+                  setSelfieBodyId(null);
+                },
+                body => {
+                  setSelfieBodyId(body.id);
+                  track('try_on_step_completed', { step: 'selfie' });
+                  setStep('fullBody');
+                },
+              );
+            })
+          }
+        />
+      );
+      break;
+    case 'fullBody':
+      controls = (
+        <StepFullBody
+          busy={busy}
+          onTakePhoto={() =>
+            capture(asset => {
+              setFullBody(asset);
+              return validatePickedPhoto(
+                asset,
+                () => {
+                  setFullBody(null);
+                  setFullBodyId(null);
+                },
+                body => {
+                  setFullBodyId(body.id);
+                  track('try_on_step_completed', { step: 'fullBody' });
+                  // AU-358: leave full-body → kick off the 3-shape generation.
+                  if (selfieBodyId) {
+                    startShapeGeneration(selfieBodyId, body.id);
+                  }
+                },
+              );
+            })
+          }
+          onSkip={() => {
+            track('try_on_step_completed', {
+              step: 'fullBody',
+              skipped: true,
+            });
+            // AU-358: skipping full-body → still generate shapes (the backend
+            // needs a full_body_id, so the selfie id is used as the fallback).
+            if (selfieBodyId) {
+              startShapeGeneration(selfieBodyId, null);
+            }
+          }}
+        />
+      );
+      break;
+    case 'bodyShape':
+      controls = (
+        <StepBodyShape
+          shapes={shapes ?? []}
+          partial={shapesPartial}
+          selectedShape={selectedShape}
+          optIn={optIn}
+          onToggleOptIn={() => setOptIn(v => !v)}
+          onRegenerate={regenerateShapes}
+          // B2: tile/sheet "Use this photo" only RECORDS the selection now.
+          onSelectShape={setSelectedShape}
+          // B2: the bottom "Next" button fires the actual submit + render.
+          onConfirm={() => {
+            if (selectedShape) {
+              handleSelectShape(selectedShape);
+            }
+          }}
+        />
+      );
+      break;
+    default:
+      controls = null;
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StomHeader
+    <>
+      <StomStepLayout
+        testID={`stom-step-screen-${captureStep}`}
         title={t('seeThisOnMe.title')}
-        onBack={step === 'generatingShapes' ? handleQuitGeneration : handleBack}
-      />
-      <ScrollView contentContainerStyle={styles.transcript}>
-        {visibleSteps.map(s => {
-          const config = captureStepConfig[s];
-          const thumbUri = stepThumbUri[s];
-          const isActive = s === displayStep;
-          return (
-            <React.Fragment key={s}>
-              <PromptBubble
-                testID={config.testID}
-                text={t(config.promptKey)}
-                icon={config.icon}
-              />
-              {thumbUri ? (
-                <PhotoThumb uri={thumbUri} testID={`${config.testID}-thumb`} />
-              ) : null}
-              {isActive && photoError ? (
-                <InlineError testID="stom-photo-error" text={photoError} />
-              ) : null}
-              {isActive ? (
-                step === 'generatingShapes' && s === 'bodyShape' ? (
-                  <StepBodyShapeSkeleton />
-                ) : (
-                  renderStomStepControls(s, stepControlsProps)
-                )
-              ) : null}
-            </React.Fragment>
-          );
-        })}
-      </ScrollView>
-      <View style={styles.footer}>
-        <PrivacyFooter text={t('seeThisOnMe.privacy')} />
-      </View>
+        step={stepNumber}
+        stepLabel={stepLabel}
+        onBack={handleBack}
+        promptText={t(config.promptKey)}
+        promptIcon={config.icon}
+        photoError={photoError}
+        photoErrorTestID="stom-photo-error"
+        privacyText={t('seeThisOnMe.privacyShort')}
+      >
+        {controls}
+      </StomStepLayout>
 
       <PhotoSourceSheet
         visible={sourceSheetVisible}
@@ -701,23 +751,6 @@ export const SeeThisOnMeScreen: React.FC = () => {
 
       {/* Daily-limit gate — "out of AI for today", no retry. */}
       {aiLimitSheet}
-    </SafeAreaView>
+    </>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.figmaBackground,
-  },
-  transcript: {
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingTop: theme.spacing.m,
-    paddingBottom: theme.spacing.xl,
-    gap: theme.spacing.l,
-  },
-  footer: {
-    paddingHorizontal: theme.spacing.uacDimension12,
-    paddingBottom: theme.spacing.m,
-  },
-});

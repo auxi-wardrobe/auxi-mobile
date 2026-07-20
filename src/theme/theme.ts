@@ -523,6 +523,16 @@ export const theme = {
         shadowRadius: 40,
         elevation: 16,
       },
+      // See-on-me result thumbs-feedback buttons (Figma 4814:13242 / 13237):
+      // 0px 1px 1px rgba(0,0,0,0.15) — a tight contact shadow under the small
+      // 32×32 white circular buttons overlaid on the preview image.
+      thumbButton: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 1,
+        elevation: 2,
+      },
     },
     // Type-family ROLES (DS names). RN renders with bundled faces; mono
     // (JetBrains Mono) is NOT bundled, so the screen falls back to platform mono.

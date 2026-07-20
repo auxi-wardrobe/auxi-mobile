@@ -844,8 +844,12 @@
       },
       "downloadA11y": "Enregistrer l'image",
       "optIn": "Utiliser cette photo pour les futurs aperçus de tenues",
+      "optInHint": "Vous pouvez la modifier à tout moment plus tard.",
       "retakeProfile": "Reprendre les photos",
       "privacy": "Vos photos sont envoyées de façon sécurisée à nos fournisseurs d'IA (Google, OpenAI) pour générer votre résultat, et ne sont jamais vendues ni partagées avec des annonceurs.",
+      "privacyShort": "Vos photos restent toujours privées",
+      "stepLabel": "Étape {{step}}/3",
+      "next": "Suivant",
       "generating": "Création de votre look…",
       "generatingShapes": "Création de vos morphologies…",
       "error": "Impossible de créer votre look. Veuillez réessayer.",
@@ -866,7 +870,32 @@
       },
       "step3": {
         "prompt": "3/3 - Choisissez la forme qui vous ressemble le plus. Appuyez pour agrandir",
-        "expandedTitle": "Choisissez la forme qui vous ressemble le plus."
+        "expandedTitle": "Quelle silhouette vous ressemble le plus ?",
+        "expandedSubtitle": "Cela nous aide à créer des aperçus de tenues plus réalistes. Vous pouvez la modifier plus tard."
+      },
+      "loading": {
+        "footer": "Cela peut prendre plus de temps que prévu.\nVous pouvez partir — nous vous préviendrons dès que c'est prêt."
+      },
+      "loadingShapes": {
+        "title": "Création de votre point de départ…",
+        "rows": [
+          "Analyse des traits du visage à partir de votre selfie",
+          "Compréhension des proportions corporelles à partir de votre photo",
+          "Création de 3 variations corporelles réalistes à choisir"
+        ]
+      },
+      "loadingResult": {
+        "title": "Création de votre aperçu de tenue…",
+        "rows": [
+          "Correspondance avec la morphologie sélectionnée",
+          "Ajustement de la coupe et des proportions des vêtements",
+          "Ajustement des couches et des détails des vêtements",
+          "Rendu de votre tenue personnalisée"
+        ]
+      },
+      "feedback": {
+        "like": "Aimer le résultat",
+        "dislike": "Ne pas aimer le résultat"
       },
       "reuseConfirm": {
         "title": "Votre photo corporelle",

@@ -86,6 +86,7 @@ test('body-shape options render skeletons for generated shape images', () => {
         shapes={shapes}
         selectedShape={null}
         onSelectShape={jest.fn()}
+        onConfirm={jest.fn()}
         optIn
         onToggleOptIn={jest.fn()}
       />,

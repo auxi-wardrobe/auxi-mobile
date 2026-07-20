@@ -1,12 +1,16 @@
 /**
- * Full-screen "step shell" router for the See-this-on-me flow. Owns the five
- * non-transcript screens (loading / generatingShapes / generating / preview /
- * reuse-confirm), each of which is a `SafeAreaView` + `StomHeader` + body.
+ * Full-screen "step shell" router for the See-this-on-me flow. Owns the
+ * non-stepped screens: profile-loading / generatingShapes / generating /
+ * preview / reuse-confirm.
  *
- * `renderStomStepScreen` returns the matching shell element, or `null` when the
- * cumulative capture transcript should render instead. Extracted verbatim from
- * SeeThisOnMeScreen's early returns — same conditions, same order, no behavior
- * change; it just dedups the repeated shell markup.
+ * B1 (see-on-me redesign): the non-errored generatingShapes/generating states
+ * render the full-screen `StomLoadingScreen` (staggered rows + 7s CTA gate);
+ * their error states keep the plain `GeneratingView` + retry. The other shells
+ * are a `SafeAreaView` + `StomHeader` + body via the shared `StepShell`.
+ *
+ * `renderStomStepScreen` returns the matching shell element, or `null` when
+ * the active capture step (selfie / fullBody / bodyShape) should render
+ * instead — see `SeeThisOnMeScreen`'s `StomStepLayout` usage.
  */
 import React from 'react';
 import { SafeAreaView, StyleSheet, View } from 'react-native';
@@ -18,8 +22,24 @@ import { StomHeader, StomDownloadButton } from './components';
 import { StepReuseConfirm } from './StepReuseConfirm';
 import { OutfitPreview } from './OutfitPreview';
 import { GeneratingView } from './GeneratingView';
+import { StomLoadingScreen } from './StomLoadingScreen';
+import { tryOnGenerationStore } from './try-on-generation-store';
 import { BodyShapeId } from './body-shapes';
 import { Step } from './stom-steps';
+
+// B1 loading-row copy keys — plain per-index `t()` calls (each leaf is a
+// string) rather than `returnObjects`, so no i18next typing gymnastics.
+const SHAPES_LOADING_ROW_KEYS = [
+  'seeThisOnMe.loadingShapes.rows.0',
+  'seeThisOnMe.loadingShapes.rows.1',
+  'seeThisOnMe.loadingShapes.rows.2',
+] as const;
+const RESULT_LOADING_ROW_KEYS = [
+  'seeThisOnMe.loadingResult.rows.0',
+  'seeThisOnMe.loadingResult.rows.1',
+  'seeThisOnMe.loadingResult.rows.2',
+  'seeThisOnMe.loadingResult.rows.3',
+] as const;
 
 interface StomStepScreenProps {
   t: TFunction;
@@ -51,6 +71,8 @@ interface StomStepScreenProps {
   // Retake affordance replaces the profile-retake row and drives a fresh run.
   isCachedResult: boolean;
   handleCachedRetake: () => void;
+  // B3: threaded into OutfitPreview's thumbs-feedback vote.
+  outfitHash: string;
 }
 
 // Shared shell — the SafeAreaView + StomHeader wrapper every step screen used.
@@ -93,6 +115,7 @@ export function renderStomStepScreen(
     handleReuseDismiss,
     isCachedResult,
     handleCachedRetake,
+    outfitHash,
   } = props;
 
   const title = t('seeThisOnMe.title');
@@ -110,45 +133,67 @@ export function renderStomStepScreen(
   }
 
   // ── Generating shapes (phase 1) / error state ─────────────────────────────
-  // While generating (not errored) this returns nothing here → the transcript
-  // renders the 3 skeleton tiles inline. The full-screen shell only takes over
-  // on error (retry affordance).
-  if (step === 'generatingShapes' && shapesErrored) {
-    return (
+  // B1 (see-on-me redesign): the non-errored state is now its own full-screen
+  // `StomLoadingScreen` (staggered rows + the 7s CTA min-wait gate) instead of
+  // the old inline skeleton tiles. The error branch keeps `GeneratingView`.
+  if (step === 'generatingShapes') {
+    if (shapesErrored) {
       // Back during generation = quit-to-background (keeps the job alive +
       // notifies on done); in the errored state it's a plain back.
-      <StepShell
+      return (
+        <StepShell title={title} onBack={handleBack}>
+          <GeneratingView
+            errored
+            label={t('seeThisOnMe.generatingShapes')}
+            errorText={t('seeThisOnMe.shapesError')}
+            onRetry={regenerateShapes}
+          />
+        </StepShell>
+      );
+    }
+    return (
+      <StomLoadingScreen
+        testID="stom-loading-shapes"
         title={title}
-        onBack={shapesErrored ? handleBack : handleQuitGeneration}
-      >
-        <GeneratingView
-          errored={shapesErrored}
-          label={t('seeThisOnMe.generatingShapes')}
-          errorText={t('seeThisOnMe.shapesError')}
-          onRetry={regenerateShapes}
-          onQuit={shapesErrored ? undefined : handleQuitGeneration}
-        />
-      </StepShell>
+        headline={t('seeThisOnMe.loadingShapes.title')}
+        rows={SHAPES_LOADING_ROW_KEYS.map(key => t(key))}
+        footerText={t('seeThisOnMe.loading.footer')}
+        quitLabel={t('seeThisOnMe.quit.cta')}
+        quitHint={t('seeThisOnMe.quit.hint')}
+        onBack={handleQuitGeneration}
+        onQuit={handleQuitGeneration}
+      />
     );
   }
 
   // ── Generating render (phase 2) / error state ─────────────────────────────
   if (step === 'generating') {
+    if (errored) {
+      return (
+        <StepShell title={title} onBack={handleBack}>
+          <GeneratingView
+            errored
+            onRetry={() => {
+              if (renderBodyId) {
+                runRender(renderBodyId, renderShape);
+              }
+            }}
+          />
+        </StepShell>
+      );
+    }
     return (
-      <StepShell
+      <StomLoadingScreen
+        testID="stom-loading-result"
         title={title}
-        onBack={errored ? handleBack : handleQuitGeneration}
-      >
-        <GeneratingView
-          errored={errored}
-          onRetry={() => {
-            if (renderBodyId) {
-              runRender(renderBodyId, renderShape);
-            }
-          }}
-          onQuit={errored ? undefined : handleQuitGeneration}
-        />
-      </StepShell>
+        headline={t('seeThisOnMe.loadingResult.title')}
+        rows={RESULT_LOADING_ROW_KEYS.map(key => t(key))}
+        footerText={t('seeThisOnMe.loading.footer')}
+        quitLabel={t('seeThisOnMe.quit.cta')}
+        quitHint={t('seeThisOnMe.quit.hint')}
+        onBack={handleQuitGeneration}
+        onQuit={handleQuitGeneration}
+      />
     );
   }
 
@@ -166,6 +211,10 @@ export function renderStomStepScreen(
           // Persisted-result re-entry: the in-preview Retake pill starts a fresh
           // run; the profile-retake row below is suppressed to avoid two retakes.
           onRetake={isCachedResult ? handleCachedRetake : undefined}
+          // B3: thumbs feedback — jobId is null on a cached result with no live
+          // job (the hook still updates the UI + analytics, see its contract).
+          jobId={isCachedResult ? null : tryOnGenerationStore.getState().jobId}
+          outfitHash={outfitHash}
         />
         {/* Reuse path (live result): let the user discard the saved profile and
             recapture. Hidden on a cached result — Retake above covers it. */}

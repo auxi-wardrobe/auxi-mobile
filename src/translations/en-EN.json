@@ -844,8 +844,12 @@
       },
       "downloadA11y": "Save image",
       "optIn": "Use this photo for future outfit previews",
+      "optInHint": "You can update it anytime later.",
       "retakeProfile": "Retake photos",
       "privacy": "Your photos are sent securely to our AI providers (Google, OpenAI) to generate your result, and are never sold or shared with advertisers.",
+      "privacyShort": "Your photos are always kept private",
+      "stepLabel": "Step {{step}}/3",
+      "next": "Next",
       "generating": "Creating your look…",
       "generatingShapes": "Creating your body shapes…",
       "error": "We couldn't create your look. Please try again.",
@@ -866,7 +870,32 @@
       },
       "step3": {
         "prompt": "3/3 - Choose the shape that feels most like you. Tap to expand",
-        "expandedTitle": "Choose the shape that feels most like you."
+        "expandedTitle": "Which silhouette looks closest to you?",
+        "expandedSubtitle": "This helps us create more realistic outfit previews. You can change it later."
+      },
+      "loading": {
+        "footer": "This can take longer than expected.\nYou can leave — we'll let you know the second it's ready."
+      },
+      "loadingShapes": {
+        "title": "Creating your starting point…",
+        "rows": [
+          "Analyzing facial features from your selfie",
+          "Understanding body proportions from your photo",
+          "Creating 3 realistic body variations for you to choose from"
+        ]
+      },
+      "loadingResult": {
+        "title": "Creating your outfit preview…",
+        "rows": [
+          "Matching your selected body shape",
+          "Mapping clothing fit and proportions",
+          "Adjusting layering and garment details",
+          "Rendering your personalized outfit"
+        ]
+      },
+      "feedback": {
+        "like": "Like result",
+        "dislike": "Dislike result"
       },
       "reuseConfirm": {
         "title": "Your body photo",

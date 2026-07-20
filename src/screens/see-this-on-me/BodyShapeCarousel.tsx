@@ -73,9 +73,14 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
     >
       <View style={styles.scrim}>
         <View style={styles.sheet} testID="stom-shape-carousel">
-          <Text style={styles.headline}>
-            {t('seeThisOnMe.step3.expandedTitle')}
-          </Text>
+          <View style={styles.headlineBlock}>
+            <Text style={styles.headline}>
+              {t('seeThisOnMe.step3.expandedTitle')}
+            </Text>
+            <Text style={styles.headlineSubtext}>
+              {t('seeThisOnMe.step3.expandedSubtitle')}
+            </Text>
+          </View>
 
           <ScrollView
             horizontal
@@ -97,9 +102,6 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
                   resizeMode="cover"
                   skeletonTestID={`stom-shape-carousel-image-skeleton-${option.shape}`}
                 />
-                <Text style={styles.shapeLabel}>
-                  {t(`seeThisOnMe.shapes.${option.shape}`)}
-                </Text>
               </View>
             ))}
           </ScrollView>
@@ -116,23 +118,6 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
             ))}
           </View>
 
-          <TouchableOpacity
-            testID="stom-optin"
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: optIn }}
-            accessibilityLabel={t('seeThisOnMe.optIn')}
-            activeOpacity={0.8}
-            style={styles.optInRow}
-            onPress={onToggleOptIn}
-          >
-            <View style={[styles.checkbox, optIn && styles.checkboxChecked]}>
-              {optIn ? (
-                <Icons.Plus width={14} height={14} color={theme.colors.white} />
-              ) : null}
-            </View>
-            <Text style={styles.optInLabel}>{t('seeThisOnMe.optIn')}</Text>
-          </TouchableOpacity>
-
           <View style={styles.actions}>
             <PillButton
               testID="stom-shape-retake"
@@ -148,6 +133,26 @@ export const BodyShapeCarousel: React.FC<BodyShapeCarouselProps> = ({
               style={styles.useButton}
             />
           </View>
+
+          <TouchableOpacity
+            testID="stom-optin"
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: optIn }}
+            accessibilityLabel={t('seeThisOnMe.optIn')}
+            activeOpacity={0.8}
+            style={styles.optInRow}
+            onPress={onToggleOptIn}
+          >
+            <View style={[styles.checkbox, optIn && styles.checkboxChecked]}>
+              {optIn ? (
+                <Icons.Plus width={14} height={14} color={theme.colors.white} />
+              ) : null}
+            </View>
+            <View style={styles.optInTextBlock}>
+              <Text style={styles.optInLabel}>{t('seeThisOnMe.optIn')}</Text>
+              <Text style={styles.optInHint}>{t('seeThisOnMe.optInHint')}</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -168,14 +173,22 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
     gap: theme.spacing.l,
   },
+  headlineBlock: {
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.m,
+    // Sheet applies a uniform gap: theme.spacing.l (24px) between children;
+    // trim 8px so the headline block→carousel gap lands at 16px (theme.spacing.m).
+    marginBottom: -theme.spacing.s,
+  },
   headline: {
     ...theme.typography.aliases.poppinsSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
-    paddingHorizontal: theme.spacing.m,
-    // Sheet applies a uniform gap: theme.spacing.l (24px) between children;
-    // trim 8px so the headline→carousel gap lands at 16px (theme.spacing.m).
-    marginBottom: -theme.spacing.s,
+  },
+  headlineSubtext: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.figmaOnboardingStepLabel,
+    textAlign: 'center',
   },
   carousel: {
     height: screenWidth * (4 / 3) * 0.7,
@@ -192,10 +205,6 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: theme.borderRadius.l,
     backgroundColor: theme.colors.figmaCardSurface,
-  },
-  shapeLabel: {
-    ...theme.typography.aliases.poppinsButton,
-    color: theme.colors.uacTextBase,
   },
   dots: {
     flexDirection: 'row',
@@ -233,7 +242,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaAction,
     borderColor: theme.colors.figmaAction,
   },
+  optInTextBlock: {
+    flexShrink: 1,
+    gap: 2,
+  },
   optInLabel: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.figmaOnboardingStepLabel,
+    flexShrink: 1,
+  },
+  optInHint: {
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaOnboardingStepLabel,
     flexShrink: 1,
