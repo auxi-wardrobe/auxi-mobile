@@ -960,11 +960,7 @@
       "restore_none_body": "Không tìm thấy gói đăng ký đang hoạt động cho tài khoản này."
     },
     "capsule": {
-      "menu": "Tủ đồ capsule",
       "title": "Tủ đồ capsule",
-      "empty_title": "Tủ đồ capsule",
-      "empty_body": "Tạo một capsule cho công việc, du lịch hoặc theo mùa và tạo trang phục bên trong đó.",
-      "create_cta": "Tạo capsule",
       "add": "Thêm",
       "add_source_helper": "Chọn nơi bạn muốn thêm từ đó.",
       "source_wardrobe": "Tủ đồ của tôi",
@@ -997,7 +993,6 @@
       "summary_weather": "Khoảng thời tiết",
       "summary_formalness": "Điểm trang trọng",
       "section_items": "Các món",
-      "section_outfits": "Trang phục",
       "cat_outer": "Áo khoác",
       "cat_top": "Áo",
       "cat_bottom": "Quần/Váy",
@@ -1044,7 +1039,6 @@
       "save": "Lưu",
       "settings_updated_toast": "Đã cập nhật capsule.",
       "a11y_open_switcher": "Chọn tủ đồ",
-      "a11y_open_menu": "Mở menu",
       "a11y_back": "Quay lại"
     }
   }

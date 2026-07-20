@@ -110,3 +110,31 @@ export const sortCapsulesNewestFirst = (capsules: Capsule[]): Capsule[] =>
     const bt = Date.parse(b.created_at || '') || 0;
     return bt - at;
   });
+
+/** Parse a numeric text field → number | null (empty/invalid → null). */
+export const toNum = (raw: string): number | null => {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** number | null → editable string ('' for null). */
+export const numToStr = (n: number | null | undefined): string =>
+  typeof n === 'number' ? String(n) : '';
+
+/**
+ * Square tile edge for a 4-up capsule grid: floors
+ * (width − gap between columns − horizontal padding both sides) / columns.
+ * Shared by the capsule detail grid and the wardrobe-item picker sheet so the
+ * two stay in sync.
+ */
+export const capsuleTileSize = (
+  width: number,
+  columns = 4,
+  gap = 8,
+  hPadding = 16,
+): number =>
+  Math.floor((width - gap * (columns - 1) - hPadding * 2) / columns);

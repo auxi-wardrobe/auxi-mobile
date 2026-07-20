@@ -21,24 +21,12 @@ import type {
 } from '../../services/capsuleService';
 import type { AppStackParamList } from '../../types/navigation';
 import { useCapsule, useUpdateCapsule } from './hooks';
+import { numToStr, toNum } from './capsule-format';
+import { toastCapsuleNetworkError } from './capsule-toast';
 import { capsuleStyles as s } from './styles';
 
 type Nav = NativeStackNavigationProp<AppStackParamList, 'CapsuleEdit'>;
 type Rt = RouteProp<AppStackParamList, 'CapsuleEdit'>;
-
-/** Parse a numeric text field → number | null (empty/invalid → null). */
-const toNum = (raw: string): number | null => {
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const n = Number(trimmed);
-  return Number.isFinite(n) ? n : null;
-};
-
-/** number | null → editable string ('' for null). */
-const numToStr = (n: number | null | undefined): string =>
-  typeof n === 'number' ? String(n) : '';
 
 /** The 5 numeric constraint keys shared by requirements + the PATCH body. */
 const CONSTRAINT_KEYS = [
@@ -125,8 +113,7 @@ export const CapsuleEditScreen: React.FC = () => {
         toast.success(t('capsule.settings_updated_toast'));
         navigation.goBack();
       },
-      onError: () =>
-        toast.show({ type: 'error', text1: t('capsule.network_error') }),
+      onError: () => toastCapsuleNetworkError(t),
     });
   };
 

@@ -961,11 +961,7 @@
       "restore_none_body": "We couldn't find an active subscription for this account."
     },
     "capsule": {
-      "menu": "Capsule Wardrobe",
       "title": "Capsule Wardrobe",
-      "empty_title": "Capsule Wardrobe",
-      "empty_body": "Create a curated capsule for work, travel, or a season and get outfits generated inside it.",
-      "create_cta": "Create a capsule",
       "add": "Add",
       "add_source_helper": "Choose where you'd like to add from.",
       "source_wardrobe": "My Wardrobe",
@@ -998,7 +994,6 @@
       "summary_weather": "Weather range",
       "summary_formalness": "Formalness score",
       "section_items": "Items",
-      "section_outfits": "Outfits",
       "cat_outer": "Outerwear",
       "cat_top": "Tops",
       "cat_bottom": "Bottoms",
@@ -1045,7 +1040,6 @@
       "save": "Save",
       "settings_updated_toast": "Capsule updated.",
       "a11y_open_switcher": "Choose a wardrobe",
-      "a11y_open_menu": "Open menu",
       "a11y_back": "Go back"
     }
   }

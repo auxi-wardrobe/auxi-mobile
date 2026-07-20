@@ -1,9 +1,11 @@
 # auxi/maestro/flows/capsule/create.yaml
 # Capsule Wardrobe — create-a-capsule happy path (spec §5 create wizard).
 #
-# testID-driven end-to-end: sidebar → Capsule Wardrobe → create wizard
-# (name → requirements) → generating → detail. Assumes a logged-in session
-# (run ../_shared/login.yaml first) with a backend that serves /api/capsules.
+# testID-driven end-to-end: Wardrobe → wardrobe switcher → Create Capsule →
+# create wizard (name → requirements) → generating → detail. Assumes a
+# logged-in session (run ../_shared/login.yaml first) with a backend that
+# serves /api/capsules. The sidebar/capsule-list entry was removed — the
+# wardrobe switcher is now the sole entry point to capsule creation.
 #
 # NOTE: authored best-effort; not run headless in this session (no sim). The
 # generating step depends on the synchronous backend generation resolving.
@@ -21,23 +23,23 @@ env:
 # 0. Start logged-in on Home.
 - runFlow: ../_shared/login.yaml
 
-# 1. Open the sidebar drawer and enter Capsule Wardrobe.
+# 1. From Home, hop to the Wardrobe tab (its header hosts the switcher).
 - tapOn:
-    id: home-menu-button
+    id: home-footer-nav-wardrobe
 - extendedWaitUntil:
     visible:
-      id: sidebar-menu-capsule
+      id: wardrobe-switcher-title
     timeout: 10000
-- tapOn:
-    id: sidebar-menu-capsule
 
-# 2. Empty state → start create (list "+" also works if capsules exist).
+# 2. Open the wardrobe switcher, then tap "Create Capsule".
+- tapOn:
+    id: wardrobe-switcher-title
 - extendedWaitUntil:
     visible:
-      id: capsule-list-add
+      id: wardrobe-switcher-sheet
     timeout: 10000
 - tapOn:
-    id: capsule-list-add
+    id: wardrobe-switcher-create
 
 # 3. Step 1 — name.
 - extendedWaitUntil:

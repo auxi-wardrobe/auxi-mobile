@@ -961,11 +961,7 @@
       "restore_none_body": "Aucun abonnement actif trouvé pour ce compte."
     },
     "capsule": {
-      "menu": "Garde-robe capsule",
       "title": "Garde-robe capsule",
-      "empty_title": "Garde-robe capsule",
-      "empty_body": "Créez une capsule pour le travail, les voyages ou une saison et générez des tenues à l’intérieur.",
-      "create_cta": "Créer une capsule",
       "add": "Ajouter",
       "add_source_helper": "Choisissez d’où vous souhaitez ajouter.",
       "source_wardrobe": "Ma garde-robe",
@@ -998,7 +994,6 @@
       "summary_weather": "Plage météo",
       "summary_formalness": "Score de formalité",
       "section_items": "Articles",
-      "section_outfits": "Tenues",
       "cat_outer": "Vestes",
       "cat_top": "Hauts",
       "cat_bottom": "Bas",
@@ -1045,7 +1040,6 @@
       "save": "Enregistrer",
       "settings_updated_toast": "Capsule mise à jour.",
       "a11y_open_switcher": "Choisir une garde-robe",
-      "a11y_open_menu": "Ouvrir le menu",
       "a11y_back": "Retour"
     }
   }

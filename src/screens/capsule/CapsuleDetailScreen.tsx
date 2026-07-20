@@ -10,7 +10,9 @@ import { TopIconButton } from '../../components/primitives/FigmaPrimitives';
 import { MButton, MDialog, toast } from '../../components/design-system/lib';
 import { MacgieLoader } from '../../components/macgie';
 import { Icons } from '../../assets/icons';
+import { theme } from '../../theme/theme';
 import {
+  trackCapsuleCreationStarted,
   trackCapsuleDeleted,
   trackCapsuleSwitcherOpened,
   trackCapsuleViewedOnce,
@@ -26,7 +28,8 @@ import {
   useDeleteCapsule,
   useRetryGeneration,
 } from './hooks';
-import { capsuleItemIdSet, categoryRows } from './capsule-format';
+import { capsuleItemIdSet, capsuleTileSize, categoryRows } from './capsule-format';
+import { toastCapsuleNetworkError } from './capsule-toast';
 import { CapsuleItemTile } from './components/CapsuleItemTile';
 import { CapsuleSummaryPanel } from './components/CapsuleSummaryPanel';
 import { GapsBanner } from './components/GapsBanner';
@@ -78,10 +81,16 @@ export const CapsuleDetailScreen: React.FC = () => {
     }
   }, [capsule]);
 
-  const tileSize = useMemo(() => {
-    const width = Dimensions.get('window').width - 16 * 2;
-    return Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
-  }, []);
+  const tileSize = useMemo(
+    () =>
+      capsuleTileSize(
+        Dimensions.get('window').width,
+        COLUMNS,
+        GAP,
+        theme.spacing.m,
+      ),
+    [],
+  );
 
   const existingItemIds = useMemo(
     () => capsuleItemIdSet(capsule),
@@ -96,8 +105,7 @@ export const CapsuleDetailScreen: React.FC = () => {
         setDeleteVisible(false);
         navigation.goBack();
       },
-      onError: () =>
-        toast.show({ type: 'error', text1: t('capsule.network_error') }),
+      onError: () => toastCapsuleNetworkError(t),
     });
   };
 
@@ -122,6 +130,7 @@ export const CapsuleDetailScreen: React.FC = () => {
   };
 
   const handleCreateCapsule = () => {
+    trackCapsuleCreationStarted('switcher');
     setSwitcherVisible(false);
     navigation.navigate('CapsuleCreate');
   };

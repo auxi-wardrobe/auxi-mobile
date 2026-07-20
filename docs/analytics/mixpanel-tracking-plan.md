@@ -528,7 +528,7 @@ Curated wardrobe subsets ("capsules") with rule-based outfit generation (spec `p
 
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
-| `capsule_creation_started` | `+` tapped on the capsule list / empty state | `CapsuleWardrobeScreen.tsx` | `source` (`list`) |
+| `capsule_creation_started` | Create Capsule row tapped in the switcher | `WardrobeScreen.tsx`, `CapsuleDetailScreen.tsx` | `source` (`switcher`) |
 | `capsule_configured` | Create tapped on the requirements step | `CapsuleInfoScreen.tsx` | `has_temp_range`, `formalness_level?`, `outfit_target?`, `shoe_limit?` |
 | `capsule_generation_started` | Create mutation fires on the generating screen | `CapsuleGeneratingScreen.tsx` | `outfit_target?` |
 | `capsule_generation_backgrounded` | "Leave — notify me when ready" tapped | `CapsuleGeneratingScreen.tsx` | — |

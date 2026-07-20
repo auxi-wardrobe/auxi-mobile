@@ -3,9 +3,7 @@ import {
   capsuleKeys,
   capsuleService,
   type CapsuleChangeScope,
-  type CapsuleFull,
   type CapsuleOutfitSource,
-  type CreateCapsuleInput,
   type UpdateCapsuleInput,
 } from '../../../services/capsuleService';
 
@@ -23,16 +21,6 @@ const useInvalidateCapsule = () => {
       queryClient.invalidateQueries({ queryKey: capsuleKeys.detail(id) });
     }
   };
-};
-
-/** POST /capsules — used by the generating screen. */
-export const useCreateCapsule = () => {
-  const invalidate = useInvalidateCapsule();
-  return useMutation({
-    mutationFn: (input: CreateCapsuleInput) =>
-      capsuleService.createCapsule(input),
-    onSuccess: (capsule: CapsuleFull) => invalidate(capsule.id),
-  });
 };
 
 /** POST /capsules/{id}/generate/retry. */

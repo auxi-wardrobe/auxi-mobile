@@ -9,20 +9,11 @@ import { Header } from '../../components/layout/Header';
 import { MButton, MInput } from '../../components/design-system/lib';
 import { trackCapsuleConfigured } from '../../services/analytics';
 import type { AppStackParamList } from '../../types/navigation';
+import { toNum } from './capsule-format';
 import { capsuleStyles as s } from './styles';
 
 type Nav = NativeStackNavigationProp<AppStackParamList, 'CapsuleInfo'>;
 type Rt = RouteProp<AppStackParamList, 'CapsuleInfo'>;
-
-/** Parse a numeric text field → number | null (empty/invalid → null). */
-const toNum = (raw: string): number | null => {
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const n = Number(trimmed);
-  return Number.isFinite(n) ? n : null;
-};
 
 /** Create wizard — Step 2: requirements. Create → generating screen. */
 export const CapsuleInfoScreen: React.FC = () => {

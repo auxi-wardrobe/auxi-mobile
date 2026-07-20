@@ -42,6 +42,7 @@ import { AppStackParamList } from '../types/navigation';
 import { Icons } from '../assets/icons';
 import {
   track,
+  trackCapsuleCreationStarted,
   trackCapsuleSwitcherOpened,
   trackWardrobeContextSelected,
 } from '../services/analytics';
@@ -400,6 +401,7 @@ export const WardrobeScreen = () => {
   };
 
   const handleCreateCapsule = () => {
+    trackCapsuleCreationStarted('switcher');
     setSwitcherVisible(false);
     navigation.navigate('CapsuleCreate');
   };

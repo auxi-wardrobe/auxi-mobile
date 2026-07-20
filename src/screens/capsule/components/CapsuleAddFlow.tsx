@@ -10,6 +10,7 @@ import type {
   CapsuleOutfitSource,
 } from '../../../services/capsuleService';
 import { useAddCapsuleItems, useAddFromOutfits } from '../hooks';
+import { toastCapsuleNetworkError } from '../capsule-toast';
 import { AddSourceSheet, type CapsuleAddSource } from './AddSourceSheet';
 import { SelectOutfitsSheet } from './SelectOutfitsSheet';
 import { SelectWardrobeItemsSheet } from './SelectWardrobeItemsSheet';
@@ -59,8 +60,7 @@ export const CapsuleAddFlow: React.FC<CapsuleAddFlowProps> = ({
     }
   };
 
-  const toastNetworkError = () =>
-    toast.show({ type: 'error', text1: t('capsule.network_error') });
+  const toastNetworkError = () => toastCapsuleNetworkError(t);
 
   const handleWardrobeConfirm = (itemIds: string[]) => {
     addItems.mutate(itemIds, {

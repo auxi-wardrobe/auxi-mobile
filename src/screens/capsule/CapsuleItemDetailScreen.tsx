@@ -16,6 +16,7 @@ import type { CapsuleChangeScope } from '../../services/capsuleService';
 import type { AppStackParamList } from '../../types/navigation';
 import { useCapsule, useChangeCapsuleItem, useRemoveCapsuleItem } from './hooks';
 import { resolveWardrobeItemImage } from './capsule-format';
+import { toastCapsuleNetworkError } from './capsule-toast';
 import { ChangeScopeDialog } from './components/ChangeScopeDialog';
 import { SelectWardrobeItemsSheet } from './components/SelectWardrobeItemsSheet';
 import { capsuleStyles as s } from './styles';
@@ -68,8 +69,7 @@ export const CapsuleItemDetailScreen: React.FC = () => {
     if (usedCount === 0) {
       removeItem.mutate(itemId, {
         onSuccess: () => onRemoveSuccess(true),
-        onError: () =>
-          toast.show({ type: 'error', text1: t('capsule.network_error') }),
+        onError: () => toastCapsuleNetworkError(t),
       });
     } else {
       setRemoveUsedVisible(true);
@@ -79,8 +79,7 @@ export const CapsuleItemDetailScreen: React.FC = () => {
   const confirmRemoveUsed = () =>
     removeItem.mutate(itemId, {
       onSuccess: () => onRemoveSuccess(false),
-      onError: () =>
-        toast.show({ type: 'error', text1: t('capsule.network_error') }),
+      onError: () => toastCapsuleNetworkError(t),
     });
 
   const handlePickReplacement = (itemIds: string[]) => {
@@ -110,8 +109,7 @@ export const CapsuleItemDetailScreen: React.FC = () => {
           setScopeVisible(false);
           navigation.goBack();
         },
-        onError: () =>
-          toast.show({ type: 'error', text1: t('capsule.network_error') }),
+        onError: () => toastCapsuleNetworkError(t),
       },
     );
   };

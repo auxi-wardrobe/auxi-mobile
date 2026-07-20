@@ -11,6 +11,7 @@ import {
   wardrobeKeys,
   wardrobeService,
 } from '../../../services/wardrobeService';
+import { capsuleTileSize } from '../capsule-format';
 import { capsuleStyles as s } from '../styles';
 import { CapsuleItemTile } from './CapsuleItemTile';
 
@@ -59,10 +60,11 @@ export const SelectWardrobeItemsSheet: React.FC<
     enabled: visible,
   });
 
-  const tileSize = useMemo(() => {
-    const width = Dimensions.get('window').width - H_PADDING * 2;
-    return Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
-  }, []);
+  const tileSize = useMemo(
+    () =>
+      capsuleTileSize(Dimensions.get('window').width, COLUMNS, GAP, H_PADDING),
+    [],
+  );
 
   const toggle = (id: string) => {
     setSelected(prev => {
