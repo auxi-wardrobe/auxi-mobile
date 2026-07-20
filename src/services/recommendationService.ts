@@ -27,6 +27,33 @@ export interface ValenGetRecommendationResponse {
   outfits: Outfit[];
 }
 
+// ── Recommendation history (`GET /recommendation/history`) ──────────────────
+// Read-only log of the user's past recommendation sessions. Unlike `/start`
+// and `/next`, it does NOT run the engine or consume the daily AI budget — so
+// it's safe to call while the user is over their styling limit (the "View
+// latest outfits" fallback on the limit page). Each request carries only item
+// IDs; the caller hydrates them from the wardrobe for display.
+export interface RecommendationHistoryRequest {
+  request_type: 'start' | 'next';
+  outfit_hash: string;
+  outfit_items: string[];
+  styling_note?: string | null;
+  variation_axis?: string | null;
+  processing_time_ms?: number;
+  created_at: string;
+}
+
+export interface RecommendationHistorySession {
+  session_id: string;
+  started_at: string;
+  requests: RecommendationHistoryRequest[];
+}
+
+export interface RecommendationHistoryResponse {
+  sessions: RecommendationHistorySession[];
+  total_sessions: number;
+}
+
 // PHASE C (AU-221): three modes per Figma sticky `1752:28109`.
 // - `safe`     → blend in / lazy
 // - `power`    → impressive / energy
@@ -162,6 +189,26 @@ export const recommendationService = {
       return response.data;
     } catch (error) {
       console.error('nextRecommendation error', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch the user's recommendation history (most-recent session first). This
+   * is a lightweight read — it never runs the engine, so it can be called even
+   * when the user has exhausted their daily styling limit. `limit` caps the
+   * number of logged requests returned (backend default 50, max 100).
+   */
+  getRecommendationHistory: async (
+    limit = 20,
+  ): Promise<RecommendationHistoryResponse> => {
+    try {
+      const response = await apiClient.get('/recommendation/history', {
+        params: { limit },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('getRecommendationHistory error', error);
       throw error;
     }
   },

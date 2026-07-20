@@ -503,6 +503,8 @@
       "a11y_retry_load": "Recharger les tenues",
       "ai_limit_title": "Vous avez atteint la limite du jour",
       "ai_limit_body": "Vous avez utilisé toutes vos tenues IA pour aujourd'hui. Revenez demain pour en découvrir d'autres.",
+      "ai_limit_view_latest": "Voir les tenues récentes",
+      "ai_limit_no_recent": "Aucune tenue récente à afficher pour l'instant.",
       "ai_unavailable_title": "Le styliste est très sollicité",
       "ai_unavailable_body": "Notre styliste IA reprend son souffle. Réessayez dans un instant.",
       "wardrobe_gap_title": "Votre garde-robe n'est pas assez fournie pour plus de suggestions",
