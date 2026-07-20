@@ -2,10 +2,10 @@
 /**
  * OutfitCardCaption — the Home card message row.
  *
- * Covers the "Worn N days ago" badge (wear-history feature): it prepends the
- * caption when the outfit was previously worn, reads "Worn today" at 0 days,
- * stays hidden when never worn, and is suppressed on scheduled cards (whose
- * message is already the schedule note).
+ * Covers the "Worn N days ago" badge (wear-history feature): it renders as its
+ * own pill before the caption only once a look is stale (> 3 days), stays
+ * hidden for fresh/recently-worn outfits, is hidden when never worn, and is
+ * suppressed on scheduled cards (whose message is already the schedule note).
  */
 import React from 'react';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
@@ -45,23 +45,39 @@ const hostByTestID = (
 ): ReactTestInstance[] =>
   root.findAll(n => typeof n.type === 'string' && n.props?.testID === id);
 
+// Text rendered inside the worn pill (the pill is a View host node).
+const wornLabelText = (
+  root: ReactTestInstance,
+): string | undefined => {
+  const pill = hostByTestID(root, 'cap-worn');
+  if (pill.length === 0) {
+    return undefined;
+  }
+  const label = pill[0].findAll(n => String(n.type) === 'Text');
+  return label.length ? String(label[0].props.children) : undefined;
+};
+
 describe('OutfitCardCaption worn badge', () => {
-  it('shows "Worn N days ago" before the caption when worn 12 days ago', () => {
+  it('shows "Worn N days ago" pill when worn 12 days ago', () => {
     const r = render(
       <OutfitCardCaption testID="cap" caption="Calm and Clear" wornDaysAgo={12} />,
     );
-    const worn = hostByTestID(r.root, 'cap-worn');
-    expect(worn).toHaveLength(1);
-    expect(worn[0].props.children).toBe('home.worn_days_ago#12');
+    expect(hostByTestID(r.root, 'cap-worn')).toHaveLength(1);
+    expect(wornLabelText(r.root)).toBe('home.worn_days_ago#12');
   });
 
-  it('reads "Worn today" at 0 days', () => {
+  it('shows the badge just past the threshold (4 days)', () => {
     const r = render(
-      <OutfitCardCaption testID="cap" caption="Calm and Clear" wornDaysAgo={0} />,
+      <OutfitCardCaption testID="cap" caption="x" wornDaysAgo={4} />,
     );
-    expect(hostByTestID(r.root, 'cap-worn')[0].props.children).toBe(
-      'home.worn_today',
-    );
+    expect(wornLabelText(r.root)).toBe('home.worn_days_ago#4');
+  });
+
+  it('hides the badge for a recently-worn look (3 days and today)', () => {
+    const r3 = render(<OutfitCardCaption testID="cap" caption="x" wornDaysAgo={3} />);
+    expect(hostByTestID(r3.root, 'cap-worn')).toHaveLength(0);
+    const r0 = render(<OutfitCardCaption testID="cap" caption="x" wornDaysAgo={0} />);
+    expect(hostByTestID(r0.root, 'cap-worn')).toHaveLength(0);
   });
 
   it('hides the badge when never worn', () => {

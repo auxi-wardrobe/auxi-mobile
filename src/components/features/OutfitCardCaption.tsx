@@ -21,18 +21,24 @@ import { MarqueeText } from '../atoms/MarqueeText';
 // knows this look came from their schedule, not the recommender.
 //
 // When `wornDaysAgo` is a number the recommender has re-surfaced a look the
-// user already wore (see HomeScreen wear-history). A "Worn N days ago" note is
-// prepended before the caption, divided by a pipe — "Worn 12 days ago | Calm
-// and Clear" — so the user recognises the repeat at a glance. Suppressed for
-// scheduled cards (their message is already the schedule note).
+// user already wore (see HomeScreen wear-history). A "Worn N days ago" note
+// sits before the caption as its OWN pill — same rounded, light-brown chip as
+// the caption bubble — so the repeat reads as a peer system message ("Worn 12
+// days ago" · "Calm and Clear"). Only shown once the look is genuinely stale
+// (> WORN_BADGE_MIN_DAYS): a fresh or just-worn outfit needs no reminder.
+// Suppressed for scheduled cards (their message is already the schedule note).
+
+// Only badge a repeat once it's been more than this many days — recently worn
+// (and brand-new) looks stay unbadged.
+const WORN_BADGE_MIN_DAYS = 3;
 
 type Props = {
   caption?: string | null;
   scheduled?: boolean;
   /**
-   * Whole days since the user last wore this outfit (0 = earlier today), or
-   * null/undefined when it has never been worn. Drives the "Worn N days ago"
-   * note.
+   * Whole days since the user last wore this outfit, or null/undefined when it
+   * has never been worn. The "Worn N days ago" badge shows only when this
+   * exceeds {@link WORN_BADGE_MIN_DAYS}.
    */
   wornDaysAgo?: number | null;
   testID?: string;
@@ -50,10 +56,10 @@ export const OutfitCardCaption: React.FC<Props> = ({
     : caption?.trim() || t('outfitActions.default_caption');
 
   const wornLabel =
-    !scheduled && typeof wornDaysAgo === 'number' && wornDaysAgo >= 0
-      ? wornDaysAgo === 0
-        ? t('home.worn_today')
-        : t('home.worn_days_ago', { count: wornDaysAgo })
+    !scheduled &&
+    typeof wornDaysAgo === 'number' &&
+    wornDaysAgo > WORN_BADGE_MIN_DAYS
+      ? t('home.worn_days_ago', { count: wornDaysAgo })
       : null;
 
   return (
@@ -68,16 +74,14 @@ export const OutfitCardCaption: React.FC<Props> = ({
         />
       ) : null}
       {wornLabel ? (
-        <>
-          <Text
-            testID={testID ? `${testID}-worn` : undefined}
-            style={styles.wornText}
-            numberOfLines={1}
-          >
+        <View
+          testID={testID ? `${testID}-worn` : undefined}
+          style={styles.wornPill}
+        >
+          <Text style={styles.wornText} numberOfLines={1}>
             {wornLabel}
           </Text>
-          <Text style={styles.wornDivider}>|</Text>
-        </>
+        </View>
       ) : null}
       <View style={styles.captionPill}>
         <MarqueeText text={text} style={styles.captionText} />
@@ -110,16 +114,21 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextBase,
   },
-  // "Worn N days ago" note — sits to the left of the caption pill, kept on one
-  // line so the pill (marquee) owns any horizontal overflow.
+  // "Worn N days ago" chip — same rounded, light-brown bubble as the caption
+  // pill so the two read as peer system messages. Hugs its (short) text and
+  // never shrinks, leaving the caption pill to own any horizontal overflow.
+  wornPill: {
+    flexShrink: 0,
+    height: 40,
+    paddingHorizontal: theme.spacing.uacDimension12,
+    paddingVertical: theme.spacing.s,
+    borderRadius: theme.borderRadius.m,
+    backgroundColor: theme.colors.figmaCaptionPillBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   wornText: {
     ...theme.typography.aliases.interBody,
-    color: theme.colors.figmaTextSecondary,
-    flexShrink: 0,
-  },
-  wornDivider: {
-    ...theme.typography.aliases.interBody,
-    color: theme.colors.figmaTextSecondary,
-    flexShrink: 0,
+    color: theme.colors.uacTextBase,
   },
 });

@@ -474,7 +474,6 @@
       "chip_simpler": "Simpler look",
       "refineAppliedToast": "{{feedback}} applied!",
       "scheduled_outfit_caption": "Scheduled for today",
-      "worn_today": "Worn today",
       "worn_days_ago_one": "Worn {{count}} day ago",
       "worn_days_ago_other": "Worn {{count}} days ago",
       "a11y_scheduled_outfit": "Scheduled outfit for today",
