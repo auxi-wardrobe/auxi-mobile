@@ -921,7 +921,11 @@
       },
       "quit": {
         "hint": "Cela peut prendre un instant. Vous pouvez partir — nous vous préviendrons dès que c’est prêt.",
-        "cta": "Quitter — me prévenir quand c’est prêt"
+        "cta": "Quitter — me prévenir quand c’est prêt",
+        "confirmTitle": "Quitter pendant la génération ?",
+        "confirmBody": "Votre aperçu est encore en cours de création. Laissez-le tourner en arrière-plan et nous vous préviendrons dès qu’il sera prêt — ou abandonnez-le pour arrêter maintenant.",
+        "notify": "Me prévenir quand c’est prêt",
+        "discard": "Abandonner"
       },
       "notify": {
         "readyTitle": "Votre rendu est prêt",
