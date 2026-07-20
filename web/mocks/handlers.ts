@@ -106,6 +106,10 @@ export const handlers = [
   http.post('*/api/v05/recommendation/build', async () => {
     if (variant() === 'loading') await delay('infinite');
     if (variant() === 'error') return new HttpResponse(null, { status: 500 });
+    // `?home=ai_limit` → daily styling-limit reached; Home shows the limit page
+    // with the "View latest outfits" CTA (which reads /recommendation/history).
+    if (variant() === 'ai_limit')
+      return HttpResponse.json({ detail: { code: 'ai_daily_limit_reached', message: 'Daily styling limit reached' } }, { status: 429 });
     if (variant() === 'empty')
       return HttpResponse.json({ outfits: [], suggested_default: 0, trace: trace(), wardrobe_gap: true, wardrobe_gap_reason: 'cold_weather_no_outerwear' });
     return HttpResponse.json(buildResponse());
@@ -114,6 +118,22 @@ export const handlers = [
     if (variant() === 'error') return new HttpResponse(null, { status: 500 });
     return HttpResponse.json(tryAnotherResponse());
   }),
+
+  // Read-only recommendation history — feeds the "View latest outfits" CTA on
+  // the styling-limit page. outfit_items reference the wardrobe mock ids
+  // (citm-*) so the client can hydrate them into displayable outfits.
+  http.get('*/api/recommendation/history', () => HttpResponse.json({
+    sessions: [{
+      session_id: 'mock-hist-1',
+      started_at: '2026-07-19T09:00:00Z',
+      requests: [
+        { request_type: 'start', outfit_hash: 'hist-1', outfit_items: ['citm-1', 'citm-2', 'citm-3'], styling_note: 'Clean weekday: crisp oxford with tailored trousers.', variation_axis: null, created_at: '2026-07-19T09:00:00Z' },
+        { request_type: 'next', outfit_hash: 'hist-2', outfit_items: ['citm-5', 'citm-2', 'citm-3'], styling_note: 'Relaxed: soft knit over the same tailored base.', variation_axis: 'LAYERING', created_at: '2026-07-19T09:01:00Z' },
+        { request_type: 'next', outfit_hash: 'hist-3', outfit_items: ['citm-4', 'citm-1', 'citm-2', 'citm-3'], styling_note: 'Polished: charcoal blazer for the sharpest days.', variation_axis: 'NEW_ANCHOR', created_at: '2026-07-19T09:02:00Z' },
+      ],
+    }],
+    total_sessions: 1,
+  })),
 
   http.post('*/api/recommendation/start', () => HttpResponse.json({ session_id: 'mock-session-1', outfit: { items: OUTFITS[0].items, styling_note: OUTFITS[0].reasoning_human, outfit_hash: 'mock-hash-1', fallback_flags: [] } })),
   http.post('*/api/recommendation/next', () => HttpResponse.json({ session_id: 'mock-session-1', outfit: { items: OUTFITS[(ta += 1) % 3].items, styling_note: 'mock', outfit_hash: 'mock-hash-' + ((ta % 3) + 1), fallback_flags: [] } })),
