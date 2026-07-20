@@ -47,29 +47,26 @@ export const DiscardGenerationDialog: React.FC<Props> = ({
       <Text style={styles.title}>{t('seeThisOnMe.quit.confirmTitle')}</Text>
       <Text style={styles.body}>{t('seeThisOnMe.quit.confirmBody')}</Text>
 
+      {/* Stacked vertically (per design): the recommended keep-it-running
+          "Leave — notify me when ready" primary on top, destructive Discard
+          below. */}
       <View style={styles.actions}>
-        {/* Notify — secondary (outlined); keeps the job alive in the background. */}
-        <View style={styles.actionCell}>
-          <MButton
-            variant="secondary"
-            onPress={onNotify}
-            testID="stom-quit-notify"
-            accessibilityLabel={t('seeThisOnMe.quit.notify')}
-          >
-            {t('seeThisOnMe.quit.notify')}
-          </MButton>
-        </View>
-        {/* Discard — danger (destructive); cancels the in-flight job. */}
-        <View style={styles.actionCell}>
-          <MButton
-            variant="danger"
-            onPress={onDiscard}
-            testID="stom-quit-discard"
-            accessibilityLabel={t('seeThisOnMe.quit.discard')}
-          >
-            {t('seeThisOnMe.quit.discard')}
-          </MButton>
-        </View>
+        <MButton
+          variant="primary"
+          onPress={onNotify}
+          testID="stom-quit-notify"
+          accessibilityLabel={t('seeThisOnMe.quit.cta')}
+        >
+          {t('seeThisOnMe.quit.cta')}
+        </MButton>
+        <MButton
+          variant="dangerOutline"
+          onPress={onDiscard}
+          testID="stom-quit-discard"
+          accessibilityLabel={t('seeThisOnMe.quit.discard')}
+        >
+          {t('seeThisOnMe.quit.discard')}
+        </MButton>
       </View>
     </ContextualBottomSheet>
   );
@@ -85,12 +82,9 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
   },
+  // Column stack — buttons stretch to full width (default cross-axis stretch).
   actions: {
     marginTop: theme.spacing.m,
-    flexDirection: 'row',
     gap: theme.spacing.uacDimension12,
-  },
-  actionCell: {
-    flex: 1,
   },
 });

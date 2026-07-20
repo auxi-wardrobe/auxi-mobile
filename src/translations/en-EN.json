@@ -924,7 +924,6 @@
         "cta": "Leave — notify me when ready",
         "confirmTitle": "Leave while it’s generating?",
         "confirmBody": "Your preview is still being created. Keep it running in the background and we’ll notify you the moment it’s ready — or discard it and stop now.",
-        "notify": "Notify me when ready",
         "discard": "Discard"
       },
       "notify": {
