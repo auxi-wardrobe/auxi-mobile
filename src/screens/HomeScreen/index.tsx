@@ -33,7 +33,6 @@ import {
   DEFAULT_RECOMMENDATION_MODE,
   Outfit,
   RecommendationMode,
-  recommendationService,
 } from '../../services/recommendationService';
 import { recommendV05, resetV05Session } from '../../services/v05Api';
 import { moodForMode } from '../../services/mood/mood-vocabulary';
@@ -79,12 +78,14 @@ import { type PinErrorKind } from '../../components/features/PinGenerationError'
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
   LATEST_OUTFITS_COUNT,
-  LATEST_OUTFITS_HISTORY_LIMIT,
   PIN_DONT_SHOW_STORAGE_KEY,
   REFINE_AFTER_OUTFITS,
   TARGET_AHEAD,
 } from './constants';
-import { extractLatestOutfitSheets } from './latest-outfits';
+import {
+  persistLatestOutfits,
+  readLatestOutfits,
+} from './last-outfits-store';
 import {
   BuildViaV05Input,
   OutfitSheet,
@@ -99,6 +100,7 @@ import {
 } from './outfit-normalize';
 import {
   buildScheduledOutfitSheets,
+  isScheduledHash,
   withScheduledPrefix,
 } from './scheduled-outfits';
 import { styles } from './styles';
@@ -586,6 +588,15 @@ export const HomeScreen = () => {
       activeIndex,
       saveStateByHash,
     });
+    // Mirror the freshest recommendation sheets to disk so "View latest
+    // outfits" can restore them after an app quit (the in-memory snapshot
+    // above does not survive that). Scheduled sheets are the user's own plan,
+    // not suggestions, so they're excluded.
+    persistLatestOutfits(
+      user.id,
+      listOutfits.filter(o => !o.scheduled && !isScheduledHash(o.outfitHash)),
+      LATEST_OUTFITS_COUNT,
+    );
   }, [user?.id, listOutfits, activeIndex, saveStateByHash]);
 
   // Reset the progressive-refinement tier (run synchronously on submit/skip so
@@ -1458,11 +1469,11 @@ export const HomeScreen = () => {
   );
 
   // "View latest outfits" on the styling-limit page. The user is over their
-  // daily AI budget, so we can't build fresh looks — instead we read their
-  // recent recommendation history (a lightweight, engine-free endpoint),
-  // hydrate the item IDs against their wardrobe, and seat the freshest few as a
-  // read-only deck. On an empty/failed history we leave the limit page up and
-  // surface a brief banner.
+  // daily AI budget, so we can't build fresh looks — instead we restore the
+  // recommendation sheets Home last showed them (persisted per user to disk, so
+  // they survive an app quit) as a read-only deck. When nothing's stored (a
+  // brand-new user who hit the limit before ever seeing a deck) we leave the
+  // limit page up and surface a brief banner.
   const handleViewLatestOutfits = useCallback(async () => {
     if (isViewingLatestRef.current) {
       return;
@@ -1471,28 +1482,14 @@ export const HomeScreen = () => {
     setIsViewingLatest(true);
     track('ai_limit_view_latest_tapped');
     try {
-      // Hydration needs the wardrobe list; make sure it's loaded first.
-      let wardrobe = wardrobeItemsData;
-      if (!wardrobe || wardrobe.length === 0) {
-        const refetched = await refetchWardrobeItems();
-        wardrobe = refetched.data ?? wardrobe ?? [];
-      }
-      const history = await recommendationService.getRecommendationHistory(
-        LATEST_OUTFITS_HISTORY_LIMIT,
-      );
-      const wardrobeById = new Map((wardrobe ?? []).map(w => [w.id, w]));
-      const sheets = extractLatestOutfitSheets(
-        history,
-        wardrobeById,
-        LATEST_OUTFITS_COUNT,
-      );
+      const sheets = await readLatestOutfits(user?.id);
       if (sheets.length === 0) {
         track('ai_limit_view_latest_empty');
         showMoodBanner(t('home.ai_limit_no_recent'));
         return;
       }
-      // Seat the historical looks as a read-only deck. Mark the pool depleted
-      // AND the limit sheet as already-shown so swiping to the end can't fire a
+      // Seat the restored looks as a read-only deck. Mark the pool depleted AND
+      // the limit sheet as already-shown so swiping to the end can't fire a
       // fresh /build or the Refine flow — both would just re-hit the limit.
       isFirstLoadRef.current = false;
       poolDepletedRef.current = true;
@@ -1515,13 +1512,7 @@ export const HomeScreen = () => {
       isViewingLatestRef.current = false;
       setIsViewingLatest(false);
     }
-  }, [
-    wardrobeItemsData,
-    refetchWardrobeItems,
-    resetStartMutation,
-    showMoodBanner,
-    t,
-  ]);
+  }, [user?.id, resetStartMutation, showMoodBanner, t]);
 
   return (
     <SafeAreaView

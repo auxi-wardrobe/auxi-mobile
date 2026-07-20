@@ -79,10 +79,9 @@ export const TARGET_AHEAD = 1;
 // feedback or skipping resets the tier and unlocks the next 6.
 export const REFINE_AFTER_OUTFITS = 6;
 
-// "View latest outfits" fallback on the styling-limit page. We ask the history
-// endpoint for a small window of recent requests (enough to find distinct
-// looks past re-serves) and surface the freshest few as a read-only deck.
-export const LATEST_OUTFITS_HISTORY_LIMIT = 20;
+// "View latest outfits" fallback on the styling-limit page. How many of the
+// most recent recommendation sheets we persist per user and restore into the
+// read-only deck when they return already over their daily limit.
 export const LATEST_OUTFITS_COUNT = 3;
 
 export const MOOD_BANNER_DURATION_MS = 3000;
