@@ -38,7 +38,7 @@ alias only when there is no `ds.*` equivalent. A new screen wiring raw
 | Color | `ds.color.*` | see `color-rules.md` | `figma*` / `uac*` color |
 | Radius | `ds.radius.*` | `xs:2 sm:12 md:16 lg:17 xl:18 full:100` | `uacButtonCta`, `uacPanel`, `figmaTile`, … |
 | Shadow | `ds.shadow.*` | `card / floatingButton / dialog / sheet` | (none — new) |
-| Font role | `ds.font.*` | `display:Poppins ui:Roboto uiAlt:Inter mono:JetBrains Mono` | `typography.aliases.*` faces |
+| Font role | `ds.font.*` | `display:Inter ui:Inter uiAlt:Inter mono:JetBrains Mono` | `typography.aliases.*` faces |
 
 ---
 
@@ -105,11 +105,11 @@ correct tier token used at the wrong layer (e.g. a dialog at `sticky`) → MAJOR
 ## 5. Type families (roles)
 
 `ds.font` names the ROLES; `theme.typography.aliases.*` are the concrete faces
-RN renders (Poppins / Inter / Roboto / Archivo / Manrope / PlayfairDisplay, all
+RN renders (Inter / Roboto / Archivo / Manrope / PlayfairDisplay, all
 bundled; `ds.font.mono` = JetBrains Mono is NOT bundled → falls back to
 platform mono). Pick an existing alias (`uacH4Bold`, `interBodyMd`,
-`poppinsBody`, …) over inventing a new `fontFamily`/`fontSize` pair. A raw
-`fontFamily: 'Poppins-Bold'` string in a screen is caught by
+`interBody`, …) over inventing a new `fontFamily`/`fontSize` pair. A raw
+`fontFamily: 'Inter-Bold'` string in a screen is caught by
 `scripts/auxi-lint-tokens.sh` and is a BLOCKER.
 
 > Typography *roles* (a full type-scale matrix) are a known gap — deferred per

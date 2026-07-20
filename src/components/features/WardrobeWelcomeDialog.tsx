@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextBase,
   },
   body: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.m,
   },

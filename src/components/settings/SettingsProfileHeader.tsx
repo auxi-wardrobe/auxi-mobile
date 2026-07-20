@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     borderRadius: 49, // 44 (avatar) + 3 (padding) + 2 (border)
   },
   email: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.ds.color.ink,
   },
 });

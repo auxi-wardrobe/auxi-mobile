@@ -1,6 +1,6 @@
 /**
  * Shared building blocks for the in-app Design System reference screen.
- * Rebuilt on m-tokens.ts (NEW claude.ai showcase). Poppins-only typography;
+ * Rebuilt on m-tokens.ts (NEW claude.ai showcase). Inter-only typography;
  * mono role uses a platform monospace fallback (JetBrains Mono not bundled),
  * for spec overlines only.
  *

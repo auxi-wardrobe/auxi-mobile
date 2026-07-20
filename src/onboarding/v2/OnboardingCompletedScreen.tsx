@@ -89,16 +89,16 @@ const styles = StyleSheet.create({
   },
   chipsBlock: { gap: theme.spacing.m },
   leadIn: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextBase,
   },
   headline: {
-    ...theme.typography.aliases.poppinsTimeLg,
+    ...theme.typography.aliases.interTimeLg,
     color: theme.colors.uacTextBase,
     marginTop: theme.spacing.s,
   },
   footer: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextBase,
   },
   footerBar: {

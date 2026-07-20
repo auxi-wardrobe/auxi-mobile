@@ -266,11 +266,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.m,
   },
   title: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
   },
   itemPreview: {
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaCardTag,
   },
   commonBadgeText: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.white,
   },
   confirmButton: {
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   confirmText: {
-    ...theme.typography.aliases.poppinsButton,
+    ...theme.typography.aliases.interButton,
     color: theme.colors.figmaPrimaryButtonText,
   },
   checkboxRow: {
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   checkboxLabel: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.uacTextBase,
   },
 });

@@ -497,14 +497,14 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.s,
   },
   heroLead: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm, // Poppins SemiBold 14/20
+    ...theme.typography.aliases.interSemiboldXsSm, // Inter SemiBold 14/20
     color: theme.ds.color.ink,
   },
   paws: {
     fontSize: 14,
   },
   subtitle: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     fontSize: 12,
     lineHeight: 16,
     color: theme.ds.color.onVariant,
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     color: theme.ds.color.ink,
   },
   featureSubtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     fontSize: 12,
     lineHeight: 16,
     color: theme.ds.color.onVariant,
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   bestValueText: {
-    ...theme.typography.aliases.poppinsSemiboldXs,
+    ...theme.typography.aliases.interSemiboldXs,
     fontSize: 12,
     lineHeight: 16,
     color: theme.ds.color.white,
@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
     color: theme.ds.color.ink,
   },
   planBilling: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     fontSize: 14,
     lineHeight: 18,
     color: theme.ds.color.onVariant,
@@ -639,7 +639,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   saveTagText: {
-    ...theme.typography.aliases.poppinsSemiboldXs,
+    ...theme.typography.aliases.interSemiboldXs,
     fontSize: 14,
     lineHeight: 18,
     color: theme.ds.color.white,
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
     color: theme.ds.color.ink,
   },
   trustSubtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     fontSize: 12,
     lineHeight: 16,
     color: theme.ds.color.onVariant,
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.s,
   },
   legalLink: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     fontSize: 12,
     lineHeight: 16,
     color: theme.ds.color.onVariant,

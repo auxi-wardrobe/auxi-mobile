@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.m,
   },
   searchInput: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextPrimary,
     padding: 0,
   },
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   howToTitle: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     marginTop: theme.spacing.l,
     marginBottom: theme.spacing.m,
@@ -431,12 +431,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.s,
   },
   howToNumber: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     width: 20,
   },
   howToText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     flex: 1,
   },
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   extractingText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
   },
   extractBar: {
@@ -475,12 +475,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.l,
   },
   stateTitle: {
-    ...theme.typography.aliases.poppinsSemiboldSm,
+    ...theme.typography.aliases.interSemiboldSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
   stateBody: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
     marginTop: theme.spacing.s,

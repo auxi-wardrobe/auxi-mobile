@@ -14,7 +14,7 @@ export const itemDetailStyles = StyleSheet.create({
     gap: theme.spacing.m,
   },
   titleText: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
+    ...theme.typography.aliases.interH4SemiBold,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
@@ -69,7 +69,7 @@ export const itemDetailStyles = StyleSheet.create({
     gap: 8,
   },
   rowLabel: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaItemDetailRowText,
   },
   rowValue: {

@@ -3,7 +3,7 @@
  * gradient (see `brandGradient.ts`). Rendered as SVG <Text> so the gradient
  * clips to the glyphs (RN has no gradient-fill Text and no masked-view dep).
  *
- * Bundled Poppins-SemiBold is used as the SVG font family. Width is derived
+ * Bundled Inter-SemiBold is used as the SVG font family. Width is derived
  * from the font size (generous, overflow visible) so the glyphs never clip.
  */
 import React, { useId } from 'react';
@@ -25,7 +25,7 @@ export const MacgiePlusWordmark: React.FC<MacgiePlusWordmarkProps> = ({
   fontSize = 28,
   testID = 'macgie-plus-wordmark',
 }) => {
-  // Poppins-Bold "Macgie+" runs ~0.62em per glyph; pad generously so it never
+  // Inter-SemiBold "Macgie+" runs ~0.62em per glyph; pad generously so it never
   // clips at any font size.
   const width = Math.ceil(fontSize * TEXT.length * 0.66);
   const height = Math.ceil(fontSize * 1.32);
@@ -63,7 +63,7 @@ export const MacgiePlusWordmark: React.FC<MacgiePlusWordmarkProps> = ({
         x="0"
         y={fontSize}
         fill={`url(#${gradId})`}
-        fontFamily="Poppins-SemiBold"
+        fontFamily="Inter-SemiBold"
         fontSize={fontSize}
         fontWeight="600"
       >

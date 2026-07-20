@@ -780,12 +780,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyTitle: {
-    ...theme.typography.aliases.poppinsSemiboldSm,
+    ...theme.typography.aliases.interSemiboldSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
   emptySubtitle: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
     marginTop: 8,
@@ -804,12 +804,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorTitle: {
-    ...theme.typography.aliases.poppinsSemiboldSm,
+    ...theme.typography.aliases.interSemiboldSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
   errorBody: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
     marginTop: 8,

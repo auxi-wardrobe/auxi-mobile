@@ -67,7 +67,7 @@ export const DesignSystemScreen: React.FC = () => {
           <Text style={styles.heroTitle}>The Auxi{'\n'}Design System</Text>
           <Text style={styles.heroLead}>
             The living reference for Auxi's wardrobe & styling app — a calm,
-            warm-neutral interface on Poppins. This page mirrors the new
+            warm-neutral interface on Inter. This page mirrors the new
             claude.ai design system; tokens here are page-local and diverge from
             the live theme on purpose.
           </Text>

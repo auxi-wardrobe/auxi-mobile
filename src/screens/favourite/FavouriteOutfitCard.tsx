@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   },
   // Bold outfit title — Poppins SemiBold 24/32 (heading/h4), text/neutral/base.
   title: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
+    ...theme.typography.aliases.interH4SemiBold,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   },
   // Pill label — Inter Regular 10/12 (body/xxs), text/primary/bold_700 (#070707).
   moodPillText: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.figmaTextDark,
     textAlign: 'center',
   },
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tagText: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.white,
     textAlign: 'center',
   },

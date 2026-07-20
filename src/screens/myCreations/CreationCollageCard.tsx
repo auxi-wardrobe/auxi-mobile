@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   moodPillText: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.figmaTextDark,
     textAlign: 'center',
   },

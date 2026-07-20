@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   pillText: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.figmaTextDark,
   },
   pillTextInactive: {
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
   },
   menuText: {
-    ...theme.typography.aliases.poppinsBody,
+    ...theme.typography.aliases.interBody,
     color: theme.colors.uacTextPrimaryBase,
   },
   menuTextActive: {
