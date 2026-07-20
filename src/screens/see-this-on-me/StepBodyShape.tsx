@@ -5,6 +5,12 @@
  * opens the expanded full-screen carousel (`BodyShapeCarousel`) where the user
  * confirms a build. When only 1–2/3 builds came back (`partial`), a regenerate
  * affordance is offered.
+ *
+ * B2 (see-on-me redesign) Next-button gating: `onSelectShape` is now a
+ * LIGHTWEIGHT selection only (records `selectedShape`, shows the selected
+ * border on its tile) — it does NOT fire the render. A bottom "Next" button
+ * is disabled until a shape is selected; tapping it calls `onConfirm`, which
+ * the orchestrator wires to the actual submit (persist profile → render).
  */
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -21,7 +27,10 @@ interface StepBodyShapeProps {
   /** True when only 1–2/3 builds succeeded — show the regenerate affordance. */
   partial?: boolean;
   selectedShape: BodyShapeId | null;
+  /** Records the selection only — does NOT fire the render (B2 gating). */
   onSelectShape: (shape: BodyShapeId) => void;
+  /** Bottom "Next" button — submits `selectedShape` (persist + render). */
+  onConfirm: () => void;
   /** Re-run the 3-shape generation (offered on partial). */
   onRegenerate?: () => void;
   // AU-346 (1.1): reusable-profile opt-in, surfaced inside the carousel modal.
@@ -34,6 +43,7 @@ export const StepBodyShape: React.FC<StepBodyShapeProps> = ({
   partial,
   selectedShape,
   onSelectShape,
+  onConfirm,
   onRegenerate,
   optIn,
   onToggleOptIn,
@@ -61,11 +71,6 @@ export const StepBodyShape: React.FC<StepBodyShapeProps> = ({
                 resizeMode="cover"
                 skeletonTestID={`stom-shape-option-image-skeleton-${option.shape}`}
               />
-              <View style={styles.optionLabelRow}>
-                <Text style={styles.optionLabel} numberOfLines={1}>
-                  {t(`seeThisOnMe.shapes.${option.shape}`)}
-                </Text>
-              </View>
             </TouchableOpacity>
           );
         })}
@@ -86,7 +91,27 @@ export const StepBodyShape: React.FC<StepBodyShapeProps> = ({
         </View>
       ) : null}
 
+      {/* B2: Next is disabled until a shape is selected (via the expand sheet's
+          "Use this photo") — tapping fires the real submit + render. Figma
+          4814:13267 (enabled) is solid filled; 4814:12741 (disabled) is
+          outline-only + faded — PillButton's `disabled` style only applies a
+          50%-opacity overlay on top of the variant, so a disabled `filled`
+          renders as a flat gray pill, not the outlined look. Swap the variant
+          itself, not just the disabled overlay. */}
+      <PillButton
+        testID="stom-shape-next"
+        title={t('seeThisOnMe.next')}
+        variant={selectedShape ? 'filled' : 'outline'}
+        disabled={!selectedShape}
+        onPress={onConfirm}
+      />
+
       <BodyShapeCarousel
+        // Remount per tile tap so the carousel's internal page index
+        // re-derives from the NEW `initialShape` (its `useState` initializer
+        // only runs once per mount) — otherwise tapping a different tile after
+        // the first open would keep showing whichever page was current.
+        key={expandedShape ?? 'closed'}
         visible={expandedShape !== null}
         shapes={shapes}
         initialShape={expandedShape}
@@ -120,20 +145,6 @@ const styles = StyleSheet.create({
   optionSelected: {
     borderWidth: 2,
     borderColor: theme.colors.figmaAction,
-  },
-  optionLabelRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.s,
-    backgroundColor: theme.colors.figmaOverlayScrim,
-  },
-  optionLabel: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.white,
-    textAlign: 'center',
   },
   partialRow: {
     alignItems: 'center',

@@ -91,6 +91,48 @@ export const PromptBubble: React.FC<PromptBubbleProps> = ({
   </View>
 );
 
+interface CaptureStepIntroProps {
+  headline: string;
+  tips: string[];
+  /** Rendered inside a square placeholder tile, left of the tips (step 1's
+   * selfie guidance only — step 2 / full-body has no placeholder per Figma). */
+  photoPlaceholder?: React.ReactNode;
+  testID?: string;
+}
+
+/**
+ * Bold headline + bullet-tip list for the selfie (step 1) and full-body
+ * (step 2) capture screens (Figma `4814:11695` / `4814:11710`). Replaces the
+ * old single-line prompt-bubble copy those steps used to share with step 3.
+ */
+export const CaptureStepIntro: React.FC<CaptureStepIntroProps> = ({
+  headline,
+  tips,
+  photoPlaceholder,
+  testID,
+}) => (
+  <View style={styles.introBlock} testID={testID}>
+    <Text style={styles.introHeadline}>{headline}</Text>
+    <View style={styles.introRow}>
+      {photoPlaceholder ? (
+        <View
+          style={styles.introPlaceholder}
+          testID={testID ? `${testID}-placeholder` : undefined}
+        >
+          {photoPlaceholder}
+        </View>
+      ) : null}
+      <View style={styles.introTips}>
+        {tips.map((tip, index) => (
+          <Text key={index} style={styles.introTipText}>
+            {tip}
+          </Text>
+        ))}
+      </View>
+    </View>
+  </View>
+);
+
 interface PhotoThumbProps {
   uri: string;
   testID?: string;
@@ -209,6 +251,37 @@ export const PhotoSourceSheet: React.FC<PhotoSourceSheetProps> = ({
 };
 
 const styles = StyleSheet.create({
+  introBlock: {
+    gap: theme.spacing.m,
+    alignItems: 'flex-start',
+  },
+  introHeadline: {
+    ...theme.typography.aliases.poppinsTimeLg,
+    color: theme.colors.uacTextBase,
+  },
+  introRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    alignSelf: 'stretch',
+    gap: theme.spacing.m,
+  },
+  introPlaceholder: {
+    width: 96,
+    height: 96,
+    borderRadius: theme.borderRadius.figmaTile,
+    backgroundColor: theme.colors.figmaCardSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  introTips: {
+    flex: 1,
+    gap: theme.spacing.s,
+  },
+  introTipText: {
+    ...theme.typography.aliases.poppinsBodySm,
+    color: theme.colors.uacTextBase,
+    flexShrink: 1,
+  },
   promptBubble: {
     flexDirection: 'row',
     alignItems: 'flex-start',

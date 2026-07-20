@@ -828,7 +828,7 @@
       "error_rate_limit": "Bạn vừa gửi khá nhiều phản hồi. Vui lòng thử lại sau một phút."
     },
     "seeThisOnMe": {
-      "title": "Tự hình dung",
+      "title": "Xem thử trên bạn",
       "takePhoto": "Chụp ảnh",
       "chooseFromLibrary": "Chọn từ thư viện",
       "choosePhotoSource": "Thêm ảnh",
@@ -843,8 +843,12 @@
       },
       "downloadA11y": "Lưu ảnh",
       "optIn": "Dùng ảnh này cho các bản xem trước trang phục sau này",
+      "optInHint": "Bạn có thể thay đổi lựa chọn này bất cứ lúc nào.",
       "retakeProfile": "Chụp lại ảnh",
       "privacy": "Ảnh của bạn được gửi an toàn đến các nhà cung cấp AI (Google, OpenAI) để tạo kết quả, và không bao giờ được bán hay chia sẻ cho nhà quảng cáo.",
+      "privacyShort": "Ảnh của bạn luôn được giữ riêng tư",
+      "stepLabel": "Bước {{step}}/3",
+      "next": "Tiếp theo",
       "generating": "Đang tạo diện mạo của bạn…",
       "generatingShapes": "Đang tạo dáng người của bạn…",
       "error": "Không thể tạo diện mạo của bạn. Vui lòng thử lại.",
@@ -858,14 +862,50 @@
         "generate": "Chúng tôi không thể tạo diện mạo của bạn. Vui lòng thử lại."
       },
       "step1": {
-        "prompt": "1/3 - Bắt đầu bằng một ảnh selfie. Không cần hoàn hảo, bạn có thể thay đổi sau."
+        "headline": "Tải lên một ảnh selfie rõ nét để Macgie tạo phiên bản của bạn.",
+        "tips": [
+          "Nhìn thẳng vào camera, để lộ rõ toàn bộ khuôn mặt.",
+          "Dùng ánh sáng tự nhiên hoặc đủ sáng, tránh bóng đổ mạnh.",
+          "Bỏ kính râm, khẩu trang hoặc bất cứ thứ gì che khuôn mặt."
+        ]
       },
       "step2": {
-        "prompt": "2/3 - Thêm ảnh toàn thân. Không bắt buộc, nhưng giúp Macgie hiểu rõ tỉ lệ và phong cách của bạn hơn."
+        "headline": "Thêm ảnh toàn thân. Không bắt buộc, nhưng giúp Macgie hiểu rõ tỉ lệ và phong cách của bạn hơn.",
+        "tips": [
+          "👕 Mặc trang phục vừa vặn hoặc thường ngày để thấy rõ dáng người.",
+          "📷 Đứng đối diện camera, để toàn thân trong khung hình.",
+          "💡 Dùng ánh sáng tốt và tránh bóng đổ mạnh.",
+          "🧍 Giữ tư thế đứng tự nhiên, tay hơi tách khỏi thân người."
+        ]
       },
       "step3": {
         "prompt": "3/3 - Chọn dáng người giống bạn nhất. Nhấn để mở rộng",
-        "expandedTitle": "Chọn dáng người giống bạn nhất."
+        "expandedTitle": "Dáng người nào giống bạn nhất?",
+        "expandedSubtitle": "Điều này giúp chúng tôi tạo bản xem trước trang phục chân thực hơn. Bạn có thể thay đổi sau."
+      },
+      "loading": {
+        "footer": "Việc này có thể lâu hơn dự kiến.\nBạn có thể rời đi — chúng tôi sẽ báo cho bạn ngay khi xong."
+      },
+      "loadingShapes": {
+        "title": "Đang tạo điểm khởi đầu của bạn…",
+        "rows": [
+          "Phân tích đặc điểm khuôn mặt từ ảnh selfie của bạn",
+          "Hiểu tỉ lệ cơ thể từ ảnh của bạn",
+          "Tạo 3 biến thể dáng người chân thực để bạn lựa chọn"
+        ]
+      },
+      "loadingResult": {
+        "title": "Đang tạo bản xem trước trang phục…",
+        "rows": [
+          "Khớp với dáng người bạn đã chọn",
+          "Ánh xạ độ vừa vặn và tỉ lệ trang phục",
+          "Điều chỉnh lớp mặc và chi tiết trang phục",
+          "Kết xuất trang phục cá nhân hóa của bạn"
+        ]
+      },
+      "feedback": {
+        "like": "Thích kết quả",
+        "dislike": "Không thích kết quả"
       },
       "reuseConfirm": {
         "title": "Ảnh cơ thể của bạn",
