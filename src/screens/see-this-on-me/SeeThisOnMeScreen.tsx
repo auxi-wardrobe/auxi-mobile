@@ -533,13 +533,18 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // AU-358 "quit loading": leave the loading screen WITHOUT cancelling the job.
   // The store keeps it alive; flagging it backgrounded means the in-app
   // completion Toast fires when it finishes so the user can return.
+  //
+  // Quitting returns to whichever screen launched the flow (My Creations /
+  // Favourite / Schedule) via goBack() — the user tapped *quit*, so they expect
+  // the previous page, not Home. The whole capture flow is a single stack
+  // screen (the steps are local state), so goBack() pops just this screen.
   const handleQuitGeneration = useCallback(() => {
     tryOnGenerationStore.setBackgrounded(true);
     track('body_shape_generation_backgrounded', {
       outfit_hash: outfit.outfitHash,
     });
-    goHome();
-  }, [goHome, outfit.outfitHash]);
+    navigation.goBack();
+  }, [navigation, outfit.outfitHash]);
 
   // AU-346: pick a shape → persist it as the primary profile server-side
   // (`select` creates/flips it and returns it), then render the outfit on that
