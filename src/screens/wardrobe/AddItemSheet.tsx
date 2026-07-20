@@ -53,19 +53,6 @@ export const AddItemSheet: React.FC<AddItemSheetProps> = ({
 
         <AddMethodRow
           icon={
-            <Icons.SearchDatabase
-              width={32}
-              height={32}
-              color={theme.colors.uacBackgroundBase}
-            />
-          }
-          title={t('wardrobe.list.method_search_title')}
-          description={t('wardrobe.list.method_search_desc')}
-          onPress={onSearchDatabase}
-          testID="wardrobe-add-search"
-        />
-        <AddMethodRow
-          icon={
             <Icons.TakePhoto
               width={32}
               height={32}
@@ -76,6 +63,19 @@ export const AddItemSheet: React.FC<AddItemSheetProps> = ({
           description={t('wardrobe.list.method_photo_desc')}
           onPress={onTakePhoto}
           testID="wardrobe-add-photo"
+        />
+        <AddMethodRow
+          icon={
+            <Icons.SearchDatabase
+              width={32}
+              height={32}
+              color={theme.colors.uacBackgroundBase}
+            />
+          }
+          title={t('wardrobe.list.method_search_title')}
+          description={t('wardrobe.list.method_search_desc')}
+          onPress={onSearchDatabase}
+          testID="wardrobe-add-search"
         />
         <AddMethodRow
           icon={
