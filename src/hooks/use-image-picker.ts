@@ -11,14 +11,20 @@ import {
  * `handleImageSelection` pattern in `BodyScreen`. Returns the picked
  * `Asset` (or `null` on cancel/empty), and surfaces hard errors via an Alert.
  *
- * Shared options match BodyScreen: `{ mediaType: 'photo', selectionLimit: 1 }`.
- * Callers handle the upload + business logic; this hook only owns the picker.
+ * Shared options match BodyScreen: `{ mediaType: 'photo', selectionLimit: 1 }`,
+ * capped to `maxWidth`/`maxHeight`/`quality` so full-resolution camera photos
+ * (easily 4-5MB+ on modern phones) can't exceed the backend's 3MB fetch limit
+ * for AI body-shape/try-on generation (Sentry REACT-NATIVE-F: shapes job
+ * failed backend-side on a 4.75MB selfie).
  */
 export type ImageSource = 'camera' | 'gallery';
 
 const PICKER_OPTIONS = {
   mediaType: 'photo' as const,
   selectionLimit: 1,
+  maxWidth: 1600,
+  maxHeight: 1600,
+  quality: 0.8 as const,
 };
 
 export interface UseImagePickerResult {
