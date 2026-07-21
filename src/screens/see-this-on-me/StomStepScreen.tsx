@@ -13,7 +13,7 @@
  * instead — see `SeeThisOnMeScreen`'s `StomStepLayout` usage.
  */
 import React from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
 import type { TFunction } from 'i18next';
 import { theme } from '../../theme/theme';
 import { MacgieLoader } from '../../components/macgie/MacgieLoader';
@@ -61,6 +61,12 @@ interface StomStepScreenProps {
   // Retake affordance replaces the profile-retake row and drives a fresh run.
   isCachedResult: boolean;
   handleCachedRetake: () => void;
+  // Daily-limit gate: true once an `ai_daily_limit_reached` 429 opened the
+  // AiLimitSheet. While set, the loading steps render a quiet static backdrop
+  // instead of the animated `StomLoadingScreen` — otherwise the "generating…"
+  // rows keep spinning behind the sheet's 0.45 scrim, reading as still-working
+  // while the sheet says "come back tomorrow" (the reported bug).
+  limitReached: boolean;
   // B3: threaded into OutfitPreview's thumbs-feedback vote.
   outfitHash: string;
 }
@@ -98,10 +104,28 @@ export function renderStomStepScreen(
     restartCapture,
     isCachedResult,
     handleCachedRetake,
+    limitReached,
     outfitHash,
   } = props;
 
   const title = t('seeThisOnMe.title');
+
+  // ── Daily-limit reached (429) ─────────────────────────────────────────────
+  // The screen overlays the AiLimitSheet ("out of AI for today, come back
+  // tomorrow"). Behind its semi-transparent scrim we render a quiet static
+  // shell — never the animated `StomLoadingScreen` (whose spinner + revealing
+  // rows read as "still working"), and never the capture/reuse UI (the entry
+  // gate fires while `step` is still 'selfie', before any job starts). Wins
+  // over every branch below so it covers both the mid-flow 429 (step
+  // 'generating'/'generatingShapes') and the up-front entry gate. The sheet is
+  // terminal (dismiss → goBack), so the header back is all the backdrop needs.
+  if (limitReached) {
+    return (
+      <StepShell title={title} onBack={handleBack}>
+        <View style={styles.limitBackdrop} testID="stom-limit-backdrop" />
+      </StepShell>
+    );
+  }
 
   // ── Loading the reusable profile ──────────────────────────────────────────
   // Skip the loader when we already have a result to show (a cached or
@@ -213,6 +237,12 @@ export function renderStomStepScreen(
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: theme.colors.figmaBackground,
+  },
+  // Quiet fill shown behind the AiLimitSheet — just the flow background, no
+  // animation (see the `limitReached` early-return above).
+  limitBackdrop: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
   },
