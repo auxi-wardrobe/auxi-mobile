@@ -570,12 +570,18 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // Back (header chevron / Android hardware back) while generating → ask whether
   // to discard or keep it running, rather than silently backgrounding.
   const handleBackDuringGeneration = useCallback(() => {
+    track('body_shape_generation_quit_prompt_shown', {
+      outfit_hash: outfit.outfitHash,
+    });
     setQuitConfirmVisible(true);
-  }, []);
+  }, [outfit.outfitHash]);
 
   const handleQuitCancel = useCallback(() => {
+    track('body_shape_generation_quit_cancelled', {
+      outfit_hash: outfit.outfitHash,
+    });
     setQuitConfirmVisible(false);
-  }, []);
+  }, [outfit.outfitHash]);
 
   // Android hardware back: intercept it during a live generation to open the
   // same confirm sheet (parity with the header chevron). When the sheet is
