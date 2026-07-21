@@ -723,7 +723,8 @@
       "remove_confirm": "Có",
       "remove_cancel": "Hủy",
       "add_to_schedule": "Thêm vào lịch",
-      "self_visualization": "Xem trên bạn"
+      "self_visualization": "Xem trên bạn",
+      "self_visualization_loading": "Đang tạo ảnh của bạn…"
     },
     "locationPermission": {
       "denied_title": "Quyền bị từ chối",

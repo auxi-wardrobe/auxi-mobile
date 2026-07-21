@@ -13,8 +13,10 @@ import { COLLAGE_ASPECT } from '../../components/features/collage-seed-layout';
 import IconMinusCircle from '../../assets/images/icon_minus_circle.svg';
 import IconCalendarAdd from '../../assets/images/icon_calendar_add.svg';
 import IconSparkle from '../../assets/images/icon_sparkle.svg';
+import { DotsLoader } from '../../components/design-system/MMotion';
 import { Creation, CreationItem } from '../../services/creationsService';
 import { formatDateLabel } from '../favourite/group-by-date';
+import { useIsOutfitGenerating } from '../see-this-on-me/use-outfit-generating';
 
 type Props = {
   creation: Creation;
@@ -61,6 +63,11 @@ export const CreationCollageCard: React.FC<Props> = ({
   const { t } = useTranslation();
   const [surfaceWidth, setSurfaceWidth] = useState(0);
   const testIDPrefix = `creation-card-${creation.id}`;
+  // The See-on-me flow keys try-on jobs on the creation id (see MyCreationsScreen
+  // .handleVisualize). When this creation's AI photo is still generating in the
+  // background — the user launched it then navigated back here — put the sparkle
+  // button in a loading state so they can't kick off a duplicate job.
+  const isVisualizing = useIsOutfitGenerating(creation.id);
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
@@ -169,17 +176,30 @@ export const CreationCollageCard: React.FC<Props> = ({
           <TouchableOpacity
             testID={`creation-visualize-${creation.id}`}
             accessibilityRole="button"
-            accessibilityLabel={t('myCreations.self_visualization')}
+            accessibilityState={{ busy: isVisualizing }}
+            accessibilityLabel={
+              isVisualizing
+                ? t('myCreations.self_visualization_loading')
+                : t('myCreations.self_visualization')
+            }
             activeOpacity={0.7}
+            disabled={isVisualizing}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={styles.visualizeButton}
             onPress={() => onVisualize(creation)}
           >
-            <IconSparkle
-              width={24}
-              height={24}
-              color={theme.colors.figmaAiSparkle}
-            />
+            {isVisualizing ? (
+              <DotsLoader
+                tint={theme.colors.figmaAiSparkle}
+                testID={`creation-visualize-${creation.id}-loader`}
+              />
+            ) : (
+              <IconSparkle
+                width={24}
+                height={24}
+                color={theme.colors.figmaAiSparkle}
+              />
+            )}
           </TouchableOpacity>
         ) : null}
 

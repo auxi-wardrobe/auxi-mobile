@@ -724,7 +724,8 @@
       "remove_confirm": "Oui",
       "remove_cancel": "Annuler",
       "add_to_schedule": "Ajouter au planning",
-      "self_visualization": "Voir sur moi"
+      "self_visualization": "Voir sur moi",
+      "self_visualization_loading": "Création de votre photo…"
     },
     "locationPermission": {
       "denied_title": "Autorisation refusée",

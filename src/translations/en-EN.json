@@ -724,7 +724,8 @@
       "remove_confirm": "Yes",
       "remove_cancel": "Cancel",
       "add_to_schedule": "Add to schedule",
-      "self_visualization": "See on me"
+      "self_visualization": "See on me",
+      "self_visualization_loading": "Creating your photo…"
     },
     "locationPermission": {
       "denied_title": "Permission Denied",
