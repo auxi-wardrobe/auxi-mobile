@@ -505,6 +505,8 @@
       "a11y_retry_load": "Retry loading outfits",
       "ai_limit_title": "You've reached today's styling limit",
       "ai_limit_body": "You've used all your AI outfits for today. Come back tomorrow for more.",
+      "ai_limit_view_latest": "View latest outfits",
+      "ai_limit_no_recent": "No recent outfits to show yet.",
       "ai_unavailable_title": "Styling is busy right now",
       "ai_unavailable_body": "Our AI stylist is catching its breath. Try again in a moment.",
       "wardrobe_gap_title": "Your wardrobe isn't full enough for more suggestions",

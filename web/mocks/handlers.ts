@@ -106,6 +106,10 @@ export const handlers = [
   http.post('*/api/v05/recommendation/build', async () => {
     if (variant() === 'loading') await delay('infinite');
     if (variant() === 'error') return new HttpResponse(null, { status: 500 });
+    // `?home=ai_limit` → daily styling-limit reached; Home shows the limit page
+    // with the "View latest outfits" CTA (which reads /recommendation/history).
+    if (variant() === 'ai_limit')
+      return HttpResponse.json({ detail: { code: 'ai_daily_limit_reached', message: 'Daily styling limit reached' } }, { status: 429 });
     if (variant() === 'empty')
       return HttpResponse.json({ outfits: [], suggested_default: 0, trace: trace(), wardrobe_gap: true, wardrobe_gap_reason: 'cold_weather_no_outerwear' });
     return HttpResponse.json(buildResponse());

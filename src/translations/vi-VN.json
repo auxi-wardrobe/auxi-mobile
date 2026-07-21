@@ -505,6 +505,8 @@
       "a11y_retry_load": "Tải lại bộ đồ",
       "ai_limit_title": "Bạn đã đạt giới hạn phối đồ hôm nay",
       "ai_limit_body": "Bạn đã dùng hết lượt gợi ý AI cho hôm nay. Quay lại vào ngày mai nhé.",
+      "ai_limit_view_latest": "Xem trang phục gần đây",
+      "ai_limit_no_recent": "Chưa có trang phục gần đây để hiển thị.",
       "ai_unavailable_title": "Hệ thống phối đồ đang bận",
       "ai_unavailable_body": "Trợ lý AI đang quá tải. Vui lòng thử lại sau giây lát.",
       "wardrobe_gap_title": "Tủ đồ chưa đủ để tạo thêm gợi ý",
