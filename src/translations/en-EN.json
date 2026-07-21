@@ -474,6 +474,8 @@
       "chip_simpler": "Simpler look",
       "refineAppliedToast": "{{feedback}} applied!",
       "scheduled_outfit_caption": "Scheduled for today",
+      "worn_days_ago_one": "Worn {{count}} day ago",
+      "worn_days_ago_other": "Worn {{count}} days ago",
       "a11y_scheduled_outfit": "Scheduled outfit for today",
       "a11y_open_menu": "Open menu",
       "a11y_saved_fav": "Saved to favourites",
@@ -503,6 +505,8 @@
       "a11y_retry_load": "Retry loading outfits",
       "ai_limit_title": "You've reached today's styling limit",
       "ai_limit_body": "You've used all your AI outfits for today. Come back tomorrow for more.",
+      "ai_limit_view_latest": "View latest outfits",
+      "ai_limit_no_recent": "No recent outfits to show yet.",
       "ai_unavailable_title": "Styling is busy right now",
       "ai_unavailable_body": "Our AI stylist is catching its breath. Try again in a moment.",
       "wardrobe_gap_title": "Your wardrobe isn't full enough for more suggestions",
@@ -720,7 +724,8 @@
       "remove_confirm": "Yes",
       "remove_cancel": "Cancel",
       "add_to_schedule": "Add to schedule",
-      "self_visualization": "See on me"
+      "self_visualization": "See on me",
+      "self_visualization_loading": "Creating your photo…"
     },
     "locationPermission": {
       "denied_title": "Permission Denied",

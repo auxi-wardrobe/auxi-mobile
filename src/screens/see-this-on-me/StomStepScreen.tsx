@@ -13,12 +13,11 @@
  * instead — see `SeeThisOnMeScreen`'s `StomStepLayout` usage.
  */
 import React from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
 import type { TFunction } from 'i18next';
 import { theme } from '../../theme/theme';
 import { MacgieLoader } from '../../components/macgie/MacgieLoader';
 import { StomHeader, StomDownloadButton } from './components';
-import { StepReuseConfirm } from './StepReuseConfirm';
 import { OutfitPreview } from './OutfitPreview';
 import { GeneratingView } from './GeneratingView';
 import { StomLoadingScreen } from './StomLoadingScreen';
@@ -60,19 +59,17 @@ interface StomStepScreenProps {
   // Preview.
   resultUrl: string | null;
   goHome: () => void;
-  reuseMode: boolean;
   restartCapture: () => void;
-  // Reuse-confirm re-entry (AU-354 pt.3).
-  reuseConfirmed: boolean;
-  rehydrated: boolean;
-  reusePhotoUri: string | null;
-  handleReuseConfirm: () => void;
-  handleReuseRetake: () => void;
-  handleReuseDismiss: () => void;
   // Persisted-result re-entry: the preview is showing a cached AI result, so a
   // Retake affordance replaces the profile-retake row and drives a fresh run.
   isCachedResult: boolean;
   handleCachedRetake: () => void;
+  // Daily-limit gate: true once an `ai_daily_limit_reached` 429 opened the
+  // AiLimitSheet. While set, the loading steps render a quiet static backdrop
+  // instead of the animated `StomLoadingScreen` — otherwise the "generating…"
+  // rows keep spinning behind the sheet's 0.45 scrim, reading as still-working
+  // while the sheet says "come back tomorrow" (the reported bug).
+  limitReached: boolean;
   // B3: threaded into OutfitPreview's thumbs-feedback vote.
   outfitHash: string;
 }
@@ -108,20 +105,31 @@ export function renderStomStepScreen(
     runRender,
     resultUrl,
     goHome,
-    reuseMode,
     restartCapture,
-    reuseConfirmed,
-    rehydrated,
-    reusePhotoUri,
-    handleReuseConfirm,
-    handleReuseRetake,
-    handleReuseDismiss,
     isCachedResult,
     handleCachedRetake,
+    limitReached,
     outfitHash,
   } = props;
 
   const title = t('seeThisOnMe.title');
+
+  // ── Daily-limit reached (429) ─────────────────────────────────────────────
+  // The screen overlays the AiLimitSheet ("out of AI for today, come back
+  // tomorrow"). Behind its semi-transparent scrim we render a quiet static
+  // shell — never the animated `StomLoadingScreen` (whose spinner + revealing
+  // rows read as "still working"), and never the capture/reuse UI (the entry
+  // gate fires while `step` is still 'selfie', before any job starts). Wins
+  // over every branch below so it covers both the mid-flow 429 (step
+  // 'generating'/'generatingShapes') and the up-front entry gate. The sheet is
+  // terminal (dismiss → goBack), so the header back is all the backdrop needs.
+  if (limitReached) {
+    return (
+      <StepShell title={title} onBack={handleBack}>
+        <View style={styles.limitBackdrop} testID="stom-limit-backdrop" />
+      </StepShell>
+    );
+  }
 
   // ── Loading the reusable profile ──────────────────────────────────────────
   // Skip the loader when we already have a result to show (a cached or
@@ -226,34 +234,20 @@ export function renderStomStepScreen(
     );
   }
 
-  // ── Reuse-confirm re-entry (AU-354 pt.3) ─────────────────────────────────
-  // The saved photo is presented in a bottom sheet (per design) layered over the
-  // flow's header shell; the sheet's scrim dims it. Backdrop / swipe-down leaves
-  // the flow (same as the header back).
-  if (
-    reuseMode &&
-    !reuseConfirmed &&
-    !rehydrated &&
-    reusePhotoUri &&
-    step === 'selfie'
-  ) {
-    return (
-      <StepShell title={title} onBack={handleBack}>
-        <StepReuseConfirm
-          photoUri={reusePhotoUri}
-          onConfirm={handleReuseConfirm}
-          onRetake={handleReuseRetake}
-          onDismiss={handleReuseDismiss}
-        />
-      </StepShell>
-    );
-  }
-
+  // Reuse-confirm is no longer handled here: the "reuse your saved body?" sheet
+  // is owned by the gate screen (SeeThisOnMeConfirm), which presents it over the
+  // originating page and then hands off to this flow for capture / render.
   return null;
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: theme.colors.figmaBackground,
+  },
+  // Quiet fill shown behind the AiLimitSheet — just the flow background, no
+  // animation (see the `limitReached` early-return above).
+  limitBackdrop: {
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
   },

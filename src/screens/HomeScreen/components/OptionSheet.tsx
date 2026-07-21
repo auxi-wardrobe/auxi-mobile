@@ -35,6 +35,7 @@ export const OptionSheet = React.memo(
     homeView,
     onCollageDragActiveChange,
     isGenerating = false,
+    wornDaysAgo = null,
   }: {
     cellKey: string;
     outfit: OutfitSheetWithGrid;
@@ -45,6 +46,11 @@ export const OptionSheet = React.memo(
     homeView: HomeView;
     onCollageDragActiveChange: (active: boolean) => void;
     isGenerating?: boolean;
+    /**
+     * Days since the user last wore this outfit (null when never worn). Passed
+     * through to the caption so a re-surfaced look reads "Worn N days ago".
+     */
+    wornDaysAgo?: number | null;
   }) => {
     const { t } = useTranslation();
     const items = outfit.items;
@@ -267,6 +273,7 @@ export const OptionSheet = React.memo(
             testID={`home-card-caption-${cellKey}`}
             caption={outfit.caption}
             scheduled={outfit.scheduled}
+            wornDaysAgo={wornDaysAgo}
           />
 
           <ScrollView

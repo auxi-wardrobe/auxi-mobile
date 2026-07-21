@@ -49,6 +49,7 @@ import {
   formatDateLabel,
   groupFavouritesByDate,
 } from './favourite/group-by-date';
+import { useIsOutfitGenerating } from './see-this-on-me/use-outfit-generating';
 import { computeSnapOffsets } from './favourite/snap-offsets';
 import { computeActiveIndex } from './favourite/active-index';
 
@@ -196,6 +197,13 @@ export const FavouriteScreen: React.FC = () => {
   );
 
   const activeFavourite = flatFavourites[activeIndex]?.fav;
+  // The outfit hash the try-on flow keys on (mirrors handleSelfVisualization),
+  // so the action bar can show a loading "See on me" button when THIS outfit's
+  // AI photo is still generating after the user left the loading screen.
+  const activeOutfitHash = activeFavourite
+    ? activeFavourite.outfit_context?.outfit_hash ?? activeFavourite.id
+    : undefined;
+  const activeIsGenerating = useIsOutfitGenerating(activeOutfitHash);
 
   const handleSelfVisualization = (favourite: Favourite) => {
     track('favourite_try_on_tapped', { favorite_id: favourite.id });
@@ -203,7 +211,10 @@ export const FavouriteScreen: React.FC = () => {
     // from the saved favourite: outfit hash, the garment ids + their image urls,
     // and the human-readable styling note.
     const items = favourite.outfit_items ?? [];
-    navigation.navigate('SeeThisOnMe', {
+    // Route through the reuse-confirm gate so a saved-body user sees the confirm
+    // sheet over THIS page (not an empty See-on-me shell). The gate hands off to
+    // SeeThisOnMe for capture / render.
+    navigation.navigate('SeeThisOnMeConfirm', {
       outfit: {
         outfitHash: favourite.outfit_context?.outfit_hash ?? favourite.id,
         itemIds: items.map(item => item.id),
@@ -363,6 +374,7 @@ export const FavouriteScreen: React.FC = () => {
           onRemove={() => setPendingRemovalId(activeFavourite.id)}
           onSchedule={() => handleSchedule(activeFavourite)}
           onSelfVisualization={() => handleSelfVisualization(activeFavourite)}
+          selfVisualizationLoading={activeIsGenerating}
         />
       ) : null}
 

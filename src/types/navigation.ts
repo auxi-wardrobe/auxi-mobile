@@ -5,6 +5,7 @@ import type {
   WardrobeDirection,
 } from '../services/v05Api';
 import type { LegalScreenParams } from '../screens/legal/LegalDocumentScreen';
+import type { BodyShape } from '../services/bodyService';
 
 /**
  * AU-242 — UAC v2 auth stack routes.
@@ -233,7 +234,28 @@ export type AppStackParamList = {
   // (selfie → full-body → body-shape) that uploads a body photo and renders
   // the saved outfit onto it via POST /api/tryon/highres. `outfit` carries the
   // serializable TryOnOutfitContext the flow needs (hash, item ids/urls, note).
-  SeeThisOnMe: { outfit: TryOnOutfitContext };
+  //
+  // `reuseAction` is set only when entering FROM the reuse-confirm gate
+  // (`SeeThisOnMeConfirm`), which already owns the "reuse your saved body?"
+  // sheet — so the in-flow screen skips that sheet and jumps straight to:
+  //  - 'render': render the outfit onto the saved body (`reuseBodyId` /
+  //    `reuseShape` carry the confirmed profile so no re-fetch is needed);
+  //  - 'capture': run the normal selfie→full-body→shape capture flow (the
+  //    user tapped Retake, or has no saved profile).
+  // Omitted for resume/deep-link entries (e.g. the completion-notice popTo),
+  // which rehydrate from the background store instead.
+  SeeThisOnMe: {
+    outfit: TryOnOutfitContext;
+    reuseAction?: 'render' | 'capture';
+    reuseBodyId?: string;
+    reuseShape?: BodyShape | null;
+  };
+  // Reuse-confirm gate for "See this on me" (see SeeThisOnMeConfirmScreen).
+  // A transparent-modal screen presented OVER the originating page (Favourite /
+  // Creations / Schedule): it loads the user's saved body profile and, when one
+  // exists, shows the confirm bottom sheet with that page still visible behind
+  // it — then hands off to `SeeThisOnMe` for the actual render/capture.
+  SeeThisOnMeConfirm: { outfit: TryOnOutfitContext };
   // Landing screen for a tapped "your try-on is ready" push notification
   // (backend `tryon_render_completed`, see `deepLinkHandler.resolveNotificationData`).
   // A push can only carry the rendered image URL, not the full outfit context

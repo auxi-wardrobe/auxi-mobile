@@ -47,6 +47,11 @@ import { Step, CaptureStep, stepOrder, captureStepConfig } from './stom-steps';
 import { decideEntryMode } from './profile-entry';
 import { tryOnGenerationStore } from './try-on-generation-store';
 import { getTryOnResult } from '../../services/tryOnResultStore';
+import {
+  isAiLimitReached,
+  markAiLimitReached,
+  clearAiLimit,
+} from '../../services/aiLimitStore';
 import { useTryOnGeneration } from './use-try-on-generation';
 import { setTryOnBackgroundCompleteHandler } from './try-on-background-notify';
 
@@ -67,7 +72,13 @@ type ScreenRoute = RouteProp<AppStackParamList, 'SeeThisOnMe'>;
 export const SeeThisOnMeScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Navigation>();
-  const { outfit } = useRoute<ScreenRoute>().params;
+  // `reuseAction` is set by the reuse-confirm gate (SeeThisOnMeConfirm), which
+  // already owns the "reuse your saved body?" sheet — so this screen skips that
+  // sheet and jumps straight to render ('render', with the confirmed
+  // `reuseBodyId`/`reuseShape`) or capture ('capture'). Undefined for resume
+  // entries (e.g. the completion-notice popTo), which rehydrate from the store.
+  const { outfit, reuseAction, reuseBodyId, reuseShape } =
+    useRoute<ScreenRoute>().params;
   const { pickImage } = useImagePicker();
   // B1: gate the AI photo upload behind explicit, persisted consent.
   const aiConsentGate = useAiConsentGate();
@@ -75,7 +86,12 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // "out for today" sheet with NO retry, instead of the generic error view.
   const aiLimitGate = useAiLimitGate();
 
-  const [step, setStep] = useState<Step>('selfie');
+  // On a gated 'render' entry we go straight to the render loading screen (no
+  // capture steps) — initialise there so the selfie step never flashes before
+  // the mount effect kicks off the render.
+  const [step, setStep] = useState<Step>(() =>
+    reuseAction === 'render' ? 'generating' : 'selfie',
+  );
   // B2 redesign: the stepped layout no longer shows a persistent selfie/
   // full-body thumbnail once the user has advanced past that step, so only
   // the setters are read here (the captured Asset itself isn't displayed).
@@ -107,16 +123,19 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // AU-346: when the user taps "Retake photos" on the reuse path we suppress
   // the saved profile and run the normal capture flow (the saved profile is
   // untouched on the server until a new one is saved).
-  const [forceCapture, setForceCapture] = useState(false);
-  // AU-354 pt.3: on the reuse path, the user must first CONFIRM the persisted
-  // photo (or retake) before we render. False until they tap Confirm — until
-  // then the reuse-confirm screen is shown instead of auto-generating.
-  const [reuseConfirmed, setReuseConfirmed] = useState(false);
+  const [forceCapture, setForceCapture] = useState(
+    reuseAction === 'capture',
+  );
   const [busy, setBusy] = useState(false);
   // Render-phase failure flag (drives the 'generating' error view).
   const [errored, setErrored] = useState(false);
   // Shapes-phase failure flag (drives the 'generatingShapes' error view).
   const [shapesErrored, setShapesErrored] = useState(false);
+  // Daily-limit gate reached (either phase 429'd with ai_daily_limit_reached).
+  // Distinct from `errored`: the limit path shows the AiLimitSheet with NO
+  // retry, and swaps the animated loading screen behind it for a quiet static
+  // backdrop (otherwise the "generating…" loader keeps spinning under the sheet).
+  const [limitReached, setLimitReached] = useState(false);
   // Friendly inline error shown on the active photo step. Set when the backend
   // rejects the chosen photo as not a usable body photo (HTTP 422), or when a
   // generic (network/auth) error blocks validation — distinct copy each.
@@ -182,6 +201,19 @@ export const SeeThisOnMeScreen: React.FC = () => {
     [aiConsentGate, outfit],
   );
 
+  // Gated 'render' entry (reuse-confirm gate already confirmed the saved body):
+  // kick off the render straight onto that body. `step` is initialised to
+  // 'generating' above so the loading screen is showing while this fires.
+  const reuseRenderFiredRef = useRef(false);
+  useEffect(() => {
+    if (reuseAction === 'render' && reuseBodyId && !reuseRenderFiredRef.current) {
+      reuseRenderFiredRef.current = true;
+      runRender(reuseBodyId, reuseShape ?? null);
+    }
+    // Mount-only: the gate passes stable params for a given screen instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Phase 1 shapes: kick off the 3 body-shape photo generation. The backend
   // requires two body ids; full-body is optional in capture, so we fall back to
   // the selfie id (same fallback the render uses). Consent-gated — the body
@@ -227,6 +259,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
     if (generation.phase === 'shapes') {
       const key = `shapes:${generation.status}`;
       if (generation.status === 'success' && generation.shapes) {
+        // Proof the daily budget isn't spent — clear any remembered limit so a
+        // stale entry-gate mark can't block the next See-on-me open.
+        clearAiLimit();
         if (resolvedHashRef.current !== key) {
           resolvedHashRef.current = key;
           track('body_shape_generation_completed', {
@@ -243,6 +278,10 @@ export const SeeThisOnMeScreen: React.FC = () => {
         // gate analytics once (deduped by the same resolvedHashRef key) and
         // skips the generic error view.
         if (aiLimitGate.check(generation.errorCode)) {
+          setLimitReached(true);
+          // Remember it so the NEXT See-on-me open gates at entry (no re-walk of
+          // the capture flow before the sheet appears).
+          markAiLimitReached();
           if (resolvedHashRef.current !== key) {
             resolvedHashRef.current = key;
             track('ai_limit_gate_shown', {
@@ -272,6 +311,8 @@ export const SeeThisOnMeScreen: React.FC = () => {
     // ── Phase 2: outfit render ──────────────────────────────────────────────
     const key = `render:${generation.status}:${generation.resultUrl ?? ''}`;
     if (generation.status === 'success' && generation.resultUrl) {
+      // Proof the daily budget isn't spent — clear any remembered limit.
+      clearAiLimit();
       if (resolvedHashRef.current !== key) {
         resolvedHashRef.current = key;
         track('try_on_completed', { outfit_hash: outfit.outfitHash });
@@ -284,6 +325,9 @@ export const SeeThisOnMeScreen: React.FC = () => {
       // gate analytics once (deduped by the same resolvedHashRef key) and skips
       // the generic error view (which would render the retry-storm "Try again").
       if (aiLimitGate.check(generation.errorCode)) {
+        setLimitReached(true);
+        // Remember it so the NEXT See-on-me open gates at entry.
+        markAiLimitReached();
         if (resolvedHashRef.current !== key) {
           resolvedHashRef.current = key;
           track('ai_limit_gate_shown', {
@@ -362,6 +406,17 @@ export const SeeThisOnMeScreen: React.FC = () => {
         track('try_on_cached_result_shown', {
           outfit_hash: outfit.outfitHash,
         });
+      } else if (isAiLimitReached()) {
+        // Entry gate: we already know the daily AI budget is spent (a prior
+        // `ai_daily_limit_reached` 429 this session — here or on Home). Show the
+        // "come back tomorrow" sheet the instant See-on-me opens, over the quiet
+        // static backdrop, instead of walking the user through capture +
+        // body-shape selection only to 429 at the render. No AI job is started;
+        // dismiss → goBack. A cached result (above) still shows — it spends no
+        // budget — so only the fresh-generation entry is gated.
+        setLimitReached(true);
+        aiLimitGate.open();
+        track('ai_limit_gate_shown', { feature: 'try_on', phase: 'entry' });
       }
     }
     return () => {
@@ -380,34 +435,19 @@ export const SeeThisOnMeScreen: React.FC = () => {
   });
 
   // True only when a saved profile exists AND the user hasn't asked to retake.
+  // Still needed as the render-retry body fallback (see `renderBodyId`); the
+  // reuse-confirm SHEET itself is now owned by the gate (SeeThisOnMeConfirm).
   const reuseMode = !forceCapture && decideEntryMode(activeProfile) === 'reuse';
 
-  // AU-354 pt.3: the persisted body photo to show on the reuse-confirm screen.
-  const reusePhotoUri =
-    activeProfile?.full_body_url ?? activeProfile?.image_url ?? null;
-
-  // AU-354 pt.3: CONFIRM the reused profile — render the current outfit with the
-  // stored body + shape (no re-capture, no shape generation). On the reuse path
-  // the saved profile id IS the render body_id.
-  const reuseFiredRef = useRef(false);
-  const handleReuseConfirm = useCallback(() => {
-    if (!activeProfile?.id || reuseFiredRef.current) return;
-    reuseFiredRef.current = true;
-    setReuseConfirmed(true);
-    track('body_photo_reuse_confirmed', { outfit_hash: outfit.outfitHash });
-    runRender(activeProfile.id, activeProfile.body_shape ?? null);
-  }, [activeProfile, outfit.outfitHash, runRender]);
-
-  // "Retake photos" on the reuse path: drop reuse and start the normal capture
-  // flow from the selfie step. The saved server profile is left intact.
+  // "Retake photos": drop reuse and start the normal capture flow from the
+  // selfie step. The saved server profile is left intact. Reused by the preview
+  // Retake affordance on a freshly-rendered result.
   const restartCapture = useCallback(() => {
-    reuseFiredRef.current = false;
     rehydratedRef.current = false;
     resolvedHashRef.current = null;
     // Drop any background job result so re-capture starts clean (AU-358).
     tryOnGenerationStore.reset();
     setForceCapture(true);
-    setReuseConfirmed(false);
     setSelfie(null);
     setFullBody(null);
     setSelfieBodyId(null);
@@ -421,41 +461,26 @@ export const SeeThisOnMeScreen: React.FC = () => {
     setShapesErrored(false);
     setPhotoError(null);
     setOptIn(true);
+    setLimitReached(false);
     setStep('selfie');
     track('try_on_profile_retake', { outfit_hash: outfit.outfitHash });
     // §3.5 #42: outcome-screen retake fires only when a result actually exists
-    // (preview UI) — the reuse-confirm retake happens before any render.
+    // (preview UI).
     if (resultUrl) {
       track('try_on_outcome_retaken', { outfit_hash: outfit.outfitHash });
     }
   }, [outfit.outfitHash, resultUrl]);
 
-  // AU-354 pt.3: RETAKE from the reuse-confirm screen.
-  const handleReuseRetake = useCallback(() => {
-    track('body_photo_retake_selected', { outfit_hash: outfit.outfitHash });
-    restartCapture();
-  }, [outfit.outfitHash, restartCapture]);
-
-  // DISMISS the reuse-confirm bottom sheet via backdrop-tap / swipe-down. This
-  // is a THIRD funnel exit alongside confirm + retake — track it so the reuse-
-  // confirm drop-off stays visible, THEN fall back to the same nav as the header
-  // back (leaves the flow / steps back).
-  const handleReuseDismiss = useCallback(() => {
-    track('body_photo_reuse_dismissed', { outfit_hash: outfit.outfitHash });
-    handleBack();
-  }, [outfit.outfitHash, handleBack]);
-
   // Retake from a persisted-result preview: drop the cached photo view and fall
-  // back into the normal flow (reuse-confirm when a saved profile exists, else
-  // capture) so the user generates a fresh result. The cached result is LEFT on
-  // disk until a new render succeeds, so backing out of the retake keeps the
-  // previous photo available on the next entry.
+  // into the capture flow so the user generates a fresh result (same as the
+  // fresh-result Retake — the reuse-confirm sheet is an entry-only affordance
+  // owned by the gate). The cached result is LEFT on disk until a new render
+  // succeeds, so backing out of the retake keeps the previous photo available.
   const handleCachedRetake = useCallback(() => {
     setShowCachedResult(false);
     setResultUrl(null);
     resolvedHashRef.current = null;
-    reuseFiredRef.current = false;
-    setReuseConfirmed(false);
+    setForceCapture(true);
     setStep('selfie');
     track('try_on_outcome_retaken', { outfit_hash: outfit.outfitHash });
   }, [outfit.outfitHash]);
@@ -547,14 +572,19 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // completion Toast fires when it finishes so the user can return. This is the
   // explicit "Leave — notify me when ready" path (bottom CTA + the confirm
   // sheet's Notify action).
+  //
+  // Quitting returns to whichever screen launched the flow (My Creations /
+  // Favourite / Schedule) via goBack() — the user tapped *quit*, so they expect
+  // the previous page, not Home. The whole capture flow is a single stack
+  // screen (the steps are local state), so goBack() pops just this screen.
   const handleQuitGeneration = useCallback(() => {
     setQuitConfirmVisible(false);
     tryOnGenerationStore.setBackgrounded(true);
     track('body_shape_generation_backgrounded', {
       outfit_hash: outfit.outfitHash,
     });
-    goHome();
-  }, [goHome, outfit.outfitHash]);
+    navigation.goBack();
+  }, [navigation, outfit.outfitHash]);
 
   // AU-358 "discard": cancel the in-flight job (reset orphans the poll) and
   // leave. No completion Toast — the user chose to stop.
@@ -583,18 +613,20 @@ export const SeeThisOnMeScreen: React.FC = () => {
     setQuitConfirmVisible(false);
   }, [outfit.outfitHash]);
 
-  // Android hardware back: intercept it during a live generation to open the
-  // same confirm sheet (parity with the header chevron). When the sheet is
-  // already open its Modal handles back itself (onRequestClose → cancel), so
-  // this only fires for the loading screen underneath.
+  // Android hardware back: intercept it during a live generation and route it
+  // through `handleBackDuringGeneration` (same as the header chevron) so the
+  // `body_shape_generation_quit_prompt_shown` funnel-head event fires on the
+  // hardware-back path too — not only the chevron. When the sheet is already
+  // open its Modal handles back itself (onRequestClose → cancel), so this only
+  // fires for the loading screen underneath.
   useEffect(() => {
     if (!isGeneratingLive || quitConfirmVisible) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setQuitConfirmVisible(true);
+      handleBackDuringGeneration();
       return true;
     });
     return () => sub.remove();
-  }, [isGeneratingLive, quitConfirmVisible]);
+  }, [isGeneratingLive, quitConfirmVisible, handleBackDuringGeneration]);
 
   // AU-346: pick a shape → persist it as the primary profile server-side
   // (`select` creates/flips it and returns it), then render the outfit on that
@@ -663,16 +695,10 @@ export const SeeThisOnMeScreen: React.FC = () => {
     runRender,
     resultUrl,
     goHome,
-    reuseMode,
     restartCapture,
-    reuseConfirmed,
-    rehydrated: rehydratedRef.current,
-    reusePhotoUri,
-    handleReuseConfirm,
-    handleReuseRetake,
-    handleReuseDismiss,
     isCachedResult: showCachedResult,
     handleCachedRetake,
+    limitReached,
     outfitHash: outfit.outfitHash,
   });
   if (stepScreen) {
