@@ -45,6 +45,9 @@ interface StomStepScreenProps {
   profileLoading: boolean;
   handleBack: () => void;
   handleQuitGeneration: () => void;
+  // Back (header chevron) on a live loading screen → open the discard/notify
+  // confirm sheet rather than silently backgrounding the job.
+  handleBackDuringGeneration: () => void;
   // Shapes phase (phase 1).
   shapesErrored: boolean;
   regenerateShapes: () => void;
@@ -93,6 +96,7 @@ export function renderStomStepScreen(
     profileLoading,
     handleBack,
     handleQuitGeneration,
+    handleBackDuringGeneration,
     shapesErrored,
     regenerateShapes,
     errored,
@@ -145,8 +149,7 @@ export function renderStomStepScreen(
   // the old inline skeleton tiles. The error branch keeps `GeneratingView`.
   if (step === 'generatingShapes') {
     if (shapesErrored) {
-      // Back during generation = quit-to-background (keeps the job alive +
-      // notifies on done); in the errored state it's a plain back.
+      // In the errored state there's no live job, so back is a plain back.
       return (
         <StepShell title={title} onBack={handleBack}>
           <GeneratingView
@@ -158,6 +161,8 @@ export function renderStomStepScreen(
         </StepShell>
       );
     }
+    // Back during generation opens the discard/notify confirm sheet; the bottom
+    // "Leave — notify me when ready" CTA is the explicit background+notify path.
     return (
       <StomLoadingScreen
         testID="stom-loading-shapes"
@@ -166,7 +171,7 @@ export function renderStomStepScreen(
         rows={SHAPES_LOADING_ROW_KEYS.map(key => t(key))}
         footerText={t('seeThisOnMe.loading.footer')}
         quitLabel={t('seeThisOnMe.quit.cta')}
-        onBack={handleQuitGeneration}
+        onBack={handleBackDuringGeneration}
         onQuit={handleQuitGeneration}
       />
     );
@@ -196,7 +201,7 @@ export function renderStomStepScreen(
         rows={RESULT_LOADING_ROW_KEYS.map(key => t(key))}
         footerText={t('seeThisOnMe.loading.footer')}
         quitLabel={t('seeThisOnMe.quit.cta')}
-        onBack={handleQuitGeneration}
+        onBack={handleBackDuringGeneration}
         onQuit={handleQuitGeneration}
       />
     );

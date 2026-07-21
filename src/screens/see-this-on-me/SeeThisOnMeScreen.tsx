@@ -17,6 +17,7 @@
  * so they survive the user quitting the loading screen and notify on completion.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { BackHandler } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Asset } from 'react-native-image-picker';
@@ -33,6 +34,7 @@ import { useAiConsentGate } from '../../hooks/useAiConsentGate';
 import { useAiLimitGate } from '../../hooks/useAiLimitGate';
 import { AiConsentDialog } from '../../components/features/AiConsentDialog';
 import { AiLimitSheet } from '../../components/features/AiLimitSheet';
+import { DiscardGenerationDialog } from './DiscardGenerationDialog';
 import { AppStackParamList } from '../../types/navigation';
 import { PhotoSourceSheet } from './components';
 import { renderStomStepScreen } from './StomStepScreen';
@@ -139,6 +141,10 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // generic (network/auth) error blocks validation — distinct copy each.
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [sourceSheetVisible, setSourceSheetVisible] = useState(false);
+  // AU-358 quit-during-generation: back on a live loading screen opens this
+  // confirm sheet (discard the job vs keep it running + notify), instead of
+  // silently backgrounding.
+  const [quitConfirmVisible, setQuitConfirmVisible] = useState(false);
   // Where the picked asset should land — set when a step's CTA opens the sheet.
   const pendingDoneRef = useRef<
     ((asset: Asset) => void | Promise<void>) | null
@@ -555,21 +561,72 @@ export const SeeThisOnMeScreen: React.FC = () => {
     [pickImage],
   );
 
+  // A live (non-errored) loading screen is showing — the only state in which
+  // "back" is ambiguous enough to warrant the discard/notify confirm sheet.
+  const isGeneratingLive =
+    (step === 'generatingShapes' && !shapesErrored) ||
+    (step === 'generating' && !errored);
+
   // AU-358 "quit loading": leave the loading screen WITHOUT cancelling the job.
   // The store keeps it alive; flagging it backgrounded means the in-app
-  // completion Toast fires when it finishes so the user can return.
+  // completion Toast fires when it finishes so the user can return. This is the
+  // explicit "Leave — notify me when ready" path (bottom CTA + the confirm
+  // sheet's Notify action).
   //
   // Quitting returns to whichever screen launched the flow (My Creations /
   // Favourite / Schedule) via goBack() — the user tapped *quit*, so they expect
   // the previous page, not Home. The whole capture flow is a single stack
   // screen (the steps are local state), so goBack() pops just this screen.
   const handleQuitGeneration = useCallback(() => {
+    setQuitConfirmVisible(false);
     tryOnGenerationStore.setBackgrounded(true);
     track('body_shape_generation_backgrounded', {
       outfit_hash: outfit.outfitHash,
     });
     navigation.goBack();
   }, [navigation, outfit.outfitHash]);
+
+  // AU-358 "discard": cancel the in-flight job (reset orphans the poll) and
+  // leave. No completion Toast — the user chose to stop.
+  const handleDiscardGeneration = useCallback(() => {
+    setQuitConfirmVisible(false);
+    tryOnGenerationStore.reset();
+    track('body_shape_generation_discarded', {
+      outfit_hash: outfit.outfitHash,
+    });
+    goHome();
+  }, [goHome, outfit.outfitHash]);
+
+  // Back (header chevron / Android hardware back) while generating → ask whether
+  // to discard or keep it running, rather than silently backgrounding.
+  const handleBackDuringGeneration = useCallback(() => {
+    track('body_shape_generation_quit_prompt_shown', {
+      outfit_hash: outfit.outfitHash,
+    });
+    setQuitConfirmVisible(true);
+  }, [outfit.outfitHash]);
+
+  const handleQuitCancel = useCallback(() => {
+    track('body_shape_generation_quit_cancelled', {
+      outfit_hash: outfit.outfitHash,
+    });
+    setQuitConfirmVisible(false);
+  }, [outfit.outfitHash]);
+
+  // Android hardware back: intercept it during a live generation and route it
+  // through `handleBackDuringGeneration` (same as the header chevron) so the
+  // `body_shape_generation_quit_prompt_shown` funnel-head event fires on the
+  // hardware-back path too — not only the chevron. When the sheet is already
+  // open its Modal handles back itself (onRequestClose → cancel), so this only
+  // fires for the loading screen underneath.
+  useEffect(() => {
+    if (!isGeneratingLive || quitConfirmVisible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBackDuringGeneration();
+      return true;
+    });
+    return () => sub.remove();
+  }, [isGeneratingLive, quitConfirmVisible, handleBackDuringGeneration]);
 
   // AU-346: pick a shape → persist it as the primary profile server-side
   // (`select` creates/flips it and returns it), then render the outfit on that
@@ -629,6 +686,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
     profileLoading,
     handleBack,
     handleQuitGeneration,
+    handleBackDuringGeneration,
     shapesErrored,
     regenerateShapes,
     errored,
@@ -648,6 +706,12 @@ export const SeeThisOnMeScreen: React.FC = () => {
       <>
         {stepScreen}
         {aiLimitSheet}
+        <DiscardGenerationDialog
+          visible={quitConfirmVisible}
+          onCancel={handleQuitCancel}
+          onNotify={handleQuitGeneration}
+          onDiscard={handleDiscardGeneration}
+        />
       </>
     );
   }

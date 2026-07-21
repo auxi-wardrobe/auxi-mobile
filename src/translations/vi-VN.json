@@ -925,7 +925,10 @@
       },
       "quit": {
         "hint": "Việc này có thể mất một lát. Bạn có thể rời đi — chúng tôi sẽ báo ngay khi xong.",
-        "cta": "Rời đi — báo cho tôi khi xong"
+        "cta": "Rời đi — báo cho tôi khi xong",
+        "confirmTitle": "Rời đi trong khi đang tạo?",
+        "confirmBody": "Bản xem trước của bạn vẫn đang được tạo. Hãy để nó chạy nền và chúng tôi sẽ báo ngay khi xong — hoặc hủy bỏ để dừng lại ngay.",
+        "discard": "Hủy bỏ"
       },
       "notify": {
         "readyTitle": "Diện mạo của bạn đã sẵn sàng",

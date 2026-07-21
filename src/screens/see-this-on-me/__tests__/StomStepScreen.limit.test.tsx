@@ -70,6 +70,7 @@ const renderStep = (step: Step, limitReached: boolean) =>
       profileLoading: false,
       handleBack: jest.fn(),
       handleQuitGeneration: jest.fn(),
+      handleBackDuringGeneration: jest.fn(),
       shapesErrored: false,
       regenerateShapes: jest.fn(),
       errored: false,

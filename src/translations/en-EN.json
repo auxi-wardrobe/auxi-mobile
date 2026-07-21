@@ -926,7 +926,10 @@
       },
       "quit": {
         "hint": "This can take a moment. You can leave — we’ll let you know the second it’s ready.",
-        "cta": "Leave — notify me when ready"
+        "cta": "Leave — notify me when ready",
+        "confirmTitle": "Leave while it’s generating?",
+        "confirmBody": "Your preview is still being created. Keep it running in the background and we’ll notify you the moment it’s ready — or discard it and stop now.",
+        "discard": "Discard"
       },
       "notify": {
         "readyTitle": "Your look is ready",
