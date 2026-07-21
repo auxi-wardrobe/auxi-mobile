@@ -102,6 +102,7 @@ import {
   readHomeDeckSnapshot,
   saveHomeDeckSnapshot,
 } from './deck-cache';
+import { buildWearHistory, buildWornDaysAgoByHash } from './wear-history';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
 import { useHomeToasts } from './hooks/useHomeToasts';
@@ -135,6 +136,10 @@ export const HomeScreen = () => {
   // rollover mid-session — reopening the app re-captures it, which is enough for
   // "the outfit you planned for today leads the deck".
   const todayKey = useMemo(() => toDayKey(new Date()), []);
+  // Reference "now" for the "Worn N days ago" badge, captured once per mount so
+  // the computed day-counts stay stable across re-renders (same rationale as
+  // `todayKey`; a reopen re-captures, which is enough for a per-session badge).
+  const wornAsOf = useMemo(() => new Date(), []);
   // The user's outfits planned for today (favourites only — see
   // scheduled-outfits.ts), synthesised into deck sheets flagged `scheduled` so
   // they render the calendar badge. These lead the recommendation deck.
@@ -911,6 +916,23 @@ export const HomeScreen = () => {
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 30_000,
   });
+  // Wear history for the "Worn N days ago" badge. Saving/wearing an outfit
+  // POSTs `/favourites` (upsert on outfit_hash, refreshing updated_at), so the
+  // user's favourites are also their wear log. Keyed under the `['favourites']`
+  // prefix so the existing post-save `invalidateQueries(['favourites'])` calls
+  // refetch it too — re-wearing a look bumps its date and the badge resets to
+  // "Worn today". A larger page than the Favourite list's default widens the
+  // lookup window without disturbing that screen's own `['favourites']` query.
+  const { data: wearHistoryData } = useQuery({
+    queryKey: ['favourites', 'wear-history'],
+    queryFn: () => favouriteService.listFavourites(100, 0, 'recent'),
+    staleTime: 60_000,
+  });
+  const wornDaysAgoByHash = useMemo(() => {
+    const favourites = wearHistoryData?.favorites ?? [];
+    return buildWornDaysAgoByHash(buildWearHistory(favourites), wornAsOf);
+  }, [wearHistoryData?.favorites, wornAsOf]);
+
   // When the current pin was set. The gone-check below may only trust a
   // wardrobe list fetched AFTER this moment — a cached list that predates the
   // pin (e.g. "Build around this" on an item added since Home last fetched)
@@ -1550,6 +1572,7 @@ export const HomeScreen = () => {
                 isGenerating={
                   role !== 'peek' && pinState.outfit === 'generating'
                 }
+                wornDaysAgo={wornDaysAgoByHash[outfit.outfitHash] ?? null}
               />
             )}
           />

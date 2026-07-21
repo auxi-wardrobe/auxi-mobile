@@ -474,6 +474,8 @@
       "chip_simpler": "Look plus simple",
       "refineAppliedToast": "{{feedback}} appliqué !",
       "scheduled_outfit_caption": "Planifié pour aujourd'hui",
+      "worn_days_ago_one": "Porté il y a {{count}} jour",
+      "worn_days_ago_other": "Porté il y a {{count}} jours",
       "a11y_scheduled_outfit": "Tenue planifiée pour aujourd'hui",
       "a11y_open_menu": "Ouvrir le menu",
       "a11y_saved_fav": "Enregistré dans les favoris",
