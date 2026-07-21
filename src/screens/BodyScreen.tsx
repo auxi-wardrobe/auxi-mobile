@@ -215,9 +215,15 @@ export const BodyScreen = () => {
     setModalVisible(false);
 
     setTimeout(async () => {
+      // Cap to keep the backend's AI body-shape/try-on fetch (3MB limit) from
+      // rejecting full-resolution camera photos (Sentry REACT-NATIVE-F: shapes
+      // job failed backend-side on a 4.75MB full-body reference photo).
       const options = {
         mediaType: 'photo' as const,
         selectionLimit: 1,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.8 as const,
       };
 
       const result =
