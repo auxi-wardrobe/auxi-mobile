@@ -14,8 +14,9 @@
  * budget:
  *   - In-memory only — cleared on app restart; the surface then falls back to
  *     the reactive 429, so a cold start never carries a stale block.
- *   - Same-local-day guard — the mark auto-expires when the calendar day rolls
- *     over (the limit resets daily), independent of any timer.
+ *   - Same-UTC-day guard — the mark auto-expires when the UTC calendar day
+ *     rolls over, in lockstep with the backend's UTC daily reset, independent of
+ *     any timer.
  *   - Any AI SUCCESS clears it — the moment the user proves they have budget the
  *     block self-heals, so a false mark can't strand them.
  *
@@ -23,12 +24,17 @@
  * sooner. Every AI surface still handles its own live 429.
  */
 
-// The local calendar day (year-month-date) the limit was last hit, or null.
+// The UTC calendar day (year-month-date) the limit was last hit, or null.
+// UTC — not local — so this rolls over in lockstep with the backend, which
+// resets the cap on the UTC day (`time.gmtime()` in wardrobe-backend
+// utils/rate_limiter.py). Using local time would mismatch by the user's UTC
+// offset and wrongly gate a user who already got their budget back (e.g. a
+// UTC+7 user between the 00:00 UTC reset and their local midnight).
 let reachedDayKey: string | null = null;
 
 const todayKey = (): string => {
   const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
 };
 
 /** Record that an `ai_daily_limit_reached` 429 just occurred. */
