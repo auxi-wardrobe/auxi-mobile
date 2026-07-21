@@ -23,6 +23,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from '../components/design-system/lib';
 import { theme } from '../theme/theme';
 import { useReducedMotion } from '../theme/motion';
 import { useSidebar } from '../context/SidebarContext';
@@ -100,6 +101,11 @@ export const FavouriteScreen: React.FC = () => {
     onSuccess: (_result, id) => {
       track('outfit_unfavorited', { favorite_id: id });
       queryClient.invalidateQueries({ queryKey: FAVOURITES_QUERY_KEY });
+    },
+    onError: () => {
+      // favouriteService.removeFavourite already reports to Sentry
+      // (feature: 'favourite') — this handler is UI-facing only.
+      toast.show({ type: 'error', text1: t('favourite.remove_error') });
     },
     onSettled: () => setPendingRemovalId(null),
   });

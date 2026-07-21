@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import * as Sentry from '@sentry/react-native';
 import {
   LoginRequest,
   RegisterRequest,
@@ -51,6 +52,7 @@ api.interceptors.request.use(async (config: any) => {
     }
   } catch (error) {
     console.error('Error retrieving token', error);
+    reportAuthError(error);
   }
   return config;
 });
@@ -94,6 +96,19 @@ const asAuthErrorCode = (raw: unknown): AuthErrorCode => {
   }
   return 'UNKNOWN';
 };
+
+// Expected, already-handled auth conditions — reporting these to Sentry would
+// just be noise (wrong password / duplicate email / rate limit / offline are
+// all common, by-design outcomes, not bugs).
+const AUTH_EXPECTED_CODES: ReadonlySet<AuthErrorCode> = new Set<AuthErrorCode>([
+  'INVALID_CREDENTIALS',
+  'EMAIL_NOT_VERIFIED',
+  'EMAIL_ALREADY_EXISTS',
+  'WEAK_PASSWORD',
+  'VALIDATION_ERROR',
+  'RATE_LIMITED',
+  'NETWORK_ERROR',
+]);
 
 const safeRecord = (raw: unknown): Record<string, unknown> | undefined => {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
@@ -171,6 +186,22 @@ export const mapAuthError = (error: unknown): AuthErrorEnvelope => {
   };
 };
 
+/** Sentry.captureException tagged `feature: 'auth'`. With `skipExpected`,
+ *  skips reporting when the error maps to an expected/already-handled auth
+ *  condition (see AUTH_EXPECTED_CODES) or a 401 (session-expired — the
+ *  apiClient interceptor already tried a silent refresh before this is ever
+ *  reached, so a 401 surviving to here is ordinary session expiry). */
+const reportAuthError = (
+  error: unknown,
+  opts?: { skipExpected?: boolean },
+): void => {
+  if (opts?.skipExpected) {
+    const { code, status } = mapAuthError(error);
+    if (status === 401 || AUTH_EXPECTED_CODES.has(code)) return;
+  }
+  Sentry.captureException(error, { tags: { feature: 'auth' } });
+};
+
 /**
  * Persist tokens from a successful auth response. Centralised so we don't
  * forget to write refresh / expiry on the OAuth paths.
@@ -202,6 +233,7 @@ export const authService = {
       // Preserve original throw shape for legacy callers; mutation hooks
       // re-route through mapAuthError.
       console.error('Login error', error);
+      reportAuthError(error, { skipExpected: true });
       throw error;
     }
   },
@@ -212,6 +244,7 @@ export const authService = {
       return response.data;
     } catch (error) {
       console.error('Register error', error);
+      reportAuthError(error, { skipExpected: true });
       throw error;
     }
   },
@@ -224,6 +257,7 @@ export const authService = {
       return response.data;
     } catch (error) {
       console.error('Update user error', error);
+      reportAuthError(error);
       throw error;
     }
   },
@@ -237,6 +271,7 @@ export const authService = {
       return response.data.user;
     } catch (error) {
       console.error('Reset preferences error', error);
+      reportAuthError(error);
       throw error;
     }
   },
@@ -248,6 +283,7 @@ export const authService = {
       await clearTokens();
     } catch (error) {
       console.error('Logout error', error);
+      reportAuthError(error);
       throw error;
     }
   },
@@ -261,7 +297,9 @@ export const authService = {
       const response = await apiClient.get('/me');
       return response.data;
     } catch (error) {
-      // If 401, token might be expired
+      // A 401 here is ordinary session expiry (apiClient's interceptor already
+      // tried a silent refresh before this catch is ever reached) — not a bug.
+      reportAuthError(error, { skipExpected: true });
       throw error;
     }
   },

@@ -40,6 +40,7 @@ export const weatherService = {
         level: 'warning',
         message: 'weather fetch failed; falling back to last-known/neutral',
       });
+      Sentry.captureException(err, { tags: { feature: 'weather' } });
       const cached = await weatherService.getLastKnownWeather();
       return cached ?? NEUTRAL_WEATHER;
     }

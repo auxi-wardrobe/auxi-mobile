@@ -81,6 +81,8 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
         }
       })
       .catch(() => {
+        // wardrobeService.filterWardrobeItems already reports to Sentry
+        // (feature: 'wardrobe').
         if (!cancelled) {
           setWardrobeItems([]);
         }
@@ -196,7 +198,9 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
         <View style={pickerStyles.footer}>
           <TouchableOpacity
             testID={
-              confirming ? 'canvas-picker-confirm-loading' : 'canvas-picker-confirm'
+              confirming
+                ? 'canvas-picker-confirm-loading'
+                : 'canvas-picker-confirm'
             }
             style={[
               pickerStyles.confirmBtn,

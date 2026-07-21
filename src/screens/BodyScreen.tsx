@@ -14,6 +14,7 @@ import {
 } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import * as Sentry from '@sentry/react-native';
 import { toast } from '../components/design-system/lib';
 import { useTranslation } from 'react-i18next';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
@@ -314,6 +315,9 @@ export const BodyScreen = () => {
     } catch (error) {
       console.error('Try-on generation error', error);
       track('try_on_failed', { outfit_hash: tryOnOutfit.outfitHash });
+      Sentry.captureException(error, {
+        tags: { feature: 'try_on', screen: 'body' },
+      });
       setTryOnError(t('body.tryon_failed'));
     } finally {
       setIsGenerating(false);

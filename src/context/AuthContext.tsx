@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
+import * as Sentry from '@sentry/react-native';
 import { toast } from '../components/design-system/lib';
 import { authService } from '../services/auth';
 import { migrateLegacyKeychain } from '../services/tokenStorage';
@@ -378,6 +379,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setPendingVerifyEmail(null);
     } catch (error) {
       console.error(error);
+      // Kept even though authService.logout() also reports its own failures
+      // (feature: 'auth') — this catch is the ONLY capture point for
+      // unregisterDevice() (services/notificationService.ts has no Sentry
+      // coverage of its own), so removing it would reopen that gap.
+      Sentry.captureException(error, { tags: { feature: 'logout' } });
     } finally {
       setIsLoading(false);
     }

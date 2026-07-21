@@ -89,6 +89,8 @@ export const useStalePreparingCleanup = ({
         });
       } catch (error) {
         console.error('Stale preparing cleanup failed', error);
+        // getWardrobeItem/deleteWardrobeItem already report to Sentry
+        // (feature: 'wardrobe').
         // Transient failure (network, 5xx): restart the countdown so the
         // removal is retried after another timeout window instead of
         // hammering the API every tick.

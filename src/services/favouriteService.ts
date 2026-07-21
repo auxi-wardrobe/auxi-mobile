@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { apiClient } from './apiClient';
 import { Item } from '../types/item';
 
@@ -8,6 +9,10 @@ import { Item } from '../types/item';
 // this — a >15s save now surfaces its existing 'error' retry state instead
 // of hanging, which is strictly better.
 const SAVE_FAVOURITE_TIMEOUT_MS = 15000;
+
+const reportFavouriteError = (error: unknown): void => {
+  Sentry.captureException(error, { tags: { feature: 'favourite' } });
+};
 
 export interface SaveFavouritePayload {
   outfit_hash: string;
@@ -110,6 +115,7 @@ export const favouriteService = {
       return response.data;
     } catch (error) {
       console.error('saveFavourite error', error);
+      reportFavouriteError(error);
       throw error;
     }
   },
@@ -131,6 +137,7 @@ export const favouriteService = {
       return response.data;
     } catch (error) {
       console.error('listFavourites error', error);
+      reportFavouriteError(error);
       throw error;
     }
   },
@@ -142,6 +149,7 @@ export const favouriteService = {
       return response.data;
     } catch (error) {
       console.error('removeFavourite error', error);
+      reportFavouriteError(error);
       throw error;
     }
   },

@@ -29,12 +29,14 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 
 jest.mock('@sentry/react-native', () => ({
   addBreadcrumb: jest.fn(),
+  captureException: jest.fn(),
 }));
 
 const mockedGet = apiClient.get as jest.Mock;
 const mockedGetItem = AsyncStorage.getItem as jest.Mock;
 const mockedSetItem = AsyncStorage.setItem as jest.Mock;
 const mockedBreadcrumb = Sentry.addBreadcrumb as jest.Mock;
+const mockedCaptureException = Sentry.captureException as jest.Mock;
 
 describe('weatherService.getWeather', () => {
   beforeEach(() => {
@@ -42,6 +44,7 @@ describe('weatherService.getWeather', () => {
     mockedGetItem.mockReset();
     mockedSetItem.mockReset();
     mockedBreadcrumb.mockReset();
+    mockedCaptureException.mockReset();
     mockedSetItem.mockResolvedValue(undefined);
     mockedGetItem.mockResolvedValue(null);
   });
@@ -70,6 +73,7 @@ describe('weatherService.getWeather', () => {
 
     expect(result).toEqual(cached);
     expect(mockedBreadcrumb).toHaveBeenCalled();
+    expect(mockedCaptureException).toHaveBeenCalled();
   });
 
   it('returns the MILD neutral placeholder (not warm 22) when API fails and no cache', async () => {
@@ -80,6 +84,7 @@ describe('weatherService.getWeather', () => {
     expect(result).toEqual(NEUTRAL_WEATHER);
     expect(NEUTRAL_WEATHER.temp_c).toBe(18);
     expect(mockedBreadcrumb).toHaveBeenCalled();
+    expect(mockedCaptureException).toHaveBeenCalled();
   });
 
   it('passes lat/lon to the API endpoint', async () => {

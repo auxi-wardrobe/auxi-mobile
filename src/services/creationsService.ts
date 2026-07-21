@@ -14,6 +14,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import * as Sentry from '@sentry/react-native';
 import { apiClient } from './apiClient';
 
 const STORAGE_KEY = '@auxi/creations';
@@ -71,13 +72,14 @@ export function resolveWardrobeItemId(item: CreationItem): string | undefined {
   return item.wardrobeItemId ?? SYNTHETIC_ITEM_ID.exec(item.id)?.[1];
 }
 
-/** How a save failed, for the UI to react. `auth` = the session expired: the
- *  apiClient 401 interceptor has already cleared tokens and fired
+/** How a save/remove failed, for the UI to react. `auth` = the session expired:
+ *  the apiClient 401 interceptor has already cleared tokens and fired
  *  session-expired (which redirects to login), so the caller should stay silent
  *  and let that global flow play out. `server` = any other HTTP failure — the
- *  save genuinely did NOT happen, so the caller should surface it. NOTE: a true
- *  offline failure (no HTTP response) does NOT throw — `saveCreation` falls back
- *  to the local store, preserving the deliberate offline-first resilience. */
+ *  save/remove genuinely did NOT happen, so the caller should surface it. NOTE:
+ *  a true offline failure (no HTTP response) does NOT throw — the offline-first
+ *  fallback to the local store is preserved for both saveCreation and
+ *  removeCreation. */
 export type CreationSaveErrorKind = 'auth' | 'server';
 
 export class CreationSaveError extends Error {
@@ -117,7 +119,9 @@ function mapServerCreation(s: ServerCreation): Creation {
 
 const isCreationArray = (value: unknown): value is Creation[] =>
   Array.isArray(value) &&
-  value.every(c => c && typeof c === 'object' && Array.isArray((c as Creation).items));
+  value.every(
+    c => c && typeof c === 'object' && Array.isArray((c as Creation).items),
+  );
 
 async function readAll(): Promise<Creation[]> {
   try {
@@ -162,7 +166,17 @@ export const creationsService = {
       );
       return { creations: response.data.creations.map(mapServerCreation) };
     } catch (error) {
-      console.warn('listCreations: server unavailable, using local store', error);
+      // Keep the graceful local-cache fallback for BOTH genuine offline and a
+      // real server error (a read degrading to cached data is acceptable UX),
+      // but only report the latter — offline is expected/frequent and would
+      // just be Sentry noise.
+      if (!(axios.isAxiosError(error) && !error.response)) {
+        Sentry.captureException(error, { tags: { feature: 'creations_list' } });
+      }
+      console.warn(
+        'listCreations: server unavailable, using local store',
+        error,
+      );
       const creations = await readAll();
       return { creations };
     }
@@ -203,9 +217,22 @@ export const creationsService = {
     try {
       await apiClient.delete(`/creations/${id}`);
     } catch (error) {
-      console.warn('removeCreation: server unavailable, removing locally', error);
-      const existing = await readAll();
-      await writeAll(existing.filter(c => c.id !== id));
+      // Genuine offline (no HTTP response) — same resilience posture as
+      // saveCreation: remove locally so the UI stays consistent.
+      if (axios.isAxiosError(error) && !error.response) {
+        console.warn('removeCreation: offline, removing locally', error);
+        const existing = await readAll();
+        await writeAll(existing.filter(c => c.id !== id));
+        return;
+      }
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        throw new CreationSaveError('auth', 'session expired');
+      }
+      // A real HTTP failure: the remove did NOT happen server-side. Don't fake
+      // a local-only removal — the creation would silently reappear on the
+      // next server refetch. Surface it so the screen tells the user.
+      console.warn('removeCreation: server error', error);
+      throw new CreationSaveError('server', 'creation remove failed');
     }
   },
 };

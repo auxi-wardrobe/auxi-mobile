@@ -9,7 +9,9 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Sentry from '@sentry/react-native';
 import { theme } from '../theme/theme';
+import { toast } from '../components/design-system/lib';
 import { useSidebar } from '../context/SidebarContext';
 import { useSchedule } from '../context/ScheduleContext';
 import { useCreationsSeen } from '../context/CreationsSeenContext';
@@ -21,6 +23,7 @@ import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { AppStackParamList } from '../types/navigation';
 import {
   CREATIONS_QUERY_KEY,
+  CreationSaveError,
   creationsService,
   resolveWardrobeItemId,
   type Creation,
@@ -100,6 +103,19 @@ export const MyCreationsScreen: React.FC = () => {
     onSuccess: (_result, id) => {
       track('creation_removed', { creation_id: id });
       queryClient.invalidateQueries({ queryKey: CREATIONS_QUERY_KEY });
+    },
+    onError: (error, id) => {
+      // `auth` = session expired: the apiClient interceptor already redirected
+      // to login, so stay silent and let that flow play out.
+      const isAuth =
+        error instanceof CreationSaveError && error.kind === 'auth';
+      if (!isAuth) {
+        Sentry.captureException(error, {
+          tags: { feature: 'creation_remove' },
+          extra: { creation_id: id },
+        });
+        toast.show({ type: 'error', text1: t('myCreations.remove_error') });
+      }
     },
     onSettled: () => setPendingRemovalId(null),
   });

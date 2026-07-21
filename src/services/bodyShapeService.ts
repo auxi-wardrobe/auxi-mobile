@@ -17,6 +17,7 @@
  * `tryOnService` / `bodyService`). The polling loop lives in the background
  * generation store — this module is just the typed transport.
  */
+import * as Sentry from '@sentry/react-native';
 import { apiClient } from './apiClient';
 import { BodyProfile, BodyShape } from './bodyService';
 
@@ -98,6 +99,13 @@ export const bodyShapeService = {
       return response.data;
     } catch (error) {
       console.error('selectBodyShape error', error);
+      // The only bodyShapeService method NOT already covered by
+      // try-on-generation-store.ts's Sentry wiring — this one is called
+      // directly by SeeThisOnMeScreen's handleSelectShape, which previously
+      // had zero telemetry on failure.
+      Sentry.captureException(error, {
+        tags: { feature: 'try_on', phase: 'select_shape' },
+      });
       throw error;
     }
   },

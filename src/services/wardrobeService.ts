@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as Sentry from '@sentry/react-native';
 import { ROOT_URL } from './apiClient';
 import { getAccessToken } from './tokenStorage';
 import { User } from '../types/auth';
@@ -7,6 +8,10 @@ const WARDROBE_URL = `${ROOT_URL}/api`;
 const STYLE_TAG_FAVORITE = 'favorite';
 const STYLE_TAG_LESS_USED = 'less-used';
 const FIT_TAG_PREFIX = 'fit:';
+
+const reportWardrobeError = (error: unknown): void => {
+  Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+};
 
 type UploadSource = {
   uri?: string;
@@ -65,7 +70,13 @@ export interface WardrobeItem {
   // AI Beautify fields (Task 9 — backend /api/wardrobe/items/{id}/beautify*)
   image_studio?: string;
   image_studio_candidate?: string;
-  beautify_status?: 'none' | 'pending' | 'ready' | 'accepted' | 'discarded' | 'failed';
+  beautify_status?:
+    | 'none'
+    | 'pending'
+    | 'ready'
+    | 'accepted'
+    | 'discarded'
+    | 'failed';
   beautify_attempts?: number;
   [key: string]: unknown;
 }
@@ -104,6 +115,7 @@ wardrobeApi.interceptors.request.use(async (config: any) => {
     }
   } catch (error) {
     console.error('Error retrieving token', error);
+    reportWardrobeError(error);
   }
   return config;
 });
@@ -116,7 +128,8 @@ const getItemList = (payload: any): WardrobeItem[] => {
   return [];
 };
 
-const getSingleItem = (payload: any): WardrobeItem => payload?.item || payload?.wardrobe_item || payload;
+const getSingleItem = (payload: any): WardrobeItem =>
+  payload?.item || payload?.wardrobe_item || payload;
 
 const normalizeStyleTags = (tags: unknown): string[] => {
   if (!Array.isArray(tags)) {
@@ -126,8 +139,12 @@ const normalizeStyleTags = (tags: unknown): string[] => {
   return tags.filter((tag): tag is string => typeof tag === 'string');
 };
 
-const replaceTag = (tags: string[], tagToReplace: string, enabled: boolean): string[] => {
-  const nextTags = tags.filter((tag) => tag !== tagToReplace);
+const replaceTag = (
+  tags: string[],
+  tagToReplace: string,
+  enabled: boolean,
+): string[] => {
+  const nextTags = tags.filter(tag => tag !== tagToReplace);
 
   if (enabled) {
     nextTags.push(tagToReplace);
@@ -138,12 +155,15 @@ const replaceTag = (tags: string[], tagToReplace: string, enabled: boolean): str
 
 const replaceFitTag = (tags: string[], fitLabel: string): string[] => {
   const fitValue = fitLabel.trim().toLowerCase();
-  const nextTags = tags.filter((tag) => !tag.startsWith(FIT_TAG_PREFIX));
+  const nextTags = tags.filter(tag => !tag.startsWith(FIT_TAG_PREFIX));
   nextTags.push(`${FIT_TAG_PREFIX}${fitValue}`);
   return nextTags;
 };
 
-export const matchesCategoryFilter = (itemCategory: string | undefined, filterCategory: string): boolean => {
+export const matchesCategoryFilter = (
+  itemCategory: string | undefined,
+  filterCategory: string,
+): boolean => {
   const normalizedItem = itemCategory?.trim().toLowerCase() || '';
   const normalizedFilter = filterCategory.trim().toLowerCase();
 
@@ -153,39 +173,77 @@ export const matchesCategoryFilter = (itemCategory: string | undefined, filterCa
 
   switch (normalizedFilter) {
     case 'top':
-      return normalizedItem.includes('top') || normalizedItem.includes('shirt') || normalizedItem.includes('tee') || normalizedItem.includes('blouse');
+      return (
+        normalizedItem.includes('top') ||
+        normalizedItem.includes('shirt') ||
+        normalizedItem.includes('tee') ||
+        normalizedItem.includes('blouse')
+      );
     case 'bottom':
-      return normalizedItem.includes('bottom') || normalizedItem.includes('pant') || normalizedItem.includes('jean') || normalizedItem.includes('skirt') || normalizedItem.includes('short');
+      return (
+        normalizedItem.includes('bottom') ||
+        normalizedItem.includes('pant') ||
+        normalizedItem.includes('jean') ||
+        normalizedItem.includes('skirt') ||
+        normalizedItem.includes('short')
+      );
     case 'shoes':
-      return normalizedItem.includes('shoe') || normalizedItem.includes('sneaker') || normalizedItem.includes('boot') || normalizedItem.includes('heel');
+      return (
+        normalizedItem.includes('shoe') ||
+        normalizedItem.includes('sneaker') ||
+        normalizedItem.includes('boot') ||
+        normalizedItem.includes('heel')
+      );
     case 'one_piece':
-      return normalizedItem.includes('dress') || normalizedItem.includes('one-piece') || normalizedItem.includes('one piece') || normalizedItem.includes('jumpsuit');
+      return (
+        normalizedItem.includes('dress') ||
+        normalizedItem.includes('one-piece') ||
+        normalizedItem.includes('one piece') ||
+        normalizedItem.includes('jumpsuit')
+      );
     case 'accessory':
-      return normalizedItem.includes('accessor') || normalizedItem.includes('bag') || normalizedItem.includes('belt') || normalizedItem.includes('hat') || normalizedItem.includes('jewel');
+      return (
+        normalizedItem.includes('accessor') ||
+        normalizedItem.includes('bag') ||
+        normalizedItem.includes('belt') ||
+        normalizedItem.includes('hat') ||
+        normalizedItem.includes('jewel')
+      );
     case 'outerwear':
-      return normalizedItem.includes('outerwear') || normalizedItem.includes('coat') || normalizedItem.includes('jacket') || normalizedItem.includes('blazer');
+      return (
+        normalizedItem.includes('outerwear') ||
+        normalizedItem.includes('coat') ||
+        normalizedItem.includes('jacket') ||
+        normalizedItem.includes('blazer')
+      );
     default:
       return normalizedItem.includes(normalizedFilter);
   }
 };
 
-const getErrorStatus = (error: any): number | undefined => error?.response?.status;
+const getErrorStatus = (error: any): number | undefined =>
+  error?.response?.status;
 
 const fetchWardrobeItems = async (): Promise<WardrobeItem[]> => {
   const response = await wardrobeApi.get('/wardrobe/items');
   return getItemList(response.data);
 };
 
-const fetchWardrobeItemById = async (id: string): Promise<WardrobeItem | null> => {
+const fetchWardrobeItemById = async (
+  id: string,
+): Promise<WardrobeItem | null> => {
   const items = await fetchWardrobeItems();
-  return items.find((item) => item.id === id) || null;
+  return items.find(item => item.id === id) || null;
 };
 
 const updateAttributesRequest = async (
   id: string,
   payload: WardrobeAttributeUpdate,
 ): Promise<WardrobeItem> => {
-  const response = await wardrobeApi.post(`/wardrobe/items/${id}/attributes`, payload);
+  const response = await wardrobeApi.post(
+    `/wardrobe/items/${id}/attributes`,
+    payload,
+  );
   return getSingleItem(response.data);
 };
 
@@ -200,7 +258,9 @@ const updateStyleTagsWithFallback = async (
   }
 
   const nextTags = updateTags(normalizeStyleTags(currentItem.style_tags));
-  const updatedItem = await updateAttributesRequest(id, { style_tags: nextTags });
+  const updatedItem = await updateAttributesRequest(id, {
+    style_tags: nextTags,
+  });
 
   return {
     ...currentItem,
@@ -209,10 +269,13 @@ const updateStyleTagsWithFallback = async (
   };
 };
 
-export const getItemStyleTags = (item: WardrobeItem | null | undefined): string[] =>
-  normalizeStyleTags(item?.style_tags);
+export const getItemStyleTags = (
+  item: WardrobeItem | null | undefined,
+): string[] => normalizeStyleTags(item?.style_tags);
 
-export const getItemFavoriteState = (item: WardrobeItem | null | undefined): boolean => {
+export const getItemFavoriteState = (
+  item: WardrobeItem | null | undefined,
+): boolean => {
   if (!item) {
     return false;
   }
@@ -235,11 +298,17 @@ export const getItemUsageFrequency = (
     return 'LESS_USED';
   }
 
-  return getItemStyleTags(item).includes(STYLE_TAG_LESS_USED) ? 'LESS_USED' : 'NORMAL';
+  return getItemStyleTags(item).includes(STYLE_TAG_LESS_USED)
+    ? 'LESS_USED'
+    : 'NORMAL';
 };
 
-export const getItemFitLabel = (item: WardrobeItem | null | undefined): string => {
-  const fitTag = getItemStyleTags(item).find((tag) => tag.startsWith(FIT_TAG_PREFIX));
+export const getItemFitLabel = (
+  item: WardrobeItem | null | undefined,
+): string => {
+  const fitTag = getItemStyleTags(item).find(tag =>
+    tag.startsWith(FIT_TAG_PREFIX),
+  );
 
   if (!fitTag) {
     return 'Regular';
@@ -253,7 +322,7 @@ export const getItemFitLabel = (item: WardrobeItem | null | undefined): string =
 
   return rawFit
     .split('-')
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .map(part => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(' ');
 };
 
@@ -263,11 +332,14 @@ export const wardrobeService = {
       return await fetchWardrobeItems();
     } catch (error) {
       console.error('Error fetching wardrobe items', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
 
-  filterWardrobeItems: async (filters: { category?: string }): Promise<WardrobeItem[]> => {
+  filterWardrobeItems: async (filters: {
+    category?: string;
+  }): Promise<WardrobeItem[]> => {
     const { category } = filters;
 
     if (!category) {
@@ -283,10 +355,13 @@ export const wardrobeService = {
       const status = getErrorStatus(error);
       if (status === 404 || status === 405) {
         const items = await fetchWardrobeItems();
-        return items.filter((item) => matchesCategoryFilter(item.category, category));
+        return items.filter(item =>
+          matchesCategoryFilter(item.category, category),
+        );
       }
 
       console.error('Error filtering wardrobe items', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -296,6 +371,7 @@ export const wardrobeService = {
       return await fetchWardrobeItemById(id);
     } catch (error) {
       console.error('Error fetching wardrobe item', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -313,16 +389,20 @@ export const wardrobeService = {
       }
 
       console.error('Error fetching common items', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
 
   cloneCommonItem: async (id: string): Promise<WardrobeItem> => {
     try {
-      const response = await wardrobeApi.post(`/wardrobe/common-items/${id}/clone`);
+      const response = await wardrobeApi.post(
+        `/wardrobe/common-items/${id}/clone`,
+      );
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error cloning common item', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -342,7 +422,7 @@ export const wardrobeService = {
         headers: {
           'Content-Type': undefined as unknown as string,
         },
-        transformRequest: (data) => data,
+        transformRequest: data => data,
       });
 
       return response.data.url;
@@ -351,47 +431,65 @@ export const wardrobeService = {
       if (error.response) {
         console.error('Error response data:', error.response.data);
       }
+      reportWardrobeError(error);
       throw error;
     }
   },
 
-  createWardrobeItem: async (item: Partial<WardrobeItem>): Promise<WardrobeItem> => {
+  createWardrobeItem: async (
+    item: Partial<WardrobeItem>,
+  ): Promise<WardrobeItem> => {
     try {
       const response = await wardrobeApi.post('/wardrobe/', item);
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error creating wardrobe item', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
 
-  aiEnhanceWardrobeItem: async (item: Partial<WardrobeItem>): Promise<WardrobeItem> => {
+  aiEnhanceWardrobeItem: async (
+    item: Partial<WardrobeItem>,
+  ): Promise<WardrobeItem> => {
     try {
-      const response = await wardrobeApi.post('/wardrobe/items/ai-enhanced', item);
+      const response = await wardrobeApi.post(
+        '/wardrobe/items/ai-enhanced',
+        item,
+      );
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error enhancing wardrobe item', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
 
-  beautifyItem: async (id: string): Promise<{ job_id: string; status: string; attempts: number }> => {
+  beautifyItem: async (
+    id: string,
+  ): Promise<{ job_id: string; status: string; attempts: number }> => {
     const response = await wardrobeApi.post(`/wardrobe/items/${id}/beautify`);
     return response.data;
   },
 
   getBeautifyStatus: async (id: string): Promise<BeautifyStatus> => {
-    const response = await wardrobeApi.get(`/wardrobe/items/${id}/beautify/status`);
+    const response = await wardrobeApi.get(
+      `/wardrobe/items/${id}/beautify/status`,
+    );
     return response.data;
   },
 
   acceptBeautify: async (id: string): Promise<WardrobeItem> => {
-    const response = await wardrobeApi.post(`/wardrobe/items/${id}/beautify/accept`);
+    const response = await wardrobeApi.post(
+      `/wardrobe/items/${id}/beautify/accept`,
+    );
     return getSingleItem(response.data);
   },
 
   discardBeautify: async (id: string): Promise<WardrobeItem> => {
-    const response = await wardrobeApi.post(`/wardrobe/items/${id}/beautify/discard`);
+    const response = await wardrobeApi.post(
+      `/wardrobe/items/${id}/beautify/discard`,
+    );
     return getSingleItem(response.data);
   },
 
@@ -421,6 +519,7 @@ export const wardrobeService = {
       });
     } catch (error) {
       console.error('Error in uploadWardrobeItem flow', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -452,6 +551,7 @@ export const wardrobeService = {
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error importing wardrobe item from URL', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -462,6 +562,7 @@ export const wardrobeService = {
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error marking wardrobe item reviewed', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -474,6 +575,7 @@ export const wardrobeService = {
       return await updateAttributesRequest(id, payload);
     } catch (error) {
       console.error('Error updating wardrobe item attributes', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -483,25 +585,33 @@ export const wardrobeService = {
       await wardrobeApi.delete(`/wardrobe/items/${id}`);
     } catch (error) {
       console.error('Error deleting wardrobe item', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
 
-  toggleFavorite: async (id: string, isFavorited: boolean): Promise<WardrobeItem> => {
+  toggleFavorite: async (
+    id: string,
+    isFavorited: boolean,
+  ): Promise<WardrobeItem> => {
     try {
-      const response = await wardrobeApi.patch(`/wardrobe/items/${id}/favorite`, {
-        is_favorited: isFavorited,
-      });
+      const response = await wardrobeApi.patch(
+        `/wardrobe/items/${id}/favorite`,
+        {
+          is_favorited: isFavorited,
+        },
+      );
       return getSingleItem(response.data);
     } catch (error) {
       const status = getErrorStatus(error);
       if (status === 404 || status === 405) {
-        return updateStyleTagsWithFallback(id, (tags) =>
+        return updateStyleTagsWithFallback(id, tags =>
           replaceTag(tags, STYLE_TAG_FAVORITE, isFavorited),
         );
       }
 
       console.error('Error toggling wardrobe item favorite', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -511,28 +621,38 @@ export const wardrobeService = {
     usageFrequency: UsageFrequency,
   ): Promise<WardrobeItem> => {
     try {
-      const response = await wardrobeApi.patch(`/wardrobe/items/${id}/usage-frequency`, {
-        usage_frequency: usageFrequency,
-      });
+      const response = await wardrobeApi.patch(
+        `/wardrobe/items/${id}/usage-frequency`,
+        {
+          usage_frequency: usageFrequency,
+        },
+      );
       return getSingleItem(response.data);
     } catch (error) {
       const status = getErrorStatus(error);
       if (status === 404 || status === 405) {
-        return updateStyleTagsWithFallback(id, (tags) =>
+        return updateStyleTagsWithFallback(id, tags =>
           replaceTag(tags, STYLE_TAG_LESS_USED, usageFrequency === 'LESS_USED'),
         );
       }
 
       console.error('Error updating wardrobe item usage frequency', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
 
-  updateFitPreference: async (id: string, fitLabel: string): Promise<WardrobeItem> => {
+  updateFitPreference: async (
+    id: string,
+    fitLabel: string,
+  ): Promise<WardrobeItem> => {
     try {
-      return await updateStyleTagsWithFallback(id, (tags) => replaceFitTag(tags, fitLabel));
+      return await updateStyleTagsWithFallback(id, tags =>
+        replaceFitTag(tags, fitLabel),
+      );
     } catch (error) {
       console.error('Error updating wardrobe item fit', error);
+      reportWardrobeError(error);
       throw error;
     }
   },
