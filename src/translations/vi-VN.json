@@ -719,7 +719,8 @@
       "remove_confirm": "Có",
       "remove_cancel": "Hủy",
       "add_to_schedule": "Thêm vào lịch",
-      "self_visualization": "Xem trên bạn"
+      "self_visualization": "Xem trên bạn",
+      "self_visualization_loading": "Đang tạo ảnh của bạn…"
     },
     "locationPermission": {
       "denied_title": "Quyền bị từ chối",
@@ -802,7 +803,6 @@
       "common_badge": "Macgie",
       "view_item_a11y": "Xem chi tiết món đồ",
       "self_visualization": "Tự hình dung",
-      "self_visualization_loading": "Đang tạo ảnh của bạn…",
       "add_to_schedule": "Thêm vào lịch",
       "remove_a11y": "Xóa trang phục này khỏi mục yêu thích",
       "remove_title": "Xóa khỏi mục yêu thích",

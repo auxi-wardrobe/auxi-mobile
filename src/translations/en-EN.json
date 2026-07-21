@@ -720,7 +720,8 @@
       "remove_confirm": "Yes",
       "remove_cancel": "Cancel",
       "add_to_schedule": "Add to schedule",
-      "self_visualization": "See on me"
+      "self_visualization": "See on me",
+      "self_visualization_loading": "Creating your photo…"
     },
     "locationPermission": {
       "denied_title": "Permission Denied",
@@ -803,7 +804,6 @@
       "common_badge": "Macgie",
       "view_item_a11y": "View item details",
       "self_visualization": "See on me",
-      "self_visualization_loading": "Creating your photo…",
       "add_to_schedule": "Add to schedule",
       "remove_a11y": "Remove this outfit from favourites",
       "remove_title": "Remove from your favourite",
