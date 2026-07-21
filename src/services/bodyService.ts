@@ -69,6 +69,10 @@ export class BodyPhotoNotPersonError extends Error {
   }
 }
 
+const reportBodyError = (error: unknown): void => {
+  Sentry.captureException(error, { tags: { feature: 'body' } });
+};
+
 // Narrow an unknown record-ish value to a string-keyed object, else undefined.
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
   value && typeof value === 'object'
@@ -111,7 +115,7 @@ export const bodyService = {
       return [];
     } catch (error) {
       console.error('Error fetching body items', error);
-      Sentry.captureException(error, { tags: { feature: 'body' } });
+      reportBodyError(error);
       throw error;
     }
   },
@@ -127,7 +131,7 @@ export const bodyService = {
       return response.data?.profile ?? null;
     } catch (error) {
       console.error('Error fetching active body profile', error);
-      Sentry.captureException(error, { tags: { feature: 'body' } });
+      reportBodyError(error);
       throw error;
     }
   },
@@ -148,7 +152,7 @@ export const bodyService = {
       return response.data.body ?? response.data;
     } catch (error) {
       console.error('Error updating body', error);
-      Sentry.captureException(error, { tags: { feature: 'body' } });
+      reportBodyError(error);
       throw error;
     }
   },
@@ -204,7 +208,7 @@ export const bodyService = {
         throw new BodyPhotoNotPersonError(rejected.message);
       }
       console.error('Error uploading body', error);
-      Sentry.captureException(error, { tags: { feature: 'body' } });
+      reportBodyError(error);
       throw error;
     }
   },
@@ -214,7 +218,7 @@ export const bodyService = {
       await apiClient.delete(`/body/${id}`);
     } catch (error) {
       console.error('Error deleting body', error);
-      Sentry.captureException(error, { tags: { feature: 'body' } });
+      reportBodyError(error);
       throw error;
     }
   },

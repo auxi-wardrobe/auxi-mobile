@@ -540,10 +540,16 @@ export const HomeScreen = () => {
       // B4: record the failure with a sanitized error_kind (+ HTTP status).
       const { kind, status } = classifyRecommendationError(error);
       trackRecommendationFailed(kind, status);
-      Sentry.captureException(error, {
-        tags: { feature: 'recommendation', error_kind: kind },
-        extra: { status },
-      });
+      // Skip Sentry for expected states: the AI daily-limit gate ('rate_limited')
+      // has its own dedicated UI (OutfitLimitSheet) and is a common, by-design
+      // condition, not a bug; a user-cancelled in-flight request is also benign.
+      const isCancelled = (error as { code?: string })?.code === 'ERR_CANCELED';
+      if (kind !== 'rate_limited' && !isCancelled) {
+        Sentry.captureException(error, {
+          tags: { feature: 'recommendation', error_kind: kind },
+          extra: { status },
+        });
+      }
 
       const tempApplyId = variables?.__tempApplyId;
       if (tempApplyId != null && tempApplyId === tempApplyIdRef.current) {

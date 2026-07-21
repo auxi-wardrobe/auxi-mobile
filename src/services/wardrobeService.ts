@@ -9,6 +9,10 @@ const STYLE_TAG_FAVORITE = 'favorite';
 const STYLE_TAG_LESS_USED = 'less-used';
 const FIT_TAG_PREFIX = 'fit:';
 
+const reportWardrobeError = (error: unknown): void => {
+  Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+};
+
 type UploadSource = {
   uri?: string;
   type?: string;
@@ -111,7 +115,7 @@ wardrobeApi.interceptors.request.use(async (config: any) => {
     }
   } catch (error) {
     console.error('Error retrieving token', error);
-    Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+    reportWardrobeError(error);
   }
   return config;
 });
@@ -328,7 +332,7 @@ export const wardrobeService = {
       return await fetchWardrobeItems();
     } catch (error) {
       console.error('Error fetching wardrobe items', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -357,7 +361,7 @@ export const wardrobeService = {
       }
 
       console.error('Error filtering wardrobe items', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -367,7 +371,7 @@ export const wardrobeService = {
       return await fetchWardrobeItemById(id);
     } catch (error) {
       console.error('Error fetching wardrobe item', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -385,7 +389,7 @@ export const wardrobeService = {
       }
 
       console.error('Error fetching common items', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -398,7 +402,7 @@ export const wardrobeService = {
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error cloning common item', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -427,7 +431,7 @@ export const wardrobeService = {
       if (error.response) {
         console.error('Error response data:', error.response.data);
       }
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -440,7 +444,7 @@ export const wardrobeService = {
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error creating wardrobe item', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -456,7 +460,7 @@ export const wardrobeService = {
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error enhancing wardrobe item', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -515,7 +519,7 @@ export const wardrobeService = {
       });
     } catch (error) {
       console.error('Error in uploadWardrobeItem flow', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -547,7 +551,7 @@ export const wardrobeService = {
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error importing wardrobe item from URL', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -558,7 +562,7 @@ export const wardrobeService = {
       return getSingleItem(response.data);
     } catch (error) {
       console.error('Error marking wardrobe item reviewed', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -571,7 +575,7 @@ export const wardrobeService = {
       return await updateAttributesRequest(id, payload);
     } catch (error) {
       console.error('Error updating wardrobe item attributes', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -581,7 +585,7 @@ export const wardrobeService = {
       await wardrobeApi.delete(`/wardrobe/items/${id}`);
     } catch (error) {
       console.error('Error deleting wardrobe item', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -607,7 +611,7 @@ export const wardrobeService = {
       }
 
       console.error('Error toggling wardrobe item favorite', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -633,7 +637,7 @@ export const wardrobeService = {
       }
 
       console.error('Error updating wardrobe item usage frequency', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },
@@ -648,7 +652,7 @@ export const wardrobeService = {
       );
     } catch (error) {
       console.error('Error updating wardrobe item fit', error);
-      Sentry.captureException(error, { tags: { feature: 'wardrobe' } });
+      reportWardrobeError(error);
       throw error;
     }
   },

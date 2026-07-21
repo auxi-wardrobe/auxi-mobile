@@ -10,6 +10,10 @@ import { Item } from '../types/item';
 // of hanging, which is strictly better.
 const SAVE_FAVOURITE_TIMEOUT_MS = 15000;
 
+const reportFavouriteError = (error: unknown): void => {
+  Sentry.captureException(error, { tags: { feature: 'favourite' } });
+};
+
 export interface SaveFavouritePayload {
   outfit_hash: string;
   item_ids: string[];
@@ -111,7 +115,7 @@ export const favouriteService = {
       return response.data;
     } catch (error) {
       console.error('saveFavourite error', error);
-      Sentry.captureException(error, { tags: { feature: 'favourite' } });
+      reportFavouriteError(error);
       throw error;
     }
   },
@@ -133,7 +137,7 @@ export const favouriteService = {
       return response.data;
     } catch (error) {
       console.error('listFavourites error', error);
-      Sentry.captureException(error, { tags: { feature: 'favourite' } });
+      reportFavouriteError(error);
       throw error;
     }
   },
@@ -145,7 +149,7 @@ export const favouriteService = {
       return response.data;
     } catch (error) {
       console.error('removeFavourite error', error);
-      Sentry.captureException(error, { tags: { feature: 'favourite' } });
+      reportFavouriteError(error);
       throw error;
     }
   },

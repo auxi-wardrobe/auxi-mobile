@@ -15,7 +15,6 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import * as Sentry from '@sentry/react-native';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { wardrobeService, WardrobeItem } from '../../services/wardrobeService';
@@ -81,10 +80,9 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
           setWardrobeItems(data);
         }
       })
-      .catch(error => {
-        Sentry.captureException(error, {
-          tags: { feature: 'outfit_canvas_item_picker' },
-        });
+      .catch(() => {
+        // wardrobeService.filterWardrobeItems already reports to Sentry
+        // (feature: 'wardrobe').
         if (!cancelled) {
           setWardrobeItems([]);
         }
