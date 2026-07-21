@@ -81,10 +81,15 @@ import { PinConfirmModal } from '../../components/features/PinConfirmModal';
 import { type PinErrorKind } from '../../components/features/PinGenerationError';
 import { snapshotOutfit } from '../../utils/snapshotOutfit';
 import {
+  LATEST_OUTFITS_COUNT,
   PIN_DONT_SHOW_STORAGE_KEY,
   REFINE_AFTER_OUTFITS,
   TARGET_AHEAD,
 } from './constants';
+import {
+  persistLatestOutfits,
+  readLatestOutfits,
+} from './last-outfits-store';
 import {
   BuildViaV05Input,
   OutfitSheet,
@@ -99,6 +104,7 @@ import {
 } from './outfit-normalize';
 import {
   buildScheduledOutfitSheets,
+  isScheduledHash,
   withScheduledPrefix,
 } from './scheduled-outfits';
 import { styles } from './styles';
@@ -106,6 +112,7 @@ import {
   readHomeDeckSnapshot,
   saveHomeDeckSnapshot,
 } from './deck-cache';
+import { buildWearHistory, buildWornDaysAgoByHash } from './wear-history';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
 import { useHomeToasts } from './hooks/useHomeToasts';
@@ -139,6 +146,10 @@ export const HomeScreen = () => {
   // rollover mid-session — reopening the app re-captures it, which is enough for
   // "the outfit you planned for today leads the deck".
   const todayKey = useMemo(() => toDayKey(new Date()), []);
+  // Reference "now" for the "Worn N days ago" badge, captured once per mount so
+  // the computed day-counts stay stable across re-renders (same rationale as
+  // `todayKey`; a reopen re-captures, which is enough for a per-session badge).
+  const wornAsOf = useMemo(() => new Date(), []);
   // The user's outfits planned for today (favourites only — see
   // scheduled-outfits.ts), synthesised into deck sheets flagged `scheduled` so
   // they render the calendar badge. These lead the recommendation deck.
@@ -222,6 +233,10 @@ export const HomeScreen = () => {
   const [hasCycled, setHasCycled] = useState(false);
   const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
+  // "View latest outfits" fallback on the styling-limit page — true while the
+  // history fetch + hydration is in flight, so the CTA shows a spinner.
+  const [isViewingLatest, setIsViewingLatest] = useState(false);
+  const isViewingLatestRef = useRef(false);
   // "You've explored most combinations" sheet — shown when the user reaches the
   // end of the available outfits (pool depleted). `shownRef` keeps it to once
   // per depletion episode so repeated end-swipes don't re-pop it.
@@ -586,6 +601,15 @@ export const HomeScreen = () => {
       activeIndex,
       saveStateByHash,
     });
+    // Mirror the freshest recommendation sheets to disk so "View latest
+    // outfits" can restore them after an app quit (the in-memory snapshot
+    // above does not survive that). Scheduled sheets are the user's own plan,
+    // not suggestions, so they're excluded.
+    persistLatestOutfits(
+      user.id,
+      listOutfits.filter(o => !o.scheduled && !isScheduledHash(o.outfitHash)),
+      LATEST_OUTFITS_COUNT,
+    );
   }, [user?.id, listOutfits, activeIndex, saveStateByHash]);
 
   // Reset the progressive-refinement tier (run synchronously on submit/skip so
@@ -919,6 +943,23 @@ export const HomeScreen = () => {
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 30_000,
   });
+  // Wear history for the "Worn N days ago" badge. Saving/wearing an outfit
+  // POSTs `/favourites` (upsert on outfit_hash, refreshing updated_at), so the
+  // user's favourites are also their wear log. Keyed under the `['favourites']`
+  // prefix so the existing post-save `invalidateQueries(['favourites'])` calls
+  // refetch it too — re-wearing a look bumps its date and the badge resets to
+  // "Worn today". A larger page than the Favourite list's default widens the
+  // lookup window without disturbing that screen's own `['favourites']` query.
+  const { data: wearHistoryData } = useQuery({
+    queryKey: ['favourites', 'wear-history'],
+    queryFn: () => favouriteService.listFavourites(100, 0, 'recent'),
+    staleTime: 60_000,
+  });
+  const wornDaysAgoByHash = useMemo(() => {
+    const favourites = wearHistoryData?.favorites ?? [];
+    return buildWornDaysAgoByHash(buildWearHistory(favourites), wornAsOf);
+  }, [wearHistoryData?.favorites, wornAsOf]);
+
   // When the current pin was set. The gone-check below may only trust a
   // wardrobe list fetched AFTER this moment — a cached list that predates the
   // pin (e.g. "Build around this" on an item added since Home last fetched)
@@ -1466,6 +1507,52 @@ export const HomeScreen = () => {
     [navigation],
   );
 
+  // "View latest outfits" on the styling-limit page. The user is over their
+  // daily AI budget, so we can't build fresh looks — instead we restore the
+  // recommendation sheets Home last showed them (persisted per user to disk, so
+  // they survive an app quit) as a read-only deck. When nothing's stored (a
+  // brand-new user who hit the limit before ever seeing a deck) we leave the
+  // limit page up and surface a brief banner.
+  const handleViewLatestOutfits = useCallback(async () => {
+    if (isViewingLatestRef.current) {
+      return;
+    }
+    isViewingLatestRef.current = true;
+    setIsViewingLatest(true);
+    track('ai_limit_view_latest_tapped');
+    try {
+      const sheets = await readLatestOutfits(user?.id);
+      if (sheets.length === 0) {
+        track('ai_limit_view_latest_empty');
+        showMoodBanner(t('home.ai_limit_no_recent'));
+        return;
+      }
+      // Seat the restored looks as a read-only deck. Mark the pool depleted AND
+      // the limit sheet as already-shown so swiping to the end can't fire a
+      // fresh /build or the Refine flow — both would just re-hit the limit.
+      isFirstLoadRef.current = false;
+      poolDepletedRef.current = true;
+      limitSheetShownRef.current = true;
+      unfavoritedSwipeCountRef.current = 0;
+      fetchGenerationRef.current += 1;
+      resetStartMutation();
+      listOutfitsRef.current = sheets;
+      setListOutfits(sheets);
+      setActiveIndex(0);
+      activeIndexRef.current = 0;
+      setIsWardrobeGap(false);
+      setHasCycled(false);
+      track('ai_limit_view_latest_shown', { count: sheets.length });
+    } catch (error) {
+      console.warn('view latest outfits failed', error);
+      track('ai_limit_view_latest_failed');
+      showMoodBanner(t('home.ai_limit_no_recent'));
+    } finally {
+      isViewingLatestRef.current = false;
+      setIsViewingLatest(false);
+    }
+  }, [user?.id, resetStartMutation, showMoodBanner, t]);
+
   return (
     <SafeAreaView
       testID="home-screen-root"
@@ -1506,6 +1593,8 @@ export const HomeScreen = () => {
       ) : optionSets.length === 0 && startError ? (
         <HomeErrorState
           variant={homeErrorVariant}
+          onViewLatest={handleViewLatestOutfits}
+          isViewingLatest={isViewingLatest}
           onRetry={() => {
             resetStartMutation();
             requestRecommendation({
@@ -1567,6 +1656,7 @@ export const HomeScreen = () => {
                 isGenerating={
                   role !== 'peek' && pinState.outfit === 'generating'
                 }
+                wornDaysAgo={wornDaysAgoByHash[outfit.outfitHash] ?? null}
               />
             )}
           />

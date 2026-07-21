@@ -20,6 +20,13 @@ type Props = {
   onSchedule?: () => void;
   /** Open the "See this on me" flow for the currently-viewed outfit. */
   onSelfVisualization: () => void;
+  /**
+   * True while the viewed outfit's AI "See on me" photo is still generating in
+   * the background (the user launched it then left the loading screen). Puts the
+   * Self-visualization button in its loading state so they can't kick off a
+   * duplicate job for the same outfit while it's processing.
+   */
+  selfVisualizationLoading?: boolean;
   testID?: string;
 };
 
@@ -35,6 +42,7 @@ export const FavouriteActionBar: React.FC<Props> = ({
   onRemove,
   onSchedule,
   onSelfVisualization,
+  selfVisualizationLoading,
   testID,
 }) => {
   const { t } = useTranslation();
@@ -111,6 +119,7 @@ export const FavouriteActionBar: React.FC<Props> = ({
           testID="favourite-self-visualization-active"
           accessibilityLabel={t('favourite.self_visualization')}
           rightIcon={IconSeeOnMe}
+          loading={selfVisualizationLoading}
           onPress={onSelfVisualization}
         >
           {t('favourite.self_visualization')}

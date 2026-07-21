@@ -18,7 +18,6 @@ import type { TFunction } from 'i18next';
 import { theme } from '../../theme/theme';
 import { MacgieLoader } from '../../components/macgie/MacgieLoader';
 import { StomHeader, StomDownloadButton } from './components';
-import { StepReuseConfirm } from './StepReuseConfirm';
 import { OutfitPreview } from './OutfitPreview';
 import { GeneratingView } from './GeneratingView';
 import { StomLoadingScreen } from './StomLoadingScreen';
@@ -57,15 +56,7 @@ interface StomStepScreenProps {
   // Preview.
   resultUrl: string | null;
   goHome: () => void;
-  reuseMode: boolean;
   restartCapture: () => void;
-  // Reuse-confirm re-entry (AU-354 pt.3).
-  reuseConfirmed: boolean;
-  rehydrated: boolean;
-  reusePhotoUri: string | null;
-  handleReuseConfirm: () => void;
-  handleReuseRetake: () => void;
-  handleReuseDismiss: () => void;
   // Persisted-result re-entry: the preview is showing a cached AI result, so a
   // Retake affordance replaces the profile-retake row and drives a fresh run.
   isCachedResult: boolean;
@@ -110,14 +101,7 @@ export function renderStomStepScreen(
     runRender,
     resultUrl,
     goHome,
-    reuseMode,
     restartCapture,
-    reuseConfirmed,
-    rehydrated,
-    reusePhotoUri,
-    handleReuseConfirm,
-    handleReuseRetake,
-    handleReuseDismiss,
     isCachedResult,
     handleCachedRetake,
     limitReached,
@@ -245,29 +229,9 @@ export function renderStomStepScreen(
     );
   }
 
-  // ── Reuse-confirm re-entry (AU-354 pt.3) ─────────────────────────────────
-  // The saved photo is presented in a bottom sheet (per design) layered over the
-  // flow's header shell; the sheet's scrim dims it. Backdrop / swipe-down leaves
-  // the flow (same as the header back).
-  if (
-    reuseMode &&
-    !reuseConfirmed &&
-    !rehydrated &&
-    reusePhotoUri &&
-    step === 'selfie'
-  ) {
-    return (
-      <StepShell title={title} onBack={handleBack}>
-        <StepReuseConfirm
-          photoUri={reusePhotoUri}
-          onConfirm={handleReuseConfirm}
-          onRetake={handleReuseRetake}
-          onDismiss={handleReuseDismiss}
-        />
-      </StepShell>
-    );
-  }
-
+  // Reuse-confirm is no longer handled here: the "reuse your saved body?" sheet
+  // is owned by the gate screen (SeeThisOnMeConfirm), which presents it over the
+  // originating page and then hands off to this flow for capture / render.
   return null;
 }
 

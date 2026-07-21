@@ -474,6 +474,8 @@
       "chip_simpler": "Look plus simple",
       "refineAppliedToast": "{{feedback}} appliqué !",
       "scheduled_outfit_caption": "Planifié pour aujourd'hui",
+      "worn_days_ago_one": "Porté il y a {{count}} jour",
+      "worn_days_ago_other": "Porté il y a {{count}} jours",
       "a11y_scheduled_outfit": "Tenue planifiée pour aujourd'hui",
       "a11y_open_menu": "Ouvrir le menu",
       "a11y_saved_fav": "Enregistré dans les favoris",
@@ -503,6 +505,8 @@
       "a11y_retry_load": "Recharger les tenues",
       "ai_limit_title": "Vous avez atteint la limite du jour",
       "ai_limit_body": "Vous avez utilisé toutes vos tenues IA pour aujourd'hui. Revenez demain pour en découvrir d'autres.",
+      "ai_limit_view_latest": "Voir les tenues récentes",
+      "ai_limit_no_recent": "Aucune tenue récente à afficher pour l'instant.",
       "ai_unavailable_title": "Le styliste est très sollicité",
       "ai_unavailable_body": "Notre styliste IA reprend son souffle. Réessayez dans un instant.",
       "wardrobe_gap_title": "Votre garde-robe n'est pas assez fournie pour plus de suggestions",
@@ -720,7 +724,8 @@
       "remove_confirm": "Oui",
       "remove_cancel": "Annuler",
       "add_to_schedule": "Ajouter au planning",
-      "self_visualization": "Voir sur moi"
+      "self_visualization": "Voir sur moi",
+      "self_visualization_loading": "Création de votre photo…"
     },
     "locationPermission": {
       "denied_title": "Autorisation refusée",
