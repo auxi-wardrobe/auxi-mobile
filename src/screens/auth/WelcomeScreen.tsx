@@ -22,18 +22,13 @@
  *   boundary on builds that haven't received `GoogleService-Info.plist`.
  */
 import React, { useMemo, useState } from 'react';
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
+import * as Sentry from '@sentry/react-native';
 import { toast } from '../../components/design-system/lib';
 
 import { theme } from '../../theme/theme';
@@ -262,6 +257,9 @@ export const WelcomeScreen = () => {
         handleAuthError(err as AuthErrorEnvelope);
         return;
       }
+      Sentry.captureException(err, {
+        tags: { feature: 'oauth_sign_in', provider: 'google' },
+      });
       toast.show({
         type: 'error',
         text1: t('uac.welcome.oauth_generic_error'),
@@ -298,6 +296,9 @@ export const WelcomeScreen = () => {
         handleAuthError(err as AuthErrorEnvelope);
         return;
       }
+      Sentry.captureException(err, {
+        tags: { feature: 'oauth_sign_in', provider: 'apple' },
+      });
       toast.show({
         type: 'error',
         text1: t('uac.welcome.oauth_generic_error'),

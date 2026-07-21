@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import * as Sentry from '@sentry/react-native';
 import {
   LoginRequest,
   RegisterRequest,
@@ -51,6 +52,7 @@ api.interceptors.request.use(async (config: any) => {
     }
   } catch (error) {
     console.error('Error retrieving token', error);
+    Sentry.captureException(error, { tags: { feature: 'auth' } });
   }
   return config;
 });
@@ -202,6 +204,7 @@ export const authService = {
       // Preserve original throw shape for legacy callers; mutation hooks
       // re-route through mapAuthError.
       console.error('Login error', error);
+      Sentry.captureException(error, { tags: { feature: 'auth' } });
       throw error;
     }
   },
@@ -212,6 +215,7 @@ export const authService = {
       return response.data;
     } catch (error) {
       console.error('Register error', error);
+      Sentry.captureException(error, { tags: { feature: 'auth' } });
       throw error;
     }
   },
@@ -224,6 +228,7 @@ export const authService = {
       return response.data;
     } catch (error) {
       console.error('Update user error', error);
+      Sentry.captureException(error, { tags: { feature: 'auth' } });
       throw error;
     }
   },
@@ -237,6 +242,7 @@ export const authService = {
       return response.data.user;
     } catch (error) {
       console.error('Reset preferences error', error);
+      Sentry.captureException(error, { tags: { feature: 'auth' } });
       throw error;
     }
   },
@@ -248,6 +254,7 @@ export const authService = {
       await clearTokens();
     } catch (error) {
       console.error('Logout error', error);
+      Sentry.captureException(error, { tags: { feature: 'auth' } });
       throw error;
     }
   },
@@ -262,6 +269,7 @@ export const authService = {
       return response.data;
     } catch (error) {
       // If 401, token might be expired
+      Sentry.captureException(error, { tags: { feature: 'auth' } });
       throw error;
     }
   },

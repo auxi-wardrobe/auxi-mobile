@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as Sentry from '@sentry/react-native';
 import { apiClient } from './apiClient';
 
 // Body reference photos — backend router prefix `/api/body`:
@@ -110,6 +111,7 @@ export const bodyService = {
       return [];
     } catch (error) {
       console.error('Error fetching body items', error);
+      Sentry.captureException(error, { tags: { feature: 'body' } });
       throw error;
     }
   },
@@ -125,6 +127,7 @@ export const bodyService = {
       return response.data?.profile ?? null;
     } catch (error) {
       console.error('Error fetching active body profile', error);
+      Sentry.captureException(error, { tags: { feature: 'body' } });
       throw error;
     }
   },
@@ -145,6 +148,7 @@ export const bodyService = {
       return response.data.body ?? response.data;
     } catch (error) {
       console.error('Error updating body', error);
+      Sentry.captureException(error, { tags: { feature: 'body' } });
       throw error;
     }
   },
@@ -200,6 +204,7 @@ export const bodyService = {
         throw new BodyPhotoNotPersonError(rejected.message);
       }
       console.error('Error uploading body', error);
+      Sentry.captureException(error, { tags: { feature: 'body' } });
       throw error;
     }
   },
@@ -209,6 +214,7 @@ export const bodyService = {
       await apiClient.delete(`/body/${id}`);
     } catch (error) {
       console.error('Error deleting body', error);
+      Sentry.captureException(error, { tags: { feature: 'body' } });
       throw error;
     }
   },

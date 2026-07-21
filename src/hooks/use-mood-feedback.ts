@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import * as Sentry from '@sentry/react-native';
 import { favouriteService } from '../services/favouriteService';
 import {
   DEFAULT_MOOD_PROMPT_POLICY,
@@ -365,6 +366,12 @@ export const useMoodFeedback = <T extends MoodFeedbackOutfitRef>({
           track('mood_feedback_submission_failed', {
             outfit_hash: pending.outfitHash,
             error_kind: timedOut ? 'timeout' : 'generic',
+          });
+          Sentry.captureException(error, {
+            tags: {
+              feature: 'mood_feedback',
+              error_kind: timedOut ? 'timeout' : 'generic',
+            },
           });
         })
         .finally(() => {

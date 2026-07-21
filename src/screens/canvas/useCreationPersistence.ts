@@ -9,6 +9,7 @@
  */
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import * as Sentry from '@sentry/react-native';
 import { CanvasItemData } from '../../components/features/OutfitCanvasSurface';
 import { track } from '../../services/analytics';
 import {
@@ -99,6 +100,7 @@ export function useCreationPersistence({
         error instanceof CreationSaveError && error.kind === 'auth';
       if (!isAuth) {
         showSaveError();
+        Sentry.captureException(error, { tags: { feature: 'creation_save' } });
       }
       track('creation_save_failed', {
         kind: error instanceof CreationSaveError ? error.kind : 'unknown',

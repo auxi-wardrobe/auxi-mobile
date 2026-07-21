@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { apiClient } from './apiClient';
 import { Item } from '../types/item';
 
@@ -110,6 +111,7 @@ export const favouriteService = {
       return response.data;
     } catch (error) {
       console.error('saveFavourite error', error);
+      Sentry.captureException(error, { tags: { feature: 'favourite' } });
       throw error;
     }
   },
@@ -131,6 +133,7 @@ export const favouriteService = {
       return response.data;
     } catch (error) {
       console.error('listFavourites error', error);
+      Sentry.captureException(error, { tags: { feature: 'favourite' } });
       throw error;
     }
   },
@@ -142,6 +145,7 @@ export const favouriteService = {
       return response.data;
     } catch (error) {
       console.error('removeFavourite error', error);
+      Sentry.captureException(error, { tags: { feature: 'favourite' } });
       throw error;
     }
   },

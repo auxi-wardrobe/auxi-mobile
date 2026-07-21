@@ -724,7 +724,8 @@
       "remove_cancel": "Hủy",
       "add_to_schedule": "Thêm vào lịch",
       "self_visualization": "Xem trên bạn",
-      "self_visualization_loading": "Đang tạo ảnh của bạn…"
+      "self_visualization_loading": "Đang tạo ảnh của bạn…",
+      "remove_error": "Không thể xóa tác phẩm này. Vui lòng thử lại."
     },
     "locationPermission": {
       "denied_title": "Quyền bị từ chối",
@@ -813,7 +814,8 @@
       "remove_body": "Bạn có chắc muốn xóa trang phục này khỏi danh sách yêu thích không",
       "remove_confirm": "Có",
       "remove_cancel": "Hủy",
-      "load_error": "Không thể tải mục yêu thích. Vui lòng thử lại."
+      "load_error": "Không thể tải mục yêu thích. Vui lòng thử lại.",
+      "remove_error": "Không thể xóa trang phục này. Vui lòng thử lại."
     },
     "feedback": {
       "title": "Phản hồi",

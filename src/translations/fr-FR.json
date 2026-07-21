@@ -725,7 +725,8 @@
       "remove_cancel": "Annuler",
       "add_to_schedule": "Ajouter au planning",
       "self_visualization": "Voir sur moi",
-      "self_visualization_loading": "Création de votre photo…"
+      "self_visualization_loading": "Création de votre photo…",
+      "remove_error": "Impossible de retirer cette création. Veuillez réessayer."
     },
     "locationPermission": {
       "denied_title": "Autorisation refusée",
@@ -814,7 +815,8 @@
       "remove_body": "Voulez-vous vraiment retirer cette tenue de votre liste de favoris",
       "remove_confirm": "Oui",
       "remove_cancel": "Annuler",
-      "load_error": "Impossible de charger vos favoris. Veuillez réessayer."
+      "load_error": "Impossible de charger vos favoris. Veuillez réessayer.",
+      "remove_error": "Impossible de retirer cette tenue. Veuillez réessayer."
     },
     "feedback": {
       "title": "Commentaires",

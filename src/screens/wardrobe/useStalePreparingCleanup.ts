@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
+import * as Sentry from '@sentry/react-native';
 import { toast } from '../../components/design-system/lib';
 import {
   WardrobeItem,
@@ -89,6 +90,10 @@ export const useStalePreparingCleanup = ({
         });
       } catch (error) {
         console.error('Stale preparing cleanup failed', error);
+        Sentry.captureException(error, {
+          tags: { feature: 'stale_preparing_cleanup' },
+          extra: { item_id: id },
+        });
         // Transient failure (network, 5xx): restart the countdown so the
         // removal is retried after another timeout window instead of
         // hammering the API every tick.

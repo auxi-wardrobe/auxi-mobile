@@ -13,6 +13,8 @@
 // acceptable (same posture as creations).
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import * as Sentry from '@sentry/react-native';
 import { apiClient } from './apiClient';
 // Type-only import: erased at compile time, so there is no runtime require cycle
 // with ScheduleContext (which imports this service's value at runtime).
@@ -65,6 +67,13 @@ function mapServerEntry(s: ServerScheduleEntry): ScheduleEntry {
 // Stores a flat `ScheduleEntry[]` (newest at the end → oldest-first within a
 // day, matching the backend's `created_at` ASC ordering).
 // ---------------------------------------------------------------------------
+
+// True for a genuine offline failure (no HTTP response ever arrived) — the
+// expected, frequent case that shouldn't be reported. Anything else is a real
+// server/HTTP error worth reporting, even though we still gracefully fall back
+// to the local store for it (resilience posture unchanged).
+const isOffline = (error: unknown): boolean =>
+  axios.isAxiosError(error) && !error.response;
 
 const isScheduleEntryArray = (value: unknown): value is ScheduleEntry[] =>
   Array.isArray(value) &&
@@ -137,6 +146,9 @@ export const scheduleService = {
       );
       return { entries: response.data.entries.map(mapServerEntry) };
     } catch (error) {
+      if (!isOffline(error)) {
+        Sentry.captureException(error, { tags: { feature: 'schedule_get' } });
+      }
       console.warn('getSchedule: server unavailable, using local store', error);
       return { entries: await readAllLocal(userId) };
     }
@@ -158,6 +170,9 @@ export const scheduleService = {
       });
       return mapServerEntry(response.data);
     } catch (error) {
+      if (!isOffline(error)) {
+        Sentry.captureException(error, { tags: { feature: 'schedule_add' } });
+      }
       console.warn('addToSchedule: server unavailable, saving locally', error);
       return addToScheduleLocal(userId, input);
     }
@@ -169,6 +184,11 @@ export const scheduleService = {
     try {
       await apiClient.delete(`/schedule/${id}`);
     } catch (error) {
+      if (!isOffline(error)) {
+        Sentry.captureException(error, {
+          tags: { feature: 'schedule_remove' },
+        });
+      }
       console.warn(
         'removeFromSchedule: server unavailable, removing locally',
         error,
