@@ -30,6 +30,7 @@ import { FavouriteScreen } from '../screens/FavouriteScreen';
 import { ScheduleScreen } from '../screens/ScheduleScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
 import { SeeThisOnMeScreen } from '../screens/see-this-on-me/SeeThisOnMeScreen';
+import { SeeThisOnMeConfirmScreen } from '../screens/see-this-on-me/SeeThisOnMeConfirmScreen';
 import { TryOnResultScreen } from '../screens/see-this-on-me/TryOnResultScreen';
 import { AppStackParamList } from '../types/navigation';
 import { DatabaseScreen } from '../screens/DatabaseScreen';
@@ -249,6 +250,20 @@ export const AppNavigator = () => {
                 name="SeeThisOnMe"
                 component={SeeThisOnMeScreen}
                 options={{ gestureEnabled: false }}
+              />
+              {/* Reuse-confirm gate — a transparent modal so the originating
+                  page (Favourite / Creations / Schedule) stays visible behind
+                  the confirm sheet. `animation: 'none'` keeps the gate itself
+                  invisible on entry (only the sheet animates); it hands off to
+                  SeeThisOnMe via replace, so it never lingers in the stack. */}
+              <Stack.Screen
+                name="SeeThisOnMeConfirm"
+                component={SeeThisOnMeConfirmScreen}
+                options={{
+                  presentation: 'transparentModal',
+                  animation: 'none',
+                  gestureEnabled: false,
+                }}
               />
               <Stack.Screen name="TryOnResult" component={TryOnResultScreen} />
               <Stack.Screen

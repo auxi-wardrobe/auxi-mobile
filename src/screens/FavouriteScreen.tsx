@@ -211,7 +211,10 @@ export const FavouriteScreen: React.FC = () => {
     // from the saved favourite: outfit hash, the garment ids + their image urls,
     // and the human-readable styling note.
     const items = favourite.outfit_items ?? [];
-    navigation.navigate('SeeThisOnMe', {
+    // Route through the reuse-confirm gate so a saved-body user sees the confirm
+    // sheet over THIS page (not an empty See-on-me shell). The gate hands off to
+    // SeeThisOnMe for capture / render.
+    navigation.navigate('SeeThisOnMeConfirm', {
       outfit: {
         outfitHash: favourite.outfit_context?.outfit_hash ?? favourite.id,
         itemIds: items.map(item => item.id),
