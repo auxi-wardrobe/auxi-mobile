@@ -3,6 +3,8 @@ import {
   buildGridOutfitSheetWithPin,
   classifyCategoryFamily,
   dedupeByCategory,
+  outerLayerPreferenceWeight,
+  reorderColdOutfitsPreferOuter,
   resolveOnePieceConflicts,
 } from '../outfit-normalize';
 import { Item } from '../../../types/item';
@@ -140,6 +142,101 @@ describe('resolveOnePieceConflicts', () => {
       'dress',
       'shoes',
     ]);
+  });
+});
+
+describe('outerLayerPreferenceWeight', () => {
+  it('maps each temperature band to its float weight', () => {
+    // >15°C — outerwear not needed.
+    expect(outerLayerPreferenceWeight(22)).toBe(0);
+    expect(outerLayerPreferenceWeight(15)).toBe(0);
+    // 7–15°C — optional, adds points.
+    expect(outerLayerPreferenceWeight(14)).toBe(2);
+    expect(outerLayerPreferenceWeight(7)).toBe(2);
+    // 0–7°C — strongly preferred.
+    expect(outerLayerPreferenceWeight(6)).toBe(10);
+    expect(outerLayerPreferenceWeight(0)).toBe(10);
+    // <0°C — near-mandatory.
+    expect(outerLayerPreferenceWeight(-1)).toBe(100);
+    expect(outerLayerPreferenceWeight(-5)).toBe(100);
+  });
+});
+
+describe('reorderColdOutfitsPreferOuter', () => {
+  const outerSheet = (hash: string): OutfitSheet => ({
+    outfitHash: hash,
+    items: [
+      item({ id: `${hash}-outer`, category: 'Outerwear' }),
+      item({ id: `${hash}-top`, category: 'Top' }),
+      item({ id: `${hash}-shoes`, category: 'Shoes' }),
+    ],
+  });
+  const lightSheet = (hash: string): OutfitSheet => ({
+    outfitHash: hash,
+    items: [
+      item({ id: `${hash}-dress`, category: 'Dress' }),
+      item({ id: `${hash}-shoes`, category: 'Shoes' }),
+    ],
+  });
+  const hashes = (sheets: OutfitSheet[]) => sheets.map(s => s.outfitHash);
+
+  it('leaves the deck untouched at/above 15°C (same reference)', () => {
+    const deck = [lightSheet('a'), outerSheet('b')];
+    expect(reorderColdOutfitsPreferOuter(deck, 20)).toBe(deck);
+  });
+
+  it('floats outer-bearing outfits ahead of too-light ones at 0–7°C', () => {
+    const deck = [lightSheet('light'), outerSheet('warm')];
+    expect(hashes(reorderColdOutfitsPreferOuter(deck, 4))).toEqual([
+      'warm',
+      'light',
+    ]);
+  });
+
+  it('always leads with outerwear below 0°C, regardless of backend rank', () => {
+    const deck = [lightSheet('l1'), lightSheet('l2'), outerSheet('warm')];
+    expect(hashes(reorderColdOutfitsPreferOuter(deck, -5))).toEqual([
+      'warm',
+      'l1',
+      'l2',
+    ]);
+  });
+
+  it('is only a soft nudge at 7–15°C — a top-ranked light outfit is not leapfrogged from two slots back', () => {
+    // weight 2 buys at most a one-slot jump, so the outer outfit at the very
+    // back cannot overtake the top-ranked light outfit.
+    const deck = [lightSheet('l0'), lightSheet('l1'), outerSheet('warm')];
+    expect(hashes(reorderColdOutfitsPreferOuter(deck, 12))).toEqual([
+      'l0',
+      'warm',
+      'l1',
+    ]);
+  });
+
+  it('preserves backend order within outer-bearing and within light groups', () => {
+    const deck = [
+      lightSheet('l0'),
+      outerSheet('w0'),
+      lightSheet('l1'),
+      outerSheet('w1'),
+    ];
+    expect(hashes(reorderColdOutfitsPreferOuter(deck, 4))).toEqual([
+      'w0',
+      'w1',
+      'l0',
+      'l1',
+    ]);
+  });
+
+  it('reorders only — never adds or drops an outfit', () => {
+    const deck = [lightSheet('a'), outerSheet('b'), lightSheet('c')];
+    const result = reorderColdOutfitsPreferOuter(deck, -5);
+    expect([...hashes(result)].sort()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('returns a single-outfit batch unchanged', () => {
+    const deck = [lightSheet('only')];
+    expect(reorderColdOutfitsPreferOuter(deck, -5)).toBe(deck);
   });
 });
 

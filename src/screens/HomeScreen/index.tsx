@@ -102,6 +102,7 @@ import {
   buildGridOutfitSheetWithPin,
   mapV05Item,
   normalizeOutfits,
+  reorderColdOutfitsPreferOuter,
 } from './outfit-normalize';
 import {
   buildScheduledOutfitSheets,
@@ -453,7 +454,13 @@ export const HomeScreen = () => {
       let settledHash: string | undefined;
       if (isFirstLoadRef.current || listOutfitsRef.current.length === 0) {
         isFirstLoadRef.current = false;
-        const incoming = normalizeOutfits(data, 0);
+        // AU-362: below 15°C, float outfits that already carry an outer layer
+        // ahead of the too-light ones (weight scales with cold). Reorder-only —
+        // no garment added/dropped — and a no-op at/above 15°C.
+        const incoming = reorderColdOutfitsPreferOuter(
+          normalizeOutfits(data, 0),
+          overrideTempCRef.current ?? weather.tempC,
+        );
         // Lead the fresh deck with the user's outfit(s) scheduled for today.
         // `withScheduledPrefix` is a no-op when nothing is planned, so the deck
         // is recommendations-only on ordinary days.
@@ -482,7 +489,11 @@ export const HomeScreen = () => {
         }
       } else {
         const offset = listOutfitsRef.current.length;
-        const incoming = normalizeOutfits(data, offset);
+        // AU-362: same cold-weather rerank applied to each appended batch.
+        const incoming = reorderColdOutfitsPreferOuter(
+          normalizeOutfits(data, offset),
+          overrideTempCRef.current ?? weather.tempC,
+        );
         const existingHashes = new Set(
           listOutfitsRef.current.map(o => o.outfitHash),
         );
