@@ -113,7 +113,12 @@ import {
   readHomeDeckSnapshot,
   saveHomeDeckSnapshot,
 } from './deck-cache';
-import { buildWearHistory, buildWornDaysAgoByHash } from './wear-history';
+import {
+  buildWearHistory,
+  buildWornDaysAgoByHash,
+  mergeLocalWears,
+} from './wear-history';
+import { readWearLog, recordWear, type WearLog } from './wear-log';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
 import { useHomeToasts } from './hooks/useHomeToasts';
@@ -966,10 +971,39 @@ export const HomeScreen = () => {
     queryFn: () => favouriteService.listFavourites(100, 0, 'recent'),
     staleTime: 60_000,
   });
+  // The app's own wear log. The backend never bumps a favourite's `updated_at`
+  // on a re-wear (its upsert only touches the mood linkage, not the row), so a
+  // repeat wear can't be learned from `wearHistoryData` alone — the badge would
+  // stay stuck on the first-save date. We record each wear locally (see the
+  // save handlers below) and merge it in, most-recent wins, so re-wearing
+  // resets the badge to "Worn today" immediately and survives an app restart.
+  const [localWears, setLocalWears] = useState<WearLog>({});
+  useEffect(() => {
+    let cancelled = false;
+    readWearLog(user?.id).then(log => {
+      if (!cancelled) {
+        setLocalWears(log);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
   const wornDaysAgoByHash = useMemo(() => {
     const favourites = wearHistoryData?.favorites ?? [];
-    return buildWornDaysAgoByHash(buildWearHistory(favourites), wornAsOf);
-  }, [wearHistoryData?.favorites, wornAsOf]);
+    const merged = mergeLocalWears(buildWearHistory(favourites), localWears);
+    return buildWornDaysAgoByHash(merged, wornAsOf);
+  }, [wearHistoryData?.favorites, localWears, wornAsOf]);
+  // Record a wear in the local log (persisted) and reflect it in state so the
+  // badge updates on the same commit as the save success.
+  const noteWear = useCallback(
+    (outfitHash: string) => {
+      const worn = new Date().toISOString();
+      setLocalWears(current => ({ ...current, [outfitHash]: worn }));
+      recordWear(user?.id, outfitHash, worn).catch(() => {});
+    },
+    [user?.id],
+  );
 
   // When the current pin was set. The gone-check below may only trust a
   // wardrobe list fetched AFTER this moment — a cached list that predates the
@@ -1192,6 +1226,9 @@ export const HomeScreen = () => {
         })
         .then(() => {
           setSaveStateByHash(current => ({ ...current, [hash]: 'saved' }));
+          // Stamp the local wear log so the "Worn N days ago" badge reflects
+          // this wear even though the backend won't bump the favourite's date.
+          noteWear(hash);
           track('outfit_favorited', {
             outfit_hash: hash,
             item_count: items.length,
@@ -1207,7 +1244,7 @@ export const HomeScreen = () => {
           setSaveStateByHash(current => ({ ...current, [hash]: 'error' }));
         });
     },
-    [queryClient, markFavouriteSaved, dismissRefineToast],
+    [queryClient, markFavouriteSaved, dismissRefineToast, noteWear],
   );
 
   const handleOpenFavourites = useCallback(() => {
@@ -1222,6 +1259,9 @@ export const HomeScreen = () => {
   const handleMoodSaveSuccess = useCallback(
     (outfitHash: string, updated: boolean) => {
       setSaveStateByHash(current => ({ ...current, [outfitHash]: 'saved' }));
+      // Stamp the local wear log so a re-worn look resets to "Worn today" even
+      // though the backend upsert leaves the favourite's date untouched.
+      noteWear(outfitHash);
       showMoodBanner(
         t(updated ? 'mood.moodUpdatedBanner' : 'mood.savedBanner'),
       );
@@ -1230,7 +1270,7 @@ export const HomeScreen = () => {
       markFavouriteSaved();
       queryClient.invalidateQueries({ queryKey: ['favourites'] });
     },
-    [showMoodBanner, t, queryClient, markFavouriteSaved],
+    [showMoodBanner, t, queryClient, markFavouriteSaved, noteWear],
   );
 
   // "Not quite me" → the outfit is intentionally NOT saved; acknowledge the

@@ -1,6 +1,7 @@
 import {
   buildWearHistory,
   buildWornDaysAgoByHash,
+  mergeLocalWears,
   wornDaysAgo,
 } from '../wear-history';
 import { Favourite } from '../../../services/favouriteService';
@@ -69,6 +70,34 @@ describe('buildWearHistory', () => {
       }),
     ]);
     expect(map.size).toBe(0);
+  });
+});
+
+describe('mergeLocalWears', () => {
+  it('overlays a local wear that is newer than the backend date', () => {
+    const backend = new Map<string, string>([['h1', '2026-07-01T10:00:00Z']]);
+    const merged = mergeLocalWears(backend, { h1: '2026-07-20T09:00:00Z' });
+    expect(merged.get('h1')).toBe('2026-07-20T09:00:00Z');
+  });
+
+  it('adds a hash the backend history does not know about', () => {
+    const backend = new Map<string, string>();
+    const merged = mergeLocalWears(backend, { h2: '2026-07-20T09:00:00Z' });
+    expect(merged.get('h2')).toBe('2026-07-20T09:00:00Z');
+  });
+
+  it('keeps the backend date when the local wear is older', () => {
+    const backend = new Map<string, string>([['h1', '2026-07-20T09:00:00Z']]);
+    const merged = mergeLocalWears(backend, { h1: '2026-07-01T10:00:00Z' });
+    expect(merged.get('h1')).toBe('2026-07-20T09:00:00Z');
+  });
+
+  it('ignores unusable local timestamps and never mutates the input', () => {
+    const backend = new Map<string, string>([['h1', '2026-07-01T10:00:00Z']]);
+    const merged = mergeLocalWears(backend, { h1: 'nonsense', h2: '' });
+    expect(merged.get('h1')).toBe('2026-07-01T10:00:00Z');
+    expect(merged.has('h2')).toBe(false);
+    expect(backend.size).toBe(1);
   });
 });
 
