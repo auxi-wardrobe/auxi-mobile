@@ -45,6 +45,33 @@ export const buildWearHistory = (
 };
 
 /**
+ * Overlay the app's local wear log (see wear-log.ts) onto the backend-derived
+ * wear history, keeping the most recent timestamp per hash. The backend never
+ * bumps a favourite's `updated_at` on a re-wear (its upsert only touches the
+ * mood linkage, not the row), so its date is frozen at the first save — the
+ * local log is the only source that reflects a repeat wear. Merging here lets a
+ * just-worn look reset to "Worn today" and also surfaces on-device wears whose
+ * favourite fell outside the lookup window. Returns a new map; inputs are left
+ * untouched.
+ */
+export const mergeLocalWears = (
+  wearHistory: Map<string, string>,
+  localWears: Record<string, string>,
+): Map<string, string> => {
+  const merged = new Map(wearHistory);
+  for (const [hash, worn] of Object.entries(localWears)) {
+    if (!worn || Number.isNaN(new Date(worn).getTime())) {
+      continue;
+    }
+    const existing = merged.get(hash);
+    if (!existing || new Date(worn).getTime() > new Date(existing).getTime()) {
+      merged.set(hash, worn);
+    }
+  }
+  return merged;
+};
+
+/**
  * Whole calendar days between `iso` and `now` (local time), so a look worn
  * yesterday evening reads "1 day ago" rather than "0". Returns `null` when the
  * date is unparseable or in the future (clock skew) — callers hide the badge.
