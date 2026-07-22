@@ -27,8 +27,10 @@ import { toast } from '../components/design-system/lib';
 import { theme } from '../theme/theme';
 import { useReducedMotion } from '../theme/motion';
 import { useSidebar } from '../context/SidebarContext';
+import { useAuth } from '../context/AuthContext';
 import { useFavouritesSeen } from '../context/FavouritesSeenContext';
 import { useSchedule } from '../context/ScheduleContext';
+import { readWearLog, type WearLog } from './HomeScreen/wear-log';
 import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
@@ -47,6 +49,7 @@ import { RemoveFavouriteDialog } from './favourite/RemoveFavouriteDialog';
 import { ScheduleDatePickerSheet } from './schedule/ScheduleDatePickerSheet';
 import { useScheduleAddedToast } from './schedule/useScheduleAddedToast';
 import {
+  effectiveWornAt,
   formatDateLabel,
   groupFavouritesByDate,
 } from './favourite/group-by-date';
@@ -73,6 +76,7 @@ export const FavouriteScreen: React.FC = () => {
   const queryClient = useQueryClient();
   const reduced = useReducedMotion();
   const { open: openSidebar } = useSidebar();
+  const { user } = useAuth();
   const { markSeen: markFavouritesSeen } = useFavouritesSeen();
   const { scheduleOutfit } = useSchedule();
   const showScheduleAddedToast = useScheduleAddedToast();
@@ -84,6 +88,26 @@ export const FavouriteScreen: React.FC = () => {
     useCallback(() => {
       markFavouritesSeen();
     }, [markFavouritesSeen]),
+  );
+
+  // The app's own wear log (see HomeScreen/wear-log.ts). The backend never
+  // advances a favourite's date on a re-wear, so a just-worn look would keep
+  // sorting under its original save date. Re-read it on focus (a wear may have
+  // happened on Home moments ago) and let it override each favourite's date so
+  // a re-worn outfit floats to today at the top of the list.
+  const [localWears, setLocalWears] = useState<WearLog>({});
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      readWearLog(user?.id).then(log => {
+        if (!cancelled) {
+          setLocalWears(log);
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [user?.id]),
   );
 
   const [view, setView] = useState<HomeView>('grid');
@@ -111,7 +135,10 @@ export const FavouriteScreen: React.FC = () => {
   });
 
   const favourites = useMemo(() => data?.favorites ?? [], [data?.favorites]);
-  const groups = useMemo(() => groupFavouritesByDate(favourites), [favourites]);
+  const groups = useMemo(
+    () => groupFavouritesByDate(favourites, localWears),
+    [favourites, localWears],
+  );
 
   // AU-347: snap the Favourite list to one outfit at a time so users review
   // saved outfits individually (reduces cognitive load). We measure each date
@@ -317,7 +344,9 @@ export const FavouriteScreen: React.FC = () => {
                 <FavouriteOutfitCard
                   favourite={favourite}
                   view={view}
-                  dateLabel={formatDateLabel(favourite.created_at)}
+                  dateLabel={formatDateLabel(
+                    effectiveWornAt(favourite, localWears),
+                  )}
                   onItemPress={itemId =>
                     navigation.navigate('ItemDetail', { itemId })
                   }
