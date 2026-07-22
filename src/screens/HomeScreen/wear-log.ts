@@ -3,23 +3,29 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Local, per-user wear log — the app's own record of WHEN the user last wore
 // each outfit (keyed by `outfit_hash`).
 //
-// Why this exists: the "Worn N days ago" badge (see wear-history.ts) derives
-// its date from a favourite's `updated_at`/`created_at`. But the backend's
-// `POST /favourites` upsert, when an outfit is re-worn, "reuses the existing
-// favorite, only the mood linkage is updated" — the favourite row itself is
-// not touched, so its `updated_at` (a SQLAlchemy `onupdate` column, which only
-// fires on a row change) stays frozen at the FIRST save. That means the badge
-// can never learn about a re-wear from the backend: it keeps showing the stale
-// original date instead of resetting to "Worn today".
+// Why this exists: the "Worn N days ago" badge and the Favourites ordering
+// derive their date from a favourite's `updated_at`/`created_at`. But the
+// backend's `POST /favourites` upsert, when an outfit is re-worn, "reuses the
+// existing favorite, only the mood linkage is updated" — the favourite row is
+// not touched, so its date stays frozen at the FIRST save. A re-wear therefore
+// can't be learned from the backend at all.
 //
 // So we record every wear locally the moment it happens (the "Wear this" mood
-// flow and the heart tap both land here on success) and merge this log into the
-// backend-derived wear history, taking the most recent timestamp per hash (see
-// `mergeLocalWears`). This makes re-wears reset the badge immediately and
-// durably — independent of the backend's frozen `updated_at` — and also covers
-// on-device wears that fall outside the favourites lookup window.
+// flow and the heart tap both land here on success) and merge it into the
+// backend-derived data, most-recent-per-hash wins.
 //
-// Privacy: the blob is keyed by user id, so one user can never read another's.
+// Two storage layers, because they cover different failure modes:
+//   1. A MODULE-LEVEL in-memory cache (`memory`) — the reliable cross-screen /
+//      cross-remount channel. The web build unmounts screens on navigation
+//      (see deck-cache.ts) and ships NO functional AsyncStorage
+//      (@react-native-async-storage has no web build and isn't aliased in
+//      vite), so a wear recorded on Home must survive purely in memory to
+//      reach the Favourites screen. Same pattern deck-cache uses.
+//   2. AsyncStorage — best-effort durability so a native app restart still
+//      remembers recent wears. A no-op on web (rejects, caught), which is why
+//      layer 1 exists.
+//
+// Privacy: both layers key by user id, so one user can never read another's.
 
 const KEY_PREFIX = '@auxi/home-wear-log/';
 
@@ -34,8 +40,14 @@ const NON_WEARABLE_PREFIXES = ['outfit-', 'scheduled-'];
 const isWearableHash = (hash: string): boolean =>
   !!hash && !NON_WEARABLE_PREFIXES.some(prefix => hash.startsWith(prefix));
 
-/** A hash → last-worn ISO timestamp map, as persisted. */
+/** A hash → last-worn ISO timestamp map, as persisted / cached. */
 export type WearLog = Record<string, string>;
+
+// In-memory cache, keyed by user id (as a string). Module scope so it outlives
+// any single screen mount — see the header note.
+const memory = new Map<string, WearLog>();
+
+const memKey = (userId: string | number): string => String(userId);
 
 const isWearLog = (value: unknown): value is WearLog =>
   value != null &&
@@ -45,10 +57,39 @@ const isWearLog = (value: unknown): value is WearLog =>
     v => typeof v === 'string',
   );
 
+/** Merge two logs, keeping the newest usable timestamp per hash. */
+const mergeNewest = (a: WearLog, b: WearLog): WearLog => {
+  const out: WearLog = { ...a };
+  for (const [hash, worn] of Object.entries(b)) {
+    if (!worn || Number.isNaN(new Date(worn).getTime())) {
+      continue;
+    }
+    const existing = out[hash];
+    if (
+      !existing ||
+      Number.isNaN(new Date(existing).getTime()) ||
+      new Date(worn).getTime() > new Date(existing).getTime()
+    ) {
+      out[hash] = worn;
+    }
+  }
+  return out;
+};
+
 /**
- * Read this user's local wear log, or `{}` when there's no user, no blob, or a
- * corrupt/unreadable one (so the caller falls back to the backend history
- * rather than crashing).
+ * Synchronously read this user's in-memory wear log (or `{}`). Use this for an
+ * instant first paint — it already holds any wear recorded this session, even
+ * on web where AsyncStorage is a no-op. Pair it with {@link readWearLog} to
+ * also fold in anything persisted from a previous native launch.
+ */
+export const peekWearLog = (userId: string | number | undefined): WearLog =>
+  userId == null ? {} : memory.get(memKey(userId)) ?? {};
+
+/**
+ * Read this user's wear log: the persisted blob (native only) merged with the
+ * in-memory cache, most-recent-per-hash wins. Returns `{}` for no user. On web
+ * (or a corrupt/missing blob) this resolves to just the in-memory cache rather
+ * than crashing. Seeds the in-memory cache with the merged result.
  */
 export const readWearLog = async (
   userId: string | number | undefined,
@@ -56,27 +97,30 @@ export const readWearLog = async (
   if (userId == null) {
     return {};
   }
+  const cached = memory.get(memKey(userId)) ?? {};
+  let persisted: WearLog = {};
   try {
     const raw = await AsyncStorage.getItem(keyFor(userId));
-    if (!raw) {
-      return {};
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown;
+      if (isWearLog(parsed)) {
+        persisted = parsed;
+      }
     }
-    const parsed = JSON.parse(raw) as unknown;
-    return isWearLog(parsed) ? parsed : {};
   } catch {
-    return {};
+    // Web / unavailable storage — fall back to the in-memory cache.
   }
+  const merged = mergeNewest(persisted, cached);
+  memory.set(memKey(userId), merged);
+  return merged;
 };
 
 /**
- * Record a wear locally, keeping the most recent timestamp for a hash.
- *
- * Fire-and-forget and read-modify-write: it reloads the current blob so
- * concurrent Home instances (web remounts) don't clobber each other's entries.
- * A no-op for a missing user, a non-wearable hash, or a bad timestamp — a
- * failed write just means the next launch reads the backend date, never a
- * crash. Returns the merged log so callers can update in-memory state without a
- * re-read.
+ * Record a wear, keeping the most recent timestamp for a hash. Updates the
+ * in-memory cache synchronously (so a subsequent {@link peekWearLog} sees it
+ * even before the write settles / on web) and best-effort persists to
+ * AsyncStorage. A no-op for a missing user, a non-wearable hash, or a bad
+ * timestamp. Returns the merged log.
  */
 export const recordWear = async (
   userId: string | number | undefined,
@@ -89,18 +133,25 @@ export const recordWear = async (
     !worn ||
     Number.isNaN(new Date(worn).getTime())
   ) {
-    return {};
+    return userId == null ? {} : peekWearLog(userId);
   }
+  const current = memory.get(memKey(userId)) ?? {};
+  const existing = current[outfitHash];
+  if (existing && new Date(existing).getTime() >= new Date(worn).getTime()) {
+    return current;
+  }
+  const next = { ...current, [outfitHash]: worn };
+  memory.set(memKey(userId), next);
   try {
-    const current = await readWearLog(userId);
-    const existing = current[outfitHash];
-    if (existing && new Date(existing).getTime() >= new Date(worn).getTime()) {
-      return current;
-    }
-    const next = { ...current, [outfitHash]: worn };
     await AsyncStorage.setItem(keyFor(userId), JSON.stringify(next));
-    return next;
   } catch {
-    return {};
+    // Web / unavailable storage — the in-memory cache above still carries it
+    // for the rest of the session, which is what the Favourites screen reads.
   }
+  return next;
+};
+
+/** Test-only: clear the in-memory cache between cases. */
+export const __resetWearLogMemory = (): void => {
+  memory.clear();
 };

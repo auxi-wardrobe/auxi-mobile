@@ -118,7 +118,12 @@ import {
   buildWornDaysAgoByHash,
   mergeLocalWears,
 } from './wear-history';
-import { readWearLog, recordWear, type WearLog } from './wear-log';
+import {
+  peekWearLog,
+  readWearLog,
+  recordWear,
+  type WearLog,
+} from './wear-log';
 import { useWeather } from './hooks/useWeather';
 import { useContextRefineModal } from './hooks/useContextRefineModal';
 import { useHomeToasts } from './hooks/useHomeToasts';
@@ -977,9 +982,12 @@ export const HomeScreen = () => {
   // stay stuck on the first-save date. We record each wear locally (see the
   // save handlers below) and merge it in, most-recent wins, so re-wearing
   // resets the badge to "Worn today" immediately and survives an app restart.
-  const [localWears, setLocalWears] = useState<WearLog>({});
+  const [localWears, setLocalWears] = useState<WearLog>(() =>
+    peekWearLog(user?.id),
+  );
   useEffect(() => {
     let cancelled = false;
+    setLocalWears(peekWearLog(user?.id));
     readWearLog(user?.id).then(log => {
       if (!cancelled) {
         setLocalWears(log);

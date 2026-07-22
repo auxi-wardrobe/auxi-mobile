@@ -30,7 +30,7 @@ import { useSidebar } from '../context/SidebarContext';
 import { useAuth } from '../context/AuthContext';
 import { useFavouritesSeen } from '../context/FavouritesSeenContext';
 import { useSchedule } from '../context/ScheduleContext';
-import { readWearLog, type WearLog } from './HomeScreen/wear-log';
+import { peekWearLog, readWearLog, type WearLog } from './HomeScreen/wear-log';
 import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
@@ -95,10 +95,16 @@ export const FavouriteScreen: React.FC = () => {
   // sorting under its original save date. Re-read it on focus (a wear may have
   // happened on Home moments ago) and let it override each favourite's date so
   // a re-worn outfit floats to today at the top of the list.
-  const [localWears, setLocalWears] = useState<WearLog>({});
+  const [localWears, setLocalWears] = useState<WearLog>(() =>
+    peekWearLog(user?.id),
+  );
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      // Seed synchronously from the in-memory cache so a wear just made on Home
+      // is reflected immediately — even on web, where the persisted layer and
+      // Home's own state are both gone after its unmount.
+      setLocalWears(peekWearLog(user?.id));
       readWearLog(user?.id).then(log => {
         if (!cancelled) {
           setLocalWears(log);
@@ -117,7 +123,11 @@ export const FavouriteScreen: React.FC = () => {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: FAVOURITES_QUERY_KEY,
-    queryFn: () => favouriteService.listFavourites(),
+    // Wider page than the 20 default: re-wearing an outfit never advances its
+    // backend date (the upsert only touches the mood linkage), so a re-worn
+    // older favourite stays deep in the created_at-sorted list. Fetch enough to
+    // include it, so the local wear log can float it back to today.
+    queryFn: () => favouriteService.listFavourites(100, 0, 'recent'),
   });
 
   const removeMutation = useMutation({
