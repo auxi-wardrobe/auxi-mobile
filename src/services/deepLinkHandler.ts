@@ -31,6 +31,7 @@
  *     type the new password first).
  */
 import { Linking } from 'react-native';
+import { CommonActions } from '@react-navigation/native';
 import type { NavigationContainerRef } from '@react-navigation/native';
 
 import { verifyEmail as verifyEmailCall } from './auth';
@@ -174,10 +175,42 @@ export const dispatchDeepLink = async (
   }
 
   if (link.kind === 'reset-password') {
-    navRef.navigate('Auth', {
-      screen: 'ResetNewPassword',
-      params: { token: link.token, email: link.email },
-    });
+    // Reset (not navigate) the Auth stack to a fresh
+    // [ForgotPasswordRequest, ResetNewPassword] state. A plain `.navigate`
+    // would push ResetNewPassword onto whatever stale Auth stack state
+    // already existed in this app session (e.g. a leftover
+    // ForgotPasswordCheckMail "check your email" screen from an earlier
+    // forgot-password attempt) — back from ResetNewPassword would then land
+    // on that stale, no-longer-relevant screen instead of the "enter your
+    // email" screen. Resetting guarantees back always lands on
+    // ForgotPasswordRequest regardless of prior stack state. This assumes
+    // `Auth` is the currently-mounted root screen (true whenever the user
+    // isn't logged in — same precondition the rest of this function already
+    // assumes); a logged-in user tapping this link is a known, separate edge
+    // case.
+    navRef.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'Auth',
+            state: {
+              index: 1,
+              routes: [
+                {
+                  name: 'ForgotPasswordRequest',
+                  params: { email: link.email ?? '' },
+                },
+                {
+                  name: 'ResetNewPassword',
+                  params: { token: link.token, email: link.email },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
     return;
   }
 

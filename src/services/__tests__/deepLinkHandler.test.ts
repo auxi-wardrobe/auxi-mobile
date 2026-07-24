@@ -10,11 +10,24 @@
 // slot per test.
 
 import { Linking } from 'react-native';
+import { CommonActions } from '@react-navigation/native';
 import { resolveNotificationData } from '../deepLinkHandler';
+
+// verify-email dispatch fires a real API call (verifyEmailCall) as a
+// fire-and-forget side effect; stub it so the regression test doesn't hit
+// the network (no backend running in the test environment).
+jest.mock('../auth', () => ({
+  verifyEmail: jest.fn().mockResolvedValue({
+    verified: true,
+    already_verified: false,
+    user: {},
+  }),
+}));
 
 const makeNavRef = (ready = true) => ({
   isReady: () => ready,
   navigate: jest.fn(),
+  dispatch: jest.fn(),
 });
 
 let openUrlSpy: jest.SpyInstance;
@@ -176,14 +189,16 @@ describe('dispatchDeepLink / replayPendingDeepLink — cold-start race', () => {
       { navRef: notReady as any },
     );
     expect(notReady.navigate).not.toHaveBeenCalled();
+    expect(notReady.dispatch).not.toHaveBeenCalled();
 
     const ready = makeNavRef(true);
     await replayPendingDeepLink(ready as any);
 
-    expect(ready.navigate).toHaveBeenCalledWith('Auth', {
-      screen: 'ResetNewPassword',
-      params: { token: 't1', email: 'a@b.com' },
-    });
+    // reset-password now resets the Auth stack (dispatch), not a plain
+    // navigate — see the "reset-password stack reset" describe block below
+    // for the full shape assertion.
+    expect(ready.navigate).not.toHaveBeenCalled();
+    expect(ready.dispatch).toHaveBeenCalledTimes(1);
   });
 
   it('is a no-op when there is no pending link', async () => {
@@ -191,6 +206,7 @@ describe('dispatchDeepLink / replayPendingDeepLink — cold-start race', () => {
     const ready = makeNavRef(true);
     await replayPendingDeepLink(ready as any);
     expect(ready.navigate).not.toHaveBeenCalled();
+    expect(ready.dispatch).not.toHaveBeenCalled();
   });
 
   it('clears the pending link after a successful replay (no double-fire)', async () => {
@@ -203,10 +219,101 @@ describe('dispatchDeepLink / replayPendingDeepLink — cold-start race', () => {
 
     const readyA = makeNavRef(true);
     await replayPendingDeepLink(readyA as any);
-    expect(readyA.navigate).toHaveBeenCalledTimes(1);
+    expect(readyA.dispatch).toHaveBeenCalledTimes(1);
 
     const readyB = makeNavRef(true);
     await replayPendingDeepLink(readyB as any);
-    expect(readyB.navigate).not.toHaveBeenCalled();
+    expect(readyB.dispatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('dispatchDeepLink — reset-password resets the Auth stack', () => {
+  type DeepLinkModule = typeof import('../deepLinkHandler');
+  const loadModule = (): DeepLinkModule => require('../deepLinkHandler');
+
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  it('dispatches a CommonActions.reset with a 2-route Auth stack (email present)', async () => {
+    const { dispatchDeepLink } = loadModule();
+    const nav = makeNavRef(true);
+
+    await dispatchDeepLink(
+      { kind: 'reset-password', token: 't1', email: 'a@b.com' },
+      { navRef: nav as any },
+    );
+
+    expect(nav.navigate).not.toHaveBeenCalled();
+    expect(nav.dispatch).toHaveBeenCalledWith(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'Auth',
+            state: {
+              index: 1,
+              routes: [
+                {
+                  name: 'ForgotPasswordRequest',
+                  params: { email: 'a@b.com' },
+                },
+                {
+                  name: 'ResetNewPassword',
+                  params: { token: 't1', email: 'a@b.com' },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+  });
+
+  it('dispatches with an empty-string ForgotPasswordRequest email when the link has none', async () => {
+    const { dispatchDeepLink } = loadModule();
+    const nav = makeNavRef(true);
+
+    await dispatchDeepLink(
+      { kind: 'reset-password', token: 't2' },
+      { navRef: nav as any },
+    );
+
+    expect(nav.dispatch).toHaveBeenCalledWith(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'Auth',
+            state: {
+              index: 1,
+              routes: [
+                { name: 'ForgotPasswordRequest', params: { email: '' } },
+                {
+                  name: 'ResetNewPassword',
+                  params: { token: 't2', email: undefined },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+  });
+
+  it('regression: verify-email still uses a plain navigate, not dispatch/reset', async () => {
+    const { dispatchDeepLink } = loadModule();
+    const nav = makeNavRef(true);
+
+    await dispatchDeepLink(
+      { kind: 'verify-email', token: 't3' },
+      { navRef: nav as any },
+    );
+
+    expect(nav.navigate).toHaveBeenCalledWith('Auth', {
+      screen: 'Verified',
+      params: { source: 'signup' },
+    });
+    expect(nav.dispatch).not.toHaveBeenCalled();
   });
 });

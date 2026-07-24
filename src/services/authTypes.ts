@@ -128,7 +128,17 @@ export interface ResetPasswordRequest {
   new_password: string;
 }
 
-export type ResetPasswordResponse = GenericOkResponse;
+export interface ResetPasswordResponse extends GenericOkResponse {
+  /**
+   * The email of the account whose password was just reset, populated
+   * server-side once the token is validated. Lets the client route
+   * "Continue to login" straight to SignIn pre-filled — the reset deep
+   * link itself never reliably carries an email. Optional for backward
+   * compatibility with an older backend build during rollout skew; client
+   * code MUST fall back gracefully (never crash) when it's absent.
+   */
+  email?: string;
+}
 
 // ---------------------------------------------------------------------------
 // /api/auth/refresh

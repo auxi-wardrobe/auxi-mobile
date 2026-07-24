@@ -28,7 +28,7 @@ export type AuthStackParamList = {
   ForgotPasswordRequest: { email: string };
   ForgotPasswordCheckMail: { email: string };
   ResetNewPassword: { token: string; email?: string };
-  Verified: { source: UacVerifiedSource };
+  Verified: { source: UacVerifiedSource; email?: string };
   // In-app legal docs reachable pre-auth from Welcome's legal footer links.
   // Same screen + param shape as the authenticated app stack's LegalDocument.
   LegalDocument: LegalScreenParams;
