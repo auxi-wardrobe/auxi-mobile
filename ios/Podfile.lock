@@ -137,6 +137,8 @@ PODS:
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
   - PromisesObjC (2.4.0)
+  - PurchasesHybridCommon (18.19.0):
+    - RevenueCat (= 5.80.2)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -2779,6 +2781,7 @@ PODS:
     - React-perflogger (= 0.83.1)
     - React-utils (= 0.83.1)
     - SocketRocket
+  - RevenueCat (5.80.2)
   - RNAppleAuthentication (2.5.1):
     - React-Core
   - RNFBApp (21.14.0):
@@ -2902,6 +2905,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - RNPurchases (10.4.2):
+    - PurchasesHybridCommon (= 18.19.0)
+    - React-Core
   - RNScreens (4.23.0):
     - boost
     - DoubleConversion
@@ -3156,6 +3162,7 @@ DEPENDENCIES:
   - "RNGoogleSignin (from `../node_modules/@react-native-google-signin/google-signin`)"
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - RNLocalize (from `../node_modules/react-native-localize`)
+  - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - "RNSentry (from `../node_modules/@sentry/react-native`)"
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -3180,6 +3187,8 @@ SPEC REPOS:
     - Mixpanel-swift
     - nanopb
     - PromisesObjC
+    - PurchasesHybridCommon
+    - RevenueCat
     - Sentry
     - SocketRocket
 
@@ -3367,6 +3376,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-keychain"
   RNLocalize:
     :path: "../node_modules/react-native-localize"
+  RNPurchases:
+    :path: "../node_modules/react-native-purchases"
   RNScreens:
     :path: "../node_modules/react-native-screens"
   RNSentry:
@@ -3402,6 +3413,7 @@ SPEC CHECKSUMS:
   MixpanelReactNative: 1f0d8718b2be7174f719ed5db8e8f75d7975dea4
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  PurchasesHybridCommon: 1eb67a6c8997233b35ed9b4eee8205dd8dd92890
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: a41bbdd9af30bf2e5715796b313e44ec43eefff1
   RCTRequired: 7be34aabb0b77c3cefe644528df0fa0afad4e4d0
@@ -3477,6 +3489,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 0eb286cc274abb059ee601b862ebddac2e681d01
   ReactCodegen: 3d48510bcef445f6403c0004047d4d9cbb915435
   ReactCommon: ac934cb340aee91282ecd6f273a26d24d4c55cae
+  RevenueCat: b772273e51fa103a2ecc644439dd54a5dec199f3
   RNAppleAuthentication: a89c9804592b38ed4ab11f0aee68d05ba12ad432
   RNFBApp: a448037d2df74af9d374a0b765be12ff1e844dc0
   RNFBMessaging: 0f0498a95c605e3afcf13ac5f349d0b201ea65f6
@@ -3484,6 +3497,7 @@ SPEC CHECKSUMS:
   RNGoogleSignin: 15341729e1f79f1b82740393924cae5e429ad176
   RNKeychain: a2c134ab796272c3d605e035ab727591000b30f3
   RNLocalize: 1aedbc2c15073861a364174919d23c31c5924b16
+  RNPurchases: 64e5e656f042c2f20ccdb3fe3ed683664229de73
   RNScreens: afaf526a9c804c3b4503f950cf3e67ed81e29ada
   RNSentry: 798f2c76d44cc0c4b3faf328b2498968b27914f5
   RNSVG: 595abfa0f9ac26d56afcaaedf4e37a00f54cab71

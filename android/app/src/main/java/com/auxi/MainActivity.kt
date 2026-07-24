@@ -1,5 +1,6 @@
 package com.auxi
 
+import android.content.Intent
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -19,4 +20,16 @@ class MainActivity : ReactActivity() {
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
+
+  /**
+   * Warm-start deep links: `launchMode="singleTask"` (AndroidManifest.xml)
+   * routes a re-tapped link into this already-running Activity as a new
+   * Intent instead of a new instance — but RN's `Linking` module only sees
+   * intents reachable via `getIntent()`, so without `setIntent(intent)` here
+   * the new URL never reaches JS.
+   */
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+  }
 }
