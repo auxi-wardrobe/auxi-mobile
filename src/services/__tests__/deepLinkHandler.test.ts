@@ -2,6 +2,12 @@
 // resolveNotificationData — FCM tap payload → navigation/open side-effect.
 // Curated route allowlist (incl. the Creations→MyCreations route mapping),
 // external-URL opening, and the unknown/missing → fallback-Home guarantee.
+//
+// Also covers dispatchDeepLink / replayPendingDeepLink — the cold-start race
+// fix: a deep link that arrives before the nav tree is ready must be stashed
+// and replayed once nav becomes ready, not silently dropped. Those tests
+// re-require the module (jest.resetModules) for a clean module-scope pending
+// slot per test.
 
 import { Linking } from 'react-native';
 import { resolveNotificationData } from '../deepLinkHandler';
@@ -141,5 +147,66 @@ describe('resolveNotificationData — defensive', () => {
     expect(() =>
       resolveNotificationData({ kind: 'route', screen: 'Home' }, null),
     ).not.toThrow();
+  });
+});
+
+describe('dispatchDeepLink / replayPendingDeepLink — cold-start race', () => {
+  type DeepLinkModule = typeof import('../deepLinkHandler');
+  const loadModule = (): DeepLinkModule => require('../deepLinkHandler');
+
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  it('does not navigate and does not throw when nav is not ready', async () => {
+    const { dispatchDeepLink } = loadModule();
+    const notReady = makeNavRef(false);
+    await dispatchDeepLink(
+      { kind: 'reset-password', token: 't1' },
+      { navRef: notReady as any },
+    );
+    expect(notReady.navigate).not.toHaveBeenCalled();
+  });
+
+  it('replays a stored link once nav becomes ready', async () => {
+    const { dispatchDeepLink, replayPendingDeepLink } = loadModule();
+    const notReady = makeNavRef(false);
+    await dispatchDeepLink(
+      { kind: 'reset-password', token: 't1', email: 'a@b.com' },
+      { navRef: notReady as any },
+    );
+    expect(notReady.navigate).not.toHaveBeenCalled();
+
+    const ready = makeNavRef(true);
+    await replayPendingDeepLink(ready as any);
+
+    expect(ready.navigate).toHaveBeenCalledWith('Auth', {
+      screen: 'ResetNewPassword',
+      params: { token: 't1', email: 'a@b.com' },
+    });
+  });
+
+  it('is a no-op when there is no pending link', async () => {
+    const { replayPendingDeepLink } = loadModule();
+    const ready = makeNavRef(true);
+    await replayPendingDeepLink(ready as any);
+    expect(ready.navigate).not.toHaveBeenCalled();
+  });
+
+  it('clears the pending link after a successful replay (no double-fire)', async () => {
+    const { dispatchDeepLink, replayPendingDeepLink } = loadModule();
+    const notReady = makeNavRef(false);
+    await dispatchDeepLink(
+      { kind: 'reset-password', token: 't1' },
+      { navRef: notReady as any },
+    );
+
+    const readyA = makeNavRef(true);
+    await replayPendingDeepLink(readyA as any);
+    expect(readyA.navigate).toHaveBeenCalledTimes(1);
+
+    const readyB = makeNavRef(true);
+    await replayPendingDeepLink(readyB as any);
+    expect(readyB.navigate).not.toHaveBeenCalled();
   });
 });

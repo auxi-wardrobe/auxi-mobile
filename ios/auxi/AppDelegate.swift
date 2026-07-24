@@ -34,6 +34,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     return true
   }
+
+  // Warm-start deep links (reset-password / verify-email): forwards
+  // `auxi://…` / universal-link opens into RCTLinkingManager so RN's JS
+  // `Linking` `url` event fires. Requires the bridging header
+  // (`auxi-Bridging-Header.h`) importing `<React/RCTLinkingManager.h>`.
+  func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool {
+    return RCTLinkingManager.application(app, open: url, options: options)
+  }
 }
 
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {

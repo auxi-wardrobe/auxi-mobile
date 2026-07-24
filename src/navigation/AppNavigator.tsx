@@ -46,7 +46,10 @@ import { CapsuleGeneratingScreen } from '../screens/capsule/CapsuleGeneratingScr
 import { CapsuleDetailScreen } from '../screens/capsule/CapsuleDetailScreen';
 import { CapsuleItemDetailScreen } from '../screens/capsule/CapsuleItemDetailScreen';
 import { CapsuleEditScreen } from '../screens/capsule/CapsuleEditScreen';
-import { registerDeepLinkListeners } from '../services/deepLinkHandler';
+import {
+  registerDeepLinkListeners,
+  replayPendingDeepLink,
+} from '../services/deepLinkHandler';
 import {
   registerPushTapHandlers,
   registerTokenRefreshListener,
@@ -146,6 +149,12 @@ export const AppNavigator = () => {
       ref={navigationRef}
       onReady={() => {
         applyPendingScreenIntent();
+        // Cold-start deep link (verify-email / reset-password) that arrived
+        // via `getInitialURL()` before this container was ready — see
+        // `deepLinkHandler.ts`'s `pendingDeepLink` slot.
+        replayPendingDeepLink(navigationRef.current).catch(err =>
+          console.warn('[AppNavigator] replayPendingDeepLink failed', err),
+        );
         handleNavStateChange();
       }}
       onStateChange={handleNavStateChange}

@@ -146,6 +146,14 @@ interface DispatchDeps {
   navRef: NavRef | null;
 }
 
+// Cold-start race fix: `getInitialURL()` can resolve before the nav tree is
+// ready (auth bootstrap keeps `NavigationContainer` unmounted while
+// `isLoading` is true — see AppNavigator). Rather than silently dropping the
+// link, stash it here and replay it once `AppNavigator`'s `onReady` fires.
+// Single slot is enough — this only needs to survive one mount cycle, not a
+// queue of links.
+let pendingDeepLink: ParsedDeepLink | null = null;
+
 /**
  * Resolve a parsed deep-link by side-effecting on navigation +
  * issuing the verify-email API call when applicable.
@@ -159,8 +167,9 @@ export const dispatchDeepLink = async (
   { navRef }: DispatchDeps,
 ): Promise<void> => {
   if (!navRef || !navRef.isReady()) {
-    // Nav tree not mounted yet — caller will retry once the
-    // `onReady` callback fires.
+    // Nav tree not mounted yet — stash for replay once `onReady` fires
+    // (see `replayPendingDeepLink`).
+    pendingDeepLink = link;
     return;
   }
 
@@ -192,6 +201,21 @@ export const dispatchDeepLink = async (
       console.warn('[deepLinkHandler] verifyEmail failed', err);
     }
   }
+};
+
+/**
+ * Replay a deep link that `dispatchDeepLink` couldn't act on because the nav
+ * tree wasn't ready yet. Call this from `NavigationContainer`'s `onReady`
+ * callback. No-op if there's nothing pending, or if `navRef` still isn't
+ * ready (link stays pending for a later call).
+ */
+export const replayPendingDeepLink = async (
+  navRef: NavRef | null,
+): Promise<void> => {
+  if (!pendingDeepLink || !navRef || !navRef.isReady()) return;
+  const link = pendingDeepLink;
+  pendingDeepLink = null;
+  await dispatchDeepLink(link, { navRef });
 };
 
 /**
