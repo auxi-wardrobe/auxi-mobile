@@ -317,3 +317,138 @@ describe('dispatchDeepLink — reset-password resets the Auth stack', () => {
     expect(nav.dispatch).not.toHaveBeenCalled();
   });
 });
+
+// Session-expired UX guard (see deepLinkHandler.ts comment above
+// markAuthDeepLinkSeen): AuthContext checks this marker so a cold-start
+// "session expired" toast doesn't fire on top of a reset-password /
+// verify-email deep link landing.
+describe('markAuthDeepLinkSeen / wasAuthDeepLinkRecentlySeen', () => {
+  type DeepLinkModule = typeof import('../deepLinkHandler');
+  const loadModule = (): DeepLinkModule => require('../deepLinkHandler');
+
+  beforeEach(() => {
+    jest.resetModules();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('returns false when nothing has been marked', () => {
+    const { wasAuthDeepLinkRecentlySeen } = loadModule();
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(false);
+  });
+
+  it('returns true immediately after marking', () => {
+    const { markAuthDeepLinkSeen, wasAuthDeepLinkRecentlySeen } =
+      loadModule();
+    markAuthDeepLinkSeen();
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(true);
+  });
+
+  it('returns false once the grace window has elapsed', () => {
+    const { markAuthDeepLinkSeen, wasAuthDeepLinkRecentlySeen } =
+      loadModule();
+    markAuthDeepLinkSeen();
+    jest.advanceTimersByTime(10_001);
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(false);
+  });
+});
+
+describe('registerDeepLinkListeners — marks the auth deep-link window', () => {
+  type DeepLinkModule = typeof import('../deepLinkHandler');
+  const loadModule = (): DeepLinkModule => require('../deepLinkHandler');
+
+  let getInitialURLSpy: jest.SpyInstance;
+  let addEventListenerSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.resetModules();
+    getInitialURLSpy = jest
+      .spyOn(Linking, 'getInitialURL')
+      .mockResolvedValue(null);
+    addEventListenerSpy = jest
+      .spyOn(Linking, 'addEventListener')
+      .mockReturnValue({ remove: jest.fn() } as any);
+  });
+
+  afterEach(() => {
+    getInitialURLSpy.mockRestore();
+    addEventListenerSpy.mockRestore();
+  });
+
+  const flush = async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  };
+
+  it('marks the window on a cold-start reset-password link', async () => {
+    getInitialURLSpy.mockResolvedValue(
+      'auxi://reset-password?token=t1&email=a@b.com',
+    );
+    const { registerDeepLinkListeners, wasAuthDeepLinkRecentlySeen } =
+      loadModule();
+    registerDeepLinkListeners(() => null);
+    await flush();
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(true);
+  });
+
+  it('marks the window on a cold-start verify-email link', async () => {
+    getInitialURLSpy.mockResolvedValue('auxi://verify-email?token=t1');
+    const { registerDeepLinkListeners, wasAuthDeepLinkRecentlySeen } =
+      loadModule();
+    registerDeepLinkListeners(() => null);
+    await flush();
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(true);
+  });
+
+  it('does not mark for a cold-start link it does not recognise', async () => {
+    getInitialURLSpy.mockResolvedValue('auxi://some-unknown?token=t1');
+    const { registerDeepLinkListeners, wasAuthDeepLinkRecentlySeen } =
+      loadModule();
+    registerDeepLinkListeners(() => null);
+    await flush();
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(false);
+  });
+
+  it('does not mark when there is no initial URL', async () => {
+    getInitialURLSpy.mockResolvedValue(null);
+    const { registerDeepLinkListeners, wasAuthDeepLinkRecentlySeen } =
+      loadModule();
+    registerDeepLinkListeners(() => null);
+    await flush();
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(false);
+  });
+
+  it('marks the window on a warm-start reset-password link', async () => {
+    const { registerDeepLinkListeners, wasAuthDeepLinkRecentlySeen } =
+      loadModule();
+    registerDeepLinkListeners(() => null);
+    await flush(); // let the cold-start getInitialURL(null) resolve first
+
+    const urlHandler = addEventListenerSpy.mock.calls[0][1] as (event: {
+      url: string;
+    }) => void;
+    urlHandler({ url: 'auxi://reset-password?token=t2' });
+    await flush();
+
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(true);
+  });
+
+  it('does not mark on a warm-start link it does not recognise', async () => {
+    const { registerDeepLinkListeners, wasAuthDeepLinkRecentlySeen } =
+      loadModule();
+    registerDeepLinkListeners(() => null);
+    await flush();
+
+    const urlHandler = addEventListenerSpy.mock.calls[0][1] as (event: {
+      url: string;
+    }) => void;
+    urlHandler({ url: 'auxi://some-unknown?token=t2' });
+    await flush();
+
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(false);
+  });
+});

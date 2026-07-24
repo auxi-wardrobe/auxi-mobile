@@ -141,6 +141,26 @@ export const parseDeepLink = (
   };
 };
 
+// Session-expired UX guard: AuthContext's cold-start checkAuth() can race
+// with this handler — if a stale token gets revoked server-side (e.g. by
+// an earlier successful password reset elsewhere), apiClient fires a
+// "session expired" toast at the exact moment we're also landing the user
+// on the reset-password/verify-email screen. That's confusing noise during
+// account recovery, so AuthContext checks this marker and skips the toast
+// (still clears the session — just skips the interruption) when a reset-
+// password/verify-email link was seen in the last few seconds.
+const AUTH_DEEP_LINK_GRACE_MS = 10_000;
+let lastAuthDeepLinkAt: number | null = null;
+
+export const markAuthDeepLinkSeen = (): void => {
+  lastAuthDeepLinkAt = Date.now();
+};
+
+export const wasAuthDeepLinkRecentlySeen = (
+  windowMs: number = AUTH_DEEP_LINK_GRACE_MS,
+): boolean =>
+  lastAuthDeepLinkAt !== null && Date.now() - lastAuthDeepLinkAt < windowMs;
+
 type NavRef = NavigationContainerRef<AppStackParamList>;
 
 interface DispatchDeps {
@@ -264,6 +284,10 @@ export const registerDeepLinkListeners = (
   const handle = async (url: string | null) => {
     const parsed = parseDeepLink(url);
     if (!parsed) return;
+    // Both kinds are auth-recovery contexts — mark the window before
+    // dispatching so AuthContext's session-expired listener (which may fire
+    // on this same cold/warm start) can suppress its toast.
+    markAuthDeepLinkSeen();
     await dispatchDeepLink(parsed, { navRef: getNavRef() });
   };
 

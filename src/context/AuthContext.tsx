@@ -11,6 +11,7 @@ import { toast } from '../components/design-system/lib';
 import { authService } from '../services/auth';
 import { migrateLegacyKeychain } from '../services/tokenStorage';
 import { registerSessionExpiredListener } from '../services/apiClient';
+import { wasAuthDeepLinkRecentlySeen } from '../services/deepLinkHandler';
 import { identifyUser, resetAnalytics, track } from '../services/analytics';
 import {
   registerDeviceForPush,
@@ -197,11 +198,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       sessionExpiredFiredRef.current = true;
       setUser(null);
       setPendingVerifyEmail(null);
-      toast.show({
-        type: 'error',
-        text1: 'Session expired',
-        text2: 'Please sign in again.',
-      });
+      // A reset-password/verify-email deep link just landed the user on its
+      // screen — they already know they're signed out; the toast would only
+      // add confusing noise mid account-recovery. The session is still
+      // cleared above regardless.
+      if (!wasAuthDeepLinkRecentlySeen()) {
+        toast.show({
+          type: 'error',
+          text1: 'Session expired',
+          text2: 'Please sign in again.',
+        });
+      }
       // Reset the guard after a short window so a subsequent
       // expiry (e.g. after re-login + another long idle) is
       // surfaced cleanly.
