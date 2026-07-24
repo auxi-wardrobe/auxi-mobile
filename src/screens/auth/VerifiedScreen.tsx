@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { useAuth } from '../../context/AuthContext';
 import type { AuthStackParamList } from '../../types/navigation';
+import { resolveResetContinueEmail } from './verified-reset-email';
 
 type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Verified'>;
 type Route = RouteProp<AuthStackParamList, 'Verified'>;
@@ -44,9 +45,16 @@ export const VerifiedScreen = () => {
 
   const onContinue = useCallback(() => {
     if (source === 'reset') {
-      // After password reset, fall through to SignIn with last-known
-      // email (if AuthContext stashed it during the forgot flow).
-      navigation.navigate('SignIn', { email: pendingVerifyEmail ?? '' });
+      // After password reset, fall through to SignIn with the email the
+      // reset flow surfaced. Prefers the route-carried email (from the
+      // backend's resetPassword response) over the (usually unset)
+      // pendingVerifyEmail AuthContext value.
+      navigation.navigate('SignIn', {
+        email: resolveResetContinueEmail(
+          route.params?.email,
+          pendingVerifyEmail,
+        ),
+      });
       return;
     }
     // signup branch
@@ -69,7 +77,7 @@ export const VerifiedScreen = () => {
         routes: [{ name: 'Welcome' }],
       }),
     );
-  }, [source, user, pendingVerifyEmail, navigation]);
+  }, [source, user, pendingVerifyEmail, navigation, route.params?.email]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

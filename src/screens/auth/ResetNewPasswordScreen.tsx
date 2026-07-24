@@ -93,9 +93,12 @@ export const ResetNewPasswordScreen: React.FC = () => {
     mutation.mutate(
       { token, new_password: password },
       {
-        onSuccess: () => {
+        onSuccess: data => {
           track('password_reset_completed');
-          navigation.navigate('Verified', { source: 'reset' });
+          navigation.navigate('Verified', {
+            source: 'reset',
+            email: data.email,
+          });
         },
         onError: err => {
           if (

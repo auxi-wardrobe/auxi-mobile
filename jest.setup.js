@@ -87,6 +87,13 @@ jest.mock('@react-navigation/native', () => {
     // route so the hook returns a deterministic name instead of crashing.
     useNavigationState: selector =>
       selector({ index: 0, routes: [{ name: 'Settings' }] }),
+    // Mirrors @react-navigation/routers' real CommonActions.reset shape
+    // ({ type: 'RESET', payload: state }) so code under test (and its
+    // assertions) can use the real action creator instead of a hand-rolled
+    // object literal.
+    CommonActions: {
+      reset: state => ({ type: 'RESET', payload: state }),
+    },
   };
 });
 
