@@ -225,6 +225,65 @@ export const normalizeOutfitItems = (
 ): Item[] =>
   resolveOnePieceConflicts(dedupeByCategory(items, protectedId), protectedId);
 
+// ── AU-362 cold-weather layering ────────────────────────────────────────────
+// The colder it is, the more we want the outfit shown first to already carry an
+// outer layer (coat / jacket). We never ADD or DROP a garment — the backend
+// composes the outfits and may not return any outer-bearing option — so this is
+// a pure REORDER of the batch the backend handed us. Weight grows as it gets
+// colder; bands mirror the temperature buckets in
+// `src/config/temperature-buckets.ts`:
+//
+//   >15°C   not needed              weight 0   → deck returned untouched
+//   7–15°C  optional, adds points   weight 2   → soft nudge; a strongly-ranked
+//                                                too-light outfit can still win
+//   0–7°C   strongly preferred      weight 10  → outer-bearing always first
+//   <0°C    near-mandatory          weight 100 → outer-bearing always first
+//
+// `<0°C` is "very high weight", NOT a hard requirement: dropping the too-light
+// outfits client-side could empty the deck when the wardrobe has no outerwear.
+// A true requirement belongs in the backend engine's climate quota.
+export const outerLayerPreferenceWeight = (tempC: number): number => {
+  if (tempC >= 15) {
+    return 0;
+  }
+  if (tempC >= 7) {
+    return 2;
+  }
+  if (tempC >= 0) {
+    return 10;
+  }
+  return 100;
+};
+
+const outfitHasOuterLayer = (items: Item[]): boolean =>
+  items.some(item => classifyCategoryFamily(item?.category) === 'outer');
+
+// Stable, reorder-only cold-weather rerank. Each outfit scores the band weight
+// when it already carries an outer layer, minus its original position — so the
+// backend's ranking breaks ties, and at the soft 7–15°C band a strongly-ranked
+// too-light outfit can still edge out a weakly-ranked outer-bearing one (weight
+// 2 only buys a one-slot jump). At the cold/freezing bands the weight dwarfs any
+// batch position, so outer-bearing outfits always lead. At/above 15°C the weight
+// is 0 and the input is returned unchanged (identical reference) — every warm
+// and non-cold path is byte-for-byte untouched.
+export const reorderColdOutfitsPreferOuter = <T extends { items: Item[] }>(
+  sheets: T[],
+  tempC: number,
+): T[] => {
+  const weight = outerLayerPreferenceWeight(tempC);
+  if (weight === 0 || sheets.length < 2) {
+    return sheets;
+  }
+  return sheets
+    .map((sheet, index) => ({
+      sheet,
+      index,
+      score: (outfitHasOuterLayer(sheet.items) ? weight : 0) - index,
+    }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map(entry => entry.sheet);
+};
+
 export const buildGridOutfitSheet = (
   outfit: OutfitSheet,
 ): OutfitSheetWithGrid => {
