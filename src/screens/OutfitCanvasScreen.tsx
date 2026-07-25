@@ -56,7 +56,6 @@ import IconCanvasAdd from '../assets/images/canvas-icons/add.svg';
 import IconCanvasLayerUp from '../assets/images/canvas-icons/layer_up.svg';
 import IconCanvasLayerDown from '../assets/images/canvas-icons/layer_down.svg';
 import IconCanvasDuplicate from '../assets/images/canvas-icons/duplicate.svg';
-import IconCanvasSwap from '../assets/images/canvas-icons/swap.svg';
 import IconCanvasDelete from '../assets/images/canvas-icons/trash.svg';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'OutfitCanvas'>;
@@ -545,16 +544,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
               >
                 <IconCanvasDuplicate width={32} height={31} />
               </ToolbarBtn>
-              <ToolbarBtn
-                testID="canvas-tool-swap"
-                onPress={() => {
-                  /* TODO: navigate to item picker */
-                }}
-                disabled={actionDisabled}
-                accessibilityLabel={t('outfitCanvas.a11y_swap')}
-              >
-                <IconCanvasSwap width={32} height={31} />
-              </ToolbarBtn>
+              {/* Swap tool intentionally not rendered: it was a dead control
+                  (no-op onPress) which App Store review flags (2.1/4.2). Hidden
+                  until the replace-item flow is implemented. See report. */}
               <ToolbarBtn
                 testID="canvas-tool-delete"
                 onPress={handleDelete}

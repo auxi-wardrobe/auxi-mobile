@@ -58,16 +58,19 @@ type Navigation = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
 // Welcome action-stack visibility gates — Apple and email are independent.
 //
-// Apple Sign-In is NOT provisioned end-to-end: there is no `apple` entry in
-// OAUTH_CONFIG, the App ID's "Sign in with Apple" capability is not enabled on
-// the Apple Developer portal, and the backend `APPLE_OAUTH_CLIENT_ID` is unset.
-// So tapping the Apple CTA fails at the native `appleAuth.performRequest`
-// boundary and surfaces a generic error toast. Keep it hidden until Apple
-// Sign-In is fully wired (see src/services/oauth/oauthConfig.ts), then flip
-// `SHOW_APPLE_SIGN_IN` back to `true`.
+// Sign in with Apple is ENABLED (CEO decision, App Store Guideline 4.8: an app
+// offering Google as a third-party sign-in must also offer an equivalent
+// privacy-forward option). The native flow (`appleAuth.performRequest` →
+// POST /api/auth/apple) is wired; the button posts { identity_token, name? }.
+//
+// CAVEAT (must resolve before cutting the release build): SIWA can only be
+// fully verified on a REAL device with a real Apple ID. The App ID's "Sign in
+// with Apple" capability must be enabled on the Apple Developer portal and the
+// backend `APPLE_OAUTH_CLIENT_ID` set. A broken SIWA button is a guaranteed
+// rejection — device-test the full round-trip first.
 //
 // Email/password sign-in is enabled for auth-flow testing.
-const SHOW_APPLE_SIGN_IN = false;
+const SHOW_APPLE_SIGN_IN = true;
 const SHOW_EMAIL_SIGN_IN = true;
 
 // Minimal inline glyphs — keep diff small (no new SVG assets).

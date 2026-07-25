@@ -674,7 +674,8 @@ export const WardrobeScreen = () => {
       />
 
       {/* B1: AI data-sharing consent prompt — gated by useAiConsentGate inside
-          useAddWardrobeItem; shown before the first beautify upload. */}
+          useAddWardrobeItem; shown before the first wardrobe-photo upload of
+          any kind (every upload reaches OpenAI vision). */}
       <AiConsentDialog {...aiConsentDialogProps} />
 
       <PreparingOverlay visible={uploading} photoUri={uploadingPhotoUri} />

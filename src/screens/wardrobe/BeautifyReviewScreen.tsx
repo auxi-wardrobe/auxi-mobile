@@ -13,6 +13,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { wardrobeService, wardrobeKeys } from '../../services/wardrobeService';
 import { MButton } from '../../components/design-system/lib';
+import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
 import { track } from '../../services/analytics';
 import { theme } from '../../theme/theme';
 import type { AppStackParamList } from '../../types/navigation';
@@ -106,6 +107,14 @@ export function BeautifyReviewScreen() {
           )}
         </View>
       </View>
+      {/* AI-generated disclosure — the "After" studio shot is AI-generated
+          (App Store AI rules). Only shown once the candidate has rendered. */}
+      {candidate ? (
+        <AiContentDisclosure
+          surface="enhance"
+          testID="beautify-ai-disclosure"
+        />
+      ) : null}
       <MButton
         testID="beautify-review-accept"
         variant="primary"

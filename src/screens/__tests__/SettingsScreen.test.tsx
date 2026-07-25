@@ -66,6 +66,7 @@ type AuthOverrides = {
   updateCurrentUser?: jest.Mock;
   refreshUser?: jest.Mock;
   resetUserPreferences?: jest.Mock;
+  deleteAccount?: jest.Mock;
   checkAuth?: jest.Mock;
 };
 
@@ -76,6 +77,7 @@ const buildAuth = (o: AuthOverrides = {}) => ({
     o.refreshUser ?? jest.fn().mockResolvedValue(o.user ?? makeUser(null)),
   updateCurrentUser: o.updateCurrentUser ?? jest.fn(),
   resetUserPreferences: o.resetUserPreferences ?? jest.fn(),
+  deleteAccount: o.deleteAccount ?? jest.fn().mockResolvedValue(undefined),
   checkAuth: o.checkAuth ?? jest.fn().mockResolvedValue(undefined),
 });
 
@@ -579,16 +581,16 @@ describe('handleResetPreferences', () => {
     const r = await renderScreen();
     const root = r.root;
 
-    press(oneByTestID(root, 'settings-delete-data-row'));
-    expect(isDialogOpen(root, 'settings-delete-confirm')).toBe(true);
+    press(oneByTestID(root, 'settings-reset-data-row'));
+    expect(isDialogOpen(root, 'settings-reset-confirm')).toBe(true);
 
-    press(oneByTestID(root, 'settings-delete-confirm'));
+    press(oneByTestID(root, 'settings-reset-confirm'));
     await flushPromises();
 
     expect(resetUserPreferences).toHaveBeenCalledTimes(1);
     // style-direction now lives on the Personalization sub-screen; here we only
     // assert the account-wide delete confirmation resolved + closed.
-    expect(isDialogOpen(root, 'settings-delete-confirm')).toBe(false); // modal closed
+    expect(isDialogOpen(root, 'settings-reset-confirm')).toBe(false); // modal closed
   });
 
   it('is_first_login=true → modal stays open', async () => {
@@ -602,12 +604,12 @@ describe('handleResetPreferences', () => {
     const r = await renderScreen();
     const root = r.root;
 
-    press(oneByTestID(root, 'settings-delete-data-row'));
-    press(oneByTestID(root, 'settings-delete-confirm'));
+    press(oneByTestID(root, 'settings-reset-data-row'));
+    press(oneByTestID(root, 'settings-reset-confirm'));
     await flushPromises();
 
     expect(resetUserPreferences).toHaveBeenCalledTimes(1);
-    expect(isDialogOpen(root, 'settings-delete-confirm')).toBe(true); // stays open
+    expect(isDialogOpen(root, 'settings-reset-confirm')).toBe(true); // stays open
   });
 
   it('reject → error toast + isResettingPreferences resets (confirm button re-enabled)', async () => {
@@ -619,8 +621,8 @@ describe('handleResetPreferences', () => {
     const r = await renderScreen();
     const root = r.root;
 
-    press(oneByTestID(root, 'settings-delete-data-row'));
-    press(oneByTestID(root, 'settings-delete-confirm'));
+    press(oneByTestID(root, 'settings-reset-data-row'));
+    press(oneByTestID(root, 'settings-reset-confirm'));
     await flushPromises();
 
     // i18n-wired: t(key) returns the bare key in tests (no i18next instance).
@@ -628,7 +630,7 @@ describe('handleResetPreferences', () => {
       expect.objectContaining({ type: 'error', text1: 'settings.toast_title' }),
     );
     // button re-enabled (isResettingPreferences back to false)
-    expect(oneByTestID(root, 'settings-delete-confirm').props.disabled).toBe(
+    expect(oneByTestID(root, 'settings-reset-confirm').props.disabled).toBe(
       false,
     );
   });

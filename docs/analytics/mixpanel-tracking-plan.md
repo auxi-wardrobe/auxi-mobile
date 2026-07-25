@@ -194,8 +194,11 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `style_direction_changed` | Style direction save | `SettingsScreen.tsx:507` | `direction` |
 | `analytics_consent_changed` | Consent toggle (fires AFTER grant, BEFORE revoke) | `SettingsScreen.tsx:460, 466` | `granted` |
 | `account_logged_out` | "Log out" row confirmed (Account section). Fires when the confirm dialog's primary is tapped, before `AuthContext.logout()` clears the session. Resolves the §6.1 gap ("no logout button on SettingsScreen"). | `SettingsScreen.tsx` (`handleLogout`) | `source` (`settings`) |
+| `account_deleted` | "Delete Account" row confirmed (Account section, App Store 5.1.1(v) permanent account deletion — distinct from "Reset My Data"). Fires after `DELETE /api/me` succeeds, while the user is still identified and BEFORE `setUser(null)` triggers `resetAnalytics()`. | `AuthContext.tsx` (`deleteAccount`) | `source` (`settings`) |
 
-> PII: all settings events carry bounded enums only (`period`, `frequency`, `direction`, `locale`, `granted`, `enabled`) — no raw text, no identifiers. The read-only hour value (`'06:15'`) is NOT tracked. `notifications_reset` props echo the constant defaults (so the dashboard can confirm what "default" was at fire time); `notifications_reset_undone` echoes the restored prior values for symmetry.
+> PII: all settings events carry bounded enums only (`period`, `frequency`, `direction`, `locale`, `granted`, `enabled`, `source`) — no raw text, no identifiers. The read-only hour value (`'06:15'`) is NOT tracked. `notifications_reset` props echo the constant defaults (so the dashboard can confirm what "default" was at fire time); `notifications_reset_undone` echoes the restored prior values for symmetry.
+>
+> Funnel: `account_deleted` is an account-lifecycle / churn signal — the terminal counterpart to the `sign_up_started` → `sign_in_completed` creation funnel (§1). Compare against `account_logged_out` to separate voluntary deletion (hard churn) from a plain sign-out.
 
 ### 5.8 Mood feedback
 

@@ -5,7 +5,7 @@ import { theme } from '../../theme/theme';
 import { track } from '../../services/analytics';
 import { AI_REPORT_EMAIL } from '../../config/aiConsent';
 
-type AiSurface = 'tryon' | 'recommendation';
+type AiSurface = 'tryon' | 'recommendation' | 'enhance';
 
 /**
  * Opens the prefilled AI-content report mailto. Subject/body are static,
@@ -36,8 +36,8 @@ type AiContentDisclosureProps = {
  * AI-generated disclosure + Report affordance — App Store blocker B2
  * (Apple 2026 AI rules). Shows a short "AI-generated" label on AI output and a
  * Report action that opens a prefilled support mailto. Backend-free, no PII in
- * the mailto body (generic text only). Reused on the try-on result and the
- * recommendation surface.
+ * the mailto body (generic text only). Reused on the try-on result, the home
+ * recommendation surface, and the enhance/beautify AI-image result surfaces.
  */
 export const AiContentDisclosure: React.FC<AiContentDisclosureProps> = ({
   surface,
