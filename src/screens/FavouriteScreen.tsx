@@ -27,8 +27,10 @@ import { toast } from '../components/design-system/lib';
 import { theme } from '../theme/theme';
 import { useReducedMotion } from '../theme/motion';
 import { useSidebar } from '../context/SidebarContext';
+import { useAuth } from '../context/AuthContext';
 import { useFavouritesSeen } from '../context/FavouritesSeenContext';
 import { useSchedule } from '../context/ScheduleContext';
+import { peekWearLog, readWearLog, type WearLog } from './HomeScreen/wear-log';
 import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { MacgieLoader } from '../components/macgie';
 import { AppStackParamList } from '../types/navigation';
@@ -47,6 +49,7 @@ import { RemoveFavouriteDialog } from './favourite/RemoveFavouriteDialog';
 import { ScheduleDatePickerSheet } from './schedule/ScheduleDatePickerSheet';
 import { useScheduleAddedToast } from './schedule/useScheduleAddedToast';
 import {
+  effectiveWornAt,
   formatDateLabel,
   groupFavouritesByDate,
 } from './favourite/group-by-date';
@@ -73,6 +76,7 @@ export const FavouriteScreen: React.FC = () => {
   const queryClient = useQueryClient();
   const reduced = useReducedMotion();
   const { open: openSidebar } = useSidebar();
+  const { user } = useAuth();
   const { markSeen: markFavouritesSeen } = useFavouritesSeen();
   const { scheduleOutfit } = useSchedule();
   const showScheduleAddedToast = useScheduleAddedToast();
@@ -86,6 +90,32 @@ export const FavouriteScreen: React.FC = () => {
     }, [markFavouritesSeen]),
   );
 
+  // The app's own wear log (see HomeScreen/wear-log.ts). The backend never
+  // advances a favourite's date on a re-wear, so a just-worn look would keep
+  // sorting under its original save date. Re-read it on focus (a wear may have
+  // happened on Home moments ago) and let it override each favourite's date so
+  // a re-worn outfit floats to today at the top of the list.
+  const [localWears, setLocalWears] = useState<WearLog>(() =>
+    peekWearLog(user?.id),
+  );
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      // Seed synchronously from the in-memory cache so a wear just made on Home
+      // is reflected immediately — even on web, where the persisted layer and
+      // Home's own state are both gone after its unmount.
+      setLocalWears(peekWearLog(user?.id));
+      readWearLog(user?.id).then(log => {
+        if (!cancelled) {
+          setLocalWears(log);
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [user?.id]),
+  );
+
   const [view, setView] = useState<HomeView>('grid');
   const [pendingRemovalId, setPendingRemovalId] = useState<string | null>(null);
   // The outfit awaiting a day in the "Add to Schedule" sheet (null = closed).
@@ -93,7 +123,11 @@ export const FavouriteScreen: React.FC = () => {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: FAVOURITES_QUERY_KEY,
-    queryFn: () => favouriteService.listFavourites(),
+    // Wider page than the 20 default: re-wearing an outfit never advances its
+    // backend date (the upsert only touches the mood linkage), so a re-worn
+    // older favourite stays deep in the created_at-sorted list. Fetch enough to
+    // include it, so the local wear log can float it back to today.
+    queryFn: () => favouriteService.listFavourites(100, 0, 'recent'),
   });
 
   const removeMutation = useMutation({
@@ -111,7 +145,10 @@ export const FavouriteScreen: React.FC = () => {
   });
 
   const favourites = useMemo(() => data?.favorites ?? [], [data?.favorites]);
-  const groups = useMemo(() => groupFavouritesByDate(favourites), [favourites]);
+  const groups = useMemo(
+    () => groupFavouritesByDate(favourites, localWears),
+    [favourites, localWears],
+  );
 
   // AU-347: snap the Favourite list to one outfit at a time so users review
   // saved outfits individually (reduces cognitive load). We measure each date
@@ -317,7 +354,9 @@ export const FavouriteScreen: React.FC = () => {
                 <FavouriteOutfitCard
                   favourite={favourite}
                   view={view}
-                  dateLabel={formatDateLabel(favourite.created_at)}
+                  dateLabel={formatDateLabel(
+                    effectiveWornAt(favourite, localWears),
+                  )}
                   onItemPress={itemId =>
                     navigation.navigate('ItemDetail', { itemId })
                   }
