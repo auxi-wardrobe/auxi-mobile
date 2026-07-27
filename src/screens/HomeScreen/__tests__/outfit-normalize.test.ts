@@ -207,6 +207,32 @@ describe('buildGridOutfitSheetWithPin', () => {
     expect(result.items.map(i => i.id)).toEqual(['pin', 'top']);
   });
 
+  it('keeps a cold-weather outerwear layer when an accessory is pinned (5 items)', () => {
+    // Pin a cap (accessory) then "build around this" in cold weather: the
+    // backend adds an outerwear layer, so the coherent look is
+    // cap + top + bottom + shoes + outerwear = 5 distinct families. The cap
+    // must not truncate the coat (regression: the old `.slice(0, 4)` dropped
+    // it because the pinned accessory occupied one of only four slots).
+    const pinnedCap = item({ id: 'pin', category: 'Hat' });
+    const top = item({ id: 'top', category: 'Top' });
+    const bottom = item({ id: 'bottom', category: 'Bottom' });
+    const shoes = item({ id: 'shoes', category: 'Shoes' });
+    const coat = item({ id: 'coat', category: 'Outerwear' });
+
+    const result = buildGridOutfitSheetWithPin(
+      sheet([top, bottom, shoes, coat]),
+      pinnedCap,
+    );
+
+    expect(result.items.map(i => i.id)).toEqual([
+      'pin',
+      'top',
+      'bottom',
+      'shoes',
+      'coat',
+    ]);
+  });
+
   it('never pairs pinned pants with a one-piece (dress/jumpsuit)', () => {
     const pinnedPants = item({ id: 'pin', category: 'Bottom' });
     const dress = item({ id: 'dress', category: 'Dress' });

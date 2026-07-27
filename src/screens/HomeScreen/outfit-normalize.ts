@@ -270,13 +270,18 @@ export const buildGridOutfitSheetWithPin = (
   // outfit's same-category item; otherwise the sheet shows two of the same
   // category (pin a shirt → two shirts).
   //
-  // Cap at 4 = the pin + 3 outfit garments (e.g. top, bottom, shoes), matching
-  // the previous behaviour before the pin was prepended. De-dup runs first so
-  // the cap counts distinct categories, not the dropped same-category item.
+  // Cap at 6 = the grid's no-scroll capacity (grid-layout.ts renders up to 6
+  // tiles without scrolling; only >6 scrolls). De-dup runs first and collapses
+  // to one garment per category family, so a coherent outfit tops out at 5
+  // distinct families — top, bottom, shoes, outerwear and one accessory — well
+  // under the cap. This must not truncate a cold-weather layer: when a pinned
+  // accessory (e.g. a cap) shares the sheet with an outerwear item the backend
+  // added for the cold, the old `.slice(0, 4)` dropped the coat. The 6 here is
+  // only a defensive guard against pathological (e.g. uncategorised) overflow.
   const mixed = normalizeOutfitItems(
     [pinnedItem, ...outfit.items],
     pinnedItem.id,
-  ).slice(0, 4);
+  ).slice(0, 6);
   return {
     ...outfit,
     items: mixed,
