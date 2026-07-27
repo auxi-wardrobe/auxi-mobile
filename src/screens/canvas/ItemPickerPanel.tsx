@@ -159,7 +159,11 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
             ) : (
               <View style={pickerStyles.grid}>
                 {wardrobeItems.map(item => {
-                  const uri = getImageUrl(item.image_png ?? item.image_url);
+                  // Precedence: accepted AI studio shot → bg-removed cutout →
+                  // original photo (matches resolveItemImage in utils/url.ts).
+                  const uri = getImageUrl(
+                    item.image_studio || item.image_png || item.image_url,
+                  );
                   const isSelected = selectedIds.includes(item.id);
                   return (
                     <TouchableOpacity
