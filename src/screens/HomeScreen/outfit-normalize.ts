@@ -270,6 +270,12 @@ export const reorderColdOutfitsPreferOuter = <T extends { items: Item[] }>(
   sheets: T[],
   tempC: number,
 ): T[] => {
+  // A non-finite temperature (null/undefined/NaN from /weather) must NOT
+  // cold-rerank: null >= 0 is true in JS so it would score weight 10, and
+  // NaN falls through to 100 — silently surfacing coats on a warm deck.
+  if (!Number.isFinite(tempC)) {
+    return sheets;
+  }
   const weight = outerLayerPreferenceWeight(tempC);
   if (weight === 0 || sheets.length < 2) {
     return sheets;

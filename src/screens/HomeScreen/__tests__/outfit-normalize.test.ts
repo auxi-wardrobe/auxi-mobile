@@ -238,6 +238,14 @@ describe('reorderColdOutfitsPreferOuter', () => {
     const deck = [lightSheet('only')];
     expect(reorderColdOutfitsPreferOuter(deck, -5)).toBe(deck);
   });
+
+  it('leaves the deck untouched for a non-finite temperature (NaN / null)', () => {
+    const deck = [lightSheet('a'), outerSheet('b')];
+    expect(reorderColdOutfitsPreferOuter(deck, NaN)).toBe(deck);
+    expect(reorderColdOutfitsPreferOuter(deck, null as unknown as number)).toBe(
+      deck,
+    );
+  });
 });
 
 describe('buildGridOutfitSheet', () => {
