@@ -635,3 +635,83 @@ describe('handleResetPreferences', () => {
     );
   });
 });
+
+// =============================================================================
+// 5. handleDeleteAccount (App Store 5.1.1(v) — permanent account deletion, PR
+//    #302). The delete-account row opens a danger-variant confirm dialog whose
+//    primary action calls AuthContext.deleteAccount(). On SUCCESS the auth gate
+//    (user→null in AuthContext) unmounts the whole screen via AppNavigator, so
+//    the screen itself does NOT close the dialog — a static useAuth mock keeps
+//    `user` fixed, so at the screen level the dialog stays mounted here. On
+//    FAILURE the catch calls setActiveModal('none') → the dialog closes.
+// =============================================================================
+describe('handleDeleteAccount (delete account)', () => {
+  it('success: opens confirm dialog, calls deleteAccount once, surfaces no error toast', async () => {
+    const deleteAccount = jest.fn().mockResolvedValue(undefined);
+    mockedUseAuth.mockReturnValue(buildAuth({ deleteAccount }));
+
+    const r = await renderScreen();
+    const root = r.root;
+
+    // open the danger-variant delete-account confirm dialog
+    press(oneByTestID(root, 'settings-delete-account-row'));
+    expect(isDialogOpen(root, 'settings-delete-account-confirm')).toBe(true);
+
+    // confirm the deletion
+    press(oneByTestID(root, 'settings-delete-account-confirm'));
+    await flushPromises();
+
+    expect(deleteAccount).toHaveBeenCalledTimes(1);
+    // happy path surfaces nothing — no error toast
+    expect(mockedToastShow).not.toHaveBeenCalled();
+    // confirm re-enabled after the awaited delete resolves (isDeletingAccount
+    // reset in `finally`)
+    expect(
+      oneByTestID(root, 'settings-delete-account-confirm').props.disabled,
+    ).toBe(false);
+    // The screen does NOT self-close on success: production relies on the auth
+    // gate dropping `user`→null to unmount this screen (AppNavigator), which a
+    // static useAuth mock can't simulate. So at the screen level the dialog is
+    // still mounted — only the failure branch calls setActiveModal('none').
+    expect(isDialogOpen(root, 'settings-delete-account-confirm')).toBe(true);
+  });
+
+  it('failure: rejects → error toast (settings.error_delete_account), dialog closes, no unhandled rejection', async () => {
+    const unhandled = jest.fn();
+    proc.on('unhandledRejection', unhandled);
+
+    const deleteAccount = jest.fn().mockRejectedValue(new Error('boom'));
+    mockedUseAuth.mockReturnValue(buildAuth({ deleteAccount }));
+
+    const r = await renderScreen();
+    const root = r.root;
+
+    press(oneByTestID(root, 'settings-delete-account-row'));
+    expect(isDialogOpen(root, 'settings-delete-account-confirm')).toBe(true);
+
+    press(oneByTestID(root, 'settings-delete-account-confirm'));
+    await flushPromises();
+
+    expect(deleteAccount).toHaveBeenCalledTimes(1);
+    // Error toast surfaced. text1 is the shared title; text2 is the
+    // delete-account fallback message — getErrorMessage falls back to it because
+    // a bare Error has no response.data. SettingsScreen is i18n-wired, so t(key)
+    // returns the bare key in tests → assert on the keys.
+    expect(mockedToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        text1: 'settings.toast_title',
+        text2: 'settings.error_delete_account',
+      }),
+    );
+    // Actual catch behavior: setActiveModal('none') CLOSES the dialog. NOTE this
+    // contradicts the handler's doc-comment ("keep the dialog usable") — after a
+    // failed delete the confirm is gone and the user must re-open the row to
+    // retry. Assert the real behavior, not the comment.
+    expect(isDialogOpen(root, 'settings-delete-account-confirm')).toBe(false);
+
+    await flushPromises();
+    proc.off('unhandledRejection', unhandled);
+    expect(unhandled).not.toHaveBeenCalled();
+  });
+});
