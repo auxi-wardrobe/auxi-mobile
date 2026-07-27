@@ -65,7 +65,12 @@ export function useCanvasAddItems({
       // assigned later inside the setItems updater against the freshest state.
       const stamp = Date.now();
       const prepared = picked.map((item, i) => {
-        const uri = getImageUrl(item.image_png ?? item.image_url);
+        // Precedence: accepted AI studio shot → bg-removed cutout → original
+        // photo (matches resolveItemImage in utils/url.ts; inlined here
+        // because WardrobeItem's image_url is optional, unlike Item's).
+        const uri = getImageUrl(
+          item.image_studio || item.image_png || item.image_url,
+        );
         return {
           id: `item-${item.id}-${stamp}-${i}`,
           // The real wardrobe id, carried so a saved creation can launch try-on.
