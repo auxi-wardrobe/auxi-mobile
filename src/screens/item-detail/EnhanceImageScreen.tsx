@@ -11,6 +11,7 @@ import {
   TopIconButton,
 } from '../../components/primitives/FigmaPrimitives';
 import { MacgieLoader } from '../../components/macgie';
+import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
 import { Icons } from '../../assets/icons';
 import { wardrobeKeys, wardrobeService } from '../../services/wardrobeService';
 import { track } from '../../services/analytics';
@@ -267,6 +268,15 @@ export const EnhanceImageScreen = () => {
           <Text testID="enhance-compare-hint" style={styles.hintText}>
             {t('wardrobe.enhance.compare_hint')}
           </Text>
+        ) : null}
+
+        {/* AI-generated disclosure — the enhanced preview is an AI-generated
+            image (App Store AI rules). Shown once a candidate is ready. */}
+        {phase === 'ready' ? (
+          <AiContentDisclosure
+            surface="enhance"
+            testID="enhance-ai-disclosure"
+          />
         ) : null}
 
         {phase === 'error' ? (

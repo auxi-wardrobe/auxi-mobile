@@ -65,6 +65,13 @@ interface AuthContextType {
    */
   markPremiumOptimistic: () => void;
   resetUserPreferences: () => Promise<User>;
+  /**
+   * Permanently delete the account (App Store 5.1.1(v)). Calls DELETE /api/me,
+   * then clears local tokens and drops the in-memory user to null so
+   * AppNavigator returns to the auth stack. Rethrows on failure so the caller
+   * can surface a friendly error toast. Distinct from resetUserPreferences.
+   */
+  deleteAccount: () => Promise<void>;
   checkAuth: () => Promise<void>;
   completeOnboarding: (data?: Partial<User>) => Promise<void>;
   /** Explicit setter so screens can pre-seed without going through register. */
@@ -133,6 +140,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const updatedUser = await authService.resetPreferences();
     setUser(updatedUser);
     return updatedUser;
+  }, []);
+
+  const deleteAccount = useCallback(async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      // Remove this device's push token FIRST — the DELETE below invalidates
+      // all tokens, so unregister (Bearer-authed) must run while they're valid.
+      await unregisterDevice();
+      await authService.deleteAccount(); // DELETE /me → 204
+      // Fire the deletion event while the user is still identified (the
+      // setUser(null) below triggers resetAnalytics via the identity effect).
+      // No PII — event carries a bounded source only.
+      track('account_deleted', { source: 'settings' });
+      // Reuse the logout token-clear path so local Keychain state is wiped.
+      await authService.logout();
+      setUser(null);
+      setPendingVerifyEmail(null);
+    } catch (error) {
+      console.error('Delete account error', error);
+      Sentry.captureException(error, {
+        tags: { feature: 'account_deletion' },
+      });
+      throw error; // let the screen surface a friendly toast
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const checkAuth = useCallback(async () => {
@@ -426,6 +459,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         updateCurrentUser,
         markPremiumOptimistic,
         resetUserPreferences,
+        deleteAccount,
         checkAuth,
         completeOnboarding,
         setPendingVerifyEmail,

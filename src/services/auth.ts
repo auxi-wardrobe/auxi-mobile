@@ -276,6 +276,25 @@ export const authService = {
     }
   },
 
+  /**
+   * DELETE /api/me — permanently delete the authenticated account AND all its
+   * data (App Store 5.1.1(v) account-deletion requirement). Backend returns
+   * 204 No Content; subsequent authed calls 401. Distinct from
+   * resetPreferences (which wipes data but KEEPS the account). The caller
+   * clears local tokens and drops the user to signed-out.
+   */
+  deleteAccount: async (): Promise<void> => {
+    try {
+      // apiClient so a 60-min-expired access token is silently refreshed before
+      // the destructive call (mirrors resetPreferences).
+      await apiClient.delete('/me');
+    } catch (error) {
+      console.error('Delete account error', error);
+      reportAuthError(error);
+      throw error;
+    }
+  },
+
   logout: async () => {
     try {
       // Optional: Call API to revoke refresh token

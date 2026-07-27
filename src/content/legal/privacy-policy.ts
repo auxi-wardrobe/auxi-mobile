@@ -11,14 +11,15 @@ import type { LegalDocument } from './types';
  * source of truth: when the final text lands, replace the prose here and flip
  * `effectiveDate` — no screen changes needed.
  *
- * English-only by design (see ./types.ts). Placeholders ([LEGAL ENTITY NAME],
- * [JURISDICTION]) are carried through verbatim from the draft so they remain
- * obvious until filled.
+ * English-only by design (see ./types.ts). Operator/jurisdiction/effective date
+ * filled for the 2026-07-25 App Store submission (operated from Vietnam, effective
+ * July 25 2026, contact marketing@macgie.com). Swap in a formal registered entity
+ * name here + on beta.macgie.com/privacy if/when one is established. The location
+ * collection bullet was removed to match the iOS privacy manifest (no location collected).
  */
 export const privacyPolicy: LegalDocument = {
   title: 'Macgie Privacy Policy',
-  // Draft: effective date is set on publish (CEO/legal step).
-  effectiveDate: '(to be set on publish)',
+  effectiveDate: 'July 25, 2026',
   sections: [
     {
       paragraphs: [
@@ -47,12 +48,6 @@ export const privacyPolicy: LegalDocument = {
       paragraphs: ['Style and wardrobe data'],
       bullets: [
         'Body-shape and fit preferences you select, wardrobe item categories, tags, notes, outfit history, and your interactions with recommendations.',
-      ],
-    },
-    {
-      paragraphs: ['Approximate location'],
-      bullets: [
-        'Coarse location, used to fetch local weather so recommendations suit the conditions. We do not track precise or background location for advertising.',
       ],
     },
     {
@@ -155,7 +150,7 @@ export const privacyPolicy: LegalDocument = {
       paragraphs: [
         'Questions about this Privacy Policy or your data:',
         'marketing@macgie.com',
-        'Macgie is operated by [LEGAL ENTITY NAME], [JURISDICTION].',
+        'Macgie is operated from Vietnam.',
       ],
     },
   ],

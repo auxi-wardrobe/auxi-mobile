@@ -52,7 +52,12 @@ import {
 export { resolveSettings } from './settings/settingsShared';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'Settings'>;
-type ActiveModal = 'none' | 'changeTime' | 'schedule' | 'deleteConfirm';
+type ActiveModal =
+  | 'none'
+  | 'changeTime'
+  | 'schedule'
+  | 'resetConfirm'
+  | 'deleteAccountConfirm';
 
 // Kill-switch for the Macgie+ paywall entry points. The paywall shows real
 // prices + a "secure payment" claim but cannot transact yet (no StoreKit/IAP,
@@ -66,7 +71,8 @@ const SHOW_UPGRADE_PAYWALL = false;
 export const SettingsScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Navigation>();
-  const { checkAuth, refreshUser, resetUserPreferences, user } = useAuth();
+  const { checkAuth, deleteAccount, refreshUser, resetUserPreferences, user } =
+    useAuth();
   const { open: openSidebar } = useSidebar();
   const persistUserMetadataRaw = usePersistUserMetadata();
 
@@ -86,6 +92,9 @@ export const SettingsScreen = () => {
   const [isSavingTime, setIsSavingTime] = useState(false);
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isResettingPreferences, setIsResettingPreferences] = useState(false);
+  // App Store 5.1.1(v): permanent account deletion — a SEPARATE control from
+  // the data reset above. Disables the confirm while the DELETE is in flight.
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   // AU-316 RST-1: notification-scoped reset (separate from the account-wide
   // "Delete My Data" reset). Disables the reset link while a persist is in flight.
   const [isResettingNotifications, setIsResettingNotifications] =
@@ -180,8 +189,13 @@ export const SettingsScreen = () => {
     setActiveModal('none');
   };
 
-  const closeDeleteModal = () => {
+  const closeResetModal = () => {
     if (isResettingPreferences) return;
+    setActiveModal('none');
+  };
+
+  const closeDeleteAccountModal = () => {
+    if (isDeletingAccount) return;
     setActiveModal('none');
   };
 
@@ -409,6 +423,29 @@ export const SettingsScreen = () => {
     }
   };
 
+  // App Store 5.1.1(v): permanent account deletion. On success AuthContext
+  // clears the tokens + drops the user to null, so AppNavigator unmounts this
+  // screen and returns to Welcome — no local navigation needed. On error the
+  // account still exists; surface a friendly toast and keep the dialog usable.
+  const handleDeleteAccount = async () => {
+    if (isDeletingAccount) return;
+
+    setIsDeletingAccount(true);
+    try {
+      await deleteAccount();
+      // Success: the auth gate swaps to the auth stack; nothing else to do.
+    } catch (error) {
+      const message = getErrorMessage(
+        error,
+        t('settings.error_delete_account'),
+      );
+      showSettingsError(t('settings.toast_title'), message);
+      setActiveModal('none');
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   return (
     <>
       <SettingsScreenScaffold
@@ -526,14 +563,31 @@ export const SettingsScreen = () => {
         <View style={styles.sectionGap} />
 
         {/* ── Account ────────────────────────────────────────────────────── */}
+        {/* Reset My Data — wipes preferences/data back to day one but KEEPS the
+            account (POST /me/reset-preferences). Renamed from "Delete My Data"
+            so it no longer impersonates account deletion (App Store 5.1.1(v)). */}
         <SettingsRow
-          testID="settings-delete-data-row"
-          label={t('settings.delete_my_data')}
-          // Main-list "Delete My Data" row is NEUTRAL (qa-ui C2) — not red.
+          testID="settings-reset-data-row"
+          label={t('settings.reset_my_data')}
+          accessibilityLabel={t('settings.a11y_reset_my_data')}
+          chevron
+          onPress={() => setActiveModal('resetConfirm')}
+        />
+
+        <SettingsDivider />
+
+        {/* Delete Account — permanently deletes the account + all data
+            (DELETE /api/me). Distinct destructive control required by App Store
+            5.1.1(v). Row glyph stays neutral (qa-ui C2 precedent); the confirm
+            dialog carries the danger variant. */}
+        <SettingsRow
+          testID="settings-delete-account-row"
+          label={t('settings.delete_account')}
+          accessibilityLabel={t('settings.a11y_delete_account')}
           trailing={
             <Icons.Delete width={24} height={24} color={theme.ds.color.ink} />
           }
-          onPress={() => setActiveModal('deleteConfirm')}
+          onPress={() => setActiveModal('deleteAccountConfirm')}
         />
       </SettingsScreenScaffold>
 
@@ -598,18 +652,33 @@ export const SettingsScreen = () => {
         />
       </SettingsDialog>
 
-      {/* Delete-data dialog */}
+      {/* Reset-data dialog — resets preferences/data, keeps the account. */}
       <SettingsDialog
-        visible={activeModal === 'deleteConfirm'}
-        onClose={closeDeleteModal}
+        visible={activeModal === 'resetConfirm'}
+        onClose={closeResetModal}
         isBusy={isResettingPreferences}
-        title={t('settings.dialog_delete_title')}
-        body={t('settings.dialog_delete_body')}
-        primaryLabel="Delete"
+        title={t('settings.dialog_reset_title')}
+        body={t('settings.dialog_reset_body')}
+        primaryLabel={t('settings.reset_confirm')}
         primaryVariant="danger"
         onPrimary={handleResetPreferences}
-        cancelTestID="settings-delete-cancel"
-        primaryTestID="settings-delete-confirm"
+        cancelTestID="settings-reset-cancel"
+        primaryTestID="settings-reset-confirm"
+      />
+
+      {/* Delete-account dialog — permanent account deletion (App Store
+          5.1.1(v)). Explicit destructive confirm; distinct from the reset. */}
+      <SettingsDialog
+        visible={activeModal === 'deleteAccountConfirm'}
+        onClose={closeDeleteAccountModal}
+        isBusy={isDeletingAccount}
+        title={t('settings.dialog_delete_account_title')}
+        body={t('settings.dialog_delete_account_body')}
+        primaryLabel={t('settings.delete_account_confirm')}
+        primaryVariant="danger"
+        onPrimary={handleDeleteAccount}
+        cancelTestID="settings-delete-account-cancel"
+        primaryTestID="settings-delete-account-confirm"
       />
     </>
   );

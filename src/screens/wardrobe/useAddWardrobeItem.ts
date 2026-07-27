@@ -109,8 +109,7 @@ export const useAddWardrobeItem = ({
         return;
       }
 
-      // Upload action — invoked directly for remove_bg or via the consent gate
-      // for beautify (which shows AiConsentDialog if not yet granted).
+      // Upload action — always routed through the AI-consent gate below.
       const doUpload = () => {
         // Async IIFE so the consent gate's sync `run()` can fire it.
         (async () => {
@@ -191,13 +190,14 @@ export const useAddWardrobeItem = ({
         })();
       };
 
-      if (mode === 'beautify') {
-        // Gate: if consent not yet granted, shows AiConsentDialog and defers
-        // doUpload until Accept. Decline drops the action (app stays usable).
-        consentGate.run(doUpload);
-      } else {
-        doUpload();
-      }
+      // AI-consent gate for EVERY wardrobe-photo upload — not just beautify.
+      // The backend's POST /wardrobe/items/ai-enhanced ALWAYS sends the photo
+      // to OpenAI vision (remove_bg included), and the Privacy Policy promises
+      // explicit consent before photos reach AI providers. If consent isn't yet
+      // granted the gate shows AiConsentDialog and defers doUpload until Accept;
+      // once granted it runs immediately (no double-prompt). Decline drops the
+      // action and the app stays usable.
+      consentGate.run(doUpload);
     }, 250);
   };
 
