@@ -53,8 +53,9 @@ export const MOOD_CHIPS: readonly MoodChipDef[] = [
 
 /**
  * Contextual chip sets keyed off `outfit_context.occasion` (lowercase).
- * Each set ≤8 entries (ticket: 6–8 visible chips max for cognitive load),
- * with `not_quite_me` last in every set.
+ * Each set ≤8 entries (ticket: 6–8 visible chips max for cognitive load).
+ * Positive descriptors only — the soft-negative `not_quite_me` is no longer
+ * surfaced in the sheet (it remains a valid vocab id for analytics/mapping).
  */
 export const CONTEXT_CHIP_SETS: Record<string, readonly MoodChipId[]> = {
   work: [
@@ -65,7 +66,6 @@ export const CONTEXT_CHIP_SETS: Record<string, readonly MoodChipId[]> = {
     'confident',
     'comfortable',
     'elevated',
-    'not_quite_me',
   ],
   weekend: [
     'relaxed',
@@ -75,7 +75,6 @@ export const CONTEXT_CHIP_SETS: Record<string, readonly MoodChipId[]> = {
     'feels_like_me',
     'confident',
     'elevated',
-    'not_quite_me',
   ],
   social: [
     'attractive',
@@ -85,7 +84,6 @@ export const CONTEXT_CHIP_SETS: Record<string, readonly MoodChipId[]> = {
     'sharp',
     'feels_like_me',
     'polished',
-    'not_quite_me',
   ],
   travel: [
     'functional',
@@ -95,7 +93,6 @@ export const CONTEXT_CHIP_SETS: Record<string, readonly MoodChipId[]> = {
     'easy',
     'effortless',
     'feels_like_me',
-    'not_quite_me',
   ],
 };
 
@@ -107,13 +104,13 @@ export const DEFAULT_CHIP_SET: readonly MoodChipId[] = [
   'comfortable',
   'sharp',
   'effortless',
-  'not_quite_me',
 ];
 
 const MAX_VISIBLE_CHIPS = 8;
 
-// Dev-time guard: fail fast if a set drifts past the cognitive-load ceiling
-// or drops the trailing soft-negative.
+// Dev-time guard: fail fast if a set drifts past the cognitive-load ceiling,
+// or if the soft-negative leaks back into a surfaced set (it's feedback-only
+// now — see onSubmit in use-mood-feedback.ts).
 if (__DEV__) {
   const allSets: Array<[string, readonly MoodChipId[]]> = [
     ...Object.entries(CONTEXT_CHIP_SETS),
@@ -125,8 +122,10 @@ if (__DEV__) {
         `mood-chips: set "${name}" has ${set.length} chips (max ${MAX_VISIBLE_CHIPS})`,
       );
     }
-    if (set[set.length - 1] !== 'not_quite_me') {
-      throw new Error(`mood-chips: set "${name}" must end with "not_quite_me"`);
+    if (set.includes('not_quite_me')) {
+      throw new Error(
+        `mood-chips: set "${name}" must not include "not_quite_me" (feedback-only)`,
+      );
     }
   }
 }
