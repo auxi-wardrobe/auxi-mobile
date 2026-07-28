@@ -345,6 +345,7 @@ export const WardrobeScreen = () => {
     if (item.beautify_status === 'pending') {
       track('wardrobe_item_opened', {
         item_id: item.id,
+        is_common: isCommonItem(item),
         beautify_status: 'pending',
       });
       navigation.navigate('BeautifyPending', {
@@ -356,6 +357,7 @@ export const WardrobeScreen = () => {
     if (item.beautify_status === 'ready') {
       track('wardrobe_item_opened', {
         item_id: item.id,
+        is_common: isCommonItem(item),
         beautify_status: 'ready',
       });
       // Direct tile tap is a distinct entry point from snackbar or loader.
