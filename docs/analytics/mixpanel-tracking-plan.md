@@ -120,6 +120,7 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `wardrobe_filter_changed` (pre-existing) | Filter pill | `WardrobeScreen.tsx:135` | `category` |
 | `wardrobe_sort_changed` | Sort option selected in the sort bottom sheet (`handleSelectSort`) — not fired on the initial default | `WardrobeScreen.tsx` (`handleSelectSort`) | `sort_by` (`date_added` \| `name` \| `worn`), `direction` (`asc` \| `desc`) |
 | `wardrobe_item_opened` (pre-existing) | Item tap | `WardrobeScreen.tsx:139` | `item_id`, `category` |
+| | | | **Also:** two beautify-status branches with optional `beautify_status` (`'pending'` \| `'ready'`) |
 | `item_detail_opened` | ItemDetailScreen mount | `ItemDetailScreen.tsx:280` | `item_id`, `source` |
 | `creation_item_detail_opened` | Tap an item inside a saved-creation collage → opens ItemDetail. Fired from both entry points to that collage: the My Creations list and the Schedule day's creation card. Resolves the real wardrobe id first (stored `wardrobeItemId`, else recovered from the synthetic canvas id); a no-op when neither yields one. | `MyCreationsScreen.tsx` (`handleItemPress`), `ScheduleScreen.tsx` (creation-card `onItemPress`) | `wardrobe_item_id` (internal wardrobe id) |
 | `wardrobe_item_added` | Take-photo upload complete | `useAddWardrobeItem.ts:142` | `source`, `method` (`take_photo`), `mode` (`remove_bg`/`beautify`), `item_id?`, `category?` |
