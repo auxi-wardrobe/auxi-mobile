@@ -358,10 +358,11 @@ export const WardrobeScreen = () => {
         item_id: item.id,
         beautify_status: 'ready',
       });
+      // Direct tile tap is a distinct entry point from snackbar or loader.
       navigation.navigate('BeautifyReview', {
         itemId: item.id,
         originalUri: item.image_url ?? '',
-        from: 'snackbar',
+        from: 'tile',
       });
       return;
     }

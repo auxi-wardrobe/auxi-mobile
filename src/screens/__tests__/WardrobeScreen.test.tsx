@@ -409,7 +409,7 @@ describe('WardrobeScreen — beautify tap routing', () => {
     expect(mockNavigate).toHaveBeenCalledWith('BeautifyReview', {
       itemId: 'beaut-ready-1',
       originalUri: 'https://cdn.example/ready.jpg',
-      from: 'snackbar',
+      from: 'tile',
     });
   });
 
