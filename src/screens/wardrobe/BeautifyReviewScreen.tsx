@@ -12,6 +12,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { wardrobeService, wardrobeKeys } from '../../services/wardrobeService';
+import { goToWardrobe } from './beautify-status';
 import { MButton } from '../../components/design-system/lib';
 import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
 import { track } from '../../services/analytics';
@@ -46,7 +47,7 @@ export function BeautifyReviewScreen() {
 
   const done = () => {
     qc.invalidateQueries({ queryKey: wardrobeKeys.all });
-    nav.navigate('Wardrobe');
+    goToWardrobe(nav);
   };
 
   const onAccept = async () => {

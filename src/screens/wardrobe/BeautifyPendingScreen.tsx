@@ -6,7 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MacgieLoader } from '../../components/macgie';
 import { MButton } from '../../components/design-system/lib';
 import { wardrobeService } from '../../services/wardrobeService';
-import { beautifyStep, BEAUTIFY_POLL_MS } from './beautify-status';
+import { beautifyStep, BEAUTIFY_POLL_MS, goToWardrobe } from './beautify-status';
 import { track } from '../../services/analytics';
 import { theme } from '../../theme/theme';
 import type { AppStackParamList } from '../../types/navigation';
@@ -89,7 +89,7 @@ export function BeautifyPendingScreen() {
         <MButton
           testID="beautify-pending-keep"
           variant="primary"
-          onPress={() => nav.navigate('Wardrobe')}
+          onPress={() => goToWardrobe(nav)}
         >
           Keep original
         </MButton>
@@ -134,7 +134,7 @@ export function BeautifyPendingScreen() {
         variant="secondary"
         onPress={() => {
           track('beautify_wait_continued_browsing');
-          nav.navigate('Wardrobe');
+          goToWardrobe(nav);
         }}
       >
         Continue browsing
