@@ -8,7 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
@@ -25,17 +25,7 @@ import { initI18n } from './src/i18n/init';
 import { theme } from './src/theme/theme';
 import { configureGoogleSignIn } from './src/services/oauth/googleSignIn';
 import { grantAnalyticsConsent, initAnalytics } from './src/services/analytics';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Data stays "fresh" for 60s so revisiting a screen serves cache instead
-      // of refetching on every mount/focus. Per-query staleTime still overrides.
-      staleTime: 60_000,
-      retry: 1,
-    },
-  },
-});
+import { queryClient } from './src/services/queryClient';
 
 // Configure the Google Sign-In SDK once at module-load. Idempotent; the
 // wrapper guards against double-configure. Apple's SDK is stateless and

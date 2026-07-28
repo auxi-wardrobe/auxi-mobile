@@ -14,6 +14,7 @@ import { MacgieLoader } from '../../components/macgie';
 import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
 import { Icons } from '../../assets/icons';
 import { wardrobeKeys, wardrobeService } from '../../services/wardrobeService';
+import { markItemBeautifying } from '../wardrobe/beautify-status';
 import { track } from '../../services/analytics';
 import { theme } from '../../theme/theme';
 import { getImageUrl } from '../../utils/url';
@@ -107,6 +108,11 @@ export const EnhanceImageScreen = () => {
         if (session !== sessionRef.current) {
           return;
         }
+        // The item is now `beautify_status: 'pending'` server-side — patch
+        // it into the cached list directly (no round trip) so the pending
+        // badge + tap-routing (WardrobeScreen.handleItemPress) are correct
+        // the moment the user returns to Wardrobe.
+        markItemBeautifying(queryClient, itemId);
         pollRef.current = setInterval(async () => {
           if (session !== sessionRef.current) {
             stopPolling();
@@ -139,7 +145,7 @@ export const EnhanceImageScreen = () => {
         }, ENHANCE_POLL_MS);
       })
       .catch(error => fail(classifyEnhanceError(error)));
-  }, [itemId, stopPolling]);
+  }, [itemId, stopPolling, queryClient]);
 
   useEffect(() => {
     startSession();
@@ -214,6 +220,27 @@ export const EnhanceImageScreen = () => {
     }
   };
 
+  const handleBack = () => {
+    if (phase === 'loading') {
+      // Going back to ItemDetail mid-generation would show a stale image
+      // (ItemDetail doesn't poll beautify_status), so land on Wardrobe
+      // instead, where the item's "beautifying" badge is now visible.
+      // A plain `navigate('Wardrobe')` only pops to an existing Wardrobe
+      // route if one is already in this stack's history — reached via
+      // Home instead, it would PUSH a new instance on top, leaving
+      // ItemDetail/EnhanceImage mounted underneath (squished, not the
+      // full-screen root) and their effects — including this screen's own
+      // poll — never cleaned up. `reset` unconditionally clears the whole
+      // stack down to a single fresh Wardrobe root.
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Wardrobe' }],
+      });
+      return;
+    }
+    navigation.goBack();
+  };
+
   const enhancedUri = getImageUrl(candidateUri ?? undefined);
   const showEnhanced = phase === 'ready' && !comparing && !!enhancedUri;
   const imageUri = showEnhanced ? enhancedUri : displayUri;
@@ -225,7 +252,7 @@ export const EnhanceImageScreen = () => {
         <TopIconButton
           testID="enhance-back-btn"
           accessibilityLabel={t('uac.common.back')}
-          onPress={() => navigation.goBack()}
+          onPress={handleBack}
           style={styles.backButton}
           icon={<Icons.ChevronLeft width={24} height={24} />}
         />

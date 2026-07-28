@@ -9,6 +9,9 @@
 const mockRequestPermission = jest.fn();
 const mockGetToken = jest.fn();
 const mockRegisterRemote = jest.fn().mockResolvedValue(undefined);
+const mockGetInitialNotification = jest.fn().mockResolvedValue(null);
+const mockOnNotificationOpenedApp = jest.fn(() => () => {});
+const mockOnMessage = jest.fn((_handler: (msg: any) => Promise<void>) => () => {});
 
 jest.mock('@react-native-firebase/messaging', () => {
   const messaging = () => ({
@@ -16,6 +19,9 @@ jest.mock('@react-native-firebase/messaging', () => {
     registerDeviceForRemoteMessages: mockRegisterRemote,
     getToken: mockGetToken,
     onTokenRefresh: jest.fn(() => () => {}),
+    getInitialNotification: mockGetInitialNotification,
+    onNotificationOpenedApp: mockOnNotificationOpenedApp,
+    onMessage: mockOnMessage,
   });
   messaging.AuthorizationStatus = {
     NOT_DETERMINED: -1,
@@ -57,12 +63,23 @@ jest.mock('../deepLinkHandler', () => ({
   resolveNotificationData: jest.fn(),
 }));
 
+// Cuts the wardrobeService → axios/apiClient(keychain) import chain; only
+// wardrobeKeys is used by the foreground beautify-result handler.
+jest.mock('../wardrobeService', () => ({
+  wardrobeKeys: {
+    all: ['wardrobe-items'],
+    list: (f: string = 'All') => ['wardrobe-items', f],
+  },
+}));
+
 import {
   registerDeviceForPush,
   unregisterDevice,
   ensurePushPermissionAndRegister,
+  registerPushTapHandlers,
 } from '../notificationService';
 import { apiClient } from '../apiClient';
+import { queryClient } from '../queryClient';
 import {
   trackPushPermissionRequested,
   trackPushPermissionGranted,
@@ -142,5 +159,60 @@ describe('unregisterDevice', () => {
     mockGetToken.mockResolvedValueOnce('');
     await expect(unregisterDevice()).resolves.toBeUndefined();
     expect(mockDelete).not.toHaveBeenCalled();
+  });
+});
+
+describe('registerPushTapHandlers — foreground onMessage', () => {
+  // Grabs the handler `registerPushTapHandlers` wired to messaging().onMessage.
+  const getForegroundHandler = () => {
+    registerPushTapHandlers(() => null);
+    return mockOnMessage.mock.calls[mockOnMessage.mock.calls.length - 1][0];
+  };
+
+  // This is the real app-wide singleton (not a fresh QueryClient per test) —
+  // its default (non-zero) gcTime otherwise leaves a pending timer that
+  // keeps the test process alive after the run finishes.
+  afterAll(() => {
+    queryClient.clear();
+  });
+
+  it('invalidates the wardrobe query on a foreground beautify_result push', async () => {
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const handler = getForegroundHandler();
+
+    await handler({
+      data: {
+        type: 'beautify_result',
+        action: 'beautify_result',
+        status: 'ready',
+        item_id: 'item-1',
+      },
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['wardrobe-items'],
+    });
+    invalidateSpy.mockRestore();
+  });
+
+  it('does not invalidate for an unrelated foreground push type', async () => {
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const handler = getForegroundHandler();
+
+    await handler({
+      data: { type: 'tryon_render', action: 'tryon_result' },
+    });
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
+    invalidateSpy.mockRestore();
+  });
+
+  it('does not invalidate when data is missing entirely', async () => {
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const handler = getForegroundHandler();
+
+    await expect(handler({})).resolves.toBeUndefined();
+    expect(invalidateSpy).not.toHaveBeenCalled();
+    invalidateSpy.mockRestore();
   });
 });

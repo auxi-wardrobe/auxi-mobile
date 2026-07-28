@@ -58,7 +58,6 @@ import { PreparingOverlay } from './wardrobe/PreparingOverlay';
 import { useAddWardrobeItem } from './wardrobe/useAddWardrobeItem';
 import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
 import { useStalePreparingCleanup } from './wardrobe/useStalePreparingCleanup';
-import { anyBeautifying } from './wardrobe/beautify-status';
 import {
   GRID_GAP,
   HORIZONTAL_PADDING,
@@ -161,14 +160,13 @@ export const WardrobeScreen = () => {
     queryKey: wardrobeKeys.list('All'),
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 60_000,
-    // AU-361 + Task 14: while focused AND something is preparing OR beautifying,
-    // poll so the preparing→ready / beautify pending→ready transitions are
-    // observed (their snackbars fire off reconcileReadyItems). Stops otherwise.
+    // AU-361: while focused AND something is preparing, poll so the
+    // preparing→ready transition is observed (fires reconcileReadyItems'
+    // snackbar). Stops otherwise. Beautify no longer needs a poll leg here —
+    // starting a job patches the badge in directly (markItemBeautifying) and
+    // the ready/failed transition arrives via push notification instead.
     refetchInterval: query =>
-      isFocused &&
-      (anyPreparing(query.state.data) || anyBeautifying(query.state.data ?? []))
-        ? PREPARING_POLL_MS
-        : false,
+      isFocused && anyPreparing(query.state.data) ? PREPARING_POLL_MS : false,
     refetchIntervalInBackground: false,
   });
 
@@ -336,6 +334,36 @@ export const WardrobeScreen = () => {
       }
       track('wardrobe_change_item_selected', { item_id: item.id });
       setSelectedItemId(item.id);
+      return;
+    }
+    // A beautify job in flight or awaiting review takes over the tap —
+    // route straight to the matching beautify screen instead of the normal
+    // item detail/edit screen. 'failed' falls through unchanged below: there
+    // is no candidate to review, so it behaves like a normal item.
+    if (item.beautify_status === 'pending') {
+      track('wardrobe_item_opened', {
+        item_id: item.id,
+        is_common: isCommonItem(item),
+        beautify_status: 'pending',
+      });
+      navigation.navigate('BeautifyPending', {
+        itemId: item.id,
+        originalUri: item.image_url ?? '',
+      });
+      return;
+    }
+    if (item.beautify_status === 'ready') {
+      track('wardrobe_item_opened', {
+        item_id: item.id,
+        is_common: isCommonItem(item),
+        beautify_status: 'ready',
+      });
+      // Direct tile tap is a distinct entry point from snackbar or loader.
+      navigation.navigate('BeautifyReview', {
+        itemId: item.id,
+        originalUri: item.image_url ?? '',
+        from: 'tile',
+      });
       return;
     }
     track('wardrobe_item_opened', {

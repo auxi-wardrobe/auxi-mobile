@@ -197,6 +197,37 @@ const LESS_USED_ITEM = {
   image_url: 'https://cdn.example/rare.jpg',
 };
 
+// Items driving the beautify tap-routing branch (Task 4 follow-up).
+const BEAUTIFY_PENDING_ITEM = {
+  id: 'beaut-pending-1',
+  name: 'Studio shot in progress',
+  category: 'top',
+  user_id: 'u1',
+  is_new: false,
+  beautify_status: 'pending',
+  image_url: 'https://cdn.example/pending.jpg',
+};
+
+const BEAUTIFY_READY_ITEM = {
+  id: 'beaut-ready-1',
+  name: 'Studio shot ready',
+  category: 'top',
+  user_id: 'u1',
+  is_new: false,
+  beautify_status: 'ready',
+  image_url: 'https://cdn.example/ready.jpg',
+};
+
+const BEAUTIFY_FAILED_ITEM = {
+  id: 'beaut-failed-1',
+  name: 'Studio shot failed',
+  category: 'top',
+  user_id: 'u1',
+  is_new: false,
+  beautify_status: 'failed',
+  image_url: 'https://cdn.example/failed.jpg',
+};
+
 const byTestID = (root: ReactTestInstance, id: string): ReactTestInstance[] =>
   root.findAll(n => n.props?.testID === id);
 
@@ -344,5 +375,55 @@ describe('WardrobeScreen tile status tags', () => {
     expect(label.length).toBeGreaterThan(0);
     // "less use" wins when backend is_new is false; not common.
     expect(byTestID(root, 'wardrobe-item-new-less-1').length).toBe(0);
+  });
+});
+
+// =============================================================================
+// Beautify tap routing
+// =============================================================================
+describe('WardrobeScreen — beautify tap routing', () => {
+  it('routes to BeautifyPending when the item is still beautifying', async () => {
+    mockGetWardrobeItems.mockResolvedValue([BEAUTIFY_PENDING_ITEM]);
+    const r = await renderScreen();
+    const tile = byTestID(r.root, 'wardrobe-item-first')[0];
+
+    act(() => {
+      tile.props.onPress();
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('BeautifyPending', {
+      itemId: 'beaut-pending-1',
+      originalUri: 'https://cdn.example/pending.jpg',
+    });
+  });
+
+  it('routes directly to BeautifyReview when a candidate is ready', async () => {
+    mockGetWardrobeItems.mockResolvedValue([BEAUTIFY_READY_ITEM]);
+    const r = await renderScreen();
+    const tile = byTestID(r.root, 'wardrobe-item-first')[0];
+
+    act(() => {
+      tile.props.onPress();
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('BeautifyReview', {
+      itemId: 'beaut-ready-1',
+      originalUri: 'https://cdn.example/ready.jpg',
+      from: 'tile',
+    });
+  });
+
+  it('falls through to ItemDetail when the beautify job failed', async () => {
+    mockGetWardrobeItems.mockResolvedValue([BEAUTIFY_FAILED_ITEM]);
+    const r = await renderScreen();
+    const tile = byTestID(r.root, 'wardrobe-item-first')[0];
+
+    act(() => {
+      tile.props.onPress();
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('ItemDetail', {
+      itemId: 'beaut-failed-1',
+    });
   });
 });
