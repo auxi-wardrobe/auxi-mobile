@@ -113,6 +113,59 @@ describe('resolveNotificationData — try-on render result', () => {
   });
 });
 
+describe('resolveNotificationData — beautify result', () => {
+  it('navigates to BeautifyReview with itemId when ready', () => {
+    const nav = makeNavRef();
+    resolveNotificationData(
+      {
+        kind: 'route',
+        screen: 'Home',
+        type: 'beautify_result',
+        action: 'beautify_result',
+        status: 'ready',
+        item_id: 'item-1',
+      },
+      nav as any,
+    );
+    expect(nav.navigate).toHaveBeenCalledWith('BeautifyReview', {
+      itemId: 'item-1',
+      originalUri: '',
+      from: 'push',
+    });
+  });
+
+  it('falls back to Home on a failed beautify job', () => {
+    const nav = makeNavRef();
+    resolveNotificationData(
+      {
+        kind: 'route',
+        screen: 'Home',
+        type: 'beautify_result',
+        action: 'beautify_result',
+        status: 'failed',
+        item_id: 'item-1',
+      },
+      nav as any,
+    );
+    expect(nav.navigate).toHaveBeenCalledWith('Home');
+  });
+
+  it('falls back to Home when ready but item_id is missing', () => {
+    const nav = makeNavRef();
+    resolveNotificationData(
+      {
+        kind: 'route',
+        screen: 'Home',
+        type: 'beautify_result',
+        action: 'beautify_result',
+        status: 'ready',
+      },
+      nav as any,
+    );
+    expect(nav.navigate).toHaveBeenCalledWith('Home');
+  });
+});
+
 describe('resolveNotificationData — external kind', () => {
   it('opens a valid https url', () => {
     const nav = makeNavRef();

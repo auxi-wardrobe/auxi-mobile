@@ -379,6 +379,24 @@ export const resolveNotificationData = (
       return;
     }
 
+    // Beautify terminal result (backend `beautify_ready`/`beautify_failed`,
+    // see `notification_service._beautify_payload`). Same reasoning as the
+    // try-on branch above — screen:'Home' is a route-safe curated fallback,
+    // but the richer `item_id` field lets a tap land on the review screen
+    // instead of a generic tab.
+    if (data.type === 'beautify_result' && data.action === 'beautify_result') {
+      if (data.status === 'ready' && data.item_id) {
+        navRef.navigate('BeautifyReview', {
+          itemId: data.item_id,
+          originalUri: '',
+          from: 'push',
+        });
+      } else {
+        fallbackHome();
+      }
+      return;
+    }
+
     if (data.kind === 'route') {
       if (data.screen && isCuratedScreen(data.screen)) {
         navigate(PUSH_SCREEN_ROUTE[data.screen]);
