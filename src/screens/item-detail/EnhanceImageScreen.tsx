@@ -107,6 +107,12 @@ export const EnhanceImageScreen = () => {
         if (session !== sessionRef.current) {
           return;
         }
+        // The item is now `beautify_status: 'pending'` server-side, but the
+        // Wardrobe list query has its own 60s staleTime and won't pick this
+        // up on its own — invalidate now so the pending badge + tap-routing
+        // (WardrobeScreen.handleItemPress) are correct the moment the user
+        // returns there, without needing a manual re-fetch trigger.
+        queryClient.invalidateQueries({ queryKey: wardrobeKeys.all });
         pollRef.current = setInterval(async () => {
           if (session !== sessionRef.current) {
             stopPolling();
@@ -139,7 +145,7 @@ export const EnhanceImageScreen = () => {
         }, ENHANCE_POLL_MS);
       })
       .catch(error => fail(classifyEnhanceError(error)));
-  }, [itemId, stopPolling]);
+  }, [itemId, stopPolling, queryClient]);
 
   useEffect(() => {
     startSession();
@@ -214,6 +220,17 @@ export const EnhanceImageScreen = () => {
     }
   };
 
+  const handleBack = () => {
+    if (phase === 'loading') {
+      // Going back to ItemDetail mid-generation would show a stale image
+      // (ItemDetail doesn't poll beautify_status), so land on Wardrobe
+      // instead, where the item's "beautifying" badge is now visible.
+      navigation.navigate('Wardrobe');
+      return;
+    }
+    navigation.goBack();
+  };
+
   const enhancedUri = getImageUrl(candidateUri ?? undefined);
   const showEnhanced = phase === 'ready' && !comparing && !!enhancedUri;
   const imageUri = showEnhanced ? enhancedUri : displayUri;
@@ -225,7 +242,7 @@ export const EnhanceImageScreen = () => {
         <TopIconButton
           testID="enhance-back-btn"
           accessibilityLabel={t('uac.common.back')}
-          onPress={() => navigation.goBack()}
+          onPress={handleBack}
           style={styles.backButton}
           icon={<Icons.ChevronLeft width={24} height={24} />}
         />

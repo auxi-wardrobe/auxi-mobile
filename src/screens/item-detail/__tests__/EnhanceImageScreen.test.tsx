@@ -27,6 +27,7 @@ import { EnhanceImageScreen } from '../EnhanceImageScreen';
 
 const mockGoBack = jest.fn();
 const mockPopTo = jest.fn();
+const mockNavigate = jest.fn();
 const mockRouteParams = {
   itemId: 'item-1',
   displayUri: 'https://cdn.example/original.png',
@@ -36,6 +37,7 @@ jest.mock('@react-navigation/native', () => {
   const navigation = {
     goBack: (...args: unknown[]) => mockGoBack(...args),
     popTo: (...args: unknown[]) => mockPopTo(...args),
+    navigate: (...args: unknown[]) => mockNavigate(...args),
   };
   return {
     useNavigation: () => navigation,
@@ -137,7 +139,7 @@ const renderScreen = async () => {
   });
   liveRenderers.push(renderer);
   await flushPromises(); // settle the mount-effect beautifyItem POST
-  return renderer;
+  return { renderer, client };
 };
 
 const READY_STATUS = {
@@ -176,7 +178,7 @@ it('polls until ready, then swaps to the candidate and enables both actions', as
     .mockResolvedValueOnce(PENDING_STATUS)
     .mockResolvedValueOnce(READY_STATUS);
 
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
   const root = r.root;
 
   expect(mockBeautifyItem).toHaveBeenCalledWith('item-1');
@@ -217,7 +219,7 @@ it('polls until ready, then swaps to the candidate and enables both actions', as
 it('shows the original while long-pressed and restores the candidate on release', async () => {
   mockGetBeautifyStatus.mockResolvedValue(READY_STATUS);
 
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
   await pollTick();
   const root = r.root;
 
@@ -241,7 +243,7 @@ it('shows the original while long-pressed and restores the candidate on release'
 it('times out past the 3min wait budget, shows the timeout copy, and Retry re-fires the request', async () => {
   mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
 
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
   const root = r.root;
 
   for (let i = 0; i < 91; i += 1) {
@@ -269,7 +271,7 @@ it('times out past the 3min wait budget, shows the timeout copy, and Retry re-fi
 it('shows the generic error when the job resolves as failed', async () => {
   mockGetBeautifyStatus.mockResolvedValue({ status: 'failed', attempts: 1 });
 
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
   await pollTick();
 
   expect(mockTrack).toHaveBeenCalledWith('enhance_failed', {
@@ -288,7 +290,7 @@ it('Discard drops the candidate and returns to Item Detail', async () => {
   mockGetBeautifyStatus.mockResolvedValue(READY_STATUS);
   mockDiscardBeautify.mockResolvedValue({});
 
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
   await pollTick();
 
   act(() => oneByTestID(r.root, 'enhance-discard-btn').props.onPress());
@@ -311,7 +313,7 @@ it('Replace original accepts the candidate and pops back with the merged result'
     image_studio: 'https://cdn.example/studio.png',
   });
 
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
   await pollTick();
 
   await act(async () => {
@@ -348,7 +350,7 @@ it('stays on the preview with actions re-enabled when saving fails', async () =>
   mockGetBeautifyStatus.mockResolvedValue(READY_STATUS);
   mockAcceptBeautify.mockRejectedValue(new Error('boom'));
 
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
   await pollTick();
 
   await act(async () => {
@@ -374,4 +376,62 @@ it('stays on the preview with actions re-enabled when saving fails', async () =>
   expect(oneByTestID(r.root, 'enhance-replace-btn').props.disabled).toBe(
     false,
   );
+});
+
+// =============================================================================
+// 8. back button while loading → Wardrobe, not ItemDetail
+// =============================================================================
+it('pressing back mid-generation navigates to Wardrobe instead of going back to ItemDetail', async () => {
+  mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
+
+  const { renderer: r } = await renderScreen();
+
+  expect(byTestID(r.root, 'enhance-loading-overlay').length).toBeGreaterThan(
+    0,
+  );
+
+  act(() => oneByTestID(r.root, 'enhance-back-btn').props.onPress());
+
+  expect(mockNavigate).toHaveBeenCalledWith('Wardrobe');
+  expect(mockGoBack).not.toHaveBeenCalled();
+});
+
+it('pressing back once ready still goes back to ItemDetail (unchanged)', async () => {
+  mockGetBeautifyStatus.mockResolvedValue(READY_STATUS);
+
+  const { renderer: r } = await renderScreen();
+  await pollTick();
+
+  act(() => oneByTestID(r.root, 'enhance-back-btn').props.onPress());
+
+  expect(mockGoBack).toHaveBeenCalled();
+  expect(mockNavigate).not.toHaveBeenCalled();
+});
+
+// =============================================================================
+// 9. starting a session invalidates the Wardrobe list cache immediately
+// =============================================================================
+it('invalidates the wardrobe list query as soon as the beautify job starts', async () => {
+  mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
+
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  // Seed the Wardrobe list cache the way a real session would have it —
+  // invalidating an absent query key leaves nothing to assert against, so
+  // this test bypasses the shared renderScreen() helper to seed first.
+  client.setQueryData(['wardrobe-items'], []);
+
+  let renderer!: TestRenderer.ReactTestRenderer;
+  await act(async () => {
+    renderer = TestRenderer.create(
+      <QueryClientProvider client={client}>
+        <EnhanceImageScreen />
+      </QueryClientProvider>,
+    );
+  });
+  liveRenderers.push(renderer);
+  await flushPromises(); // settle the mount-effect beautifyItem POST
+
+  expect(client.getQueryState(['wardrobe-items'])?.isInvalidated).toBe(true);
 });
