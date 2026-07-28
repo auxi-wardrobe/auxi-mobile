@@ -27,7 +27,7 @@ import { EnhanceImageScreen } from '../EnhanceImageScreen';
 
 const mockGoBack = jest.fn();
 const mockPopTo = jest.fn();
-const mockNavigate = jest.fn();
+const mockReset = jest.fn();
 const mockRouteParams = {
   itemId: 'item-1',
   displayUri: 'https://cdn.example/original.png',
@@ -37,7 +37,7 @@ jest.mock('@react-navigation/native', () => {
   const navigation = {
     goBack: (...args: unknown[]) => mockGoBack(...args),
     popTo: (...args: unknown[]) => mockPopTo(...args),
-    navigate: (...args: unknown[]) => mockNavigate(...args),
+    reset: (...args: unknown[]) => mockReset(...args),
   };
   return {
     useNavigation: () => navigation,
@@ -381,7 +381,7 @@ it('stays on the preview with actions re-enabled when saving fails', async () =>
 // =============================================================================
 // 8. back button while loading → Wardrobe, not ItemDetail
 // =============================================================================
-it('pressing back mid-generation navigates to Wardrobe instead of going back to ItemDetail', async () => {
+it('pressing back mid-generation resets the whole stack to a single Wardrobe root instead of going back to ItemDetail', async () => {
   mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
 
   const { renderer: r } = await renderScreen();
@@ -392,7 +392,16 @@ it('pressing back mid-generation navigates to Wardrobe instead of going back to 
 
   act(() => oneByTestID(r.root, 'enhance-back-btn').props.onPress());
 
-  expect(mockNavigate).toHaveBeenCalledWith('Wardrobe');
+  // A plain navigate would only pop to an existing Wardrobe route; if
+  // ItemDetail was reached from Home (no Wardrobe in history yet) it would
+  // instead PUSH a new instance on top, leaving ItemDetail/EnhanceImage
+  // mounted underneath. `reset` is what guarantees a clean, full-screen
+  // Wardrobe root and unmounts everything above it (stopping this screen's
+  // own poll for good).
+  expect(mockReset).toHaveBeenCalledWith({
+    index: 0,
+    routes: [{ name: 'Wardrobe' }],
+  });
   expect(mockGoBack).not.toHaveBeenCalled();
 });
 
@@ -405,7 +414,7 @@ it('pressing back once ready still goes back to ItemDetail (unchanged)', async (
   act(() => oneByTestID(r.root, 'enhance-back-btn').props.onPress());
 
   expect(mockGoBack).toHaveBeenCalled();
-  expect(mockNavigate).not.toHaveBeenCalled();
+  expect(mockReset).not.toHaveBeenCalled();
 });
 
 // =============================================================================

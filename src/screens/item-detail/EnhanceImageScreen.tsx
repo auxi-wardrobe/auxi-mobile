@@ -225,7 +225,17 @@ export const EnhanceImageScreen = () => {
       // Going back to ItemDetail mid-generation would show a stale image
       // (ItemDetail doesn't poll beautify_status), so land on Wardrobe
       // instead, where the item's "beautifying" badge is now visible.
-      navigation.navigate('Wardrobe');
+      // A plain `navigate('Wardrobe')` only pops to an existing Wardrobe
+      // route if one is already in this stack's history — reached via
+      // Home instead, it would PUSH a new instance on top, leaving
+      // ItemDetail/EnhanceImage mounted underneath (squished, not the
+      // full-screen root) and their effects — including this screen's own
+      // poll — never cleaned up. `reset` unconditionally clears the whole
+      // stack down to a single fresh Wardrobe root.
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Wardrobe' }],
+      });
       return;
     }
     navigation.goBack();
