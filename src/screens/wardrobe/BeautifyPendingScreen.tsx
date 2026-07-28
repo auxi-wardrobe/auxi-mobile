@@ -3,10 +3,16 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
 import { MacgieLoader } from '../../components/macgie';
 import { MButton } from '../../components/design-system/lib';
 import { wardrobeService } from '../../services/wardrobeService';
-import { beautifyStep, BEAUTIFY_POLL_MS, goToWardrobe } from './beautify-status';
+import {
+  beautifyStep,
+  BEAUTIFY_POLL_MS,
+  goToWardrobe,
+  markItemBeautifying,
+} from './beautify-status';
 import { track } from '../../services/analytics';
 import { theme } from '../../theme/theme';
 import type { AppStackParamList } from '../../types/navigation';
@@ -19,6 +25,7 @@ type ScreenRoute = RouteProp<AppStackParamList, 'BeautifyPending'>;
 export function BeautifyPendingScreen() {
   const nav = useNavigation<ScreenNavigation>();
   const route = useRoute<ScreenRoute>();
+  const queryClient = useQueryClient();
   const { itemId, originalUri } = route.params;
   const [elapsed, setElapsed] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -103,6 +110,7 @@ export function BeautifyPendingScreen() {
             try {
               await wardrobeService.beautifyItem(itemId);
               track('beautify_regenerated', { source: 'retry_pending' });
+              markItemBeautifying(queryClient, itemId);
             } catch {
               // ignore — server-side cap or network; UI already reset
             }

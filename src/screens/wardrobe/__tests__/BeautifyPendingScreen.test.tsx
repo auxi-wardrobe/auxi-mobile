@@ -12,6 +12,7 @@
  */
 import React from 'react';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BeautifyPendingScreen } from '../BeautifyPendingScreen';
 
 // ---- mocks ------------------------------------------------------------------
@@ -41,6 +42,10 @@ jest.mock('../../../services/wardrobeService', () => ({
   wardrobeService: {
     getBeautifyStatus: (...args: unknown[]) => mockGetBeautifyStatus(...args),
     beautifyItem: (...args: unknown[]) => mockBeautifyItem(...args),
+  },
+  wardrobeKeys: {
+    all: ['wardrobe-items'],
+    list: (f: string = 'All') => ['wardrobe-items', f],
   },
 }));
 
@@ -83,10 +88,14 @@ const pollTick = async () => {
 
 const liveRenderers: TestRenderer.ReactTestRenderer[] = [];
 
-const renderScreen = async () => {
+const renderScreen = async (client: QueryClient = new QueryClient()) => {
   let renderer!: TestRenderer.ReactTestRenderer;
   await act(async () => {
-    renderer = TestRenderer.create(<BeautifyPendingScreen />);
+    renderer = TestRenderer.create(
+      <QueryClientProvider client={client}>
+        <BeautifyPendingScreen />
+      </QueryClientProvider>,
+    );
   });
   liveRenderers.push(renderer);
   await flushPromises();
@@ -190,4 +199,32 @@ it('"Keep original" on the failed state resets the whole stack to Wardrobe', asy
     index: 0,
     routes: [{ name: 'Wardrobe' }],
   });
+});
+
+// =============================================================================
+// 5. failed → "Try again" re-marks the item pending in the cache
+// =============================================================================
+it('"Try again" re-patches beautify_status: pending onto the cached item', async () => {
+  mockGetBeautifyStatus.mockResolvedValue({ status: 'failed', attempts: 1 });
+  mockBeautifyItem.mockResolvedValue({ job_id: 'j2', status: 'pending' });
+  const client = new QueryClient();
+  client.setQueryData(['wardrobe-items', 'All'], [
+    { id: 'item-1', beautify_status: 'failed' },
+  ]);
+
+  const r = await renderScreen(client);
+  await pollTick();
+  expect(byTestID(r.root, 'beautify-pending-failed').length).toBeGreaterThan(
+    0,
+  );
+
+  await act(async () => {
+    await oneByTestID(r.root, 'beautify-pending-retry').props.onPress();
+  });
+  await flushPromises();
+
+  expect(mockBeautifyItem).toHaveBeenCalledWith('item-1');
+  expect(client.getQueryData(['wardrobe-items', 'All'])).toEqual([
+    { id: 'item-1', beautify_status: 'pending' },
+  ]);
 });

@@ -14,6 +14,7 @@ import { MacgieLoader } from '../../components/macgie';
 import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
 import { Icons } from '../../assets/icons';
 import { wardrobeKeys, wardrobeService } from '../../services/wardrobeService';
+import { markItemBeautifying } from '../wardrobe/beautify-status';
 import { track } from '../../services/analytics';
 import { theme } from '../../theme/theme';
 import { getImageUrl } from '../../utils/url';
@@ -107,12 +108,11 @@ export const EnhanceImageScreen = () => {
         if (session !== sessionRef.current) {
           return;
         }
-        // The item is now `beautify_status: 'pending'` server-side, but the
-        // Wardrobe list query has its own 60s staleTime and won't pick this
-        // up on its own — invalidate now so the pending badge + tap-routing
-        // (WardrobeScreen.handleItemPress) are correct the moment the user
-        // returns there, without needing a manual re-fetch trigger.
-        queryClient.invalidateQueries({ queryKey: wardrobeKeys.all });
+        // The item is now `beautify_status: 'pending'` server-side — patch
+        // it into the cached list directly (no round trip) so the pending
+        // badge + tap-routing (WardrobeScreen.handleItemPress) are correct
+        // the moment the user returns to Wardrobe.
+        markItemBeautifying(queryClient, itemId);
         pollRef.current = setInterval(async () => {
           if (session !== sessionRef.current) {
             stopPolling();

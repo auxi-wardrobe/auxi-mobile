@@ -58,7 +58,6 @@ import { PreparingOverlay } from './wardrobe/PreparingOverlay';
 import { useAddWardrobeItem } from './wardrobe/useAddWardrobeItem';
 import { useItemReadySnackbar } from './wardrobe/useItemReadySnackbar';
 import { useStalePreparingCleanup } from './wardrobe/useStalePreparingCleanup';
-import { anyBeautifying } from './wardrobe/beautify-status';
 import {
   GRID_GAP,
   HORIZONTAL_PADDING,
@@ -161,14 +160,13 @@ export const WardrobeScreen = () => {
     queryKey: wardrobeKeys.list('All'),
     queryFn: () => wardrobeService.getWardrobeItems(),
     staleTime: 60_000,
-    // AU-361 + Task 14: while focused AND something is preparing OR beautifying,
-    // poll so the preparing→ready / beautify pending→ready transitions are
-    // observed (their snackbars fire off reconcileReadyItems). Stops otherwise.
+    // AU-361: while focused AND something is preparing, poll so the
+    // preparing→ready transition is observed (fires reconcileReadyItems'
+    // snackbar). Stops otherwise. Beautify no longer needs a poll leg here —
+    // starting a job patches the badge in directly (markItemBeautifying) and
+    // the ready/failed transition arrives via push notification instead.
     refetchInterval: query =>
-      isFocused &&
-      (anyPreparing(query.state.data) || anyBeautifying(query.state.data ?? []))
-        ? PREPARING_POLL_MS
-        : false,
+      isFocused && anyPreparing(query.state.data) ? PREPARING_POLL_MS : false,
     refetchIntervalInBackground: false,
   });
 

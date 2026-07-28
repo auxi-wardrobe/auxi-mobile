@@ -1,5 +1,6 @@
+import type { QueryClient } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { WardrobeItem } from '../../services/wardrobeService';
+import { wardrobeKeys, type WardrobeItem } from '../../services/wardrobeService';
 import type { AppStackParamList } from '../../types/navigation';
 
 export const BEAUTIFY_POLL_MS = 10000;
@@ -31,6 +32,20 @@ export function beautifyStep(elapsedMs: number): string {
   return STEPS[idx];
 }
 
-export function anyBeautifying(items: Pick<WardrobeItem, 'beautify_status'>[]): boolean {
-  return items.some((i) => i.beautify_status === 'pending');
+/**
+ * Optimistically patches `beautify_status: 'pending'` onto an already-cached
+ * wardrobe item the moment a beautify job is submitted — no need to wait on
+ * an invalidate+refetch round trip just to show the "beautifying" badge.
+ * No-ops if the item isn't in the cached list yet (a brand-new upload isn't
+ * — that path already lands on BeautifyPending directly).
+ */
+export function markItemBeautifying(
+  queryClient: QueryClient,
+  itemId: string,
+): void {
+  queryClient.setQueryData<WardrobeItem[]>(wardrobeKeys.list('All'), items =>
+    items?.map(item =>
+      item.id === itemId ? { ...item, beautify_status: 'pending' } : item,
+    ),
+  );
 }

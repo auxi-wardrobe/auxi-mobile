@@ -12,7 +12,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { wardrobeService, wardrobeKeys } from '../../services/wardrobeService';
-import { goToWardrobe } from './beautify-status';
+import { goToWardrobe, markItemBeautifying } from './beautify-status';
 import { MButton } from '../../components/design-system/lib';
 import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
 import { track } from '../../services/analytics';
@@ -77,6 +77,7 @@ export function BeautifyReviewScreen() {
     try {
       await wardrobeService.beautifyItem(itemId);
       track('beautify_regenerated', { source: 'review', attempt: attempts + 1 });
+      markItemBeautifying(qc, itemId);
       nav.replace('BeautifyPending', { itemId, originalUri });
     } catch {
       setBusy(false); // cap hit (409) or network — stay on review

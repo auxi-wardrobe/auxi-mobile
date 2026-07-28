@@ -15,6 +15,8 @@ import messaging, {
 import { getTimeZone } from 'react-native-localize';
 import type { NavigationContainerRef } from '@react-navigation/native';
 import { apiClient } from './apiClient';
+import { queryClient } from './queryClient';
+import { wardrobeKeys } from './wardrobeService';
 import type { AppStackParamList } from '../types/navigation';
 import {
   trackPushPermissionRequested,
@@ -176,9 +178,18 @@ export const registerPushTapHandlers = (
   });
 
   // Foreground delivery: count it; do NOT auto-navigate — the user is already
-  // in the app. (A visible in-app banner is a Phase-2 refinement.)
+  // in the app. (A visible in-app banner is a Phase-2 refinement.) A
+  // beautify-result push is the one type that DOES act while foregrounded:
+  // it refreshes the wardrobe cache directly so the badge/tap-routing are
+  // correct without the user needing to leave and come back.
   const unsubForeground = messaging().onMessage(async msg => {
     trackPushReceived(messageType(msg));
+    if (
+      msg.data?.type === 'beautify_result' &&
+      msg.data?.action === 'beautify_result'
+    ) {
+      queryClient.invalidateQueries({ queryKey: wardrobeKeys.all });
+    }
   });
 
   return () => {

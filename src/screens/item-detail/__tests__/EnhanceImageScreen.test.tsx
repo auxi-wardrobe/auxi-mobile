@@ -420,16 +420,18 @@ it('pressing back once ready still goes back to ItemDetail (unchanged)', async (
 // =============================================================================
 // 9. starting a session invalidates the Wardrobe list cache immediately
 // =============================================================================
-it('invalidates the wardrobe list query as soon as the beautify job starts', async () => {
+it('patches beautify_status: pending onto the cached wardrobe item as soon as the job starts (no refetch)', async () => {
   mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
 
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
   // Seed the Wardrobe list cache the way a real session would have it —
-  // invalidating an absent query key leaves nothing to assert against, so
   // this test bypasses the shared renderScreen() helper to seed first.
-  client.setQueryData(['wardrobe-items'], []);
+  client.setQueryData(['wardrobe-items', 'All'], [
+    { id: 'item-1', beautify_status: 'none' },
+    { id: 'other-item', beautify_status: 'none' },
+  ]);
 
   let renderer!: TestRenderer.ReactTestRenderer;
   await act(async () => {
@@ -442,5 +444,12 @@ it('invalidates the wardrobe list query as soon as the beautify job starts', asy
   liveRenderers.push(renderer);
   await flushPromises(); // settle the mount-effect beautifyItem POST
 
-  expect(client.getQueryState(['wardrobe-items'])?.isInvalidated).toBe(true);
+  expect(client.getQueryData(['wardrobe-items', 'All'])).toEqual([
+    { id: 'item-1', beautify_status: 'pending' },
+    { id: 'other-item', beautify_status: 'none' },
+  ]);
+  // No network round trip needed for the badge to appear.
+  expect(client.getQueryState(['wardrobe-items', 'All'])?.isInvalidated).toBe(
+    false,
+  );
 });

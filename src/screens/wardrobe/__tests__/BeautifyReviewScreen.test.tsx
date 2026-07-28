@@ -78,10 +78,11 @@ const flushPromises = async () => {
 
 const liveRenderers: TestRenderer.ReactTestRenderer[] = [];
 
-const renderScreen = async () => {
-  const client = new QueryClient({
+const renderScreen = async (
+  client: QueryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
-  });
+  }),
+) => {
   let renderer!: TestRenderer.ReactTestRenderer;
   await act(async () => {
     renderer = TestRenderer.create(
@@ -92,7 +93,7 @@ const renderScreen = async () => {
   });
   liveRenderers.push(renderer);
   await flushPromises(); // settle the mount-effect getBeautifyStatus fetch
-  return renderer;
+  return { renderer, client };
 };
 
 beforeEach(() => {
@@ -120,7 +121,7 @@ afterEach(() => {
 // =============================================================================
 it('Accept & save resets the whole stack to Wardrobe, not a plain navigate', async () => {
   mockAcceptBeautify.mockResolvedValue({});
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
 
   await act(async () => {
     oneByTestID(r.root, 'beautify-review-accept').props.onPress();
@@ -141,7 +142,7 @@ it('Accept & save resets the whole stack to Wardrobe, not a plain navigate', asy
 // =============================================================================
 it('Keep original resets the whole stack to Wardrobe', async () => {
   mockDiscardBeautify.mockResolvedValue({});
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
 
   await act(async () => {
     oneByTestID(r.root, 'beautify-review-keep-original').props.onPress();
@@ -160,13 +161,19 @@ it('Keep original resets the whole stack to Wardrobe', async () => {
 // =============================================================================
 // 3. Regenerate → still replaces into BeautifyPending (unchanged)
 // =============================================================================
-it('Regenerate replaces into BeautifyPending and does not touch the stack reset', async () => {
+it('Regenerate replaces into BeautifyPending, re-patches the cache, and does not touch the stack reset', async () => {
   mockBeautifyItem.mockResolvedValue({ job_id: 'j2', status: 'pending' });
-  const r = await renderScreen();
+  // Default gcTime (not 0) — BeautifyReviewScreen only ever writes to this
+  // query key (never observes it via useQuery), so a 0 gcTime would sweep
+  // the seeded, observer-less cache entry before the assertion below runs.
+  const client = new QueryClient();
+  client.setQueryData(['wardrobe-items', 'All'], [
+    { id: 'item-1', beautify_status: 'ready' },
+  ]);
+  const { renderer: r } = await renderScreen(client);
 
   await act(async () => {
-    oneByTestID(r.root, 'beautify-review-regenerate').props.onPress();
-    await Promise.resolve();
+    await oneByTestID(r.root, 'beautify-review-regenerate').props.onPress();
   });
   await flushPromises();
 
@@ -176,6 +183,14 @@ it('Regenerate replaces into BeautifyPending and does not touch the stack reset'
     originalUri: 'https://cdn.example/original.png',
   });
   expect(mockReset).not.toHaveBeenCalled();
+  expect(client.getQueryData(['wardrobe-items', 'All'])).toEqual([
+    { id: 'item-1', beautify_status: 'pending' },
+  ]);
+
+  // Default (non-zero) gcTime leaves a pending GC timeout on this
+  // observer-less query — dispose it so it doesn't keep the process alive
+  // after the test run finishes.
+  client.clear();
 });
 
 // =============================================================================
@@ -183,7 +198,7 @@ it('Regenerate replaces into BeautifyPending and does not touch the stack reset'
 // =============================================================================
 it('stays on review and re-enables actions when accept fails', async () => {
   mockAcceptBeautify.mockRejectedValue(new Error('boom'));
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
 
   await act(async () => {
     oneByTestID(r.root, 'beautify-review-accept').props.onPress();
@@ -201,7 +216,7 @@ it('stays on review and re-enables actions when accept fails', async () => {
 // 5. mount fetches the candidate for the "After" preview
 // =============================================================================
 it('fetches the beautify status on mount to render the candidate preview', async () => {
-  const r = await renderScreen();
+  const { renderer: r } = await renderScreen();
 
   expect(mockGetBeautifyStatus).toHaveBeenCalledWith('item-1');
   expect(
