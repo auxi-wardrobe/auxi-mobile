@@ -338,6 +338,33 @@ export const WardrobeScreen = () => {
       setSelectedItemId(item.id);
       return;
     }
+    // A beautify job in flight or awaiting review takes over the tap —
+    // route straight to the matching beautify screen instead of the normal
+    // item detail/edit screen. 'failed' falls through unchanged below: there
+    // is no candidate to review, so it behaves like a normal item.
+    if (item.beautify_status === 'pending') {
+      track('wardrobe_item_opened', {
+        item_id: item.id,
+        beautify_status: 'pending',
+      });
+      navigation.navigate('BeautifyPending', {
+        itemId: item.id,
+        originalUri: item.image_url ?? '',
+      });
+      return;
+    }
+    if (item.beautify_status === 'ready') {
+      track('wardrobe_item_opened', {
+        item_id: item.id,
+        beautify_status: 'ready',
+      });
+      navigation.navigate('BeautifyReview', {
+        itemId: item.id,
+        originalUri: item.image_url ?? '',
+        from: 'snackbar',
+      });
+      return;
+    }
     track('wardrobe_item_opened', {
       item_id: item.id,
       is_common: isCommonItem(item),
