@@ -705,10 +705,12 @@ export const ItemDetailScreen = () => {
                 onPress={handleEnhance}
                 disabled={saving}
               >
+                {/* On-dark icon tone: the purple AI accent has almost no
+                    contrast against the black chip. */}
                 <Icons.Sparkle
                   width={20}
                   height={20}
-                  color={theme.colors.figmaAiSparkle}
+                  color={theme.colors.figmaPrimaryButtonIcon}
                 />
               </TouchableOpacity>
             ) : null}
@@ -846,16 +848,17 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.uacBackgroundNeutral50,
   },
-  // AI enhancement FAB: 36pt white rounded square pinned to the image's
-  // bottom-right corner, same soft warm shadow as the header back button.
+  // AI enhancement FAB: 36pt black rounded square pinned to the image's
+  // bottom-right corner, 20px in from the right edge, same soft warm shadow as
+  // the header back button.
   enhanceFab: {
     position: 'absolute',
     bottom: theme.spacing.uacDimension12,
-    right: theme.spacing.uacDimension12,
+    right: theme.spacing.uacDimension20,
     width: 36,
     height: 36,
     borderRadius: theme.borderRadius.m,
-    backgroundColor: theme.colors.white,
+    backgroundColor: theme.colors.figmaPrimaryButtonBg,
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.ds.shadow.headerIcon,
