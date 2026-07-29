@@ -708,8 +708,8 @@ export const ItemDetailScreen = () => {
                 {/* On-dark icon tone: the purple AI accent has almost no
                     contrast against the black chip. */}
                 <Icons.Sparkle
-                  width={20}
-                  height={20}
+                  width={24}
+                  height={24}
                   color={theme.colors.figmaPrimaryButtonIcon}
                 />
               </TouchableOpacity>
