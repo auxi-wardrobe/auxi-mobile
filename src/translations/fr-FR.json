@@ -239,7 +239,14 @@
       },
       "enhance": {
         "title": "Améliorer l'image",
-        "loading": "Préparation de l'article\nen moins de 10 secondes",
+        "loading_headline": "Nous faisons briller votre vêtement ✨",
+        "loading_rows": [
+          "Amélioration de votre article…",
+          "Affinage des détails…",
+          "Nettoyage de votre vêtement…"
+        ],
+        "loading_note": "Cela peut prendre plus de temps que prévu.\nVous pouvez partir — nous vous préviendrons dès que c'est prêt",
+        "leave_notify": "Partir — me prévenir quand c'est prêt",
         "compare_hint": "Appui long pour voir l'image d'origine",
         "discard": "Ignorer",
         "replace_original": "Remplacer l'original",

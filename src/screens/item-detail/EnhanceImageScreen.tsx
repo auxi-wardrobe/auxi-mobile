@@ -10,11 +10,11 @@ import {
   PillButton,
   TopIconButton,
 } from '../../components/primitives/FigmaPrimitives';
-import { MacgieLoader } from '../../components/macgie';
 import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
 import { Icons } from '../../assets/icons';
 import { wardrobeKeys, wardrobeService } from '../../services/wardrobeService';
-import { markItemBeautifying } from '../wardrobe/beautify-status';
+import { goToWardrobe, markItemBeautifying } from '../wardrobe/beautify-status';
+import { EnhanceLoadingView } from './EnhanceLoadingView';
 import { track } from '../../services/analytics';
 import { theme } from '../../theme/theme';
 import { getImageUrl } from '../../utils/url';
@@ -45,16 +45,23 @@ const FOOTER_BOTTOM_PADDING = 36;
  * AI Image Enhancement preview (Item Detail → sparkle FAB → here).
  *
  * On mount it fires POST /items/{id}/beautify (the same decoupled backend
- * branch the upload-time flow uses) and polls the status fast — the wait is
- * synchronous ("Preparing this item in under 10 seconds"), unlike the
- * leave-and-come-back BeautifyPending flow. Nothing is persisted until the
- * user taps "Replace original": the candidate lives server-side in
- * `image_studio_candidate` and never leaks into any list (trust-first: the
- * original is never overwritten before explicit confirmation).
+ * branch the upload-time flow uses) and polls the status fast. Nothing is
+ * persisted until the user taps "Replace original": the candidate lives
+ * server-side in `image_studio_candidate` and never leaks into any list
+ * (trust-first: the original is never overwritten before explicit
+ * confirmation).
+ *
+ * Three phases, three bodies under a shared header: `loading` hands the whole
+ * body to EnhanceLoadingView (mascot + staggered progress rows + the leave CTA
+ * — no preview, no actions), `ready` shows the candidate with the long-press
+ * compare and the discard/replace pair, `error` shows the reason plus retry.
  *
  * Leaving mid-generation is safe by design: polling stops, the job finishes
  * server-side into the uncommitted candidate slot, and the next session's
- * POST regenerates over it (previous temporary image is never reused).
+ * POST regenerates over it (previous temporary image is never reused). The
+ * item is already flagged `beautify_status: 'pending'` in the Wardrobe cache,
+ * so the beautify-ready snackbar there is what "we'll let you know the second
+ * it's ready" actually means.
  */
 export const EnhanceImageScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
@@ -224,21 +231,27 @@ export const EnhanceImageScreen = () => {
     if (phase === 'loading') {
       // Going back to ItemDetail mid-generation would show a stale image
       // (ItemDetail doesn't poll beautify_status), so land on Wardrobe
-      // instead, where the item's "beautifying" badge is now visible.
-      // A plain `navigate('Wardrobe')` only pops to an existing Wardrobe
-      // route if one is already in this stack's history — reached via
-      // Home instead, it would PUSH a new instance on top, leaving
-      // ItemDetail/EnhanceImage mounted underneath (squished, not the
-      // full-screen root) and their effects — including this screen's own
-      // poll — never cleaned up. `reset` unconditionally clears the whole
-      // stack down to a single fresh Wardrobe root.
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Wardrobe' }],
-      });
+      // instead, where the item's "beautifying" badge is now visible — and
+      // where the beautify-ready snackbar makes good on the loading screen's
+      // "we'll let you know the second it's ready" promise. `goToWardrobe`
+      // resets the stack rather than navigating: a plain
+      // `navigate('Wardrobe')` only pops to an existing Wardrobe route if one
+      // is already in this stack's history — reached via Home instead, it
+      // would PUSH a new instance on top, leaving ItemDetail/EnhanceImage
+      // mounted underneath (squished, not the full-screen root) and their
+      // effects — including this screen's own poll — never cleaned up.
+      goToWardrobe(navigation);
       return;
     }
     navigation.goBack();
+  };
+
+  // "Leave — notify me when ready": same exit as the header back button
+  // mid-generation, tracked separately so the escape hatch's usage is
+  // distinguishable from a plain back-out.
+  const handleLeaveWaiting = () => {
+    track('enhance_left_waiting', { item_id: itemId });
+    goToWardrobe(navigation);
   };
 
   const enhancedUri = getImageUrl(candidateUri ?? undefined);
@@ -261,104 +274,104 @@ export const EnhanceImageScreen = () => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <View style={styles.imageRegion}>
-        {/* Long-press compare (ready only): hold → original, release →
-            enhanced. While loading the press surface is inert, so an early
-            long press performs no comparison. */}
-        <Pressable
-          testID="enhance-image-preview"
-          accessibilityLabel={t('wardrobe.enhance.a11y_preview')}
-          disabled={phase !== 'ready'}
-          onLongPress={() => setComparing(true)}
-          onPressOut={() => setComparing(false)}
-          style={styles.imageFrame}
-        >
-          {imageUri ? (
-            <Image
-              source={{ uri: imageUri }}
-              style={[styles.image, phase === 'loading' && styles.imageDimmed]}
-              resizeMode="contain"
-            />
-          ) : null}
+      {/* Loading owns the whole body: no preview, no actions — just the
+          progress rows and the leave-and-be-notified escape hatch. */}
+      {phase === 'loading' ? (
+        <EnhanceLoadingView
+          onLeave={handleLeaveWaiting}
+          bottomInset={Math.max(FOOTER_BOTTOM_PADDING, insets.bottom)}
+        />
+      ) : (
+        <>
+          <View style={styles.imageRegion}>
+            {/* Long-press compare (ready only): hold → original, release →
+                enhanced. */}
+            <Pressable
+              testID="enhance-image-preview"
+              accessibilityLabel={t('wardrobe.enhance.a11y_preview')}
+              disabled={phase !== 'ready'}
+              onLongPress={() => setComparing(true)}
+              onPressOut={() => setComparing(false)}
+              style={styles.imageFrame}
+            >
+              {imageUri ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  style={styles.image}
+                  resizeMode="contain"
+                />
+              ) : null}
+            </Pressable>
 
-          {phase === 'loading' ? (
-            <View testID="enhance-loading-overlay" style={styles.overlay}>
-              <MacgieLoader variant="inline" testID="enhance-loading-macgie" />
-              <Text style={styles.overlayText}>
-                {t('wardrobe.enhance.loading')}
+            {phase === 'ready' ? (
+              <Text testID="enhance-compare-hint" style={styles.hintText}>
+                {t('wardrobe.enhance.compare_hint')}
               </Text>
-            </View>
-          ) : null}
-        </Pressable>
+            ) : null}
 
-        {phase === 'ready' ? (
-          <Text testID="enhance-compare-hint" style={styles.hintText}>
-            {t('wardrobe.enhance.compare_hint')}
-          </Text>
-        ) : null}
+            {/* AI-generated disclosure — the enhanced preview is an
+                AI-generated image (App Store AI rules). Shown once a
+                candidate is ready. */}
+            {phase === 'ready' ? (
+              <AiContentDisclosure
+                surface="enhance"
+                testID="enhance-ai-disclosure"
+              />
+            ) : null}
 
-        {/* AI-generated disclosure — the enhanced preview is an AI-generated
-            image (App Store AI rules). Shown once a candidate is ready. */}
-        {phase === 'ready' ? (
-          <AiContentDisclosure
-            surface="enhance"
-            testID="enhance-ai-disclosure"
-          />
-        ) : null}
-
-        {phase === 'error' ? (
-          <Text testID="enhance-error-message" style={styles.errorText}>
-            {t(ENHANCE_ERROR_KEYS[errorReason])}
-          </Text>
-        ) : null}
-      </View>
-
-      <View
-        style={[
-          styles.footer,
-          { paddingBottom: Math.max(FOOTER_BOTTOM_PADDING, insets.bottom) },
-        ]}
-      >
-        {phase === 'error' ? (
-          <>
-            <PillButton
-              testID="enhance-retry-btn"
-              variant="filled"
-              title={t('wardrobe.enhance.retry')}
-              style={styles.footerButton}
-              onPress={startSession}
-            />
-            <PillButton
-              testID="enhance-cancel-btn"
-              variant="outline"
-              title={t('wardrobe.enhance.cancel')}
-              style={styles.footerButton}
-              onPress={() => navigation.goBack()}
-            />
-          </>
-        ) : (
-          <View style={styles.footerRow}>
-            {/* Both actions render (disabled) during loading per the design —
-                the state is visible, not hidden. */}
-            <PillButton
-              testID="enhance-discard-btn"
-              variant="outline"
-              title={t('wardrobe.enhance.discard')}
-              style={styles.footerButton}
-              onPress={handleDiscard}
-              disabled={phase !== 'ready' || saving}
-            />
-            <PillButton
-              testID="enhance-replace-btn"
-              variant="filled"
-              title={t('wardrobe.enhance.replace_original')}
-              style={styles.footerButton}
-              onPress={handleReplace}
-              disabled={phase !== 'ready' || saving}
-            />
+            {phase === 'error' ? (
+              <Text testID="enhance-error-message" style={styles.errorText}>
+                {t(ENHANCE_ERROR_KEYS[errorReason])}
+              </Text>
+            ) : null}
           </View>
-        )}
-      </View>
+
+          <View
+            style={[
+              styles.footer,
+              { paddingBottom: Math.max(FOOTER_BOTTOM_PADDING, insets.bottom) },
+            ]}
+          >
+            {phase === 'error' ? (
+              <>
+                <PillButton
+                  testID="enhance-retry-btn"
+                  variant="filled"
+                  title={t('wardrobe.enhance.retry')}
+                  style={styles.footerButton}
+                  onPress={startSession}
+                />
+                <PillButton
+                  testID="enhance-cancel-btn"
+                  variant="outline"
+                  title={t('wardrobe.enhance.cancel')}
+                  style={styles.footerButton}
+                  onPress={() => navigation.goBack()}
+                />
+              </>
+            ) : (
+              <View style={styles.footerRow}>
+                <PillButton
+                  testID="enhance-discard-btn"
+                  variant="outline"
+                  title={t('wardrobe.enhance.discard')}
+                  style={styles.footerButton}
+                  onPress={handleDiscard}
+                  disabled={phase !== 'ready' || saving}
+                />
+                <PillButton
+                  testID="enhance-replace-btn"
+                  variant="filled"
+                  title={t('wardrobe.enhance.replace_original')}
+                  style={styles.footerButton}
+                  onPress={handleReplace}
+                  disabled={phase !== 'ready' || saving}
+                />
+              </View>
+            )}
+          </View>
+        </>
+      )}
     </View>
   );
 };
@@ -408,20 +421,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
-  },
-  imageDimmed: {
-    opacity: 0.35,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.s,
-  },
-  overlayText: {
-    ...theme.typography.aliases.uacBodyXsRegular,
-    color: theme.colors.uacTextBase,
-    textAlign: 'center',
   },
   hintText: {
     ...theme.typography.aliases.uacBodyXsRegular,

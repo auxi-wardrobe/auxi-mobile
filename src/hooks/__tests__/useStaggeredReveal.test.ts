@@ -72,6 +72,37 @@ describe('useStaggeredReveal', () => {
     unmount();
   });
 
+  it('closes each row out at the end of its own slot (3 rows = 6s, not 4s)', async () => {
+    const { get, unmount } = mountHook(3, { stepMs: 2000 });
+    await act(async () => {});
+    expect(get().completedCount).toBe(0); // row 0 revealed but still running
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+    expect(get().completedCount).toBe(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000); // 4s — every row revealed…
+    });
+    expect(get().visibleCount).toBe(3);
+    expect(get().completedCount).toBe(2); // …but the last one is still running
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000); // 6s — the sequence is done
+    });
+    expect(get().completedCount).toBe(3);
+    unmount();
+  });
+
+  it('reduce-motion completes every row immediately', async () => {
+    mockedIsReduceMotionEnabled.mockResolvedValue(true);
+    const { get, unmount } = mountHook(3, { stepMs: 2000 });
+    await act(async () => {});
+    expect(get().completedCount).toBe(3);
+    unmount();
+  });
+
   it('gates the CTA to minCtaMs even after all rows revealed', async () => {
     const { get, unmount } = mountHook(3, { stepMs: 2000, minCtaMs: 7000 });
     await act(async () => {

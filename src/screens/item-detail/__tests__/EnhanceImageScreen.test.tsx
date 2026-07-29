@@ -12,6 +12,11 @@
  *  6. replace original      — acceptBeautify → popTo ItemDetail with the
  *                             merged `enhancedItem` return param
  *  7. replace failure       — stays on the preview, actions re-enable
+ *  8. back while loading    — resets the stack to a single Wardrobe root
+ *  9. session start         — patches beautify_status onto the cached list
+ * 10. loading design        — one sentence per 2s slot, checked off in turn
+ *                             (3 rows = 6s), sequence never ends the wait
+ * 11. leave-and-notify      — same Wardrobe reset, nothing discarded
  *
  * Patterns follow ItemDetailScreen.test.tsx (react-test-renderer, testID
  * queries, real en-EN copy). Fake timers drive the poll loop; microtask
@@ -21,6 +26,7 @@ import React from 'react';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { toast } from '../../../components/design-system/lib';
+import { theme } from '../../../theme/theme';
 import { EnhanceImageScreen } from '../EnhanceImageScreen';
 
 // ---- mocks ------------------------------------------------------------------
@@ -142,6 +148,16 @@ const renderScreen = async () => {
   return { renderer, client };
 };
 
+/**
+ * A loading row shows the green check once its own 2s slot is over; until then
+ * it spins. Under the `.svg` jest stub both glyphs render as a bare View, so
+ * the completed state is identified by the check's green `color` prop.
+ */
+const rowIsChecked = (root: ReactTestInstance, index: number): boolean =>
+  oneByTestID(root, `enhance-loading-row-${index}`).findAll(
+    n => n.props?.color === theme.colors.figmaToggleOn,
+  ).length > 0;
+
 const READY_STATUS = {
   status: 'ready',
   candidate_url: 'https://cdn.example/candidate.png',
@@ -186,10 +202,12 @@ it('polls until ready, then swaps to the candidate and enables both actions', as
     item_id: 'item-1',
   });
 
-  // Loading: overlay + copy shown, both actions disabled, no compare hint
+  // Loading owns the body: progress rows + leave CTA, no preview/actions/hint
   expect(byTestID(root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
-  expect(oneByTestID(root, 'enhance-discard-btn').props.disabled).toBe(true);
-  expect(oneByTestID(root, 'enhance-replace-btn').props.disabled).toBe(true);
+  expect(byTestID(root, 'enhance-leave-btn').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-discard-btn').length).toBe(0);
+  expect(byTestID(root, 'enhance-replace-btn').length).toBe(0);
+  expect(byTestID(root, 'enhance-image-preview').length).toBe(0);
   expect(byTestID(root, 'enhance-compare-hint').length).toBe(0);
 
   await pollTick(); // → pending
@@ -452,4 +470,62 @@ it('patches beautify_status: pending onto the cached wardrobe item as soon as th
   expect(client.getQueryState(['wardrobe-items', 'All'])?.isInvalidated).toBe(
     false,
   );
+});
+
+// =============================================================================
+// 10. loading design — one sentence per 2s slot (6s for all three)
+// =============================================================================
+it('reveals one loading sentence every 2s and checks each off at the end of its own slot', async () => {
+  mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
+
+  const { renderer: r } = await renderScreen();
+  const root = r.root;
+
+  // t=0 — first sentence only, still in progress (spinner, no check).
+  expect(byTestID(root, 'enhance-loading-row-0').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-loading-row-1').length).toBe(0);
+  expect(rowIsChecked(root, 0)).toBe(false);
+
+  await pollTick(); // t=2s
+  expect(rowIsChecked(root, 0)).toBe(true);
+  expect(byTestID(root, 'enhance-loading-row-1').length).toBeGreaterThan(0);
+  expect(rowIsChecked(root, 1)).toBe(false);
+  expect(byTestID(root, 'enhance-loading-row-2').length).toBe(0);
+
+  await pollTick(); // t=4s
+  expect(rowIsChecked(root, 1)).toBe(true);
+  expect(byTestID(root, 'enhance-loading-row-2').length).toBeGreaterThan(0);
+  expect(rowIsChecked(root, 2)).toBe(false);
+
+  await pollTick(); // t=6s — the whole sequence is done
+  expect(rowIsChecked(root, 2)).toBe(true);
+
+  // The cosmetic sequence never ends the wait: still loading, still polling.
+  await pollTick();
+  expect(byTestID(root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-loading-row-2').length).toBeGreaterThan(0);
+});
+
+// =============================================================================
+// 11. "Leave — notify me when ready" — job keeps running server-side
+// =============================================================================
+it('leaving from the loading screen resets to Wardrobe without discarding the job', async () => {
+  mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
+
+  const { renderer: r } = await renderScreen();
+
+  act(() => oneByTestID(r.root, 'enhance-leave-btn').props.onPress());
+
+  expect(mockTrack).toHaveBeenCalledWith('enhance_left_waiting', {
+    item_id: 'item-1',
+  });
+  // Same exit as the header back button mid-generation: a full stack reset to
+  // Wardrobe, where the beautify-ready snackbar delivers the "we'll let you
+  // know" promise. Nothing is cancelled or discarded.
+  expect(mockReset).toHaveBeenCalledWith({
+    index: 0,
+    routes: [{ name: 'Wardrobe' }],
+  });
+  expect(mockDiscardBeautify).not.toHaveBeenCalled();
+  expect(mockGoBack).not.toHaveBeenCalled();
 });

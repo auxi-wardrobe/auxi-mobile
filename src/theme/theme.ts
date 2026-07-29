@@ -293,6 +293,14 @@ export const theme = {
         fontSize: 16,
         lineHeight: 24,
       },
+      // Loading-state headline ("Making your clothing shine ✨", Enhance Image
+      // "Loading step 6") — Inter Bold 18/24: one step above body/md, below
+      // the 24/32 H4 aliases. No existing 18/24 alias.
+      interH5Bold: {
+        fontFamily: 'Inter-Bold',
+        fontSize: 18,
+        lineHeight: 24,
+      },
       // Settings redesign — Delete-data dialog title (Frame 4).
       // Inter SemiBold 16/20 (Text-md l-20/Semibold) — line-height 20, not 24.
       interSemiboldSm: {

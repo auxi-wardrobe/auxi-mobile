@@ -11,19 +11,12 @@
  * error branches keep `GeneratingView` (error copy + retry), unchanged.
  */
 import React from 'react';
-import {
-  Animated,
-  Easing,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useStaggeredReveal } from '../../hooks/useStaggeredReveal';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
+import { SpinnerIcon } from '../../components/atoms/SpinnerIcon';
 import { MacgieLoader } from '../../components/macgie';
 import { StomHeader } from './components';
 
@@ -44,35 +37,6 @@ interface StomLoadingScreenProps {
   onQuit: () => void;
   testID?: string;
 }
-
-const SpinnerIcon: React.FC = () => {
-  const spin = React.useRef(new Animated.Value(0)).current;
-  React.useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(spin, {
-        toValue: 1,
-        duration: 1000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [spin]);
-  const rotate = spin.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-  return (
-    <Animated.View style={{ transform: [{ rotate }] }}>
-      <Icons.Loading
-        width={24}
-        height={24}
-        color={theme.colors.uacTextSubtle200}
-      />
-    </Animated.View>
-  );
-};
 
 export const StomLoadingScreen: React.FC<StomLoadingScreenProps> = ({
   title,
