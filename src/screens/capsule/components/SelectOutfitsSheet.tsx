@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import {
-  MBottomSheet,
-  MButton,
-} from '../../../components/design-system/lib';
+import { MButton } from '../../../components/design-system/lib';
+import { ContextualBottomSheet } from '../../../components/features/ContextualBottomSheet';
 import { MacgieLoader } from '../../../components/macgie';
 import { theme } from '../../../theme/theme';
 import { favouriteService } from '../../../services/favouriteService';
@@ -32,7 +30,8 @@ interface OutfitRow {
  * Saved-outfit multi-select for the capsule add flow. Fetches favourites or
  * creations depending on `source`; each row shows the outfit's item thumbnails
  * and a select toggle. Confirm hands the chosen outfit ids up (the backend
- * extracts + dedups the items).
+ * extracts + dedups the items). Rides the shared ContextualBottomSheet shell,
+ * like the wardrobe Add-item sheet.
  */
 export const SelectOutfitsSheet: React.FC<SelectOutfitsSheetProps> = ({
   visible,
@@ -88,7 +87,7 @@ export const SelectOutfitsSheet: React.FC<SelectOutfitsSheetProps> = ({
       : t('capsule.source_creations');
 
   return (
-    <MBottomSheet
+    <ContextualBottomSheet
       visible={visible}
       onDismiss={onDismiss}
       testID="capsule-select-outfits-sheet"
@@ -140,7 +139,7 @@ export const SelectOutfitsSheet: React.FC<SelectOutfitsSheetProps> = ({
           {t('capsule.confirm_add')}
         </MButton>
       </View>
-    </MBottomSheet>
+    </ContextualBottomSheet>
   );
 };
 

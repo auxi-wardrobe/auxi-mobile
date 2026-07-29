@@ -1019,6 +1019,7 @@
     "capsule": {
       "title": "Capsule Wardrobe",
       "add": "Add",
+      "add_sheet_title": "Add to capsule",
       "add_source_helper": "Choose where you'd like to add from.",
       "source_wardrobe": "My Wardrobe",
       "source_favourites": "My Favourites",
