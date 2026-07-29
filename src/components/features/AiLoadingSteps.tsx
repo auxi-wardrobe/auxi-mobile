@@ -35,6 +35,9 @@ const MIN_CTA_MS = 7000;
 
 const CHECK_SIZE = 24;
 
+/** Mascot height on every loading screen. */
+const MASCOT_SIZE = 76;
+
 interface AiLoadingStepsProps {
   headline: string;
   /** Progress sentences, revealed one per `stepMs` slot. */
@@ -81,7 +84,11 @@ export const AiLoadingSteps: React.FC<AiLoadingStepsProps> = ({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <MacgieLoader testID={`${testID}-mascot`} style={styles.mascot} />
+        <MacgieLoader
+          testID={`${testID}-mascot`}
+          size={MASCOT_SIZE}
+          style={styles.mascot}
+        />
         <Text style={styles.headline}>{headline}</Text>
 
         <View style={styles.rows} testID={`${testID}-rows`}>
@@ -151,7 +158,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   headline: {
-    ...theme.typography.aliases.interH5Bold,
+    ...theme.typography.aliases.interBodyBold,
     color: theme.colors.uacTextBase,
     textAlign: 'center',
     marginTop: theme.spacing.l,
@@ -169,7 +176,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.m,
   },
   rowText: {
-    ...theme.typography.aliases.uacBodyMdRegular,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
     flexShrink: 1,
   },
