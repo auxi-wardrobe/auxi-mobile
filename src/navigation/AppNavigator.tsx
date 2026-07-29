@@ -47,6 +47,8 @@ import { CapsuleInfoScreen } from '../screens/capsule/CapsuleInfoScreen';
 import { CapsuleGeneratingScreen } from '../screens/capsule/CapsuleGeneratingScreen';
 import { CapsuleDetailScreen } from '../screens/capsule/CapsuleDetailScreen';
 import { CapsuleItemDetailScreen } from '../screens/capsule/CapsuleItemDetailScreen';
+import { CapsuleSelectItemsScreen } from '../screens/capsule/CapsuleSelectItemsScreen';
+import { CapsuleSelectOutfitsScreen } from '../screens/capsule/CapsuleSelectOutfitsScreen';
 import { CapsuleEditScreen } from '../screens/capsule/CapsuleEditScreen';
 import {
   registerDeepLinkListeners,
@@ -349,6 +351,16 @@ export const AppNavigator = () => {
               <Stack.Screen
                 name="CapsuleDetail"
                 component={CapsuleDetailScreen}
+              />
+              {/* Item / outfit pickers are full pages — the add-source sheet
+                  routes here so the user browses with room to see things. */}
+              <Stack.Screen
+                name="CapsuleSelectItems"
+                component={CapsuleSelectItemsScreen}
+              />
+              <Stack.Screen
+                name="CapsuleSelectOutfits"
+                component={CapsuleSelectOutfitsScreen}
               />
               <Stack.Screen
                 name="CapsuleItemDetail"

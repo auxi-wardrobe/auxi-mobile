@@ -554,8 +554,8 @@ Curated wardrobe subsets ("capsules") with rule-based outfit generation (spec `p
 | `capsule_generation_failed` | Create API rejects | `CapsuleGeneratingScreen.tsx` | `error_kind` (sanitized enum), `status?` |
 | `capsule_viewed` | Detail opened — **once per capsule id per session** (Set dedup, `trackCapsuleViewedOnce`) | `CapsuleDetailScreen.tsx` | `item_count`, `outfit_count` |
 | `capsule_summary_expanded` | Expandable summary opened | `CapsuleSummaryPanel.tsx` | — |
-| `capsule_add_source_selected` | Add-source chosen | `CapsuleAddFlow.tsx` | `source` (`wardrobe` / `favourites` / `creations`) |
-| `capsule_items_added` | Add success (wardrobe items or from-outfits) | `CapsuleAddFlow.tsx` | `source`, `items_added`, `new_outfits`, `already_existed` |
+| `capsule_add_source_selected` | Add-source chosen in the sheet — routes to the matching picker page | `CapsuleAddFlow.tsx` | `source` (`wardrobe` / `favourites` / `creations`) |
+| `capsule_items_added` | Add confirmed on the picker page (wardrobe items or from-outfits) | `CapsuleSelectItemsScreen.tsx`, `CapsuleSelectOutfitsScreen.tsx` | `source`, `items_added`, `new_outfits`, `already_existed` |
 | `capsule_item_removed` | Item removed from capsule | `CapsuleItemDetailScreen.tsx` | `used_in_outfits` |
 | `capsule_item_changed` | Item swapped | `CapsuleItemDetailScreen.tsx` | `scope` (`outfit` / `all`) |
 | `capsule_deleted` | Capsule deleted | `CapsuleDetailScreen.tsx` | — |

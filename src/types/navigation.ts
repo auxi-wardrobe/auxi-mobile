@@ -6,6 +6,7 @@ import type {
 } from '../services/v05Api';
 import type { LegalScreenParams } from '../screens/legal/LegalDocumentScreen';
 import type { BodyShape } from '../services/bodyService';
+import type { CapsuleOutfitSource } from '../services/capsuleService';
 
 /**
  * AU-242 — UAC v2 auth stack routes.
@@ -317,7 +318,26 @@ export type AppStackParamList = {
     item_ids?: string[];
   };
   CapsuleDetail: { capsuleId: string };
-  CapsuleItemDetail: { capsuleId: string; itemId: string };
+  // Adding pieces happens on full PAGES (not sheets) — only the source picker
+  // ("where do you want to add from?") is a bottom sheet. The items page doubles
+  // as the change-item picker: `mode: 'replace'` single-selects and hands the id
+  // back to CapsuleItemDetail via `replacementItemId` instead of adding.
+  CapsuleSelectItems: {
+    capsuleId: string;
+    mode?: 'add' | 'replace';
+    /** The item being replaced (mode: 'replace' only). */
+    itemId?: string;
+  };
+  CapsuleSelectOutfits: {
+    capsuleId: string;
+    source: CapsuleOutfitSource;
+  };
+  CapsuleItemDetail: {
+    capsuleId: string;
+    itemId: string;
+    /** Set by CapsuleSelectItems (mode: 'replace') on its way back. */
+    replacementItemId?: string;
+  };
   // Edit a capsule's name + requirements (design revision §9.2). Save PATCHes
   // /capsules/{id}; a constraint change regenerates outfits server-side.
   CapsuleEdit: { capsuleId: string };

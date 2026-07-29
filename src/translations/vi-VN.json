@@ -1024,6 +1024,8 @@
       "source_favourites": "Yêu thích của tôi",
       "source_creations": "Sáng tạo của tôi",
       "already_in_capsule": "Đã có trong capsule",
+      "select_items_empty": "Tủ đồ của bạn đang trống. Hãy thêm món đồ vào tủ đồ trước.",
+      "select_outfits_empty": "Chưa có gì được lưu ở đây.",
       "create_title": "Capsule mới",
       "name_label": "Tên capsule",
       "name_placeholder": "vd. Tuần làm việc",

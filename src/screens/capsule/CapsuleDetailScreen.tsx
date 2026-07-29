@@ -28,7 +28,7 @@ import {
   useDeleteCapsule,
   useRetryGeneration,
 } from './hooks';
-import { capsuleItemIdSet, capsuleTileSize } from './capsule-format';
+import { capsuleTileSize } from './capsule-format';
 import { toastCapsuleNetworkError } from './capsule-toast';
 import { CapsuleItemTile } from './components/CapsuleItemTile';
 import { CapsuleSummaryPanel } from './components/CapsuleSummaryPanel';
@@ -82,11 +82,6 @@ export const CapsuleDetailScreen: React.FC = () => {
         theme.spacing.m,
       ),
     [],
-  );
-
-  const existingItemIds = useMemo(
-    () => capsuleItemIdSet(capsule),
-    [capsule],
   );
 
   const handleDelete = () => {
@@ -243,7 +238,6 @@ export const CapsuleDetailScreen: React.FC = () => {
         capsuleId={capsuleId}
         visible={addVisible}
         onClose={() => setAddVisible(false)}
-        existingItemIds={existingItemIds}
       />
 
       <MDialog

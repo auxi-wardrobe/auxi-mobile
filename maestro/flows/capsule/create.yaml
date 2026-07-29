@@ -92,3 +92,20 @@ env:
     id: capsule-detail-edit
 - assertVisible:
     id: capsule-detail-delete
+
+# 6. "+" opens the add-SOURCE sheet (the only sheet in this flow); choosing a
+#    source pushes a full picker PAGE, not another sheet.
+- tapOn:
+    id: capsule-detail-add
+- extendedWaitUntil:
+    visible:
+      id: capsule-add-source-sheet
+    timeout: 10000
+- tapOn:
+    id: capsule-add-source-wardrobe
+- extendedWaitUntil:
+    visible:
+      id: capsule-select-items-confirm
+    timeout: 10000
+- assertVisible:
+    id: capsule-select-items-back
