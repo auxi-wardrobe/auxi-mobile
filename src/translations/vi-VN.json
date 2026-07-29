@@ -1026,6 +1026,7 @@
       "already_in_capsule": "Đã có trong capsule",
       "select_items_empty": "Tủ đồ của bạn đang trống. Hãy thêm món đồ vào tủ đồ trước.",
       "select_outfits_empty": "Chưa có gì được lưu ở đây.",
+      "creation_no_items": "Sáng tạo này không có món đồ nào để thêm — các món đã không còn trong tủ đồ của bạn.",
       "create_title": "Capsule mới",
       "name_label": "Tên capsule",
       "name_placeholder": "vd. Tuần làm việc",

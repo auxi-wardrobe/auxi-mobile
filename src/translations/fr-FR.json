@@ -1027,6 +1027,7 @@
       "already_in_capsule": "Déjà dans la capsule",
       "select_items_empty": "Votre garde-robe est vide. Ajoutez-y d’abord des pièces.",
       "select_outfits_empty": "Rien d’enregistré ici pour l’instant.",
+      "creation_no_items": "Cette création n'a aucune pièce à ajouter — ses articles ne sont plus dans votre garde-robe.",
       "create_title": "Nouvelle capsule",
       "name_label": "Nom de la capsule",
       "name_placeholder": "ex. Semaine de travail",

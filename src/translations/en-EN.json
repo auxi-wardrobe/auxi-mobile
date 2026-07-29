@@ -1027,6 +1027,7 @@
       "already_in_capsule": "Already in capsule",
       "select_items_empty": "Your wardrobe is empty. Add pieces to your wardrobe first.",
       "select_outfits_empty": "Nothing saved here yet.",
+      "creation_no_items": "This creation has no pieces we can add — its items are no longer in your wardrobe.",
       "create_title": "New capsule",
       "name_label": "Capsule name",
       "name_placeholder": "e.g. Work week",

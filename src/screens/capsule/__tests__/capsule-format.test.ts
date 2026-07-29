@@ -1,7 +1,9 @@
 /* eslint-env jest */
 import type { CapsuleFull } from '../../../services/capsuleService';
+import type { CreationItem } from '../../../services/creationsService';
 import {
   capsuleTileHeight,
+  creationWardrobeItemIds,
   capsuleTileSize,
   categoryRows,
   gapsInterpolation,
@@ -149,5 +151,51 @@ describe('capsuleTileSize + capsuleTileHeight', () => {
       expect(capsuleTileHeight(w)).toBeGreaterThan(w);
       expect(capsuleTileHeight(w) / w).toBeCloseTo(4 / 3, 1);
     });
+  });
+});
+
+describe('creationWardrobeItemIds', () => {
+  const item = (over: Partial<CreationItem>): CreationItem => ({
+    id: 'item-w1-1750000000000-0',
+    imageUri: 'https://x/1.png',
+    x: 0,
+    y: 0,
+    width: 10,
+    height: 10,
+    zIndex: 0,
+    ...over,
+  });
+
+  it('prefers the stored wardrobeItemId', () => {
+    expect(
+      creationWardrobeItemIds({
+        items: [item({ id: 'item-stale-1-0', wardrobeItemId: 'w9' })],
+      }),
+    ).toEqual(['w9']);
+  });
+
+  it('recovers the id from a synthetic canvas id on older saves', () => {
+    expect(
+      creationWardrobeItemIds({ items: [item({ id: 'item-w1-1750000000000-0' })] }),
+    ).toEqual(['w1']);
+  });
+
+  it('dedupes an item placed twice on the same canvas', () => {
+    expect(
+      creationWardrobeItemIds({
+        items: [
+          item({ id: 'item-w1-1750000000000-0' }),
+          item({ id: 'item-w1-1750000000000-1' }),
+          item({ id: 'item-w2-1750000000000-2' }),
+        ],
+      }),
+    ).toEqual(['w1', 'w2']);
+  });
+
+  it('drops items with no recoverable wardrobe id', () => {
+    expect(
+      creationWardrobeItemIds({ items: [item({ id: 'sticker-42' })] }),
+    ).toEqual([]);
+    expect(creationWardrobeItemIds({ items: [] })).toEqual([]);
   });
 });

@@ -7,6 +7,10 @@ import type {
   CapsuleStatus,
 } from '../../services/capsuleService';
 import type { WardrobeItem } from '../../services/wardrobeService';
+import {
+  resolveWardrobeItemId,
+  type CreationItem,
+} from '../../services/creationsService';
 import { resolveItemImage } from '../../utils/url';
 
 /**
@@ -92,6 +96,29 @@ export const weatherRangeLabel = (
   }
   return '—';
 };
+
+/**
+ * The wardrobe item ids behind a saved creation, deduped and in canvas order.
+ *
+ * A creation is a canvas layout, not a server outfit: each item's `id` is a
+ * synthetic per-instance key (`item-<wardrobeId>-<stamp>-<i>`) and the real
+ * wardrobe id lives in the optional `wardrobeItemId` (older saves lack it and
+ * are recovered from the synthetic id). `POST /items/from-outfits` can't
+ * resolve those — nor a creation saved offline, whose id the server has never
+ * seen — so the capsule picker resolves them here and adds them as plain
+ * wardrobe items instead. Items with no recoverable id are dropped; the same
+ * wardrobe item placed twice on a canvas collapses to one.
+ */
+export const creationWardrobeItemIds = (creation: {
+  items: CreationItem[];
+}): string[] =>
+  Array.from(
+    new Set(
+      (creation.items ?? [])
+        .map(resolveWardrobeItemId)
+        .filter((id): id is string => !!id),
+    ),
+  );
 
 /** Whether the create button should be enabled (name is non-blank). */
 export const isCapsuleNameValid = (name: string): boolean =>
