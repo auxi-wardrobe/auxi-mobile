@@ -126,7 +126,7 @@ export const numToStr = (n: number | null | undefined): string =>
   typeof n === 'number' ? String(n) : '';
 
 /**
- * Square tile edge for a 4-up capsule grid: floors
+ * Tile WIDTH for a 4-up capsule grid: floors
  * (width − gap between columns − horizontal padding both sides) / columns.
  * Shared by the capsule detail grid and the wardrobe-item picker sheet so the
  * two stay in sync.
@@ -138,3 +138,13 @@ export const capsuleTileSize = (
   hPadding = 16,
 ): number =>
   Math.floor((width - gap * (columns - 1) - hPadding * 2) / columns);
+
+/**
+ * Tile HEIGHT for a given tile width — capsule cards are 3:4 portrait, the same
+ * ratio as the wardrobe grid (`wardrobe-grid.ts` TILE_HEIGHT). Floors so a row
+ * of tiles never overflows a fractional pixel grid.
+ */
+export const CAPSULE_TILE_RATIO = 4 / 3;
+
+export const capsuleTileHeight = (tileWidth: number): number =>
+  Math.floor(tileWidth * CAPSULE_TILE_RATIO);

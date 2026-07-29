@@ -1047,9 +1047,6 @@
       "summary_title": "Summary",
       "summary_show": "Show summary",
       "summary_hide": "Hide summary",
-      "summary_weather": "Weather range",
-      "summary_formalness": "Formalness score",
-      "section_items": "Items",
       "cat_outer": "Outerwear",
       "cat_top": "Tops",
       "cat_bottom": "Bottoms",
@@ -1096,7 +1093,19 @@
       "save": "Save",
       "settings_updated_toast": "Capsule updated.",
       "a11y_open_switcher": "Choose a wardrobe",
-      "a11y_back": "Go back"
+      "a11y_back": "Go back",
+      "next": "Next",
+      "method_title": "Choose how to build your capsule",
+      "method_manual_title": "Build it myself",
+      "method_manual_desc": "Add pieces from your wardrobe, favourites, or creations.",
+      "method_ai_title": "Let AI build it",
+      "method_ai_desc": "Set your preferences and AI will do the rest. You can edit everything later.",
+      "method_coming_soon": "Coming soon",
+      "method_ai_coming_soon_toast": "Building with AI isn't available yet.",
+      "empty_items_title": "This capsule is empty",
+      "empty_items_body": "Tap + to add pieces from your wardrobe, favourites, or creations.",
+      "a11y_edit_name": "Edit capsule name",
+      "a11y_save_name": "Save capsule name"
     }
   }
 }

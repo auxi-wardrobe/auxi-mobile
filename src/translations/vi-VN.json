@@ -1046,9 +1046,6 @@
       "summary_title": "Tóm tắt",
       "summary_show": "Hiện tóm tắt",
       "summary_hide": "Ẩn tóm tắt",
-      "summary_weather": "Khoảng thời tiết",
-      "summary_formalness": "Điểm trang trọng",
-      "section_items": "Các món",
       "cat_outer": "Áo khoác",
       "cat_top": "Áo",
       "cat_bottom": "Quần/Váy",
@@ -1095,7 +1092,19 @@
       "save": "Lưu",
       "settings_updated_toast": "Đã cập nhật capsule.",
       "a11y_open_switcher": "Chọn tủ đồ",
-      "a11y_back": "Quay lại"
+      "a11y_back": "Quay lại",
+      "next": "Tiếp theo",
+      "method_title": "Chọn cách tạo capsule của bạn",
+      "method_manual_title": "Tôi tự tạo",
+      "method_manual_desc": "Thêm món đồ từ tủ đồ, mục yêu thích hoặc sáng tạo của bạn.",
+      "method_ai_title": "Để AI tạo giúp",
+      "method_ai_desc": "Đặt tùy chọn của bạn và AI sẽ lo phần còn lại. Bạn có thể chỉnh sửa mọi thứ sau.",
+      "method_coming_soon": "Sắp ra mắt",
+      "method_ai_coming_soon_toast": "Tính năng tạo bằng AI chưa khả dụng.",
+      "empty_items_title": "Capsule này đang trống",
+      "empty_items_body": "Chạm + để thêm món đồ từ tủ đồ, mục yêu thích hoặc sáng tạo của bạn.",
+      "a11y_edit_name": "Chỉnh sửa tên capsule",
+      "a11y_save_name": "Lưu tên capsule"
     }
   }
 }

@@ -1047,9 +1047,6 @@
       "summary_title": "Résumé",
       "summary_show": "Afficher le résumé",
       "summary_hide": "Masquer le résumé",
-      "summary_weather": "Plage météo",
-      "summary_formalness": "Score de formalité",
-      "section_items": "Articles",
       "cat_outer": "Vestes",
       "cat_top": "Hauts",
       "cat_bottom": "Bas",
@@ -1096,7 +1093,19 @@
       "save": "Enregistrer",
       "settings_updated_toast": "Capsule mise à jour.",
       "a11y_open_switcher": "Choisir une garde-robe",
-      "a11y_back": "Retour"
+      "a11y_back": "Retour",
+      "next": "Suivant",
+      "method_title": "Choisissez comment créer votre capsule",
+      "method_manual_title": "Je la crée moi-même",
+      "method_manual_desc": "Ajoutez des pièces depuis votre garde-robe, vos favoris ou vos créations.",
+      "method_ai_title": "Laisser l'IA la créer",
+      "method_ai_desc": "Définissez vos préférences et l'IA fait le reste. Vous pourrez tout modifier ensuite.",
+      "method_coming_soon": "Bientôt disponible",
+      "method_ai_coming_soon_toast": "La création par l'IA n'est pas encore disponible.",
+      "empty_items_title": "Cette capsule est vide",
+      "empty_items_body": "Touchez + pour ajouter des pièces depuis votre garde-robe, vos favoris ou vos créations.",
+      "a11y_edit_name": "Modifier le nom de la capsule",
+      "a11y_save_name": "Enregistrer le nom de la capsule"
     }
   }
 }

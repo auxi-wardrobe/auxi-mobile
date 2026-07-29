@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaTextDark,
   },
   rowMeta: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextSubtle200,
   },
   createRow: {

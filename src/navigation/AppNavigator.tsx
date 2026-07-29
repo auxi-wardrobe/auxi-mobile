@@ -42,6 +42,7 @@ import { LegalDocumentScreen } from '../screens/legal/LegalDocumentScreen';
 import { BeautifyPendingScreen } from '../screens/wardrobe/BeautifyPendingScreen';
 import { BeautifyReviewScreen } from '../screens/wardrobe/BeautifyReviewScreen';
 import { CapsuleCreateScreen } from '../screens/capsule/CapsuleCreateScreen';
+import { CapsuleMethodScreen } from '../screens/capsule/CapsuleMethodScreen';
 import { CapsuleInfoScreen } from '../screens/capsule/CapsuleInfoScreen';
 import { CapsuleGeneratingScreen } from '../screens/capsule/CapsuleGeneratingScreen';
 import { CapsuleDetailScreen } from '../screens/capsule/CapsuleDetailScreen';
@@ -324,12 +325,20 @@ export const AppNavigator = () => {
                 options={{ headerShown: false }}
               />
               {/* Capsule flow — reached from the wardrobe switcher ("Choose a
-                  wardrobe" → Create Capsule). Generating disables the swipe-back
-                  gesture so a mid-flight generation isn't dismissed by an
-                  accidental edge swipe. */}
+                  wardrobe" → Create Capsule). Today: name → build method →
+                  empty capsule detail (the user fills it themselves).
+                  CapsuleInfo (requirements) + CapsuleGenerating stay registered
+                  but are unreachable — they belong to the "Let AI build it"
+                  path, which ships behind the Coming-soon tag on CapsuleMethod.
+                  Generating disables the swipe-back gesture so a mid-flight
+                  generation isn't dismissed by an accidental edge swipe. */}
               <Stack.Screen
                 name="CapsuleCreate"
                 component={CapsuleCreateScreen}
+              />
+              <Stack.Screen
+                name="CapsuleMethod"
+                component={CapsuleMethodScreen}
               />
               <Stack.Screen name="CapsuleInfo" component={CapsuleInfoScreen} />
               <Stack.Screen

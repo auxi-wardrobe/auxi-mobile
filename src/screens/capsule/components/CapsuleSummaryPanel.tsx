@@ -5,7 +5,6 @@ import { Icons } from '../../../assets/icons';
 import { theme } from '../../../theme/theme';
 import { trackCapsuleSummaryExpanded } from '../../../services/analytics';
 import type { CapsuleFull } from '../../../services/capsuleService';
-import { weatherRangeLabel } from '../capsule-format';
 import { capsuleStyles as s } from '../styles';
 
 interface CapsuleSummaryPanelProps {
@@ -13,9 +12,11 @@ interface CapsuleSummaryPanelProps {
 }
 
 /**
- * Expandable summary block: outer/top/bottom/shoe/accessory counts + weather
- * range + formalness score. Fires `capsule_summary_expanded` the first time it
- * opens per mount.
+ * Expandable summary block: the outer/top/bottom/shoe/accessory counts — the
+ * single place the detail screen reports what's in the capsule. Weather range
+ * and formalness score are deliberately absent: they describe AI-generation
+ * constraints, and a self-built capsule has none. Fires
+ * `capsule_summary_expanded` the first time it opens per mount.
  */
 export const CapsuleSummaryPanel: React.FC<CapsuleSummaryPanelProps> = ({
   capsule,
@@ -38,11 +39,6 @@ export const CapsuleSummaryPanel: React.FC<CapsuleSummaryPanelProps> = ({
     { label: t('capsule.cat_bottom'), value: summary?.bottom_count ?? 0 },
     { label: t('capsule.cat_footwear'), value: summary?.shoe_count ?? 0 },
     { label: t('capsule.cat_accessory'), value: summary?.accessory_count ?? 0 },
-    { label: t('capsule.summary_weather'), value: weatherRangeLabel(capsule) },
-    {
-      label: t('capsule.summary_formalness'),
-      value: summary?.formalness_score ?? 0,
-    },
   ];
 
   return (

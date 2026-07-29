@@ -27,14 +27,23 @@ export const capsuleStyles = StyleSheet.create({
     gap: theme.spacing.m,
   },
   emptyTitle: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
+    ...theme.typography.aliases.interH4SemiBold,
     color: theme.colors.figmaTextDark,
     textAlign: 'center',
   },
   emptyBody: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextSubtle200,
     textAlign: 'center',
+  },
+  // Empty item grid (a freshly created capsule has no pieces yet — the user
+  // adds them via the header +). Lives inside the detail ScrollView, so it
+  // pads rather than flex-centres.
+  emptyItems: {
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.l,
   },
   // List card
   card: {
@@ -49,25 +58,19 @@ export const capsuleStyles = StyleSheet.create({
     color: theme.colors.figmaTextDark,
   },
   cardMeta: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextSubtle200,
   },
   // Detail header block
   detailName: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
+    ...theme.typography.aliases.interH4SemiBold,
     color: theme.colors.figmaTextDark,
     marginTop: theme.spacing.s,
   },
   detailMeta: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextSubtle200,
     marginTop: theme.spacing.xs,
-  },
-  sectionTitle: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
-    color: theme.colors.figmaTextDark,
-    marginTop: theme.spacing.l,
-    marginBottom: theme.spacing.s,
   },
   // Item grid
   grid: {
@@ -98,11 +101,11 @@ export const capsuleStyles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
   },
   summaryLabel: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextSubtle200,
   },
   summaryValue: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextDark,
   },
   // Gaps banner
@@ -114,11 +117,11 @@ export const capsuleStyles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   gapsText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextDark,
   },
   gapsItem: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextSubtle100,
   },
   // Form
@@ -138,6 +141,67 @@ export const capsuleStyles = StyleSheet.create({
     paddingTop: theme.spacing.s,
     paddingBottom: theme.spacing.m,
   },
+  // Two-up footer (Cancel · Next) — the build-method step.
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    paddingHorizontal: theme.spacing.m,
+    paddingTop: theme.spacing.s,
+    paddingBottom: theme.spacing.m,
+  },
+  footerRowSecondary: { flex: 1 },
+  footerRowPrimary: { flex: 1.4 },
+  // Build-method step (name row + the two build options)
+  methodNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    paddingVertical: theme.spacing.m,
+  },
+  methodName: {
+    ...theme.typography.aliases.interH4SemiBold,
+    color: theme.colors.figmaTextDark,
+    flex: 1,
+  },
+  // Bare 44×44 tap target for the rename pencil / commit tick (no header chip).
+  methodNameEdit: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  methodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.m,
+    paddingVertical: theme.spacing.m,
+  },
+  methodOptionBody: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  methodOptionTitle: {
+    ...theme.typography.aliases.uacBodyMdSemibold,
+    color: theme.colors.figmaTextDark,
+  },
+  methodOptionDesc: {
+    ...theme.typography.aliases.interBodySm,
+    color: theme.colors.uacTextSubtle200,
+  },
+  // "Coming soon" pill under the AI option's description.
+  methodBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.figmaSnackbarSuccessBg,
+    borderRadius: theme.borderRadius.round,
+    paddingHorizontal: theme.spacing.s,
+    paddingVertical: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
+  },
+  methodBadgeText: {
+    ...theme.typography.aliases.uacBodyXsMedium,
+    color: theme.colors.figmaTextDark,
+  },
   // Generating screen
   generatingWrap: {
     flex: 1,
@@ -147,7 +211,7 @@ export const capsuleStyles = StyleSheet.create({
     gap: theme.spacing.m,
   },
   generatingTitle: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
+    ...theme.typography.aliases.interH4SemiBold,
     color: theme.colors.figmaTextDark,
     textAlign: 'center',
     marginTop: theme.spacing.l,
@@ -160,7 +224,7 @@ export const capsuleStyles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
   },
   stepText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextSubtle200,
   },
   stepTextActive: {
@@ -178,7 +242,7 @@ export const capsuleStyles = StyleSheet.create({
     backgroundColor: theme.colors.figmaCardSurface,
   },
   itemDetailName: {
-    ...theme.typography.aliases.poppinsH4SemiBold,
+    ...theme.typography.aliases.interH4SemiBold,
     color: theme.colors.figmaTextDark,
     marginTop: theme.spacing.m,
   },
@@ -194,13 +258,13 @@ export const capsuleStyles = StyleSheet.create({
   },
   // Sheet
   sheetTitle: {
-    ...theme.typography.aliases.poppinsSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
     paddingHorizontal: theme.spacing.s,
     paddingTop: theme.spacing.s,
   },
   sheetHelper: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextSubtle200,
     paddingHorizontal: theme.spacing.s,
     paddingBottom: theme.spacing.s,
@@ -214,10 +278,14 @@ export const capsuleStyles = StyleSheet.create({
   sheetConfirm: {
     paddingTop: theme.spacing.s,
   },
-  deleteWrap: {
+  // Edit · Delete sit side by side (equal halves) at the foot of the detail.
+  detailActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
     marginTop: theme.spacing.l,
   },
-  editDeleteGap: {
-    height: theme.spacing.s,
+  detailAction: {
+    flex: 1,
   },
 });

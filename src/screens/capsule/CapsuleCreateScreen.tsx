@@ -12,7 +12,7 @@ import { capsuleStyles as s } from './styles';
 
 type Nav = NativeStackNavigationProp<AppStackParamList, 'CapsuleCreate'>;
 
-/** Create wizard — Step 1: name entry. Continue → CapsuleInfo (requirements). */
+/** Create wizard — Step 1: name entry. Continue → CapsuleMethod (build path). */
 export const CapsuleCreateScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
@@ -45,7 +45,7 @@ export const CapsuleCreateScreen: React.FC = () => {
           <MButton
             variant="primary"
             onPress={() =>
-              navigation.navigate('CapsuleInfo', { name: name.trim() })
+              navigation.navigate('CapsuleMethod', { name: name.trim() })
             }
             disabled={!canContinue}
             testID="capsule-create-continue"

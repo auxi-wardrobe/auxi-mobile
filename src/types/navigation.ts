@@ -298,10 +298,14 @@ export type AppStackParamList = {
   // ───────────────────────────────────────────────────────────────────────
   // Capsule Wardrobe (spec plans/260718-0433-capsule-wardrobe/spec.md §5).
   // Reached from the wardrobe switcher ("Choose a wardrobe" → Create Capsule).
-  // Create is a 2-step wizard (name → reqs); the generating screen owns the
-  // create mutation and lets the user leave while it runs in the background
-  // (React-Query continuation + toast).
+  // Create is a 2-step wizard: name → build method. "Build it myself" creates
+  // an EMPTY capsule and lands on its (empty) detail screen, where the user
+  // adds pieces via the + add flow. "Let AI build it" is Coming soon.
   CapsuleCreate: undefined;
+  CapsuleMethod: { name: string };
+  // Parked with the AI build path (not reachable today): requirements step +
+  // the generating screen that owns the create mutation and lets the user
+  // leave while it runs in the background (React-Query continuation + toast).
   CapsuleInfo: { name: string };
   CapsuleGenerating: {
     name: string;
