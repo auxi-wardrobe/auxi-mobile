@@ -256,27 +256,30 @@ export const capsuleStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Sheet
+  // Sheet content. ContextualBottomSheet owns the surface, top radius, scrim,
+  // 16pt horizontal + 24pt top padding and the home-indicator bottom inset —
+  // these styles only carry the content's own vertical rhythm, and must NOT
+  // re-inset horizontally (that's what gave capsule sheets a wider gutter than
+  // the wardrobe Add-item sheet). Title/subtitle match AddItemSheet exactly.
   sheetTitle: {
     ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.uacTextBase,
-    paddingHorizontal: theme.spacing.s,
-    paddingTop: theme.spacing.s,
   },
   sheetHelper: {
     ...theme.typography.aliases.interBodySm,
-    color: theme.colors.uacTextSubtle200,
-    paddingHorizontal: theme.spacing.s,
-    paddingBottom: theme.spacing.s,
+    color: theme.colors.uacTextBase,
+    marginTop: theme.spacing.s,
+    marginBottom: theme.spacing.m,
   },
   sheetLoading: {
     height: 160,
   },
   sheetScroll: {
     maxHeight: 360,
+    marginTop: theme.spacing.m,
   },
   sheetConfirm: {
-    paddingTop: theme.spacing.s,
+    paddingTop: theme.spacing.m,
   },
   // Edit · Delete sit side by side (equal halves) at the foot of the detail.
   detailActions: {

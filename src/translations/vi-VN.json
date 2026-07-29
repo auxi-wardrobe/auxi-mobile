@@ -1018,6 +1018,7 @@
     "capsule": {
       "title": "Tủ đồ capsule",
       "add": "Thêm",
+      "add_sheet_title": "Thêm vào capsule",
       "add_source_helper": "Chọn nơi bạn muốn thêm từ đó.",
       "source_wardrobe": "Tủ đồ của tôi",
       "source_favourites": "Yêu thích của tôi",

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { MBottomSheet, MRadio } from '../../components/design-system/lib';
+import { MRadio } from '../../components/design-system/lib';
+import { ContextualBottomSheet } from '../../components/features/ContextualBottomSheet';
 import { Icons } from '../../assets/icons';
 import { theme } from '../../theme/theme';
 import type { Capsule } from '../../services/capsuleService';
@@ -28,7 +29,8 @@ interface WardrobeSwitcherSheetProps {
  * wardrobe + each capsule (radio-selected for the active context) and a footer
  * "Create Capsule" row. Selecting entire → stay on wardrobe; a capsule →
  * CapsuleDetail; create → CapsuleCreate. Reused on the Wardrobe AND CapsuleDetail
- * headers.
+ * headers — hence the shared ContextualBottomSheet shell, so it matches the
+ * Add-item sheet it sits next to on Wardrobe and every sheet in the capsule flow.
  */
 export const WardrobeSwitcherSheet: React.FC<WardrobeSwitcherSheetProps> = ({
   visible,
@@ -48,10 +50,9 @@ export const WardrobeSwitcherSheet: React.FC<WardrobeSwitcherSheetProps> = ({
   );
 
   return (
-    <MBottomSheet
+    <ContextualBottomSheet
       visible={visible}
       onDismiss={onClose}
-      docked
       testID="wardrobe-switcher-sheet"
     >
       <Text style={styles.title}>{t('capsule.switcher_title')}</Text>
@@ -130,7 +131,7 @@ export const WardrobeSwitcherSheet: React.FC<WardrobeSwitcherSheetProps> = ({
           </Text>
         </View>
       </Pressable>
-    </MBottomSheet>
+    </ContextualBottomSheet>
   );
 };
 

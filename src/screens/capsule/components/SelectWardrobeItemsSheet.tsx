@@ -2,10 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { Dimensions, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import {
-  MBottomSheet,
-  MButton,
-} from '../../../components/design-system/lib';
+import { MButton } from '../../../components/design-system/lib';
+import { ContextualBottomSheet } from '../../../components/features/ContextualBottomSheet';
 import { MacgieLoader } from '../../../components/macgie';
 import {
   wardrobeKeys,
@@ -31,13 +29,15 @@ interface SelectWardrobeItemsSheetProps {
 }
 
 const COLUMNS = 4;
-const H_PADDING = 16; // sheet content padding (matches MBottomSheet card pad)
+const H_PADDING = 16; // ContextualBottomSheet's horizontal content padding
 const GAP = 8;
 
 /**
  * Wardrobe-item multi-select grid for the capsule add flow. Items already in
  * the capsule are dimmed + tagged and cannot be re-selected (dedup at the UI
- * layer; the backend dedups again).
+ * layer; the backend dedups again). Rides the shared ContextualBottomSheet
+ * shell so it matches the wardrobe Add-item sheet and every other contextual
+ * sheet in the app.
  */
 export const SelectWardrobeItemsSheet: React.FC<
   SelectWardrobeItemsSheetProps
@@ -87,7 +87,7 @@ export const SelectWardrobeItemsSheet: React.FC<
   };
 
   return (
-    <MBottomSheet
+    <ContextualBottomSheet
       visible={visible}
       onDismiss={onDismiss}
       testID="capsule-select-wardrobe-sheet"
@@ -127,6 +127,6 @@ export const SelectWardrobeItemsSheet: React.FC<
           {confirmLabel ?? t('capsule.confirm_add')}
         </MButton>
       </View>
-    </MBottomSheet>
+    </ContextualBottomSheet>
   );
 };
