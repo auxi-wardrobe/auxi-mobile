@@ -238,7 +238,7 @@ it('polls until ready, then swaps to the candidate and enables both actions', as
   });
 
   // Loading owns the body: progress rows + leave CTA, no preview/actions/hint
-  expect(byTestID(root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-loading').length).toBeGreaterThan(0);
   expect(byTestID(root, 'enhance-leave-btn').length).toBeGreaterThan(0);
   expect(byTestID(root, 'enhance-discard-btn').length).toBe(0);
   expect(byTestID(root, 'enhance-replace-btn').length).toBe(0);
@@ -246,10 +246,10 @@ it('polls until ready, then swaps to the candidate and enables both actions', as
   expect(byTestID(root, 'enhance-compare-hint').length).toBe(0);
 
   await pollTick(); // → pending
-  expect(byTestID(root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-loading').length).toBeGreaterThan(0);
 
   await pollTick(); // → ready
-  expect(byTestID(root, 'enhance-loading-overlay').length).toBe(0);
+  expect(byTestID(root, 'enhance-loading').length).toBe(0);
   expect(mockTrack).toHaveBeenCalledWith(
     'enhance_completed',
     expect.objectContaining({ item_id: 'item-1' }),
@@ -317,7 +317,7 @@ it('times out past the 3min wait budget, shows the timeout copy, and Retry re-fi
   // generation on top of it.
   act(() => oneByTestID(root, 'enhance-retry-btn').props.onPress());
   await flushPromises();
-  expect(byTestID(root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-loading').length).toBeGreaterThan(0);
   expect(mockBeautifyItem).toHaveBeenCalledTimes(1);
 });
 
@@ -331,7 +331,7 @@ it('Retry does fire a fresh job once nothing is in flight', async () => {
   act(() => oneByTestID(r.root, 'enhance-retry-btn').props.onPress());
   await flushPromises();
   expect(mockBeautifyItem).toHaveBeenCalledTimes(2);
-  expect(byTestID(r.root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
+  expect(byTestID(r.root, 'enhance-loading').length).toBeGreaterThan(0);
 });
 
 // =============================================================================
@@ -455,7 +455,7 @@ it('pressing back mid-generation resets the whole stack to a single Wardrobe roo
 
   const { renderer: r } = await renderScreen();
 
-  expect(byTestID(r.root, 'enhance-loading-overlay').length).toBeGreaterThan(
+  expect(byTestID(r.root, 'enhance-loading').length).toBeGreaterThan(
     0,
   );
 
@@ -553,7 +553,7 @@ it('reveals one loading sentence every 2s and checks each off at the end of its 
 
   // The cosmetic sequence never ends the wait: still loading, still polling.
   await pollTick();
-  expect(byTestID(root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-loading').length).toBeGreaterThan(0);
   expect(byTestID(root, 'enhance-loading-row-2').length).toBeGreaterThan(0);
 });
 
@@ -564,6 +564,14 @@ it('leaving from the loading screen resets to Wardrobe without discarding the jo
   withStatuses(NONE_STATUS, PENDING_STATUS);
 
   const { renderer: r } = await renderScreen();
+
+  // Shared loading body: the escape hatch stays inert until the sentence
+  // sequence has played out (7s floor), so leaving isn't a first reflex.
+  expect(oneByTestID(r.root, 'enhance-leave-btn').props.disabled).toBe(true);
+  for (let i = 0; i < 4; i += 1) {
+    await pollTick(); // 8s > the 7s gate
+  }
+  expect(oneByTestID(r.root, 'enhance-leave-btn').props.disabled).toBe(false);
 
   act(() => oneByTestID(r.root, 'enhance-leave-btn').props.onPress());
 
@@ -598,7 +606,7 @@ it('opens straight on the ready result when a candidate already exists (no new j
     item_id: 'item-1',
     state: 'ready',
   });
-  expect(byTestID(root, 'enhance-loading-overlay').length).toBe(0);
+  expect(byTestID(root, 'enhance-loading').length).toBe(0);
   expect(
     root.findAll(
       n => n.props?.source?.uri === 'https://cdn.example/candidate.png',
@@ -617,11 +625,11 @@ it('attaches to a job that is still running instead of starting another', async 
     item_id: 'item-1',
     state: 'pending',
   });
-  expect(byTestID(r.root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
+  expect(byTestID(r.root, 'enhance-loading').length).toBeGreaterThan(0);
 
   // Still a live poll — the running job lands on this screen when it finishes.
   await pollTick();
-  expect(byTestID(r.root, 'enhance-loading-overlay').length).toBe(0);
+  expect(byTestID(r.root, 'enhance-loading').length).toBe(0);
 });
 
 // =============================================================================
@@ -644,7 +652,7 @@ it('Regenerate spends another attempt and goes back to the loading state', async
     item_id: 'item-1',
     mode: 'regenerate',
   });
-  expect(byTestID(r.root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
+  expect(byTestID(r.root, 'enhance-loading').length).toBeGreaterThan(0);
 });
 
 it('stops offering Regenerate once the attempt cap is spent', async () => {

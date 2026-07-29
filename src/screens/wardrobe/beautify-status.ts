@@ -19,19 +19,6 @@ export function goToWardrobe(
   nav.reset({ index: 0, routes: [{ name: 'Wardrobe' }] });
 }
 
-const STEPS = [
-  'Removing background…',
-  'Setting up studio lighting…',
-  'Polishing the details…',
-  'Almost there…',
-];
-
-/** Client-side rotating status copy (gpt-image-1 gives no real progress). */
-export function beautifyStep(elapsedMs: number): string {
-  const idx = Math.min(STEPS.length - 1, Math.floor(elapsedMs / 7000));
-  return STEPS[idx];
-}
-
 /**
  * Optimistically patches `beautify_status: 'pending'` onto an already-cached
  * wardrobe item the moment a beautify job is submitted — no need to wait on

@@ -1,12 +1,8 @@
 import { QueryClient } from '@tanstack/react-query';
 import { wardrobeKeys } from '../../../services/wardrobeService';
-import { beautifyStep, markItemBeautifying, BEAUTIFY_POLL_MS } from '../beautify-status';
+import { markItemBeautifying, BEAUTIFY_POLL_MS } from '../beautify-status';
 
 describe('beautify-status helpers', () => {
-  it('rotates copy over time', () => {
-    expect(beautifyStep(0)).toMatch(/background/i);
-    expect(beautifyStep(20000)).not.toBe(beautifyStep(0));
-  });
   it('exposes a 10s poll interval', () => {
     expect(BEAUTIFY_POLL_MS).toBe(10000);
   });
