@@ -415,9 +415,13 @@ export const EnhanceImageScreen = () => {
 
             {phase === 'ready' ? (
               <View testID="enhance-compare-hint" style={styles.hintRow}>
-                {/* Gesture cue for the hold-to-compare affordance; the label
+                {/* Press-and-hold cue for the compare affordance; the label
                     next to it carries the meaning, so it stays decorative. */}
-                <Icons.SwipeHand width={20} height={20} />
+                <Icons.LongPress
+                  width={20}
+                  height={20}
+                  color={theme.colors.figmaTextSecondary}
+                />
                 <Text style={styles.hintText}>
                   {t('wardrobe.enhance.compare_hint')}
                 </Text>
