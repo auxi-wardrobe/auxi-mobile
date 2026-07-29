@@ -250,6 +250,8 @@
         "compare_hint": "Appui long pour voir l'image d'origine",
         "discard": "Ignorer",
         "replace_original": "Remplacer l'original",
+        "regenerate": "Régénérer",
+        "regenerate_capped": "Garder la meilleure",
         "retry": "Réessayer",
         "cancel": "Annuler",
         "error_generic": "Impossible d'améliorer l'image. Veuillez réessayer.",

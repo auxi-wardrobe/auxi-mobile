@@ -17,7 +17,7 @@ import IconCheckCircle from '../../assets/images/icon_check_circle.svg';
  *
  * `testID` defaults to the original "wardrobe-item-ready-snackbar" so existing
  * Maestro flows are unaffected. Pass a custom testID + onPress for actionable
- * variants (e.g. the beautify-ready snackbar → navigates to BeautifyReview).
+ * variants (e.g. the beautify-ready snackbar → navigates to EnhanceImage).
  */
 interface ItemReadySnackbarProps {
   message: string;

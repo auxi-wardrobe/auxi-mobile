@@ -10,7 +10,7 @@ export const BEAUTIFY_POLL_MS = 10000;
  * `navigate('Wardrobe')` only pops to an existing Wardrobe route if one is
  * already in history — from some entry points it instead pushes a new
  * instance on top, leaving the screen being left (BeautifyPending,
- * BeautifyReview) mounted underneath with its poll/effects never cleaned
+ * EnhanceImage) mounted underneath with its poll/effects never cleaned
  * up. Every "back to Wardrobe" exit in the beautify flow goes through this.
  */
 export function goToWardrobe(

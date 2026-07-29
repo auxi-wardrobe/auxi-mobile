@@ -250,6 +250,8 @@
         "compare_hint": "Long press to see the original image",
         "discard": "Discard",
         "replace_original": "Replace original",
+        "regenerate": "Regenerate",
+        "regenerate_capped": "Keep the best one",
         "retry": "Retry",
         "cancel": "Cancel",
         "error_generic": "Couldn't enhance the image. Please try again.",

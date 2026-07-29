@@ -23,6 +23,7 @@ import {
   classifyEnhanceError,
   ENHANCE_ERROR_KEYS,
   ENHANCE_POLL_MS,
+  ENHANCE_REGEN_CAP,
   ENHANCE_TIMEOUT_MS,
   EnhanceFailureReason,
 } from './enhance-session';
@@ -41,27 +42,39 @@ type Phase = 'loading' | 'ready' | 'error';
 const IMAGE_SIDE_MARGIN = 18;
 const FOOTER_BOTTOM_PADDING = 36;
 
+// Hold-to-compare dwell. RN's default (500ms) fires on an ordinary firm tap;
+// the design asks for a deliberate one-second hold.
+const COMPARE_HOLD_MS = 1000;
+
 /**
- * AI Image Enhancement preview (Item Detail → sparkle FAB → here).
+ * AI Image Enhancement — the single surface for a studio shot, from "generate
+ * it" to "look at it again three days later". Reached from Item Detail's
+ * sparkle FAB, a ready Wardrobe tile, the beautify-ready snackbar, a push
+ * deep link, and the upload-time BeautifyPending hand-off (it replaced the
+ * separate "Studio shot ready" review screen for all of them).
  *
- * On mount it fires POST /items/{id}/beautify (the same decoupled backend
- * branch the upload-time flow uses) and polls the status fast. Nothing is
- * persisted until the user taps "Replace original": the candidate lives
- * server-side in `image_studio_candidate` and never leaks into any list
+ * Mount is a *probe*, not a job: whatever already exists server-side wins — a
+ * ready candidate opens straight as a result, a running job is joined, and only
+ * an item with nothing in flight starts a POST /items/{id}/beautify. That's
+ * what makes re-entering after "Leave — notify me when ready" free, and what
+ * stops a second tap on the sparkle icon from burning another generation.
+ *
+ * Nothing is persisted until the user taps "Replace original": the candidate
+ * lives server-side in `image_studio_candidate` and never leaks into any list
  * (trust-first: the original is never overwritten before explicit
- * confirmation).
+ * confirmation). Discard is the "keep the original" exit; Regenerate spends
+ * another of the ENHANCE_REGEN_CAP attempts on a new candidate.
  *
  * Three phases, three bodies under a shared header: `loading` hands the whole
- * body to EnhanceLoadingView (mascot + staggered progress rows + the leave CTA
- * — no preview, no actions), `ready` shows the candidate with the long-press
- * compare and the discard/replace pair, `error` shows the reason plus retry.
+ * body to EnhanceLoadingView (mascot + staggered progress rows + the leave
+ * CTA), `ready` shows the candidate over the warm surface with hold-to-compare
+ * and the action block, `error` shows the reason plus retry.
  *
- * Leaving mid-generation is safe by design: polling stops, the job finishes
- * server-side into the uncommitted candidate slot, and the next session's
- * POST regenerates over it (previous temporary image is never reused). The
- * item is already flagged `beautify_status: 'pending'` in the Wardrobe cache,
- * so the beautify-ready snackbar there is what "we'll let you know the second
- * it's ready" actually means.
+ * Leaving mid-generation is safe by design: polling stops and the job finishes
+ * server-side into the uncommitted candidate slot. The item is already flagged
+ * `beautify_status: 'pending'` in the Wardrobe cache, so the beautify-ready
+ * snackbar there is what "we'll let you know the second it's ready" actually
+ * means — and tapping it comes right back here, onto the result.
  */
 export const EnhanceImageScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
@@ -69,12 +82,14 @@ export const EnhanceImageScreen = () => {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { itemId, displayUri } = route.params;
+  const { itemId, displayUri, origin = 'itemDetail' } = route.params;
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [candidateUri, setCandidateUri] = useState<string | null>(null);
   const [errorReason, setErrorReason] =
     useState<EnhanceFailureReason>('server_error');
+  // Generations spent on this item so far — drives the Regenerate cap.
+  const [attempts, setAttempts] = useState(0);
   // Long-press compare: original shown while the finger stays down.
   const [comparing, setComparing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -91,37 +106,47 @@ export const EnhanceImageScreen = () => {
     }
   }, []);
 
-  const startSession = useCallback(() => {
-    stopPolling();
-    const session = ++sessionRef.current;
-    const startedAt = Date.now();
-    setPhase('loading');
-    setCandidateUri(null);
-    track('enhance_started', { item_id: itemId });
-
-    const fail = (reason: EnhanceFailureReason) => {
+  /**
+   * Opens a session on this item's beautify job.
+   *
+   * `resume` (mount + Retry) asks the server what already exists before
+   * spending anything: a ready candidate is shown as-is — this is what makes
+   * re-entering the screen after "Leave — notify me when ready" a *result*
+   * view rather than a second generation — and a still-running job is simply
+   * polled. Only an item with nothing in flight starts a new job.
+   *
+   * `regenerate` always fires a fresh job, replacing the current candidate.
+   */
+  const startSession = useCallback(
+    (mode: 'resume' | 'regenerate' = 'resume') => {
       stopPolling();
-      if (session !== sessionRef.current) {
-        return;
-      }
-      track('enhance_failed', { item_id: itemId, reason });
-      setErrorReason(reason);
-      setPhase('error');
-    };
+      const session = ++sessionRef.current;
+      const startedAt = Date.now();
+      setPhase('loading');
+      setCandidateUri(null);
 
-    wardrobeService
-      .beautifyItem(itemId)
-      .then(() => {
-        if (session !== sessionRef.current) {
+      const isStale = () => session !== sessionRef.current;
+
+      const fail = (reason: EnhanceFailureReason) => {
+        stopPolling();
+        if (isStale()) {
           return;
         }
-        // The item is now `beautify_status: 'pending'` server-side — patch
-        // it into the cached list directly (no round trip) so the pending
-        // badge + tap-routing (WardrobeScreen.handleItemPress) are correct
-        // the moment the user returns to Wardrobe.
-        markItemBeautifying(queryClient, itemId);
+        track('enhance_failed', { item_id: itemId, reason });
+        setErrorReason(reason);
+        setPhase('error');
+      };
+
+      const showCandidate = (candidateUrl: string, spent: number) => {
+        stopPolling();
+        setAttempts(spent);
+        setCandidateUri(candidateUrl);
+        setPhase('ready');
+      };
+
+      const poll = () => {
         pollRef.current = setInterval(async () => {
-          if (session !== sessionRef.current) {
+          if (isStale()) {
             stopPolling();
             return;
           }
@@ -131,18 +156,16 @@ export const EnhanceImageScreen = () => {
           }
           try {
             const status = await wardrobeService.getBeautifyStatus(itemId);
-            if (session !== sessionRef.current) {
+            if (isStale()) {
               stopPolling();
               return;
             }
             if (status.status === 'ready' && status.candidate_url) {
-              stopPolling();
               track('enhance_completed', {
                 item_id: itemId,
                 duration_ms: Date.now() - startedAt,
               });
-              setCandidateUri(status.candidate_url);
-              setPhase('ready');
+              showCandidate(status.candidate_url, status.attempts);
             } else if (status.status === 'failed') {
               fail('server_error');
             }
@@ -150,9 +173,62 @@ export const EnhanceImageScreen = () => {
             // Transient poll error — keep polling; the timeout is the backstop.
           }
         }, ENHANCE_POLL_MS);
-      })
-      .catch(error => fail(classifyEnhanceError(error)));
-  }, [itemId, stopPolling, queryClient]);
+      };
+
+      const run = async () => {
+        if (mode === 'resume') {
+          try {
+            const status = await wardrobeService.getBeautifyStatus(itemId);
+            if (isStale()) {
+              return;
+            }
+            if (status.status === 'ready' && status.candidate_url) {
+              track('enhance_resumed', { item_id: itemId, state: 'ready' });
+              showCandidate(status.candidate_url, status.attempts);
+              return;
+            }
+            if (status.status === 'pending') {
+              // Someone (this user, a previous session) already paid for a
+              // job that's still running — attach to it instead of stacking
+              // a second one on top.
+              track('enhance_resumed', { item_id: itemId, state: 'pending' });
+              setAttempts(status.attempts);
+              markItemBeautifying(queryClient, itemId);
+              poll();
+              return;
+            }
+          } catch {
+            // The probe is best-effort: if it can't be answered, fall through
+            // and submit — the submit error path classifies the failure.
+          }
+          if (isStale()) {
+            return;
+          }
+        }
+
+        try {
+          const job = await wardrobeService.beautifyItem(itemId);
+          if (isStale()) {
+            return;
+          }
+          track('enhance_started', { item_id: itemId, mode });
+          setAttempts(job.attempts);
+          // The item is now `beautify_status: 'pending'` server-side — patch
+          // it into the cached list directly (no round trip) so the pending
+          // badge + tap-routing (WardrobeScreen.handleItemPress) are correct
+          // the moment the user returns to Wardrobe.
+          markItemBeautifying(queryClient, itemId);
+          poll();
+        } catch (error) {
+          fail(classifyEnhanceError(error));
+        }
+      };
+
+      // Every await inside is wrapped, so this never rejects.
+      run();
+    },
+    [itemId, stopPolling, queryClient],
+  );
 
   useEffect(() => {
     startSession();
@@ -165,6 +241,20 @@ export const EnhanceImageScreen = () => {
     };
   }, [startSession, stopPolling]);
 
+  /**
+   * Where accept/discard land. Reached from ItemDetail (the sparkle FAB) the
+   * detail screen is still underneath, so we return to it; reached from the
+   * Wardrobe grid, the ready snackbar or a push there is nothing to pop back
+   * to, so the grid is the destination.
+   */
+  const leaveAfterResolution = () => {
+    if (origin === 'wardrobe') {
+      goToWardrobe(navigation);
+      return;
+    }
+    navigation.goBack();
+  };
+
   const handleDiscard = () => {
     if (saving || phase !== 'ready') {
       return;
@@ -173,9 +263,21 @@ export const EnhanceImageScreen = () => {
     track('enhance_discarded', { item_id: itemId });
     // Fire-and-forget: the candidate is server-side temp state. Even if this
     // call fails, the candidate is never displayed anywhere and the next
-    // enhance session regenerates over it.
+    // enhance session regenerates over it. The original image is untouched —
+    // this is the "keep the original" exit.
     wardrobeService.discardBeautify(itemId).catch(() => {});
-    navigation.goBack();
+    // The tile is no longer `ready`; drop the cached status so the grid stops
+    // routing taps here and stops badging the item.
+    queryClient.invalidateQueries({ queryKey: wardrobeKeys.all });
+    leaveAfterResolution();
+  };
+
+  const handleRegenerate = () => {
+    if (saving || phase !== 'ready' || attempts >= ENHANCE_REGEN_CAP) {
+      return;
+    }
+    track('enhance_regenerated', { item_id: itemId, attempt: attempts + 1 });
+    startSession('regenerate');
   };
 
   const handleReplace = async () => {
@@ -194,6 +296,12 @@ export const EnhanceImageScreen = () => {
         text1: t('wardrobe.enhance.toast_saved'),
         position: 'bottom',
       });
+      if (origin === 'wardrobe') {
+        // No ItemDetail underneath (tile / snackbar / push entry) — the grid,
+        // already invalidated above, is where the accepted shot shows up.
+        goToWardrobe(navigation);
+        return;
+      }
       const acceptedStudio =
         typeof updated?.image_studio === 'string' && updated.image_studio
           ? updated.image_studio
@@ -257,6 +365,7 @@ export const EnhanceImageScreen = () => {
   const enhancedUri = getImageUrl(candidateUri ?? undefined);
   const showEnhanced = phase === 'ready' && !comparing && !!enhancedUri;
   const imageUri = showEnhanced ? enhancedUri : displayUri;
+  const atRegenCap = attempts >= ENHANCE_REGEN_CAP;
 
   return (
     <View testID="enhance-image-screen-root" style={styles.container}>
@@ -284,12 +393,13 @@ export const EnhanceImageScreen = () => {
       ) : (
         <>
           <View style={styles.imageRegion}>
-            {/* Long-press compare (ready only): hold → original, release →
-                enhanced. */}
+            {/* Long-press compare (ready only): hold a full second → original,
+                release → enhanced. */}
             <Pressable
               testID="enhance-image-preview"
               accessibilityLabel={t('wardrobe.enhance.a11y_preview')}
               disabled={phase !== 'ready'}
+              delayLongPress={COMPARE_HOLD_MS}
               onLongPress={() => setComparing(true)}
               onPressOut={() => setComparing(false)}
               style={styles.imageFrame}
@@ -304,19 +414,14 @@ export const EnhanceImageScreen = () => {
             </Pressable>
 
             {phase === 'ready' ? (
-              <Text testID="enhance-compare-hint" style={styles.hintText}>
-                {t('wardrobe.enhance.compare_hint')}
-              </Text>
-            ) : null}
-
-            {/* AI-generated disclosure — the enhanced preview is an
-                AI-generated image (App Store AI rules). Shown once a
-                candidate is ready. */}
-            {phase === 'ready' ? (
-              <AiContentDisclosure
-                surface="enhance"
-                testID="enhance-ai-disclosure"
-              />
+              <View testID="enhance-compare-hint" style={styles.hintRow}>
+                {/* Gesture cue for the hold-to-compare affordance; the label
+                    next to it carries the meaning, so it stays decorative. */}
+                <Icons.SwipeHand width={20} height={20} />
+                <Text style={styles.hintText}>
+                  {t('wardrobe.enhance.compare_hint')}
+                </Text>
+              </View>
             ) : null}
 
             {phase === 'error' ? (
@@ -339,7 +444,7 @@ export const EnhanceImageScreen = () => {
                   variant="filled"
                   title={t('wardrobe.enhance.retry')}
                   style={styles.footerButton}
-                  onPress={startSession}
+                  onPress={() => startSession('resume')}
                 />
                 <PillButton
                   testID="enhance-cancel-btn"
@@ -350,24 +455,53 @@ export const EnhanceImageScreen = () => {
                 />
               </>
             ) : (
-              <View style={styles.footerRow}>
-                <PillButton
-                  testID="enhance-discard-btn"
-                  variant="outline"
-                  title={t('wardrobe.enhance.discard')}
-                  style={styles.footerButton}
-                  onPress={handleDiscard}
-                  disabled={phase !== 'ready' || saving}
+              <>
+                {/* AI-generated disclosure — the preview is an AI-generated
+                    image (App Store AI rules). */}
+                <AiContentDisclosure
+                  surface="enhance"
+                  testID="enhance-ai-disclosure"
                 />
                 <PillButton
                   testID="enhance-replace-btn"
                   variant="filled"
                   title={t('wardrobe.enhance.replace_original')}
                   style={styles.footerButton}
+                  trailing={<Icons.Change width={20} height={20} />}
                   onPress={handleReplace}
-                  disabled={phase !== 'ready' || saving}
+                  disabled={saving}
                 />
-              </View>
+                <View style={styles.footerRow}>
+                  {/* Discard keeps the original untouched; Regenerate spends
+                      another attempt on a new candidate. Both read as text
+                      actions under the primary CTA. */}
+                  <PillButton
+                    testID="enhance-discard-btn"
+                    variant="text"
+                    title={t('wardrobe.enhance.discard')}
+                    style={styles.textAction}
+                    textStyle={styles.discardText}
+                    onPress={handleDiscard}
+                    disabled={saving}
+                  />
+                  <PillButton
+                    testID={
+                      atRegenCap
+                        ? 'enhance-regenerate-btn-capped'
+                        : 'enhance-regenerate-btn'
+                    }
+                    variant="text"
+                    title={
+                      atRegenCap
+                        ? t('wardrobe.enhance.regenerate_capped')
+                        : t('wardrobe.enhance.regenerate')
+                    }
+                    style={styles.textAction}
+                    onPress={handleRegenerate}
+                    disabled={saving || atRegenCap}
+                  />
+                </View>
+              </>
             )}
           </View>
         </>
@@ -406,8 +540,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
   },
+  // The result sits on the warm surface the rest of the app uses for
+  // garment imagery; the action block below it stays on white so the CTA
+  // reads as a separate footer (design: enhance result screen).
   imageRegion: {
     flex: 1,
+    backgroundColor: theme.colors.figmaCardSurface,
     paddingHorizontal: IMAGE_SIDE_MARGIN,
     paddingTop: theme.spacing.m,
     alignItems: 'center',
@@ -415,18 +553,22 @@ const styles = StyleSheet.create({
   imageFrame: {
     flex: 1,
     alignSelf: 'stretch',
-    backgroundColor: theme.colors.figmaBackground,
     overflow: 'hidden',
   },
   image: {
     width: '100%',
     height: '100%',
   },
+  hintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    paddingVertical: theme.spacing.uacDimension12,
+  },
   hintText: {
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
-    paddingVertical: theme.spacing.uacDimension12,
   },
   errorText: {
     ...theme.typography.aliases.uacBodyXsRegular,
@@ -435,7 +577,8 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.uacDimension12,
   },
   footer: {
-    paddingHorizontal: theme.spacing.m,
+    backgroundColor: theme.colors.figmaBackground,
+    paddingHorizontal: theme.spacing.l,
     paddingTop: theme.spacing.m,
     gap: theme.spacing.uacDimension12,
   },
@@ -444,7 +587,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing.uacDimension12,
   },
   footerButton: {
-    flex: 1,
     borderRadius: theme.borderRadius.uacButtonCta,
+  },
+  textAction: {
+    flex: 1,
+  },
+  discardText: {
+    color: theme.colors.uacTextDangerBase,
   },
 });

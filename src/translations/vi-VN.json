@@ -250,6 +250,8 @@
         "compare_hint": "Nhấn giữ để xem ảnh gốc",
         "discard": "Bỏ qua",
         "replace_original": "Thay ảnh gốc",
+        "regenerate": "Tạo lại",
+        "regenerate_capped": "Giữ ảnh đẹp nhất",
         "retry": "Thử lại",
         "cancel": "Hủy",
         "error_generic": "Không thể cải thiện ảnh. Vui lòng thử lại.",

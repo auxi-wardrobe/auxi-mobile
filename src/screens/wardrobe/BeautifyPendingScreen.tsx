@@ -60,10 +60,13 @@ export function BeautifyPendingScreen() {
         if (!alive.current) return;
         if (s.status === 'ready') {
           track('beautify_ready');
-          nav.replace('BeautifyReview', {
+          // The upload-time wait ends on the same Enhance result screen every
+          // other entry point uses. `origin: 'wardrobe'` because there is no
+          // ItemDetail under this stack to pop back to.
+          nav.replace('EnhanceImage', {
             itemId,
-            originalUri,
-            from: 'loader',
+            displayUri: originalUri,
+            origin: 'wardrobe',
           });
         } else if (s.status === 'failed') {
           clearIntervals();

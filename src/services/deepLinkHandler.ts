@@ -382,14 +382,16 @@ export const resolveNotificationData = (
     // Beautify terminal result (backend `beautify_ready`/`beautify_failed`,
     // see `notification_service._beautify_payload`). Same reasoning as the
     // try-on branch above — screen:'Home' is a route-safe curated fallback,
-    // but the richer `item_id` field lets a tap land on the review screen
-    // instead of a generic tab.
+    // but the richer `item_id` field lets a tap land on the result screen
+    // instead of a generic tab. No `displayUri` is carried in the payload;
+    // EnhanceImage resolves the candidate from the item id on mount (the
+    // original is only needed for the hold-to-compare baseline).
     if (data.type === 'beautify_result' && data.action === 'beautify_result') {
       if (data.status === 'ready' && data.item_id) {
-        navRef.navigate('BeautifyReview', {
+        navRef.navigate('EnhanceImage', {
           itemId: data.item_id,
-          originalUri: '',
-          from: 'push',
+          displayUri: '',
+          origin: 'wardrobe',
         });
       } else {
         fallbackHome();
