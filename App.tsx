@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
+import { FeatureFlagProvider } from './src/services/featureFlags';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { SidebarProvider } from './src/context/SidebarContext';
 import { FavouritesSeenProvider } from './src/context/FavouritesSeenContext';
@@ -79,27 +80,34 @@ function App() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <FavouritesSeenProvider>
-              <CreationsSeenProvider>
-                <ScheduleProvider>
-                  <WardrobeViewedProvider>
-                    <SidebarProvider>
-                      {/* Root error boundary — placed inside the providers so the
-                          fallback has theme/i18n available, and high enough to catch
-                          an unexpected render error anywhere in the navigator tree
-                          (recoverable fallback instead of a white screen on review). */}
-                      <ErrorBoundary>
-                        <BackgroundScaleProvider>
-                          <RootDrawer>
-                            <AppNavigator />
-                          </RootDrawer>
-                        </BackgroundScaleProvider>
-                      </ErrorBoundary>
-                    </SidebarProvider>
-                  </WardrobeViewedProvider>
-                </ScheduleProvider>
-              </CreationsSeenProvider>
-            </FavouritesSeenProvider>
+            {/* Feature flags (Unleash). Sits inside AuthProvider so its bridge
+                can key rollouts on the logged-in user, and wraps everything
+                below so any screen can read a flag. Renders children
+                synchronously — flags resolve async and default OFF, so this can
+                never gate app boot. Web resolves a passthrough (featureFlags.web). */}
+            <FeatureFlagProvider>
+              <FavouritesSeenProvider>
+                <CreationsSeenProvider>
+                  <ScheduleProvider>
+                    <WardrobeViewedProvider>
+                      <SidebarProvider>
+                        {/* Root error boundary — placed inside the providers so the
+                            fallback has theme/i18n available, and high enough to catch
+                            an unexpected render error anywhere in the navigator tree
+                            (recoverable fallback instead of a white screen on review). */}
+                        <ErrorBoundary>
+                          <BackgroundScaleProvider>
+                            <RootDrawer>
+                              <AppNavigator />
+                            </RootDrawer>
+                          </BackgroundScaleProvider>
+                        </ErrorBoundary>
+                      </SidebarProvider>
+                    </WardrobeViewedProvider>
+                  </ScheduleProvider>
+                </CreationsSeenProvider>
+              </FavouritesSeenProvider>
+            </FeatureFlagProvider>
           </AuthProvider>
         </QueryClientProvider>
         {/* Top-most inside SafeAreaProvider so toasts overlay the navigator and

@@ -329,9 +329,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // on the same transitions as analytics identify (login, cold-start
       // restore, post-verify). No-op until RC is configured; never throws.
       logInRevenueCat(distinctId);
-      // Key Unleash rollouts on the same identity as analytics, so % rollouts
-      // and role/gender targeting are stable per logged-in user. Fires on the
-      // same transitions: login, cold-start restore, post-verify.
+      // Sign-in analytics + push registration on the login transition only
+      // (not on cold-start restore). Unleash flag targeting is keyed on this
+      // same user id, but that wiring lives in the FeatureFlagProvider bridge
+      // (services/featureFlags → useUnleashContext) — not here.
       if (justLoggedInRef.current) {
         justLoggedInRef.current = false;
         const method = pendingAuthMethodRef.current;
