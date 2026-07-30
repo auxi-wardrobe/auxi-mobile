@@ -20,7 +20,9 @@ import { motion } from '../../theme/motion';
 import { wardrobeService, WardrobeItem } from '../../services/wardrobeService';
 import { CategoryTabs } from '../../components/features/CategoryTabs';
 import { DotsLoader } from '../../components/atoms/DotsLoader';
+import { TileStatusBadge } from '../../components/features/TileStatusBadge';
 import { getImageUrl } from '../../utils/url';
+import { resolveTileStatus } from '../../utils/tile-status';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import {
   PICKER_FILTER_TABS,
@@ -165,15 +167,25 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
                     item.image_studio || item.image_png || item.image_url,
                   );
                   const isSelected = selectedIds.includes(item.id);
+                  // AU-392 gap fix: this picker grid is the browsing UI shown
+                  // BEFORE confirm — it never went through resolveTileStatus,
+                  // so items here showed no status pill even though the same
+                  // item gets one on the wardrobe grid and once placed on the
+                  // canvas (useCanvasAddItems). Mirrors WardrobeGridTile.
+                  const status = resolveTileStatus(item);
                   return (
                     <TouchableOpacity
                       key={item.id}
+                      testID={`canvas-picker-item-${item.id}`}
                       style={[
                         pickerStyles.tile,
                         isSelected && pickerStyles.tileSelected,
                       ]}
                       activeOpacity={0.82}
                       onPress={() => toggleItem(item.id)}
+                      accessibilityLabel={
+                        item.name || t('common.no_image')
+                      }
                     >
                       {uri ? (
                         <Image
@@ -188,6 +200,10 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
                           </Text>
                         </View>
                       )}
+
+                      {status ? (
+                        <TileStatusBadge status={status} itemId={item.id} />
+                      ) : null}
                     </TouchableOpacity>
                   );
                 })}
