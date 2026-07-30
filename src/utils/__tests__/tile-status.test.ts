@@ -51,6 +51,74 @@ describe('resolveTileStatus — WardrobeItem input (moved from wardrobe-grid.tes
   });
 });
 
+// AU-392 fix: `USR_*` per-user catalog clones — `is_common_item: false` +
+// a real `user_id`, the actual shape of most of a real account's wardrobe
+// (see qa-mobile's investigation report). Mirrors
+// `ItemDetailScreen.tsx:281-288`'s `isCatalogItem` so both surfaces agree.
+describe('resolveTileStatus — USR_* per-user catalog clone (fix)', () => {
+  it('resolves "common" for a USR_*-prefixed clone with no other signal', () => {
+    expect(
+      resolveTileStatus(
+        wardrobeItem({
+          user_id: 'u1',
+          is_common_item: false,
+          human_readable_id: 'USR_BT_SHO_NVY_REG_01',
+        }),
+      ),
+    ).toBe('common');
+  });
+
+  it('does not fall back to null for a non-USR_, non-common, real-user_id item (regression guard)', () => {
+    expect(
+      resolveTileStatus(
+        wardrobeItem({
+          user_id: 'u1',
+          is_common_item: false,
+          human_readable_id: 'a1b2c3d4-user-uploaded-uuid',
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it('"less use" still wins over "common" for a demoted USR_* clone', () => {
+    expect(
+      resolveTileStatus(
+        wardrobeItem({
+          user_id: 'u1',
+          is_common_item: false,
+          human_readable_id: 'USR_BT_SHO_NVY_REG_01',
+          usage_frequency: 'LESS_USED',
+        }),
+      ),
+    ).toBe('less_use');
+  });
+
+  it('a USR_* clone never shows "new" even if is_new is true — catalog wins precedence', () => {
+    expect(
+      resolveTileStatus(
+        wardrobeItem({
+          user_id: 'u1',
+          is_common_item: false,
+          human_readable_id: 'USR_BT_SHO_NVY_REG_01',
+          is_new: true,
+        }),
+      ),
+    ).toBe('common');
+  });
+
+  it('is_common_item: true still wins independent of human_readable_id', () => {
+    expect(
+      resolveTileStatus(
+        wardrobeItem({
+          user_id: 'u1',
+          is_common_item: true,
+          human_readable_id: 'SYS_BT_SHO_NVY_REG_01',
+        }),
+      ),
+    ).toBe('common');
+  });
+});
+
 // AU-392: proves the resolver accepts the favourites payload shape with NO
 // `as` cast — the whole point of widening the input to a structural type.
 describe('resolveTileStatus — FavouriteItem input (no cast)', () => {
@@ -73,6 +141,20 @@ describe('resolveTileStatus — FavouriteItem input (no cast)', () => {
     expect(
       resolveTileStatus(favouriteItem({ is_common_item: false, user_id: 'u1' })),
     ).toBeNull();
+  });
+
+  // AU-392 fix: same USR_* clone recognition, threaded onto `FavouriteItem`
+  // (see `favouriteService.ts`) so favourite cards agree with Item Detail.
+  it('resolves "common" for a USR_*-prefixed favourite item clone', () => {
+    expect(
+      resolveTileStatus(
+        favouriteItem({
+          is_common_item: false,
+          user_id: 'u1',
+          human_readable_id: 'USR_TOP_TEE_WHT_REG_01',
+        }),
+      ),
+    ).toBe('common');
   });
 });
 
@@ -100,5 +182,17 @@ describe('resolveTileStatus — mapped Item-like input (no cast)', () => {
       is_new: false,
     };
     expect(resolveTileStatus(mappedItem)).toBeNull();
+  });
+
+  // AU-392 fix: same USR_* clone recognition, threaded onto the mapped
+  // `Item` (`outfit-normalize.ts`'s `mapV05Item`) so Home outfit tiles agree
+  // with Item Detail.
+  it('resolves "common" for a USR_*-prefixed mapped Home outfit item', () => {
+    const mappedUsrClone: TileStatusInput = {
+      is_common_item: false,
+      user_id: 'u1',
+      human_readable_id: 'USR_OUT_JKT_BLK_REG_01',
+    };
+    expect(resolveTileStatus(mappedUsrClone)).toBe('common');
   });
 });

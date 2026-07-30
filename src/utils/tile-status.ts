@@ -16,6 +16,9 @@ export interface TileStatusInput {
   is_new?: boolean;
   usage_frequency?: UsageFrequency | string | null;
   style_tags?: string[];
+  // AU-392 fix: needed to recognize per-user catalog clones — see
+  // `isCommonItem` below.
+  human_readable_id?: string | null;
 }
 
 // Duplicated (not imported) from `wardrobeService.ts`'s private
@@ -35,10 +38,24 @@ const isLessUsedTile = (item: TileStatusInput): boolean =>
   item.usage_frequency === 'LESS_USED' ||
   normalizeStyleTags(item.style_tags).includes(STYLE_TAG_LESS_USED);
 
+// AU-392 fix: cross-referenced (not imported — see file header) from
+// `ItemDetailScreen.tsx:281-288`'s `isCatalogItem`. That screen's own
+// definition already treated any `USR_`-prefixed `human_readable_id` as a
+// catalog item (per-user clone of a SYSTEM common) — this module's
+// `isCommonItem` had drifted and missed that case, so `resolveTileStatus`
+// returned no badge for the ~87% of a real wardrobe made of these clones.
+// Same duplication-by-design rationale as `STYLE_TAG_LESS_USED` above: keep
+// both copies reading the same one-line rule; if it ever changes, change it
+// in both places.
+const isPerUserCatalogClone = (item: TileStatusInput): boolean =>
+  typeof item.human_readable_id === 'string' &&
+  item.human_readable_id.startsWith('USR_');
+
 export const isCommonItem = (item: TileStatusInput): boolean =>
   item.is_common_item === true ||
   item.user_id === null ||
-  item.user_id === undefined;
+  item.user_id === undefined ||
+  isPerUserCatalogClone(item);
 
 // A grid tile shows at most one status pill (Figma: bottom-centre). The four
 // states are mutually exclusive and resolved with the precedence

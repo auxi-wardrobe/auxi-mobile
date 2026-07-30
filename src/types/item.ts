@@ -24,6 +24,10 @@ export interface Item {
   is_common_item?: boolean;
   is_new?: boolean;
   usage_frequency?: 'NORMAL' | 'LESS_USED';
+  // AU-392 fix: needed by `isCommonItem` (src/utils/tile-status.ts) to
+  // recognize `USR_`-prefixed per-user catalog clones, same wire field as
+  // `WardrobeItem`/`FavouriteItem`.
+  human_readable_id?: string | null;
 }
 
 export const CATEGORIES = [

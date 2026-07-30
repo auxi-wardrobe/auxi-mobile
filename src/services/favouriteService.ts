@@ -56,13 +56,16 @@ export interface SaveFavouriteResponse {
  * client's `isSystem` alias — the screen maps one to the other when it reuses
  * the Home tile renderer.
  *
- * AU-392: `user_id`, `is_new`, `usage_frequency` and `style_tags` are
- * promoted out of the index signature onto the type proper. They already
- * arrive on the wire — `Favorite.to_dict()` inlines `WardrobeItem.to_dict()`
+ * AU-392: `user_id`, `is_new`, `usage_frequency`, `style_tags` and (fix pass)
+ * `human_readable_id` are promoted out of the index signature onto the type
+ * proper. They already arrive on the wire — `Favorite.to_dict()` inlines
+ * `WardrobeItem.to_dict()`
  * (`wardrobe-backend/models/favorite.py:70` → `models/wardrobe.py:168-210`),
  * no backend change needed — so this is a type-only widening that lets
  * `FavouriteOutfitCard`'s `Tile` feed an item straight into the shared
  * `resolveTileStatus` (`src/utils/tile-status.ts`) without a cast.
+ * `human_readable_id` additionally lets `isCommonItem` recognize `USR_`-
+ * prefixed per-user catalog clones on favourite cards.
  */
 export interface FavouriteItem
   extends Pick<Item, 'id' | 'image_url' | 'image_png' | 'name' | 'category'> {
@@ -71,6 +74,7 @@ export interface FavouriteItem
   is_new?: boolean;
   usage_frequency?: string | null;
   style_tags?: string[];
+  human_readable_id?: string | null;
   // Pass-through for any other backend item fields the tile doesn't read.
   [key: string]: unknown;
 }

@@ -32,6 +32,10 @@ export const mapV05Item = (it: V05OutfitItem): Item => ({
   is_common_item: it.is_common_item,
   is_new: it.is_new,
   usage_frequency: it.usage_frequency,
+  // AU-392 fix: carry through so `resolveTileStatus`/`isCommonItem` can
+  // recognize `USR_`-prefixed per-user catalog clones on Home outfit tiles,
+  // not just the wardrobe grid.
+  human_readable_id: it.human_readable_id,
 });
 
 export const buildGrid = (items: Item[]): Array<Item | null> =>
