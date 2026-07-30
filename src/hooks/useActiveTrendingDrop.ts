@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { configureCollapseNext, useReducedMotion } from '../theme/motion';
 import { toast } from '../components/design-system/lib';
 import {
   track,
@@ -57,6 +58,7 @@ export const useActiveTrendingDrop = (): UseActiveTrendingDrop => {
   const { user } = useAuth();
   const userId = user?.id != null ? String(user.id) : undefined;
   const queryClient = useQueryClient();
+  const reducedMotion = useReducedMotion();
 
   const { data } = useQuery({
     queryKey: [TRENDING_DROP_QUERY_KEY, userId],
@@ -118,6 +120,11 @@ export const useActiveTrendingDrop = (): UseActiveTrendingDrop => {
       if (!dropId || !itemId) {
         return undefined;
       }
+      // MINOR-2 (designer 260729): animate the card's removal so the deck
+      // slides up calmly instead of snapping ~400px in one frame. Schedule the
+      // collapse on the SAME commit as the optimistic hide below; reduce-motion
+      // → instant (configureCollapseNext no-ops).
+      configureCollapseNext(reducedMotion);
       // Optimistic hide + persist the flag so it stays hidden across a remount
       // in this session, before the query refetches.
       setHiddenDropId(dropId);

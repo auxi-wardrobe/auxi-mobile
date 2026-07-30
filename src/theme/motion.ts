@@ -2,7 +2,7 @@
 // Single source of truth for animation values. Do NOT hardcode timings,
 // distances, or easings in components — reference a token here.
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Easing } from 'react-native';
+import { AccessibilityInfo, Easing, LayoutAnimation } from 'react-native';
 
 export const motion = {
   duration: {
@@ -33,6 +33,29 @@ export const motion = {
     confident: { stiffness: 350, damping: 40 },
   },
 } as const;
+
+/**
+ * Schedule a calm collapse for the NEXT layout commit — used when an inline
+ * content block (e.g. the trending-drop card) is removed and its siblings
+ * should slide up rather than snap in a single frame (motion-rules.md §5,
+ * abrupt-motion). Runs at `duration.normal` with an exit/accelerate curve:
+ * LayoutAnimation only accepts its `Types` enum, so `easeIn` stands in for the
+ * `easing.exit` bezier (both accelerate away). No-op when reduce-motion is on,
+ * so the layout jumps straight to its final position (motion-rules.md §4).
+ */
+export const configureCollapseNext = (reduced: boolean): void => {
+  if (reduced) {
+    return;
+  }
+  LayoutAnimation.configureNext({
+    duration: motion.duration.normal,
+    update: { type: LayoutAnimation.Types.easeIn },
+    delete: {
+      type: LayoutAnimation.Types.easeIn,
+      property: LayoutAnimation.Properties.opacity,
+    },
+  });
+};
 
 // Swipe-deck carousel depth: the active card sits foregrounded at full size
 // (1.0) while its neighbours rest smaller behind it at DECK_PEEK_SCALE. The
