@@ -51,7 +51,7 @@ the last known values. `useFeatureFlag` reads the resolved toggles.
 
 | File | Role |
 |---|---|
-| `src/config/unleash.ts` | Connection config. Reads `UNLEASH_FRONTEND_CLIENT_KEY` / `UNLEASH_FRONTEND_URL` from env — **no token in source**. Exports `UNLEASH_ENABLED` (true only when a key is set). |
+| `src/config/unleash.ts` | Connection config. Embeds the dev/prod **Frontend** tokens per-env via a `__DEV__` split (mirrors `config/env.ts`) — no build-time env injector exists on native, so an env read would resolve to `''` and never turn a flag ON. Exports `UNLEASH_ENABLED` (true only when a key is present). |
 | `src/services/featureFlags.tsx` | Native seam. Owns the `UnleashClient` singleton (built defensively in try/catch), the `FLAGS` name constants, `FeatureFlagProvider`, and the user/foreground bridge. **Only module that imports the SDK on native.** |
 | `src/services/featureFlags.web.tsx` | Web no-op counterpart. `FeatureFlagProvider` = passthrough; exports `FLAGS`; `unleashClient = null`. vite resolves this ahead of the native file so the SDK never enters the browser bundle. |
 | `src/hooks/useFeatureFlag.ts` | `useFeatureFlag(name: string): boolean`. Reads toggles directly off the singleton (provider-independent) → returns `false` when not-ready / on error / no provider. Never throws. |
@@ -63,13 +63,16 @@ the last known values. `useFeatureFlag` reads the resolved toggles.
 ## Config — `src/config/unleash.ts`
 
 ```ts
-// Default Frontend API endpoint (self-hosted Unleash on Railway).
+// Frontend API endpoint (self-hosted Unleash on Railway).
 const DEFAULT_UNLEASH_URL =
   'https://primary-production-ee649.up.railway.app/api/frontend';
+export const UNLEASH_URL = DEFAULT_UNLEASH_URL;
 
-// Read from env — NEVER hardcode the token.
-export const UNLEASH_URL = env.UNLEASH_FRONTEND_URL || DEFAULT_UNLEASH_URL;
-export const UNLEASH_CLIENT_KEY = env.UNLEASH_FRONTEND_CLIENT_KEY || '';
+// Frontend tokens — embedded per-env, split by __DEV__ (same as config/env.ts).
+const DEV_CLIENT_KEY = '*:development.…';
+const PROD_CLIENT_KEY = '*:production.…';
+export const UNLEASH_CLIENT_KEY = __DEV__ ? DEV_CLIENT_KEY : PROD_CLIENT_KEY;
+
 export const UNLEASH_APP_NAME = 'auxi';
 export const UNLEASH_REFRESH_INTERVAL = 30;  // seconds
 export const UNLEASH_METRICS_INTERVAL = 60;  // seconds
@@ -78,15 +81,20 @@ export const UNLEASH_METRICS_INTERVAL = 60;  // seconds
 export const UNLEASH_ENABLED = UNLEASH_CLIENT_KEY.length > 0;
 ```
 
-- Use a **Frontend** token (type `frontend`, `*:development.…` / `*:production.…`).
-  It is read-only and env-scoped — the Frontend API evaluates strategies
-  server-side and returns only on/off + variant, so no ruleset leaks to the
-  device. Never ship a client or admin token.
-- **Unset key ⇒ `UNLEASH_ENABLED = false` ⇒ no network call ⇒ all flags OFF.**
+- The keys are **Frontend** tokens (type `frontend`, `*:development.…` /
+  `*:production.…`). They are read-only and env-scoped — the Frontend API
+  evaluates strategies server-side and returns only on/off + variant, so no
+  ruleset leaks to the device. Same risk class as the Mixpanel token already in
+  `config/analytics.ts`; safe to ship in the client bundle. Never ship a client
+  or admin token.
+- The token already encodes its environment, so `__DEV__` picks the matching one:
+  dev builds read dev flags, release builds read prod flags.
+- **Empty key ⇒ `UNLEASH_ENABLED = false` ⇒ no network call ⇒ all flags OFF.**
   Safe by default.
-- There is no `react-native-config` yet (see `auxi/CLAUDE.md` "API config" TODO),
-  so injecting the value on native needs either that plumbing or a build-time
-  env inliner. See [Activation](#activation--whats-still-needed).
+- Embedding (rather than reading `process.env`) is deliberate: there is no
+  `react-native-config` / build-time env inliner on native (see `auxi/CLAUDE.md`
+  "API config" TODO), so an env read would resolve to `''` and no flag could ever
+  turn ON.
 
 ## Provider — non-blocking by construction
 
@@ -183,12 +191,13 @@ succeeds and the built bundle contains no Unleash SDK symbols.
 
 The integration is merged non-blocking; to make flags actually resolve **ON**:
 
-1. **Provide the frontend token to native builds.** Set
-   `UNLEASH_FRONTEND_CLIENT_KEY` (and optionally `UNLEASH_FRONTEND_URL`) via the
-   queued `react-native-config` / `.env` plumbing (or a build-time env inliner).
-   The dev/prod Frontend tokens live in the password manager, delivered
-   out-of-band — never commit them. Until set, `UNLEASH_ENABLED` is false and
-   all flags are OFF.
+1. **Frontend token — already embedded.** The dev/prod Frontend tokens are
+   embedded per-env in `src/config/unleash.ts` (`__DEV__` split, same pattern as
+   `config/env.ts`), because this app has no build-time env injector — a
+   `process.env` read resolves to `''` on native, so the flag could never turn
+   ON. Frontend tokens are read-only + env-scoped (low-priv, client-embeddable),
+   so this is the same risk class as the Mixpanel token already in
+   `config/analytics.ts`. Nothing to do here.
 2. **Create + enable the flag in the Unleash admin.** Admin UI
    (`https://primary-production-ee649.up.railway.app`) → project `default` →
    *New feature flag* → name it `trending_item_drop`, type `release` → enable the
@@ -199,7 +208,7 @@ The integration is merged non-blocking; to make flags actually resolve **ON**:
    (Coordinate: pods / native rebuild disrupt other concurrent sim sessions —
    see `.claude/rules/ios-build-workflow-required.md`.)
 
-Sanity-check the raw API once a token exists:
+Sanity-check the raw API:
 
 ```bash
 curl -s https://primary-production-ee649.up.railway.app/api/frontend \
@@ -217,13 +226,14 @@ curl -s https://primary-production-ee649.up.railway.app/api/frontend \
 - **Target a segment**: constrain on a context field passed by the bridge
   (currently `userId`; extend `updateContext` to add `role` / `gender` etc.).
 - **New / rotated token**: *Settings → API access → New API token* → type
-  **Frontend** → set `UNLEASH_FRONTEND_CLIENT_KEY`.
+  **Frontend** → paste into `DEV_CLIENT_KEY` / `PROD_CLIENT_KEY` in
+  `src/config/unleash.ts`.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| Flags always `false` | No token set (`UNLEASH_ENABLED` false), or native crypto module not linked (`yarn pods` + rebuild), or flag not enabled for this env. |
+| Flags always `false` | Empty key (`UNLEASH_ENABLED` false), or native crypto module not linked (`yarn pods` + rebuild), or flag not enabled for this env. |
 | `401` from `/api/frontend` | Wrong token type — must be a **Frontend** token, matching env. |
 | Web build breaks importing the SDK | A native-only module was imported without a `.web` counterpart. Keep SDK imports confined to `featureFlags.tsx` / `useFeatureFlag.ts`. |
 | Flags stale | Lower `UNLEASH_REFRESH_INTERVAL`, or confirm the foreground-refresh bridge is mounted. |
