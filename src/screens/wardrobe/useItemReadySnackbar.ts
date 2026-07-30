@@ -25,7 +25,7 @@ interface UseItemReadySnackbar {
  *
  * Extended (Task 14): also detects beautify_status `pending → ready` transitions
  * and exposes a separate beautify-ready snackbar state that the screen uses to
- * render an actionable "Studio shot ready — Review" overlay → BeautifyReview.
+ * render an actionable "Studio shot ready — Review" overlay → EnhanceImage.
  */
 export const useItemReadySnackbar = (): UseItemReadySnackbar => {
   const { t } = useTranslation();

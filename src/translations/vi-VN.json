@@ -239,10 +239,19 @@
       },
       "enhance": {
         "title": "Cải thiện ảnh",
-        "loading": "Đang chuẩn bị món này\ntrong chưa đầy 10 giây",
+        "loading_headline": "Đang làm món đồ của bạn nổi bật ✨",
+        "loading_rows": [
+          "Đang cải thiện món đồ của bạn…",
+          "Đang tinh chỉnh chi tiết…",
+          "Đang làm sạch trang phục…"
+        ],
+        "loading_note": "Việc này có thể lâu hơn dự kiến.\nBạn có thể rời đi — chúng tôi sẽ báo ngay khi xong",
+        "leave_notify": "Rời đi — báo tôi khi xong",
         "compare_hint": "Nhấn giữ để xem ảnh gốc",
         "discard": "Bỏ qua",
         "replace_original": "Thay ảnh gốc",
+        "regenerate": "Tạo lại",
+        "regenerate_capped": "Giữ ảnh đẹp nhất",
         "retry": "Thử lại",
         "cancel": "Hủy",
         "error_generic": "Không thể cải thiện ảnh. Vui lòng thử lại.",

@@ -358,11 +358,13 @@ export const WardrobeScreen = () => {
         is_common: isCommonItem(item),
         beautify_status: 'ready',
       });
-      // Direct tile tap is a distinct entry point from snackbar or loader.
-      navigation.navigate('BeautifyReview', {
+      // A ready candidate opens the Enhance result screen — the same surface
+      // the on-demand enhance flow ends on, so "come back and look at it
+      // later" and "watch it finish" are one screen, not two.
+      navigation.navigate('EnhanceImage', {
         itemId: item.id,
-        originalUri: item.image_url ?? '',
-        from: 'tile',
+        displayUri: item.image_url ?? '',
+        origin: 'wardrobe',
       });
       return;
     }
@@ -727,7 +729,7 @@ export const WardrobeScreen = () => {
       ) : null}
 
       {/* Task 14: "Studio shot ready — Review" snackbar. Actionable (tappable
-          → BeautifyReview), so the overlay does NOT carry pointerEvents="none".
+          → EnhanceImage), so the overlay does NOT carry pointerEvents="none".
           Sits at the same bottom anchor; auto-hides after READY_SNACKBAR_MS. */}
       {beautifySnackbarVisible && beautifySnackbarItemId ? (
         <View
@@ -741,10 +743,10 @@ export const WardrobeScreen = () => {
             message={t('wardrobe.list.beautify_ready_title')}
             testID="beautify-ready-snackbar"
             onPress={() => {
-              navigation.navigate('BeautifyReview', {
+              navigation.navigate('EnhanceImage', {
                 itemId: beautifySnackbarItemId,
-                originalUri: beautifySnackbarOriginalUri ?? '',
-                from: 'snackbar',
+                displayUri: beautifySnackbarOriginalUri ?? '',
+                origin: 'wardrobe',
               });
             }}
           />

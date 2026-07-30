@@ -239,10 +239,19 @@
       },
       "enhance": {
         "title": "Enhance Image",
-        "loading": "Preparing this item…",
+        "loading_headline": "Making your clothing shine ✨",
+        "loading_rows": [
+          "Enhancing your item…",
+          "Refining the details…",
+          "Cleaning up your garment…"
+        ],
+        "loading_note": "This can take longer than expected.\nYou can leave — we'll let you know the second it's ready",
+        "leave_notify": "Leave — notify me when ready",
         "compare_hint": "Long press to see the original image",
         "discard": "Discard",
         "replace_original": "Replace original",
+        "regenerate": "Regenerate",
+        "regenerate_capped": "Keep the best one",
         "retry": "Retry",
         "cancel": "Cancel",
         "error_generic": "Couldn't enhance the image. Please try again.",

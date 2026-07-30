@@ -173,6 +173,7 @@ export const theme = {
     // UAC named constants — AU-242 spec
     uacBodyPadding: 24, // --body horizontal padding
     uacDimension24: 24,
+    uacDimension20: 20,
     uacDimension16: 16,
     uacDimension12: 12, // dimension/12 - 0.75rem — caption/icon pill padX, pager gaps
     uacDimension8: 8,

@@ -221,12 +221,20 @@ export type AppStackParamList = {
     fallbackItem?: ItemDetailFallbackItem;
     enhancedItem?: EnhanceAppliedResult;
   };
-  // AI Image Enhancement preview (reached from ItemDetail's sparkle FAB).
-  // Fires POST /items/{id}/beautify on mount and polls for the candidate —
-  // the on-demand v2 of the upload-time beautify flow (spec §3 non-goal #1,
-  // now in scope). `displayUri` is the image the detail screen was showing;
-  // it doubles as the loading backdrop and the long-press compare baseline.
-  EnhanceImage: { itemId: string; displayUri: string };
+  // AI Image Enhancement preview (ItemDetail's sparkle FAB, and every "see the
+  // studio shot" entry point: the Wardrobe tile, the beautify-ready snackbar,
+  // the push deep link, and the upload-time BeautifyPending hand-off).
+  // On mount it asks the server what already exists — a ready candidate is
+  // shown as-is, a running job is polled, and only a fresh item starts a new
+  // POST /items/{id}/beautify. `displayUri` is the original image: the
+  // long-press compare baseline. `origin` decides where accept/discard land —
+  // back on the detail screen (default) or on the Wardrobe grid for the
+  // entry points that have no ItemDetail underneath.
+  EnhanceImage: {
+    itemId: string;
+    displayUri: string;
+    origin?: 'itemDetail' | 'wardrobe';
+  };
   // __DEV__-only in-app Design System reference / style-guide catalog.
   // Reached from the Settings "Version" row in dev builds; not shipped to prod.
   DesignSystem: undefined;
