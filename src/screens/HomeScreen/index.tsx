@@ -1131,6 +1131,18 @@ export const HomeScreen = () => {
         color: fromWardrobe.color_hex ?? '',
         isSystem: fromWardrobe.is_common_item ?? false,
         isExploration: false,
+        // AU-392 R5: carry the tile-status fields through too — this is a
+        // second `WardrobeItem -> Item` mapping seam (the "Build around
+        // this" pin path bypasses `mapV05Item`), so without this the pinned
+        // tile's badge would silently default to "common" (missing
+        // `user_id` reads as common, see `resolveTileStatus`).
+        user_id:
+          fromWardrobe.user_id === null || fromWardrobe.user_id === undefined
+            ? fromWardrobe.user_id
+            : String(fromWardrobe.user_id),
+        is_common_item: fromWardrobe.is_common_item,
+        is_new: fromWardrobe.is_new,
+        usage_frequency: fromWardrobe.usage_frequency,
       };
       lastPinnedItemRef.current = mapped;
       return mapped;
@@ -1543,6 +1555,12 @@ export const HomeScreen = () => {
         id: it.id,
         imageUrl: resolveItemImage(it) || it.image_url,
         category: it.category,
+        // AU-392 D1: carry the status fields through so the Remix editor can
+        // resolve the same badge shown on the Home tile being remixed.
+        is_common_item: it.is_common_item,
+        user_id: it.user_id,
+        is_new: it.is_new,
+        usage_frequency: it.usage_frequency,
       }));
     navigation.navigate(
       'OutfitCanvas',
@@ -1834,7 +1852,10 @@ export const HomeScreen = () => {
         variant={pinState.modal === 'replace' ? 'replace' : 'confirm'}
         itemImageUrl={pinDialogImageUrl}
         itemLabel={pinDialogItem?.name ?? undefined}
-        isCommonItem={pinDialogItem?.isSystem ?? false}
+        // AU-392 D4: read the tile-status contract field, not `isSystem`
+        // (which means `source==='common_essential'` and previously mislabeled
+        // a cloned starter item as "not common" in the Pin modal).
+        isCommonItem={pinDialogItem?.is_common_item ?? false}
         dontShowAgain={pinDontShowAgainPending}
         onToggleDontShowAgain={handleToggleDontShowAgain}
         onConfirm={handleConfirmPinFromModal}

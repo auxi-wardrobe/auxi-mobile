@@ -84,6 +84,9 @@ export const CollageSheetCanvas: React.FC<Props> = ({
       // pages/scrolls; press-and-hold picks the item up to rearrange.
       dragActivation="longPress"
       onDragActiveChange={onDragActiveChange}
+      // AU-392 D1 (2026-07-30): the status badge now shows in the Home
+      // collage-play view too, not just the grid.
+      showStatusBadge
     />
   );
 };

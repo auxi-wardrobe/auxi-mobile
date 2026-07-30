@@ -284,7 +284,20 @@ export type AppStackParamList = {
   OutfitCanvas:
     | {
         outfitId?: string;
-        items?: Array<{ id: string; imageUrl: string; category?: string }>;
+        items?: Array<{
+          id: string;
+          imageUrl: string;
+          category?: string;
+          // AU-392 D1 (2026-07-30): tile-status fields, same wire shape as
+          // `Item`/`TileStatusInput` (src/utils/tile-status.ts) so the Remix
+          // editor can resolve the same 4-state badge shown in the Home
+          // collage the user remixed from. Optional — older/mock callers
+          // (deep-link, no params) still type-check without them.
+          is_common_item?: boolean;
+          user_id?: string | number | null;
+          is_new?: boolean;
+          usage_frequency?: string | null;
+        }>;
         // How the canvas was entered. 'remix' (from Home's Remix button) shows
         // a back chevron; 'menu' / undefined (from the sidebar drawer) shows the
         // hamburger that re-opens the drawer.

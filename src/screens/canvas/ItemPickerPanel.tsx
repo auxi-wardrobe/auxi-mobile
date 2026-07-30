@@ -20,8 +20,10 @@ import { motion } from '../../theme/motion';
 import { wardrobeService, WardrobeItem } from '../../services/wardrobeService';
 import { CategoryTabs } from '../../components/features/CategoryTabs';
 import { DotsLoader } from '../../components/atoms/DotsLoader';
+import { TileStatusBadge } from '../../components/features/TileStatusBadge';
 import { Icons } from '../../assets/icons';
 import { getImageUrl } from '../../utils/url';
+import { resolveTileStatus } from '../../utils/tile-status';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import {
   PICKER_FILTER_TABS,
@@ -167,6 +169,12 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
                     item.image_studio || item.image_png || item.image_url,
                   );
                   const isSelected = selectedIds.includes(item.id);
+                  // AU-392 gap fix: this picker grid is the browsing UI shown
+                  // BEFORE confirm — it never went through resolveTileStatus,
+                  // so items here showed no status pill even though the same
+                  // item gets one on the wardrobe grid and once placed on the
+                  // canvas (useCanvasAddItems). Mirrors WardrobeGridTile.
+                  const status = resolveTileStatus(item);
                   // First tile gets a stable testID so Maestro can tap it
                   // without depending on a backend id (same convention as the
                   // wardrobe / database grids).
@@ -202,6 +210,10 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
                           </Text>
                         </View>
                       )}
+
+                      {status ? (
+                        <TileStatusBadge status={status} itemId={item.id} />
+                      ) : null}
 
                       {/* Multi-select check — top-right, identical to the
                           database picker's add-to-wardrobe treatment. */}

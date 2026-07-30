@@ -15,6 +15,8 @@ import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { getItemHitArea } from './canvas-hit-area';
+import { TileStatus } from '../../utils/tile-status';
+import { TileStatusBadge } from './TileStatusBadge';
 
 // Shared drag-drop canvas surface. Extracted from OutfitCanvasScreen so both
 // the full Remix editor (with toolbar/undo/tags, owned by the screen) and the
@@ -22,6 +24,13 @@ import { getItemHitArea } from './canvas-hit-area';
 //
 // This component is PRESENTATIONAL/controlled: the parent owns the item array,
 // selection and history. The surface only renders items + reports drag/select.
+//
+// AU-392 D1 (2026-07-30, CEO/user): the 4-state status badge now renders here
+// too — Home collage-play AND the Remix editor, not just the grid — reversing
+// the earlier "no badge in collage" call. `status` is a passthrough field on
+// `CanvasItemData` (computed upstream by the seed layer, never derived here)
+// and only rendered when the caller opts in via `showStatusBadge` (default
+// `false`, so any future/unlisted consumer of this surface is unaffected).
 
 export type CanvasItemData = {
   id: string;
@@ -42,6 +51,11 @@ export type CanvasItemData = {
   // key). Carried so a saved creation can launch Self Visualization / try-on,
   // which needs real wardrobe item ids. Absent for mock/seeded items.
   wardrobeItemId?: string;
+  // AU-392: 4-state tile status (new / less_use / common / none), carried
+  // through from the seed layer (`collage-seed-layout.ts`) for the badge
+  // overlay when the surface renders with `showStatusBadge`. Never derived
+  // here — this component stays presentational.
+  status?: TileStatus;
 };
 
 // --- Grid background (graph-paper) ---
@@ -122,6 +136,8 @@ interface DraggableItemProps {
   // have decoded onto the canvas.
   onImageLoad?: (id: string) => void;
   enablePinchZoom?: boolean;
+  // AU-392: render `item.status` as a bottom-centre pill (see SurfaceProps).
+  showStatusBadge?: boolean;
 }
 
 const DraggableItem: React.FC<DraggableItemProps> = ({
@@ -137,6 +153,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   onDragActiveChange,
   onImageLoad,
   enablePinchZoom = false,
+  showStatusBadge = false,
 }) => {
   const dragOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   // 0 → 1 "lifted" cue (scale up) while an armed drag is in progress.
@@ -399,6 +416,26 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
           onLoadEnd={() => onImageLoad?.(item.id)}
         />
       </View>
+      {showStatusBadge && item.status ? (
+        // pointerEvents="none" — the badge is a visual overlay only; it must
+        // never steal the drag/pinch/tap gesture from the hit area below it
+        // (R3, phase 05).
+        //
+        // AU-392 designer FAIL fix (2026-07-30, Finding 1): counter-scale the
+        // badge by the inverse of the item's own live pinch `scale` value so
+        // its on-screen size stays constant regardless of how far the item
+        // has been pinched (clamped [0.5, 3] above) — a status label must
+        // read at a constant size like a map-pin label/photo-tag chip, never
+        // inherit its parent's zoom. `lift`'s subtle ~1.06 "picked up" bump
+        // is intentionally NOT countered (it's shared drag chrome, not a
+        // zoom level, and applies equally to every draggable element).
+        <Animated.View
+          pointerEvents="none"
+          style={{ transform: [{ scale: Animated.divide(1, scale) }] }}
+        >
+          <TileStatusBadge status={item.status} itemId={item.id} />
+        </Animated.View>
+      ) : null}
       <View
         testID={`${testIDPrefix}-${item.id}-hit`}
         style={[
@@ -459,6 +496,12 @@ type SurfaceProps = {
   onImageLoad?: (id: string) => void;
   testID?: string;
   enablePinchZoom?: boolean;
+  // AU-392: render each item's status pill (new / less_use / common). Default
+  // `false` so any future/unlisted consumer of this surface stays byte-
+  // identical; the two current consumers — Home collage-play
+  // (`CollageSheetCanvas`) and the Remix editor (`OutfitCanvasScreen`) — opt
+  // in explicitly per the D1 decision above.
+  showStatusBadge?: boolean;
 };
 
 export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
@@ -478,6 +521,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
   onImageLoad,
   testID,
   enablePinchZoom = false,
+  showStatusBadge = false,
 }) => {
   const sortedItems = [...items].sort((a, b) => a.zIndex - b.zIndex);
   return (
@@ -502,6 +546,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
           onDragActiveChange={onDragActiveChange}
           onImageLoad={onImageLoad}
           enablePinchZoom={enablePinchZoom}
+          showStatusBadge={showStatusBadge}
         />
       ))}
     </View>

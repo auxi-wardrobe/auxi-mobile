@@ -3,11 +3,13 @@ import {
   buildGridOutfitSheetWithPin,
   classifyCategoryFamily,
   dedupeByCategory,
+  mapV05Item,
   outerLayerPreferenceWeight,
   reorderColdOutfitsPreferOuter,
   resolveOnePieceConflicts,
 } from '../outfit-normalize';
 import { Item } from '../../../types/item';
+import { V05OutfitItem } from '../../../services/v05Api';
 import { OutfitSheet } from '../types';
 
 const item = (over: Partial<Item> & Pick<Item, 'id' | 'category'>): Item => ({
@@ -74,6 +76,64 @@ describe('dedupeByCategory', () => {
     const result = dedupeByCategory([pinnedJeans, bottom], 'jeans');
 
     expect(result.map(i => i.id)).toEqual(['jeans']);
+  });
+});
+
+describe('mapV05Item', () => {
+  const v05Item = (over: Partial<V05OutfitItem> = {}): V05OutfitItem => ({
+    id: 'i1',
+    human_readable_id: null,
+    name: 'Tee',
+    image_url: 'https://x/1.jpg',
+    category_family: 'TOP',
+    style_tags: [],
+    source: 'user',
+    ...over,
+  });
+
+  it('carries the 4 AU-392 tile-status fields through untouched', () => {
+    const result = mapV05Item(
+      v05Item({
+        user_id: 'u1',
+        is_common_item: false,
+        is_new: true,
+        usage_frequency: 'NORMAL',
+      }),
+    );
+
+    expect(result.user_id).toBe('u1');
+    expect(result.is_common_item).toBe(false);
+    expect(result.is_new).toBe(true);
+    expect(result.usage_frequency).toBe('NORMAL');
+  });
+
+  it('leaves the 4 fields undefined when the backend omits them (pre-phase-03 degrade path)', () => {
+    const result = mapV05Item(v05Item());
+
+    expect(result.user_id).toBeUndefined();
+    expect(result.is_common_item).toBeUndefined();
+    expect(result.is_new).toBeUndefined();
+    expect(result.usage_frequency).toBeUndefined();
+  });
+
+  it('drops none of the existing mapped fields (isSystem / isExploration semantics untouched)', () => {
+    const result = mapV05Item(
+      v05Item({
+        source: 'common_essential',
+        is_exploration_item: true,
+        color_code: 'ivory', // avoid a hex literal — auxi-lint-tokens.sh flags them
+        style_tags: ['casual'],
+      }),
+    );
+
+    expect(result.id).toBe('i1');
+    expect(result.image_url).toBe('https://x/1.jpg');
+    expect(result.name).toBe('Tee');
+    expect(result.category).toBe('Top');
+    expect(result.color).toBe('ivory');
+    expect(result.style).toBe('casual');
+    expect(result.isSystem).toBe(true);
+    expect(result.isExploration).toBe(true);
   });
 });
 

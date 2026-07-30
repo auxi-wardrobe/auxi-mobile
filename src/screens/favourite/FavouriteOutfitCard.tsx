@@ -19,6 +19,9 @@ import {
 } from '../../components/features/collage-seed-layout';
 import { MOOD_CHIPS } from '../../components/features/mood-chips';
 import { Favourite, FavouriteItem } from '../../services/favouriteService';
+import { TileStatusBadge } from '../../components/features/TileStatusBadge';
+import { resolveTileStatus } from '../../utils/tile-status';
+import { ITEM_HIT_AREA_RATIO } from '../../components/features/canvas-hit-area';
 
 type Props = {
   favourite: Favourite;
@@ -61,13 +64,52 @@ const remoteUriFromSource = (source: ImageSourcePropType): string => {
   return source.uri ?? '';
 };
 
+// AU-392 sweep fix (2026-07-30, qa-ui HIGH finding): the badge's reserved
+// vertical footprint inside its anchor box — `TileStatusBadge`'s own
+// `bottom: 8` + 24px pill height (`TileStatusBadge.tsx:22-36`).
+const BADGE_ANCHOR_HEIGHT = 32;
+
+// Clamp the badge anchor's top so it always stays fully inside the collage
+// canvas, regardless of where the item's own frame was seeded. Items are
+// intentionally allowed to bleed past the canvas edge (`collageSurface`'s
+// `overflow: 'hidden'`, matching Figma `2850:13589`) — but a status badge
+// bleeding off-canvas with it is illegible, not a stylistic bleed. Exported
+// (pure, no RN deps) so the clamp math is unit-testable without a renderer.
+//
+// AU-392 designer FAIL fix (2026-07-30, Finding 2): anchor to the item's
+// VISIBLE content bottom, not the raw frame bottom. Every garment PNG in the
+// collage engine carries the same transparent padding baked in — the
+// existing `ITEM_HIT_AREA_RATIO` (0.72, `canvas-hit-area.ts`, mirrored as
+// `CONTENT_RATIO` in `collage-seed-layout.ts`) already models that as a
+// centered content box inside each item's square frame for hit-testing and
+// collision math. The earlier clip fix anchored to the raw frame bottom
+// (`itemY + itemHeight`), which is correct only when the frame and the
+// visible art coincide; when `resizeMode="contain"` letterboxes the art
+// inside a frame sized by the generic layout formula (not the source image's
+// real aspect ratio), that left the badge floating in the transparent
+// padding below the garment (the blazer case). Reusing the SAME 0.72
+// heuristic already established for this exact "frame vs. visible content"
+// distinction keeps this DRY rather than inventing a new ratio.
+const contentBottom = (itemY: number, itemHeight: number): number =>
+  itemY + itemHeight * ((1 + ITEM_HIT_AREA_RATIO) / 2);
+
+export const clampBadgeAnchorTop = (
+  itemY: number,
+  itemHeight: number,
+  canvasHeight: number,
+): number => {
+  const naturalTop = contentBottom(itemY, itemHeight) - BADGE_ANCHOR_HEIGHT;
+  const maxTop = Math.max(0, canvasHeight - BADGE_ANCHOR_HEIGHT);
+  return Math.max(0, Math.min(naturalTop, maxTop));
+};
+
 // One saved outfit (Figma `2852:22063`), top→bottom: date → bold outfit title
 // → filled mood/vibe-tag pill → 2-column 3:4 tile grid. The ⊖ remove /
 // "Self visualization" actions are NO LONGER per-card — they live in the
 // screen-level sticky `FavouriteActionBar` (CEO 2026-06-27) and act on the
 // outfit currently snapped into view. Tile look mirrors the Home grid
-// (`HomeScreen` card/cardImage/cardTag styles) so the two screens read
-// identically.
+// (`HomeScreen` card/cardImage styles; the status pill itself is the shared
+// `TileStatusBadge`) so the two screens read identically.
 //
 // NO bulb/caption "why this" row here (designer rescan BLOCKER fix 1,
 // 260619): that left-aligned tan pill belongs to Home + the separate
@@ -76,11 +118,11 @@ const remoteUriFromSource = (source: ImageSourcePropType): string => {
 // the message was persisted) the card degrades cleanly — title line AND its
 // flanking dividers are omitted, and NO canned caption is substituted.
 //
-// RARITY-TAG DIVERGENCE (intentional, CEO-confirmed 2026-06-12): the badge is
-// data-driven — it renders ONLY for real common items (`is_common_item === true`).
-// Figma `2852:22063` draws a "common" pill on EVERY tile, but that is placeholder
-// content. Data-driven rarity is the correct, confirmed behaviour. Do NOT
-// "fix" this to match the design's every-tile pill.
+// RARITY/STATUS TAG (CEO 2026-06-12 + AU-392 2026-07-15): the badge is
+// data-driven, never the design's every-tile placeholder pill. AU-392 extends
+// it from common-only to the full wardrobe rule via the shared
+// `resolveTileStatus` — precedence `new > less_use > common("Macgie") > none`.
+// Do NOT re-add an unconditional pill.
 const Tile: React.FC<{
   item: FavouriteItem;
   testIDPrefix: string;
@@ -88,7 +130,7 @@ const Tile: React.FC<{
 }> = ({ item, testIDPrefix, onItemPress }) => {
   const { t } = useTranslation();
   const imageUrl = resolveItemImage(item);
-  const isCommon = item.is_common_item === true;
+  const status = resolveTileStatus(item);
 
   return (
     <TouchableOpacity
@@ -109,13 +151,7 @@ const Tile: React.FC<{
       ) : (
         <View style={styles.tileFallback} />
       )}
-      {isCommon ? (
-        <View style={styles.tag}>
-          <Text style={styles.tagText} numberOfLines={1}>
-            {t('favourite.common_badge')}
-          </Text>
-        </View>
-      ) : null}
+      {status ? <TileStatusBadge status={status} itemId={item.id} /> : null}
     </TouchableOpacity>
   );
 };
@@ -126,7 +162,11 @@ const Tile: React.FC<{
 // 2850:13589) so the favourite and Home collages render identically. Unlike
 // Home's drag-to-play surface this is a static review render — tiles stay
 // tappable (open ItemDetail) but aren't draggable, which also avoids fighting
-// the list's snap-scroll. Rarity badges are omitted to mirror the Home collage.
+// the list's snap-scroll.
+//
+// AU-392 D1 (2026-07-30, CEO/user): the status badge now renders here too —
+// reversing the earlier "omitted to mirror the Home collage" call, since the
+// Home collage shows it now as well (see `CollageSheetCanvas`).
 //
 // The surface sizes to its CONTAINER via `onLayout` (full content width, locked
 // 3:4 via aspectRatio) — NOT a module-level `Dimensions.get()` read, which is
@@ -149,6 +189,7 @@ const CollageView: React.FC<{
               id: item.id,
               imageUri: resolveItemImage(item) || '',
               category: item.category,
+              status: resolveTileStatus(item),
             })),
             surfaceWidth,
           )
@@ -165,6 +206,10 @@ const CollageView: React.FC<{
   if (items.length === 0) {
     return null;
   }
+
+  // Canvas height in px — the surface locks a 3:4 aspect off its measured
+  // width (see `collageSurface` style / `COLLAGE_ASPECT`).
+  const canvasHeight = surfaceWidth * COLLAGE_ASPECT;
 
   return (
     <View
@@ -199,6 +244,31 @@ const CollageView: React.FC<{
           />
         </TouchableOpacity>
       ))}
+      {/* Badges render as a separate anchor layer (not nested in the item's own
+          frame box) so a bottom-seeded item's intentional edge-bleed never
+          drags its badge off-canvas along with it — see
+          `clampBadgeAnchorTop` above. `pointerEvents="none"` matches the
+          existing collage/canvas badge overlays (visual-only, never steals
+          the item's own tap). */}
+      {seeded.map(node =>
+        node.status ? (
+          <View
+            key={`${node.id}-badge`}
+            pointerEvents="none"
+            style={[
+              styles.collageBadgeAnchor,
+              {
+                left: node.x,
+                width: node.width,
+                top: clampBadgeAnchorTop(node.y, node.height, canvasHeight),
+                zIndex: node.zIndex,
+              },
+            ]}
+          >
+            <TileStatusBadge status={node.status} itemId={node.id} />
+          </View>
+        ) : null,
+      )}
     </View>
   );
 };
@@ -368,6 +438,13 @@ const styles = StyleSheet.create({
   collageItem: {
     position: 'absolute',
   },
+  // Badge anchor box (AU-392 sweep fix): a slim, clamped-position sibling of
+  // `collageItem`, height matches `BADGE_ANCHOR_HEIGHT` so `TileStatusBadge`'s
+  // own `bottom: 8` resolves against this box, not the item's own frame.
+  collageBadgeAnchor: {
+    position: 'absolute',
+    height: BADGE_ANCHOR_HEIGHT,
+  },
   row: {
     flexDirection: 'row',
     gap: theme.spacing.xs,
@@ -388,23 +465,5 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: theme.colors.figmaBackground,
-  },
-  // Rarity badge — centred, pinned 7px from the tile bottom (Figma I…;2595:10239).
-  tag: {
-    position: 'absolute',
-    alignSelf: 'center',
-    bottom: 7,
-    minWidth: 59,
-    paddingHorizontal: theme.spacing.uacDimension12,
-    height: 24, // chip size SM
-    borderRadius: theme.borderRadius.m,
-    backgroundColor: theme.colors.figmaCardTag,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tagText: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.white,
-    textAlign: 'center',
   },
 });

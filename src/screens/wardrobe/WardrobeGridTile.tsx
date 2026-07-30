@@ -8,7 +8,7 @@ import { theme } from '../../theme/theme';
 import { resolveItemImage } from '../../utils/url';
 import { Icons } from '../../assets/icons';
 import { TILE_HEIGHT, TILE_WIDTH, resolveTileStatus } from './wardrobe-grid';
-import { TileStatusBadge } from './TileStatusBadge';
+import { TileStatusBadge } from '../../components/features/TileStatusBadge';
 
 interface WardrobeGridTileProps {
   item: WardrobeItem;

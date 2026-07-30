@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
-import { TileStatus } from './wardrobe-grid';
+import { TileStatus } from '../../utils/tile-status';
 
 type TileBadgeStatus = Exclude<TileStatus, null>;
 

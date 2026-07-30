@@ -115,15 +115,30 @@ jest.mock('@react-navigation/native-stack', () => {
 
 // react-native-gesture-handler: native gesture bridge, absent in jest. Tests that
 // import DS sheets only need imports/rendering to resolve; gestures are inert.
+// AU-392 (2026-07-30): extended with Pinch/Rotation/Tap/Simultaneous (each
+// call returns its own chainable builder, not one shared object) so
+// `OutfitCanvasSurface.tsx` — which builds all four — can be imported/
+// rendered in a test without crashing. Superset-compatible with the prior
+// Pan-only shape (`onEnd`/`onUpdate`/`runOnJS` still present).
 jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
-  const chain = {
-    onEnd: jest.fn(() => chain),
-    onUpdate: jest.fn(() => chain),
-    runOnJS: jest.fn(() => chain),
+  const makeChainableGesture = () => {
+    const chain = {};
+    ['onStart', 'onUpdate', 'onEnd', 'maxDuration', 'runOnJS'].forEach(
+      method => {
+        chain[method] = jest.fn(() => chain);
+      },
+    );
+    return chain;
   };
   return {
-    Gesture: { Pan: jest.fn(() => chain) },
+    Gesture: {
+      Pan: jest.fn(() => makeChainableGesture()),
+      Pinch: jest.fn(() => makeChainableGesture()),
+      Rotation: jest.fn(() => makeChainableGesture()),
+      Tap: jest.fn(() => makeChainableGesture()),
+      Simultaneous: jest.fn((...gestures) => ({ gestures })),
+    },
     GestureDetector: ({ children }) =>
       React.createElement(React.Fragment, null, children),
   };

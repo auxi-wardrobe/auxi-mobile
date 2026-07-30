@@ -1,13 +1,18 @@
 import React from 'react';
-import { Image, Text, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { Image, View } from 'react-native';
 import { Item } from '../../../types/item';
 import { resolveItemImage } from '../../../utils/url';
+import { resolveTileStatus } from '../../../utils/tile-status';
+import { TileStatusBadge } from '../../../components/features/TileStatusBadge';
 import { styles } from '../styles';
 
+// AU-392: the status pill is data-driven (new / less use / common
+// ("Macgie") / none), never an unconditional render. See `resolveTileStatus`
+// for precedence; pre-phase-03 backend responses (fields absent) degrade to
+// "common" on every tile, matching today's behaviour.
 export const GarmentPreview = ({ item }: { item: Item }) => {
-  const { t } = useTranslation();
   const imageUrl = resolveItemImage(item);
+  const status = resolveTileStatus(item);
 
   return (
     <>
@@ -20,11 +25,7 @@ export const GarmentPreview = ({ item }: { item: Item }) => {
       ) : (
         <View style={styles.cardFallback} />
       )}
-      <View style={styles.cardTag} pointerEvents="none">
-        <View style={styles.cardTagPill}>
-          <Text style={styles.cardTagText}>{t('common.badge_common')}</Text>
-        </View>
-      </View>
+      {status ? <TileStatusBadge status={status} itemId={item.id} /> : null}
     </>
   );
 };

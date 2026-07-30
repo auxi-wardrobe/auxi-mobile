@@ -1,5 +1,6 @@
 import { Item } from '../../types/item';
 import { resolveItemImage } from '../../utils/url';
+import { resolveTileStatus, TileStatus } from '../../utils/tile-status';
 import type { CanvasItemData } from './OutfitCanvasSurface';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -175,7 +176,14 @@ const ACCESSORY_ZONE: Record<Exclude<AccessoryRole, 'BAG'>, string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 // A pre-resolved collage item: id + already-resolved image URI + raw category.
 // `category` is optional for back-compat; absent/unknown → a sensible default.
-export type CollageSeedItem = { id: string; imageUri: string; category?: string };
+// `status` (AU-392) is carried straight through to the output node — the
+// layout/positioning math never reads it (see Node/Placed below).
+export type CollageSeedItem = {
+  id: string;
+  imageUri: string;
+  category?: string;
+  status?: TileStatus;
+};
 
 // ── 1. Classify a free-form category string into a layout role ────────────────
 const classifyRole = (raw?: string): Role => {
@@ -238,6 +246,7 @@ interface Node {
   imageUri: string;
   role: Role;
   category?: string; // raw category, carried through so the editor can re-seed
+  status?: TileStatus; // AU-392: carried through, never read by layout math
 }
 
 interface Placed extends Node {
@@ -443,6 +452,7 @@ export const seedCanvasLayout = (
     imageUri: it.imageUri,
     role: classifyRole(it.category),
     category: it.category,
+    status: it.status,
   }));
   const garmentRank = (r: Role) =>
     isGarment(r) ? GARMENT_ORDER.indexOf(r) : 99;
@@ -569,6 +579,7 @@ export const seedCanvasLayout = (
     height: p.size,
     zIndex: rank.get(p.id)!,
     category: p.category,
+    status: p.status,
   }));
 };
 
@@ -618,6 +629,9 @@ export const seedFromOutfit = (
         id: it.id,
         imageUri: resolveItemImage(it) || '',
         category: it.category,
+        // AU-392 D1: Home collage-play now shows the same 4-state badge as the
+        // grid — `Item` satisfies `TileStatusInput` structurally, no cast.
+        status: resolveTileStatus(it),
       })),
     surfaceWidth,
   );

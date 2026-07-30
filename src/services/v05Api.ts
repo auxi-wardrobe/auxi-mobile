@@ -248,6 +248,16 @@ export interface V05OutfitItem {
   // AU-351 (backend PR #101): true for newly-uploaded items inside the active
   // exploration window. Surfaced on outfit tiles as the "Your Piece" badge.
   is_exploration_item?: boolean;
+  // AU-392 phase 03 (backend PR, additive): tile-status contract fields —
+  // drive `resolveTileStatus` (src/utils/tile-status.ts) for the Home outfit
+  // grid's "new" / "less use" / "common" (Macgie) badge. All optional so a
+  // pre-phase-03 backend response (fields absent) still parses; absent
+  // `user_id` degrades to `isCommonItem === true` (today's "everything
+  // Macgie" behaviour) rather than crashing.
+  user_id?: string | null;
+  is_common_item?: boolean;
+  is_new?: boolean;
+  usage_frequency?: 'NORMAL' | 'LESS_USED';
 }
 
 /**
