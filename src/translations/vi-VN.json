@@ -1018,11 +1018,15 @@
     "capsule": {
       "title": "Tủ đồ capsule",
       "add": "Thêm",
+      "add_sheet_title": "Thêm vào capsule",
       "add_source_helper": "Chọn nơi bạn muốn thêm từ đó.",
       "source_wardrobe": "Tủ đồ của tôi",
       "source_favourites": "Yêu thích của tôi",
       "source_creations": "Sáng tạo của tôi",
       "already_in_capsule": "Đã có trong capsule",
+      "select_items_empty": "Tủ đồ của bạn đang trống. Hãy thêm món đồ vào tủ đồ trước.",
+      "select_outfits_empty": "Chưa có gì được lưu ở đây.",
+      "creation_no_items": "Sáng tạo này không có món đồ nào để thêm — các món đã không còn trong tủ đồ của bạn.",
       "create_title": "Capsule mới",
       "name_label": "Tên capsule",
       "name_placeholder": "vd. Tuần làm việc",
@@ -1046,9 +1050,6 @@
       "summary_title": "Tóm tắt",
       "summary_show": "Hiện tóm tắt",
       "summary_hide": "Ẩn tóm tắt",
-      "summary_weather": "Khoảng thời tiết",
-      "summary_formalness": "Điểm trang trọng",
-      "section_items": "Các món",
       "cat_outer": "Áo khoác",
       "cat_top": "Áo",
       "cat_bottom": "Quần/Váy",
@@ -1095,7 +1096,19 @@
       "save": "Lưu",
       "settings_updated_toast": "Đã cập nhật capsule.",
       "a11y_open_switcher": "Chọn tủ đồ",
-      "a11y_back": "Quay lại"
+      "a11y_back": "Quay lại",
+      "next": "Tiếp theo",
+      "method_title": "Chọn cách tạo capsule của bạn",
+      "method_manual_title": "Tôi tự tạo",
+      "method_manual_desc": "Thêm món đồ từ tủ đồ, mục yêu thích hoặc sáng tạo của bạn.",
+      "method_ai_title": "Để AI tạo giúp",
+      "method_ai_desc": "Đặt tùy chọn của bạn và AI sẽ lo phần còn lại. Bạn có thể chỉnh sửa mọi thứ sau.",
+      "method_coming_soon": "Sắp ra mắt",
+      "method_ai_coming_soon_toast": "Tính năng tạo bằng AI chưa khả dụng.",
+      "empty_items_title": "Capsule này đang trống",
+      "empty_items_body": "Chạm + để thêm món đồ từ tủ đồ, mục yêu thích hoặc sáng tạo của bạn.",
+      "a11y_edit_name": "Chỉnh sửa tên capsule",
+      "a11y_save_name": "Lưu tên capsule"
     }
   }
 }

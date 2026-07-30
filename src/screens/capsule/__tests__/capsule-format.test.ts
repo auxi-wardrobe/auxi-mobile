@@ -1,6 +1,10 @@
 /* eslint-env jest */
 import type { CapsuleFull } from '../../../services/capsuleService';
+import type { CreationItem } from '../../../services/creationsService';
 import {
+  capsuleTileHeight,
+  creationWardrobeItemIds,
+  capsuleTileSize,
   categoryRows,
   gapsInterpolation,
   hasGaps,
@@ -128,5 +132,70 @@ describe('sortCapsulesNewestFirst', () => {
       { id: 'new', name: '', status: 'success' as const, item_count: 0, outfit_count: 0, created_at: '2026-07-01T00:00:00Z' },
     ];
     expect(sortCapsulesNewestFirst(list).map(c => c.id)).toEqual(['new', 'old']);
+  });
+});
+
+describe('capsuleTileSize + capsuleTileHeight', () => {
+  it('fits `columns` tiles across the available width', () => {
+    // 393pt screen, 4-up, 8px gaps, 16px side padding.
+    const width = capsuleTileSize(393, 4, 8, 16);
+    expect(width).toBe(84); // floor((393 - 3*8 - 2*16) / 4)
+    expect(width * 4 + 8 * 3 + 16 * 2).toBeLessThanOrEqual(393);
+  });
+
+  it('derives a 3:4 portrait card height from the width', () => {
+    expect(capsuleTileHeight(84)).toBe(112); // 84 * 4/3
+    expect(capsuleTileHeight(82)).toBe(109); // floor(82 * 4/3)
+    // Always taller than it is wide — never square, never landscape.
+    [40, 82, 84, 137].forEach(w => {
+      expect(capsuleTileHeight(w)).toBeGreaterThan(w);
+      expect(capsuleTileHeight(w) / w).toBeCloseTo(4 / 3, 1);
+    });
+  });
+});
+
+describe('creationWardrobeItemIds', () => {
+  const item = (over: Partial<CreationItem>): CreationItem => ({
+    id: 'item-w1-1750000000000-0',
+    imageUri: 'https://x/1.png',
+    x: 0,
+    y: 0,
+    width: 10,
+    height: 10,
+    zIndex: 0,
+    ...over,
+  });
+
+  it('prefers the stored wardrobeItemId', () => {
+    expect(
+      creationWardrobeItemIds({
+        items: [item({ id: 'item-stale-1-0', wardrobeItemId: 'w9' })],
+      }),
+    ).toEqual(['w9']);
+  });
+
+  it('recovers the id from a synthetic canvas id on older saves', () => {
+    expect(
+      creationWardrobeItemIds({ items: [item({ id: 'item-w1-1750000000000-0' })] }),
+    ).toEqual(['w1']);
+  });
+
+  it('dedupes an item placed twice on the same canvas', () => {
+    expect(
+      creationWardrobeItemIds({
+        items: [
+          item({ id: 'item-w1-1750000000000-0' }),
+          item({ id: 'item-w1-1750000000000-1' }),
+          item({ id: 'item-w2-1750000000000-2' }),
+        ],
+      }),
+    ).toEqual(['w1', 'w2']);
+  });
+
+  it('drops items with no recoverable wardrobe id', () => {
+    expect(
+      creationWardrobeItemIds({ items: [item({ id: 'sticker-42' })] }),
+    ).toEqual([]);
+    expect(creationWardrobeItemIds({ items: [] })).toEqual([]);
   });
 });

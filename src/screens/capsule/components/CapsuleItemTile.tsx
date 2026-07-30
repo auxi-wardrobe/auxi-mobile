@@ -2,10 +2,11 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../../theme/theme';
 import type { WardrobeItem } from '../../../services/wardrobeService';
-import { resolveWardrobeItemImage } from '../capsule-format';
+import { capsuleTileHeight, resolveWardrobeItemImage } from '../capsule-format';
 
 interface CapsuleItemTileProps {
   item: WardrobeItem;
+  /** Tile WIDTH — the height is derived from it (3:4 portrait card). */
   size: number;
   /** Selection state (add flow). */
   selected?: boolean;
@@ -19,10 +20,10 @@ interface CapsuleItemTileProps {
 }
 
 /**
- * Square wardrobe-item tile used across the capsule detail grid + add-selection
- * grids. Renders the best available image (studio → png → url). When `disabled`
- * it dims and shows the "Already in capsule" tag; when `selected` it shows a
- * check badge.
+ * 3:4 portrait wardrobe-item card used across the capsule detail grid +
+ * add-selection grids (same ratio as the wardrobe grid). Renders the best
+ * available image (studio → png → url). When `disabled` it dims and shows the
+ * "Already in capsule" tag; when `selected` it shows a check badge.
  */
 export const CapsuleItemTile: React.FC<CapsuleItemTileProps> = ({
   item,
@@ -45,7 +46,7 @@ export const CapsuleItemTile: React.FC<CapsuleItemTileProps> = ({
       accessibilityLabel={accessibilityLabel ?? item.name ?? 'Wardrobe item'}
       style={[
         styles.tile,
-        { width: size, height: size },
+        { width: size, height: capsuleTileHeight(size) },
         disabled && styles.tileDisabled,
         selected && styles.tileSelected,
       ]}
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xs,
   },
   alreadyText: {
-    ...theme.typography.aliases.poppinsCaptionXxs,
+    ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.white,
     textAlign: 'center',
   },

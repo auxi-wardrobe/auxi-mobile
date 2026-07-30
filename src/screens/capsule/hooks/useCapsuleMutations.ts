@@ -3,7 +3,9 @@ import {
   capsuleKeys,
   capsuleService,
   type CapsuleChangeScope,
+  type CapsuleFull,
   type CapsuleOutfitSource,
+  type CreateCapsuleInput,
   type UpdateCapsuleInput,
 } from '../../../services/capsuleService';
 
@@ -21,6 +23,25 @@ const useInvalidateCapsule = () => {
       queryClient.invalidateQueries({ queryKey: capsuleKeys.detail(id) });
     }
   };
+};
+
+/**
+ * POST /capsules — "Build it myself" creates an EMPTY capsule (name only, no
+ * constraints, no item_ids), so the response comes back immediately and the
+ * user lands on the empty detail screen ready to add pieces. Seeds the detail
+ * cache so that screen paints without a second round-trip.
+ */
+export const useCreateCapsule = () => {
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateCapsule();
+  return useMutation({
+    mutationFn: (input: CreateCapsuleInput) =>
+      capsuleService.createCapsule(input),
+    onSuccess: (capsule: CapsuleFull) => {
+      queryClient.setQueryData(capsuleKeys.detail(capsule.id), capsule);
+      invalidate();
+    },
+  });
 };
 
 /** POST /capsules/{id}/generate/retry. */
