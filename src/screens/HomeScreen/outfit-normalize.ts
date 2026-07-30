@@ -24,6 +24,14 @@ export const mapV05Item = (it: V05OutfitItem): Item => ({
   style: it.style_tags?.[0],
   isSystem: it.source === 'common_essential',
   isExploration: it.is_exploration_item ?? false,
+  // AU-392 phase 04: carry the tile-status contract fields through untouched
+  // (backend snake_case, no renaming) so `resolveTileStatus` can read them
+  // straight off the mapped `Item` — see `types/item.ts` for why these stay
+  // snake_case instead of joining `isSystem`/`isExploration`.
+  user_id: it.user_id,
+  is_common_item: it.is_common_item,
+  is_new: it.is_new,
+  usage_frequency: it.usage_frequency,
 });
 
 export const buildGrid = (items: Item[]): Array<Item | null> =>

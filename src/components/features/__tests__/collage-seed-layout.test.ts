@@ -289,6 +289,32 @@ describe('seedCanvasLayout — editorial flat-lay engine', () => {
     expect(reseeded.get('jean')).toBeTruthy();
   });
 
+  it('AU-392: carries status through seeding untouched, per item', () => {
+    const items: CollageSeedItem[] = [
+      { id: 'jkt', imageUri: 'x', category: 'Jacket', status: 'new' },
+      { id: 'tee', imageUri: 'x', category: 'Top', status: 'common' },
+      { id: 'sh', imageUri: 'x', category: 'Shoes', status: 'less_use' },
+      { id: 'bag', imageUri: 'x', category: 'Bag' }, // no status → undefined, still placed
+    ];
+    const out = byId(seedCanvasLayout(items, W));
+    expect(out.get('jkt')!.status).toBe('new');
+    expect(out.get('tee')!.status).toBe('common');
+    expect(out.get('sh')!.status).toBe('less_use');
+    expect(out.get('bag')!.status).toBeUndefined();
+  });
+
+  it('AU-392: status survives the density-rescale pass unchanged', () => {
+    // A sparse outfit (dress + shoes) triggers the optimizer's up-scale pass —
+    // status must come out the other side identical (carried, never derived).
+    const items: CollageSeedItem[] = [
+      { id: 'dress', imageUri: 'x', category: 'Dress', status: 'new' },
+      { id: 'sh', imageUri: 'x', category: 'Shoes', status: 'common' },
+    ];
+    const out = byId(seedCanvasLayout(items, W));
+    expect(out.get('dress')!.status).toBe('new');
+    expect(out.get('sh')!.status).toBe('common');
+  });
+
   it('classifies free-form / pinned categories', () => {
     const out = byId(
       seedCanvasLayout(

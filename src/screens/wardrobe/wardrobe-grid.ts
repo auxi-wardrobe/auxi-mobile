@@ -1,8 +1,15 @@
 import { Dimensions } from 'react-native';
-import {
-  WardrobeItem,
-  getItemUsageFrequency,
-} from '../../services/wardrobeService';
+import { WardrobeItem } from '../../services/wardrobeService';
+
+// AU-392: `isCommonItem`, `resolveTileStatus` and `TileStatus` moved to
+// `src/utils/tile-status.ts` (shared leaf module — favourite/Home outfit
+// cards need them too, not just this grid). Re-exported here so all
+// pre-existing importers of this file keep working unchanged.
+export {
+  isCommonItem,
+  resolveTileStatus,
+} from '../../utils/tile-status';
+export type { TileStatus } from '../../utils/tile-status';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -55,11 +62,6 @@ export const resolveFilterQuery = (
   }
 };
 
-export const isCommonItem = (item: WardrobeItem): boolean =>
-  item.is_common_item === true ||
-  item.user_id === null ||
-  item.user_id === undefined;
-
 // AU-361: items are uploaded then processed (bg-removal + auto-tagging) in the
 // background. `is_preparing` flips true→false when processing finishes and the
 // item becomes ready to use. The grid renders a "preparing" overlay while true.
@@ -70,34 +72,6 @@ export const isPreparing = (item: WardrobeItem): boolean =>
 // conditional refetch poll (replaces the old focus-time setInterval).
 export const anyPreparing = (items?: WardrobeItem[] | null): boolean =>
   Array.isArray(items) && items.some(isPreparing);
-
-// A grid tile shows at most one status pill (Figma: bottom-centre). The four
-// states are mutually exclusive and resolved with the precedence
-// new > less use > common (product decision):
-//   • new      — one of the user's OWN items (not a catalog/common item) whose
-//     backend review state is still `is_new=true`. Opening item detail persists
-//     review state server-side so the tag is stable across devices.
-//   • less use — user explicitly demoted the item (NORMAL ↔ LESS_USED). Wins
-//     over "common" so a demoted catalog item still reads as "less use".
-//   • common   — item originates from our shared database (catalog).
-//   • (none)   — a user item that has been seen.
-export type TileStatus = 'new' | 'less_use' | 'common' | null;
-
-export const resolveTileStatus = (item: WardrobeItem): TileStatus => {
-  // "New" only applies to the user's own uploads, never to catalog/common
-  // items — those carry the "common" tag regardless of whether they've been
-  // opened.
-  if (!isCommonItem(item) && item.is_new === true) {
-    return 'new';
-  }
-  if (getItemUsageFrequency(item) === 'LESS_USED') {
-    return 'less_use';
-  }
-  if (isCommonItem(item)) {
-    return 'common';
-  }
-  return null;
-};
 
 // Synthetic id for the optimistic "preparing" placeholder tile shown while a
 // web import request is still in flight (before the backend item exists). The

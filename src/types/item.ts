@@ -12,6 +12,18 @@ export interface Item {
   isSystem: boolean; // true for "Standard Items", false for "User Items"
   userId?: string; // owner ID if isSystem is false
   isExploration?: boolean; // AU-351: newly-uploaded item in the active exploration window; renders the "Your Piece" badge. Defaults false.
+  // AU-392: tile-status contract fields, kept in backend snake_case (not
+  // camelCase like `isSystem`/`userId`/`isExploration` above) because they're
+  // shared structurally with `WardrobeItem` / `FavouriteItem` via
+  // `TileStatusInput` (src/utils/tile-status.ts) — reusing the wire casing
+  // means `Item` satisfies that interface with zero adapter. Do NOT read
+  // `isSystem` as a substitute for `is_common_item`: `isSystem` means
+  // `source === 'common_essential'` and `dedupeByCategory` depends on that
+  // exact meaning to prefer a user's garment over a system fallback.
+  user_id?: string | null;
+  is_common_item?: boolean;
+  is_new?: boolean;
+  usage_frequency?: 'NORMAL' | 'LESS_USED';
 }
 
 export const CATEGORIES = [

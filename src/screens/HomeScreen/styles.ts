@@ -254,28 +254,6 @@ export const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: theme.colors.figmaBackground,
   },
-  cardTag: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 8,
-    alignItems: 'center',
-  },
-  cardTagPill: {
-    height: 24, // chip size SM
-    paddingHorizontal: 12,
-    borderRadius: theme.borderRadius.round,
-    backgroundColor: theme.colors.figmaCardTag,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTagText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 10,
-    lineHeight: 12,
-    color: theme.colors.white,
-    textAlign: 'center',
-  },
   actionCluster: {
     gap: 12,
     alignItems: 'center',

@@ -23,6 +23,7 @@ import {
   OutfitCanvasSurface,
 } from '../components/features/OutfitCanvasSurface';
 import { seedCanvasLayout } from '../components/features/collage-seed-layout';
+import { resolveTileStatus } from '../utils/tile-status';
 import { PillButton } from '../components/primitives/FigmaPrimitives';
 import { useSidebar } from '../context/SidebarContext';
 import { useCreationsSeen } from '../context/CreationsSeenContext';
@@ -88,6 +89,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
             id: it.id,
             imageUri: it.imageUrl,
             category: it.category,
+            // AU-392 D1 (2026-07-30): Remix is in scope for the status badge —
+            // `it` carries the same wire-shape fields as `TileStatusInput`.
+            status: resolveTileStatus(it),
           })),
           CANVAS_WIDTH,
         )
@@ -492,6 +496,9 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 showGrid
                 itemTestIDPrefix="canvas-item"
                 enablePinchZoom
+                // AU-392 D1 (2026-07-30): status badge is in scope for the
+                // Remix editor too, not just the grid/Home collage.
+                showStatusBadge
               />
               {/* Adding-items status — shown while freshly-added images load.
                   Informational, so it never blocks canvas touches. */}

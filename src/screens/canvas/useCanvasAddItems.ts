@@ -14,6 +14,7 @@ import { WardrobeItem } from '../../services/wardrobeService';
 import { CanvasItemData } from '../../components/features/OutfitCanvasSurface';
 import { addSeededItems } from '../../components/features/collage-seed-layout';
 import { getImageUrl } from '../../utils/url';
+import { resolveTileStatus } from '../../utils/tile-status';
 import { CANVAS_WIDTH } from './canvas-dimensions';
 import {
   ADD_IMAGE_TIMEOUT_MS,
@@ -78,6 +79,13 @@ export function useCanvasAddItems({
           uri,
           category: item.category,
           imageSource: uri ? { uri } : testJeansImg,
+          // AU-392 sweep fix (2026-07-30, qa-ui HIGH finding): resolve the
+          // 4-state tile status here, from the full `WardrobeItem` — the
+          // ONLY seeding path that was missing it (`seedFromOutfit` and the
+          // Remix initial-items mapping already call this). Carried through
+          // `newSeeds` below so `DraggableItem`'s `showStatusBadge &&
+          // item.status` guard has something to render.
+          status: resolveTileStatus(item),
         };
       });
 
@@ -109,7 +117,12 @@ export function useCanvasAddItems({
         const newSeeds = prepared.map(p => {
           srcByNewId.set(p.id, p.imageSource);
           wardrobeIdByNewId.set(p.id, p.wardrobeItemId);
-          return { id: p.id, imageUri: p.uri ?? '', category: p.category };
+          return {
+            id: p.id,
+            imageUri: p.uri ?? '',
+            category: p.category,
+            status: p.status,
+          };
         });
 
         // Lay out ONLY the new item(s) through the collage engine; every item
