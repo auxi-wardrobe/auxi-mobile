@@ -66,6 +66,7 @@ import {
   type TemperatureSheetErrorKey,
 } from '../../components/features/TemperatureOverrideSheet';
 import { useTemperatureOverride } from '../../hooks/useTemperatureOverride';
+import { useActiveTrendingDrop } from '../../hooks/useActiveTrendingDrop';
 import {
   isOverrideBucket,
   repTempCFor,
@@ -73,6 +74,7 @@ import {
 } from '../../config/temperature-buckets';
 import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
+import { TrendingDropCard } from '../../components/features/TrendingDropCard';
 import { AiContentDisclosure } from '../../components/features/AiContentDisclosure';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
 import { HomeWardrobeNavFooter } from '../../components/features/HomeWardrobeNavFooter';
@@ -1306,6 +1308,10 @@ export const HomeScreen = () => {
       onRejected: handleMoodRejected,
     });
 
+  // AU-438 Trending Item Drop — inline promo card at the top of Home content,
+  // rendered only in the normal deck state (below).
+  const trending = useActiveTrendingDrop();
+
   const handleWearThisForOutfit = useCallback(
     (outfit: OutfitSheetWithGrid | OutfitSheet | undefined) => {
       if (!outfit) {
@@ -1699,61 +1705,74 @@ export const HomeScreen = () => {
           }}
         />
       ) : (
-        <View style={styles.deckWrap}>
-          <OutfitSwipeDeck
-            testID="home-swipe-deck"
-            items={optionSets}
-            activeIndex={clampedActiveIndex}
-            swipeEnabled={!collageDragActive}
-            keyOf={outfit => outfit.outfitHash}
-            onSwipeNext={handleSkip}
-            onSwipeBack={handleSwipeBack}
-            renderCard={(outfit, role) => (
-              <OptionSheet
-                cellKey={outfit.outfitHash}
-                outfit={outfit}
-                pinnedItemId={pinnedItemId}
-                reveal={
-                  role === 'peek'
-                    ? 'none'
-                    : clampedActiveIndex === 0
-                    ? 'full'
-                    : 'light'
-                }
-                onItemPress={handleOpenItemDetail}
-                onTogglePin={handleToggleItemPin}
-                homeView={homeView}
-                onCollageDragActiveChange={setCollageDragActive}
-                isGenerating={
-                  role !== 'peek' && pinState.outfit === 'generating'
-                }
-                wornDaysAgo={wornDaysAgoByHash[outfit.outfitHash] ?? null}
+        <>
+          {/* AU-438: inline, non-blocking trending-drop card at the top of the
+              content column — only in the normal deck state (not loading /
+              error / empty), below the header, above the deck. */}
+          {trending.isVisible && trending.drop && (
+            <TrendingDropCard
+              drop={trending.drop}
+              onAdd={trending.onAdd}
+              onDismiss={trending.onDismiss}
+              isResponding={trending.isResponding}
+            />
+          )}
+          <View style={styles.deckWrap}>
+            <OutfitSwipeDeck
+              testID="home-swipe-deck"
+              items={optionSets}
+              activeIndex={clampedActiveIndex}
+              swipeEnabled={!collageDragActive}
+              keyOf={outfit => outfit.outfitHash}
+              onSwipeNext={handleSkip}
+              onSwipeBack={handleSwipeBack}
+              renderCard={(outfit, role) => (
+                <OptionSheet
+                  cellKey={outfit.outfitHash}
+                  outfit={outfit}
+                  pinnedItemId={pinnedItemId}
+                  reveal={
+                    role === 'peek'
+                      ? 'none'
+                      : clampedActiveIndex === 0
+                      ? 'full'
+                      : 'light'
+                  }
+                  onItemPress={handleOpenItemDetail}
+                  onTogglePin={handleToggleItemPin}
+                  homeView={homeView}
+                  onCollageDragActiveChange={setCollageDragActive}
+                  isGenerating={
+                    role !== 'peek' && pinState.outfit === 'generating'
+                  }
+                  wornDaysAgo={wornDaysAgoByHash[outfit.outfitHash] ?? null}
+                />
+              )}
+            />
+            {/* Fixed action row — Remix · dots · Refine stay put while only the
+                card photo swipes beneath them (it lives outside the deck). */}
+            <View style={styles.deckActionRow}>
+              <OutfitActionRow
+                testID="home-action-row"
+                onRemix={handleRemix}
+                onRefine={() => {
+                  refine.open('refine_button');
+                }}
+                dotCount={OUTFITS_PER_SET}
+                activeDot={clampedActiveIndex % OUTFITS_PER_SET}
               />
-            )}
-          />
-          {/* Fixed action row — Remix · dots · Refine stay put while only the
-              card photo swipes beneath them (it lives outside the deck). */}
-          <View style={styles.deckActionRow}>
-            <OutfitActionRow
-              testID="home-action-row"
-              onRemix={handleRemix}
-              onRefine={() => {
-                refine.open('refine_button');
-              }}
-              dotCount={OUTFITS_PER_SET}
-              activeDot={clampedActiveIndex % OUTFITS_PER_SET}
-            />
+            </View>
+            {/* AI-generated disclosure + Report affordance on the recommendation
+                surface (App Store AI rules — Apple 2026). The outfits shown are
+                AI-generated by Valen, so label them, mirroring the try-on surface. */}
+            <View style={styles.aiDisclosureRow}>
+              <AiContentDisclosure
+                surface="recommendation"
+                testID="home-ai-disclosure"
+              />
+            </View>
           </View>
-          {/* AI-generated disclosure + Report affordance on the recommendation
-              surface (App Store AI rules — Apple 2026). The outfits shown are
-              AI-generated by Valen, so label them, mirroring the try-on surface. */}
-          <View style={styles.aiDisclosureRow}>
-            <AiContentDisclosure
-              surface="recommendation"
-              testID="home-ai-disclosure"
-            />
-          </View>
-        </View>
+        </>
       )}
 
       <PinStatusBanners

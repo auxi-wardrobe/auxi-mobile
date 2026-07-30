@@ -479,6 +479,7 @@ Note: these still don't flow in production until `SHOW_UPGRADE_PAYWALL` is flipp
 - **Reuse-on-return funnel (AU-354 pt.3):** on re-entry with a saved reusable body profile, `body_photo_reuse_confirmed` → `try_on_started` → `try_on_completed` measures returning-user conversion; `body_photo_retake_selected` is the drop-to-recapture branch (denominator: arrivals on the reuse-confirm screen). The reuse-confirm step is now a `ContextualBottomSheet`, so it has THREE mutually-exclusive exits off that denominator: `body_photo_reuse_confirmed` (proceed), `body_photo_retake_selected` (recapture), and `body_photo_reuse_dismissed` (backdrop-tap / swipe-down — leaves the flow). `body_photo_reuse_dismissed` ÷ arrivals is the silent-abandon rate that was invisible before the sheet dismiss was tracked.
 - **Wardrobe-grow funnel (take-photo):** `add_item_opened` → `add_item_method_selected` (`take_photo`) → `add_item_upload_started` → `add_item_upload_succeeded` → `wardrobe_item_added` → `item_ready_toast_shown` (AU-361: background processing completed — tail of the take-photo funnel)
 - **Wardrobe-grow funnel (database):** `wardrobe_search_initiated` → `wardrobe_search_result_selected` → `wardrobe_item_added`
+- **Trending-drop funnel (AU-438):** `trending_drop_viewed` → `trending_drop_added` (vs `trending_drop_dismissed`). `trending_drop_added` ÷ `trending_drop_viewed` is the drop take-rate; `dismissed ÷ viewed` is the reject rate (the two are mutually exclusive per user per drop). Break down by `drop_id` to compare drop content performance. The `add` branch also emits `wardrobe_item_added { source: 'trending_drop' }`, so the drop's contribution to overall wardrobe growth is visible in the wardrobe-grow cuts by filtering `source`.
 - **Wardrobe load-error recovery (design-review F7):** `wardrobe_load_failed` → `wardrobe_load_retry_tapped` measures how often a failed wardrobe load is recovered via the error-state Retry (denominator: `wardrobe_load_failed`). A high failure rate with low retry signals a journey dead-end.
 - **Wardrobe-browse engagement:** `wardrobe_filter_changed` and `wardrobe_sort_changed` are wardrobe browse-engagement signals — track them together to understand how users navigate and organise their grid (filtering by category vs reordering by date/name/worn).
 - **Refine-engagement funnel:** `refine_modal_opened` → `refine_chip_selected` ×N → `refine_submitted` (vs `refine_cancelled`, or `refine_skipped` on the after-6 gate). `refine_skipped` ÷ `refine_modal_opened` (source `viewed_threshold`) measures defer rate on the progressive gate; rising `skipped_count` flags users repeatedly dodging refinement.
@@ -570,3 +571,17 @@ Curated wardrobe subsets ("capsules") with rule-based outfit generation (spec `p
 > PII: none. Constraints (`formalness_level`, `outfit_target`, `shoe_limit`, `temp` via the `has_temp_range` boolean) are numeric/boolean; `error_kind` is a closed enum (`network_error` / `timeout` / `server_error` / `not_found` / `unknown`) derived by `classifyCapsuleError`; counts come from live server joins.
 >
 > Local-notification gap (§6 style): the "notify me when ready" seam (`src/services/capsuleNotifications.ts`) is a logged no-op — the repo ships only remote FCM display (`@react-native-firebase/messaging`), no local-notification lib. Re-wire condition: add a local-notification dependency, then implement `notifyCapsuleReady`. The in-app `toast.success('Your capsule is ready.')` is today's user-visible signal.
+
+### 5.25 Trending Item Drop (AU-438)
+
+Admin-curated inline promo card at the top of Home (spec `plans/260729-1456-au438-trending-item-drop/spec.md` §8). Wrappers live in `src/services/analytics.ts` (`trackTrendingDrop*`), literal event names, no template strings. The card shows a featured SYSTEM catalog item with two actions — "Add to my wardrobe" (clones the item) / "Not interested" (dismiss). **PII: none — only `drop_id` + `item_id`, both internal DB ids; the drop title/description (free text) are never sent.**
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `trending_drop_viewed` | Card first becomes visible — **once per drop id per session** (Set dedup, `trackTrendingDropViewed`) | `src/hooks/useActiveTrendingDrop.ts` | `drop_id`, `item_id` |
+| `trending_drop_added` | "Add to my wardrobe" succeeded — the featured item was cloned into the user's wardrobe | `src/hooks/useActiveTrendingDrop.ts` | `drop_id`, `item_id` |
+| `trending_drop_dismissed` | "Not interested" — drop dismissed without adding | `src/hooks/useActiveTrendingDrop.ts` | `drop_id`, `item_id` |
+
+> On a successful add the hook ALSO fires the shared `wardrobe_item_added` with `source: 'trending_drop'` + `item_id` (§5.4 taxonomy), so the drop feeds the existing wardrobe-grow reporting alongside the drop-specific funnel.
+>
+> PII: none. `drop_id` / `item_id` are backend UUIDs (consistent with other id-carrying events). No titles, no descriptions, no image URLs.

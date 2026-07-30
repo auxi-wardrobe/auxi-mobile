@@ -552,3 +552,42 @@ export const trackPushReceived = (type: string): void => {
 export const trackPushOpened = (type: string): void => {
   track('push_opened', { type });
 };
+
+// ── Trending Item Drop (AU-438) ────────────────────────────────────────────
+// Inline Home promo card. Literal event names (no template strings). The only
+// properties are `drop_id` + `item_id` — both internal DB ids, no titles, no
+// free text, no PII. `_viewed` is deduped per drop id per session (module Set,
+// mirrors trackRecommendationViewedOnce) so a re-focus / re-fetch of the same
+// active drop doesn't over-count impressions. Funnel: viewed → added
+// (tracking-plan §10). On add, the screen ALSO fires the shared
+// `wardrobe_item_added` with `source: 'trending_drop'`.
+
+const seenTrendingDrops = new Set<string>();
+
+/** The trending-drop card became visible — at most once per drop per session. */
+export const trackTrendingDropViewed = (
+  dropId: string,
+  itemId: string,
+): void => {
+  if (!dropId || seenTrendingDrops.has(dropId)) {
+    return;
+  }
+  seenTrendingDrops.add(dropId);
+  track('trending_drop_viewed', { drop_id: dropId, item_id: itemId });
+};
+
+/** "Add to my wardrobe" succeeded — the featured item was cloned. */
+export const trackTrendingDropAdded = (
+  dropId: string,
+  itemId: string,
+): void => {
+  track('trending_drop_added', { drop_id: dropId, item_id: itemId });
+};
+
+/** "Not interested" — the drop was dismissed without adding. */
+export const trackTrendingDropDismissed = (
+  dropId: string,
+  itemId: string,
+): void => {
+  track('trending_drop_dismissed', { drop_id: dropId, item_id: itemId });
+};
