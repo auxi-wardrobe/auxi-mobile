@@ -20,6 +20,7 @@ import { motion } from '../../theme/motion';
 import { wardrobeService, WardrobeItem } from '../../services/wardrobeService';
 import { CategoryTabs } from '../../components/features/CategoryTabs';
 import { DotsLoader } from '../../components/atoms/DotsLoader';
+import { Icons } from '../../assets/icons';
 import { getImageUrl } from '../../utils/url';
 import IconChevronLeft from '../../assets/images/icon_chevron_left.svg';
 import {
@@ -129,6 +130,7 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
           <TouchableOpacity
             onPress={onClose}
             style={pickerStyles.backBtn}
+            testID="canvas-picker-close"
             accessibilityLabel={t('outfitCanvas.a11y_close_picker')}
           >
             <IconChevronLeft width={24} height={24} />
@@ -158,13 +160,20 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
               </Text>
             ) : (
               <View style={pickerStyles.grid}>
-                {wardrobeItems.map(item => {
+                {wardrobeItems.map((item, index) => {
                   // Precedence: accepted AI studio shot → bg-removed cutout →
                   // original photo (matches resolveItemImage in utils/url.ts).
                   const uri = getImageUrl(
                     item.image_studio || item.image_png || item.image_url,
                   );
                   const isSelected = selectedIds.includes(item.id);
+                  // First tile gets a stable testID so Maestro can tap it
+                  // without depending on a backend id (same convention as the
+                  // wardrobe / database grids).
+                  const tileTestID =
+                    index === 0
+                      ? 'canvas-picker-item-first'
+                      : `canvas-picker-item-${item.id}`;
                   return (
                     <TouchableOpacity
                       key={item.id}
@@ -174,6 +183,11 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
                       ]}
                       activeOpacity={0.82}
                       onPress={() => toggleItem(item.id)}
+                      testID={tileTestID}
+                      accessibilityLabel={
+                        item.name || t('wardrobe.list.a11y_item_fallback')
+                      }
+                      accessibilityState={{ selected: isSelected }}
                     >
                       {uri ? (
                         <Image
@@ -188,6 +202,22 @@ export const ItemPickerPanel: React.FC<ItemPickerPanelProps> = ({
                           </Text>
                         </View>
                       )}
+
+                      {/* Multi-select check — top-right, identical to the
+                          database picker's add-to-wardrobe treatment. */}
+                      {isSelected ? (
+                        <View
+                          style={pickerStyles.tileSelectedCheck}
+                          testID={`canvas-picker-select-check-${item.id}`}
+                          pointerEvents="none"
+                        >
+                          <Icons.CheckCircle
+                            width={24}
+                            height={24}
+                            color={theme.colors.figmaAction}
+                          />
+                        </View>
+                      ) : null}
                     </TouchableOpacity>
                   );
                 })}
