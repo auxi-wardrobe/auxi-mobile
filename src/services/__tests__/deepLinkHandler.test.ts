@@ -114,7 +114,7 @@ describe('resolveNotificationData — try-on render result', () => {
 });
 
 describe('resolveNotificationData — beautify result', () => {
-  it('navigates to BeautifyReview with itemId when ready', () => {
+  it('navigates to the Enhance result screen with itemId when ready', () => {
     const nav = makeNavRef();
     resolveNotificationData(
       {
@@ -127,10 +127,10 @@ describe('resolveNotificationData — beautify result', () => {
       },
       nav as any,
     );
-    expect(nav.navigate).toHaveBeenCalledWith('BeautifyReview', {
+    expect(nav.navigate).toHaveBeenCalledWith('EnhanceImage', {
       itemId: 'item-1',
-      originalUri: '',
-      from: 'push',
+      displayUri: '',
+      origin: 'wardrobe',
     });
   });
 

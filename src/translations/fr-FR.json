@@ -239,10 +239,19 @@
       },
       "enhance": {
         "title": "Améliorer l'image",
-        "loading": "Préparation de l'article\nen moins de 10 secondes",
+        "loading_headline": "Nous faisons briller votre vêtement ✨",
+        "loading_rows": [
+          "Amélioration de votre article…",
+          "Affinage des détails…",
+          "Nettoyage de votre vêtement…"
+        ],
+        "loading_note": "Cela peut prendre plus de temps que prévu.\nVous pouvez partir — nous vous préviendrons dès que c'est prêt",
+        "leave_notify": "Partir — me prévenir quand c'est prêt",
         "compare_hint": "Appui long pour voir l'image d'origine",
         "discard": "Ignorer",
         "replace_original": "Remplacer l'original",
+        "regenerate": "Régénérer",
+        "regenerate_capped": "Garder la meilleure",
         "retry": "Réessayer",
         "cancel": "Annuler",
         "error_generic": "Impossible d'améliorer l'image. Veuillez réessayer.",
@@ -1019,11 +1028,15 @@
     "capsule": {
       "title": "Garde-robe capsule",
       "add": "Ajouter",
+      "add_sheet_title": "Ajouter à la capsule",
       "add_source_helper": "Choisissez d’où vous souhaitez ajouter.",
       "source_wardrobe": "Ma garde-robe",
       "source_favourites": "Mes favoris",
       "source_creations": "Mes créations",
       "already_in_capsule": "Déjà dans la capsule",
+      "select_items_empty": "Votre garde-robe est vide. Ajoutez-y d’abord des pièces.",
+      "select_outfits_empty": "Rien d’enregistré ici pour l’instant.",
+      "creation_no_items": "Cette création n'a aucune pièce à ajouter — ses articles ne sont plus dans votre garde-robe.",
       "create_title": "Nouvelle capsule",
       "name_label": "Nom de la capsule",
       "name_placeholder": "ex. Semaine de travail",
@@ -1047,9 +1060,6 @@
       "summary_title": "Résumé",
       "summary_show": "Afficher le résumé",
       "summary_hide": "Masquer le résumé",
-      "summary_weather": "Plage météo",
-      "summary_formalness": "Score de formalité",
-      "section_items": "Articles",
       "cat_outer": "Vestes",
       "cat_top": "Hauts",
       "cat_bottom": "Bas",
@@ -1096,7 +1106,19 @@
       "save": "Enregistrer",
       "settings_updated_toast": "Capsule mise à jour.",
       "a11y_open_switcher": "Choisir une garde-robe",
-      "a11y_back": "Retour"
+      "a11y_back": "Retour",
+      "next": "Suivant",
+      "method_title": "Choisissez comment créer votre capsule",
+      "method_manual_title": "Je la crée moi-même",
+      "method_manual_desc": "Ajoutez des pièces depuis votre garde-robe, vos favoris ou vos créations.",
+      "method_ai_title": "Laisser l'IA la créer",
+      "method_ai_desc": "Définissez vos préférences et l'IA fait le reste. Vous pourrez tout modifier ensuite.",
+      "method_coming_soon": "Bientôt disponible",
+      "method_ai_coming_soon_toast": "La création par l'IA n'est pas encore disponible.",
+      "empty_items_title": "Cette capsule est vide",
+      "empty_items_body": "Touchez + pour ajouter des pièces depuis votre garde-robe, vos favoris ou vos créations.",
+      "a11y_edit_name": "Modifier le nom de la capsule",
+      "a11y_save_name": "Enregistrer le nom de la capsule"
     }
   }
 }

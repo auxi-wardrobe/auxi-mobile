@@ -397,7 +397,7 @@ describe('WardrobeScreen — beautify tap routing', () => {
     });
   });
 
-  it('routes directly to BeautifyReview when a candidate is ready', async () => {
+  it('routes directly to the Enhance result screen when a candidate is ready', async () => {
     mockGetWardrobeItems.mockResolvedValue([BEAUTIFY_READY_ITEM]);
     const r = await renderScreen();
     const tile = byTestID(r.root, 'wardrobe-item-first')[0];
@@ -406,10 +406,10 @@ describe('WardrobeScreen — beautify tap routing', () => {
       tile.props.onPress();
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith('BeautifyReview', {
+    expect(mockNavigate).toHaveBeenCalledWith('EnhanceImage', {
       itemId: 'beaut-ready-1',
-      originalUri: 'https://cdn.example/ready.jpg',
-      from: 'tile',
+      displayUri: 'https://cdn.example/ready.jpg',
+      origin: 'wardrobe',
     });
   });
 

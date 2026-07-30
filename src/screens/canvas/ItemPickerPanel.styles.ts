@@ -63,8 +63,17 @@ export const pickerStyles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#E8EBF0',
   },
+  // Multi-select highlight ring — same treatment as the wardrobe / database
+  // pickers (WardrobeGridTile.tileSelected, DatabaseScreen.tileSelected).
   tileSelected: {
-    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: theme.colors.figmaAction,
+  },
+  // Top-right selection check, matching the wardrobe / database grid tiles.
+  tileSelectedCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
   },
   tileImage: {
     width: '100%',

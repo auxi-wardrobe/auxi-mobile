@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
-import { MacgieLoader } from '../../components/macgie';
+import { useTranslation } from 'react-i18next';
 import { MButton } from '../../components/design-system/lib';
+import { AiLoadingSteps } from '../../components/features/AiLoadingSteps';
 import { wardrobeService } from '../../services/wardrobeService';
 import {
-  beautifyStep,
   BEAUTIFY_POLL_MS,
   goToWardrobe,
   markItemBeautifying,
@@ -19,6 +19,14 @@ import type { AppStackParamList } from '../../types/navigation';
 
 const MAX_WAIT_MS = 3 * 60 * 1000;
 
+// The upload-time wait is the same beautify job the on-demand Enhance flow
+// runs, so it says the same three things while it works.
+const ENHANCE_ROW_KEYS = [
+  'wardrobe.enhance.loading_rows.0',
+  'wardrobe.enhance.loading_rows.1',
+  'wardrobe.enhance.loading_rows.2',
+] as const;
+
 type ScreenNavigation = NativeStackNavigationProp<AppStackParamList>;
 type ScreenRoute = RouteProp<AppStackParamList, 'BeautifyPending'>;
 
@@ -26,28 +34,22 @@ export function BeautifyPendingScreen() {
   const nav = useNavigation<ScreenNavigation>();
   const route = useRoute<ScreenRoute>();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { itemId, originalUri } = route.params;
-  const [elapsed, setElapsed] = useState(0);
   const [failed, setFailed] = useState(false);
   const started = useRef(Date.now());
-  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const clearIntervals = () => {
-    if (tickRef.current) {
-      clearInterval(tickRef.current);
-      tickRef.current = null;
-    }
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
   };
 
+  // The progress copy is on the shared loading body's own 2s cadence now, so
+  // this screen only needs the status poll — no elapsed-time tick.
   const startIntervals = (alive: { current: boolean }) => {
-    tickRef.current = setInterval(() => {
-      if (alive.current) setElapsed(Date.now() - started.current);
-    }, 1000);
     pollRef.current = setInterval(async () => {
       if (!alive.current) return;
       if (Date.now() - started.current > MAX_WAIT_MS) {
@@ -60,10 +62,13 @@ export function BeautifyPendingScreen() {
         if (!alive.current) return;
         if (s.status === 'ready') {
           track('beautify_ready');
-          nav.replace('BeautifyReview', {
+          // The upload-time wait ends on the same Enhance result screen every
+          // other entry point uses. `origin: 'wardrobe'` because there is no
+          // ItemDetail under this stack to pop back to.
+          nav.replace('EnhanceImage', {
             itemId,
-            originalUri,
-            from: 'loader',
+            displayUri: originalUri,
+            origin: 'wardrobe',
           });
         } else if (s.status === 'failed') {
           clearIntervals();
@@ -106,7 +111,6 @@ export function BeautifyPendingScreen() {
           onPress={async () => {
             setFailed(false);
             started.current = Date.now();
-            setElapsed(0);
             try {
               await wardrobeService.beautifyItem(itemId);
               track('beautify_regenerated', { source: 'retry_pending' });
@@ -124,34 +128,38 @@ export function BeautifyPendingScreen() {
     );
   }
 
+  // Same wait, same screen as the on-demand Enhance flow and see-on-me: the
+  // shared AiLoadingSteps body, with the enhance copy (it IS the same beautify
+  // job — this is just the upload-time entry into it).
   return (
-    <View style={styles.container} testID="beautify-pending">
-      <Image
-        source={{ uri: originalUri }}
-        style={styles.photo}
-        blurRadius={6}
-      />
-      <View style={styles.panel}>
-        <MacgieLoader variant="inline" testID="beautify-pending-macgie" />
-        <Text style={styles.title}>Beautifying ✨</Text>
-        <Text style={styles.sub}>{beautifyStep(elapsed)}</Text>
-        <Text style={styles.hint}>~30–60s</Text>
-      </View>
-      <MButton
-        testID="beautify-pending-continue"
-        variant="secondary"
-        onPress={() => {
+    <SafeAreaView style={styles.loadingContainer} testID="beautify-pending">
+      <AiLoadingSteps
+        headline={t('wardrobe.enhance.loading_headline')}
+        rows={ENHANCE_ROW_KEYS.map(key => t(key))}
+        footerText={t('wardrobe.enhance.loading_note')}
+        ctaLabel={t('wardrobe.enhance.leave_notify')}
+        onCta={() => {
           track('beautify_wait_continued_browsing');
           goToWardrobe(nav);
         }}
-      >
-        Continue browsing
-      </MButton>
-    </View>
+        // This screen has no header and no back gesture (AppNavigator:
+        // headerShown/gestureEnabled false), so the CTA is the only way out —
+        // it can't sit behind the usual min-wait gate.
+        ctaGated={false}
+        testID="beautify-pending-steps"
+        ctaTestID="beautify-pending-continue"
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  // The waiting state is the shared AiLoadingSteps body — this screen only
+  // supplies the safe-area frame around it.
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.figmaBackground,
+  },
   container: {
     flex: 1,
     alignItems: 'center',
@@ -166,10 +174,6 @@ const styles = StyleSheet.create({
     height: '100%',
     opacity: 0.15,
   },
-  panel: {
-    alignItems: 'center',
-    gap: theme.spacing.s,
-  },
   title: {
     fontSize: 20,
     fontWeight: '700',
@@ -177,10 +181,6 @@ const styles = StyleSheet.create({
   },
   sub: {
     fontSize: 14,
-    color: theme.ds.color.warm500,
-  },
-  hint: {
-    fontSize: 12,
     color: theme.ds.color.warm500,
   },
 });

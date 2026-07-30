@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -18,13 +18,10 @@ import { useCapsule, useChangeCapsuleItem, useRemoveCapsuleItem } from './hooks'
 import { resolveWardrobeItemImage } from './capsule-format';
 import { toastCapsuleNetworkError } from './capsule-toast';
 import { ChangeScopeDialog } from './components/ChangeScopeDialog';
-import { SelectWardrobeItemsSheet } from './components/SelectWardrobeItemsSheet';
 import { capsuleStyles as s } from './styles';
 
 type Nav = NativeStackNavigationProp<AppStackParamList, 'CapsuleItemDetail'>;
 type Rt = RouteProp<AppStackParamList, 'CapsuleItemDetail'>;
-
-const EMPTY_EXISTING = new Set<string>();
 
 export const CapsuleItemDetailScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -36,10 +33,23 @@ export const CapsuleItemDetailScreen: React.FC = () => {
   const removeItem = useRemoveCapsuleItem(capsuleId);
   const changeItem = useChangeCapsuleItem(capsuleId);
 
-  const [replaceVisible, setReplaceVisible] = useState(false);
   const [scopeVisible, setScopeVisible] = useState(false);
   const [removeUsedVisible, setRemoveUsedVisible] = useState(false);
   const [replacementId, setReplacementId] = useState<string | null>(null);
+
+  // The replacement is picked on CapsuleSelectItems (a full page) which comes
+  // back with `replacementItemId` on the route. Consume it once — clear the
+  // param immediately so returning here later (or a re-render) can't re-open
+  // the scope dialog with a stale pick.
+  const pickedReplacementId = route.params.replacementItemId;
+  useEffect(() => {
+    if (!pickedReplacementId) {
+      return;
+    }
+    navigation.setParams({ replacementItemId: undefined });
+    setReplacementId(pickedReplacementId);
+    setScopeVisible(true);
+  }, [pickedReplacementId, navigation]);
 
   const item = useMemo(
     () => capsule?.items.find(it => it.id === itemId),
@@ -53,8 +63,6 @@ export const CapsuleItemDetailScreen: React.FC = () => {
     [capsule, itemId],
   );
   const usedCount = outfitsUsing.length;
-
-  const excludeSelf = useMemo(() => new Set([itemId]), [itemId]);
 
   const onRemoveSuccess = (unused: boolean) => {
     trackCapsuleItemRemoved(usedCount);
@@ -81,15 +89,6 @@ export const CapsuleItemDetailScreen: React.FC = () => {
       onSuccess: () => onRemoveSuccess(false),
       onError: () => toastCapsuleNetworkError(t),
     });
-
-  const handlePickReplacement = (itemIds: string[]) => {
-    if (itemIds.length === 0) {
-      return;
-    }
-    setReplacementId(itemIds[0]);
-    setReplaceVisible(false);
-    setScopeVisible(true);
-  };
 
   const handleConfirmChange = (scope: CapsuleChangeScope) => {
     if (!replacementId) {
@@ -148,7 +147,13 @@ export const CapsuleItemDetailScreen: React.FC = () => {
             <View style={s.flex1}>
               <MButton
                 variant="secondary"
-                onPress={() => setReplaceVisible(true)}
+                onPress={() =>
+                  navigation.navigate('CapsuleSelectItems', {
+                    capsuleId,
+                    mode: 'replace',
+                    itemId,
+                  })
+                }
                 testID="capsule-item-change"
               >
                 {t('capsule.item_change_cta')}
@@ -167,16 +172,6 @@ export const CapsuleItemDetailScreen: React.FC = () => {
           </View>
         </ScrollView>
       )}
-
-      <SelectWardrobeItemsSheet
-        visible={replaceVisible}
-        mode="single"
-        existingItemIds={EMPTY_EXISTING}
-        excludeItemIds={excludeSelf}
-        confirmLabel={t('capsule.change')}
-        onDismiss={() => setReplaceVisible(false)}
-        onConfirm={handlePickReplacement}
-      />
 
       <ChangeScopeDialog
         visible={scopeVisible}

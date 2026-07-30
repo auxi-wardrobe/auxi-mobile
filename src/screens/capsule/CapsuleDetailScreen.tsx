@@ -28,7 +28,7 @@ import {
   useDeleteCapsule,
   useRetryGeneration,
 } from './hooks';
-import { capsuleItemIdSet, capsuleTileSize, categoryRows } from './capsule-format';
+import { capsuleTileSize } from './capsule-format';
 import { toastCapsuleNetworkError } from './capsule-toast';
 import { CapsuleItemTile } from './components/CapsuleItemTile';
 import { CapsuleSummaryPanel } from './components/CapsuleSummaryPanel';
@@ -41,14 +41,6 @@ type Rt = RouteProp<AppStackParamList, 'CapsuleDetail'>;
 
 const COLUMNS = 4;
 const GAP = 8;
-
-const CATEGORY_LABEL_KEYS: Record<string, string> = {
-  outer: 'capsule.cat_outer',
-  top: 'capsule.cat_top',
-  bottom: 'capsule.cat_bottom',
-  footwear: 'capsule.cat_footwear',
-  accessory: 'capsule.cat_accessory',
-};
 
 export const CapsuleDetailScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -92,11 +84,6 @@ export const CapsuleDetailScreen: React.FC = () => {
     [],
   );
 
-  const existingItemIds = useMemo(
-    () => capsuleItemIdSet(capsule),
-    [capsule],
-  );
-
   const handleDelete = () => {
     deleteCapsule.mutate(capsuleId, {
       onSuccess: () => {
@@ -134,8 +121,6 @@ export const CapsuleDetailScreen: React.FC = () => {
     setSwitcherVisible(false);
     navigation.navigate('CapsuleCreate');
   };
-
-  const rows = categoryRows(capsule?.category_groups);
 
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
@@ -185,58 +170,55 @@ export const CapsuleDetailScreen: React.FC = () => {
           )}
 
           <GapsBanner capsule={capsule} />
+          {/* The summary panel carries the per-category counts, so the detail
+              no longer repeats an "Items" heading + count list above the grid. */}
           <CapsuleSummaryPanel capsule={capsule} />
 
-          {rows.length > 0 && (
-            <>
-              <Text style={s.sectionTitle}>{t('capsule.section_items')}</Text>
-              {rows.map(row => (
-                <Text
-                  key={row.key}
-                  style={s.summaryLabel}
-                  testID={`capsule-detail-group-${row.key}`}
-                >
-                  {t(CATEGORY_LABEL_KEYS[row.key])}: {row.count}
-                </Text>
+          {capsule.items.length === 0 ? (
+            <View style={s.emptyItems} testID="capsule-detail-empty">
+              <Text style={s.emptyTitle}>{t('capsule.empty_items_title')}</Text>
+              <Text style={s.emptyBody}>{t('capsule.empty_items_body')}</Text>
+            </View>
+          ) : (
+            <View style={[s.grid, { marginTop: GAP }]}>
+              {capsule.items.map(item => (
+                <CapsuleItemTile
+                  key={item.id}
+                  item={item}
+                  size={tileSize}
+                  onPress={() =>
+                    navigation.navigate('CapsuleItemDetail', {
+                      capsuleId,
+                      itemId: item.id,
+                    })
+                  }
+                  testID={`capsule-detail-item-${item.id}`}
+                />
               ))}
-            </>
+            </View>
           )}
 
-          <View style={[s.grid, { marginTop: GAP }]}>
-            {capsule.items.map(item => (
-              <CapsuleItemTile
-                key={item.id}
-                item={item}
-                size={tileSize}
+          <View style={s.detailActions}>
+            <View style={s.detailAction}>
+              <MButton
+                variant="secondary"
                 onPress={() =>
-                  navigation.navigate('CapsuleItemDetail', {
-                    capsuleId,
-                    itemId: item.id,
-                  })
+                  navigation.navigate('CapsuleEdit', { capsuleId })
                 }
-                testID={`capsule-detail-item-${item.id}`}
-              />
-            ))}
-          </View>
-
-          <View style={s.deleteWrap}>
-            <MButton
-              variant="secondary"
-              onPress={() =>
-                navigation.navigate('CapsuleEdit', { capsuleId })
-              }
-              testID="capsule-detail-edit"
-            >
-              {t('capsule.edit')}
-            </MButton>
-            <View style={s.editDeleteGap} />
-            <MButton
-              variant="dangerOutline"
-              onPress={() => setDeleteVisible(true)}
-              testID="capsule-detail-delete"
-            >
-              {t('capsule.delete_title')}
-            </MButton>
+                testID="capsule-detail-edit"
+              >
+                {t('capsule.edit')}
+              </MButton>
+            </View>
+            <View style={s.detailAction}>
+              <MButton
+                variant="dangerOutline"
+                onPress={() => setDeleteVisible(true)}
+                testID="capsule-detail-delete"
+              >
+                {t('capsule.delete')}
+              </MButton>
+            </View>
           </View>
         </ScrollView>
       )}
@@ -256,7 +238,6 @@ export const CapsuleDetailScreen: React.FC = () => {
         capsuleId={capsuleId}
         visible={addVisible}
         onClose={() => setAddVisible(false)}
-        existingItemIds={existingItemIds}
       />
 
       <MDialog

@@ -1,149 +1,49 @@
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { toast } from '../../../components/design-system/lib';
-import {
-  trackCapsuleAddSourceSelected,
-  trackCapsuleItemsAdded,
-} from '../../../services/analytics';
-import type {
-  AddItemsResult,
-  CapsuleOutfitSource,
-} from '../../../services/capsuleService';
-import { useAddCapsuleItems, useAddFromOutfits } from '../hooks';
-import { toastCapsuleNetworkError } from '../capsule-toast';
+import React from 'react';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { trackCapsuleAddSourceSelected } from '../../../services/analytics';
+import type { AppStackParamList } from '../../../types/navigation';
 import { AddSourceSheet, type CapsuleAddSource } from './AddSourceSheet';
-import { SelectOutfitsSheet } from './SelectOutfitsSheet';
-import { SelectWardrobeItemsSheet } from './SelectWardrobeItemsSheet';
+
+type Nav = NativeStackNavigationProp<AppStackParamList, 'CapsuleDetail'>;
 
 interface CapsuleAddFlowProps {
   capsuleId: string;
-  /** Controls the initial add-source sheet. */
+  /** Controls the add-source sheet. */
   visible: boolean;
   onClose: () => void;
-  /** Item ids already in the capsule → disabled + "Already in capsule" tag. */
-  existingItemIds: Set<string>;
 }
 
-type Stage = 'source' | 'wardrobe' | 'outfits';
-
 /**
- * Encapsulates the full add flow: source picker → item/outfit selection →
- * mutation → result toast. Keeps CapsuleDetail lean. Renders nothing but the
- * controlled sheets.
+ * Capsule "+" entry point: a source sheet, then a full PAGE to pick on.
+ *
+ * The sheet only asks WHERE to add from; picking items or saved outfits happens
+ * on CapsuleSelectItems / CapsuleSelectOutfits, which own their own confirm
+ * mutation + result toast. Those pages return to the capsule on success, so
+ * this component holds no add state of its own.
  */
 export const CapsuleAddFlow: React.FC<CapsuleAddFlowProps> = ({
   capsuleId,
   visible,
   onClose,
-  existingItemIds,
 }) => {
-  const { t } = useTranslation();
-  const [stage, setStage] = useState<Stage>('source');
-  const [outfitSource, setOutfitSource] =
-    useState<CapsuleOutfitSource>('favourites');
-
-  const addItems = useAddCapsuleItems(capsuleId);
-  const addFromOutfits = useAddFromOutfits(capsuleId);
-
-  const closeAll = () => {
-    setStage('source');
-    onClose();
-  };
+  const navigation = useNavigation<Nav>();
 
   const handleSelectSource = (source: CapsuleAddSource) => {
     trackCapsuleAddSourceSelected(source);
+    onClose();
     if (source === 'wardrobe') {
-      setStage('wardrobe');
+      navigation.navigate('CapsuleSelectItems', { capsuleId });
     } else {
-      setOutfitSource(source);
-      setStage('outfits');
+      navigation.navigate('CapsuleSelectOutfits', { capsuleId, source });
     }
   };
 
-  const toastNetworkError = () => toastCapsuleNetworkError(t);
-
-  const handleWardrobeConfirm = (itemIds: string[]) => {
-    addItems.mutate(itemIds, {
-      onSuccess: (result: AddItemsResult) => {
-        trackCapsuleItemsAdded({
-          source: 'wardrobe',
-          items_added: result.items_added,
-          new_outfits: result.new_outfits,
-          already_existed: result.already_existed,
-        });
-        toast.show({
-          type: 'success',
-          text1: t('capsule.add_wardrobe_items', { items: result.items_added }),
-          text2: t('capsule.add_wardrobe_outfits', {
-            outfits: result.new_outfits,
-          }),
-        });
-        closeAll();
-      },
-      onError: toastNetworkError,
-    });
-  };
-
-  const handleOutfitsConfirm = (outfitIds: string[]) => {
-    addFromOutfits.mutate(
-      { source: outfitSource, outfitIds },
-      {
-        onSuccess: (result: AddItemsResult) => {
-          trackCapsuleItemsAdded({
-            source: outfitSource,
-            items_added: result.items_added,
-            new_outfits: result.new_outfits,
-            already_existed: result.already_existed,
-          });
-          if (result.items_added === 0 && result.new_outfits === 0) {
-            toast.show({
-              type: 'info',
-              text1: t('capsule.all_existing'),
-            });
-          } else {
-            toast.show({
-              type: 'success',
-              text1: t('capsule.add_fav_items', { items: result.items_added }),
-              text2:
-                result.new_outfits > 0
-                  ? t('capsule.add_fav_outfits', {
-                      outfits: result.new_outfits,
-                    })
-                  : result.already_existed > 0
-                  ? t('capsule.add_fav_existed', {
-                      existed: result.already_existed,
-                    })
-                  : undefined,
-            });
-          }
-          closeAll();
-        },
-        onError: toastNetworkError,
-      },
-    );
-  };
-
   return (
-    <>
-      <AddSourceSheet
-        visible={visible && stage === 'source'}
-        onDismiss={closeAll}
-        onSelect={handleSelectSource}
-      />
-      <SelectWardrobeItemsSheet
-        visible={visible && stage === 'wardrobe'}
-        existingItemIds={existingItemIds}
-        busy={addItems.isPending}
-        onDismiss={closeAll}
-        onConfirm={handleWardrobeConfirm}
-      />
-      <SelectOutfitsSheet
-        visible={visible && stage === 'outfits'}
-        source={outfitSource}
-        busy={addFromOutfits.isPending}
-        onDismiss={closeAll}
-        onConfirm={handleOutfitsConfirm}
-      />
-    </>
+    <AddSourceSheet
+      visible={visible}
+      onDismiss={onClose}
+      onSelect={handleSelectSource}
+    />
   );
 };

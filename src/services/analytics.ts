@@ -294,6 +294,23 @@ export const trackCapsuleCreationStarted = (source: string): void => {
   track('capsule_creation_started', { source });
 };
 
+/**
+ * A build path chosen on the "Choose how to build your capsule" step. Fires on
+ * the row tap for `ai` (Coming soon — a pure demand signal, nothing is created)
+ * and on Next for the path actually used. Closed enum: `manual` / `ai`.
+ */
+export const trackCapsuleBuildMethodSelected = (method: string): void => {
+  track('capsule_build_method_selected', { method });
+};
+
+/** An (empty) capsule was created via "Build it myself". Never sends the name. */
+export const trackCapsuleCreated = (props: {
+  method: string;
+  status: string;
+}): void => {
+  track('capsule_created', props);
+};
+
 /** Create tapped on the requirements step — numeric constraints only. */
 export const trackCapsuleConfigured = (props: {
   has_temp_range: boolean;

@@ -6,6 +6,7 @@ import type {
 } from '../services/v05Api';
 import type { LegalScreenParams } from '../screens/legal/LegalDocumentScreen';
 import type { BodyShape } from '../services/bodyService';
+import type { CapsuleOutfitSource } from '../services/capsuleService';
 
 /**
  * AU-242 — UAC v2 auth stack routes.
@@ -220,12 +221,20 @@ export type AppStackParamList = {
     fallbackItem?: ItemDetailFallbackItem;
     enhancedItem?: EnhanceAppliedResult;
   };
-  // AI Image Enhancement preview (reached from ItemDetail's sparkle FAB).
-  // Fires POST /items/{id}/beautify on mount and polls for the candidate —
-  // the on-demand v2 of the upload-time beautify flow (spec §3 non-goal #1,
-  // now in scope). `displayUri` is the image the detail screen was showing;
-  // it doubles as the loading backdrop and the long-press compare baseline.
-  EnhanceImage: { itemId: string; displayUri: string };
+  // AI Image Enhancement preview (ItemDetail's sparkle FAB, and every "see the
+  // studio shot" entry point: the Wardrobe tile, the beautify-ready snackbar,
+  // the push deep link, and the upload-time BeautifyPending hand-off).
+  // On mount it asks the server what already exists — a ready candidate is
+  // shown as-is, a running job is polled, and only a fresh item starts a new
+  // POST /items/{id}/beautify. `displayUri` is the original image: the
+  // long-press compare baseline. `origin` decides where accept/discard land —
+  // back on the detail screen (default) or on the Wardrobe grid for the
+  // entry points that have no ItemDetail underneath.
+  EnhanceImage: {
+    itemId: string;
+    displayUri: string;
+    origin?: 'itemDetail' | 'wardrobe';
+  };
   // __DEV__-only in-app Design System reference / style-guide catalog.
   // Reached from the Settings "Version" row in dev builds; not shipped to prod.
   DesignSystem: undefined;
@@ -311,10 +320,14 @@ export type AppStackParamList = {
   // ───────────────────────────────────────────────────────────────────────
   // Capsule Wardrobe (spec plans/260718-0433-capsule-wardrobe/spec.md §5).
   // Reached from the wardrobe switcher ("Choose a wardrobe" → Create Capsule).
-  // Create is a 2-step wizard (name → reqs); the generating screen owns the
-  // create mutation and lets the user leave while it runs in the background
-  // (React-Query continuation + toast).
+  // Create is a 2-step wizard: name → build method. "Build it myself" creates
+  // an EMPTY capsule and lands on its (empty) detail screen, where the user
+  // adds pieces via the + add flow. "Let AI build it" is Coming soon.
   CapsuleCreate: undefined;
+  CapsuleMethod: { name: string };
+  // Parked with the AI build path (not reachable today): requirements step +
+  // the generating screen that owns the create mutation and lets the user
+  // leave while it runs in the background (React-Query continuation + toast).
   CapsuleInfo: { name: string };
   CapsuleGenerating: {
     name: string;
@@ -326,7 +339,26 @@ export type AppStackParamList = {
     item_ids?: string[];
   };
   CapsuleDetail: { capsuleId: string };
-  CapsuleItemDetail: { capsuleId: string; itemId: string };
+  // Adding pieces happens on full PAGES (not sheets) — only the source picker
+  // ("where do you want to add from?") is a bottom sheet. The items page doubles
+  // as the change-item picker: `mode: 'replace'` single-selects and hands the id
+  // back to CapsuleItemDetail via `replacementItemId` instead of adding.
+  CapsuleSelectItems: {
+    capsuleId: string;
+    mode?: 'add' | 'replace';
+    /** The item being replaced (mode: 'replace' only). */
+    itemId?: string;
+  };
+  CapsuleSelectOutfits: {
+    capsuleId: string;
+    source: CapsuleOutfitSource;
+  };
+  CapsuleItemDetail: {
+    capsuleId: string;
+    itemId: string;
+    /** Set by CapsuleSelectItems (mode: 'replace') on its way back. */
+    replacementItemId?: string;
+  };
   // Edit a capsule's name + requirements (design revision §9.2). Save PATCHes
   // /capsules/{id}; a constraint change regenerates outfits server-side.
   CapsuleEdit: { capsuleId: string };

@@ -2,16 +2,26 @@
  * AI Image Enhancement preview (EnhanceImage) — state machine coverage.
  *
  * Coverage:
- *  1. loading → ready       — POST beautify on mount, 2s poll, candidate
- *                             swaps in, compare hint appears, actions enable
+ *  1. loading → ready       — nothing in flight → POST beautify, 2s poll,
+ *                             candidate swaps in, hint + actions appear
  *  2. long-press compare    — hold shows the original, release restores
- *  3. timeout               — no `ready` within 15s → error copy + Retry;
- *                             Retry starts a NEW session (fresh POST)
+ *  3. timeout               — no `ready` within the budget → error copy +
+ *                             Retry; Retry re-probes (attaches to a running
+ *                             job, POSTs only when nothing is in flight)
  *  4. server failure        — status `failed` → generic error copy
  *  5. discard               — fires discardBeautify + goBack, no persistence
  *  6. replace original      — acceptBeautify → popTo ItemDetail with the
  *                             merged `enhancedItem` return param
  *  7. replace failure       — stays on the preview, actions re-enable
+ *  8. back while loading    — resets the stack to a single Wardrobe root
+ *  9. session start         — patches beautify_status onto the cached list
+ * 10. loading design        — one sentence per 2s slot, checked off in turn
+ *                             (3 rows = 6s), sequence never ends the wait
+ * 11. leave-and-notify      — same Wardrobe reset, nothing discarded
+ * 12. re-entry             — an existing ready candidate opens as a RESULT
+ *                            (no second generation); a running job is joined
+ * 13. regenerate           — spends an attempt, back to loading, capped at 5
+ * 14. wardrobe origin      — accept/discard resolve back to the grid
  *
  * Patterns follow ItemDetailScreen.test.tsx (react-test-renderer, testID
  * queries, real en-EN copy). Fake timers drive the poll loop; microtask
@@ -21,6 +31,7 @@ import React from 'react';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { toast } from '../../../components/design-system/lib';
+import { theme } from '../../../theme/theme';
 import { EnhanceImageScreen } from '../EnhanceImageScreen';
 
 // ---- mocks ------------------------------------------------------------------
@@ -28,7 +39,11 @@ import { EnhanceImageScreen } from '../EnhanceImageScreen';
 const mockGoBack = jest.fn();
 const mockPopTo = jest.fn();
 const mockReset = jest.fn();
-const mockRouteParams = {
+const mockRouteParams: {
+  itemId: string;
+  displayUri: string;
+  origin?: 'itemDetail' | 'wardrobe';
+} = {
   itemId: 'item-1',
   displayUri: 'https://cdn.example/original.png',
 };
@@ -107,10 +122,13 @@ const oneByTestID = (
   return matches[0];
 };
 
+// The mount path chains several awaits (status probe → POST → poll), so a
+// couple of microtask ticks isn't enough to settle it.
 const flushPromises = async () => {
   await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let i = 0; i < 8; i += 1) {
+      await Promise.resolve();
+    }
   });
 };
 
@@ -118,8 +136,9 @@ const flushPromises = async () => {
 const pollTick = async () => {
   await act(async () => {
     jest.advanceTimersByTime(2000);
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let i = 0; i < 8; i += 1) {
+      await Promise.resolve();
+    }
   });
 };
 
@@ -138,9 +157,19 @@ const renderScreen = async () => {
     );
   });
   liveRenderers.push(renderer);
-  await flushPromises(); // settle the mount-effect beautifyItem POST
+  await flushPromises(); // settle the mount probe + any beautifyItem POST
   return { renderer, client };
 };
+
+/**
+ * A loading row shows the green check once its own 2s slot is over; until then
+ * it spins. Under the `.svg` jest stub both glyphs render as a bare View, so
+ * the completed state is identified by the check's green `color` prop.
+ */
+const rowIsChecked = (root: ReactTestInstance, index: number): boolean =>
+  oneByTestID(root, `enhance-loading-row-${index}`).findAll(
+    n => n.props?.color === theme.colors.figmaToggleOn,
+  ).length > 0;
 
 const READY_STATUS = {
   status: 'ready',
@@ -148,9 +177,31 @@ const READY_STATUS = {
   attempts: 1,
 };
 const PENDING_STATUS = { status: 'pending', attempts: 1 };
+/** Nothing in flight — what the mount probe sees for a fresh enhance. */
+const NONE_STATUS = { status: 'none', attempts: 0 };
+
+/**
+ * Mount-probe status first, then one value per poll tick (the last one
+ * repeats). The screen asks the server what already exists before it spends a
+ * generation, so every test has to say what that probe finds.
+ */
+const withStatuses = (probe: object, ...polls: object[]): void => {
+  mockGetBeautifyStatus.mockResolvedValueOnce(probe);
+  polls.forEach((status, index) => {
+    if (index === polls.length - 1) {
+      mockGetBeautifyStatus.mockResolvedValue(status);
+    } else {
+      mockGetBeautifyStatus.mockResolvedValueOnce(status);
+    }
+  });
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // clearAllMocks only clears calls — drop queued once-values too so a test
+  // that leaves an unconsumed status can't leak it into the next one.
+  mockGetBeautifyStatus.mockReset();
+  mockRouteParams.origin = undefined; // default entry: ItemDetail's sparkle FAB
   jest.useFakeTimers();
   mockBeautifyItem.mockResolvedValue({
     job_id: 'j-1',
@@ -174,29 +225,31 @@ afterEach(() => {
 // 1. loading → ready
 // =============================================================================
 it('polls until ready, then swaps to the candidate and enables both actions', async () => {
-  mockGetBeautifyStatus
-    .mockResolvedValueOnce(PENDING_STATUS)
-    .mockResolvedValueOnce(READY_STATUS);
+  withStatuses(NONE_STATUS, PENDING_STATUS, READY_STATUS);
 
   const { renderer: r } = await renderScreen();
   const root = r.root;
 
+  // Nothing in flight → the probe falls through to a real generation.
   expect(mockBeautifyItem).toHaveBeenCalledWith('item-1');
   expect(mockTrack).toHaveBeenCalledWith('enhance_started', {
     item_id: 'item-1',
+    mode: 'resume',
   });
 
-  // Loading: overlay + copy shown, both actions disabled, no compare hint
-  expect(byTestID(root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
-  expect(oneByTestID(root, 'enhance-discard-btn').props.disabled).toBe(true);
-  expect(oneByTestID(root, 'enhance-replace-btn').props.disabled).toBe(true);
+  // Loading owns the body: progress rows + leave CTA, no preview/actions/hint
+  expect(byTestID(root, 'enhance-loading').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-leave-btn').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-discard-btn').length).toBe(0);
+  expect(byTestID(root, 'enhance-replace-btn').length).toBe(0);
+  expect(byTestID(root, 'enhance-image-preview').length).toBe(0);
   expect(byTestID(root, 'enhance-compare-hint').length).toBe(0);
 
   await pollTick(); // → pending
-  expect(byTestID(root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-loading').length).toBeGreaterThan(0);
 
   await pollTick(); // → ready
-  expect(byTestID(root, 'enhance-loading-overlay').length).toBe(0);
+  expect(byTestID(root, 'enhance-loading').length).toBe(0);
   expect(mockTrack).toHaveBeenCalledWith(
     'enhance_completed',
     expect.objectContaining({ item_id: 'item-1' }),
@@ -211,13 +264,14 @@ it('polls until ready, then swaps to the candidate and enables both actions', as
   expect(byTestID(root, 'enhance-compare-hint').length).toBeGreaterThan(0);
   expect(oneByTestID(root, 'enhance-discard-btn').props.disabled).toBe(false);
   expect(oneByTestID(root, 'enhance-replace-btn').props.disabled).toBe(false);
+  expect(byTestID(root, 'enhance-regenerate-btn').length).toBeGreaterThan(0);
 });
 
 // =============================================================================
 // 2. long-press compare
 // =============================================================================
 it('shows the original while long-pressed and restores the candidate on release', async () => {
-  mockGetBeautifyStatus.mockResolvedValue(READY_STATUS);
+  withStatuses(NONE_STATUS, READY_STATUS);
 
   const { renderer: r } = await renderScreen();
   await pollTick();
@@ -241,7 +295,7 @@ it('shows the original while long-pressed and restores the candidate on release'
 // 3. timeout → Retry restarts a fresh session
 // =============================================================================
 it('times out past the 3min wait budget, shows the timeout copy, and Retry re-fires the request', async () => {
-  mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
+  withStatuses(NONE_STATUS, PENDING_STATUS);
 
   const { renderer: r } = await renderScreen();
   const root = r.root;
@@ -258,18 +312,33 @@ it('times out past the 3min wait budget, shows the timeout copy, and Retry re-fi
     'Enhancement is taking longer than expected.',
   );
 
-  // Retry → new session, new POST, back to loading
+  // Retry → back to loading. It re-probes first: the job is still running
+  // server-side, so it attaches to that one rather than paying for a second
+  // generation on top of it.
   act(() => oneByTestID(root, 'enhance-retry-btn').props.onPress());
   await flushPromises();
+  expect(byTestID(root, 'enhance-loading').length).toBeGreaterThan(0);
+  expect(mockBeautifyItem).toHaveBeenCalledTimes(1);
+});
+
+it('Retry does fire a fresh job once nothing is in flight', async () => {
+  withStatuses(NONE_STATUS, { status: 'failed', attempts: 1 });
+
+  const { renderer: r } = await renderScreen();
+  await pollTick(); // → failed
+  expect(mockBeautifyItem).toHaveBeenCalledTimes(1);
+
+  act(() => oneByTestID(r.root, 'enhance-retry-btn').props.onPress());
+  await flushPromises();
   expect(mockBeautifyItem).toHaveBeenCalledTimes(2);
-  expect(byTestID(root, 'enhance-loading-overlay').length).toBeGreaterThan(0);
+  expect(byTestID(r.root, 'enhance-loading').length).toBeGreaterThan(0);
 });
 
 // =============================================================================
 // 4. server-side failure
 // =============================================================================
 it('shows the generic error when the job resolves as failed', async () => {
-  mockGetBeautifyStatus.mockResolvedValue({ status: 'failed', attempts: 1 });
+  withStatuses(NONE_STATUS, { status: 'failed', attempts: 1 });
 
   const { renderer: r } = await renderScreen();
   await pollTick();
@@ -287,7 +356,7 @@ it('shows the generic error when the job resolves as failed', async () => {
 // 5. discard
 // =============================================================================
 it('Discard drops the candidate and returns to Item Detail', async () => {
-  mockGetBeautifyStatus.mockResolvedValue(READY_STATUS);
+  withStatuses(NONE_STATUS, READY_STATUS);
   mockDiscardBeautify.mockResolvedValue({});
 
   const { renderer: r } = await renderScreen();
@@ -307,7 +376,7 @@ it('Discard drops the candidate and returns to Item Detail', async () => {
 // 6. replace original
 // =============================================================================
 it('Replace original accepts the candidate and pops back with the merged result', async () => {
-  mockGetBeautifyStatus.mockResolvedValue(READY_STATUS);
+  withStatuses(NONE_STATUS, READY_STATUS);
   mockAcceptBeautify.mockResolvedValue({
     id: 'item-1',
     image_studio: 'https://cdn.example/studio.png',
@@ -347,7 +416,7 @@ it('Replace original accepts the candidate and pops back with the merged result'
 // 7. replace failure — candidate preserved, actions re-enable
 // =============================================================================
 it('stays on the preview with actions re-enabled when saving fails', async () => {
-  mockGetBeautifyStatus.mockResolvedValue(READY_STATUS);
+  withStatuses(NONE_STATUS, READY_STATUS);
   mockAcceptBeautify.mockRejectedValue(new Error('boom'));
 
   const { renderer: r } = await renderScreen();
@@ -382,11 +451,11 @@ it('stays on the preview with actions re-enabled when saving fails', async () =>
 // 8. back button while loading → Wardrobe, not ItemDetail
 // =============================================================================
 it('pressing back mid-generation resets the whole stack to a single Wardrobe root instead of going back to ItemDetail', async () => {
-  mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
+  withStatuses(NONE_STATUS, PENDING_STATUS);
 
   const { renderer: r } = await renderScreen();
 
-  expect(byTestID(r.root, 'enhance-loading-overlay').length).toBeGreaterThan(
+  expect(byTestID(r.root, 'enhance-loading').length).toBeGreaterThan(
     0,
   );
 
@@ -406,7 +475,7 @@ it('pressing back mid-generation resets the whole stack to a single Wardrobe roo
 });
 
 it('pressing back once ready still goes back to ItemDetail (unchanged)', async () => {
-  mockGetBeautifyStatus.mockResolvedValue(READY_STATUS);
+  withStatuses(NONE_STATUS, READY_STATUS);
 
   const { renderer: r } = await renderScreen();
   await pollTick();
@@ -421,7 +490,7 @@ it('pressing back once ready still goes back to ItemDetail (unchanged)', async (
 // 9. starting a session invalidates the Wardrobe list cache immediately
 // =============================================================================
 it('patches beautify_status: pending onto the cached wardrobe item as soon as the job starts (no refetch)', async () => {
-  mockGetBeautifyStatus.mockResolvedValue(PENDING_STATUS);
+  withStatuses(NONE_STATUS, PENDING_STATUS);
 
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
@@ -452,4 +521,197 @@ it('patches beautify_status: pending onto the cached wardrobe item as soon as th
   expect(client.getQueryState(['wardrobe-items', 'All'])?.isInvalidated).toBe(
     false,
   );
+});
+
+// =============================================================================
+// 10. loading design — one sentence per 2s slot (6s for all three)
+// =============================================================================
+it('reveals one loading sentence every 2s and checks each off at the end of its own slot', async () => {
+  withStatuses(NONE_STATUS, PENDING_STATUS);
+
+  const { renderer: r } = await renderScreen();
+  const root = r.root;
+
+  // t=0 — first sentence only, still in progress (spinner, no check).
+  expect(byTestID(root, 'enhance-loading-row-0').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-loading-row-1').length).toBe(0);
+  expect(rowIsChecked(root, 0)).toBe(false);
+
+  await pollTick(); // t=2s
+  expect(rowIsChecked(root, 0)).toBe(true);
+  expect(byTestID(root, 'enhance-loading-row-1').length).toBeGreaterThan(0);
+  expect(rowIsChecked(root, 1)).toBe(false);
+  expect(byTestID(root, 'enhance-loading-row-2').length).toBe(0);
+
+  await pollTick(); // t=4s
+  expect(rowIsChecked(root, 1)).toBe(true);
+  expect(byTestID(root, 'enhance-loading-row-2').length).toBeGreaterThan(0);
+  expect(rowIsChecked(root, 2)).toBe(false);
+
+  await pollTick(); // t=6s — the whole sequence is done
+  expect(rowIsChecked(root, 2)).toBe(true);
+
+  // The cosmetic sequence never ends the wait: still loading, still polling.
+  await pollTick();
+  expect(byTestID(root, 'enhance-loading').length).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-loading-row-2').length).toBeGreaterThan(0);
+});
+
+// =============================================================================
+// 11. "Leave — notify me when ready" — job keeps running server-side
+// =============================================================================
+it('leaving from the loading screen resets to Wardrobe without discarding the job', async () => {
+  withStatuses(NONE_STATUS, PENDING_STATUS);
+
+  const { renderer: r } = await renderScreen();
+
+  // Shared loading body: the escape hatch stays inert until the sentence
+  // sequence has played out (7s floor), so leaving isn't a first reflex.
+  expect(oneByTestID(r.root, 'enhance-leave-btn').props.disabled).toBe(true);
+  for (let i = 0; i < 4; i += 1) {
+    await pollTick(); // 8s > the 7s gate
+  }
+  expect(oneByTestID(r.root, 'enhance-leave-btn').props.disabled).toBe(false);
+
+  act(() => oneByTestID(r.root, 'enhance-leave-btn').props.onPress());
+
+  expect(mockTrack).toHaveBeenCalledWith('enhance_left_waiting', {
+    item_id: 'item-1',
+  });
+  // Same exit as the header back button mid-generation: a full stack reset to
+  // Wardrobe, where the beautify-ready snackbar delivers the "we'll let you
+  // know" promise. Nothing is cancelled or discarded.
+  expect(mockReset).toHaveBeenCalledWith({
+    index: 0,
+    routes: [{ name: 'Wardrobe' }],
+  });
+  expect(mockDiscardBeautify).not.toHaveBeenCalled();
+  expect(mockGoBack).not.toHaveBeenCalled();
+});
+
+// =============================================================================
+// 12. re-entry shows the existing result instead of generating again
+// =============================================================================
+it('opens straight on the ready result when a candidate already exists (no new job)', async () => {
+  // What the user hits after "Leave — notify me when ready": they tap the
+  // sparkle icon (or the tile / snackbar) again while the candidate is sitting
+  // server-side. That must be a result view, not a second generation.
+  withStatuses(READY_STATUS);
+
+  const { renderer: r } = await renderScreen();
+  const root = r.root;
+
+  expect(mockBeautifyItem).not.toHaveBeenCalled();
+  expect(mockTrack).toHaveBeenCalledWith('enhance_resumed', {
+    item_id: 'item-1',
+    state: 'ready',
+  });
+  expect(byTestID(root, 'enhance-loading').length).toBe(0);
+  expect(
+    root.findAll(
+      n => n.props?.source?.uri === 'https://cdn.example/candidate.png',
+    ).length,
+  ).toBeGreaterThan(0);
+  expect(byTestID(root, 'enhance-replace-btn').length).toBeGreaterThan(0);
+});
+
+it('attaches to a job that is still running instead of starting another', async () => {
+  withStatuses(PENDING_STATUS, READY_STATUS);
+
+  const { renderer: r } = await renderScreen();
+
+  expect(mockBeautifyItem).not.toHaveBeenCalled();
+  expect(mockTrack).toHaveBeenCalledWith('enhance_resumed', {
+    item_id: 'item-1',
+    state: 'pending',
+  });
+  expect(byTestID(r.root, 'enhance-loading').length).toBeGreaterThan(0);
+
+  // Still a live poll — the running job lands on this screen when it finishes.
+  await pollTick();
+  expect(byTestID(r.root, 'enhance-loading').length).toBe(0);
+});
+
+// =============================================================================
+// 13. Regenerate
+// =============================================================================
+it('Regenerate spends another attempt and goes back to the loading state', async () => {
+  withStatuses(READY_STATUS);
+
+  const { renderer: r } = await renderScreen();
+  act(() => oneByTestID(r.root, 'enhance-regenerate-btn').props.onPress());
+  await flushPromises();
+
+  expect(mockTrack).toHaveBeenCalledWith('enhance_regenerated', {
+    item_id: 'item-1',
+    attempt: 2, // READY_STATUS reported one attempt already spent
+  });
+  // Regenerate skips the probe — it always fires a new job over the candidate.
+  expect(mockBeautifyItem).toHaveBeenCalledWith('item-1');
+  expect(mockTrack).toHaveBeenCalledWith('enhance_started', {
+    item_id: 'item-1',
+    mode: 'regenerate',
+  });
+  expect(byTestID(r.root, 'enhance-loading').length).toBeGreaterThan(0);
+});
+
+it('stops offering Regenerate once the attempt cap is spent', async () => {
+  withStatuses({ ...READY_STATUS, attempts: 5 });
+
+  const { renderer: r } = await renderScreen();
+
+  expect(byTestID(r.root, 'enhance-regenerate-btn').length).toBe(0);
+  const capped = oneByTestID(r.root, 'enhance-regenerate-btn-capped');
+  expect(capped.props.disabled).toBe(true);
+  expect(capped.props.title).toBe('Keep the best one');
+
+  act(() => capped.props.onPress());
+  expect(mockBeautifyItem).not.toHaveBeenCalled();
+});
+
+// =============================================================================
+// 14. wardrobe entry points resolve back to the grid
+// =============================================================================
+it('accepting from a Wardrobe entry returns to the grid instead of popping to ItemDetail', async () => {
+  mockRouteParams.origin = 'wardrobe';
+  withStatuses(READY_STATUS);
+  mockAcceptBeautify.mockResolvedValue({
+    id: 'item-1',
+    image_studio: 'https://cdn.example/studio.png',
+  });
+
+  const { renderer: r, client } = await renderScreen();
+
+  await act(async () => {
+    oneByTestID(r.root, 'enhance-replace-btn').props.onPress();
+    await Promise.resolve();
+  });
+  await flushPromises();
+
+  expect(mockAcceptBeautify).toHaveBeenCalledWith('item-1');
+  // No ItemDetail underneath (tile / snackbar / push) — reset to the grid.
+  expect(mockPopTo).not.toHaveBeenCalled();
+  expect(mockReset).toHaveBeenCalledWith({
+    index: 0,
+    routes: [{ name: 'Wardrobe' }],
+  });
+  expect(client.getQueryState(['wardrobe-items', 'All'])).toBeUndefined();
+});
+
+it('discarding from a Wardrobe entry keeps the original and returns to the grid', async () => {
+  mockRouteParams.origin = 'wardrobe';
+  withStatuses(READY_STATUS);
+  mockDiscardBeautify.mockResolvedValue({});
+
+  const { renderer: r } = await renderScreen();
+
+  act(() => oneByTestID(r.root, 'enhance-discard-btn').props.onPress());
+
+  expect(mockDiscardBeautify).toHaveBeenCalledWith('item-1');
+  expect(mockAcceptBeautify).not.toHaveBeenCalled();
+  expect(mockReset).toHaveBeenCalledWith({
+    index: 0,
+    routes: [{ name: 'Wardrobe' }],
+  });
+  expect(mockGoBack).not.toHaveBeenCalled();
 });

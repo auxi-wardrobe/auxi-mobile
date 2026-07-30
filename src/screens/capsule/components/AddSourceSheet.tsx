@@ -1,10 +1,8 @@
 import React from 'react';
 import { Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import {
-  MBottomSheet,
-  MSheetOption,
-} from '../../../components/design-system/lib';
+import { MSheetOption } from '../../../components/design-system/lib';
+import { ContextualBottomSheet } from '../../../components/features/ContextualBottomSheet';
 import { Icons } from '../../../assets/icons';
 import type { CapsuleOutfitSource } from '../../../services/capsuleService';
 import { capsuleStyles as s } from '../styles';
@@ -20,7 +18,10 @@ interface AddSourceSheetProps {
 
 /**
  * "Choose where you'd like to add from." — My Wardrobe / My Favourites /
- * My Creations. Uses the shared MBottomSheet + MSheetOption primitives.
+ * My Creations. Same shape as the wardrobe Add-item and Add-to-Schedule
+ * pickers: the shared ContextualBottomSheet shell (full-width, top-rounded,
+ * "Refine suggestions" reveal motion, scrim, safe-area) + title / subtitle /
+ * MSheetOption rows.
  */
 export const AddSourceSheet: React.FC<AddSourceSheetProps> = ({
   visible,
@@ -29,11 +30,12 @@ export const AddSourceSheet: React.FC<AddSourceSheetProps> = ({
 }) => {
   const { t } = useTranslation();
   return (
-    <MBottomSheet
+    <ContextualBottomSheet
       visible={visible}
       onDismiss={onDismiss}
       testID="capsule-add-source-sheet"
     >
+      <Text style={s.sheetTitle}>{t('capsule.add_sheet_title')}</Text>
       <Text style={s.sheetHelper}>{t('capsule.add_source_helper')}</Text>
       <MSheetOption
         icon={Icons.Wardrobe}
@@ -53,6 +55,6 @@ export const AddSourceSheet: React.FC<AddSourceSheetProps> = ({
         onPress={() => onSelect('creations')}
         testID="capsule-add-source-creations"
       />
-    </MBottomSheet>
+    </ContextualBottomSheet>
   );
 };

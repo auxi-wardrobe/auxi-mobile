@@ -545,22 +545,26 @@ Curated wardrobe subsets ("capsules") with rule-based outfit generation (spec `p
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
 | `capsule_creation_started` | Create Capsule row tapped in the switcher | `WardrobeScreen.tsx`, `CapsuleDetailScreen.tsx` | `source` (`switcher`) |
-| `capsule_configured` | Create tapped on the requirements step | `CapsuleInfoScreen.tsx` | `has_temp_range`, `formalness_level?`, `outfit_target?`, `shoe_limit?` |
-| `capsule_generation_started` | Create mutation fires on the generating screen | `CapsuleGeneratingScreen.tsx` | `outfit_target?` |
+| `capsule_build_method_selected` | A build path chosen on the method step — on the row tap for `ai` (Coming soon, nothing is created), on Next for the path used | `CapsuleMethodScreen.tsx` | `method` (`manual` / `ai`) |
+| `capsule_created` | "Build it myself" → empty capsule POSTed successfully | `CapsuleMethodScreen.tsx` | `method`, `status` |
+| `capsule_configured` | Create tapped on the requirements step — **parked with the AI path, not currently reachable** | `CapsuleInfoScreen.tsx` | `has_temp_range`, `formalness_level?`, `outfit_target?`, `shoe_limit?` |
+| `capsule_generation_started` | Create mutation fires on the generating screen — **parked with the AI path** | `CapsuleGeneratingScreen.tsx` | `outfit_target?` |
 | `capsule_generation_backgrounded` | "Leave — notify me when ready" tapped | `CapsuleGeneratingScreen.tsx` | — |
 | `capsule_generated` | Generation resolves success / success_with_gaps / failed | `CapsuleGeneratingScreen.tsx` | `status`, `item_count`, `outfit_count` |
 | `capsule_generation_failed` | Create API rejects | `CapsuleGeneratingScreen.tsx` | `error_kind` (sanitized enum), `status?` |
 | `capsule_viewed` | Detail opened — **once per capsule id per session** (Set dedup, `trackCapsuleViewedOnce`) | `CapsuleDetailScreen.tsx` | `item_count`, `outfit_count` |
 | `capsule_summary_expanded` | Expandable summary opened | `CapsuleSummaryPanel.tsx` | — |
-| `capsule_add_source_selected` | Add-source chosen | `CapsuleAddFlow.tsx` | `source` (`wardrobe` / `favourites` / `creations`) |
-| `capsule_items_added` | Add success (wardrobe items or from-outfits) | `CapsuleAddFlow.tsx` | `source`, `items_added`, `new_outfits`, `already_existed` |
+| `capsule_add_source_selected` | Add-source chosen in the sheet — routes to the matching picker page | `CapsuleAddFlow.tsx` | `source` (`wardrobe` / `favourites` / `creations`) |
+| `capsule_items_added` | Add confirmed on the picker page (wardrobe items or from-outfits) | `CapsuleSelectItemsScreen.tsx`, `CapsuleSelectOutfitsScreen.tsx` | `source`, `items_added`, `new_outfits`, `already_existed` |
 | `capsule_item_removed` | Item removed from capsule | `CapsuleItemDetailScreen.tsx` | `used_in_outfits` |
 | `capsule_item_changed` | Item swapped | `CapsuleItemDetailScreen.tsx` | `scope` (`outfit` / `all`) |
 | `capsule_deleted` | Capsule deleted | `CapsuleDetailScreen.tsx` | — |
 | `capsule_switcher_opened` | "Choose a wardrobe" sheet opened (header title tap) | `WardrobeScreen.tsx`, `CapsuleDetailScreen.tsx` | — |
 | `wardrobe_context_selected` | A wardrobe context chosen in the switcher | `WardrobeScreen.tsx`, `CapsuleDetailScreen.tsx` | `context` (`entire` / `capsule`) |
-| `capsule_settings_edited` | Capsule settings saved via the edit screen | `CapsuleEditScreen.tsx` | `changed_constraints` (bool — a numeric constraint changed vs name-only) |
+| `capsule_settings_edited` | Capsule name saved via the edit screen | `CapsuleEditScreen.tsx` | `changed_constraints` (bool — **always false today**: the edit screen is name-only while AI generation is Coming soon) |
 
+> Design revision 260729 (build-method step): capsule creation is now name → **build method** → empty capsule. Only "Build it myself" builds anything (`capsule_created`); "Let AI build it" is Coming soon and its tap only emits `capsule_build_method_selected { method: 'ai' }` as a demand signal. The requirements + generating screens (and their `capsule_configured` / `capsule_generation_*` events) are parked until the AI path ships — they stay registered so re-enabling is a routing change, not a rewrite.
+>
 > Design revision 260719 (wardrobe switcher + capsule edit): the three events above are added by the switcher/edit surface (spec `plans/260718-0433-capsule-wardrobe/spec.md` §9.2). `wardrobe_context_selected.context` is a closed enum; `capsule_settings_edited.changed_constraints` is a boolean (true regenerates outfits server-side). No capsule name is ever sent.
 >
 > PII: none. Constraints (`formalness_level`, `outfit_target`, `shoe_limit`, `temp` via the `has_temp_range` boolean) are numeric/boolean; `error_kind` is a closed enum (`network_error` / `timeout` / `server_error` / `not_found` / `unknown`) derived by `classifyCapsuleError`; counts come from live server joins.

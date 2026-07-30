@@ -6,7 +6,9 @@
  *
  * Rows reveal one at a time every `stepMs` (row 0 at t=0, row 1 at t=stepMs,
  * …) regardless of the real async job's progress — this is a UX timer only,
- * it never gates the actual job. The CTA stays disabled until `minCtaMs` have
+ * it never gates the actual job. `completedCount` closes each row out at the
+ * end of its own slot, so a 3-row sequence finishes at `3 × stepMs`.
+ * The CTA stays disabled until `minCtaMs` have
  * elapsed, even if every row has already revealed (e.g. 3 rows × 2s = 4s of
  * reveals still waits out the 7s floor).
  *
@@ -27,6 +29,13 @@ export interface UseStaggeredRevealOptions {
 export interface UseStaggeredRevealResult {
   /** Number of rows currently revealed (0..rowCount). */
   visibleCount: number;
+  /**
+   * Number of rows whose own `stepMs` slot has fully elapsed (0..rowCount) —
+   * a revealed row is still "in progress" until its slot ends, so the last row
+   * only completes at `stepMs * rowCount` (3 rows × 2s = 6s). Callers that
+   * treat "revealed" as "done" can ignore this and use `visibleCount` alone.
+   */
+  completedCount: number;
   /** True once `minCtaMs` has elapsed since mount. */
   ctaEnabled: boolean;
 }
@@ -43,6 +52,7 @@ export const useStaggeredReveal = (
     // Nothing to stagger for a non-positive row count.
     rowCount > 0 ? 1 : 0,
   );
+  const [completedCount, setCompletedCount] = useState(0);
   const [ctaEnabled, setCtaEnabled] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -63,15 +73,20 @@ export const useStaggeredReveal = (
     if (rowCount <= 0) return;
     if (reduceMotion) {
       setVisibleCount(rowCount);
+      setCompletedCount(rowCount);
       return;
     }
     setVisibleCount(1);
-    if (rowCount <= 1) return;
+    setCompletedCount(0);
     const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let row = 1; row < rowCount; row++) {
+    // One tick per slot boundary: at `stepMs * row` the previous row is done
+    // and the next one (if any) reveals. The last tick (row === rowCount)
+    // only completes the final row — there is nothing left to reveal.
+    for (let row = 1; row <= rowCount; row++) {
       timers.push(
         setTimeout(() => {
-          setVisibleCount(v => Math.max(v, row + 1));
+          setVisibleCount(v => Math.max(v, Math.min(row + 1, rowCount)));
+          setCompletedCount(c => Math.max(c, row));
         }, stepMs * row),
       );
     }
@@ -86,5 +101,5 @@ export const useStaggeredReveal = (
     return () => clearTimeout(timer);
   }, [minCtaMs]);
 
-  return { visibleCount, ctaEnabled };
+  return { visibleCount, completedCount, ctaEnabled };
 };

@@ -22,6 +22,13 @@ export const ENHANCE_POLL_MS = 2000;
 // realistic ceiling.
 export const ENHANCE_TIMEOUT_MS = 3 * 60 * 1000;
 
+/**
+ * Regenerate budget per item, mirroring the backend's own cap (a 6th POST
+ * answers 409). Past it "Regenerate" swaps to a keep-the-best-one label and
+ * goes inert, so the user is told rather than shown a failure.
+ */
+export const ENHANCE_REGEN_CAP = 5;
+
 export type EnhanceFailureReason = 'network' | 'timeout' | 'server_error';
 
 /** Per-reason user-facing message keys (resolved via i18n `t`). */

@@ -29,6 +29,7 @@ import IconGlobe from '../images/icon_globe.svg';
 import IconLoading from '../images/icon_loading.svg';
 import IconSeeOutfit from '../images/icon_see_outfit.svg';
 import IconSwipeHand from '../images/icon_swipe_hand.svg';
+import IconLongPress from '../images/icon_long_press.svg';
 import IconCanvasUndo from '../images/canvas-icons/undo.svg';
 import IconCanvasRedo from '../images/canvas-icons/redo.svg';
 import IconCanvasLayerUp from '../images/canvas-icons/layer_up.svg';
@@ -93,6 +94,7 @@ export const Icons = {
   Loading: IconLoading,
   SeeOutfit: IconSeeOutfit,
   SwipeHand: IconSwipeHand,
+  LongPress: IconLongPress,
   CanvasSwap: IconCanvasSwap,
   Edit: IconEdit,
   MinusCircle: IconMinusCircle,
@@ -152,6 +154,7 @@ export {
   IconLoading,
   IconSeeOutfit,
   IconSwipeHand,
+  IconLongPress,
   IconEye,
   IconEyeOff,
   IconCalendar,

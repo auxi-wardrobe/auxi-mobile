@@ -167,16 +167,16 @@ it('stops polling getBeautifyStatus once unmounted (e.g. after the stack reset a
 // =============================================================================
 // 3. ready → replaces into BeautifyReview (unchanged existing behavior)
 // =============================================================================
-it('replaces into BeautifyReview once the job is ready', async () => {
+it('replaces into the Enhance result screen once the job is ready', async () => {
   mockGetBeautifyStatus.mockResolvedValue(READY_STATUS);
   await renderScreen();
 
   await pollTick();
 
-  expect(mockReplace).toHaveBeenCalledWith('BeautifyReview', {
+  expect(mockReplace).toHaveBeenCalledWith('EnhanceImage', {
     itemId: 'item-1',
-    originalUri: 'https://cdn.example/original.png',
-    from: 'loader',
+    displayUri: 'https://cdn.example/original.png',
+    origin: 'wardrobe',
   });
   expect(mockTrack).toHaveBeenCalledWith('beautify_ready');
 });
