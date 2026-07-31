@@ -23,6 +23,7 @@ import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
 import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { useAiConsentGate } from '../hooks/useAiConsentGate';
+import { canEnhanceItem } from './item-detail/enhance-session';
 import { Icons } from '../assets/icons';
 import {
   getItemFitLabel,
@@ -604,6 +605,7 @@ export const ItemDetailScreen = () => {
   // processing successfully (cutout exists) — catalog/seeded items, items
   // still preparing, failed processing, and already-enhanced items never get
   // the FAB. Full rules: enhance-session.ts#canEnhanceItem.
+  const canEnhance = !!item && canEnhanceItem(item);
 
   const handleBuildAround = () => {
     // ItemDetail is presented as a modal layer (AppNavigator
@@ -692,11 +694,12 @@ export const ItemDetailScreen = () => {
               </View>
             ) : null}
 
-            {/* AI Image Enhancement entry — sparkle FAB pinned to the image's
-                bottom-right corner. Hidden while editing (the edit panel owns
-                its own save state) and whenever the item is not enhanceable
-                (catalog / preparing / already enhanced — see canEnhance). */}
-            {!isEditing ? (
+            {/* AI Image Enhancement entry — enhance-image FAB pinned to the
+                image's bottom-right corner. Hidden while editing (the edit
+                panel owns its own save state) and whenever the item is not
+                enhanceable (catalog / preparing / already enhanced — see
+                canEnhance). */}
+            {!isEditing && canEnhance ? (
               <TouchableOpacity
                 testID="item-detail-enhance-fab"
                 accessibilityRole="button"
@@ -706,8 +709,10 @@ export const ItemDetailScreen = () => {
                 disabled={saving}
               >
                 {/* On-dark icon tone: the purple AI accent has almost no
-                    contrast against the black chip. */}
-                <Icons.Sparkle
+                    contrast against the black chip. The glyph ships with a
+                    baked #070707 normalized to currentColor, so `color` is
+                    what tints it. */}
+                <Icons.EnhanceImage
                   width={24}
                   height={24}
                   color={theme.colors.figmaPrimaryButtonIcon}

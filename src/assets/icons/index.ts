@@ -55,6 +55,7 @@ import IconSearchImages from '../images/icon_search_images.svg';
 import IconDownload from '../images/icon_download.svg';
 import IconThumbUp from '../images/icon_thumb_up.svg';
 import IconThumbDown from '../images/icon_thumb_down.svg';
+import IconEnhanceImage from '../images/icon_enhance_image.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -114,6 +115,7 @@ export const Icons = {
   Download: IconDownload,
   ThumbUp: IconThumbUp,
   ThumbDown: IconThumbDown,
+  EnhanceImage: IconEnhanceImage,
 };
 
 export {
@@ -161,4 +163,5 @@ export {
   IconSearchDatabase,
   IconTakePhoto,
   IconSearchImages,
+  IconEnhanceImage,
 };
