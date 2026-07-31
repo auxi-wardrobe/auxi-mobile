@@ -65,6 +65,9 @@ type ScreenRoute = RouteProp<AppStackParamList, 'ItemDetail'>;
 // image frame is 378 wide on the 414 frame → 18px side margins; frame is
 // 378×504 (3:4); button group bottom padding 36 = home-indicator allowance.
 const IMAGE_SIDE_MARGIN = 18;
+// How far the enhance FAB sits above the image frame's bottom edge (unchanged
+// from when the FAB was a child of the frame).
+const ENHANCE_FAB_INSET = 12;
 const IMAGE_ASPECT = 3 / 4;
 const SHEET_BOTTOM_PADDING = 36;
 
@@ -260,6 +263,19 @@ export const ItemDetailScreen = () => {
     );
     return { width, height: width / IMAGE_ASPECT };
   }, [imageRegion]);
+
+  // The enhance FAB hangs off the region (full screen width) so it can sit in
+  // the 20pt screen gutter, but it must still look pinned to the image. The
+  // frame is centred vertically in the region (justifyContent:'center'), so
+  // its bottom edge is (regionHeight − frameHeight) / 2 up from the region's
+  // bottom; ENHANCE_FAB_INSET lifts the FAB that much further into the image.
+  const enhanceFabBottom = useMemo(() => {
+    if (!imageRegion || !imageFrame) {
+      return ENHANCE_FAB_INSET;
+    }
+    const frameBottomGap = (imageRegion.height - imageFrame.height) / 2;
+    return Math.max(frameBottomGap, 0) + ENHANCE_FAB_INSET;
+  }, [imageRegion, imageFrame]);
 
   // A `fallbackItem` only ever rides along with Home (suggestion-engine) pushes
   // — the Wardrobe grid opens ItemDetail with just `{ itemId }` (same
@@ -692,32 +708,39 @@ export const ItemDetailScreen = () => {
               </View>
             ) : null}
 
-            {/* AI Image Enhancement entry — enhance-image FAB pinned to the
-                image's bottom-right corner. Hidden while editing (the edit
-                panel owns its own save state) and whenever the item is not
-                enhanceable (catalog / preparing / already enhanced — see
-                canEnhance). */}
-            {!isEditing ? (
-              <TouchableOpacity
-                testID="item-detail-enhance-fab"
-                accessibilityRole="button"
-                accessibilityLabel={t('wardrobe.enhance.a11y_enhance')}
-                style={styles.enhanceFab}
-                onPress={handleEnhance}
-                disabled={saving}
-              >
-                {/* On-dark icon tone: the purple AI accent has almost no
-                    contrast against the black chip. The glyph ships with a
-                    baked #070707 normalized to currentColor, so `color` is
-                    what tints it. */}
-                <Icons.EnhanceImage
-                  width={24}
-                  height={24}
-                  color={theme.colors.figmaPrimaryButtonIcon}
-                />
-              </TouchableOpacity>
-            ) : null}
           </View>
+        ) : null}
+
+        {/* AI Image Enhancement entry — enhance-image FAB, 20pt in from the
+            SCREEN edge so it lines up with the rest of the screen's chrome
+            rather than with the image frame. It is a sibling of the frame, not
+            a child: the frame is narrower than the screen (centred, side
+            margins) AND clips with overflow:'hidden', so a frame-relative FAB
+            could never reach the 20pt gutter. Vertically it still reads as
+            pinned to the image's bottom-right — enhanceFabBottom re-derives
+            the frame's bottom edge inside the region.
+            Hidden while editing (the edit panel owns its own save state) and
+            whenever the item is not enhanceable (catalog / preparing /
+            already enhanced — see canEnhance). */}
+        {imageFrame && !isEditing ? (
+          <TouchableOpacity
+            testID="item-detail-enhance-fab"
+            accessibilityRole="button"
+            accessibilityLabel={t('wardrobe.enhance.a11y_enhance')}
+            style={[styles.enhanceFab, { bottom: enhanceFabBottom }]}
+            onPress={handleEnhance}
+            disabled={saving}
+          >
+            {/* On-dark icon tone: the purple AI accent has almost no
+                contrast against the black chip. The glyph ships with a
+                baked #070707 normalized to currentColor, so `color` is
+                what tints it. */}
+            <Icons.EnhanceImage
+              width={24}
+              height={24}
+              color={theme.colors.figmaPrimaryButtonIcon}
+            />
+          </TouchableOpacity>
         ) : null}
       </View>
 
@@ -851,12 +874,12 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interCaptionXxs,
     color: theme.colors.uacBackgroundNeutral50,
   },
-  // AI enhancement FAB: 36pt black rounded square pinned to the image's
-  // bottom-right corner, 20px in from the right edge, same soft warm shadow as
-  // the header back button.
+  // AI enhancement FAB: 36pt black rounded square at the image's bottom-right,
+  // 20pt in from the SCREEN edge (not the image frame's), same soft warm
+  // shadow as the header back button. `bottom` is supplied at render time —
+  // see enhanceFabBottom.
   enhanceFab: {
     position: 'absolute',
-    bottom: theme.spacing.uacDimension12,
     right: theme.spacing.uacDimension20,
     width: 36,
     height: 36,
