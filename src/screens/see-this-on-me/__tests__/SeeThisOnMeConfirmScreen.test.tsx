@@ -55,18 +55,20 @@ jest.mock('../../../services/tryOnResultStore', () => ({
   getTryOnResult: () => mockCachedResult,
 }));
 
-// Bare stand-in for the sheet: exposes the three callbacks as pressables.
+// Bare stand-in for the sheet: exposes the three callbacks as pressables, and
+// echoes `photoUri` onto the root node so the gate's photo choice is assertable.
 jest.mock('../StepReuseConfirm', () => {
   const React2 = require('react');
   return {
     StepReuseConfirm: (props: {
+      photoUri: string;
       onConfirm: () => void;
       onRetake: () => void;
       onDismiss: () => void;
     }) =>
       React2.createElement(
         'View',
-        { testID: 'mock-reuse-sheet' },
+        { testID: 'mock-reuse-sheet', photoUri: props.photoUri },
         React2.createElement('Pressable', {
           testID: 'confirm',
           onPress: props.onConfirm,
@@ -113,17 +115,39 @@ beforeEach(() => {
 });
 
 describe('SeeThisOnMeConfirmScreen (reuse-confirm gate)', () => {
+  // A profile as `POST /api/body-shape/select` returns it: `image_url` is the
+  // AI body-shape photo the user picked; `full_body_url` is the raw capture
+  // that fed the generation (the SELFIE when the full-body step was skipped).
   const REUSE_PROFILE = {
     id: 'prof-1',
-    full_body_url: 'https://cdn.example/body.jpg',
+    image_url: 'https://cdn.example/picked-shape.jpg',
+    full_body_url: 'https://cdn.example/raw-selfie.jpg',
     body_shape: 'average',
   };
+
+  const photoUriOf = (r: TestRenderer.ReactTestRenderer) =>
+    r.root.find(n => n.props?.testID === 'mock-reuse-sheet').props.photoUri;
 
   it('shows the confirm sheet when a saved profile with a photo exists', () => {
     mockQueryResult = { data: REUSE_PROFILE, isLoading: false };
     const r = render();
     expect(has(r, 'mock-reuse-sheet')).toBe(true);
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it('shows the PICKED body-shape photo, not the raw selfie/full-body capture', () => {
+    mockQueryResult = { data: REUSE_PROFILE, isLoading: false };
+    const r = render();
+    expect(photoUriOf(r)).toBe('https://cdn.example/picked-shape.jpg');
+  });
+
+  it('falls back to full_body_url for a legacy profile with no image_url', () => {
+    mockQueryResult = {
+      data: { ...REUSE_PROFILE, image_url: undefined },
+      isLoading: false,
+    };
+    const r = render();
+    expect(photoUriOf(r)).toBe('https://cdn.example/raw-selfie.jpg');
   });
 
   it('does not show the sheet while the profile is still loading', () => {

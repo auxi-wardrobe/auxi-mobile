@@ -31,7 +31,7 @@ import { track } from '../../services/analytics';
 import { bodyService } from '../../services/bodyService';
 import { AppStackParamList } from '../../types/navigation';
 import { StepReuseConfirm } from './StepReuseConfirm';
-import { decideEntryMode } from './profile-entry';
+import { decideEntryMode, resolveReusePhotoUri } from './profile-entry';
 import { tryOnGenerationStore } from './try-on-generation-store';
 import { getTryOnResult } from '../../services/tryOnResultStore';
 
@@ -54,8 +54,9 @@ export const SeeThisOnMeConfirmScreen: React.FC = () => {
   });
 
   const reuseMode = decideEntryMode(activeProfile) === 'reuse';
-  const reusePhotoUri =
-    activeProfile?.full_body_url ?? activeProfile?.image_url ?? null;
+  // The profile's `image_url` is the AI body-shape photo the user PICKED
+  // (AU-358 `select`), not a raw capture — see `resolveReusePhotoUri`.
+  const reusePhotoUri = resolveReusePhotoUri(activeProfile);
 
   // Guard against firing the hand-off twice (React 18 strict-mode double
   // effects, or a re-render after the query resolves).
