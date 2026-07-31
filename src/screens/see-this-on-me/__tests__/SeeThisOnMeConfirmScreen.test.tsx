@@ -115,85 +115,120 @@ beforeEach(() => {
 });
 
 describe('SeeThisOnMeConfirmScreen (reuse-confirm gate)', () => {
-  // A profile as `POST /api/body-shape/select` returns it: `image_url` is the
-  // AI body-shape photo the user picked; `full_body_url` is the raw capture
-  // that fed the generation (the SELFIE when the full-body step was skipped).
-  const REUSE_PROFILE = {
+  // A profile as `POST /api/body-shape/select` returns it: it carries the
+  // picked `body_shape`, `image_url` is that AI body photo, and
+  // `full_body_url` is the raw capture that fed the generation (the SELFIE
+  // when the optional full-body step was skipped).
+  const SHAPE_PROFILE = {
     id: 'prof-1',
     image_url: 'https://cdn.example/picked-shape.jpg',
     full_body_url: 'https://cdn.example/raw-selfie.jpg',
     body_shape: 'average',
   };
 
+  // A pre-AU-358 profile: never went through `select`, so no `body_shape` —
+  // `image_url` is the selfie and `full_body_url` the full-body photo.
+  const LEGACY_PROFILE = {
+    id: 'prof-legacy',
+    image_url: 'https://cdn.example/selfie.jpg',
+    full_body_url: 'https://cdn.example/full-body.jpg',
+  };
+
   const photoUriOf = (r: TestRenderer.ReactTestRenderer) =>
     r.root.find(n => n.props?.testID === 'mock-reuse-sheet').props.photoUri;
 
-  it('shows the confirm sheet when a saved profile with a photo exists', () => {
-    mockQueryResult = { data: REUSE_PROFILE, isLoading: false };
-    const r = render();
-    expect(has(r, 'mock-reuse-sheet')).toBe(true);
-    expect(mockReplace).not.toHaveBeenCalled();
-  });
-
-  it('shows the PICKED body-shape photo, not the raw selfie/full-body capture', () => {
-    mockQueryResult = { data: REUSE_PROFILE, isLoading: false };
-    const r = render();
-    expect(photoUriOf(r)).toBe('https://cdn.example/picked-shape.jpg');
-  });
-
-  it('falls back to full_body_url for a legacy profile with no image_url', () => {
-    mockQueryResult = {
-      data: { ...REUSE_PROFILE, image_url: undefined },
-      isLoading: false,
-    };
-    const r = render();
-    expect(photoUriOf(r)).toBe('https://cdn.example/raw-selfie.jpg');
-  });
-
-  it('does not show the sheet while the profile is still loading', () => {
-    mockQueryResult = { data: undefined, isLoading: true };
-    const r = render();
-    expect(has(r, 'mock-reuse-sheet')).toBe(false);
-    expect(mockReplace).not.toHaveBeenCalled();
-  });
-
-  it('confirm → replace into SeeThisOnMe in render mode with the saved body', () => {
-    mockQueryResult = { data: REUSE_PROFILE, isLoading: false };
-    const r = render();
-    press(r.root, 'confirm');
-    expect(mockTrack).toHaveBeenCalledWith('body_photo_reuse_confirmed', {
-      outfit_hash: 'hash-1',
+  describe('saved body shape → no confirm step', () => {
+    it('skips the sheet and goes straight to the render loading screen', () => {
+      mockQueryResult = { data: SHAPE_PROFILE, isLoading: false };
+      const r = render();
+      expect(has(r, 'mock-reuse-sheet')).toBe(false);
+      expect(mockReplace).toHaveBeenCalledWith('SeeThisOnMe', {
+        outfit: mockRouteParams.outfit,
+        reuseAction: 'render',
+        reuseBodyId: 'prof-1',
+        reuseShape: 'average',
+      });
     });
-    expect(mockReplace).toHaveBeenCalledWith('SeeThisOnMe', {
-      outfit: mockRouteParams.outfit,
-      reuseAction: 'render',
-      reuseBodyId: 'prof-1',
-      reuseShape: 'average',
+
+    it('records the reuse as automatic in the funnel', () => {
+      mockQueryResult = { data: SHAPE_PROFILE, isLoading: false };
+      render();
+      expect(mockTrack).toHaveBeenCalledWith('body_photo_reuse_confirmed', {
+        outfit_hash: 'hash-1',
+        auto: true,
+      });
+    });
+
+    it('hands off exactly once across re-renders', () => {
+      mockQueryResult = { data: SHAPE_PROFILE, isLoading: false };
+      const r = render();
+      act(() => {
+        r.update(<SeeThisOnMeConfirmScreen />);
+      });
+      expect(mockReplace).toHaveBeenCalledTimes(1);
+    });
+
+    it('waits for the profile before deciding — no premature capture hand-off', () => {
+      mockQueryResult = { data: undefined, isLoading: true };
+      const r = render();
+      expect(has(r, 'mock-reuse-sheet')).toBe(false);
+      expect(mockReplace).not.toHaveBeenCalled();
     });
   });
 
-  it('retake → replace into SeeThisOnMe in capture mode', () => {
-    mockQueryResult = { data: REUSE_PROFILE, isLoading: false };
-    const r = render();
-    press(r.root, 'retake');
-    expect(mockTrack).toHaveBeenCalledWith('body_photo_retake_selected', {
-      outfit_hash: 'hash-1',
+  describe('no saved body shape → confirm step still shown', () => {
+    it('shows the sheet for a legacy profile with a photo but no shape', () => {
+      mockQueryResult = { data: LEGACY_PROFILE, isLoading: false };
+      const r = render();
+      expect(has(r, 'mock-reuse-sheet')).toBe(true);
+      expect(mockReplace).not.toHaveBeenCalled();
     });
-    expect(mockReplace).toHaveBeenCalledWith('SeeThisOnMe', {
-      outfit: mockRouteParams.outfit,
-      reuseAction: 'capture',
-    });
-  });
 
-  it('dismiss → goBack to the originating page (no hand-off)', () => {
-    mockQueryResult = { data: REUSE_PROFILE, isLoading: false };
-    const r = render();
-    press(r.root, 'dismiss');
-    expect(mockTrack).toHaveBeenCalledWith('body_photo_reuse_dismissed', {
-      outfit_hash: 'hash-1',
+    it('shows the full-body photo, not the selfie', () => {
+      mockQueryResult = { data: LEGACY_PROFILE, isLoading: false };
+      const r = render();
+      expect(photoUriOf(r)).toBe('https://cdn.example/full-body.jpg');
     });
-    expect(mockGoBack).toHaveBeenCalledTimes(1);
-    expect(mockReplace).not.toHaveBeenCalled();
+
+    it('confirm → replace into SeeThisOnMe in render mode with the saved body', () => {
+      mockQueryResult = { data: LEGACY_PROFILE, isLoading: false };
+      const r = render();
+      press(r.root, 'confirm');
+      expect(mockTrack).toHaveBeenCalledWith('body_photo_reuse_confirmed', {
+        outfit_hash: 'hash-1',
+        auto: false,
+      });
+      expect(mockReplace).toHaveBeenCalledWith('SeeThisOnMe', {
+        outfit: mockRouteParams.outfit,
+        reuseAction: 'render',
+        reuseBodyId: 'prof-legacy',
+        reuseShape: null,
+      });
+    });
+
+    it('retake → replace into SeeThisOnMe in capture mode', () => {
+      mockQueryResult = { data: LEGACY_PROFILE, isLoading: false };
+      const r = render();
+      press(r.root, 'retake');
+      expect(mockTrack).toHaveBeenCalledWith('body_photo_retake_selected', {
+        outfit_hash: 'hash-1',
+      });
+      expect(mockReplace).toHaveBeenCalledWith('SeeThisOnMe', {
+        outfit: mockRouteParams.outfit,
+        reuseAction: 'capture',
+      });
+    });
+
+    it('dismiss → goBack to the originating page (no hand-off)', () => {
+      mockQueryResult = { data: LEGACY_PROFILE, isLoading: false };
+      const r = render();
+      press(r.root, 'dismiss');
+      expect(mockTrack).toHaveBeenCalledWith('body_photo_reuse_dismissed', {
+        outfit_hash: 'hash-1',
+      });
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
   });
 
   it('no saved profile → hands off to capture, no sheet', () => {
@@ -206,8 +241,8 @@ describe('SeeThisOnMeConfirmScreen (reuse-confirm gate)', () => {
     });
   });
 
-  it('cached result for this outfit → bypass the sheet, plain hand-off', () => {
-    mockQueryResult = { data: REUSE_PROFILE, isLoading: false };
+  it('cached result for this outfit → plain hand-off, no auto-render', () => {
+    mockQueryResult = { data: SHAPE_PROFILE, isLoading: false };
     mockCachedResult = 'https://cdn.example/cached.jpg';
     const r = render();
     expect(has(r, 'mock-reuse-sheet')).toBe(false);
@@ -216,8 +251,8 @@ describe('SeeThisOnMeConfirmScreen (reuse-confirm gate)', () => {
     });
   });
 
-  it('in-flight job for this outfit → bypass the sheet, plain hand-off', () => {
-    mockQueryResult = { data: REUSE_PROFILE, isLoading: false };
+  it('in-flight job for this outfit → plain hand-off, no auto-render', () => {
+    mockQueryResult = { data: SHAPE_PROFILE, isLoading: false };
     mockStoreState = { outfit: { outfitHash: 'hash-1' }, status: 'pending' };
     const r = render();
     expect(has(r, 'mock-reuse-sheet')).toBe(false);

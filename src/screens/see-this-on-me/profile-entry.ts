@@ -20,20 +20,31 @@ export const decideEntryMode = (
  * Which photo the reuse-confirm sheet should show for a saved profile.
  *
  * The sheet asks "reuse THIS body?", so it must show the body the render will
- * actually run on — the AI body-shape photo the user picked at the bodyShape
- * step. Since AU-358 that photo IS the profile's `image_url`: `POST
- * /api/body-shape/select` creates the primary profile with `image_url` = the
- * chosen render, while `full_body_url` keeps pointing at the RAW capture that
- * fed the generation (and, when the user skipped the optional full-body step,
- * that raw capture is the SELFIE — the flow falls back to the selfie id there).
+ * actually run on. Which field holds that depends on the profile's GENERATION,
+ * and `body_shape` is the marker:
  *
- * The pre-AU-358 (AU-346) profile had `image_url` = the selfie and the
- * full-body photo as the only better-than-selfie option, so this preferred
- * `full_body_url`. Keeping that precedence after AU-358 meant a returning user
- * was shown their raw selfie/full-body capture instead of the body photo they
- * selected. Prefer `image_url`, and fall back to `full_body_url` only when a
- * (legacy/malformed) profile has no `image_url` at all.
+ *  • `body_shape` set — an AU-358 profile, created by `POST /api/body-shape/
+ *    select`. Its `image_url` IS the AI body-shape photo the user picked, while
+ *    `full_body_url` still points at the RAW capture that fed the generation
+ *    (and when the user skipped the optional full-body step, that raw capture
+ *    is the SELFIE — the flow passes the selfie id as the full-body fallback).
+ *    So: prefer `image_url`.
+ *
+ *  • no `body_shape` — a pre-AU-358 (AU-346) profile, where `image_url` is the
+ *    selfie and `full_body_url` the full-body photo. So: prefer
+ *    `full_body_url`, the only better-than-selfie option those records have.
+ *
+ * Getting this backwards is what showed returning users their own selfie in
+ * the confirm sheet. Note the auto-reuse routing means only the second case
+ * still reaches the sheet — the first now skips it — but both are resolved
+ * here so the helper stays correct if the sheet is ever shown for a
+ * shape-carrying profile again.
  */
 export const resolveReusePhotoUri = (
   profile: BodyProfile | null | undefined,
-): string | null => profile?.image_url || profile?.full_body_url || null;
+): string | null => {
+  if (!profile) return null;
+  return profile.body_shape
+    ? profile.image_url || profile.full_body_url || null
+    : profile.full_body_url || profile.image_url || null;
+};

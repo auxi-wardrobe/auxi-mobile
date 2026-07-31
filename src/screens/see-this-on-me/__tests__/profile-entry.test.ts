@@ -28,23 +28,51 @@ describe('decideEntryMode', () => {
 });
 
 describe('resolveReusePhotoUri', () => {
-  it('prefers image_url — the picked body-shape photo — over the raw capture', () => {
-    expect(
-      resolveReusePhotoUri(
-        profile({
-          image_url: 'https://cdn/picked-shape.jpg',
-          full_body_url: 'https://cdn/raw-selfie.jpg',
-        }),
-      ),
-    ).toBe('https://cdn/picked-shape.jpg');
+  describe('AU-358 profile (body_shape set — image_url is the picked photo)', () => {
+    it('prefers image_url over the raw capture', () => {
+      expect(
+        resolveReusePhotoUri(
+          profile({
+            body_shape: 'average',
+            image_url: 'https://cdn/picked-shape.jpg',
+            full_body_url: 'https://cdn/raw-selfie.jpg',
+          }),
+        ),
+      ).toBe('https://cdn/picked-shape.jpg');
+    });
+
+    it('falls back to full_body_url when image_url is missing', () => {
+      expect(
+        resolveReusePhotoUri(
+          profile({
+            body_shape: 'slim',
+            image_url: '',
+            full_body_url: 'https://cdn/full.jpg',
+          }),
+        ),
+      ).toBe('https://cdn/full.jpg');
+    });
   });
 
-  it('falls back to full_body_url when a legacy profile has no image_url', () => {
-    expect(
-      resolveReusePhotoUri(
-        profile({ image_url: '', full_body_url: 'https://cdn/full.jpg' }),
-      ),
-    ).toBe('https://cdn/full.jpg');
+  describe('legacy profile (no body_shape — image_url is the selfie)', () => {
+    it('prefers full_body_url so the sheet does not show the selfie', () => {
+      expect(
+        resolveReusePhotoUri(
+          profile({
+            image_url: 'https://cdn/selfie.jpg',
+            full_body_url: 'https://cdn/full.jpg',
+          }),
+        ),
+      ).toBe('https://cdn/full.jpg');
+    });
+
+    it('falls back to image_url when there is no full-body photo', () => {
+      expect(
+        resolveReusePhotoUri(
+          profile({ image_url: 'https://cdn/selfie.jpg', full_body_url: null }),
+        ),
+      ).toBe('https://cdn/selfie.jpg');
+    });
   });
 
   it('returns null when the profile carries no usable photo', () => {
