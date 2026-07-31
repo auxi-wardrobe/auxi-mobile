@@ -692,10 +692,11 @@ export const ItemDetailScreen = () => {
               </View>
             ) : null}
 
-            {/* AI Image Enhancement entry — sparkle FAB pinned to the image's
-                bottom-right corner. Hidden while editing (the edit panel owns
-                its own save state) and whenever the item is not enhanceable
-                (catalog / preparing / already enhanced — see canEnhance). */}
+            {/* AI Image Enhancement entry — enhance-image FAB pinned to the
+                image's bottom-right corner. Hidden while editing (the edit
+                panel owns its own save state) and whenever the item is not
+                enhanceable (catalog / preparing / already enhanced — see
+                canEnhance). */}
             {!isEditing ? (
               <TouchableOpacity
                 testID="item-detail-enhance-fab"
@@ -706,8 +707,10 @@ export const ItemDetailScreen = () => {
                 disabled={saving}
               >
                 {/* On-dark icon tone: the purple AI accent has almost no
-                    contrast against the black chip. */}
-                <Icons.Sparkle
+                    contrast against the black chip. The glyph ships with a
+                    baked #070707 normalized to currentColor, so `color` is
+                    what tints it. */}
+                <Icons.EnhanceImage
                   width={24}
                   height={24}
                   color={theme.colors.figmaPrimaryButtonIcon}
