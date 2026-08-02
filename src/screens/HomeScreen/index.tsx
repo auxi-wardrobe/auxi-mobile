@@ -1126,6 +1126,7 @@ export const HomeScreen = () => {
         id: fromWardrobe.id,
         image_url: fromWardrobe.image_url ?? '',
         image_png: fromWardrobe.image_png ?? null,
+        image_studio: fromWardrobe.image_studio ?? null,
         name: fromWardrobe.name ?? null,
         category: fromWardrobe.category ?? 'Top',
         color: fromWardrobe.color_hex ?? '',

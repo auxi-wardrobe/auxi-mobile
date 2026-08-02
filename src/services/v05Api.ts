@@ -240,6 +240,10 @@ export interface V05OutfitItem {
   name: string | null;
   image_url: string | null;
   image_png?: string | null; // background-removed PNG cutout (backend to_dict), nullable
+  // AU-437: accepted AI-enhanced studio shot — resolveItemImage gives this
+  // display precedence; without it, outfits built around a just-enhanced
+  // item fall back to the pre-enhance photo.
+  image_studio?: string | null;
   category_family: CategoryFamily | null;
   color_code?: string | null;
   style_tags: string[];
