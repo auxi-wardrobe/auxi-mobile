@@ -16,6 +16,7 @@ export const mapV05Item = (it: V05OutfitItem): Item => ({
   id: it.id,
   image_url: it.image_url ?? '',
   image_png: it.image_png ?? null,
+  image_studio: it.image_studio ?? null,
   name: it.name ?? null,
   category: it.category_family
     ? FAMILY_TO_CATEGORY[it.category_family] ?? it.category_family
