@@ -81,7 +81,7 @@ Exit code: 0 = pass, non-zero = fail.
 | `wardrobe/item-detail-edit-save.yaml` | wardrobe, item-detail, regression | AU-311. Enter edit mode (bottom bar → [Cancel][Save]), change the enumerated Fit attr via picker, Save → service PATCH → returns to read-mode bar. Asserts the state transition, not a backend value. Needs a NON-catalog seed item (Edit/Change hidden for common/USR_* items). |
 | `wardrobe/item-detail-edit-cancel.yaml` | wardrobe, item-detail, regression | AU-311. Enter edit mode, stage a Fit draft change, Cancel → discards draft + exits to read-mode bar with NO PATCH. Pure client-state op. |
 | `onboarding/v05.yaml` | onboarding, v05, regression | V05 onboarding journey: WardrobeDirection -> FitPreference -> StylePicker -> POST /api/v05/onboarding/generate -> Home stack swap. Requires `is_first_login=true` test account; ~60s runtime to absorb slow generate endpoint. |
-| `onboarding/onboarding-v2.yaml` | onboarding, v2, regression | Onboarding V2 redesign happy path: Welcome -> LocationPermission (skip) -> Step1 Wardrobe -> Step2 Fit -> Step3 Styles (max-2 ranked picks + pin badges) -> Loading (real /generate) -> Completed -> Outro -> Home stack swap. **DEBUG build only** (V2 stack gated on `__DEV__`). Requires `is_first_login=true` test account (or replay mode); prod-mirror backend on :5001. ~60s runtime. |
+| `onboarding/onboarding-v2.yaml` | onboarding, v2, regression | Onboarding V2 redesign happy path: Welcome -> LocationPermission (Continue, location pre-granted via `launchApp.permissions`) -> Step1 Wardrobe -> Step2 Fit -> Step3 Styles (max-2 ranked picks + pin badges) -> Loading (real /generate) -> Completed -> Outro -> Home stack swap. **DEBUG build only** (V2 stack gated on `__DEV__`). Requires `is_first_login=true` test account (or replay mode); prod-mirror backend on :5001. ~60s runtime. |
 
 Add new flows here when you ship them. Tags drive grouped runs.
 
@@ -166,9 +166,19 @@ Resolved (now have testIDs):
   now has `testID="home-menu-button"`. (This README previously listed it as
   open; the `wardrobe/item-detail-*` flows depend on it and it is present.)
 - `AppWelcomeScreen.tsx` — "Get started" CTA → `onboarding-welcome-cta`.
-- `LocationPermissionScreen.tsx` — `onboarding-location-allow` /
-  `onboarding-location-skip`. (`onboarding/v05.yaml` still uses the
-  `text: "Not now"` fallback; can be upgraded to the testID.)
+- `LocationPermissionScreen.tsx` — single remaining button
+  `onboarding-location-allow` (labelled "Continue"). The "Not now" skip
+  button + `onboarding-location-skip` testID were REMOVED (Apple rejection
+  5.1.1(iv) — a pre-permission screen must always lead to the real system
+  dialog, no bypass). Both `onboarding/v05.yaml` and
+  `onboarding/onboarding-v2.yaml` now pre-authorize location via
+  `launchApp: { permissions: { location: allow } }` so the Continue tap
+  never blocks on the native CoreLocation dialog — `onboarding/v05.yaml`
+  is upgraded off its old `text: "Not now"` fallback onto the testID.
+  **qa-mobile TODO**: confirm the permissions-preset approach behaves as
+  expected on-device (verified via `maestro check-syntax` + decompiled
+  `LocalSimulatorUtils` bytecode only, not a live run) before relying on
+  it in CI regression gates.
 
 Still open elsewhere:
 

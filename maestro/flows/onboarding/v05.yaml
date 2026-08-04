@@ -30,6 +30,23 @@
 #   (perf fix on feat/v05-onboarding). The V05_GENERATE_TIMEOUT_MS default is
 #   sized at 60s to absorb a worst-case cold-DB run with comfortable margin.
 #
+# LOCATION PERMISSION (pre-authorized via launchApp, Apple 5.1.1(iv) fix):
+#   LocationPermissionScreen's "Not now" skip button was removed (Apple
+#   rejection 5.1.1(iv) — a pre-permission screen must always lead to the
+#   real system dialog, no bypass). The single remaining button
+#   (`onboarding-location-allow`, labelled "Continue") calls
+#   requestLocationPermission() -> Geolocation.requestAuthorization('whenInUse'),
+#   which would normally raise the native CoreLocation system alert that
+#   Maestro cannot address deterministically by testID. We avoid that by
+#   pre-authorizing location in `launchApp.permissions` below (`location:
+#   allow` -> `xcrun simctl privacy <device> grant location-always`/
+#   `location`, applied before the app boots), so requestAuthorization
+#   resolves immediately with no dialog and the Continue tap is deterministic.
+#   TODO(qa-mobile): confirm this permissions-preset approach behaves as
+#   expected on-device / on a clean CI simulator (verified here via `maestro
+#   check-syntax` + decompiled LocalSimulatorUtils bytecode, NOT a live run)
+#   before relying on it in CI regression gates.
+#
 # Why we do NOT assert the loading view (AU-249 follow-up):
 #   Pre-perf-fix, the StylePickerScreen loading container was visible for
 #   30-50s — easy to assert. Post-fix, it lives <500ms before
@@ -57,9 +74,14 @@ env:
   ONBOARDING_NAV_TIMEOUT_MS: 10000
 ---
 # --- 1. Cold launch + login (inline; see header comment for why) ---
+# `permissions.location: allow` pre-authorizes CoreLocation before boot (see
+# LOCATION PERMISSION note above) so step 4's Continue tap never blocks on
+# the native system dialog.
 - launchApp:
     clearState: true
     clearKeychain: true
+    permissions:
+      location: allow
 - extendedWaitUntil:
     visible:
       id: auth-email-input
@@ -91,14 +113,16 @@ env:
     text: "Get started — takes 1 min"
 - extendedWaitUntil:
     visible:
-      text: "Not now"
+      id: onboarding-location-allow
     timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
 
-# --- 4. LocationPermission -> GenderPreference (skip permission) ---
-# "Not now" routes straight to GenderPreference (WardrobeDirection screen).
-# Tapping a row navigates directly — no separate Next button.
+# --- 4. LocationPermission -> GenderPreference (Continue; location
+# pre-granted via launchApp.permissions above, so no OS dialog blocks this
+# tap — see header). Continue routes straight to GenderPreference
+# (WardrobeDirection screen). Tapping a row navigates directly — no
+# separate Next button.
 - tapOn:
-    text: "Not now"
+    id: onboarding-location-allow
 - extendedWaitUntil:
     visible:
       id: gender-option-menswear

@@ -748,8 +748,7 @@
       "continue_without": "Tiếp tục không dùng vị trí",
       "open_settings": "Mở Cài đặt",
       "intro": "Để gợi ý trang phục hợp với hôm nay, tôi cần biết thời tiết nơi bạn ở.",
-      "allow_access": "Cho phép truy cập thời tiết",
-      "not_now": "Để sau"
+      "allow_access": "Tiếp tục"
     },
     "sidebar": {
       "a11y_close_menu": "Đóng menu",

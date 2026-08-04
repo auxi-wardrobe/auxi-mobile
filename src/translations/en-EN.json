@@ -749,8 +749,7 @@
       "continue_without": "Continue without location",
       "open_settings": "Open Settings",
       "intro": "To suggest an outfit that works today, I need your local weather.",
-      "allow_access": "Allow weather access",
-      "not_now": "Not now"
+      "allow_access": "Continue"
     },
     "sidebar": {
       "a11y_close_menu": "Close menu",
