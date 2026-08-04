@@ -97,14 +97,6 @@ export const LocationPermissionScreen = () => {
               onPress={handleEnableLocation}
               testID="onboarding-location-allow"
             />
-            {/* TODO: not in Figma — needs product decision */}
-            <PillButton
-              title={t('locationPermission.not_now')}
-              variant="text"
-              onPress={goToOnboarding}
-              style={styles.notNowButton}
-              testID="onboarding-location-skip"
-            />
           </View>
         </View>
       </View>
@@ -140,8 +132,5 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: 8,
-  },
-  notNowButton: {
-    alignSelf: 'center',
   },
 });

@@ -51,15 +51,24 @@
 #   v05_live_eval_local_db memory). Loading IS the in-flight /generate call
 #   (D10), so this is a genuine network wait, not a timed splash.
 #
-# LOCATION PERMISSION (why we take the "Not now" path):
-#   `onboarding-location-allow` triggers the NATIVE iOS location-permission
-#   dialog (CoreLocation system alert). Maestro cannot address that system
-#   alert by testID — it would require a brittle `tapOn: text` against OS UI
-#   that varies by iOS version/locale. The "Not now" skip
-#   (`onboarding-location-skip`) routes straight to OnboardingWardrobe with
-#   NO system dialog, keeping the flow fully deterministic. (Mirrors how
-#   onboarding/v05.yaml already takes the skip path.) A separate flow can
-#   cover the allow-path + OS-dialog handling if product wants that coverage.
+# LOCATION PERMISSION (pre-authorized via launchApp, Apple 5.1.1(iv) fix):
+#   LocationPermissionScreen no longer has a "Not now" skip button (removed
+#   per Apple rejection 5.1.1(iv) — a pre-permission screen must always lead
+#   to the real system dialog, no bypass). The single remaining button
+#   (`onboarding-location-allow`, labelled "Continue") calls
+#   requestLocationPermission() -> Geolocation.requestAuthorization('whenInUse'),
+#   which on a fresh sim normally raises the native CoreLocation system alert
+#   that Maestro cannot address deterministically by testID.
+#   We avoid that by pre-authorizing location in `launchApp.permissions`
+#   below (`location: allow` -> `xcrun simctl privacy <device> grant
+#   location-always`/`location`, applied before the app boots). With the
+#   decision already recorded by the OS, requestAuthorization resolves
+#   immediately without presenting the system dialog, so tapping the single
+#   Continue button is fully deterministic.
+#   TODO(qa-mobile): confirm this permissions-preset approach behaves as
+#   expected on-device / on a clean CI simulator (this was verified via
+#   `maestro check-syntax` + decompiled LocalSimulatorUtils bytecode, NOT a
+#   live run of this flow) before relying on it in CI regression gates.
 
 appId: com.auxi2026.app
 name: onboarding-v2
@@ -81,9 +90,14 @@ env:
 ---
 # --- 1. Cold launch + login (inline; first-login user lands on Welcome, ---
 # --- not Home, so we can't reuse _shared/login.yaml which asserts Home). ---
+# `permissions.location: allow` pre-authorizes CoreLocation before boot (see
+# LOCATION PERMISSION note above) so step 4's Continue tap never blocks on
+# the native system dialog.
 - launchApp:
     clearState: true
     clearKeychain: true
+    permissions:
+      location: allow
 - extendedWaitUntil:
     visible:
       id: auth-email-input
@@ -112,12 +126,13 @@ env:
     id: onboarding-welcome-cta
 - extendedWaitUntil:
     visible:
-      id: onboarding-location-skip
+      id: onboarding-location-allow
     timeout: ${ONBOARDING_NAV_TIMEOUT_MS}
 
-# --- 4. LocationPermission -> Step 1 (skip; no OS dialog — see header) ---
+# --- 4. LocationPermission -> Step 1 (Continue; location pre-granted via
+# --- launchApp.permissions above, so no OS dialog blocks this tap — see header) ---
 - tapOn:
-    id: onboarding-location-skip
+    id: onboarding-location-allow
 - extendedWaitUntil:
     visible:
       id: onboarding-wardrobe-screen

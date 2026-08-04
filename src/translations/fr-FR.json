@@ -749,8 +749,7 @@
       "continue_without": "Continuer sans localisation",
       "open_settings": "Ouvrir les paramètres",
       "intro": "Pour suggérer une tenue adaptée à aujourd'hui, j'ai besoin de votre météo locale.",
-      "allow_access": "Autoriser l'accès à la météo",
-      "not_now": "Plus tard"
+      "allow_access": "Continuer"
     },
     "sidebar": {
       "a11y_close_menu": "Fermer le menu",
