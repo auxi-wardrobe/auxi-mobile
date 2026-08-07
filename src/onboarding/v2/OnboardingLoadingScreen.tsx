@@ -26,12 +26,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   RouteProp,
   useFocusEffect,
@@ -152,6 +152,7 @@ export const OnboardingLoadingScreen = () => {
   const { selection } = route.params;
   const { completeOnboarding } = useAuth();
   const [isContinuing, setIsContinuing] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -230,9 +231,9 @@ export const OnboardingLoadingScreen = () => {
   const parsed = isError ? parseGenerateError(generateMutation.error) : null;
 
   return (
-    <SafeAreaView style={styles.container} testID="onboarding-loading-screen">
+    <View style={styles.container} testID="onboarding-loading-screen">
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: theme.spacing.xxl + insets.top }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.chipsBlock}>
@@ -259,7 +260,9 @@ export const OnboardingLoadingScreen = () => {
       </ScrollView>
 
       {parsed ? (
-        <View style={styles.footerBar}>
+        <View
+          style={[styles.footerBar, { paddingBottom: theme.spacing.xl + insets.bottom }]}
+        >
           <PillButton
             title="Try again"
             variant="filled"
@@ -290,11 +293,15 @@ export const OnboardingLoadingScreen = () => {
           />
         </View>
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  // Plain View, not react-native's SafeAreaView — that insets the bottom
+  // automatically, which left the footer buttons sitting above the true
+  // screen edge with a gap of bg color below them. The inset now lives on
+  // footerBar's own paddingBottom instead (see OnboardingOutroScreen).
   container: { flex: 1, backgroundColor: theme.colors.figmaCaptionPillBg },
   content: {
     flexGrow: 1,
