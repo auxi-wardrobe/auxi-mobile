@@ -68,6 +68,12 @@ type Navigation = NativeStackNavigationProp<
 >;
 type ScreenRoute = RouteProp<AppStackParamList, 'OnboardingStyles'>;
 
+// Best-known height of the sticky bar (paddingTop l=24 + PillButton pillBase
+// height 56 + paddingBottom xl=32) — seeded as the initial state so the grid
+// clears the bar on first paint too, before onLayout reports the true value.
+const ESTIMATED_STICKY_BAR_HEIGHT =
+  theme.spacing.l + 56 + theme.spacing.xl;
+
 export const OnboardingStylesScreen = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<ScreenRoute>();
@@ -80,7 +86,9 @@ export const OnboardingStylesScreen = () => {
   // The sticky bar overlays the scroll content (position: absolute), so the
   // grid's own bottom padding must clear the bar's actual rendered height —
   // not just a token guess — or the last card row renders underneath it.
-  const [stickyBarHeight, setStickyBarHeight] = useState(0);
+  const [stickyBarHeight, setStickyBarHeight] = useState(
+    ESTIMATED_STICKY_BAR_HEIGHT,
+  );
   const handleStickyBarLayout = useCallback((event: LayoutChangeEvent) => {
     setStickyBarHeight(event.nativeEvent.layout.height);
   }, []);
