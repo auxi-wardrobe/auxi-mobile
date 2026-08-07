@@ -28,6 +28,7 @@
  */
 import React, { useCallback, useState } from 'react';
 import {
+  LayoutChangeEvent,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -75,6 +76,14 @@ export const OnboardingStylesScreen = () => {
 
   // ranked = ordered selection; index 0 has rank 1 (highest weight).
   const [ranked, setRanked] = useState<StyleTag[]>([]);
+
+  // The sticky bar overlays the scroll content (position: absolute), so the
+  // grid's own bottom padding must clear the bar's actual rendered height —
+  // not just a token guess — or the last card row renders underneath it.
+  const [stickyBarHeight, setStickyBarHeight] = useState(0);
+  const handleStickyBarLayout = useCallback((event: LayoutChangeEvent) => {
+    setStickyBarHeight(event.nativeEvent.layout.height);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -133,7 +142,13 @@ export const OnboardingStylesScreen = () => {
         </View>
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.grid}
+          contentContainerStyle={[
+            styles.grid,
+            {
+              paddingBottom:
+                stickyBarHeight + theme.spacing.uacDimension20,
+            },
+          ]}
           showsVerticalScrollIndicator={false}
           testID="onboarding-styles-grid"
         >
@@ -181,7 +196,7 @@ export const OnboardingStylesScreen = () => {
           ))}
         </ScrollView>
       </View>
-      <View style={styles.stickyBar}>
+      <View style={styles.stickyBar} onLayout={handleStickyBarLayout}>
         <BlurView
           style={styles.stickyBlur}
           blurType="light"
@@ -230,7 +245,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   scroll: { flex: 1 },
-  grid: { gap: theme.spacing.xs, paddingBottom: theme.spacing.xxl },
+  grid: { gap: theme.spacing.xs },
   gridRow: { flexDirection: 'row', gap: theme.spacing.xs },
   tileFlex: { flex: 1 },
   tileSolo: { width: '50%' },
