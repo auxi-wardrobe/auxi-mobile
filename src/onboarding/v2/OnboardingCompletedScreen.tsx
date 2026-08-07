@@ -12,7 +12,8 @@
  * All copy/tokens from `onboarding/config` + theme (cream bg = figmaCaptionPillBg).
  */
 import React, { useCallback } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   RouteProp,
   useFocusEffect,
@@ -42,6 +43,7 @@ export const OnboardingCompletedScreen = () => {
   const route = useRoute<ScreenRoute>();
   const { selection } = route.params;
   const chips = selectionChipLabels(selection);
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -53,9 +55,9 @@ export const OnboardingCompletedScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container} testID="onboarding-completed-screen">
+    <View style={styles.container} testID="onboarding-completed-screen">
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: theme.spacing.xxl + insets.top }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.chipsBlock}>
@@ -65,7 +67,9 @@ export const OnboardingCompletedScreen = () => {
         <Text style={styles.headline}>{COMPLETED_COPY.headline}</Text>
         <Text style={styles.footer}>{COMPLETED_COPY.footer}</Text>
       </ScrollView>
-      <View style={styles.footerBar}>
+      <View
+        style={[styles.footerBar, { paddingBottom: theme.spacing.xl + insets.bottom }]}
+      >
         <PillButton
           title={COMPLETED_COPY.ctaLabel}
           variant="filled"
@@ -74,11 +78,15 @@ export const OnboardingCompletedScreen = () => {
           testID="onboarding-completed-continue"
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  // Plain View, not react-native's SafeAreaView — that insets the bottom
+  // automatically, which left the footer CTA sitting above the true screen
+  // edge with a gap of bg color below it. The inset now lives on footerBar's
+  // own paddingBottom instead (see OnboardingOutroScreen for the same fix).
   container: { flex: 1, backgroundColor: theme.colors.figmaCaptionPillBg },
   content: {
     flexGrow: 1,
