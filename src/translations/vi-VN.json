@@ -1,5 +1,11 @@
 {
   "boilerplate": {
+    "trendingDrop": {
+      "add_cta": "Thêm vào tủ đồ",
+      "dismiss_cta": "Không quan tâm",
+      "added_toast": "Đã thêm vào tủ đồ của bạn",
+      "error_title": "Đã xảy ra lỗi"
+    },
     "common_appName": {
       "full": "React Native Boilerplate",
       "initials": "RNB"
