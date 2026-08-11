@@ -33,7 +33,11 @@ import { MButton } from '../../components/design-system/lib';
 import { theme } from '../../theme/theme';
 
 interface StepReuseConfirmProps {
-  /** The persisted body photo to show (full-body preferred, else selfie). */
+  /**
+   * The persisted body photo to show — the AI body-shape photo the user picked
+   * (the profile's `image_url` since AU-358), NOT the raw selfie/full-body
+   * capture. Resolved by `resolveReusePhotoUri`.
+   */
   photoUri: string;
   onConfirm: () => void;
   onRetake: () => void;

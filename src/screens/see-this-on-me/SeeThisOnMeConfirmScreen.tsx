@@ -16,6 +16,20 @@
  *   - hands straight off to `SeeThisOnMe` (capture mode / cached / in-flight)
  * via `replace` so the gate never lingers in the back stack.
  *
+ * AUTO-REUSE (current behaviour)
+ * -----------------------------
+ * Picking a body shape at the bodyShape step IS the user's confirmation of that
+ * body — re-asking "reuse this photo?" on every later outfit is a redundant tap
+ * between "See on me" and the result. So a profile that carries a `body_shape`
+ * now SKIPS the sheet and hands off straight to the render loading screen.
+ *
+ * The sheet therefore only survives for a profile with a photo but NO
+ * `body_shape` — i.e. one that never went through AU-358's `select` (a legacy
+ * AU-346 profile, or a malformed record). There, nothing was ever confirmed, so
+ * the confirm step still earns its place. Retake is not lost on the auto path:
+ * the preview footer carries a Retake affordance on every completion
+ * (`StomStepScreen.tsx` → `OutfitPreview.onRetake`).
+ *
  * OWNERSHIP
  * ---------
  * This gate owns the reuse-confirm sheet + its three funnel events
@@ -31,7 +45,7 @@ import { track } from '../../services/analytics';
 import { bodyService } from '../../services/bodyService';
 import { AppStackParamList } from '../../types/navigation';
 import { StepReuseConfirm } from './StepReuseConfirm';
-import { decideEntryMode } from './profile-entry';
+import { decideEntryMode, resolveReusePhotoUri } from './profile-entry';
 import { tryOnGenerationStore } from './try-on-generation-store';
 import { getTryOnResult } from '../../services/tryOnResultStore';
 
@@ -54,8 +68,12 @@ export const SeeThisOnMeConfirmScreen: React.FC = () => {
   });
 
   const reuseMode = decideEntryMode(activeProfile) === 'reuse';
-  const reusePhotoUri =
-    activeProfile?.full_body_url ?? activeProfile?.image_url ?? null;
+  // Which photo the sheet would show, when it shows at all — the precedence
+  // depends on the profile's generation, see `resolveReusePhotoUri`.
+  const reusePhotoUri = resolveReusePhotoUri(activeProfile);
+  // The user already picked this body shape — treat that as the confirmation
+  // and go straight to the render (no sheet). See the AUTO-REUSE note above.
+  const autoReuse = reuseMode && !!activeProfile?.body_shape;
 
   // Guard against firing the hand-off twice (React 18 strict-mode double
   // effects, or a re-render after the query resolves).
@@ -83,6 +101,26 @@ export const SeeThisOnMeConfirmScreen: React.FC = () => {
     return hasInFlight || getTryOnResult(outfit.outfitHash) != null;
   }, [outfit.outfitHash]);
 
+  // Hand off to the render loading screen on the saved body. Shared by the
+  // auto-reuse path (no sheet — the shape pick was the confirmation) and the
+  // sheet's own Confirm button; `auto` separates the two in the reuse funnel.
+  const handOffRender = useCallback(
+    (auto: boolean) => {
+      if (!activeProfile?.id) return;
+      track('body_photo_reuse_confirmed', {
+        outfit_hash: outfit.outfitHash,
+        auto,
+      });
+      handOff({
+        outfit,
+        reuseAction: 'render',
+        reuseBodyId: activeProfile.id,
+        reuseShape: activeProfile.body_shape ?? null,
+      });
+    },
+    [activeProfile, outfit, handOff],
+  );
+
   // Decide the route once the profile is known (or immediately for a bypass).
   useEffect(() => {
     if (handedOffRef.current) return;
@@ -91,6 +129,12 @@ export const SeeThisOnMeConfirmScreen: React.FC = () => {
       return;
     }
     if (profileLoading) return;
+    // Body shape already picked → that WAS the confirmation. Straight to the
+    // render loading screen, no sheet.
+    if (autoReuse) {
+      handOffRender(true);
+      return;
+    }
     // No saved profile → straight into capture; the sheet only makes sense
     // when there is a photo to reuse.
     if (!(reuseMode && reusePhotoUri)) {
@@ -100,21 +144,16 @@ export const SeeThisOnMeConfirmScreen: React.FC = () => {
     profileLoading,
     reuseMode,
     reusePhotoUri,
+    autoReuse,
+    handOffRender,
     outfit,
     handOff,
     shouldBypassSheet,
   ]);
 
-  const handleConfirm = useCallback(() => {
-    if (!activeProfile?.id) return;
-    track('body_photo_reuse_confirmed', { outfit_hash: outfit.outfitHash });
-    handOff({
-      outfit,
-      reuseAction: 'render',
-      reuseBodyId: activeProfile.id,
-      reuseShape: activeProfile.body_shape ?? null,
-    });
-  }, [activeProfile, outfit, handOff]);
+  const handleConfirm = useCallback(() => handOffRender(false), [
+    handOffRender,
+  ]);
 
   const handleRetake = useCallback(() => {
     track('body_photo_retake_selected', { outfit_hash: outfit.outfitHash });
@@ -128,16 +167,17 @@ export const SeeThisOnMeConfirmScreen: React.FC = () => {
     navigation.goBack();
   }, [navigation, outfit.outfitHash]);
 
-  // Only render the sheet once we know we're staying (reuse + photo, not
-  // bypassing). Until then render nothing so the transparent modal reveals the
-  // originating page while the profile query resolves / a hand-off is pending.
-  // `shouldBypassSheet` is a synchronous store read, so checking it here (not
-  // just in the effect) keeps the sheet from flashing for one frame on the
-  // cached-result / in-flight-job paths before the effect hands off.
+  // Only render the sheet once we know we're staying (reuse + photo, no saved
+  // shape, not bypassing). Until then render nothing so the transparent modal
+  // reveals the originating page while the profile query resolves / a hand-off
+  // is pending. `shouldBypassSheet` is a synchronous store read, and `autoReuse`
+  // a synchronous profile read, so checking both here (not just in the effect)
+  // keeps the sheet from flashing for one frame before the effect hands off.
   if (
     handedOffRef.current ||
     shouldBypassSheet() ||
     profileLoading ||
+    autoReuse ||
     !(reuseMode && reusePhotoUri)
   ) {
     return null;
