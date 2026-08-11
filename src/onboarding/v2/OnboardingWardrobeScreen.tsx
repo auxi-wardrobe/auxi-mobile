@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     color: theme.colors.uacTextBase,
     textAlign: 'center',
   },
-  grid: { gap: theme.spacing.xs },
+  grid: { gap: theme.spacing.xs, paddingBottom: theme.spacing.uacDimension20 },
   gridRow: { flexDirection: 'row', gap: theme.spacing.xs },
   tileFlex: { flex: 1 },
   tileSolo: { width: '50%' },

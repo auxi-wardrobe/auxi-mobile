@@ -15,7 +15,8 @@
  * activation analytics event.
  */
 import React, { useCallback, useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteProp, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { track } from '../../services/analytics';
@@ -35,6 +36,7 @@ export const OnboardingOutroScreen = () => {
   const { selection } = route.params;
   const { completeOnboarding } = useAuth();
   const [isFinishing, setIsFinishing] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -71,11 +73,16 @@ export const OnboardingOutroScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} testID="onboarding-outro-screen">
-      <View style={styles.body}>
+    <View style={styles.container} testID="onboarding-outro-screen">
+      <View style={[styles.body, { paddingTop: insets.top }]}>
         <Text style={styles.quote}>{OUTRO_COPY.quote}</Text>
       </View>
-      <BottomSheetSurface style={styles.sheet}>
+      <BottomSheetSurface
+        style={{
+          ...styles.sheet,
+          paddingBottom: theme.spacing.l + insets.bottom,
+        }}
+      >
         <PillButton
           title={OUTRO_COPY.ctaLabel}
           variant="text"
@@ -94,11 +101,16 @@ export const OnboardingOutroScreen = () => {
           testID="onboarding-outro-see-outfit"
         />
       </BottomSheetSurface>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  // Plain View, not react-native's SafeAreaView: that component insets ALL
+  // edges automatically, which was pushing the bottom sheet up off the true
+  // screen edge and leaving a gap of bg color below it. The sheet must reach
+  // the physical bottom (Figma: full-bleed sheet); only its own bottom
+  // padding — not the container — should absorb the home-indicator inset.
   container: { flex: 1, backgroundColor: theme.colors.figmaCaptionPillBg },
   body: {
     flex: 1,
