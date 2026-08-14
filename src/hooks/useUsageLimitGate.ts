@@ -18,6 +18,7 @@
 //   // render <UsageLimitSheet {...gate.sheetProps} onUpgrade={...} /> in the tree.
 
 import { useCallback, useState } from 'react';
+import { motion } from '../theme/motion';
 
 /**
  * The three free-tier surfaces gated by this MVP. Shared vocabulary with the
@@ -37,6 +38,17 @@ export interface UsageLimitGate {
   open: (feature: UsageLimitFeature) => void;
   /** Hides the sheet. */
   dismiss: () => void;
+  /**
+   * Hides the sheet, then invokes `after` once `MBottomSheet`'s close
+   * animation has settled (`motion.duration.fast` — the exact duration
+   * `useOverlayProgress` runs its exit timing at). Use this instead of
+   * `dismiss()` immediately followed by `navigation.navigate()` — firing the
+   * push while the sheet is still mid-close leaves its native-stack
+   * transition snapshot mid-animation, which surfaces as a stray ghost card
+   * on the destination screen (AU-442 designer gate Finding 1, repro'd on
+   * every `UsageLimitSheet` → `NotifyMeScreen` handoff).
+   */
+  dismissThenNavigate: (after: () => void) => void;
   /** Spread onto <UsageLimitSheet />. */
   sheetProps: {
     visible: boolean;
@@ -58,9 +70,15 @@ export const useUsageLimitGate = (): UsageLimitGate => {
     setVisible(false);
   }, []);
 
+  const dismissThenNavigate = useCallback((after: () => void) => {
+    setVisible(false);
+    setTimeout(after, motion.duration.fast);
+  }, []);
+
   return {
     open,
     dismiss,
+    dismissThenNavigate,
     sheetProps: { visible, feature, onDismiss: dismiss },
   };
 };

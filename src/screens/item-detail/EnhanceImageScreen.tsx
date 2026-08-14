@@ -391,8 +391,12 @@ export const EnhanceImageScreen = () => {
   }, [usageLimitGate]);
   const handleUsageLimitUpgrade = useCallback(() => {
     track('usage_limit_upgrade_tapped', { feature: 'enhance_photo' });
-    usageLimitGate.dismiss();
-    navigation.navigate('NotifyMe', { feature: 'enhance_photo' });
+    // AU-442 designer gate Finding 1: navigate AFTER the sheet's close
+    // animation settles, not synchronously — see
+    // useUsageLimitGate.dismissThenNavigate doc comment.
+    usageLimitGate.dismissThenNavigate(() => {
+      navigation.navigate('NotifyMe', { feature: 'enhance_photo' });
+    });
   }, [usageLimitGate, navigation]);
 
   const enhancedUri = getImageUrl(candidateUri ?? undefined);

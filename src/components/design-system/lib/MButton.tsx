@@ -13,6 +13,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Icons } from '../../../assets/icons';
 import { button, color, radius, role, FONT } from '../m-tokens';
 import { DotsLoader, PressScale } from '../MMotion';
+// `theme.ds.color.green` is the DS's canonical radio/confirm accent
+// (color-rules.md §1-2) — reused here (not duplicated) for the `confirmed`
+// treatment below. `MBottomSheet.tsx` in this same dir already crosses into
+// `theme.ts` for a token m-tokens.ts doesn't carry (zIndex); same precedent.
+import { theme } from '../../../theme/theme';
 
 const IconPlus = Icons.Plus;
 
@@ -40,6 +45,18 @@ export interface MButtonProps {
   variant?: MButtonVariant;
   size?: MButtonSize;
   disabled?: boolean;
+  /**
+   * Renders a "confirmed" treatment INSTEAD of the generic disabled-opacity
+   * styling — for a control that's inert because the user's action already
+   * succeeded, not because it's unavailable (e.g. "Notify me" → "We'll
+   * notify you"). Swaps the fill to `theme.ds.color.green` (the DS
+   * radio/confirm accent) and the leading icon to a check-circle glyph, with
+   * full opacity — so it doesn't collide with the app's own
+   * "broken/unavailable" signal (AU-442 designer gate Finding 2). Pass
+   * alongside `disabled` — `confirmed` only changes the visual language,
+   * `disabled` still gates the press.
+   */
+  confirmed?: boolean;
   loading?: boolean;
   leftIcon?: React.FC<{ width?: number; height?: number; color?: string }>;
   /** Trailing icon (rendered after the label), e.g. the AI sparkle. */
@@ -56,6 +73,7 @@ export const MButton: React.FC<MButtonProps> = ({
   variant = 'primary',
   size = 'lg',
   disabled,
+  confirmed,
   loading,
   leftIcon: LeftIcon,
   rightIcon: RightIcon,
@@ -66,12 +84,13 @@ export const MButton: React.FC<MButtonProps> = ({
 }) => {
   const sz = SIZE[size];
   const isOutline = variant === 'dangerOutline';
-  const bg =
-    variant === 'primary'
-      ? role.ink
-      : variant === 'danger'
-      ? color.da400
-      : 'transparent';
+  const bg = confirmed
+    ? theme.ds.color.green
+    : variant === 'primary'
+    ? role.ink
+    : variant === 'danger'
+    ? color.da400
+    : 'transparent';
   const fg =
     variant === 'primary'
       ? role.primaryBtnLabel // color/primary/100 (#EFE9E3) — PR #138 truth
@@ -113,7 +132,10 @@ export const MButton: React.FC<MButtonProps> = ({
         },
         (isOutline || isSecondary) && styles.outline,
         (isOutline || isSecondary) && { borderColor },
-        disabled && styles.disabled,
+        // `confirmed` opts OUT of the generic disabled-opacity wash — the
+        // green fill above IS the state signal; opacity would mute it back
+        // toward the same washed-out look this exists to avoid.
+        disabled && !confirmed && styles.disabled,
       ]}
     >
       {loading ? (
@@ -123,8 +145,12 @@ export const MButton: React.FC<MButtonProps> = ({
         />
       ) : (
         <View style={styles.inner}>
-          {LeftIcon && (
-            <LeftIcon width={18} height={18} color={iconColor ?? fg} />
+          {confirmed ? (
+            <Icons.CheckCircle width={18} height={18} color={iconColor ?? fg} />
+          ) : (
+            LeftIcon && (
+              <LeftIcon width={18} height={18} color={iconColor ?? fg} />
+            )
           )}
           <Text style={[styles.label, labelFont, { color: fg, fontSize: sz.fs }]}>
             {children}

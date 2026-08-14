@@ -126,6 +126,7 @@ export const NotifyMeScreen = () => {
         <MButton
           variant="primary"
           disabled={notified}
+          confirmed={notified}
           onPress={handleNotify}
           testID={notified ? 'notify-me-cta-confirmed' : 'notify-me-cta'}
           accessibilityLabel={

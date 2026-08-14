@@ -709,8 +709,12 @@ export const SeeThisOnMeScreen: React.FC = () => {
   }, [usageLimitGate]);
   const handleUsageLimitUpgrade = useCallback(() => {
     track('usage_limit_upgrade_tapped', { feature: 'see_on_me' });
-    usageLimitGate.dismiss();
-    navigation.navigate('NotifyMe', { feature: 'see_on_me' });
+    // AU-442 designer gate Finding 1: navigate AFTER the sheet's close
+    // animation settles, not synchronously — see
+    // useUsageLimitGate.dismissThenNavigate doc comment.
+    usageLimitGate.dismissThenNavigate(() => {
+      navigation.navigate('NotifyMe', { feature: 'see_on_me' });
+    });
   }, [usageLimitGate, navigation]);
   const usageLimitSheet = (
     <UsageLimitSheet

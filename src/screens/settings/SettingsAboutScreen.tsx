@@ -100,10 +100,14 @@ export const SettingsAboutScreen = () => {
         <UsageLimitSheet
           {...usageLimitPreview.sheetProps}
           onUpgrade={() => {
-            usageLimitPreview.dismiss();
-            navigation.navigate('NotifyMe', {
-              feature: usageLimitPreview.sheetProps.feature,
-              source: 'settings_dev_preview',
+            // AU-442 designer gate Finding 1: navigate AFTER the sheet's
+            // close animation settles, not synchronously — see
+            // useUsageLimitGate.dismissThenNavigate doc comment.
+            usageLimitPreview.dismissThenNavigate(() => {
+              navigation.navigate('NotifyMe', {
+                feature: usageLimitPreview.sheetProps.feature,
+                source: 'settings_dev_preview',
+              });
             });
           }}
         />

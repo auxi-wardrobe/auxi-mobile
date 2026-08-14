@@ -258,8 +258,12 @@ export const useAddWardrobeItem = ({
       },
       onUpgrade: () => {
         track('usage_limit_upgrade_tapped', { feature: 'wardrobe_items' });
-        usageLimitGate.dismiss();
-        navigation.navigate('NotifyMe', { feature: 'wardrobe_items' });
+        // AU-442 designer gate Finding 1: navigate AFTER the sheet's close
+        // animation settles, not synchronously — see
+        // useUsageLimitGate.dismissThenNavigate doc comment.
+        usageLimitGate.dismissThenNavigate(() => {
+          navigation.navigate('NotifyMe', { feature: 'wardrobe_items' });
+        });
       },
     },
   };
