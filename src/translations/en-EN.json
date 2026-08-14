@@ -982,6 +982,23 @@
       "body": "You've used all your AI generations for today. Come back tomorrow for more.",
       "dismiss": "Got it"
     },
+    "usageLimit": {
+      "see_on_me_title": "You've reached today's See on Me limit",
+      "see_on_me_body": "You've used all your free **See on Me** tries for today. Upgrade to Macgie+ to keep trying outfits anytime, or come back tomorrow when your free tries refresh.",
+      "wardrobe_items_title": "You've reached the free limit.",
+      "wardrobe_items_body": "Your wardrobe is full with 50 items. Upgrade to Macgie+ to add unlimited items and keep building your digital wardrobe.",
+      "enhance_photo_title": "You've reached today's limit.",
+      "enhance_photo_body": "You've used all 10 image enhancements available today. Upgrade to Macgie+ to enhance more clothing photos every day.",
+      "upgrade_cta": "Upgrade to Macgie+",
+      "maybe_later": "Maybe later"
+    },
+    "notifyMe": {
+      "title": "Upgrade",
+      "close": "Close",
+      "wordmark_subtitle": "is coming soon.",
+      "notify_cta": "Notify me",
+      "notify_confirmed": "We'll notify you"
+    },
     "welcome": {
       "title": "Welcome to Macgie",
       "body": "These first outfits come from our starter wardrobe.\nAdd your own clothes to get recommendations that match what you actually own.",

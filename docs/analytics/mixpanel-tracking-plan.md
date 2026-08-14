@@ -501,6 +501,8 @@ Note: these still don't flow in production until `SHOW_UPGRADE_PAYWALL` is flipp
 
 - **Enhance funnel (on-demand, §5.21):** `enhance_started` → `enhance_completed` → `enhance_applied`. Drop between `started` and `completed` = failure rate — break `enhance_failed` down by `reason` (`timeout` specifically tests the "under 10 seconds" promise). Drop between `completed` and `applied` splits into `enhance_discarded` (user rejected the result — a quality signal on the studio-shot model) vs silent exits (backed out of the preview). `enhance_apply_failed` between `completed` and `applied` is the save-error branch. Keep separate from the `beautify_*` upload-time funnel — same backend, different intent.
 
+- **Usage-limit soft-paywall demand funnel (AU-442, §5.26):** `usage_limit_gate_shown` → `usage_limit_upgrade_tapped` → `notify_me_viewed` → `notify_me_tapped`. This is the demand signal the ticket exists to produce — how many free users who hit a limit actually want the upgrade, before any real paywall/purchase flow exists for this surface. `usage_limit_gate_dismissed` is the mutually-exclusive "not now" branch off `usage_limit_gate_shown` (`dismissed + upgrade_tapped` should ≈ `gate_shown`, modulo users who background the app). Segment every step by `feature` (`see_on_me` / `wardrobe_items` / `enhance_photo`) to see which free-tier limit converts best into upgrade intent — informs which threshold to prioritize when the real paywall ships for these surfaces. `notify_me_tapped` ÷ `notify_me_viewed` is the "coming soon" screen's own conversion, independent of the upstream gate.
+
 Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`, `type`. Super properties (`platform`, `app_environment`) are available globally.
 
 ### 5.20 AI Beautify (studio-shot)
@@ -586,3 +588,19 @@ Admin-curated inline promo card at the top of Home (spec `plans/260729-1456-au43
 > On a successful add the hook ALSO fires the shared `wardrobe_item_added` with `source: 'trending_drop'` + `item_id` (§5.4 taxonomy), so the drop feeds the existing wardrobe-grow reporting alongside the drop-specific funnel.
 >
 > PII: none. `drop_id` / `item_id` are backend UUIDs (consistent with other id-carrying events). No titles, no descriptions, no image URLs.
+
+### 5.26 Usage Limit Gate — soft paywall MVP (AU-442)
+
+The free-tier "you've hit the limit" demand-signal funnel, checked after a successful action on each of the 3 gated free-tier surfaces (`see_on_me`, `wardrobe_items`, `enhance_photo`). Read-only `GET /api/me/usage` (`src/services/usageService.ts`) drives the gate; all guard logic (kill-switch, premium bypass, once-per-feature-per-session) lives in `src/services/usageLimit.ts`'s `maybeShowUsageLimit`. Fires fire-and-forget, immediately AFTER each surface's existing success `track()` call — never blocks the success UI, and fails open silently on any network error/timeout (no event fires). **PII: none — only the closed `feature` enum + integer `used`/`limit` counts.** `paywall_viewed` / `paywall_dismissed` / `purchase_*` (§5.22/§5.23) are the real RevenueCat paywall funnel — this is deliberately a distinct `usage_limit_*` / `notify_me_*` namespace so soft-paywall impressions never pollute it.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `usage_limit_gate_shown` | `GET /api/me/usage` resolves `limit_reached: true` for a free user, not yet shown this session | `src/services/usageLimit.ts` `maybeShowUsageLimit`; called from `SeeThisOnMeScreen.tsx` (after `try_on_completed`, ~line 318), `EnhanceImageScreen.tsx` (after `enhance_completed`, ~line 164), `useAddWardrobeItem.ts` (after `add_item_upload_succeeded`, ~line 173) | `feature` (`see_on_me` / `wardrobe_items` / `enhance_photo`), `used` (int), `limit` (int) |
+| `usage_limit_gate_dismissed` | `UsageLimitSheet` dismissed without tapping Upgrade ("Maybe later" or backdrop) | `SeeThisOnMeScreen.tsx`, `EnhanceImageScreen.tsx`, `useAddWardrobeItem.ts` (each screen's `handleUsageLimitDismiss`) | `feature` |
+| `usage_limit_upgrade_tapped` | "Upgrade to Macgie+" CTA tapped on `UsageLimitSheet` → navigates to `NotifyMe` | `SeeThisOnMeScreen.tsx`, `EnhanceImageScreen.tsx`, `useAddWardrobeItem.ts` (each screen's `handleUsageLimitUpgrade`) | `feature` |
+| `notify_me_viewed` | `NotifyMeScreen` mounts (only ever reached from the sheet's Upgrade CTA) | `NotifyMeScreen.tsx` (mount `useEffect`) | `feature` |
+| `notify_me_tapped` | "Notify me" CTA tapped (local-only confirm — no backend waitlist write, per locked decision) | `NotifyMeScreen.tsx` `handleNotify` | `feature` |
+
+> Session memory: `usageLimit.ts` keeps a module-scope `Set<UsageLimitFeature>` of features already shown this app session (mirrors `aiLimitStore`'s in-memory-only philosophy) — a feature shows the sheet **at most once per session**. Cleared on logout (`AuthContext.tsx`'s identity effect calls `clearUsageLimitSession()`, alongside the existing `setTryOnResultUser(null)` / `resetV05Session()` precedent) so a different account signing in on the same device session isn't wrongly suppressed by the previous user's dismissed sheets.
+>
+> Kill-switch: `PAYWALL_MVP_ENABLED` (`usageLimit.ts`) — same hardcoded-const pattern as `SHOW_UPGRADE_PAYWALL` (`SettingsScreen.tsx`). Premium users (`is_premium: true`) never trigger a request at all (`isFreeUser` guard runs before the fetch).

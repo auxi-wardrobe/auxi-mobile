@@ -104,6 +104,21 @@ jest.mock('../../../utils/url', () => ({
   getImageUrl: (url?: string | null) => url ?? undefined,
 }));
 
+// AU-442: cuts AuthContext → revenueCat's unparseable ESM chain. The screen
+// only reads `user` (for the usage-limit gate below); no auth flows here.
+jest.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({ user: null }),
+}));
+
+// AU-442: the usage-limit gate is a fire-and-forget side effect covered by
+// its own unit tests (usageLimit.test.ts) — stub it inert here so this
+// state-machine suite isn't coupled to the soft-paywall network call.
+const mockMaybeShowUsageLimit = jest.fn().mockResolvedValue(null);
+jest.mock('../../../services/usageLimit', () => ({
+  maybeShowUsageLimit: (...args: unknown[]) =>
+    mockMaybeShowUsageLimit(...args),
+}));
+
 const mockedToastShow = (toast as unknown as { show: jest.Mock }).show;
 
 // ---- helpers ----------------------------------------------------------------

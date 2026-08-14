@@ -7,6 +7,7 @@ import type {
 import type { LegalScreenParams } from '../screens/legal/LegalDocumentScreen';
 import type { BodyShape } from '../services/bodyService';
 import type { CapsuleOutfitSource } from '../services/capsuleService';
+import type { UsageLimitFeature } from '../hooks/useUsageLimitGate';
 
 /**
  * AU-242 — UAC v2 auth stack routes.
@@ -119,6 +120,11 @@ export type AppStackParamList = {
   // (matches the `upgrade_entry_tapped` event) so `paywall_viewed` can attribute
   // the funnel denominator; defaults to 'settings' when absent.
   Upgrade: { source?: string } | undefined;
+  // AU-442 soft-paywall MVP — the "Macgie+ is coming soon" follow-up screen,
+  // reached from UsageLimitSheet's "Upgrade to Macgie+" CTA (never from the
+  // real RevenueCat paywall above). `feature` is the surface that triggered
+  // the gate; `source` mirrors the analytics `source` convention (phase 03).
+  NotifyMe: { feature: UsageLimitFeature; source?: string };
   // Settings sub-screens (grouped IA). The main Settings screen keeps the
   // daily-reminder controls + "Delete My Data"; these three carry the grouped
   // secondary settings, pushed on top so they get the standard back gesture.

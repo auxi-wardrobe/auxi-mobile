@@ -17,7 +17,7 @@
  * so they survive the user quitting the loading screen and notify on completion.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler } from 'react-native';
+import { BackHandler, StyleSheet, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Asset } from 'react-native-image-picker';
@@ -32,8 +32,12 @@ import { bodyShapeService } from '../../services/bodyShapeService';
 import { track } from '../../services/analytics';
 import { useAiConsentGate } from '../../hooks/useAiConsentGate';
 import { useAiLimitGate } from '../../hooks/useAiLimitGate';
+import { useUsageLimitGate } from '../../hooks/useUsageLimitGate';
+import { maybeShowUsageLimit } from '../../services/usageLimit';
+import { useAuth } from '../../context/AuthContext';
 import { AiConsentDialog } from '../../components/features/AiConsentDialog';
 import { AiLimitSheet } from '../../components/features/AiLimitSheet';
+import { UsageLimitSheet } from '../../components/features/UsageLimitSheet';
 import { DiscardGenerationDialog } from './DiscardGenerationDialog';
 import { AppStackParamList } from '../../types/navigation';
 import { PhotoSourceSheet } from './components';
@@ -85,6 +89,15 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // Daily-limit gate: on a `ai_daily_limit_reached` 429 (either phase) show the
   // "out for today" sheet with NO retry, instead of the generic error view.
   const aiLimitGate = useAiLimitGate();
+  // AU-442 soft-paywall MVP: free-tier "you've hit the See on Me limit" gate,
+  // checked after a successful render (fire-and-forget, never blocks preview).
+  // `open` is destructured out (a stable useCallback from useUsageLimitGate)
+  // so it can sit alone in the generation-effect's dependency array below —
+  // depending on the whole `usageLimitGate` object, a fresh literal every
+  // render, would re-run that effect's state updates on every render.
+  const usageLimitGate = useUsageLimitGate();
+  const { open: openUsageLimitGate } = usageLimitGate;
+  const { user } = useAuth();
 
   // On a gated 'render' entry we go straight to the render loading screen (no
   // capture steps) — initialise there so the selfie step never flashes before
@@ -316,6 +329,13 @@ export const SeeThisOnMeScreen: React.FC = () => {
       if (resolvedHashRef.current !== key) {
         resolvedHashRef.current = key;
         track('try_on_completed', { outfit_hash: outfit.outfitHash });
+        // AU-442: fire-and-forget usage-limit check AFTER the success track
+        // call — never delays the preview render. Fails open on any error.
+        maybeShowUsageLimit('see_on_me', user).then(result => {
+          if (result) {
+            openUsageLimitGate('see_on_me');
+          }
+        });
       }
       setResultUrl(generation.resultUrl);
       setErrored(false);
@@ -360,6 +380,8 @@ export const SeeThisOnMeScreen: React.FC = () => {
     generation.errorCode,
     outfit.outfitHash,
     aiLimitGate,
+    openUsageLimitGate,
+    user,
   ]);
 
   // AU-358 mount lifecycle: register the in-app completion notifier (idempotent)
@@ -678,6 +700,30 @@ export const SeeThisOnMeScreen: React.FC = () => {
     />
   );
 
+  // AU-442 soft-paywall MVP: "you've hit the free See on Me limit" sheet.
+  // Dismiss just hides it (unlike the daily-limit sheet, the user can keep
+  // using the preview they already got); Upgrade routes to NotifyMe.
+  const handleUsageLimitDismiss = useCallback(() => {
+    track('usage_limit_gate_dismissed', { feature: 'see_on_me' });
+    usageLimitGate.dismiss();
+  }, [usageLimitGate]);
+  const handleUsageLimitUpgrade = useCallback(() => {
+    track('usage_limit_upgrade_tapped', { feature: 'see_on_me' });
+    // AU-442 designer gate Finding 1: navigate AFTER the sheet's close
+    // animation settles, not synchronously — see
+    // useUsageLimitGate.dismissThenNavigate doc comment.
+    usageLimitGate.dismissThenNavigate(() => {
+      navigation.navigate('NotifyMe', { feature: 'see_on_me' });
+    });
+  }, [usageLimitGate, navigation]);
+  const usageLimitSheet = (
+    <UsageLimitSheet
+      {...usageLimitGate.sheetProps}
+      onDismiss={handleUsageLimitDismiss}
+      onUpgrade={handleUsageLimitUpgrade}
+    />
+  );
+
   // Non-stepped screens (loading / generating / preview / reuse-confirm).
   // Returns the matching shell, or null → render the active capture step below.
   const stepScreen = renderStomStepScreen({
@@ -702,17 +748,24 @@ export const SeeThisOnMeScreen: React.FC = () => {
     outfitHash: outfit.outfitHash,
   });
   if (stepScreen) {
+    // AU-442 designer gate ghost-snapshot fix (see class doc comment on
+    // SettingsAboutScreen, commit 7d00825): `stepScreen` is already a single
+    // flex:1 root (StepShell/SafeAreaView or StomLoadingScreen), so wrapping
+    // it + the overlay sheets in one root `<View>` (not a Fragment) keeps
+    // this screen's rendered output to ONE top-level host view under the
+    // native-stack `Screen` wrapper, matching every real trigger site.
     return (
-      <>
+      <View style={styles.root}>
         {stepScreen}
         {aiLimitSheet}
+        {usageLimitSheet}
         <DiscardGenerationDialog
           visible={quitConfirmVisible}
           onCancel={handleQuitCancel}
           onNotify={handleQuitGeneration}
           onDiscard={handleDiscardGeneration}
         />
-      </>
+      </View>
     );
   }
 
@@ -811,8 +864,14 @@ export const SeeThisOnMeScreen: React.FC = () => {
       controls = null;
   }
 
+  // AU-442 designer gate ghost-snapshot fix (see class doc comment on
+  // SettingsAboutScreen, commit 7d00825): `StomStepLayout` is already a
+  // single flex:1 root (SafeAreaView), so wrapping it + the overlay
+  // sheets/dialogs in one root `<View>` (not a Fragment) keeps this screen's
+  // rendered output to ONE top-level host view under the native-stack
+  // `Screen` wrapper, matching every real trigger site.
   return (
-    <>
+    <View style={styles.root}>
       <StomStepLayout
         testID={`stom-step-screen-${captureStep}`}
         title={t('seeThisOnMe.title')}
@@ -838,6 +897,13 @@ export const SeeThisOnMeScreen: React.FC = () => {
 
       {/* Daily-limit gate — "out of AI for today", no retry. */}
       {aiLimitSheet}
-    </>
+
+      {/* AU-442 soft-paywall MVP — free-tier See on Me limit sheet. */}
+      {usageLimitSheet}
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});

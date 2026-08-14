@@ -16,6 +16,10 @@ import { wardrobeKeys, wardrobeService } from '../../services/wardrobeService';
 import { goToWardrobe, markItemBeautifying } from '../wardrobe/beautify-status';
 import { EnhanceLoadingView } from './EnhanceLoadingView';
 import { track } from '../../services/analytics';
+import { useUsageLimitGate } from '../../hooks/useUsageLimitGate';
+import { maybeShowUsageLimit } from '../../services/usageLimit';
+import { useAuth } from '../../context/AuthContext';
+import { UsageLimitSheet } from '../../components/features/UsageLimitSheet';
 import { theme } from '../../theme/theme';
 import { getImageUrl } from '../../utils/url';
 import type { AppStackParamList } from '../../types/navigation';
@@ -83,6 +87,15 @@ export const EnhanceImageScreen = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { itemId, displayUri, origin = 'itemDetail' } = route.params;
+  // AU-442 soft-paywall MVP: free-tier "you've hit the Enhance limit" gate,
+  // checked after a successful enhance (fire-and-forget, never blocks the
+  // result). `open` is destructured out (it's a stable useCallback from
+  // useUsageLimitGate) so it can sit in a dependency array on its own —
+  // depending on the whole `usageLimitGate` object, which is a fresh literal
+  // every render, would re-run the mount effect below on every render.
+  const usageLimitGate = useUsageLimitGate();
+  const { open: openUsageLimitGate } = usageLimitGate;
+  const { user } = useAuth();
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [candidateUri, setCandidateUri] = useState<string | null>(null);
@@ -165,6 +178,13 @@ export const EnhanceImageScreen = () => {
                 item_id: itemId,
                 duration_ms: Date.now() - startedAt,
               });
+              // AU-442: fire-and-forget usage-limit check AFTER the success
+              // track call — never delays the result view. Fails open.
+              maybeShowUsageLimit('enhance_photo', user).then(result => {
+                if (result) {
+                  openUsageLimitGate('enhance_photo');
+                }
+              });
               showCandidate(status.candidate_url, status.attempts);
             } else if (status.status === 'failed') {
               fail('server_error');
@@ -227,7 +247,7 @@ export const EnhanceImageScreen = () => {
       // Every await inside is wrapped, so this never rejects.
       run();
     },
-    [itemId, stopPolling, queryClient],
+    [itemId, stopPolling, queryClient, openUsageLimitGate, user],
   );
 
   useEffect(() => {
@@ -361,6 +381,23 @@ export const EnhanceImageScreen = () => {
     track('enhance_left_waiting', { item_id: itemId });
     goToWardrobe(navigation);
   };
+
+  // AU-442 soft-paywall MVP: "you've hit the free Enhance limit" sheet.
+  // Dismiss just hides it (the accepted/pending result is unaffected);
+  // Upgrade routes to NotifyMe.
+  const handleUsageLimitDismiss = useCallback(() => {
+    track('usage_limit_gate_dismissed', { feature: 'enhance_photo' });
+    usageLimitGate.dismiss();
+  }, [usageLimitGate]);
+  const handleUsageLimitUpgrade = useCallback(() => {
+    track('usage_limit_upgrade_tapped', { feature: 'enhance_photo' });
+    // AU-442 designer gate Finding 1: navigate AFTER the sheet's close
+    // animation settles, not synchronously — see
+    // useUsageLimitGate.dismissThenNavigate doc comment.
+    usageLimitGate.dismissThenNavigate(() => {
+      navigation.navigate('NotifyMe', { feature: 'enhance_photo' });
+    });
+  }, [usageLimitGate, navigation]);
 
   const enhancedUri = getImageUrl(candidateUri ?? undefined);
   const showEnhanced = phase === 'ready' && !comparing && !!enhancedUri;
@@ -510,6 +547,13 @@ export const EnhanceImageScreen = () => {
           </View>
         </>
       )}
+
+      {/* AU-442 soft-paywall MVP — free-tier Enhance limit sheet. */}
+      <UsageLimitSheet
+        {...usageLimitGate.sheetProps}
+        onDismiss={handleUsageLimitDismiss}
+        onUpgrade={handleUsageLimitUpgrade}
+      />
     </View>
   );
 };

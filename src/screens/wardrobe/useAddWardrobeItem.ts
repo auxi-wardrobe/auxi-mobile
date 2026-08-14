@@ -12,6 +12,11 @@ import { toast } from '../../components/design-system/lib';
 import { wardrobeService } from '../../services/wardrobeService';
 import { track } from '../../services/analytics';
 import { useAiConsentGate } from '../../hooks/useAiConsentGate';
+import {
+  useUsageLimitGate,
+  UsageLimitFeature,
+} from '../../hooks/useUsageLimitGate';
+import { maybeShowUsageLimit } from '../../services/usageLimit';
 import { AppStackParamList } from '../../types/navigation';
 import { User } from '../../types/auth';
 import { FilterTab, resolveFilterQuery } from './wardrobe-grid';
@@ -46,6 +51,13 @@ interface UseAddWardrobeItem {
     onDecline: () => void;
     onOpenPrivacyPolicy: () => void;
   };
+  /** Spread onto <UsageLimitSheet /> rendered in the parent screen (AU-442). */
+  usageLimitSheetProps: {
+    visible: boolean;
+    feature: UsageLimitFeature;
+    onDismiss: () => void;
+    onUpgrade: () => void;
+  };
 }
 
 /**
@@ -69,6 +81,9 @@ export const useAddWardrobeItem = ({
   // B1: AI data-sharing consent gate — mirrors the try-on flow exactly.
   // The parent screen renders <AiConsentDialog {...aiConsentDialogProps} />.
   const consentGate = useAiConsentGate();
+  // AU-442 soft-paywall MVP: free-tier "you've hit the wardrobe item limit"
+  // gate, checked after a successful upload persist (fire-and-forget).
+  const usageLimitGate = useUsageLimitGate();
 
   const [uploading, setUploading] = useState(false);
   const [uploadingPhotoUri, setUploadingPhotoUri] = useState<string | null>(
@@ -171,6 +186,13 @@ export const useAddWardrobeItem = ({
               // AU-372: surface add-success via the mint M3 ItemReadySnackbar
               // overlay (same component as the ready moment), not a toast.
               track('add_item_upload_succeeded', { source: type });
+              // AU-442: fire-and-forget usage-limit check AFTER the success
+              // track call — never delays the ready snackbar. Fails open.
+              maybeShowUsageLimit('wardrobe_items', user).then(gateResult => {
+                if (gateResult) {
+                  usageLimitGate.open('wardrobe_items');
+                }
+              });
               showReadySnackbar(t('wardrobe.list.added_title'));
               await refetch();
             }
@@ -224,6 +246,24 @@ export const useAddWardrobeItem = ({
       onDecline: () => {
         track('add_item_upload_cancelled', { reason: 'ai_consent_declined' });
         consentGate.dialogProps.onDecline();
+      },
+    },
+    // AU-442: dismiss just hides the sheet (the upload already succeeded);
+    // Upgrade routes to NotifyMe.
+    usageLimitSheetProps: {
+      ...usageLimitGate.sheetProps,
+      onDismiss: () => {
+        track('usage_limit_gate_dismissed', { feature: 'wardrobe_items' });
+        usageLimitGate.dismiss();
+      },
+      onUpgrade: () => {
+        track('usage_limit_upgrade_tapped', { feature: 'wardrobe_items' });
+        // AU-442 designer gate Finding 1: navigate AFTER the sheet's close
+        // animation settles, not synchronously — see
+        // useUsageLimitGate.dismissThenNavigate doc comment.
+        usageLimitGate.dismissThenNavigate(() => {
+          navigation.navigate('NotifyMe', { feature: 'wardrobe_items' });
+        });
       },
     },
   };
