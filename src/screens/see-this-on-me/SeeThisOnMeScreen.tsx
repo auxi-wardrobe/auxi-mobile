@@ -17,7 +17,7 @@
  * so they survive the user quitting the loading screen and notify on completion.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler } from 'react-native';
+import { BackHandler, StyleSheet, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Asset } from 'react-native-image-picker';
@@ -748,8 +748,14 @@ export const SeeThisOnMeScreen: React.FC = () => {
     outfitHash: outfit.outfitHash,
   });
   if (stepScreen) {
+    // AU-442 designer gate ghost-snapshot fix (see class doc comment on
+    // SettingsAboutScreen, commit 7d00825): `stepScreen` is already a single
+    // flex:1 root (StepShell/SafeAreaView or StomLoadingScreen), so wrapping
+    // it + the overlay sheets in one root `<View>` (not a Fragment) keeps
+    // this screen's rendered output to ONE top-level host view under the
+    // native-stack `Screen` wrapper, matching every real trigger site.
     return (
-      <>
+      <View style={styles.root}>
         {stepScreen}
         {aiLimitSheet}
         {usageLimitSheet}
@@ -759,7 +765,7 @@ export const SeeThisOnMeScreen: React.FC = () => {
           onNotify={handleQuitGeneration}
           onDiscard={handleDiscardGeneration}
         />
-      </>
+      </View>
     );
   }
 
@@ -858,8 +864,14 @@ export const SeeThisOnMeScreen: React.FC = () => {
       controls = null;
   }
 
+  // AU-442 designer gate ghost-snapshot fix (see class doc comment on
+  // SettingsAboutScreen, commit 7d00825): `StomStepLayout` is already a
+  // single flex:1 root (SafeAreaView), so wrapping it + the overlay
+  // sheets/dialogs in one root `<View>` (not a Fragment) keeps this screen's
+  // rendered output to ONE top-level host view under the native-stack
+  // `Screen` wrapper, matching every real trigger site.
   return (
-    <>
+    <View style={styles.root}>
       <StomStepLayout
         testID={`stom-step-screen-${captureStep}`}
         title={t('seeThisOnMe.title')}
@@ -888,6 +900,10 @@ export const SeeThisOnMeScreen: React.FC = () => {
 
       {/* AU-442 soft-paywall MVP — free-tier See on Me limit sheet. */}
       {usageLimitSheet}
-    </>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});
