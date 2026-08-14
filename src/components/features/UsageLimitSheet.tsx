@@ -24,9 +24,32 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { MBottomSheet, MButton } from '../design-system/lib';
-import { role, space, type } from '../design-system/m-tokens';
+import { role, space } from '../design-system/m-tokens';
 import { MacgieFace } from '../macgie';
+import { theme } from '../../theme/theme';
 import type { UsageLimitFeature } from '../../hooks/useUsageLimitGate';
+
+// Body copy may carry ONE `**bold**`-marked span (Figma inline emphasis on
+// the feature name, e.g. see_on_me's "You've used all your free **See on
+// Me** tries..."). No existing i18n interpolation/Trans precedent exists in
+// this codebase (checked), so this is a minimal local marker parser — plain
+// strings with no markers pass through as a single span, unaffected.
+const renderBodyWithEmphasis = (text: string): React.ReactNode => {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  if (parts.length === 1) {
+    return text;
+  }
+  return parts.map((part, i) => {
+    const match = part.match(/^\*\*([^*]+)\*\*$/);
+    return match ? (
+      <Text key={i} style={styles.bodyEmphasis}>
+        {match[1]}
+      </Text>
+    ) : (
+      part
+    );
+  });
+};
 
 export interface UsageLimitSheetProps {
   visible: boolean;
@@ -52,7 +75,9 @@ export const UsageLimitSheet: React.FC<UsageLimitSheetProps> = ({
       <View style={styles.content}>
         <MacgieFace size={64} />
         <Text style={styles.title}>{t(`usageLimit.${feature}_title`)}</Text>
-        <Text style={styles.body}>{t(`usageLimit.${feature}_body`)}</Text>
+        <Text style={styles.body}>
+          {renderBodyWithEmphasis(t(`usageLimit.${feature}_body`))}
+        </Text>
         <View style={styles.actions}>
           <MButton
             variant="primary"
@@ -85,19 +110,33 @@ const styles = StyleSheet.create({
     gap: space.s2,
   },
   title: {
-    ...type.h3,
+    // Figma: Text-sm(l-20)/Semibold, 14px (node 5078:13668 headline) — NOT
+    // the 20px h3 this used to render. `interSemiboldXsSm` is the shipped
+    // 14/20 Semibold alias (see ContextChipsModal.tsx title for precedent).
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: role.ink,
     textAlign: 'center',
   },
   body: {
-    ...type.body,
+    // Figma: body/sm, 14px/20 regular (node 5078:13668 supporting text) —
+    // NOT the 16px `type.body`. `interBodySm` is the shipped 14/20 Regular
+    // alias (see ContextChipsModal.tsx subtitle for precedent).
+    ...theme.typography.aliases.interBodySm,
     color: role.ink2,
     textAlign: 'center',
+  },
+  // Inline emphasis span for `renderBodyWithEmphasis` — same size/leading as
+  // `body`, Semibold weight (Figma's bold "See on Me" run).
+  bodyEmphasis: {
+    ...theme.typography.aliases.interSemiboldXsSm,
+    color: role.ink2,
   },
   actions: {
     marginTop: space.s2,
     alignSelf: 'stretch',
     alignItems: 'center',
-    gap: space.s2,
+    // Figma "button group" gap is 12px, not the 8px `space.s2` this used to
+    // render.
+    gap: space.s3,
   },
 });
