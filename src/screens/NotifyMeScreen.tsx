@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../components/layout/Header';
@@ -11,10 +11,12 @@ import { MacgiePlusWordmark } from '../components/upgrade/MacgiePlusWordmark';
 import { Icons } from '../assets/icons';
 import EnhanceIcon from '../assets/images/icon_upgrade_enhance.svg';
 import SuggestionsIcon from '../assets/images/icon_upgrade_suggestions.svg';
+import { track } from '../services/analytics';
 import { theme } from '../theme/theme';
 import { AppStackParamList } from '../types/navigation';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'NotifyMe'>;
+type ScreenRoute = RouteProp<AppStackParamList, 'NotifyMe'>;
 
 type SvgIcon = React.FC<{ width?: number; height?: number; color?: string }>;
 
@@ -69,7 +71,14 @@ const FeatureItem: React.FC<{
 export const NotifyMeScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<Navigation>();
+  const { feature } = useRoute<ScreenRoute>().params;
   const [notified, setNotified] = useState(false);
+
+  // AU-442: fires once per mount — this screen is only ever reached from the
+  // usage-limit sheet's Upgrade CTA, so a mount IS the "coming soon" view.
+  useEffect(() => {
+    track('notify_me_viewed', { feature });
+  }, [feature]);
 
   const handleClose = () => {
     navigation.goBack();
@@ -77,6 +86,7 @@ export const NotifyMeScreen = () => {
 
   const handleNotify = () => {
     if (notified) return;
+    track('notify_me_tapped', { feature });
     setNotified(true);
   };
 

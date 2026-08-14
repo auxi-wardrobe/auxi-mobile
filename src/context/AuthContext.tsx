@@ -21,6 +21,7 @@ import { getForcedFirstLogin } from '../services/reviewOverrides';
 import { resetV05Session } from '../services/v05Api';
 import { setRecommendationMemoryUser } from '../services/recommendationMemory';
 import { setTryOnResultUser } from '../services/tryOnResultStore';
+import { clearUsageLimitSession } from '../services/usageLimit';
 import {
   configureRevenueCat,
   logInRevenueCat,
@@ -366,6 +367,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // stays for re-login, matching the recommendation memory).
       setTryOnResultUser(null);
       resetV05Session();
+      // AU-442: clear the soft-paywall "shown this session" memory so a new
+      // sign-in (possibly a different account, same device session) isn't
+      // wrongly suppressed by the previous user's dismissed sheets.
+      clearUsageLimitSession();
     }
   }, [user]);
 

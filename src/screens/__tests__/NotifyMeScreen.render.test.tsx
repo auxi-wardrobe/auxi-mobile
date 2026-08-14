@@ -27,6 +27,12 @@ jest.mock('react-i18next', () => ({
 const mockGoBack = jest.fn();
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ goBack: mockGoBack }),
+  useRoute: () => ({ params: { feature: 'see_on_me' } }),
+}));
+
+const mockTrack = jest.fn();
+jest.mock('../../services/analytics', () => ({
+  track: (...args: unknown[]) => mockTrack(...args),
 }));
 
 import { NotifyMeScreen } from '../NotifyMeScreen';
@@ -59,6 +65,32 @@ const render = (el: React.ReactElement): TestRenderer.ReactTestRenderer => {
 describe('NotifyMeScreen', () => {
   beforeEach(() => {
     mockGoBack.mockClear();
+    mockTrack.mockClear();
+  });
+
+  it('fires notify_me_viewed on mount with the routed feature (AU-442)', () => {
+    render(<NotifyMeScreen />);
+    expect(mockTrack).toHaveBeenCalledWith('notify_me_viewed', {
+      feature: 'see_on_me',
+    });
+  });
+
+  it('fires notify_me_tapped exactly once on "Notify me" (AU-442)', () => {
+    const r = render(<NotifyMeScreen />);
+    mockTrack.mockClear();
+    act(() => {
+      pressableWith(r.root, 'notify-me-cta').props.onPress();
+    });
+    expect(mockTrack).toHaveBeenCalledWith('notify_me_tapped', {
+      feature: 'see_on_me',
+    });
+    expect(mockTrack).toHaveBeenCalledTimes(1);
+
+    // Second tap while inert must NOT re-fire the event.
+    act(() => {
+      oneByTestID(r.root, 'notify-me-cta-confirmed').props.onPress?.();
+    });
+    expect(mockTrack).toHaveBeenCalledTimes(1);
   });
 
   it('mounts the header, all 6 feature rows and the Notify me CTA', () => {

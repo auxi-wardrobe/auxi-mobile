@@ -47,6 +47,7 @@ import {
   trackWardrobeContextSelected,
 } from '../services/analytics';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
+import { UsageLimitSheet } from '../components/features/UsageLimitSheet';
 import { useCapsules } from './capsule/hooks';
 import { WardrobeSwitcherSheet } from './wardrobe/WardrobeSwitcherSheet';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
@@ -460,6 +461,7 @@ export const WardrobeScreen = () => {
     handleImageSelection,
     handleTakePhoto,
     aiConsentDialogProps,
+    usageLimitSheetProps,
   } = useAddWardrobeItem({
     selectedTab: uploadCategoryHint(selectedCategories),
     user,
@@ -707,6 +709,10 @@ export const WardrobeScreen = () => {
           useAddWardrobeItem; shown before the first wardrobe-photo upload of
           any kind (every upload reaches OpenAI vision). */}
       <AiConsentDialog {...aiConsentDialogProps} />
+
+      {/* AU-442 soft-paywall MVP — free-tier wardrobe-item limit sheet,
+          gated by useUsageLimitGate inside useAddWardrobeItem. */}
+      <UsageLimitSheet {...usageLimitSheetProps} />
 
       <PreparingOverlay visible={uploading} photoUri={uploadingPhotoUri} />
 
