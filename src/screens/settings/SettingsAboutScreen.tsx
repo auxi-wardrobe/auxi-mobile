@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +28,16 @@ type Navigation = NativeStackNavigationProp<AppStackParamList, 'SettingsAbout'>;
  * (`useUsageLimitGate` + `onUpgrade` → `NotifyMe`), so tapping "Upgrade to
  * Macgie+" inside the preview reaches `NotifyMeScreen` too — one trigger,
  * both surfaces. QA infra only, not shipped copy — no i18n.
+ *
+ * AU-442 designer gate Finding 1 (round 2): the sheet is rendered inside the
+ * SAME single root `<View>` as the scaffold, not as an extra top-level
+ * `<>` Fragment sibling. A Fragment here would make this screen's rendered
+ * output TWO top-level host views under the native-stack `Screen` wrapper —
+ * diverging from every real call site (`EnhanceImageScreen`, `WardrobeScreen`
+ * via `useAddWardrobeItem`), which each nest `<UsageLimitSheet>` inside their
+ * single root container. Matching that single-root shape here rules out any
+ * native-stack transition/snapshot machinery reacting to this screen's
+ * output differently than a real trigger site's.
  */
 export const SettingsAboutScreen = () => {
   const { t } = useTranslation();
@@ -40,7 +51,7 @@ export const SettingsAboutScreen = () => {
   };
 
   return (
-    <>
+    <View style={styles.root}>
       <SettingsScreenScaffold
         title={t('settings.section_about')}
         headerVariant="back"
@@ -95,7 +106,10 @@ export const SettingsAboutScreen = () => {
         )}
       </SettingsScreenScaffold>
 
-      {/* AU-442 QA reachability aid — see class doc comment above. */}
+      {/* AU-442 QA reachability aid — see class doc comment above. Nested
+          inside the same root <View> as the scaffold above (not a Fragment
+          sibling) so this screen keeps a single top-level host view, same as
+          every real trigger site. */}
       {__DEV__ && (
         <UsageLimitSheet
           {...usageLimitPreview.sheetProps}
@@ -112,6 +126,10 @@ export const SettingsAboutScreen = () => {
           }}
         />
       )}
-    </>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});
