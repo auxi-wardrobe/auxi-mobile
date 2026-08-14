@@ -94,7 +94,7 @@ export const NotifyMeScreen = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header
         title={t('notifyMe.title')}
-        leftIcon={<Icons.Close width={24} height={24} />}
+        leftIcon={<Icons.CloseThin width={24} height={24} />}
         onBack={handleClose}
         leftTestID="notify-me-close-button"
         leftAccessibilityLabel={t('notifyMe.close')}
