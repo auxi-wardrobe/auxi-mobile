@@ -982,6 +982,23 @@
       "body": "Vous avez utilisé toutes vos générations IA pour aujourd'hui. Revenez demain pour en découvrir plus.",
       "dismiss": "Compris"
     },
+    "usageLimit": {
+      "see_on_me_title": "Vous avez atteint la limite « Voir sur moi » du jour",
+      "see_on_me_body": "Vous avez utilisé tous vos essais gratuits « Voir sur moi » pour aujourd'hui. Passez à Macgie+ pour essayer des tenues à tout moment, ou revenez demain quand vos essais gratuits seront renouvelés.",
+      "wardrobe_items_title": "Vous avez atteint la limite gratuite.",
+      "wardrobe_items_body": "Votre garde-robe est pleine avec 50 articles. Passez à Macgie+ pour ajouter des articles illimités et continuer à construire votre garde-robe numérique.",
+      "enhance_photo_title": "Vous avez atteint la limite du jour.",
+      "enhance_photo_body": "Vous avez utilisé les 10 améliorations d'image disponibles aujourd'hui. Passez à Macgie+ pour améliorer plus de photos de vêtements chaque jour.",
+      "upgrade_cta": "Passer à Macgie+",
+      "maybe_later": "Plus tard"
+    },
+    "notifyMe": {
+      "title": "Passer à la version supérieure",
+      "close": "Fermer",
+      "wordmark_subtitle": "arrive bientôt.",
+      "notify_cta": "Me prévenir",
+      "notify_confirmed": "Nous vous préviendrons"
+    },
     "welcome": {
       "title": "Bienvenue sur Macgie",
       "body": "Ces premières tenues proviennent de notre garde-robe de départ.\nAjoutez vos propres vêtements pour obtenir des recommandations adaptées à ce que vous possédez vraiment.",
