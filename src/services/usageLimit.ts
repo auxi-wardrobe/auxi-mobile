@@ -8,9 +8,10 @@
 //   1. PAYWALL_MVP_ENABLED kill-switch (same pattern as SHOW_UPGRADE_PAYWALL,
 //      SettingsScreen.tsx:69) — flip locally without an app release gate.
 //   2. isFreeUser(user) — premium users never see the sheet, never fetch.
-//   3. Session memory — at most once per feature per app session (module-
-//      scope Set, mirrors aiLimitStore's in-memory-only philosophy: cleared
-//      on logout via clearUsageLimitSession(), never persisted).
+//
+// No per-session suppression: the sheet shows every time a trigger fires
+// while `limit_reached` is true for that feature (product decision reversed
+// 2026-08-14 — was "once per feature per app session").
 //
 // Fail-open: ANY error/timeout on GET /api/me/usage (network, 401 during a
 // token refresh race, 404 against an old backend, etc.) resolves to `null` —
@@ -39,24 +40,12 @@ export interface UsageLimitResult {
   limit: number;
 }
 
-// Module-scope, in-memory only — the features gated this app session.
-// Cleared on logout (see `clearUsageLimitSession`) so a new sign-in on the
-// same device session starts fresh; never persisted (matches aiLimitStore's
-// "can never wrongly block" philosophy, applied here to "can never wrongly
-// nag").
-let shownThisSession = new Set<UsageLimitFeature>();
-
-/** Clear the session-shown memory — call on logout (AuthContext identity effect). */
-export const clearUsageLimitSession = (): void => {
-  shownThisSession = new Set();
-};
-
 /**
  * Fetches usage and returns `{ used, limit }` iff the sheet should show for
- * `feature` right now, else `null`. Marks the feature as shown + fires
- * `usage_limit_gate_shown` itself (single call site for that event, so every
- * trigger site can't drift on props) — the caller is only responsible for
- * calling `gate.open(feature)` when this resolves non-null.
+ * `feature` right now, else `null`. Fires `usage_limit_gate_shown` itself
+ * (single call site for that event, so every trigger site can't drift on
+ * props) — the caller is only responsible for calling `gate.open(feature)`
+ * when this resolves non-null.
  *
  * Never throws — every guard and the fetch itself are wrapped so a caller can
  * always safely `await` this without a try/catch of its own.
@@ -71,9 +60,6 @@ export const maybeShowUsageLimit = async (
   if (!isFreeUser(user)) {
     return null;
   }
-  if (shownThisSession.has(feature)) {
-    return null;
-  }
 
   try {
     const usage = await usageService.getUsage();
@@ -81,7 +67,6 @@ export const maybeShowUsageLimit = async (
     if (!snapshot?.limit_reached) {
       return null;
     }
-    shownThisSession.add(feature);
     const result: UsageLimitResult = {
       used: snapshot.used,
       limit: snapshot.limit,

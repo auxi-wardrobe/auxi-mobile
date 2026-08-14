@@ -2,22 +2,19 @@
 /**
  * usageLimit — AU-442 soft-paywall MVP gate orchestration.
  *
- * Locks the guard order (kill-switch → free-user → session-shown) + the
- * fail-open contract: any `getUsage()` rejection (network/timeout/whatever)
- * must resolve to `null`, never throw, never retry. Per-feature session
- * memory is exercised end-to-end via the real module (not mocked), matching
- * `aiLimitStore.test.ts`'s pattern of testing the real in-memory store.
+ * Locks the guard order (kill-switch → free-user) + the fail-open contract:
+ * any `getUsage()` rejection (network/timeout/whatever) must resolve to
+ * `null`, never throw, never retry. There is no per-session suppression —
+ * the sheet fires every time a trigger calls this while `limit_reached` is
+ * true for that feature (product decision reversed 2026-08-14 — was "once
+ * per feature per app session").
  *
  * `PAYWALL_MVP_ENABLED` is a hardcoded kill-switch const (same pattern as
  * `SHOW_UPGRADE_PAYWALL`, SettingsScreen.tsx) — flipped by editing source,
  * not by runtime config, so its `false` branch isn't unit-tested here
  * (no existing precedent tests `SHOW_UPGRADE_PAYWALL`'s off-state either).
  */
-import {
-  maybeShowUsageLimit,
-  clearUsageLimitSession,
-  PAYWALL_MVP_ENABLED,
-} from '../usageLimit';
+import { maybeShowUsageLimit, PAYWALL_MVP_ENABLED } from '../usageLimit';
 import { usageService } from '../usageService';
 import { track } from '../analytics';
 import type { User } from '../../types/auth';
@@ -66,7 +63,6 @@ const snapshot = (overrides: {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  clearUsageLimitSession();
 });
 
 it('the kill-switch is ON by default (documents current MVP state)', () => {
@@ -89,7 +85,7 @@ it('limit_reached + free user + first time → opens with {used, limit} and fire
   });
 });
 
-it('the same feature twice in one session shows only once — the 2nd call short-circuits before fetching', async () => {
+it('the same feature fires again on a later call — no per-session suppression', async () => {
   mockGetUsage.mockResolvedValue(
     snapshot({ see_on_me: { used: 2, limit: 2, limit_reached: true } }),
   );
@@ -98,12 +94,12 @@ it('the same feature twice in one session shows only once — the 2nd call short
   const second = await maybeShowUsageLimit('see_on_me', freeUser);
 
   expect(first).toEqual({ used: 2, limit: 2 });
-  expect(second).toBeNull();
-  expect(mockGetUsage).toHaveBeenCalledTimes(1);
-  expect(mockTrack).toHaveBeenCalledTimes(1);
+  expect(second).toEqual({ used: 2, limit: 2 });
+  expect(mockGetUsage).toHaveBeenCalledTimes(2);
+  expect(mockTrack).toHaveBeenCalledTimes(2);
 });
 
-it('a different feature after the first still opens (per-feature memory)', async () => {
+it('a different feature after the first still opens independently', async () => {
   mockGetUsage.mockResolvedValue(
     snapshot({
       see_on_me: { used: 2, limit: 2, limit_reached: true },
@@ -134,7 +130,7 @@ it('limit_reached: false resolves null and fires no event', async () => {
 
   expect(result).toBeNull();
   expect(mockTrack).not.toHaveBeenCalled();
-  // Not marked shown — a later real limit-hit this session must still open.
+  // A later real limit-hit for the same feature must still open.
   mockGetUsage.mockResolvedValue(
     snapshot({ see_on_me: { used: 2, limit: 2, limit_reached: true } }),
   );
@@ -142,13 +138,13 @@ it('limit_reached: false resolves null and fires no event', async () => {
   expect(second).toEqual({ used: 2, limit: 2 });
 });
 
-it('getUsage() rejecting (network error) fails open: null, no throw, no toast, not marked shown', async () => {
+it('getUsage() rejecting (network error) fails open: null, no throw, no toast', async () => {
   mockGetUsage.mockRejectedValue(new Error('Network Error'));
 
   await expect(maybeShowUsageLimit('see_on_me', freeUser)).resolves.toBeNull();
   expect(mockTrack).not.toHaveBeenCalled();
 
-  // Fail-open doesn't poison the session — a retry (e.g. next action) can
+  // Fail-open doesn't poison anything — a retry (e.g. next action) can
   // still succeed once the network recovers.
   mockGetUsage.mockResolvedValue(
     snapshot({ see_on_me: { used: 2, limit: 2, limit_reached: true } }),
@@ -179,19 +175,4 @@ it('event props contain only feature/used/limit — no PII, no ids, no free text
   expect(typeof props.used).toBe('number');
   expect(typeof props.limit).toBe('number');
   expect(typeof props.feature).toBe('string');
-});
-
-it('clearUsageLimitSession() resets per-feature memory (logout → new sign-in)', async () => {
-  mockGetUsage.mockResolvedValue(
-    snapshot({ see_on_me: { used: 2, limit: 2, limit_reached: true } }),
-  );
-
-  await maybeShowUsageLimit('see_on_me', freeUser);
-  expect(await maybeShowUsageLimit('see_on_me', freeUser)).toBeNull();
-
-  clearUsageLimitSession();
-
-  const afterClear = await maybeShowUsageLimit('see_on_me', freeUser);
-  expect(afterClear).toEqual({ used: 2, limit: 2 });
-  expect(mockGetUsage).toHaveBeenCalledTimes(2);
 });
