@@ -58,11 +58,6 @@ export const styles = StyleSheet.create({
     paddingHorizontal: SHEET_PADDING,
     paddingTop: theme.spacing.s,
   },
-  aiDisclosureRow: {
-    paddingHorizontal: SHEET_PADDING,
-    paddingVertical: theme.spacing.xs,
-    alignItems: 'center',
-  },
   // Floating toast/snackbar layer (z-index tier 5). The info snackbars (AI
   // disclosure, "seen them all") float ON TOP of the content — absolutely
   // positioned so they never stack with / push the grid cards. Anchored just
