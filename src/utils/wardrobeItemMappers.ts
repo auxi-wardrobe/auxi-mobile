@@ -36,6 +36,10 @@ export const COLOR_OPTIONS = [
   { label: 'Purple', hex: '#A493BE' },
   { label: 'Orange', hex: '#C68A5A' },
   { label: 'Brown', hex: '#4A3024' },
+  { label: 'Olive Green', hex: '#677A04' },
+  { label: 'Beige', hex: '#DDC7A0' },
+  { label: 'Gray', hex: '#7D7F7C' },
+  { label: 'Dark Blue', hex: '#2D386D' },
 ];
 export const STYLE_TAG_LESS_USED = 'less-used';
 export const FIT_TAG_PREFIX = 'fit:';
