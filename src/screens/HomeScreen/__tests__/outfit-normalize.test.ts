@@ -10,6 +10,7 @@ import {
 } from '../outfit-normalize';
 import { Item } from '../../../types/item';
 import { V05OutfitItem } from '../../../services/v05Api';
+import { resolveItemImage } from '../../../utils/url';
 import { OutfitSheet } from '../types';
 
 const item = (over: Partial<Item> & Pick<Item, 'id' | 'category'>): Item => ({
@@ -89,6 +90,28 @@ describe('mapV05Item', () => {
     style_tags: [],
     source: 'user',
     ...over,
+  });
+
+  // AU-437 — the accepted AI studio shot must survive the map, else
+  // `resolveItemImage` (image_studio -> image_png -> image_url) falls through
+  // to the pre-enhance photo on every Home suggestion tile.
+  it('carries the accepted AI studio shot through to the tile item', () => {
+    const result = mapV05Item(
+      v05Item({
+        image_png: 'https://x/cutout.png',
+        image_studio: 'https://x/studio.png',
+      }),
+    );
+
+    expect(result.image_studio).toBe('https://x/studio.png');
+    expect(resolveItemImage(result)).toBe('https://x/studio.png');
+  });
+
+  it('falls back to the cutout when the item was never enhanced', () => {
+    const result = mapV05Item(v05Item({ image_png: 'https://x/cutout.png' }));
+
+    expect(result.image_studio).toBeNull();
+    expect(resolveItemImage(result)).toBe('https://x/cutout.png');
   });
 
   it('carries the 4 AU-392 tile-status fields through untouched', () => {

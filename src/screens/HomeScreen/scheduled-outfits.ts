@@ -31,6 +31,7 @@ const favouriteItemToItem = (fi: FavouriteItem): Item => {
     id: fi.id,
     image_url: fi.image_url ?? '',
     image_png: fi.image_png ?? null,
+    image_studio: fi.image_studio ?? null,
     name: fi.name ?? null,
     category: fi.category ?? 'Top',
     color: typeof colorHex === 'string' ? colorHex : '',
