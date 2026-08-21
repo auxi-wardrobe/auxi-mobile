@@ -8,6 +8,7 @@ import { OutfitSheet } from '../types';
 import { ScheduledOutfit } from '../../../context/ScheduleContext';
 import { Favourite } from '../../../services/favouriteService';
 import { Creation } from '../../../services/creationsService';
+import { resolveItemImage } from '../../../utils/url';
 
 const favourite = (over: Partial<Favourite> & Pick<Favourite, 'id'>): Favourite => ({
   user_id: 'u1',
@@ -55,6 +56,30 @@ describe('buildScheduledOutfitSheets', () => {
     expect(sheet.caption).toBe('Bring some warmth.');
     expect(sheet.items).toHaveLength(1);
     expect(sheet.items[0]).toMatchObject({ id: 'item-1', category: 'Top' });
+  });
+
+  // AU-437 — a scheduled outfit renders the same Home tile as a suggestion,
+  // so its garments need the accepted AI studio shot too.
+  it('carries the accepted AI studio shot onto the scheduled tile item', () => {
+    const fav = favourite({
+      id: 'fav-studio',
+      outfit_items: [
+        {
+          id: 'item-1',
+          image_url: 'http://x/1.jpg',
+          image_png: 'http://x/cutout.png',
+          image_studio: 'http://x/studio.png',
+          name: 'Blazer',
+          category: 'Top',
+          is_common_item: false,
+        },
+      ],
+    });
+
+    const [sheet] = buildScheduledOutfitSheets([favouriteEntry(fav)]);
+
+    expect(sheet.items[0].image_studio).toBe('http://x/studio.png');
+    expect(resolveItemImage(sheet.items[0])).toBe('http://x/studio.png');
   });
 
   it('falls back to the context reasoning when there is no title', () => {

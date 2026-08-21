@@ -399,6 +399,9 @@ export const WardrobeScreen = () => {
           id: chosen.id,
           ...(chosen.image_url ? { image_url: chosen.image_url } : {}),
           ...(chosen.image_png ? { image_png: chosen.image_png } : {}),
+          ...(chosen.image_studio
+            ? { image_studio: chosen.image_studio }
+            : {}),
           ...(chosen.name ? { name: chosen.name } : {}),
           ...(chosen.category ? { category: chosen.category } : {}),
           ...(chosen.color_hex ? { color_hex: chosen.color_hex } : {}),
