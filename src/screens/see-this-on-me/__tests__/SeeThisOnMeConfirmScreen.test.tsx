@@ -260,4 +260,32 @@ describe('SeeThisOnMeConfirmScreen (reuse-confirm gate)', () => {
       outfit: mockRouteParams.outfit,
     });
   });
+
+  // Regression: this gate is a TRANSPARENT modal, so rendering null while the
+  // profile query resolves is indistinguishable from "the button did nothing".
+  // With retry:1 and a 30s request timeout a stalled GET /body/active left the
+  // user on the untouched origin page for up to ~60s with no feedback.
+  describe('profile still loading', () => {
+    it('shows the loader instead of rendering nothing', () => {
+      mockQueryResult = { data: undefined, isLoading: true };
+      const r = render();
+      expect(has(r, 'stom-gate-loading')).toBe(true);
+      expect(has(r, 'mock-reuse-sheet')).toBe(false);
+      // Still loading → no routing decision made yet.
+      expect(mockReplace).not.toHaveBeenCalled();
+      expect(mockGoBack).not.toHaveBeenCalled();
+    });
+
+    it('stays silent while a synchronous hand-off is already in flight', () => {
+      // A cached result bypasses the sheet and replaces immediately — showing a
+      // loader for that frame would flash over the origin page for no reason.
+      mockQueryResult = { data: undefined, isLoading: true };
+      mockCachedResult = 'https://cdn.example/cached.jpg';
+      const r = render();
+      expect(has(r, 'stom-gate-loading')).toBe(false);
+      expect(mockReplace).toHaveBeenCalledWith('SeeThisOnMe', {
+        outfit: mockRouteParams.outfit,
+      });
+    });
+  });
 });

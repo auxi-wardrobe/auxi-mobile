@@ -201,17 +201,26 @@ export const SeeThisOnMeScreen: React.FC = () => {
   // the capture path, so this is a no-op there; the reuse path prompts here).
   const runRender = useCallback(
     (bodyId: string, shape: BodyShapeId | null) => {
-      aiConsentGate.run(() => {
-        setStep('generating');
-        setErrored(false);
-        track('try_on_started', {
-          outfit_hash: outfit.outfitHash,
-          item_count: outfit.itemIds.length,
-        });
-        tryOnGenerationStore.startRender({ outfit, bodyId, shape });
-      });
+      aiConsentGate.run(
+        () => {
+          setStep('generating');
+          setErrored(false);
+          track('try_on_started', {
+            outfit_hash: outfit.outfitHash,
+            item_count: outfit.itemIds.length,
+          });
+          tryOnGenerationStore.startRender({ outfit, bodyId, shape });
+        },
+        // Decline (or a failed consent persist) means no render job starts.
+        // On the gated 'render' entry `step` is ALREADY 'generating' (see the
+        // useState initialiser) so the loading screen is on screen with
+        // nothing behind it — without this branch it spins forever. There is
+        // no useful fallback state here (capture needs the same consent), so
+        // leave the flow.
+        () => navigation.goBack(),
+      );
     },
-    [aiConsentGate, outfit],
+    [aiConsentGate, outfit, navigation],
   );
 
   // Gated 'render' entry (reuse-confirm gate already confirmed the saved body):

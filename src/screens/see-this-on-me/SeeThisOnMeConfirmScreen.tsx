@@ -38,9 +38,12 @@
  * hand-off (render, capture steps, loading, preview).
  */
 import React, { useCallback, useEffect, useRef } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
+import { MacgieLoader } from '../../components/macgie';
+import { theme } from '../../theme/theme';
 import { track } from '../../services/analytics';
 import { bodyService } from '../../services/bodyService';
 import { AppStackParamList } from '../../types/navigation';
@@ -167,19 +170,32 @@ export const SeeThisOnMeConfirmScreen: React.FC = () => {
     navigation.goBack();
   }, [navigation, outfit.outfitHash]);
 
-  // Only render the sheet once we know we're staying (reuse + photo, no saved
-  // shape, not bypassing). Until then render nothing so the transparent modal
-  // reveals the originating page while the profile query resolves / a hand-off
-  // is pending. `shouldBypassSheet` is a synchronous store read, and `autoReuse`
-  // a synchronous profile read, so checking both here (not just in the effect)
-  // keeps the sheet from flashing for one frame before the effect hands off.
-  if (
-    handedOffRef.current ||
-    shouldBypassSheet() ||
-    profileLoading ||
-    autoReuse ||
-    !(reuseMode && reusePhotoUri)
-  ) {
+  // A hand-off is already fired or will fire synchronously from the effect —
+  // render nothing so the transparent modal reveals the originating page and
+  // the sheet never flashes for a frame. `shouldBypassSheet` is a synchronous
+  // store read, so checking it here (not just in the effect) is what keeps
+  // that flash away.
+  if (handedOffRef.current || shouldBypassSheet()) {
+    return null;
+  }
+
+  // Profile still resolving. This is the ONE slow branch — everything else
+  // here resolves synchronously — and it must NOT render null: this screen is
+  // a TRANSPARENT modal, so "null" is indistinguishable from the button not
+  // having worked. With `retry: 1` and a 30s per-request timeout
+  // (services/queryClient.ts) a stalled `GET /body/active` leaves the user
+  // staring at the untouched origin page for up to ~60s. Show the shared
+  // loader over a scrim instead, so the tap visibly did something.
+  if (profileLoading) {
+    return (
+      <View testID="stom-gate-loading" style={styles.loadingScrim}>
+        <MacgieLoader />
+      </View>
+    );
+  }
+
+  // Known, and we're handing off (auto-reuse / capture) rather than staying.
+  if (autoReuse || !(reuseMode && reusePhotoUri)) {
     return null;
   }
 
@@ -192,3 +208,14 @@ export const SeeThisOnMeConfirmScreen: React.FC = () => {
     />
   );
 };
+
+const styles = StyleSheet.create({
+  // Same scrim token the confirm sheet itself rides on, so the loading state
+  // and the sheet that may follow it read as one continuous overlay.
+  loadingScrim: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.figmaOverlayScrim,
+  },
+});

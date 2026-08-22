@@ -31,8 +31,13 @@ export interface AiConsentGate {
    * Run `action` only if AI data-sharing consent is granted. Otherwise prompt;
    * Accept grants + runs, Decline aborts. `action` may be async — errors are
    * the caller's to handle (run() does not await it).
+   *
+   * `onDecline` runs instead of `action` when the user declines. Callers that
+   * have ALREADY moved the UI into the state the action was going to fill
+   * (e.g. a screen that mounted straight onto its loading step) MUST pass it —
+   * without it, declining leaves that UI stranded with no job behind it.
    */
-  run: (action: () => void) => void;
+  run: (action: () => void, onDecline?: () => void) => void;
   /** Spread onto <AiConsentDialog />. */
   dialogProps: {
     visible: boolean;
@@ -48,14 +53,18 @@ export const useAiConsentGate = (): AiConsentGate => {
   // The action awaiting a consent decision. Held in a ref so re-renders don't
   // drop it and Accept/Decline read the latest.
   const pendingActionRef = useRef<(() => void) | null>(null);
+  // The caller's decline branch, paired with `pendingActionRef` — both are set
+  // and cleared together so a decision can never run one against a stale other.
+  const pendingDeclineRef = useRef<(() => void) | null>(null);
 
-  const run = useCallback((action: () => void) => {
+  const run = useCallback((action: () => void, onDecline?: () => void) => {
     hasAiDataSharingConsent().then(granted => {
       if (granted) {
         action();
         return;
       }
       pendingActionRef.current = action;
+      pendingDeclineRef.current = onDecline ?? null;
       setVisible(true);
     });
   }, []);
@@ -63,20 +72,28 @@ export const useAiConsentGate = (): AiConsentGate => {
   const onAccept = useCallback(() => {
     setVisible(false);
     const action = pendingActionRef.current;
+    const declined = pendingDeclineRef.current;
     pendingActionRef.current = null;
+    pendingDeclineRef.current = null;
     grantAiDataSharingConsent()
       .then(() => action?.())
       .catch(() => {
         /* persist failure is non-fatal — do NOT run the action without a
-           recorded consent; the user can retry. */
+           recorded consent; the user can retry. But the caller may have
+           already committed UI to the action (a loading step), so run its
+           decline branch to unwind: the action is not going to happen. */
+        declined?.();
       });
   }, []);
 
   const onDecline = useCallback(() => {
     setVisible(false);
+    const declined = pendingDeclineRef.current;
     pendingActionRef.current = null;
+    pendingDeclineRef.current = null;
     // Fire-and-forget: declining must never block the UI.
     declineAiDataSharingConsent().catch(() => {});
+    declined?.();
   }, []);
 
   const onOpenPrivacyPolicy = useCallback(() => {
