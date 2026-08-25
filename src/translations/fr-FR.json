@@ -402,6 +402,11 @@
           "Pink": "Rose",
           "Purple": "Violet",
           "Orange": "Orange",
+          "Brown": "Marron",
+          "Olive Green": "Vert olive",
+          "Beige": "Beige",
+          "Gray": "Gris",
+          "Dark Blue": "Bleu foncé",
           "Custom": "Personnalisé"
         }
       }

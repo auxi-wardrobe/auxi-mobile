@@ -49,6 +49,11 @@ export const COLORS = [
   'Purple',
   'Grey',
   'Orange',
+  'Brown',
+  'Olive Green',
+  'Beige',
+  'Gray',
+  'Dark Blue',
 ];
 export const STYLES = ['Casual', 'Formal', 'Sport', 'Vintage', 'Modern'];
 export const SEASONS = ['Spring', 'Summer', 'Autumn', 'Winter', 'All Season'];
