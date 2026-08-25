@@ -47,6 +47,10 @@ export interface ItemDetailFallbackItem {
   id: string;
   image_url?: string;
   image_png?: string;
+  // AU-437: accepted AI studio shot. ItemDetail paints the fallback before
+  // its fetch resolves and applies image_studio -> image_png -> image_url,
+  // so omitting it flashes the pre-enhance photo on every Home push.
+  image_studio?: string;
   name?: string;
   category?: string;
   is_common_item?: boolean;
@@ -78,6 +82,9 @@ export interface HomeOutfitSwap {
     id: string;
     image_url?: string;
     image_png?: string;
+    // AU-437: carry the accepted studio shot through the swap, else a
+    // just-enhanced garment swaps in showing its pre-enhance photo.
+    image_studio?: string;
     name?: string;
     category?: string;
     color_hex?: string;

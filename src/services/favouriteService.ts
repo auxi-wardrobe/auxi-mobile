@@ -68,7 +68,10 @@ export interface SaveFavouriteResponse {
  * prefixed per-user catalog clones on favourite cards.
  */
 export interface FavouriteItem
-  extends Pick<Item, 'id' | 'image_url' | 'image_png' | 'name' | 'category'> {
+  extends Pick<
+    Item,
+    'id' | 'image_url' | 'image_png' | 'image_studio' | 'name' | 'category'
+  > {
   is_common_item?: boolean;
   user_id?: string | number | null;
   is_new?: boolean;

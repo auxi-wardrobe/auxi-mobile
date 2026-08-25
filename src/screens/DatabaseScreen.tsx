@@ -193,6 +193,10 @@ export const DatabaseScreen = () => {
   // treatment (figmaAction ring + top-right check) extended to multi-select.
   const renderGridTile = (item: WardrobeItem, index: number) => {
     const imageUrl = resolveItemImage({
+      // AU-437: same tile visual as WardrobeGridTile, so it must feed the
+      // same three sources — omitting image_studio showed the pre-enhance
+      // photo here while the wardrobe grid showed the enhanced one.
+      image_studio: item.image_studio ?? null,
       image_png: item.image_png ?? null,
       image_url: item.image_url ?? '',
     });
