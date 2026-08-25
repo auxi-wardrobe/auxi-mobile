@@ -235,13 +235,14 @@ export const button = {
   labelFont: FONT.medium, // Inter-Medium === `interButton`
 } as const;
 
+// Geometry of the app's bottom-sheet panel. Edge-to-edge by design: the sheet
+// spans the FULL screen width and is docked to the bottom edge, so only the
+// top corners are rounded. There is deliberately no gutter/side-margin token —
+// a sheet narrower than the screen is off-system (docs/bottom-sheets.md).
 export const sheetCardSpec = {
-  // OutfitLimitSheet.sheet — radius 16, pad 16, marginBottom spacing.s (8),
-  // horizontal gutter 8/side (PR SHEET_WIDTH = screenWidth − 16).
-  radius: radius['2xl'], // 16
-  pad: space.s4, // 16 — both axes
-  marginBottom: space.s2, // 8 (=== theme.spacing.s)
-  gutter: space.s2, // 8 each side === 16px total
+  // OutfitLimitSheet.sheet / ContextualBottomSheet.sheet — top radius 16, pad 16.
+  radius: radius['2xl'], // 16 — top corners only
+  pad: space.s4, // 16 — both axes (bottom pad adds the safe-area inset)
 } as const;
 
 export const mTokens = {

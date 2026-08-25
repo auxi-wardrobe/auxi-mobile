@@ -711,8 +711,17 @@ export const WardrobeScreen = () => {
       <AiConsentDialog {...aiConsentDialogProps} />
 
       {/* AU-442 soft-paywall MVP — free-tier wardrobe-item limit sheet,
-          gated by useUsageLimitGate inside useAddWardrobeItem. */}
-      <UsageLimitSheet {...usageLimitSheetProps} />
+          gated by useUsageLimitGate inside useAddWardrobeItem.
+          Held back while `uploading`: the gate's /me/usage check can resolve
+          before the upload teardown, and this sheet now rides the shared
+          ContextualBottomSheet (an RN Modal, like PreparingOverlay below) —
+          presenting it over that overlay would let the overlay's dismissal
+          take the sheet down with it on iOS. It opens the moment the overlay
+          is gone. */}
+      <UsageLimitSheet
+        {...usageLimitSheetProps}
+        visible={usageLimitSheetProps.visible && !uploading}
+      />
 
       <PreparingOverlay visible={uploading} photoUri={uploadingPhotoUri} />
 

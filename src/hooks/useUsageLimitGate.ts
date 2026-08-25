@@ -39,9 +39,10 @@ export interface UsageLimitGate {
   /** Hides the sheet. */
   dismiss: () => void;
   /**
-   * Hides the sheet, then invokes `after` once `MBottomSheet`'s close
-   * animation has settled (`motion.duration.fast` — the exact duration
-   * `useOverlayProgress` runs its exit timing at). Use this instead of
+   * Hides the sheet, then invokes `after` once `ContextualBottomSheet`'s close
+   * animation has settled (`motion.duration.normal` — the exact duration the
+   * shell runs its exit timing at; it was `duration.fast` while the sheet rode
+   * the DS `MBottomSheet`). Use this instead of
    * `dismiss()` immediately followed by `navigation.navigate()` — firing the
    * push while the sheet is still mid-close leaves its native-stack
    * transition snapshot mid-animation, which surfaces as a stray ghost card
@@ -72,7 +73,7 @@ export const useUsageLimitGate = (): UsageLimitGate => {
 
   const dismissThenNavigate = useCallback((after: () => void) => {
     setVisible(false);
-    setTimeout(after, motion.duration.fast);
+    setTimeout(after, motion.duration.normal);
   }, []);
 
   return {

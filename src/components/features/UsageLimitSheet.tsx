@@ -4,10 +4,17 @@
  * by `feature` (`see_on_me` / `wardrobe_items` / `enhance_photo`), matching
  * Figma nodes `5078:13668` / `5078:13983` / `5078:14024`.
  *
- * Presentational bottom-sheet on the design-system `MBottomSheet` primitive
- * (scrim + motion + swipe-to-dismiss + tokens on-system), mirroring
- * `AiLimitSheet`'s shape but with TWO CTAs — primary "Upgrade to Macgie+"
- * (`onUpgrade`) and secondary text/pill "Maybe later" (`onDismiss`).
+ * Shell: the shared `ContextualBottomSheet` — the app's ONE full-width
+ * bottom-sheet shell (edge-to-edge panel, top-corners-only radius, scrim,
+ * "Refine suggestions" reveal motion, swipe-to-dismiss, reduce-motion,
+ * safe-area). It used to ride the DS `MBottomSheet` floating card, which
+ * rendered 8px narrower than the screen on each side — off-Figma (see
+ * docs/qa-findings/2026-08-14-figma-audit-au-442-paywall-mvp.md) and
+ * inconsistent with every other sheet in the app. This file supplies only the
+ * content; nothing here may narrow the panel (see docs/bottom-sheets.md).
+ *
+ * Content: mascot + title + body over TWO CTAs — primary "Upgrade to Macgie+"
+ * (`onUpgrade`) and secondary text "Maybe later" (`onDismiss`).
  *
  * Mascot: reuses the existing `MacgieFace` mascot as the illustration
  * (locked decision, AU-442 extraction §Locked decisions #1) — no new "sad
@@ -23,8 +30,9 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { MBottomSheet, MButton } from '../design-system/lib';
+import { MButton } from '../design-system/lib';
 import { role, space } from '../design-system/m-tokens';
+import { ContextualBottomSheet } from './ContextualBottomSheet';
 import { MacgieFace } from '../macgie';
 import { theme } from '../../theme/theme';
 import type { UsageLimitFeature } from '../../hooks/useUsageLimitGate';
@@ -71,7 +79,11 @@ export const UsageLimitSheet: React.FC<UsageLimitSheetProps> = ({
   const { t } = useTranslation();
 
   return (
-    <MBottomSheet visible={visible} onDismiss={onDismiss} testID={testID}>
+    <ContextualBottomSheet
+      visible={visible}
+      onDismiss={onDismiss}
+      testID={testID}
+    >
       <View style={styles.content}>
         <MacgieFace size={64} />
         <Text style={styles.title}>{t(`usageLimit.${feature}_title`)}</Text>
@@ -97,16 +109,16 @@ export const UsageLimitSheet: React.FC<UsageLimitSheetProps> = ({
           </MButton>
         </View>
       </View>
-    </MBottomSheet>
+    </ContextualBottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
+  // Centred column. Horizontal padding + top padding + home-indicator inset
+  // all come from the ContextualBottomSheet shell — adding any here (or a
+  // width / margin / maxWidth) would inset the content twice.
   content: {
     alignItems: 'center',
-    paddingHorizontal: space.s2,
-    paddingTop: space.s2,
-    paddingBottom: space.s3,
     gap: space.s2,
   },
   title: {
@@ -131,10 +143,13 @@ const styles = StyleSheet.create({
     ...theme.typography.aliases.interSemiboldXsSm,
     color: role.ink2,
   },
+  // Button group: full-bleed CTAs, stacked. `alignSelf: 'stretch'` + the
+  // default cross-axis stretch make each button span the sheet's content
+  // width — the same treatment as every other sheet's CTAs (see
+  // DiscardGenerationDialog / RemoveFavouriteDialog).
   actions: {
     marginTop: space.s2,
     alignSelf: 'stretch',
-    alignItems: 'center',
     // Figma "button group" gap is 12px, not the 8px `space.s2` this used to
     // render.
     gap: space.s3,

@@ -14,6 +14,17 @@
  *
  * Swipe-to-dismiss: drag the sheet downward — dismiss if velocityY > 500 or
  * translationY > 80, otherwise spring back to resting position.
+ *
+ * WIDTH CONTRACT — a bottom sheet is ALWAYS edge-to-edge. The panel is docked
+ * flush to the bottom of the screen at full width, top corners rounded only,
+ * with the home-indicator inset added to its bottom padding. It used to render
+ * as a floating card inset 8px per side (`docked` opted into the full-width
+ * look); that variant is gone — no bottom sheet in this app may be narrower
+ * than the screen. See docs/bottom-sheets.md.
+ *
+ * For a sheet on a real screen prefer `ContextualBottomSheet` (the shared
+ * shell: RN Modal + background-scale reveal). This primitive stays for
+ * inline/in-container overlays such as the design-system gallery stages.
  */
 import React, { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -45,12 +56,6 @@ export interface MBottomSheetProps {
   onDismiss: () => void;
   children?: React.ReactNode;
   testID?: string;
-  /**
-   * Dock the sheet flush to the bottom edge (full-width, rounded top corners
-   * only, safe-area bottom padding) instead of the default floating card. Use
-   * for primary bottom-anchored menus like the wardrobe switcher.
-   */
-  docked?: boolean;
 }
 
 export const MBottomSheet: React.FC<MBottomSheetProps> = ({
@@ -58,7 +63,6 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
   onDismiss,
   children,
   testID,
-  docked = false,
 }) => {
   const insets = useSafeAreaInsets();
   const { progress, mounted } = useOverlayProgress(visible);
@@ -116,8 +120,7 @@ export const MBottomSheet: React.FC<MBottomSheetProps> = ({
           <Animated.View
             style={[
               styles.sheet,
-              docked && styles.sheetDocked,
-              docked && { paddingBottom: sheetCardSpec.pad + insets.bottom },
+              { paddingBottom: sheetCardSpec.pad + insets.bottom },
               shadow.sheetCard,
               { transform: [{ translateY }] },
             ]}
@@ -278,25 +281,18 @@ const styles = StyleSheet.create({
     backgroundColor: role.scrim, // rgba(0,0,0,0.45) — PR #138 / Figma scrim
   },
   sheetAnchor: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
-  // Floating-card sheet — PR #138 house pattern (OutfitLimitSheet.sheet):
-  // all-corner radius 16, padding 16 both axes, 8px gutter + 8px bottom margin.
+  // Edge-to-edge panel docked to the bottom edge — full screen width, top
+  // corners rounded only (matches ContextualBottomSheet / OutfitLimitSheet).
+  // NEVER add width / maxWidth / horizontal margin here: a bottom sheet
+  // narrower than the screen is off-system (docs/bottom-sheets.md).
   sheet: {
     backgroundColor: role.surface2,
-    borderRadius: sheetCardSpec.radius, // 16, all corners
-    paddingHorizontal: sheetCardSpec.pad, // 16
-    paddingVertical: sheetCardSpec.pad, // 16
-    marginHorizontal: sheetCardSpec.gutter, // 8 each side
-    marginBottom: sheetCardSpec.marginBottom, // 8 (=== theme.spacing.s)
-    overflow: 'hidden',
-  },
-  // Docked variant — flush to the bottom edge, full width, top corners only.
-  sheetDocked: {
-    marginHorizontal: 0,
-    marginBottom: 0,
-    borderTopLeftRadius: sheetCardSpec.radius,
+    width: '100%',
+    borderTopLeftRadius: sheetCardSpec.radius, // 16, top corners only
     borderTopRightRadius: sheetCardSpec.radius,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+    paddingHorizontal: sheetCardSpec.pad, // 16
+    paddingTop: sheetCardSpec.pad, // 16 (bottom pad adds the safe-area inset)
+    overflow: 'hidden',
   },
   grab: {
     width: 36,

@@ -40,6 +40,14 @@ rule: `.claude/rules/web-preview-on-system-required.md`.
   legacy ones exist — don't add more).
 - SVG icons: `import IconFoo from '../assets/icons/icon_foo.svg'` then render
   `<IconFoo width={20} height={20} />`. Don't use `<Image>` for SVG.
+- **Bottom sheets are always full-screen-width.** Build them on
+  `components/features/ContextualBottomSheet` (the shared shell: edge-to-edge
+  panel, top-corners-only radius, scrim, reveal motion, swipe-to-dismiss,
+  safe-area) and supply content only — never a `width`/`maxWidth`/horizontal
+  margin on the panel, and no second layer of horizontal padding. A sheet
+  narrower than the screen fails
+  `src/components/__tests__/bottom-sheet-full-width.test.ts`. Details:
+  `docs/bottom-sheets.md`.
 - **`testID` on every interactive element**: every `Pressable`, `TouchableOpacity`,
   `TextInput`, swipeable, switch, segmented control, etc. MUST carry a
   `testID`. Naming: `<feature>-<element>-<state-or-purpose>` (e.g.,
