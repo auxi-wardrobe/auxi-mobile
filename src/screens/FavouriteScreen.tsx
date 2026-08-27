@@ -273,9 +273,14 @@ export const FavouriteScreen: React.FC = () => {
     ? outfitHashOf(activeFavourite)
     : undefined;
   const activeIsGenerating = useIsOutfitGenerating(activeOutfitHash);
-  // The snapped outfit already has an AI photo on its card → the bar's CTA is
-  // "Retake" (regenerate), not "See on me" (generate).
-  const activeTryOnUrl = activeFavourite ? tryOnUrlFor(activeFavourite) : null;
+  // The snapped outfit's card is SHOWING its AI photo → the bar's CTA is
+  // "Retake" (regenerate) rather than "See on me". Grid view only: the collage
+  // view keeps its old design and behaviour (CEO 2026-08-27), so there the CTA
+  // stays "See on me" and opens the saved photo through the usual flow.
+  const activeShowsTryOn =
+    view === 'grid' && activeFavourite
+      ? tryOnUrlFor(activeFavourite) !== null
+      : false;
 
   const handleSelfVisualization = (favourite: Favourite, retake = false) => {
     track('favourite_try_on_tapped', { favorite_id: favourite.id, retake });
@@ -292,11 +297,12 @@ export const FavouriteScreen: React.FC = () => {
       stylingNote: favourite.outfit_context?.reasoning_human ?? '',
     };
     if (retake) {
-      // The card already shows this outfit's photo, so the reuse-confirm gate
-      // and the cached-result preview would both be a detour: go straight into
-      // the capture flow, exactly where the preview's own Retake lands. The
-      // stored photo is left in place until a new render succeeds, so backing
-      // out keeps the card's current image.
+      // The card is already showing this outfit's photo, so the reuse-confirm
+      // gate and the cached-result preview would both be a detour: go straight
+      // into the capture flow, exactly where the preview's own Retake lands.
+      // The stored photo is left in place until a new render succeeds, so
+      // backing out keeps the card's current image. (Not reachable from the
+      // collage view, which keeps the old "See on me opens the photo" flow.)
       navigation.navigate('SeeThisOnMe', { outfit, reuseAction: 'capture' });
       return;
     }
@@ -458,9 +464,9 @@ export const FavouriteScreen: React.FC = () => {
           onRemove={() => setPendingRemovalId(activeFavourite.id)}
           onSchedule={() => handleSchedule(activeFavourite)}
           onSelfVisualization={() =>
-            handleSelfVisualization(activeFavourite, activeTryOnUrl !== null)
+            handleSelfVisualization(activeFavourite, activeShowsTryOn)
           }
-          hasTryOnResult={activeTryOnUrl !== null}
+          hasTryOnResult={activeShowsTryOn}
           selfVisualizationLoading={activeIsGenerating}
         />
       ) : null}

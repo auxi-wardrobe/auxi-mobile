@@ -402,13 +402,26 @@ test('the try-on photo carries the shared thumbs feedback row', () => {
   ).toBeGreaterThan(0);
 });
 
-test('the try-on hero also replaces the collage view (rail needs the width)', () => {
-  const r = renderHero({ view: 'collage' });
+// The collage view keeps its old design and behaviour (CEO 2026-08-27): even
+// with a saved photo it renders the collage, and the photo is opened from the
+// action bar as before — only the grid card leads with it.
+test('the collage view is unchanged by a saved try-on photo', () => {
+  let r!: TestRenderer.ReactTestRenderer;
+  act(() => {
+    r = TestRenderer.create(
+      <FavouriteOutfitCard
+        favourite={heroFav}
+        view="collage"
+        tryOnImageUrl="https://cdn/try-on.jpg"
+        outfitHash="h1"
+      />,
+    );
+  });
   expect(
-    r.root.findAll(n => n.props?.testID === 'favourite-card-fav1-collage'),
+    r.root.findAll(n => n.props?.testID === 'favourite-card-fav1-try-on-hero'),
   ).toHaveLength(0);
   expect(
-    r.root.findAll(n => n.props?.testID === 'favourite-card-fav1-try-on-hero')
+    r.root.findAll(n => n.props?.testID === 'favourite-card-fav1-collage')
       .length,
   ).toBeGreaterThan(0);
 });

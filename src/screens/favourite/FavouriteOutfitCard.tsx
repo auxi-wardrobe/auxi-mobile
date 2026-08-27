@@ -173,10 +173,12 @@ const Tile: React.FC<{
 };
 
 // Try-on hero (new Favourite layout, CEO 2026-08-27): once the user has run
-// "See on me" on a saved outfit, the card LEADS with that AI photo instead of
-// making them re-enter the flow to see it — photo on the left, the outfit's
-// own garment tiles in a rail on the right. Cards with no generated photo keep
-// the existing full-width tile grid, unchanged.
+// "See on me" on a saved outfit, its GRID card LEADS with that AI photo
+// instead of making them re-enter the flow to see it — photo on the left, the
+// outfit's own garment tiles in a rail on the right. Cards with no generated
+// photo keep the existing full-width tile grid, and the COLLAGE view keeps its
+// old design and behaviour throughout (there the photo is opened from the
+// action bar, as before).
 //
 // SIZING. The photo takes 2/3 of the row and locks the try-on render's native
 // 9:16 (the same ratio the See-on-me preview fits to), so it claims the right
@@ -437,10 +439,11 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
         </View>
       ) : null}
 
-      {tryOnImageUrl ? (
-        // Generated "See on me" photo exists → lead with it (both views: the
-        // collage arrangement needs the full card width to read, so a try-on
-        // card shows its garments in the rail instead).
+      {tryOnImageUrl && view !== 'collage' ? (
+        // Grid view only: a generated "See on me" photo exists → lead with it.
+        // COLLAGE VIEW IS UNCHANGED (CEO 2026-08-27) — it keeps the old
+        // arrangement and the old behaviour, where the saved photo is opened
+        // from the action bar's "See on me" instead of shown on the card.
         <TryOnHero
           imageUrl={tryOnImageUrl}
           items={items}
