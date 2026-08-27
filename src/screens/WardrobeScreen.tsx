@@ -48,6 +48,7 @@ import {
 } from '../services/analytics';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { UsageLimitSheet } from '../components/features/UsageLimitSheet';
+import { DefaultItemsUnlockedSheet } from '../components/features/DefaultItemsUnlockedSheet';
 import { useCapsules } from './capsule/hooks';
 import { WardrobeSwitcherSheet } from './wardrobe/WardrobeSwitcherSheet';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
@@ -462,6 +463,7 @@ export const WardrobeScreen = () => {
     handleTakePhoto,
     aiConsentDialogProps,
     usageLimitSheetProps,
+    defaultItemsUnlockedSheetProps,
   } = useAddWardrobeItem({
     selectedTab: uploadCategoryHint(selectedCategories),
     user,
@@ -721,6 +723,16 @@ export const WardrobeScreen = () => {
       <UsageLimitSheet
         {...usageLimitSheetProps}
         visible={usageLimitSheetProps.visible && !uploading}
+      />
+
+      {/* "You can now remove Macgie's default items" milestone, gated by
+          useDefaultItemsUnlockedGate inside useAddWardrobeItem. Held back
+          while `uploading` for the same reason as UsageLimitSheet above — it
+          rides the same ContextualBottomSheet modal and must not present over
+          PreparingOverlay. */}
+      <DefaultItemsUnlockedSheet
+        {...defaultItemsUnlockedSheetProps}
+        visible={defaultItemsUnlockedSheetProps.visible && !uploading}
       />
 
       <PreparingOverlay visible={uploading} photoUri={uploadingPhotoUri} />

@@ -436,6 +436,13 @@ Two deltas from the original spec:
 
 Note: these still don't flow in production until `SHOW_UPGRADE_PAYWALL` is flipped AND a RevenueCat key is provisioned (the SDK stays unconfigured otherwise, so purchases can't start).
 
+
+### 6.10 Default-item removal — no `is_default_item` property on delete
+
+`wardrobe_item_deleted` (§5.4) does not distinguish removing one of Macgie's default items from removing a user's own upload. The screen knows (`isDefaultItem`, `ItemDetailScreen.tsx`), so the property is a one-line add — deliberately deferred because the existing `human_readable_id` `USR_` prefix already segments it server-side, and shipping a redundant property is worse than shipping none.
+
+**Re-wire condition:** the first time someone needs default-vs-own removal rates in a Mixpanel breakdown without a server-side join. Add `is_default_item` (bool) to the `wardrobe_item_deleted` properties in `ItemDetailScreen.tsx`'s delete handler.
+
 ## 7. Consent (EU/CA) — mechanism DONE, UI PENDING ⚠️
 
 `src/services/analytics.ts` exposes:
@@ -502,6 +509,8 @@ Note: these still don't flow in production until `SHOW_UPGRADE_PAYWALL` is flipp
 - **Enhance funnel (on-demand, §5.21):** `enhance_started` → `enhance_completed` → `enhance_applied`. Drop between `started` and `completed` = failure rate — break `enhance_failed` down by `reason` (`timeout` specifically tests the "under 10 seconds" promise). Drop between `completed` and `applied` splits into `enhance_discarded` (user rejected the result — a quality signal on the studio-shot model) vs silent exits (backed out of the preview). `enhance_apply_failed` between `completed` and `applied` is the save-error branch. Keep separate from the `beautify_*` upload-time funnel — same backend, different intent.
 
 - **Usage-limit soft-paywall demand funnel (AU-442, §5.26):** `usage_limit_gate_shown` → `usage_limit_upgrade_tapped` → `notify_me_viewed` → `notify_me_tapped`. This is the demand signal the ticket exists to produce — how many free users who hit a limit actually want the upgrade, before any real paywall/purchase flow exists for this surface. `usage_limit_gate_dismissed` is the mutually-exclusive "not now" branch off `usage_limit_gate_shown` (`dismissed + upgrade_tapped` should ≈ `gate_shown`, modulo users who background the app). Segment every step by `feature` (`see_on_me` / `wardrobe_items` / `enhance_photo`) to see which free-tier limit converts best into upgrade intent — informs which threshold to prioritize when the real paywall ships for these surfaces. `notify_me_tapped` ÷ `notify_me_viewed` is the "coming soon" screen's own conversion, independent of the upstream gate.
+
+- **Wardrobe-ownership milestone (§5.27):** `add_item_upload_succeeded` (cumulative) → `default_items_unlock_celebrated` → `default_items_unlock_dismissed`. This is the "user's wardrobe is now genuinely theirs" moment — the count of `default_items_unlock_celebrated` over a cohort is how many users reach a self-sufficient wardrobe, and time-to-event from `sign_up_completed` is how long it takes them. Because it fires once per user ever, it doubles as an activation-depth marker: segment retention and `outfit_favorited` rates by whether a user has celebrated to test the hypothesis that a real (non-default) wardrobe drives the value moment. `default_items_unlock_dismissed` ÷ `default_items_unlock_celebrated` should be ≈1 — a persistent gap means users are backgrounding the app on the milestone sheet.
 
 Common breakdown dimensions: `method`, `provider`, `chip_type`, `source`, `category`, `direction`, `option`/`bucket`, `frequency`/`period`, `view`, `type`. Super properties (`platform`, `app_environment`) are available globally.
 
@@ -604,3 +613,20 @@ The free-tier "you've hit the limit" demand-signal funnel, checked after a succe
 > Session memory: `usageLimit.ts` keeps a module-scope `Set<UsageLimitFeature>` of features already shown this app session (mirrors `aiLimitStore`'s in-memory-only philosophy) — a feature shows the sheet **at most once per session**. Cleared on logout (`AuthContext.tsx`'s identity effect calls `clearUsageLimitSession()`, alongside the existing `setTryOnResultUser(null)` / `resetV05Session()` precedent) so a different account signing in on the same device session isn't wrongly suppressed by the previous user's dismissed sheets.
 >
 > Kill-switch: `PAYWALL_MVP_ENABLED` (`usageLimit.ts`) — same hardcoded-const pattern as `SHOW_UPGRADE_PAYWALL` (`SettingsScreen.tsx`). Premium users (`is_premium: true`) never trigger a request at all (`isFreeUser` guard runs before the fetch).
+
+### 5.27 Default-item removal unlock
+
+Macgie seeds every new wardrobe with default (starter catalog) items so the suggestion engine has signal on day one. They are immutable until the user has uploaded enough items of their **own** — the backend owns the threshold (currently 12) and reports it via `GET /api/wardrobe/default-items/removal-status`. The moment a user crosses it we congratulate them **once** and tell them the defaults can go.
+
+Guard logic lives entirely in `src/services/defaultItemsMilestone.ts`'s `maybeCelebrateDefaultItemsUnlocked` — same shape as `usageLimit.ts`: fired fire-and-forget immediately AFTER `add_item_upload_succeeded`, never blocking the success UI, failing open silently on any network/storage error (no event fires). Once-per-user is persisted in AsyncStorage (`default_items_unlock_celebrated_{userId}`), not session memory, because the wardrobe can dip back under the threshold on a delete and cross it again.
+
+**PII: none — only integer counts.** `own_item_count` / `threshold` are wardrobe sizes, not identifiers.
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `default_items_unlock_celebrated` | `GET /wardrobe/default-items/removal-status` resolves `unlocked: true` for a user who hasn't been congratulated yet — fires once per user, ever | `src/services/defaultItemsMilestone.ts` `maybeCelebrateDefaultItemsUnlocked`; called from `useAddWardrobeItem.ts` (after `add_item_upload_succeeded`) | `own_item_count` (int), `threshold` (int) |
+| `default_items_unlock_dismissed` | `DefaultItemsUnlockedSheet` dismissed ("Got it" or backdrop) | `useAddWardrobeItem.ts` (`defaultItemsUnlockedSheetProps.onDismiss`) | — |
+
+> Not an impression/conversion pair: `default_items_unlock_celebrated` IS the impression (the sheet always follows it), and dismiss is its only exit — the sheet has no primary CTA on the wardrobe grid, since the grid is already the screen behind it. The pair exists so a celebrated-but-never-dismissed gap flags users who backgrounded the app on the milestone.
+>
+> The removal gate itself (the ItemDetail Trash button on a default item) is **not** separately tracked — a successful removal already fires `wardrobe_item_deleted` (§5.4). Segment that event by items whose `human_readable_id` starts `USR_` to isolate default-item removals; see §6.10 for why a dedicated property isn't wired.
