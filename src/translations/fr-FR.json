@@ -833,6 +833,8 @@
       "empty_a11y": "Aucune tenue enregistrée pour le moment",
       "common_badge": "Macgie",
       "view_item_a11y": "Voir les détails de l’article",
+      "retake": "Reprendre",
+      "try_on_items_a11y": "Voir les articles de cette tenue",
       "self_visualization": "Auto-visualisation",
       "add_to_schedule": "Ajouter au planning",
       "remove_a11y": "Retirer cette tenue des favoris",

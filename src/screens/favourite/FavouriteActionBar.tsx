@@ -21,6 +21,13 @@ type Props = {
   /** Open the "See this on me" flow for the currently-viewed outfit. */
   onSelfVisualization: () => void;
   /**
+   * True when the viewed outfit ALREADY has a generated "See on me" photo — the
+   * card is showing it, so the CTA reads "Retake" (regenerate) instead of
+   * "See on me" (generate). Same handler either way; only the label and the
+   * testID suffix change.
+   */
+  hasTryOnResult?: boolean;
+  /**
    * True while the viewed outfit's AI "See on me" photo is still generating in
    * the background (the user launched it then left the loading screen). Puts the
    * Self-visualization button in its loading state so they can't kick off a
@@ -38,15 +45,23 @@ type Props = {
 //
 // The "add to schedule" button (separate thread) slots between ⊖ remove and
 // "Self visualization"; the row is laid out left→right to leave that gap.
+//
+// New Favourite layout (CEO 2026-08-27): when the viewed outfit already has a
+// generated AI photo (the card is showing it), the right-hand CTA flips to
+// "Retake" — the action is still self-visualization, it just re-runs it.
 export const FavouriteActionBar: React.FC<Props> = ({
   onRemove,
   onSchedule,
   onSelfVisualization,
+  hasTryOnResult = false,
   selfVisualizationLoading,
   testID,
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const selfVisualizationLabel = hasTryOnResult
+    ? t('favourite.retake')
+    : t('favourite.self_visualization');
 
   return (
     <View
@@ -116,13 +131,17 @@ export const FavouriteActionBar: React.FC<Props> = ({
             gradient fill). */}
         <MButton
           variant="secondary"
-          testID="favourite-self-visualization-active"
-          accessibilityLabel={t('favourite.self_visualization')}
+          testID={
+            hasTryOnResult
+              ? 'favourite-self-visualization-active-retake'
+              : 'favourite-self-visualization-active'
+          }
+          accessibilityLabel={selfVisualizationLabel}
           rightIcon={IconSeeOnMe}
           loading={selfVisualizationLoading}
           onPress={onSelfVisualization}
         >
-          {t('favourite.self_visualization')}
+          {selfVisualizationLabel}
         </MButton>
       </View>
     </View>
