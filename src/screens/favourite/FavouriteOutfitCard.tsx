@@ -1,11 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import {
   LayoutChangeEvent,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   type ImageSourcePropType,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +25,7 @@ import { Favourite, FavouriteItem } from '../../services/favouriteService';
 import { TileStatusBadge } from '../../components/features/TileStatusBadge';
 import { resolveTileStatus } from '../../utils/tile-status';
 import { ITEM_HIT_AREA_RATIO } from '../../components/features/canvas-hit-area';
+import { TryOnFeedbackRow } from '../see-this-on-me/TryOnFeedbackRow';
 
 type Props = {
   favourite: Favourite;
@@ -30,6 +34,15 @@ type Props = {
   // title block above the top divider (Figma `3539:22168`). The screen formats
   // it from `created_at` so the date repeats on every saved outfit.
   dateLabel?: string;
+  /**
+   * The saved "See on me" photo for THIS outfit (`tryOnResultStore`), when the
+   * user already generated one. Present ⇒ the card leads with the try-on hero
+   * (photo + scrollable item rail) instead of the plain tile grid; absent ⇒ the
+   * card renders exactly as before.
+   */
+  tryOnImageUrl?: string | null;
+  /** Outfit hash the try-on result is keyed on — passed to the feedback vote. */
+  outfitHash?: string;
   /** Open an item's detail. Omit to keep tiles non-interactive. */
   onItemPress?: (itemId: string) => void;
 };
@@ -127,14 +140,17 @@ const Tile: React.FC<{
   item: FavouriteItem;
   testIDPrefix: string;
   onItemPress?: (itemId: string) => void;
-}> = ({ item, testIDPrefix, onItemPress }) => {
+  /** Overrides the grid tile's `flex: 1` sizing (the try-on rail sizes tiles to
+   *  the rail width instead of splitting a row). The 3:4 aspect is unchanged. */
+  style?: StyleProp<ViewStyle>;
+}> = ({ item, testIDPrefix, onItemPress, style }) => {
   const { t } = useTranslation();
   const imageUrl = resolveItemImage(item);
   const status = resolveTileStatus(item);
 
   return (
     <TouchableOpacity
-      style={styles.tile}
+      style={[styles.tile, style]}
       testID={`${testIDPrefix}-tile-${item.id}`}
       accessibilityRole="button"
       accessibilityLabel={t('favourite.view_item_a11y')}
@@ -153,6 +169,91 @@ const Tile: React.FC<{
       )}
       {status ? <TileStatusBadge status={status} itemId={item.id} /> : null}
     </TouchableOpacity>
+  );
+};
+
+// Try-on hero (new Favourite layout, CEO 2026-08-27): once the user has run
+// "See on me" on a saved outfit, its GRID card LEADS with that AI photo
+// instead of making them re-enter the flow to see it — photo on the left, the
+// outfit's own garment tiles in a rail on the right. Cards with no generated
+// photo keep the existing full-width tile grid, and the COLLAGE view keeps its
+// old design and behaviour throughout (there the photo is opened from the
+// action bar, as before).
+//
+// SIZING. The photo takes 2/3 of the row and locks the try-on render's native
+// 9:16 (the same ratio the See-on-me preview fits to), so it claims the right
+// height on the FIRST layout pass — no measure-then-grow jump that would shift
+// the list and its snap offsets. The rail takes the remaining third.
+//
+// RAIL. Tiles keep the grid's 3:4 aspect at rail width — they are never
+// squashed to fit — so beyond ~2–3 garments the stack is taller than the
+// photo. That is the design: the rail is a nested vertical ScrollView bounded
+// to the PHOTO's height and the user scrolls WITHIN it to reach the rest (CEO
+// 2026-08-27). That bound is the photo's own measured height (`onLayout`), the
+// one number flex + aspectRatio can't hand us as a style; the rail mounts on
+// the pass after it, since a ScrollView with no height cap would size to its
+// content and stretch the row. `nestedScrollEnabled` keeps the inner scroll
+// working on Android inside the screen's own snap-scrolling list.
+const TRY_ON_ASPECT = 9 / 16; // width / height of the rendered try-on photo
+
+const TryOnHero: React.FC<{
+  imageUrl: string;
+  items: FavouriteItem[];
+  outfitHash: string;
+  testIDPrefix: string;
+  onItemPress?: (itemId: string) => void;
+}> = ({ imageUrl, items, outfitHash, testIDPrefix, onItemPress }) => {
+  const { t } = useTranslation();
+  const [photoHeight, setPhotoHeight] = useState(0);
+
+  const handlePhotoLayout = (e: LayoutChangeEvent) => {
+    const h = e.nativeEvent.layout.height;
+    // Re-measure only on a real height change (onLayout can fire repeatedly).
+    setPhotoHeight(prev => (Math.abs(prev - h) > 0.5 ? h : prev));
+  };
+
+  return (
+    <View style={styles.heroRow} testID={`${testIDPrefix}-try-on-hero`}>
+      <View
+        style={styles.heroPhoto}
+        testID={`${testIDPrefix}-try-on-photo-frame`}
+        onLayout={handlePhotoLayout}
+      >
+        <LoadableRemoteImage
+          uri={imageUrl}
+          resizeMode="cover"
+          imageTestID={`${testIDPrefix}-try-on-photo`}
+          skeletonTestID={`${testIDPrefix}-try-on-photo-skeleton`}
+        />
+        {/* Same thumbs control as the See-on-me result screen. */}
+        <TryOnFeedbackRow
+          testIDStem={`${testIDPrefix}-feedback`}
+          resultUrl={imageUrl}
+          outfitHash={outfitHash}
+        />
+      </View>
+
+      {photoHeight > 0 ? (
+        <ScrollView
+          testID={`${testIDPrefix}-try-on-rail`}
+          style={[styles.heroRail, { height: photoHeight }]}
+          contentContainerStyle={styles.heroRailContent}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+          accessibilityLabel={t('favourite.try_on_items_a11y')}
+        >
+          {items.map(item => (
+            <Tile
+              key={`${testIDPrefix}-rail-${item.id}`}
+              item={item}
+              testIDPrefix={testIDPrefix}
+              onItemPress={onItemPress}
+              style={styles.heroRailTile}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
+    </View>
   );
 };
 
@@ -277,6 +378,8 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
   favourite,
   view,
   dateLabel,
+  tryOnImageUrl,
+  outfitHash,
   onItemPress,
 }) => {
   const { t } = useTranslation();
@@ -336,7 +439,19 @@ export const FavouriteOutfitCard: React.FC<Props> = ({
         </View>
       ) : null}
 
-      {view === 'collage' ? (
+      {tryOnImageUrl && view !== 'collage' ? (
+        // Grid view only: a generated "See on me" photo exists → lead with it.
+        // COLLAGE VIEW IS UNCHANGED (CEO 2026-08-27) — it keeps the old
+        // arrangement and the old behaviour, where the saved photo is opened
+        // from the action bar's "See on me" instead of shown on the card.
+        <TryOnHero
+          imageUrl={tryOnImageUrl}
+          items={items}
+          outfitHash={outfitHash ?? ''}
+          testIDPrefix={testIDPrefix}
+          onItemPress={onItemPress}
+        />
+      ) : view === 'collage' ? (
         <CollageView
           items={items}
           testIDPrefix={testIDPrefix}
@@ -422,6 +537,37 @@ const styles = StyleSheet.create({
   },
   grid: {
     gap: theme.spacing.xs,
+  },
+  // Try-on hero: photo left, scrollable garment rail right (see `TryOnHero`).
+  // `flex-start` so the rail can be shorter than the photo (it never stretches
+  // the row) while the photo's aspect ratio sets the row's height.
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.s,
+  },
+  // 2/3 of the row (rail takes the remaining 1/3, Figma: 280 / 423), locked to
+  // the try-on render's 9:16.
+  heroPhoto: {
+    flexGrow: 2,
+    flexBasis: 0,
+    aspectRatio: TRY_ON_ASPECT,
+    borderRadius: theme.borderRadius.figmaTile,
+    backgroundColor: theme.colors.figmaCardSurface,
+    overflow: 'hidden',
+  },
+  heroRail: {
+    flexGrow: 1,
+    flexBasis: 0,
+  },
+  heroRailContent: {
+    gap: theme.spacing.xs,
+  },
+  // Rail tiles drop the grid's `flex: 1` (they fill the rail's width) but keep
+  // the same 3:4 aspect — the overflow is what the rail scrolls through.
+  heroRailTile: {
+    flex: undefined,
+    width: '100%',
   },
   // Collage surface — mirrors `OutfitCanvasSurface`: cream tile, 12px radius,
   // overflow hidden so items hand-placed to bleed past the edge are clipped

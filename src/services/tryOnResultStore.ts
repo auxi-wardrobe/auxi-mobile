@@ -38,6 +38,41 @@ interface StoredResult {
 let activeUserKey: string | null = null;
 let results = new Map<string, StoredResult>();
 
+// ── React binding ──────────────────────────────────────────────────────────
+// List screens (Favourite) need to RE-RENDER when a render finishes in the
+// background, not just read the map once on mount: the moment a try-on photo
+// lands for a saved outfit, that outfit's card must swap to the photo layout.
+// So the module keeps an immutable `hash → url` snapshot that is rebuilt on
+// every mutation, plus a listener set — the `useSyncExternalStore` contract
+// (same shape as `try-on-generation-store`). Readers that only need a one-shot
+// lookup keep using the synchronous `getTryOnResult`.
+type TryOnResultSnapshot = ReadonlyMap<string, string>;
+
+let snapshot: TryOnResultSnapshot = new Map();
+const listeners = new Set<() => void>();
+
+const publish = (): void => {
+  snapshot = new Map(
+    Array.from(results.values(), entry => [entry.hash, entry.url]),
+  );
+  listeners.forEach(listener => listener());
+};
+
+/** Subscribe to result-cache changes (record / clear / user switch). */
+export const subscribeTryOnResults = (listener: () => void): (() => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+/**
+ * Immutable `outfitHash → result URL` view of the cache. Identity changes on
+ * every mutation and ONLY then, so it is a valid `useSyncExternalStore`
+ * snapshot and a safe `useMemo` dependency.
+ */
+export const getTryOnResultsSnapshot = (): TryOnResultSnapshot => snapshot;
+
 const storageKeyFor = (userId: string): string => `${KEY_PREFIX}${userId}`;
 
 const isStoredResultArray = (value: unknown): value is StoredResult[] =>
@@ -79,6 +114,7 @@ export const setTryOnResultUser = async (
   }
   activeUserKey = nextKey;
   results = new Map();
+  publish();
   if (!nextKey) {
     return;
   }
@@ -97,6 +133,9 @@ export const setTryOnResultUser = async (
     // Corrupt/unreadable store → behave as empty rather than crashing the flow.
     results = new Map();
   }
+  // Hydration is async: subscribers mounted before it resolved (the Favourite
+  // list on a cold start) must be told the cache filled in.
+  publish();
 };
 
 /**
@@ -123,6 +162,7 @@ export const recordTryOnResult = (
     }
     results.delete(oldest);
   }
+  publish();
   persist();
 };
 
@@ -141,6 +181,7 @@ export const getTryOnResult = (outfitHash: string): string | null => {
  */
 export const clearTryOnResult = (outfitHash: string): void => {
   if (results.delete(outfitHash)) {
+    publish();
     persist();
   }
 };

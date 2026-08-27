@@ -1,5 +1,10 @@
 import { setTokens } from '../../src/services/tokenStorage';
 import { persistLatestOutfits } from '../../src/screens/HomeScreen/last-outfits-store';
+import {
+  recordTryOnResult,
+  setTryOnResultUser,
+} from '../../src/services/tryOnResultStore';
+import { PREVIEW_TRY_ON_HASH } from '../mocks/handlers';
 import type { OutfitSheet } from '../../src/screens/HomeScreen/types';
 import type { Item } from '../../src/types/item';
 
@@ -40,4 +45,14 @@ export const seedMockAuth = async (): Promise<void> => {
   });
   // Preview-only: seed the "latest outfits" store for the mock user.
   persistLatestOutfits('mock-user-1', SEED_LATEST, SEED_LATEST.length);
+  // Preview-only: pretend the mock user already ran "See on me" on the first
+  // saved outfit (`web/mocks/handlers.ts`), so the Favourite list shows BOTH
+  // card states — one leading with its try-on photo, one without. Nothing on
+  // the web can produce a real render (no camera, no AI job), and the photo
+  // lives client-side keyed per user, so this is the only way the sandbox can
+  // show that state. Points the cache at the mock user first — AuthContext's
+  // own `setTryOnResultUser('mock-user-1')` on boot then no-ops (same key) and
+  // the seeded entry survives.
+  await setTryOnResultUser('mock-user-1');
+  recordTryOnResult(PREVIEW_TRY_ON_HASH, ph('tryon'));
 };

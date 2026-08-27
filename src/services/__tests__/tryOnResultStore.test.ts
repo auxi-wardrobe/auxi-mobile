@@ -11,14 +11,20 @@
  * - Signing out (setTryOnResultUser(null)) drops the in-memory map but does
  *   NOT delete the persisted per-user blob (re-login continuity).
  * - clearTryOnResult() forgets a single outfit.
+ * - The `useSyncExternalStore` binding: subscribers are notified on every
+ *   mutation and the snapshot's identity only changes with the data (the
+ *   Favourite list re-renders a card into its try-on layout the moment a
+ *   background render lands).
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   clearTryOnResult,
   getTryOnResult,
+  getTryOnResultsSnapshot,
   recordTryOnResult,
   setTryOnResultUser,
+  subscribeTryOnResults,
 } from '../tryOnResultStore';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -130,4 +136,49 @@ test('clearTryOnResult forgets a single outfit', async () => {
   clearTryOnResult('outfit-a');
   expect(getTryOnResult('outfit-a')).toBeNull();
   expect(getTryOnResult('outfit-b')).toBe('https://cdn.example/b.jpg');
+});
+
+test('subscribers are notified and the snapshot exposes hash → url', async () => {
+  await setTryOnResultUser('user-sub');
+  const listener = jest.fn();
+  const unsubscribe = subscribeTryOnResults(listener);
+
+  const before = getTryOnResultsSnapshot();
+  recordTryOnResult('outfit-sub', 'https://cdn.example/sub.jpg');
+
+  expect(listener).toHaveBeenCalled();
+  const after = getTryOnResultsSnapshot();
+  // New identity (so `useSyncExternalStore` re-renders) with the new entry.
+  expect(after).not.toBe(before);
+  expect(after.get('outfit-sub')).toBe('https://cdn.example/sub.jpg');
+
+  // A read that changes nothing must not churn the snapshot identity.
+  expect(getTryOnResultsSnapshot()).toBe(after);
+
+  clearTryOnResult('outfit-sub');
+  expect(getTryOnResultsSnapshot().has('outfit-sub')).toBe(false);
+
+  unsubscribe();
+  listener.mockClear();
+  recordTryOnResult('outfit-sub2', 'https://cdn.example/sub2.jpg');
+  expect(listener).not.toHaveBeenCalled();
+});
+
+test('hydrating a user publishes the restored results to subscribers', async () => {
+  await setTryOnResultUser(null);
+  const listener = jest.fn();
+  const unsubscribe = subscribeTryOnResults(listener);
+  mockedGetItem.mockResolvedValueOnce(
+    JSON.stringify([
+      { hash: 'outfit-hydrated', url: 'https://cdn.example/h.jpg', savedAt: 1 },
+    ]),
+  );
+
+  await setTryOnResultUser('user-hydrate');
+
+  expect(getTryOnResultsSnapshot().get('outfit-hydrated')).toBe(
+    'https://cdn.example/h.jpg',
+  );
+  expect(listener).toHaveBeenCalled();
+  unsubscribe();
 });

@@ -420,7 +420,15 @@ export const SeeThisOnMeScreen: React.FC = () => {
       // produced a successful AI photo in a prior session, show that cached
       // result immediately (with a Retake affordance) instead of re-running
       // the capture/reuse flow.
-      const cached = getTryOnResult(outfit.outfitHash);
+      //
+      // EXCEPT on an explicit capture entry (`reuseAction: 'capture'`): the
+      // caller already showed the user that photo and they asked to retake it
+      // (the Favourite card's Retake CTA), so short-circuiting back to it would
+      // strand them on the image they just rejected. Falls through to the
+      // capture flow the route asked for; the cached photo stays on disk until
+      // a new render succeeds, so backing out keeps it.
+      const cached =
+        reuseAction === 'capture' ? null : getTryOnResult(outfit.outfitHash);
       if (cached) {
         setResultUrl(cached);
         setShowCachedResult(true);

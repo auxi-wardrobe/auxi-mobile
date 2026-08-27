@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image } from 'react-native';
+import { Image, StyleSheet } from 'react-native';
 import TestRenderer, { act } from 'react-test-renderer';
 import { clampBadgeAnchorTop, FavouriteOutfitCard } from '../FavouriteOutfitCard';
 import { Favourite } from '../../../services/favouriteService';
@@ -321,4 +321,120 @@ describe('clampBadgeAnchorTop anchors to visible content, not the raw frame (Fin
       100 * ((1 + ITEM_HIT_AREA_RATIO) / 2),
     );
   });
+});
+
+// ── Try-on hero (new Favourite layout, CEO 2026-08-27) ────────────────────
+// A saved outfit the user already ran "See on me" on leads with that photo:
+// image left, the outfit's own tiles in a rail on the right that SCROLLS
+// within the photo's height (tiles keep their 3:4 aspect — they are never
+// squashed to fit). Outfits with no generated photo keep the plain grid.
+
+const heroFav: Favourite = { ...fav, outfit_context: { outfit_hash: 'h1' } };
+
+const PHOTO_HEIGHT = 400;
+
+const renderHero = (
+  props: Partial<React.ComponentProps<typeof FavouriteOutfitCard>> = {},
+): TestRenderer.ReactTestRenderer => {
+  let r!: TestRenderer.ReactTestRenderer;
+  act(() => {
+    r = TestRenderer.create(
+      <FavouriteOutfitCard
+        favourite={heroFav}
+        view="grid"
+        tryOnImageUrl="https://cdn/try-on.jpg"
+        outfitHash="h1"
+        {...props}
+      />,
+    );
+  });
+  // The rail is bounded by the photo's measured height, so it mounts on the
+  // layout pass after the photo (mirrors RN/web before the first onLayout).
+  act(() => {
+    r.root
+      .find(n => n.props?.testID === 'favourite-card-fav1-try-on-photo-frame')
+      .props.onLayout({
+        nativeEvent: {
+          layout: { x: 0, y: 0, width: 225, height: PHOTO_HEIGHT },
+        },
+      });
+  });
+  return r;
+};
+
+test('a saved try-on photo replaces the tile grid with the photo + item rail', () => {
+  const r = renderHero();
+  expect(
+    r.root.findAll(n => n.props?.testID === 'favourite-card-fav1-try-on-photo')
+      .length,
+  ).toBeGreaterThan(0);
+  // Every garment is still reachable — the rail holds them all.
+  expect(tileIDs(r)).toHaveLength(3);
+});
+
+test('the item rail is bounded to the photo height so extra items scroll', () => {
+  const r = renderHero();
+  const photo = r.root.find(
+    n => n.props?.testID === 'favourite-card-fav1-try-on-photo-frame',
+  );
+  const rail = r.root.find(
+    n => n.props?.testID === 'favourite-card-fav1-try-on-rail',
+  );
+  // The photo is the try-on render's native 9:16, sized from the row (so it
+  // claims its height on the first pass); the rail is capped at that height.
+  expect(StyleSheet.flatten(photo.props.style)?.aspectRatio).toBe(9 / 16);
+  expect(StyleSheet.flatten(rail.props.style)?.height).toBe(PHOTO_HEIGHT);
+
+  // Tiles keep the grid's 3:4 aspect at rail width — the rail's content
+  // overflows its bounded height and the user scrolls through it.
+  const tile = r.root.find(
+    n => n.props?.testID === 'favourite-card-fav1-tile-i1',
+  );
+  expect(StyleSheet.flatten(tile.props.style)?.aspectRatio).toBe(3 / 4);
+});
+
+test('the try-on photo carries the shared thumbs feedback row', () => {
+  const r = renderHero();
+  expect(
+    r.root.findAll(
+      n => n.props?.testID === 'favourite-card-fav1-feedback-like',
+    ).length,
+  ).toBeGreaterThan(0);
+});
+
+// The collage view keeps its old design and behaviour (CEO 2026-08-27): even
+// with a saved photo it renders the collage, and the photo is opened from the
+// action bar as before — only the grid card leads with it.
+test('the collage view is unchanged by a saved try-on photo', () => {
+  let r!: TestRenderer.ReactTestRenderer;
+  act(() => {
+    r = TestRenderer.create(
+      <FavouriteOutfitCard
+        favourite={heroFav}
+        view="collage"
+        tryOnImageUrl="https://cdn/try-on.jpg"
+        outfitHash="h1"
+      />,
+    );
+  });
+  expect(
+    r.root.findAll(n => n.props?.testID === 'favourite-card-fav1-try-on-hero'),
+  ).toHaveLength(0);
+  expect(
+    r.root.findAll(n => n.props?.testID === 'favourite-card-fav1-collage')
+      .length,
+  ).toBeGreaterThan(0);
+});
+
+test('an outfit with no saved try-on photo renders the grid unchanged', () => {
+  let r!: TestRenderer.ReactTestRenderer;
+  act(() => {
+    r = TestRenderer.create(
+      <FavouriteOutfitCard favourite={heroFav} view="grid" />,
+    );
+  });
+  expect(
+    r.root.findAll(n => n.props?.testID === 'favourite-card-fav1-try-on-hero'),
+  ).toHaveLength(0);
+  expect(tileIDs(r)).toHaveLength(3);
 });

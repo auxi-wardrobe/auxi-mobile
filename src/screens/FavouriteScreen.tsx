@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import {
   LayoutChangeEvent,
@@ -54,10 +55,21 @@ import {
   groupFavouritesByDate,
 } from './favourite/group-by-date';
 import { useIsOutfitGenerating } from './see-this-on-me/use-outfit-generating';
+import {
+  getTryOnResultsSnapshot,
+  subscribeTryOnResults,
+} from '../services/tryOnResultStore';
 import { computeSnapOffsets } from './favourite/snap-offsets';
 import { computeActiveIndex } from './favourite/active-index';
 
 const FAVOURITES_QUERY_KEY = ['favourites'] as const;
+
+// The key the try-on flow stores a generated photo under. Falls back to the
+// favourite id for outfits saved before the backend persisted a hash — the
+// same fallback `handleSelfVisualization` sends into the flow, so what we
+// write and what we read back always agree.
+const outfitHashOf = (favourite: Favourite): string =>
+  favourite.outfit_context?.outfit_hash ?? favourite.id;
 
 export const FavouriteScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -145,6 +157,20 @@ export const FavouriteScreen: React.FC = () => {
   });
 
   const favourites = useMemo(() => data?.favorites ?? [], [data?.favorites]);
+
+  // Saved "See on me" photos, keyed by outfit hash (`tryOnResultStore`).
+  // Subscribed — NOT read once on mount — so a render that lands while the
+  // list is open (the user left the loading screen and came back here) flips
+  // that outfit's card to the photo layout as soon as it completes.
+  const tryOnResults = useSyncExternalStore(
+    subscribeTryOnResults,
+    getTryOnResultsSnapshot,
+  );
+  const tryOnUrlFor = useCallback(
+    (favourite: Favourite): string | null =>
+      tryOnResults.get(outfitHashOf(favourite)) ?? null,
+    [tryOnResults],
+  );
   const groups = useMemo(
     () => groupFavouritesByDate(favourites, localWears),
     [favourites, localWears],
@@ -244,29 +270,46 @@ export const FavouriteScreen: React.FC = () => {
   // so the action bar can show a loading "See on me" button when THIS outfit's
   // AI photo is still generating after the user left the loading screen.
   const activeOutfitHash = activeFavourite
-    ? activeFavourite.outfit_context?.outfit_hash ?? activeFavourite.id
+    ? outfitHashOf(activeFavourite)
     : undefined;
   const activeIsGenerating = useIsOutfitGenerating(activeOutfitHash);
+  // The snapped outfit's card is SHOWING its AI photo → the bar's CTA is
+  // "Retake" (regenerate) rather than "See on me". Grid view only: the collage
+  // view keeps its old design and behaviour (CEO 2026-08-27), so there the CTA
+  // stays "See on me" and opens the saved photo through the usual flow.
+  const activeShowsTryOn =
+    view === 'grid' && activeFavourite
+      ? tryOnUrlFor(activeFavourite) !== null
+      : false;
 
-  const handleSelfVisualization = (favourite: Favourite) => {
-    track('favourite_try_on_tapped', { favorite_id: favourite.id });
+  const handleSelfVisualization = (favourite: Favourite, retake = false) => {
+    track('favourite_try_on_tapped', { favorite_id: favourite.id, retake });
     // Build the serializable TryOnOutfitContext the "See this on me" flow needs
     // from the saved favourite: outfit hash, the garment ids + their image urls,
     // and the human-readable styling note.
     const items = favourite.outfit_items ?? [];
+    const outfit = {
+      outfitHash: outfitHashOf(favourite),
+      itemIds: items.map(item => item.id),
+      itemImageUrls: items
+        .map(item => item.image_png ?? item.image_url)
+        .filter((url): url is string => !!url),
+      stylingNote: favourite.outfit_context?.reasoning_human ?? '',
+    };
+    if (retake) {
+      // The card is already showing this outfit's photo, so the reuse-confirm
+      // gate and the cached-result preview would both be a detour: go straight
+      // into the capture flow, exactly where the preview's own Retake lands.
+      // The stored photo is left in place until a new render succeeds, so
+      // backing out keeps the card's current image. (Not reachable from the
+      // collage view, which keeps the old "See on me opens the photo" flow.)
+      navigation.navigate('SeeThisOnMe', { outfit, reuseAction: 'capture' });
+      return;
+    }
     // Route through the reuse-confirm gate so a saved-body user sees the confirm
     // sheet over THIS page (not an empty See-on-me shell). The gate hands off to
     // SeeThisOnMe for capture / render.
-    navigation.navigate('SeeThisOnMeConfirm', {
-      outfit: {
-        outfitHash: favourite.outfit_context?.outfit_hash ?? favourite.id,
-        itemIds: items.map(item => item.id),
-        itemImageUrls: items
-          .map(item => item.image_png ?? item.image_url)
-          .filter((url): url is string => !!url),
-        stylingNote: favourite.outfit_context?.reasoning_human ?? '',
-      },
-    });
+    navigation.navigate('SeeThisOnMeConfirm', { outfit });
   };
 
   const handleSchedule = (favourite: Favourite) => {
@@ -357,6 +400,8 @@ export const FavouriteScreen: React.FC = () => {
                   dateLabel={formatDateLabel(
                     effectiveWornAt(favourite, localWears),
                   )}
+                  tryOnImageUrl={tryOnUrlFor(favourite)}
+                  outfitHash={outfitHashOf(favourite)}
                   onItemPress={itemId =>
                     navigation.navigate('ItemDetail', { itemId })
                   }
@@ -418,7 +463,10 @@ export const FavouriteScreen: React.FC = () => {
           testID="favourite-action-bar"
           onRemove={() => setPendingRemovalId(activeFavourite.id)}
           onSchedule={() => handleSchedule(activeFavourite)}
-          onSelfVisualization={() => handleSelfVisualization(activeFavourite)}
+          onSelfVisualization={() =>
+            handleSelfVisualization(activeFavourite, activeShowsTryOn)
+          }
+          hasTryOnResult={activeShowsTryOn}
           selfVisualizationLoading={activeIsGenerating}
         />
       ) : null}

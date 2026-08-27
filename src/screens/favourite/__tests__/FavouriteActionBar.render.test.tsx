@@ -13,6 +13,7 @@ const renderBar = (
   overrides: Partial<{
     onRemove: () => void;
     onSelfVisualization: () => void;
+    hasTryOnResult: boolean;
   }> = {},
 ) => {
   let r!: TestRenderer.ReactTestRenderer;
@@ -24,6 +25,7 @@ const renderBar = (
         testID="favourite-action-bar"
         onRemove={onRemove}
         onSelfVisualization={onSelfVisualization}
+        hasTryOnResult={overrides.hasTryOnResult}
       />,
     );
   });
@@ -51,6 +53,30 @@ test('self-visualization control invokes onSelfVisualization', () => {
   const { r } = renderBar({ onSelfVisualization });
   act(() => {
     findByTestID(r, 'favourite-self-visualization-active').props.onPress();
+  });
+  expect(onSelfVisualization).toHaveBeenCalledTimes(1);
+});
+
+// New Favourite layout (CEO 2026-08-27): an outfit whose AI photo is already on
+// the card offers "Retake", not "See on me". Same action, flipped label — and a
+// flipped testID suffix (never an undefined testID) so Maestro can select
+// either state.
+test('an outfit with a saved try-on photo offers Retake instead of See on me', () => {
+  const { r } = renderBar({ hasTryOnResult: true });
+  const button = findByTestID(r, 'favourite-self-visualization-active-retake');
+  expect(button.props.accessibilityLabel).toBe('favourite.retake');
+  expect(
+    r.root.findAll(
+      n => n.props?.testID === 'favourite-self-visualization-active',
+    ),
+  ).toHaveLength(0);
+});
+
+test('Retake invokes the same self-visualization handler', () => {
+  const onSelfVisualization = jest.fn();
+  const { r } = renderBar({ hasTryOnResult: true, onSelfVisualization });
+  act(() => {
+    findByTestID(r, 'favourite-self-visualization-active-retake').props.onPress();
   });
   expect(onSelfVisualization).toHaveBeenCalledTimes(1);
 });

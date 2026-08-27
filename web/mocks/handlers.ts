@@ -97,6 +97,50 @@ const capsuleHandlers = [
   http.delete('*/api/capsules/:id', () => HttpResponse.json({ deleted: true })),
 ];
 
+// ── Favourite (saved outfits) mock data ──────────────────────────────────────
+// Two saved outfits so the sandbox shows BOTH Favourite card states side by
+// side: the first one's `outfit_hash` matches the try-on result seeded in
+// `web/boot/MockAuthBoot.ts`, so it renders the "See on me" hero (photo + the
+// scrollable item rail, hence 4 garments); the second has no generated photo
+// and renders the plain tile grid. Real backend previews show the designer's
+// own favourites instead — a photo appears there once they run See on me.
+const fItem = (id: string, name: string, fam: string, category: string, common = false) => ({
+  id, human_readable_id: id, name, image_url: img(name, fam), image_png: null,
+  category, category_family: fam.toUpperCase(), is_common_item: common,
+  user_id: common ? null : 'mock-user-1', style_tags: ['minimal'],
+});
+
+/** Outfit hash the seeded try-on photo is stored under (MockAuthBoot). */
+export const PREVIEW_TRY_ON_HASH = 'preview-tryon-1';
+
+const favourite = (
+  id: string,
+  hash: string,
+  title: string,
+  items: ReturnType<typeof fItem>[],
+) => ({
+  id, user_id: 'mock-user-1', outfit_items: items,
+  outfit_context: { outfit_hash: hash, occasion: 'daily', reasoning_human: title },
+  outfit_thumbnail_url: null,
+  created_at: '2026-05-06T09:00:00Z', updated_at: '2026-05-06T09:00:00Z',
+  title, mood_tags: ['confident'],
+});
+
+const FAVOURITES = [
+  favourite(PREVIEW_TRY_ON_HASH, PREVIEW_TRY_ON_HASH, 'Clean. Ready for today', [
+    fItem('fav-i1', 'Black Tee', 'top', 'tshirt'),
+    fItem('fav-i2', 'White Sneakers', 'footwear', 'shoes', true),
+    fItem('fav-i3', 'Olive Cargo Pants', 'bottom', 'trousers'),
+    fItem('fav-i4', 'Denim Jacket', 'outerwear', 'jacket', true),
+  ]),
+  favourite('preview-fav-2', 'preview-fav-2', 'Clean. Ready for today', [
+    fItem('fav-i5', 'Denim Jacket', 'outerwear', 'jacket', true),
+    fItem('fav-i6', 'White Tee', 'top', 'tshirt', true),
+    fItem('fav-i7', 'Black High-tops', 'footwear', 'shoes', true),
+    fItem('fav-i8', 'Light Wash Jeans', 'bottom', 'jeans', true),
+  ]),
+];
+
 export const handlers = [
   ...capsuleHandlers,
   http.get('*/api/me', () => HttpResponse.json(user)),
@@ -125,7 +169,13 @@ export const handlers = [
   http.all('*/api/v05/mood-feedback/policy', () => HttpResponse.json({ enabled: false })),
   http.post('*/api/v05/feedback', () => HttpResponse.json({ ok: true })),
   http.post('*/api/favourites', () => HttpResponse.json({ ok: true })),
-  http.get('*/api/favorites', () => HttpResponse.json([])),
+  http.get('*/api/favorites', () =>
+    HttpResponse.json({
+      count: FAVOURITES.length,
+      total: FAVOURITES.length,
+      favorites: FAVOURITES,
+    }),
+  ),
   http.delete('*/api/favorites/:id', () => HttpResponse.json({ ok: true })),
   http.get('*/api/body*', () => HttpResponse.json([])),
   http.get('*/api/items*', () => HttpResponse.json([])),

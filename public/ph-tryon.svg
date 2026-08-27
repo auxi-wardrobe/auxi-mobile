@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="960" viewBox="0 0 540 960">
+  <!-- Preview-only placeholder standing in for a rendered "See on me" photo
+       (9:16, the ratio the try-on renderer returns). Same role as the ph-*.svg
+       garment placeholders: it exists so the sandbox has art without calling a
+       real image host. -->
+  <rect width="540" height="960" fill="#ece7e1"/>
+  <g fill="#c9c0b6">
+    <circle cx="270" cy="230" r="72"/>
+    <path d="M150 350c0-38 54-62 120-62s120 24 120 62v250H150z"/>
+    <rect x="182" y="600" width="78" height="300" rx="14"/>
+    <rect x="280" y="600" width="78" height="300" rx="14"/>
+  </g>
+  <text x="270" y="700" font-family="sans-serif" font-size="26" fill="#7d746a" text-anchor="middle">See on me</text>
+</svg>
