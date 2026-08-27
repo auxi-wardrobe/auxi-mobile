@@ -17,8 +17,6 @@ import {
   UsageLimitFeature,
 } from '../../hooks/useUsageLimitGate';
 import { maybeShowUsageLimit } from '../../services/usageLimit';
-import { maybeCelebrateDefaultItemsUnlocked } from '../../services/defaultItemsMilestone';
-import { useDefaultItemsUnlockedGate } from '../../hooks/useDefaultItemsUnlockedGate';
 import { AppStackParamList } from '../../types/navigation';
 import { User } from '../../types/auth';
 import { FilterTab, resolveFilterQuery } from './wardrobe-grid';
@@ -60,13 +58,6 @@ interface UseAddWardrobeItem {
     onDismiss: () => void;
     onUpgrade: () => void;
   };
-  /** Spread onto <DefaultItemsUnlockedSheet /> rendered in the parent screen. */
-  defaultItemsUnlockedSheetProps: {
-    visible: boolean;
-    ownItemCount: number;
-    threshold: number;
-    onDismiss: () => void;
-  };
 }
 
 /**
@@ -93,10 +84,6 @@ export const useAddWardrobeItem = ({
   // AU-442 soft-paywall MVP: free-tier "you've hit the wardrobe item limit"
   // gate, checked after a successful upload persist (fire-and-forget).
   const usageLimitGate = useUsageLimitGate();
-  // "You can now remove Macgie's default items" milestone — same
-  // fire-and-forget-after-success shape as the usage-limit gate above, shown
-  // once per user (the once-ness lives in the service, not here).
-  const defaultItemsUnlockedGate = useDefaultItemsUnlockedGate();
 
   const [uploading, setUploading] = useState(false);
   const [uploadingPhotoUri, setUploadingPhotoUri] = useState<string | null>(
@@ -206,15 +193,6 @@ export const useAddWardrobeItem = ({
                   usageLimitGate.open('wardrobe_items');
                 }
               });
-              // Same fire-and-forget contract: never delays the ready
-              // snackbar, fails open. Only one of the two sheets can be the
-              // interesting one — a user who just unlocked default-item
-              // removal is 12 items in, nowhere near the 50-item free cap.
-              maybeCelebrateDefaultItemsUnlocked(user).then(milestone => {
-                if (milestone) {
-                  defaultItemsUnlockedGate.open(milestone);
-                }
-              });
               showReadySnackbar(t('wardrobe.list.added_title'));
               await refetch();
             }
@@ -268,16 +246,6 @@ export const useAddWardrobeItem = ({
       onDecline: () => {
         track('add_item_upload_cancelled', { reason: 'ai_consent_declined' });
         consentGate.dialogProps.onDecline();
-      },
-    },
-    // The wardrobe grid is already the screen behind this sheet, so there is
-    // nowhere useful to send the user — dismiss-only (see the sheet's
-    // `onManageWardrobe` doc comment).
-    defaultItemsUnlockedSheetProps: {
-      ...defaultItemsUnlockedGate.sheetProps,
-      onDismiss: () => {
-        track('default_items_unlock_dismissed');
-        defaultItemsUnlockedGate.dismiss();
       },
     },
     // AU-442: dismiss just hides the sheet (the upload already succeeded);

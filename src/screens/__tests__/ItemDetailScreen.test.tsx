@@ -683,12 +683,22 @@ describe('cache invalidation', () => {
 //    the user has uploaded enough of their own
 // =============================================================================
 describe('default-item removal gate', () => {
-  // A per-user clone of the catalog: owned by the user, USR_ hrid. This is
-  // what "Macgie's default item" looks like in a real wardrobe.
+  // One of Macgie's seeded starter items: owned by the user, but WE put it
+  // there. `is_default_item` is the only thing separating it from the
+  // user-picked clone below — they share the USR_ hrid.
   const DEFAULT_ITEM = {
     ...USER_ITEM,
     id: 'default-1',
+    is_default_item: true,
     human_readable_id: 'USR_L2_TEE_WHT_REG_01',
+  };
+
+  // A catalog item the USER picked (Database screen / trending drop).
+  const PICKED_ITEM = {
+    ...USER_ITEM,
+    id: 'picked-1',
+    is_default_item: false,
+    human_readable_id: 'USR_L2_TEE_BLK_REG_01',
   };
 
   // A SYSTEM catalog row — the shared catalog itself, never anybody's to
@@ -798,5 +808,63 @@ describe('default-item removal gate', () => {
 
     // A Trash button the backend would 403 is worse than no Trash button.
     expect(byTestID(r.root, 'item-detail-delete-btn').length).toBe(0);
+  });
+
+  // A catalog item the user picked is theirs — it must behave like any other
+  // wardrobe item despite sharing the USR_ hrid with a seeded default.
+  describe('user-picked catalog item', () => {
+    // The image badge only mounts once the image region reports a layout
+    // (the `imageFrame` memo gates the whole frame), so drive onLayout the
+    // same way the enhance-FAB describe does.
+    const layOutImage = (root: ReactTestInstance) => {
+      const region = root.findAll(
+        n => typeof n.props?.onLayout === 'function',
+      )[0];
+      act(() => {
+        region.props.onLayout({
+          nativeEvent: { layout: { width: 414, height: 600 } },
+        });
+      });
+    };
+
+    it('is deletable straight away, with no unlock check', async () => {
+      mockGetWardrobeItem.mockResolvedValue(PICKED_ITEM);
+
+      const r = await renderScreen();
+      await flushPromises();
+
+      expect(byTestID(r.root, 'item-detail-delete-btn').length).toBeGreaterThan(
+        0,
+      );
+      expect(mockGetDefaultItemRemovalStatus).not.toHaveBeenCalled();
+    });
+
+    it('carries no Macgie badge and stays editable', async () => {
+      mockGetWardrobeItem.mockResolvedValue(PICKED_ITEM);
+
+      const r = await renderScreen();
+      await flushPromises();
+      layOutImage(r.root);
+
+      expect(byTestID(r.root, 'item-detail-common-badge').length).toBe(0);
+      expect(oneByTestID(r.root, 'item-detail-change-btn').props.disabled).toBe(
+        false,
+      );
+    });
+
+    it('a seeded default keeps the badge and stays read-only', async () => {
+      mockGetWardrobeItem.mockResolvedValue(DEFAULT_ITEM);
+
+      const r = await renderScreen();
+      await flushPromises();
+      layOutImage(r.root);
+
+      expect(byTestID(r.root, 'item-detail-common-badge').length).toBeGreaterThan(
+        0,
+      );
+      expect(oneByTestID(r.root, 'item-detail-change-btn').props.disabled).toBe(
+        true,
+      );
+    });
   });
 });

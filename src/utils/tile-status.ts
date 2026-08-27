@@ -16,9 +16,8 @@ export interface TileStatusInput {
   is_new?: boolean;
   usage_frequency?: UsageFrequency | string | null;
   style_tags?: string[];
-  // AU-392 fix: needed to recognize per-user catalog clones — see
-  // `isCommonItem` below.
-  human_readable_id?: string | null;
+  /** True only for Macgie's seeded starter items — see `isCommonItem`. */
+  is_default_item?: boolean;
 }
 
 // Duplicated (not imported) from `wardrobeService.ts`'s private
@@ -38,24 +37,23 @@ const isLessUsedTile = (item: TileStatusInput): boolean =>
   item.usage_frequency === 'LESS_USED' ||
   normalizeStyleTags(item.style_tags).includes(STYLE_TAG_LESS_USED);
 
-// AU-392 fix: cross-referenced (not imported — see file header) from
-// `ItemDetailScreen.tsx:281-288`'s `isCatalogItem`. That screen's own
-// definition already treated any `USR_`-prefixed `human_readable_id` as a
-// catalog item (per-user clone of a SYSTEM common) — this module's
-// `isCommonItem` had drifted and missed that case, so `resolveTileStatus`
-// returned no badge for the ~87% of a real wardrobe made of these clones.
-// Same duplication-by-design rationale as `STYLE_TAG_LESS_USED` above: keep
-// both copies reading the same one-line rule; if it ever changes, change it
-// in both places.
-const isPerUserCatalogClone = (item: TileStatusInput): boolean =>
-  typeof item.human_readable_id === 'string' &&
-  item.human_readable_id.startsWith('USR_');
-
+// Wears the "Macgie" badge: a SYSTEM catalog row, or one of Macgie's seeded
+// starter items sitting in the user's wardrobe.
+//
+// The `USR_` hrid prefix used to stand in for the second case. It can't any
+// more: a catalog item the user PICKED (Database screen, trending drop) gets
+// the same `USR_` hrid as a seeded default, and picking something yourself
+// makes it yours — it must read as a normal wardrobe item, no badge. Only the
+// backend's `is_default_item` separates the two (see
+// wardrobe-backend/models/wardrobe.py). Cross-referenced, deliberately not
+// imported, by `ItemDetailScreen.tsx`'s `isCatalogItem`; same
+// duplication-by-design rationale as `STYLE_TAG_LESS_USED` above — if this
+// rule changes, change it in both places.
 export const isCommonItem = (item: TileStatusInput): boolean =>
   item.is_common_item === true ||
+  item.is_default_item === true ||
   item.user_id === null ||
-  item.user_id === undefined ||
-  isPerUserCatalogClone(item);
+  item.user_id === undefined;
 
 // A grid tile shows at most one status pill (Figma: bottom-centre). The four
 // states are mutually exclusive and resolved with the precedence
@@ -65,7 +63,9 @@ export const isCommonItem = (item: TileStatusInput): boolean =>
 //     review state server-side so the tag is stable across devices.
 //   • less use — user explicitly demoted the item (NORMAL ↔ LESS_USED). Wins
 //     over "common" so a demoted catalog item still reads as "less use".
-//   • common   — item originates from our shared database (catalog).
+//   • common   — a SYSTEM catalog row, or one of Macgie's seeded starter
+//     items. NOT a catalog item the user picked themselves — that one is
+//     theirs and badges like any other wardrobe item.
 //   • (none)   — a user item that has been seen.
 export const resolveTileStatus = (item: TileStatusInput): TileStatus => {
   // "New" only applies to the user's own uploads, never to catalog/common

@@ -50,6 +50,11 @@ export interface WardrobeItem {
   style_tags?: string[];
   color_hex?: string;
   is_common_item?: boolean;
+  /** True only for Macgie's seeded starter items — drives the "Macgie"
+   *  badge + read-only/delete gating. A catalog item the user PICKED
+   *  themselves is `false`: it is their own item. Never infer this from
+   *  the `USR_` hrid prefix, which both kinds share. */
+  is_default_item?: boolean;
   is_deleted?: boolean;
   // AU-361: true while the backend is still processing the upload (bg-removal
   // + auto-tagging); flips false once the item is ready to use.

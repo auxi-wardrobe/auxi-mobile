@@ -297,18 +297,19 @@ export const ItemDetailScreen = () => {
 
   const usageFrequency = getItemUsageFrequency(item);
   const isCommonSystemItem = item?.is_common_item === true;
-  // AU-287: SYSTEM common items AND per-user clones (USR_* hrid) belong to
-  // the suggestion catalog. Both are read-only — attribute edits would
-  // desync the shared styling metadata they reuse.
-  const isCatalogItem =
-    isCommonSystemItem ||
-    (typeof item?.human_readable_id === 'string' &&
-      item.human_readable_id.startsWith('USR_'));
 
-  // A per-user clone of the catalog IS one of Macgie's default items in this
-  // user's wardrobe. SYSTEM rows are the shared catalog itself and are never
-  // anybody's to remove, no matter how full their wardrobe gets.
-  const isDefaultItem = isCatalogItem && !isCommonSystemItem;
+  // One of Macgie's default items: a starter-catalog clone WE seeded at
+  // onboarding. This used to be inferred from the `USR_` hrid prefix, which
+  // no longer works — a catalog item the user PICKED (Database screen,
+  // trending drop) carries the same prefix, and choosing it makes it theirs.
+  // Only the backend's `is_default_item` separates the two.
+  const isDefaultItem = item?.is_default_item === true;
+
+  // Read-only + "Macgie"-badged: the SYSTEM catalog itself, and the defaults
+  // we seeded. A user's own pick is a normal wardrobe item — no badge, and
+  // editable (the clone deep-copies its styling metadata, so editing it can't
+  // desync the catalog).
+  const isCatalogItem = isCommonSystemItem || isDefaultItem;
 
   // Only ask the server about the unlock when it could change something on
   // this screen — i.e. when the item on screen is actually a default item.
@@ -734,7 +735,10 @@ export const ItemDetailScreen = () => {
             )}
 
             {isCatalogItem ? (
-              <View style={styles.imageBadge}>
+              <View
+                testID="item-detail-common-badge"
+                style={styles.imageBadge}
+              >
                 <Text style={styles.imageBadgeText}>
                   {t('wardrobe.itemDetail.common_badge')}
                 </Text>

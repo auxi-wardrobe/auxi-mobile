@@ -260,6 +260,11 @@ export interface V05OutfitItem {
   // Macgie" behaviour) rather than crashing.
   user_id?: string | null;
   is_common_item?: boolean;
+  /** True only for Macgie's seeded starter items — drives the "Macgie"
+   *  badge + read-only/delete gating. A catalog item the user PICKED
+   *  themselves is `false`: it is their own item. Never infer this from
+   *  the `USR_` hrid prefix, which both kinds share. */
+  is_default_item?: boolean;
   is_new?: boolean;
   usage_frequency?: 'NORMAL' | 'LESS_USED';
 }

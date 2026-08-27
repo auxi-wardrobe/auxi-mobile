@@ -64,12 +64,18 @@ export interface SaveFavouriteResponse {
  * no backend change needed — so this is a type-only widening that lets
  * `FavouriteOutfitCard`'s `Tile` feed an item straight into the shared
  * `resolveTileStatus` (`src/utils/tile-status.ts`) without a cast.
- * `human_readable_id` additionally lets `isCommonItem` recognize `USR_`-
- * prefixed per-user catalog clones on favourite cards.
+ * `is_default_item` additionally lets `isCommonItem` badge Macgie's seeded
+ * starter items on favourite cards — without mistaking a catalog item the
+ * user picked themselves for one of ours.
  */
 export interface FavouriteItem
   extends Pick<Item, 'id' | 'image_url' | 'image_png' | 'name' | 'category'> {
   is_common_item?: boolean;
+  /** True only for Macgie's seeded starter items — drives the "Macgie"
+   *  badge + read-only/delete gating. A catalog item the user PICKED
+   *  themselves is `false`: it is their own item. Never infer this from
+   *  the `USR_` hrid prefix, which both kinds share. */
+  is_default_item?: boolean;
   user_id?: string | number | null;
   is_new?: boolean;
   usage_frequency?: string | null;
