@@ -381,7 +381,19 @@ export const wardrobeService = {
       const response = await wardrobeApi.get('/wardrobe/common-items', {
         params: { category },
       });
-      return getItemList(response.data);
+      const items = getItemList(response.data);
+      // `GET /wardrobe/common-items` returns the WHOLE system catalog and
+      // ignores the `category` query param (unlike `/wardrobe/filter`, which
+      // honours it). Without this client-side pass the Database picker's
+      // category chips looked selected but never changed the grid. The param
+      // is still sent so we narrow server-side the day the backend supports
+      // it — filtering an already-filtered list is a no-op.
+      if (!category) {
+        return items;
+      }
+      return items.filter(item =>
+        matchesCategoryFilter(item.category, category),
+      );
     } catch (error) {
       const status = getErrorStatus(error);
       if (status === 404 || status === 405) {
