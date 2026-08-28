@@ -96,7 +96,7 @@ export const AppNavigator = () => {
   // pending, so this is safe to fire on every user-object change.
   useEffect(() => {
     if (user && navigationRef.isReady()) {
-      replayPendingDeepLink(navigationRef.current).catch(err =>
+      replayPendingDeepLink(navigationRef.current, 'user-effect').catch(err =>
         console.warn('[AppNavigator] post-login replayPendingDeepLink failed', err),
       );
     }
@@ -114,7 +114,7 @@ export const AppNavigator = () => {
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active' && navigationRef.isReady()) {
-        replayPendingDeepLink(navigationRef.current).catch(err =>
+        replayPendingDeepLink(navigationRef.current, 'appstate-active').catch(err =>
           console.warn('[AppNavigator] resume replayPendingDeepLink failed', err),
         );
       }
@@ -194,7 +194,7 @@ export const AppNavigator = () => {
         // outfit) that arrived via `getInitialURL()` / `continueUserActivity`
         // before this container was ready — see `deepLinkHandler.ts`'s
         // `pendingDeepLink` slot.
-        replayPendingDeepLink(navigationRef.current).catch(err =>
+        replayPendingDeepLink(navigationRef.current, 'onReady').catch(err =>
           console.warn('[AppNavigator] replayPendingDeepLink failed', err),
         );
         // AU-457 review-fix: a real Universal Link cold start (as opposed to
@@ -208,7 +208,7 @@ export const AppNavigator = () => {
         [400, 900, 1600, 2600].forEach(delay => {
           setTimeout(() => {
             if (navigationRef.isReady()) {
-              replayPendingDeepLink(navigationRef.current).catch(err =>
+              replayPendingDeepLink(navigationRef.current, `retry-${delay}ms`).catch(err =>
                 console.warn('[AppNavigator] retry replayPendingDeepLink failed', err),
               );
             }

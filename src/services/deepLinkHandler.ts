@@ -235,8 +235,16 @@ const isDiscoveryRouteMounted = (navRef: NavRef): boolean =>
 export const dispatchDeepLink = async (
   link: ParsedDeepLink,
   { navRef }: DispatchDeps,
+  source: string = 'unknown',
 ): Promise<void> => {
   if (!navRef || !navRef.isReady()) {
+    // TEMPORARY diagnostic — see the discovery-outfit block below.
+    if (link.kind === 'discovery-outfit') {
+      Alert.alert(
+        'DEBUG discovery-outfit dispatch',
+        `source: ${source}\nnavRef: ${navRef ? 'present' : 'NULL'}\nisReady: ${navRef?.isReady() ?? 'n/a (no ref)'}\n→ stashing (not ready)`,
+      );
+    }
     // Nav tree not mounted yet — stash for replay once `onReady` fires
     // (see `replayPendingDeepLink`).
     pendingDeepLink = link;
@@ -249,10 +257,15 @@ export const dispatchDeepLink = async (
     // root-caused. Shows on-screen (no Console.app needed) exactly what
     // routeNames/isReady look like at the moment a discovery-outfit link is
     // dispatched, so we can compare a failing attempt vs a working one.
+    // `source` identifies which of the several trigger paths fired this
+    // call (cold-getInitialURL / warm-url-event / onReady / retry-N /
+    // appstate-active / user-effect) so we can tell which one sees the
+    // empty-routeNames state.
     const state = navRef.getState();
     Alert.alert(
       'DEBUG discovery-outfit dispatch',
       [
+        `source: ${source}`,
         `isReady: ${navRef.isReady()}`,
         `routeNames (${state?.routeNames?.length ?? 0}): ${state?.routeNames?.join(', ') ?? 'none'}`,
         `current route: ${state?.routes?.[state.index ?? 0]?.name ?? 'unknown'}`,
@@ -352,11 +365,12 @@ export const dispatchDeepLink = async (
  */
 export const replayPendingDeepLink = async (
   navRef: NavRef | null,
+  source: string = 'replay-unknown',
 ): Promise<void> => {
   if (!pendingDeepLink || !navRef || !navRef.isReady()) return;
   const link = pendingDeepLink;
   pendingDeepLink = null;
-  await dispatchDeepLink(link, { navRef });
+  await dispatchDeepLink(link, { navRef }, source);
 };
 
 /**
@@ -369,7 +383,7 @@ export const replayPendingDeepLink = async (
 export const registerDeepLinkListeners = (
   getNavRef: () => NavRef | null,
 ): (() => void) => {
-  const handle = async (url: string | null) => {
+  const handle = async (url: string | null, source: string) => {
     const parsed = parseDeepLink(url);
     if (!parsed) return;
     // Only the two auth-recovery kinds should suppress AuthContext's
@@ -379,17 +393,17 @@ export const registerDeepLinkListeners = (
     if (AUTH_KINDS.has(parsed.kind as AuthDeepLinkKind)) {
       markAuthDeepLinkSeen();
     }
-    await dispatchDeepLink(parsed, { navRef: getNavRef() });
+    await dispatchDeepLink(parsed, { navRef: getNavRef() }, source);
   };
 
   // Cold-start: check the URL that opened the app, if any.
   Linking.getInitialURL()
-    .then(handle)
+    .then(url => handle(url, 'cold-getInitialURL'))
     .catch(err => console.warn('[deepLinkHandler] getInitialURL failed', err));
 
   // Warm-start: subscribe to subsequent links.
   const sub = Linking.addEventListener('url', event => {
-    handle(event.url).catch(err =>
+    handle(event.url, 'warm-url-event').catch(err =>
       console.warn('[deepLinkHandler] warm-start dispatch failed', err),
     );
   });
