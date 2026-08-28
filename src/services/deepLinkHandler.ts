@@ -42,7 +42,7 @@
  *     "no longer available" fallback, see `discoveryService.getOutfit`).
  *     This is a single network path and behaves identically cold or warm.
  */
-import { Linking } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import type { NavigationContainerRef } from '@react-navigation/native';
 
@@ -244,6 +244,21 @@ export const dispatchDeepLink = async (
   }
 
   if (link.kind === 'discovery-outfit') {
+    // TEMPORARY diagnostic (AU-457 review-fix investigation) — remove once
+    // the "must visit Discovery once first" real-device pattern is
+    // root-caused. Shows on-screen (no Console.app needed) exactly what
+    // routeNames/isReady look like at the moment a discovery-outfit link is
+    // dispatched, so we can compare a failing attempt vs a working one.
+    const state = navRef.getState();
+    Alert.alert(
+      'DEBUG discovery-outfit dispatch',
+      [
+        `isReady: ${navRef.isReady()}`,
+        `routeNames (${state?.routeNames?.length ?? 0}): ${state?.routeNames?.join(', ') ?? 'none'}`,
+        `current route: ${state?.routes?.[state.index ?? 0]?.name ?? 'unknown'}`,
+        `will navigate: ${state?.routeNames?.includes('DiscoveryOutfitDetail') ?? false}`,
+      ].join('\n'),
+    );
     // Logged-out OR mid-onboarding — `DiscoveryOutfitDetail` isn't a
     // registered route in either tree shape. Stash instead of navigating
     // into a tree that doesn't have it; `replayPendingDeepLink` re-runs this
