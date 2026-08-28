@@ -24,9 +24,11 @@ export interface Item {
   is_common_item?: boolean;
   is_new?: boolean;
   usage_frequency?: 'NORMAL' | 'LESS_USED';
-  // AU-392 fix: needed by `isCommonItem` (src/utils/tile-status.ts) to
-  // recognize `USR_`-prefixed per-user catalog clones, same wire field as
-  // `WardrobeItem`/`FavouriteItem`.
+  /** True only for Macgie's seeded starter items — drives the "Macgie"
+   *  badge + read-only/delete gating. A catalog item the user PICKED
+   *  themselves is `false`: it is their own item. Never infer this from
+   *  the `USR_` hrid prefix, which both kinds share. */
+  is_default_item?: boolean;
   human_readable_id?: string | null;
 }
 

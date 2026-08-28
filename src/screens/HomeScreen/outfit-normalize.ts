@@ -31,11 +31,13 @@ export const mapV05Item = (it: V05OutfitItem): Item => ({
   // snake_case instead of joining `isSystem`/`isExploration`.
   user_id: it.user_id,
   is_common_item: it.is_common_item,
+  // Carried through so `resolveTileStatus`/`isCommonItem` badge Macgie's
+  // seeded starter items on Home outfit tiles, not just the wardrobe grid —
+  // and, just as importantly, DON'T badge a catalog item the user picked
+  // themselves (same `USR_` hrid, but it's theirs).
+  is_default_item: it.is_default_item,
   is_new: it.is_new,
   usage_frequency: it.usage_frequency,
-  // AU-392 fix: carry through so `resolveTileStatus`/`isCommonItem` can
-  // recognize `USR_`-prefixed per-user catalog clones on Home outfit tiles,
-  // not just the wardrobe grid.
   human_readable_id: it.human_readable_id,
 });
 

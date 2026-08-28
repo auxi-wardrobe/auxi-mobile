@@ -241,7 +241,8 @@
         "row_occasion": "Occasion",
         "row_purchase_date": "Date d'achat",
         "value_unset": "—",
-        "name_edit_placeholder": "Saisir un nom"
+        "name_edit_placeholder": "Saisir un nom",
+        "toast_default_delete_locked": "Ajoutez encore {{remaining}} de vos propres pièces pour pouvoir supprimer les pièces de départ de Macgie"
       },
       "enhance": {
         "title": "Améliorer l'image",
@@ -1148,6 +1149,12 @@
       "empty_items_body": "Touchez + pour ajouter des pièces depuis votre garde-robe, vos favoris ou vos créations.",
       "a11y_edit_name": "Modifier le nom de la capsule",
       "a11y_save_name": "Enregistrer le nom de la capsule"
+    },
+    "defaultItemsUnlocked": {
+      "title": "Votre dressing est enfin le vôtre",
+      "body": "Vous avez ajouté {{itemCount}} de vos propres pièces — de quoi permettre à Macgie de composer vos tenues à partir de votre vrai dressing. Les pièces de départ que nous vous avions prêtées peuvent être supprimées quand vous le souhaitez.",
+      "manage_cta": "Gérer mon dressing",
+      "got_it": "J'ai compris"
     }
   }
 }

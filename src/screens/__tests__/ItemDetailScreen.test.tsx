@@ -112,6 +112,9 @@ jest.mock('react-i18next', () => {
 const mockGetWardrobeItem = jest.fn();
 const mockDeleteWardrobeItem = jest.fn();
 const mockMarkWardrobeItemReviewed = jest.fn();
+// Default-item removal gate: locked unless a test says otherwise, matching
+// the hook's fail-closed contract.
+const mockGetDefaultItemRemovalStatus = jest.fn();
 
 jest.mock('../../services/wardrobeService', () => ({
   wardrobeService: {
@@ -122,6 +125,8 @@ jest.mock('../../services/wardrobeService', () => ({
     markWardrobeItemReviewed: (...args: unknown[]) =>
       mockMarkWardrobeItemReviewed(...args),
     updateWardrobeItemAttributes: jest.fn(),
+    getDefaultItemRemovalStatus: (...args: unknown[]) =>
+      mockGetDefaultItemRemovalStatus(...args),
   },
   getItemFitLabel: () => 'Regular',
   getItemStyleTags: () => [],
@@ -129,6 +134,9 @@ jest.mock('../../services/wardrobeService', () => ({
   wardrobeKeys: {
     all: ['wardrobe-items'],
     list: (f: string = 'All') => ['wardrobe-items', f],
+  },
+  defaultItemRemovalKeys: {
+    all: ['default-item-removal-status'],
   },
 }));
 
@@ -212,6 +220,12 @@ beforeEach(() => {
     is_new: false,
     reviewed_at: '2026-07-10T07:00:00+00:00',
   }));
+  mockGetDefaultItemRemovalStatus.mockResolvedValue({
+    own_item_count: 3,
+    threshold: 12,
+    remaining: 9,
+    unlocked: false,
+  });
 });
 
 afterEach(() => {
@@ -644,14 +658,213 @@ describe('cache invalidation', () => {
     try {
       const r = await renderScreen(testClient);
 
+      console.log('DEBUG calls', mockGetDefaultItemRemovalStatus.mock.calls.length, mockGetWardrobeItem.mock.results.length);
       press(oneByTestID(r.root, 'item-detail-delete-btn'));
       await flushPromises();
 
       expect(invalidateSpy).toHaveBeenCalledWith(
         expect.objectContaining({ queryKey: ['wardrobe-items'] }),
       );
+      // Deleting one of the user's own items moves the own-item count, which
+      // can re-lock default-item removal.
+      expect(invalidateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: ['default-item-removal-status'],
+        }),
+      );
     } finally {
       alertSpy.mockRestore();
     }
+  });
+});
+
+// =============================================================================
+// 6. default-item removal gate — Macgie's starter items become removable once
+//    the user has uploaded enough of their own
+// =============================================================================
+describe('default-item removal gate', () => {
+  // One of Macgie's seeded starter items: owned by the user, but WE put it
+  // there. `is_default_item` is the only thing separating it from the
+  // user-picked clone below — they share the USR_ hrid.
+  const DEFAULT_ITEM = {
+    ...USER_ITEM,
+    id: 'default-1',
+    is_default_item: true,
+    human_readable_id: 'USR_L2_TEE_WHT_REG_01',
+  };
+
+  // A catalog item the USER picked (Database screen / trending drop).
+  const PICKED_ITEM = {
+    ...USER_ITEM,
+    id: 'picked-1',
+    is_default_item: false,
+    human_readable_id: 'USR_L2_TEE_BLK_REG_01',
+  };
+
+  // A SYSTEM catalog row — the shared catalog itself, never anybody's to
+  // remove no matter how full their wardrobe gets.
+  const SYSTEM_ITEM = {
+    ...USER_ITEM,
+    id: 'sys-1',
+    is_common_item: true,
+    human_readable_id: 'SYS_L2_TEE_WHT_REG_01',
+  };
+
+  const UNLOCKED = {
+    own_item_count: 12,
+    threshold: 12,
+    remaining: 0,
+    unlocked: true,
+  };
+
+  /**
+   * A client with the gate already resolved to `unlocked`.
+   *
+   * The gate query only becomes `enabled` after the item load resolves and the
+   * screen re-renders as a default item, so a fetch-driven unlock settles an
+   * indeterminate number of passes behind the mount effect. Seeding the cache
+   * takes that race out of the tests that assert what happens once unlocked;
+   * the tests below that assert the LOCKED behaviour still drive the real
+   * fetch (and assert it was actually consulted).
+   */
+  const unlockedClient = () => {
+    const client = makeTestClient();
+    client.setQueryData(['default-item-removal-status'], UNLOCKED);
+    return client;
+  };
+
+  it('hides Trash on a default item while removal is locked', async () => {
+    mockGetWardrobeItem.mockResolvedValue(DEFAULT_ITEM);
+
+    const r = await renderScreen();
+    await flushPromises();
+
+    expect(byTestID(r.root, 'item-detail-delete-btn').length).toBe(0);
+    // Prove the gate actually asked — otherwise this would pass trivially if
+    // the query never became enabled.
+    expect(mockGetDefaultItemRemovalStatus).toHaveBeenCalled();
+  });
+
+  it('shows Trash on a default item once removal is unlocked', async () => {
+    mockGetWardrobeItem.mockResolvedValue(DEFAULT_ITEM);
+
+    const r = await renderScreen(unlockedClient());
+
+    expect(byTestID(r.root, 'item-detail-delete-btn').length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it('deletes a default item once unlocked', async () => {
+    mockGetWardrobeItem.mockResolvedValue(DEFAULT_ITEM);
+    mockDeleteWardrobeItem.mockResolvedValue(undefined);
+
+    const alertSpy = jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((_title, _message, buttons) => {
+        buttons?.find(b => b.style === 'destructive')?.onPress?.();
+      });
+
+    try {
+      const r = await renderScreen(unlockedClient());
+
+      press(oneByTestID(r.root, 'item-detail-delete-btn'));
+      await flushPromises();
+
+      expect(mockDeleteWardrobeItem).toHaveBeenCalledWith('default-1');
+    } finally {
+      alertSpy.mockRestore();
+    }
+  });
+
+  it('never shows Trash on a SYSTEM catalog item, even when unlocked', async () => {
+    mockGetWardrobeItem.mockResolvedValue(SYSTEM_ITEM);
+
+    const r = await renderScreen(unlockedClient());
+
+    expect(byTestID(r.root, 'item-detail-delete-btn').length).toBe(0);
+  });
+
+  it('never asks about the unlock for the user\'s own uploads', async () => {
+    // Own uploads were always deletable — the gate must not put a request
+    // (or a loading state) in front of that.
+    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+
+    const r = await renderScreen();
+    await flushPromises();
+
+    expect(mockGetDefaultItemRemovalStatus).not.toHaveBeenCalled();
+    expect(byTestID(r.root, 'item-detail-delete-btn').length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it('fails closed when the status request errors', async () => {
+    mockGetWardrobeItem.mockResolvedValue(DEFAULT_ITEM);
+    mockGetDefaultItemRemovalStatus.mockRejectedValue(new Error('offline'));
+
+    const r = await renderScreen();
+    await flushPromises();
+
+    // A Trash button the backend would 403 is worse than no Trash button.
+    expect(byTestID(r.root, 'item-detail-delete-btn').length).toBe(0);
+  });
+
+  // A catalog item the user picked is theirs — it must behave like any other
+  // wardrobe item despite sharing the USR_ hrid with a seeded default.
+  describe('user-picked catalog item', () => {
+    // The image badge only mounts once the image region reports a layout
+    // (the `imageFrame` memo gates the whole frame), so drive onLayout the
+    // same way the enhance-FAB describe does.
+    const layOutImage = (root: ReactTestInstance) => {
+      const region = root.findAll(
+        n => typeof n.props?.onLayout === 'function',
+      )[0];
+      act(() => {
+        region.props.onLayout({
+          nativeEvent: { layout: { width: 414, height: 600 } },
+        });
+      });
+    };
+
+    it('is deletable straight away, with no unlock check', async () => {
+      mockGetWardrobeItem.mockResolvedValue(PICKED_ITEM);
+
+      const r = await renderScreen();
+      await flushPromises();
+
+      expect(byTestID(r.root, 'item-detail-delete-btn').length).toBeGreaterThan(
+        0,
+      );
+      expect(mockGetDefaultItemRemovalStatus).not.toHaveBeenCalled();
+    });
+
+    it('carries no Macgie badge and stays editable', async () => {
+      mockGetWardrobeItem.mockResolvedValue(PICKED_ITEM);
+
+      const r = await renderScreen();
+      await flushPromises();
+      layOutImage(r.root);
+
+      expect(byTestID(r.root, 'item-detail-common-badge').length).toBe(0);
+      expect(oneByTestID(r.root, 'item-detail-change-btn').props.disabled).toBe(
+        false,
+      );
+    });
+
+    it('a seeded default keeps the badge and stays read-only', async () => {
+      mockGetWardrobeItem.mockResolvedValue(DEFAULT_ITEM);
+
+      const r = await renderScreen();
+      await flushPromises();
+      layOutImage(r.root);
+
+      expect(byTestID(r.root, 'item-detail-common-badge').length).toBeGreaterThan(
+        0,
+      );
+      expect(oneByTestID(r.root, 'item-detail-change-btn').props.disabled).toBe(
+        true,
+      );
+    });
   });
 });

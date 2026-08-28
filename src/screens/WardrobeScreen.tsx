@@ -48,6 +48,8 @@ import {
 } from '../services/analytics';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { UsageLimitSheet } from '../components/features/UsageLimitSheet';
+import { DefaultItemsUnlockedSheet } from '../components/features/DefaultItemsUnlockedSheet';
+import { useDefaultItemsUnlockedCelebration } from '../hooks/useDefaultItemsUnlockedCelebration';
 import { useCapsules } from './capsule/hooks';
 import { WardrobeSwitcherSheet } from './wardrobe/WardrobeSwitcherSheet';
 import { AddItemSheet } from './wardrobe/AddItemSheet';
@@ -184,6 +186,16 @@ export const WardrobeScreen = () => {
   // F7: only show the dedicated error state when we have nothing to display;
   // a failed background refetch over cached data stays silent.
   const loadError = wardrobeQuery.isError && items.length === 0;
+
+  // Milestone: "you can now remove Macgie's default items". Keyed off the
+  // wardrobe's size so it fires whichever route added the 12th item — camera,
+  // gallery, web import, or a Database pick (which lands here by navigation,
+  // never through useAddWardrobeItem). `undefined` while the list is still
+  // loading so the first real load isn't mistaken for an empty wardrobe.
+  const defaultItemsUnlockedCelebration = useDefaultItemsUnlockedCelebration({
+    itemCount: wardrobeQuery.data?.length,
+    user,
+  });
 
   // Invalidate ALL wardrobe list caches after an upload — a new item may land
   // in any category, so refresh every filter variant.
@@ -721,6 +733,19 @@ export const WardrobeScreen = () => {
       <UsageLimitSheet
         {...usageLimitSheetProps}
         visible={usageLimitSheetProps.visible && !uploading}
+      />
+
+      {/* "You can now remove Macgie's default items" milestone. Driven by the
+          wardrobe list's size rather than by one upload path, because the 12th
+          item can also arrive from the Database screen (see the hook's header).
+          Held back while `uploading` for the same reason as UsageLimitSheet
+          above — it rides the same ContextualBottomSheet modal and must not
+          present over PreparingOverlay. */}
+      <DefaultItemsUnlockedSheet
+        {...defaultItemsUnlockedCelebration.sheetProps}
+        visible={
+          defaultItemsUnlockedCelebration.sheetProps.visible && !uploading
+        }
       />
 
       <PreparingOverlay visible={uploading} photoUri={uploadingPhotoUri} />

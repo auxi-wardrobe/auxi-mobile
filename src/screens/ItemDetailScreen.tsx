@@ -23,8 +23,10 @@ import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
 import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { useAiConsentGate } from '../hooks/useAiConsentGate';
+import { useDefaultItemRemovalStatus } from '../hooks/useDefaultItemRemovalStatus';
 import { Icons } from '../assets/icons';
 import {
+  defaultItemRemovalKeys,
   getItemFitLabel,
   getItemStyleTags,
   getItemUsageFrequency,
@@ -295,13 +297,32 @@ export const ItemDetailScreen = () => {
 
   const usageFrequency = getItemUsageFrequency(item);
   const isCommonSystemItem = item?.is_common_item === true;
-  // AU-287: SYSTEM common items AND per-user clones (USR_* hrid) belong to
-  // the suggestion catalog. Both are immutable — users demote via LESS_USE
-  // instead of permanent delete.
-  const isCatalogItem =
-    isCommonSystemItem ||
-    (typeof item?.human_readable_id === 'string' &&
-      item.human_readable_id.startsWith('USR_'));
+
+  // One of Macgie's default items: a starter-catalog clone WE seeded at
+  // onboarding. This used to be inferred from the `USR_` hrid prefix, which
+  // no longer works — a catalog item the user PICKED (Database screen,
+  // trending drop) carries the same prefix, and choosing it makes it theirs.
+  // Only the backend's `is_default_item` separates the two.
+  const isDefaultItem = item?.is_default_item === true;
+
+  // Read-only + "Macgie"-badged: the SYSTEM catalog itself, and the defaults
+  // we seeded. A user's own pick is a normal wardrobe item — no badge, and
+  // editable (the clone deep-copies its styling metadata, so editing it can't
+  // desync the catalog).
+  const isCatalogItem = isCommonSystemItem || isDefaultItem;
+
+  // Only ask the server about the unlock when it could change something on
+  // this screen — i.e. when the item on screen is actually a default item.
+  const { unlocked: canRemoveDefaultItems, remaining: ownItemsRemaining } =
+    useDefaultItemRemovalStatus(isDefaultItem);
+
+  // The Trash affordance: the user's own uploads always, default items once
+  // they've uploaded enough of their own. Mirrors the backend guard in
+  // WardrobeService.soft_delete_item — the server is still the authority, this
+  // just keeps a button that would 403 off the screen.
+  const canDelete = isDefaultItem
+    ? canRemoveDefaultItems
+    : !isCommonSystemItem;
 
   // Field-driven picker: the draft value + setter are looked up per field —
   // collapses the former parallel `switch (field)` blocks with identical
@@ -393,13 +414,21 @@ export const ItemDetailScreen = () => {
       return;
     }
 
-    // AU-287 defense-in-depth: Trash button is hidden for catalog items,
-    // but keep this guard in case handleDelete is wired up by another caller
-    // in the future (long-press, swipe, etc.).
-    if (isCatalogItem) {
+    // AU-287 defense-in-depth: the Trash button is already hidden whenever
+    // `canDelete` is false, but keep this guard in case handleDelete is wired
+    // up by another caller in the future (long-press, swipe, etc.).
+    if (!canDelete) {
       toast.show({
         type: 'error',
-        text1: t('wardrobe.itemDetail.toast_catalog_delete_blocked'),
+        // A locked default item gets the "upload N more" message with the
+        // real shortfall; SYSTEM catalog rows get the flat "never" copy,
+        // since no amount of uploading makes them removable.
+        text1:
+          isDefaultItem && ownItemsRemaining !== null
+            ? t('wardrobe.itemDetail.toast_default_delete_locked', {
+                remaining: ownItemsRemaining,
+              })
+            : t('wardrobe.itemDetail.toast_catalog_delete_blocked'),
         position: 'bottom',
       });
       return;
@@ -433,6 +462,11 @@ export const ItemDetailScreen = () => {
                 position: 'bottom',
               });
               queryClient.invalidateQueries({ queryKey: wardrobeKeys.all });
+              // Deleting one of the user's OWN items moves the own-item count
+              // and can re-lock default-item removal.
+              queryClient.invalidateQueries({
+                queryKey: defaultItemRemovalKeys.all,
+              });
               navigation.goBack();
             } catch (error) {
               console.error('Failed to delete item', error);
@@ -701,7 +735,10 @@ export const ItemDetailScreen = () => {
             )}
 
             {isCatalogItem ? (
-              <View style={styles.imageBadge}>
+              <View
+                testID="item-detail-common-badge"
+                style={styles.imageBadge}
+              >
                 <Text style={styles.imageBadgeText}>
                   {t('wardrobe.itemDetail.common_badge')}
                 </Text>
@@ -776,6 +813,7 @@ export const ItemDetailScreen = () => {
             isCommonSystemItem={isCommonSystemItem}
             openedFromSuggestion={openedFromSuggestion}
             isCatalogItem={isCatalogItem}
+            canDelete={canDelete}
             usageFrequency={usageFrequency}
             saving={saving}
             onSwap={handleOpenChange}

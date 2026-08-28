@@ -50,6 +50,11 @@ export interface WardrobeItem {
   style_tags?: string[];
   color_hex?: string;
   is_common_item?: boolean;
+  /** True only for Macgie's seeded starter items — drives the "Macgie"
+   *  badge + read-only/delete gating. A catalog item the user PICKED
+   *  themselves is `false`: it is their own item. Never infer this from
+   *  the `USR_` hrid prefix, which both kinds share. */
+  is_default_item?: boolean;
   is_deleted?: boolean;
   // AU-361: true while the backend is still processing the upload (bg-removal
   // + auto-tagging); flips false once the item is ready to use.
@@ -98,6 +103,35 @@ export interface BeautifyStatus {
 export const wardrobeKeys = {
   all: ['wardrobe-items'] as const,
   list: (filter: string = 'All') => ['wardrobe-items', filter] as const,
+};
+
+/**
+ * `GET /wardrobe/default-items/removal-status` — progress toward unlocking
+ * removal of Macgie's default (starter catalog) items.
+ *
+ * Macgie seeds every new wardrobe with defaults so the suggestion engine has
+ * signal on day one; they stay immutable until the user has uploaded
+ * `threshold` items of their OWN. The count and the threshold are the
+ * server's to decide — the client never re-derives `unlocked` from
+ * `own_item_count`, it only reads the flag (same discipline as
+ * `UsageFeatureSnapshot.limit_reached`). See
+ * `wardrobe-backend/API_DOCUMENTATION.md`.
+ */
+export interface DefaultItemRemovalStatus {
+  /** Items the user uploaded themselves — defaults + SYSTEM items excluded. */
+  own_item_count: number;
+  /** Own items required to unlock removal. */
+  threshold: number;
+  /** Own items still needed; 0 once unlocked. */
+  remaining: number;
+  /** Whether default items may now be deleted. */
+  unlocked: boolean;
+}
+
+/** Query key for the default-item removal status. Invalidated by any wardrobe
+ *  mutation that changes the own-item count (add / delete). */
+export const defaultItemRemovalKeys = {
+  all: ['default-item-removal-status'] as const,
 };
 
 const wardrobeApi = axios.create({
@@ -417,6 +451,19 @@ export const wardrobeService = {
       reportWardrobeError(error);
       throw error;
     }
+  },
+
+  /**
+   * Reads how close the user is to being allowed to remove Macgie's default
+   * items. Throws on failure — callers decide whether that is fatal (the
+   * ItemDetail delete gate keeps defaults locked, the milestone check just
+   * skips the celebration).
+   */
+  getDefaultItemRemovalStatus: async (): Promise<DefaultItemRemovalStatus> => {
+    const response = await wardrobeApi.get<DefaultItemRemovalStatus>(
+      '/wardrobe/default-items/removal-status',
+    );
+    return response.data;
   },
 
   uploadFile: async (file: UploadSource): Promise<string> => {
