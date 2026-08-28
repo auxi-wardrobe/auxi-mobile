@@ -23,6 +23,7 @@ import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
 import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { useAiConsentGate } from '../hooks/useAiConsentGate';
+import { useSaveCommonItemToWardrobe } from '../hooks/useSaveCommonItemToWardrobe';
 import { Icons } from '../assets/icons';
 import {
   getItemFitLabel,
@@ -77,7 +78,17 @@ export const ItemDetailScreen = () => {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { itemId, fallbackItem, enhancedItem } = route.params;
+  const { itemId, fallbackItem, enhancedItem, origin, discoveryOutfitId } =
+    route.params;
+  // AU-457 D1: additive "Save to wardrobe" control, shown only for items
+  // opened from the Discovery outfit detail item strip. Hook is called
+  // unconditionally (rules of hooks) — its output is simply unused for every
+  // other origin.
+  const saveToWardrobe = useSaveCommonItemToWardrobe(
+    itemId,
+    discoveryOutfitId ?? '',
+  );
+  const showSaveToWardrobe = origin === 'discovery';
 
   const [item, setItem] = useState<WardrobeItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -800,6 +811,10 @@ export const ItemDetailScreen = () => {
             onDelete={handleDelete}
             onToggleUsage={handleToggleUsageFrequency}
             onEdit={() => setIsEditing(true)}
+            showSaveToWardrobe={showSaveToWardrobe}
+            isSavedToWardrobe={saveToWardrobe.isSaved}
+            isSavingToWardrobe={saveToWardrobe.isSaving}
+            onSaveToWardrobe={saveToWardrobe.save}
           />
         )}
       </BottomSheetSurface>

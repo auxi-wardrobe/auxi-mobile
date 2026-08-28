@@ -772,7 +772,8 @@
       "feedback": "Commentaires",
       "setting": "Paramètres",
       "outfit_canvas": "Canevas de tenue",
-      "logout": "Se déconnecter"
+      "logout": "Se déconnecter",
+      "discovery": "Découverte"
     },
     "schedule": {
       "title": "Planning",
@@ -1148,6 +1149,34 @@
       "empty_items_body": "Touchez + pour ajouter des pièces depuis votre garde-robe, vos favoris ou vos créations.",
       "a11y_edit_name": "Modifier le nom de la capsule",
       "a11y_save_name": "Enregistrer le nom de la capsule"
+    },
+    "discovery": {
+      "title": "Découverte",
+      "item_count_one": "{{count}} article",
+      "item_count_other": "{{count}} articles",
+      "filter": {
+        "all": "Tous",
+        "season_spring": "Printemps",
+        "season_summer": "Été",
+        "season_fall": "Automne",
+        "season_winter": "Hiver"
+      },
+      "error_title": "Une erreur s'est produite",
+      "empty_title": "Aucune tenue pour le moment",
+      "empty_body": "Revenez bientôt — de nouvelles tenues sélectionnées arrivent.",
+      "empty_filtered_title": "Aucune tenue ne correspond à ces filtres",
+      "empty_filtered_body": "Essayez une autre saison ou un autre tag.",
+      "outfit_unavailable_title": "Cette tenue n'est plus disponible",
+      "outfit_unavailable_body": "Elle a peut-être été supprimée ou n'est plus publiée.",
+      "outfit_unavailable_toast": "Cette tenue n'est plus disponible",
+      "browse_discovery_cta": "Parcourir Découverte",
+      "see_on_me_cta": "Essayer sur moi",
+      "see_on_me_unavailable": "Cette tenue n'est pas disponible pour l'essayage pour le moment.",
+      "save_to_wardrobe_cta": "Enregistrer dans ma garde-robe",
+      "item_saved_toast": "Enregistré dans votre garde-robe",
+      "item_saved_state": "Enregistré",
+      "item_save_failed_title": "Impossible d'enregistrer cet article",
+      "item_save_failed_body": "Veuillez réessayer dans un instant."
     }
   }
 }

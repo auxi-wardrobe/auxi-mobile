@@ -11,7 +11,7 @@
 
 import { Linking } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
-import { resolveNotificationData } from '../deepLinkHandler';
+import { parseDeepLink, resolveNotificationData } from '../deepLinkHandler';
 
 // verify-email dispatch fires a real API call (verifyEmailCall) as a
 // fire-and-forget side effect; stub it so the regression test doesn't hit
@@ -24,10 +24,46 @@ jest.mock('../auth', () => ({
   }),
 }));
 
-const makeNavRef = (ready = true) => ({
+// Route-name sets mirroring AppNavigator's three mutually-exclusive root
+// `Stack.Navigator` branches (see AppNavigator.tsx): logged-out (`Auth`
+// only), first-login onboarding (Welcome…OnboardingOutro, no Discovery
+// routes), and the post-onboarding authed tree (Home, Discovery routes,
+// etc). `isDiscoveryRouteMounted` checks `routeNames` (the full screen set
+// on the CURRENT branch), not just the active route — these constants let
+// tests simulate each branch precisely.
+const AUTH_ROUTE_NAMES = ['Auth'];
+const ONBOARDING_ROUTE_NAMES = [
+  'Welcome',
+  'LocationPermission',
+  'OnboardingWardrobe',
+  'OnboardingFit',
+  'OnboardingStyles',
+  'OnboardingLoading',
+  'OnboardingCompleted',
+  'OnboardingOutro',
+];
+const AUTHED_ROUTE_NAMES = [
+  'Home',
+  'Settings',
+  'Discovery',
+  'DiscoveryOutfitDetail',
+];
+
+// `routeNames` defaults to the authed-tree set — pass `AUTH_ROUTE_NAMES` or
+// `ONBOARDING_ROUTE_NAMES` to simulate the other two root-stack shapes for
+// the discovery-outfit stash/replay tests. `rootRouteName` (first entry of
+// `routes`) defaults to the first configured route name.
+const makeNavRef = (
+  ready = true,
+  routeNames: string[] = AUTHED_ROUTE_NAMES,
+) => ({
   isReady: () => ready,
   navigate: jest.fn(),
   dispatch: jest.fn(),
+  getState: () => ({
+    routeNames,
+    routes: [{ name: routeNames[0] }],
+  }),
 });
 
 let openUrlSpy: jest.SpyInstance;
@@ -38,6 +74,54 @@ beforeEach(() => {
 });
 
 afterEach(() => openUrlSpy.mockRestore());
+
+// AU-457 phase 09 — the parser must stay kind-aware: the two auth kinds
+// still require `token`, the new `discovery-outfit` kind requires `id`
+// instead. Regression coverage for both auth kinds is included so a future
+// change to the discovery branch can't silently break them.
+describe('parseDeepLink — kind-aware validation (AU-457)', () => {
+  it('parses a discovery-outfit custom-scheme link', () => {
+    expect(parseDeepLink('auxi://discovery-outfit?id=outfit-1')).toEqual({
+      kind: 'discovery-outfit',
+      id: 'outfit-1',
+    });
+  });
+
+  it('parses a discovery-outfit universal link', () => {
+    expect(
+      parseDeepLink('https://macgie.com/discovery-outfit?id=outfit-2'),
+    ).toEqual({ kind: 'discovery-outfit', id: 'outfit-2' });
+  });
+
+  it('returns null for a discovery-outfit link missing id', () => {
+    expect(parseDeepLink('auxi://discovery-outfit')).toBeNull();
+    expect(parseDeepLink('auxi://discovery-outfit?token=t1')).toBeNull();
+  });
+
+  it('regression: verify-email still requires and parses token', () => {
+    expect(parseDeepLink('auxi://verify-email?token=t1')).toEqual({
+      kind: 'verify-email',
+      token: 't1',
+      email: undefined,
+    });
+    expect(parseDeepLink('auxi://verify-email')).toBeNull();
+  });
+
+  it('regression: reset-password still requires and parses token', () => {
+    expect(
+      parseDeepLink('auxi://reset-password?token=t2&email=a@b.com'),
+    ).toEqual({ kind: 'reset-password', token: 't2', email: 'a@b.com' });
+    expect(parseDeepLink('auxi://reset-password')).toBeNull();
+  });
+
+  it('returns null for an unknown slug', () => {
+    expect(parseDeepLink('auxi://some-unknown?id=1')).toBeNull();
+  });
+
+  it('returns null for a non-auxi, non-macgie.com URL', () => {
+    expect(parseDeepLink('https://example.com/discovery-outfit?id=1')).toBeNull();
+  });
+});
 
 describe('resolveNotificationData — route kind', () => {
   it('navigates to an allowlisted curated screen', () => {
@@ -368,6 +452,168 @@ describe('dispatchDeepLink — reset-password resets the Auth stack', () => {
       params: { source: 'signup' },
     });
     expect(nav.dispatch).not.toHaveBeenCalled();
+  });
+});
+
+// AU-457 phase 09 — discovery-outfit dispatch: route-then-resolve (navigate
+// with just the id, the detail screen owns the fetch), plus the logged-out
+// stash/replay-after-login path (`isAuthedTreeMounted`).
+describe('dispatchDeepLink — discovery-outfit (AU-457)', () => {
+  type DeepLinkModule = typeof import('../deepLinkHandler');
+  const loadModule = (): DeepLinkModule => require('../deepLinkHandler');
+
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  it('navigates straight to DiscoveryOutfitDetail with source: deep_link when the authed tree is mounted', async () => {
+    const { dispatchDeepLink } = loadModule();
+    const nav = makeNavRef(true, AUTHED_ROUTE_NAMES);
+
+    await dispatchDeepLink(
+      { kind: 'discovery-outfit', id: 'outfit-1' },
+      { navRef: nav as any },
+    );
+
+    expect(nav.navigate).toHaveBeenCalledWith('DiscoveryOutfitDetail', {
+      outfitId: 'outfit-1',
+      source: 'deep_link',
+    });
+  });
+
+  it('stashes instead of navigating when the root stack is still Auth (logged out)', async () => {
+    const { dispatchDeepLink } = loadModule();
+    const loggedOut = makeNavRef(true, AUTH_ROUTE_NAMES);
+
+    await dispatchDeepLink(
+      { kind: 'discovery-outfit', id: 'outfit-2' },
+      { navRef: loggedOut as any },
+    );
+
+    expect(loggedOut.navigate).not.toHaveBeenCalled();
+  });
+
+  it('replays the stashed link once the authed tree is mounted (post-login)', async () => {
+    const { dispatchDeepLink, replayPendingDeepLink } = loadModule();
+    const loggedOut = makeNavRef(true, AUTH_ROUTE_NAMES);
+
+    await dispatchDeepLink(
+      { kind: 'discovery-outfit', id: 'outfit-3' },
+      { navRef: loggedOut as any },
+    );
+    expect(loggedOut.navigate).not.toHaveBeenCalled();
+
+    const loggedIn = makeNavRef(true, AUTHED_ROUTE_NAMES);
+    await replayPendingDeepLink(loggedIn as any);
+
+    expect(loggedIn.navigate).toHaveBeenCalledWith('DiscoveryOutfitDetail', {
+      outfitId: 'outfit-3',
+      source: 'deep_link',
+    });
+  });
+
+  // Code-review High #2 regression: a first-login user (root stack is the
+  // onboarding branch — Welcome…OnboardingOutro, no Discovery routes) taps a
+  // Discovery social link mid-onboarding. The link must stay stashed (not
+  // silently dropped by navigating into a tree without the route) and must
+  // replay once onboarding completes and the authed tree (with
+  // DiscoveryOutfitDetail) mounts — however long that takes, not just the
+  // one post-login replay attempt.
+  it('stashes instead of navigating when the root stack is the first-login onboarding branch', async () => {
+    const { dispatchDeepLink } = loadModule();
+    const onboarding = makeNavRef(true, ONBOARDING_ROUTE_NAMES);
+
+    await dispatchDeepLink(
+      { kind: 'discovery-outfit', id: 'outfit-4' },
+      { navRef: onboarding as any },
+    );
+
+    expect(onboarding.navigate).not.toHaveBeenCalled();
+  });
+
+  it('replays the stashed link once onboarding completes and the authed tree mounts (not lost)', async () => {
+    const { dispatchDeepLink, replayPendingDeepLink } = loadModule();
+    const onboarding = makeNavRef(true, ONBOARDING_ROUTE_NAMES);
+
+    // Link opens while the user is still mid-onboarding — must stash.
+    await dispatchDeepLink(
+      { kind: 'discovery-outfit', id: 'outfit-5' },
+      { navRef: onboarding as any },
+    );
+    expect(onboarding.navigate).not.toHaveBeenCalled();
+
+    // A replay attempt while still mid-onboarding (mirrors AppNavigator's
+    // `[user]`-keyed effect firing the moment `user` first becomes truthy,
+    // before onboarding finishes) must re-stash, not drop the link.
+    const stillOnboarding = makeNavRef(true, ONBOARDING_ROUTE_NAMES);
+    await replayPendingDeepLink(stillOnboarding as any);
+    expect(stillOnboarding.navigate).not.toHaveBeenCalled();
+
+    // Onboarding finishes — the authed tree (with Discovery routes) mounts.
+    // The link must still be there to replay, not lost.
+    const authedAfterOnboarding = makeNavRef(true, AUTHED_ROUTE_NAMES);
+    await replayPendingDeepLink(authedAfterOnboarding as any);
+
+    expect(authedAfterOnboarding.navigate).toHaveBeenCalledWith(
+      'DiscoveryOutfitDetail',
+      { outfitId: 'outfit-5', source: 'deep_link' },
+    );
+  });
+});
+
+// AU-457 phase 09 — `markAuthDeepLinkSeen` must stay scoped to the two
+// auth-recovery kinds; a discovery-outfit link is not an auth-recovery
+// context and must NOT suppress a real session-expired toast.
+describe('registerDeepLinkListeners — does not mark the auth window for discovery-outfit', () => {
+  type DeepLinkModule = typeof import('../deepLinkHandler');
+  const loadModule = (): DeepLinkModule => require('../deepLinkHandler');
+
+  let getInitialURLSpy: jest.SpyInstance;
+  let addEventListenerSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.resetModules();
+    getInitialURLSpy = jest
+      .spyOn(Linking, 'getInitialURL')
+      .mockResolvedValue(null);
+    addEventListenerSpy = jest
+      .spyOn(Linking, 'addEventListener')
+      .mockReturnValue({ remove: jest.fn() } as any);
+  });
+
+  afterEach(() => {
+    getInitialURLSpy.mockRestore();
+    addEventListenerSpy.mockRestore();
+  });
+
+  const flush = async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  };
+
+  it('does not mark the window on a cold-start discovery-outfit link', async () => {
+    getInitialURLSpy.mockResolvedValue('auxi://discovery-outfit?id=outfit-1');
+    const { registerDeepLinkListeners, wasAuthDeepLinkRecentlySeen } =
+      loadModule();
+    registerDeepLinkListeners(() => null);
+    await flush();
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(false);
+  });
+
+  it('does not mark the window on a warm-start discovery-outfit link', async () => {
+    const { registerDeepLinkListeners, wasAuthDeepLinkRecentlySeen } =
+      loadModule();
+    registerDeepLinkListeners(() => null);
+    await flush();
+
+    const urlHandler = addEventListenerSpy.mock.calls[0][1] as (event: {
+      url: string;
+    }) => void;
+    urlHandler({ url: 'auxi://discovery-outfit?id=outfit-2' });
+    await flush();
+
+    expect(wasAuthDeepLinkRecentlySeen()).toBe(false);
   });
 });
 

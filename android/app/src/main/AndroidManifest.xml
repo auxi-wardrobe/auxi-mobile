@@ -31,6 +31,17 @@
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="auxi" />
         </intent-filter>
+        <!-- HTTPS App Links for macgie.com. Verification will not actually pass
+             until a real assetlinks.json (with the release-signing SHA-256
+             fingerprint) is hosted at macgie.com/.well-known/assetlinks.json —
+             see auxi/docs/deep-linking/cloudflare-setup.md Step 4. -->
+        <intent-filter android:autoVerify="true">
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" android:host="macgie.com" />
+            <data android:scheme="https" android:host="www.macgie.com" />
+        </intent-filter>
       </activity>
     </application>
 </manifest>

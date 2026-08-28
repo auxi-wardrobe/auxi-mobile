@@ -8,6 +8,7 @@ import type { LegalScreenParams } from '../screens/legal/LegalDocumentScreen';
 import type { BodyShape } from '../services/bodyService';
 import type { CapsuleOutfitSource } from '../services/capsuleService';
 import type { UsageLimitFeature } from '../hooks/useUsageLimitGate';
+import type { DiscoverySeason } from '../services/discoveryService';
 
 /**
  * AU-242 — UAC v2 auth stack routes.
@@ -166,6 +167,17 @@ export type AppStackParamList = {
   Schedule: { focusDate?: string } | undefined;
   // In-app feedback form → POST /api/feedback. Reached from the sidebar menu.
   Feedback: undefined;
+  // AU-457 Discovery — admin-curated outfit browsing (D1: drawer row + stack
+  // route, no bottom tab-bar this round — see plan.md). `season` optionally
+  // preselects a filter chip when navigated to with one (not used by any
+  // caller yet; kept for a future deep-link/promo entry).
+  Discovery: { season?: DiscoverySeason } | undefined;
+  // One outfit's full detail — cover, items, "See on me" CTA. Reached from a
+  // Discovery feed card tap OR the `discovery-outfit` deep link (phase 09).
+  // `source: 'deep_link'` is set ONLY by the deep-link dispatch — it's what
+  // lets the screen fire `discovery_deep_link_opened` once its fetch settles,
+  // without double-counting the feed tap's `discovery_outfit_opened`.
+  DiscoveryOutfitDetail: { outfitId: string; source?: 'deep_link' };
   // Discriminated union on `mode` so call sites are type-checked:
   //  - tryOn MUST carry an `outfit` (removes the old `outfit!` assertion in BodyScreen)
   //  - photoLibrary → wardrobe-style grid of ALL the user's body photos
@@ -222,10 +234,18 @@ export type AppStackParamList = {
   // `enhancedItem` is a RETURN param: set only by EnhanceImage's popTo after a
   // successful "Replace original", consumed (merged into state + cleared) by
   // ItemDetail's mount-level effect — callers never pass it when pushing.
+  // AU-457 D1: `origin: 'discovery'` marks a push from the Discovery outfit
+  // detail item strip — `ItemDetailReadPanel` renders the additive "Save to
+  // wardrobe" control only for this origin (every other caller is unaffected,
+  // the prop defaults to undefined). `discoveryOutfitId` rides along ONLY for
+  // this origin — it's not shown anywhere, it's the `outfit_id` prop the
+  // `discovery_item_saved` analytics event needs.
   ItemDetail: {
     itemId: string;
     fallbackItem?: ItemDetailFallbackItem;
     enhancedItem?: EnhanceAppliedResult;
+    origin?: 'discovery';
+    discoveryOutfitId?: string;
   };
   // AI Image Enhancement preview (ItemDetail's sparkle FAB, and every "see the
   // studio shot" entry point: the Wardrobe tile, the beautify-ready snackbar,

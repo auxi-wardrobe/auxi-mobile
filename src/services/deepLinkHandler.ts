@@ -1,20 +1,27 @@
 /**
- * AU-242 Phase 04 — deep-link parser.
+ * AU-242 Phase 04 — deep-link parser. Extended AU-457 phase 09 with a third
+ * kind (`discovery-outfit`) that carries an opaque outfit id instead of a
+ * token.
  *
- * Parses verify-email and reset-password URLs and dispatches them
- * into the AuthNavigator. Two URL families are supported:
+ * Parses verify-email, reset-password, and discovery-outfit URLs and
+ * dispatches them into the app. Two URL families are supported for every
+ * kind:
  *
  *   - Custom scheme:  `auxi://verify-email?token=…`
  *                     `auxi://reset-password?token=…`
- *   - Universal Link: `https://auxi.app/verify-email?token=…`
- *                     `https://auxi.app/reset-password?token=…`
+ *                     `auxi://discovery-outfit?id=…`
+ *   - Universal Link: `https://macgie.com/verify-email?token=…`
+ *                     `https://macgie.com/reset-password?token=…`
+ *                     `https://macgie.com/discovery-outfit?id=…`
  *
  * Universal Links won't open the app until Apple App Site Association
- * is hosted at `https://auxi.app/.well-known/apple-app-site-association`
+ * is hosted at `https://macgie.com/.well-known/apple-app-site-association`
  * — that hosting work is deferred to phase 06. For now only the
  * custom scheme actually opens the app; the universal-link parser is
  * here so it Just Works once AASA + Android App Links land without a
- * second refactor.
+ * second refactor. No native manifest change was needed for
+ * `discovery-outfit` — the custom scheme is already registered
+ * (`ios/auxi/Info.plist`, `AndroidManifest.xml`).
  *
  * Cold-start vs warm-start:
  *   - `Linking.getInitialURL()` is checked once on mount. If a deep
@@ -23,12 +30,17 @@
  *   - `Linking.addEventListener('url', …)` handles warm-start (app
  *     already running).
  *
- * Token consumption:
+ * Kind handling:
  *   - verify-email links call `verifyEmail({ token })` here and
  *     navigate to `Verified` on success.
  *   - reset-password links navigate to `ResetNewPassword` and let
  *     that screen fire `resetPassword` on submit (so the user gets to
  *     type the new password first).
+ *   - discovery-outfit links navigate straight to
+ *     `DiscoveryOutfitDetail` with the id — "route-then-resolve": the
+ *     screen itself resolves the fetch (a 404 renders its own
+ *     "no longer available" fallback, see `discoveryService.getOutfit`).
+ *     This is a single network path and behaves identically cold or warm.
  */
 import { Linking } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
@@ -38,20 +50,30 @@ import { verifyEmail as verifyEmailCall } from './auth';
 import { track } from './analytics';
 import type { AppStackParamList } from '../types/navigation';
 
-const SUPPORTED_HOSTS = new Set(['auxi.app']);
+const SUPPORTED_HOSTS = new Set(['macgie.com', 'www.macgie.com']);
 
-export type DeepLinkKind = 'verify-email' | 'reset-password';
+export type DeepLinkKind = 'verify-email' | 'reset-password' | 'discovery-outfit';
+type AuthDeepLinkKind = 'verify-email' | 'reset-password';
 
-export interface ParsedDeepLink {
-  kind: DeepLinkKind;
-  token: string;
-  /** Optional email pass-through for reset-password handoff. */
-  email?: string;
-}
+const AUTH_KINDS: ReadonlySet<AuthDeepLinkKind> = new Set([
+  'verify-email',
+  'reset-password',
+]);
+
+/**
+ * Discriminated union — the two auth kinds require `token`, the discovery
+ * kind requires `id`. Keeping these mutually exclusive at the type level is
+ * what makes the parser's kind-aware validation (below) safe to extend later
+ * without a param silently becoming optional-everywhere.
+ */
+export type ParsedDeepLink =
+  | { kind: AuthDeepLinkKind; token: string; email?: string }
+  | { kind: 'discovery-outfit'; id: string };
 
 const SUPPORTED_SLUGS: ReadonlySet<DeepLinkKind> = new Set([
   'verify-email',
   'reset-password',
+  'discovery-outfit',
 ]);
 
 /**
@@ -131,11 +153,19 @@ export const parseDeepLink = (
   if (!SUPPORTED_SLUGS.has(pathSlug as DeepLinkKind)) return null;
 
   const q = parseQuery(parts.query);
+
+  if (pathSlug === 'discovery-outfit') {
+    const id = q.id;
+    if (!id) return null;
+    return { kind: 'discovery-outfit', id };
+  }
+
+  // Both remaining kinds are auth-recovery links and require `token`.
   const token = q.token;
   if (!token) return null;
 
   return {
-    kind: pathSlug as DeepLinkKind,
+    kind: pathSlug as AuthDeepLinkKind,
     token,
     email: q.email || undefined,
   };
@@ -175,6 +205,25 @@ interface DispatchDeps {
 // queue of links.
 let pendingDeepLink: ParsedDeepLink | null = null;
 
+// AU-457 phase 09 (review-fix, see High #2): `DiscoveryOutfitDetail` only
+// exists as a registered `Stack.Screen` in `AppNavigator`'s post-onboarding
+// authed branch. Two other root-stack shapes have no such route: the
+// logged-out branch (a single `Auth` screen wrapping the auth flow) AND the
+// first-login onboarding branch (`Welcome` → ... → `OnboardingOutro`, mounted
+// whenever `user.is_first_login` is true). The original check only compared
+// `routes[0].name !== 'Auth'`, which returns `true` (wrongly "ready") for the
+// onboarding branch too — a link opened mid-onboarding would `navigate()`
+// into a tree without the route (silent no-op) and be lost forever, since
+// `pendingDeepLink` was already cleared before this check ran.
+//
+// Checking `routeNames` — the full set of screens configured on the
+// CURRENTLY mounted root `Stack.Navigator`, not just the routes pushed onto
+// the history stack — covers every "not ready" branch with one query and
+// self-corrects if `AppNavigator`'s branches are ever restructured; there's
+// no separate route-name allowlist here to fall out of sync.
+const isDiscoveryRouteMounted = (navRef: NavRef): boolean =>
+  Boolean(navRef.getState()?.routeNames?.includes('DiscoveryOutfitDetail'));
+
 /**
  * Resolve a parsed deep-link by side-effecting on navigation +
  * issuing the verify-email API call when applicable.
@@ -191,6 +240,30 @@ export const dispatchDeepLink = async (
     // Nav tree not mounted yet — stash for replay once `onReady` fires
     // (see `replayPendingDeepLink`).
     pendingDeepLink = link;
+    return;
+  }
+
+  if (link.kind === 'discovery-outfit') {
+    // Logged-out OR mid-onboarding — `DiscoveryOutfitDetail` isn't a
+    // registered route in either tree shape. Stash instead of navigating
+    // into a tree that doesn't have it; `replayPendingDeepLink` re-runs this
+    // same check once the authed tree (with Discovery routes) mounts, however
+    // long that takes — post-login, or post-onboarding for a first-login
+    // user.
+    if (!isDiscoveryRouteMounted(navRef)) {
+      pendingDeepLink = link;
+      return;
+    }
+    // Route-then-resolve (see file header): navigate straight to the detail
+    // screen with just the id — it owns the fetch, the loading state, and the
+    // "no longer available" 404 fallback. `source: 'deep_link'` lets the
+    // screen fire `discovery_deep_link_opened` once the fetch settles,
+    // without double-counting the `discovery_outfit_opened` a feed-card tap
+    // already fires.
+    navRef.navigate('DiscoveryOutfitDetail', {
+      outfitId: link.id,
+      source: 'deep_link',
+    });
     return;
   }
 
@@ -284,10 +357,13 @@ export const registerDeepLinkListeners = (
   const handle = async (url: string | null) => {
     const parsed = parseDeepLink(url);
     if (!parsed) return;
-    // Both kinds are auth-recovery contexts — mark the window before
-    // dispatching so AuthContext's session-expired listener (which may fire
-    // on this same cold/warm start) can suppress its toast.
-    markAuthDeepLinkSeen();
+    // Only the two auth-recovery kinds should suppress AuthContext's
+    // session-expired toast — a `discovery-outfit` link is not an
+    // auth-recovery context, so marking the window for it would wrongly
+    // swallow a real session-expired toast landing at the same moment.
+    if (AUTH_KINDS.has(parsed.kind as AuthDeepLinkKind)) {
+      markAuthDeepLinkSeen();
+    }
     await dispatchDeepLink(parsed, { navRef: getNavRef() });
   };
 

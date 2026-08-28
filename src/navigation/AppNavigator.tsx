@@ -30,6 +30,8 @@ import { SettingsAboutScreen } from '../screens/settings/SettingsAboutScreen';
 import { FavouriteScreen } from '../screens/FavouriteScreen';
 import { ScheduleScreen } from '../screens/ScheduleScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
+import { DiscoveryScreen } from '../screens/discovery/DiscoveryScreen';
+import { DiscoveryOutfitDetailScreen } from '../screens/discovery/DiscoveryOutfitDetailScreen';
 import { SeeThisOnMeScreen } from '../screens/see-this-on-me/SeeThisOnMeScreen';
 import { SeeThisOnMeConfirmScreen } from '../screens/see-this-on-me/SeeThisOnMeConfirmScreen';
 import { TryOnResultScreen } from '../screens/see-this-on-me/TryOnResultScreen';
@@ -85,6 +87,20 @@ export const AppNavigator = () => {
     };
   }, []);
   const { user, isLoading } = useAuth();
+
+  // AU-457 phase 09: a `discovery-outfit` link opened while logged out gets
+  // stashed (see `deepLinkHandler.isAuthedTreeMounted`) rather than dropped.
+  // `onReady` below only fires once per NavigationContainer mount, and this
+  // container never unmounts across login — so replay it again the moment
+  // `user` flips truthy. `replayPendingDeepLink` is a no-op when nothing is
+  // pending, so this is safe to fire on every user-object change.
+  useEffect(() => {
+    if (user && navigationRef.isReady()) {
+      replayPendingDeepLink(navigationRef.current).catch(err =>
+        console.warn('[AppNavigator] post-login replayPendingDeepLink failed', err),
+      );
+    }
+  }, [user]);
 
   // Analytics §3.8 #56 — screen_viewed. Single global listener on
   // NavigationContainer.onStateChange resolves the current route name from the
@@ -260,6 +276,18 @@ export const AppNavigator = () => {
                 name="Feedback"
                 component={FeedbackScreen}
                 options={{ gestureEnabled: false }}
+              />
+              {/* AU-457 Discovery — drawer-reachable root destination (D1), so
+                  disable the swipe-back gesture like the other sidebar rows
+                  (Wardrobe, Settings, Schedule, Feedback above). */}
+              <Stack.Screen
+                name="Discovery"
+                component={DiscoveryScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen
+                name="DiscoveryOutfitDetail"
+                component={DiscoveryOutfitDetailScreen}
               />
               <Stack.Screen name="Body" component={BodyScreen} />
               <Stack.Screen

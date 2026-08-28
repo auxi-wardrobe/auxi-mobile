@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.auxi",
+      "sha256_cert_fingerprints": [
+        "REPLACE_ME__SEE_cloudflare-setup.md_STEP_4"
+      ]
+    }
+  }
+]

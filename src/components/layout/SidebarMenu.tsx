@@ -123,6 +123,15 @@ export const SidebarMenu: React.FC = () => {
           isActive={routeName === 'Favourite'}
           onPress={() => go('Favourite', close)}
         />
+        {/* AU-457 Discovery (D1): admin-curated outfit browsing, ships as a
+            plain drawer row + stack route — no bottom tab-bar this round. */}
+        <MenuItem
+          label={t('sidebar.discovery')}
+          Icon={Icons.Globe}
+          testID="sidebar-menu-discovery"
+          isActive={routeName === 'Discovery'}
+          onPress={() => go('Discovery', close)}
+        />
         <MenuItem
           label={t('sidebar.schedule')}
           Icon={Icons.Calendar}

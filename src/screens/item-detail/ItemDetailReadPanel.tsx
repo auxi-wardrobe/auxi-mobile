@@ -1,7 +1,8 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { PillButton } from '../../components/primitives/FigmaPrimitives';
+import { MButton } from '../../components/design-system/lib';
 import { Shimmer } from '../../components/features/Shimmer';
 import { Icons } from '../../assets/icons';
 import { UsageFrequency } from '../../services/wardrobeService';
@@ -27,6 +28,14 @@ interface ItemDetailReadPanelProps {
   onDelete: () => void;
   onToggleUsage: () => void;
   onEdit: () => void;
+  // AU-457 D1: additive "Save to wardrobe" control — shown ONLY when the item
+  // was opened from the Discovery outfit detail item strip. Every other
+  // caller leaves these undefined, so `showSaveToWardrobe` defaults false and
+  // the panel renders byte-identical to before this change.
+  showSaveToWardrobe?: boolean;
+  isSavedToWardrobe?: boolean;
+  isSavingToWardrobe?: boolean;
+  onSaveToWardrobe?: () => void;
 }
 
 /**
@@ -51,6 +60,10 @@ export const ItemDetailReadPanel: React.FC<ItemDetailReadPanelProps> = ({
   onDelete,
   onToggleUsage,
   onEdit,
+  showSaveToWardrobe = false,
+  isSavedToWardrobe = false,
+  isSavingToWardrobe = false,
+  onSaveToWardrobe,
 }) => {
   const { t } = useTranslation();
 
@@ -96,6 +109,38 @@ export const ItemDetailReadPanel: React.FC<ItemDetailReadPanelProps> = ({
           </>
         )}
       </View>
+
+      {/* AU-457 D1: additive save-to-wardrobe control, Discovery origin only.
+          `confirmed` swaps to the DS "already done" treatment (green fill,
+          check icon) for the terminal Saved state — distinct from the
+          disabled/unavailable look every other disabled control in this
+          panel uses. */}
+      {showSaveToWardrobe ? (
+        <View style={localStyles.saveToWardrobeWrap}>
+          <MButton
+            variant="primary"
+            size="md"
+            confirmed={isSavedToWardrobe}
+            disabled={isSavedToWardrobe}
+            loading={isSavingToWardrobe}
+            onPress={onSaveToWardrobe}
+            testID={
+              isSavedToWardrobe
+                ? 'item-detail-save-to-wardrobe-btn-saved'
+                : 'item-detail-save-to-wardrobe-btn'
+            }
+            accessibilityLabel={
+              isSavedToWardrobe
+                ? t('discovery.item_saved_state')
+                : t('discovery.save_to_wardrobe_cta')
+            }
+          >
+            {isSavedToWardrobe
+              ? t('discovery.item_saved_state')
+              : t('discovery.save_to_wardrobe_cta')}
+          </MButton>
+        </View>
+      ) : null}
 
       <View style={styles.buttonGroup}>
         {/* AU-307 phase 05 — "Build around this" navigates Home with
@@ -217,3 +262,9 @@ export const ItemDetailReadPanel: React.FC<ItemDetailReadPanelProps> = ({
     </>
   );
 };
+
+const localStyles = StyleSheet.create({
+  saveToWardrobeWrap: {
+    marginTop: theme.spacing.s,
+  },
+});

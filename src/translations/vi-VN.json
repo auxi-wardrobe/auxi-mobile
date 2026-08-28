@@ -771,7 +771,8 @@
       "feedback": "Phản hồi",
       "setting": "Cài đặt",
       "outfit_canvas": "Canvas phối đồ",
-      "logout": "Đăng xuất"
+      "logout": "Đăng xuất",
+      "discovery": "Khám phá"
     },
     "schedule": {
       "title": "Lịch",
@@ -1130,6 +1131,34 @@
       "empty_items_body": "Chạm + để thêm món đồ từ tủ đồ, mục yêu thích hoặc sáng tạo của bạn.",
       "a11y_edit_name": "Chỉnh sửa tên capsule",
       "a11y_save_name": "Lưu tên capsule"
+    },
+    "discovery": {
+      "title": "Khám phá",
+      "item_count_one": "{{count}} món đồ",
+      "item_count_other": "{{count}} món đồ",
+      "filter": {
+        "all": "Tất cả",
+        "season_spring": "Xuân",
+        "season_summer": "Hè",
+        "season_fall": "Thu",
+        "season_winter": "Đông"
+      },
+      "error_title": "Đã xảy ra lỗi",
+      "empty_title": "Chưa có bộ trang phục nào",
+      "empty_body": "Quay lại sau nhé — các bộ trang phục được tuyển chọn mới sắp ra mắt.",
+      "empty_filtered_title": "Không có bộ trang phục nào khớp với bộ lọc",
+      "empty_filtered_body": "Hãy thử mùa hoặc thẻ khác.",
+      "outfit_unavailable_title": "Bộ trang phục này không còn khả dụng",
+      "outfit_unavailable_body": "Có thể đã bị gỡ hoặc không còn được đăng.",
+      "outfit_unavailable_toast": "Bộ trang phục đó không còn khả dụng nữa",
+      "browse_discovery_cta": "Xem Khám phá",
+      "see_on_me_cta": "Thử trên tôi",
+      "see_on_me_unavailable": "Bộ trang phục này hiện chưa thể thử.",
+      "save_to_wardrobe_cta": "Lưu vào tủ đồ",
+      "item_saved_toast": "Đã lưu vào tủ đồ của bạn",
+      "item_saved_state": "Đã lưu",
+      "item_save_failed_title": "Không thể lưu món đồ này",
+      "item_save_failed_body": "Vui lòng thử lại sau ít phút."
     }
   }
 }

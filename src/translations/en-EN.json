@@ -772,7 +772,8 @@
       "feedback": "Feedback",
       "setting": "Setting",
       "outfit_canvas": "Outfit Canvas",
-      "logout": "Log out"
+      "logout": "Log out",
+      "discovery": "Discovery"
     },
     "schedule": {
       "title": "Schedule",
@@ -1148,6 +1149,34 @@
       "empty_items_body": "Tap + to add pieces from your wardrobe, favourites, or creations.",
       "a11y_edit_name": "Edit capsule name",
       "a11y_save_name": "Save capsule name"
+    },
+    "discovery": {
+      "title": "Discovery",
+      "item_count_one": "{{count}} item",
+      "item_count_other": "{{count}} items",
+      "filter": {
+        "all": "All",
+        "season_spring": "Spring",
+        "season_summer": "Summer",
+        "season_fall": "Fall",
+        "season_winter": "Winter"
+      },
+      "error_title": "Something went wrong",
+      "empty_title": "No outfits yet",
+      "empty_body": "Check back soon — new curated outfits are on the way.",
+      "empty_filtered_title": "No outfits match these filters",
+      "empty_filtered_body": "Try a different season or tag.",
+      "outfit_unavailable_title": "This outfit is no longer available",
+      "outfit_unavailable_body": "It may have been removed or is no longer published.",
+      "outfit_unavailable_toast": "That outfit isn't available anymore",
+      "browse_discovery_cta": "Browse Discovery",
+      "see_on_me_cta": "See on me",
+      "see_on_me_unavailable": "This outfit isn't available for try-on right now.",
+      "save_to_wardrobe_cta": "Save to wardrobe",
+      "item_saved_toast": "Saved to your wardrobe",
+      "item_saved_state": "Saved",
+      "item_save_failed_title": "Couldn't save this item",
+      "item_save_failed_body": "Please try again in a moment."
     }
   }
 }
