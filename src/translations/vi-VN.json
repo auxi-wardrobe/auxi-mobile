@@ -241,8 +241,7 @@
         "row_occasion": "Dịp",
         "row_purchase_date": "Ngày mua",
         "value_unset": "—",
-        "name_edit_placeholder": "Nhập tên",
-        "toast_default_delete_locked": "Thêm {{remaining}} món của riêng bạn nữa để xóa được đồ mặc định của Macgie"
+        "name_edit_placeholder": "Nhập tên"
       },
       "enhance": {
         "title": "Cải thiện ảnh",
@@ -1131,12 +1130,6 @@
       "empty_items_body": "Chạm + để thêm món đồ từ tủ đồ, mục yêu thích hoặc sáng tạo của bạn.",
       "a11y_edit_name": "Chỉnh sửa tên capsule",
       "a11y_save_name": "Lưu tên capsule"
-    },
-    "defaultItemsUnlocked": {
-      "title": "Tủ đồ giờ là của riêng bạn",
-      "body": "Bạn đã thêm {{itemCount}} món của riêng mình — đủ để Macgie phối đồ từ tủ đồ thật của bạn. Những món mặc định Macgie cho mượn giờ có thể xóa bất cứ lúc nào.",
-      "manage_cta": "Quản lý tủ đồ",
-      "got_it": "Đã hiểu"
     }
   }
 }
