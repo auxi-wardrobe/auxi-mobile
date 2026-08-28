@@ -210,19 +210,36 @@ let pendingDeepLink: ParsedDeepLink | null = null;
 // authed branch. Two other root-stack shapes have no such route: the
 // logged-out branch (a single `Auth` screen wrapping the auth flow) AND the
 // first-login onboarding branch (`Welcome` → ... → `OnboardingOutro`, mounted
-// whenever `user.is_first_login` is true). The original check only compared
-// `routes[0].name !== 'Auth'`, which returns `true` (wrongly "ready") for the
-// onboarding branch too — a link opened mid-onboarding would `navigate()`
-// into a tree without the route (silent no-op) and be lost forever, since
-// `pendingDeepLink` was already cleared before this check ran.
+// whenever `user.is_first_login` is true).
 //
-// Checking `routeNames` — the full set of screens configured on the
-// CURRENTLY mounted root `Stack.Navigator`, not just the routes pushed onto
-// the history stack — covers every "not ready" branch with one query and
-// self-corrects if `AppNavigator`'s branches are ever restructured; there's
-// no separate route-name allowlist here to fall out of sync.
-const isDiscoveryRouteMounted = (navRef: NavRef): boolean =>
-  Boolean(navRef.getState()?.routeNames?.includes('DiscoveryOutfitDetail'));
+// AU-457 review-fix round 2: this originally checked
+// `navRef.getState()?.routeNames?.includes('DiscoveryOutfitDetail')`. Real-
+// device testing found `getState()` reporting an EMPTY routeNames array
+// (with `isReady()` still true) from calls made outside React's own render/
+// event cycle — e.g. from an `AppState` 'active' listener — even while Home
+// (a sibling screen in the very same authed Stack.Navigator) was fully
+// rendered on screen, proving the real navigator WAS mounted and `getState()`
+// was simply stale/wrong in that call context. `getCurrentRoute()` (already
+// relied on elsewhere in this codebase for `screen_viewed` analytics, and
+// borne out in practice) doesn't share that staleness, so check against it
+// instead: if the current route isn't one of the pre-authed screens, the
+// authed-with-Discovery branch must be the one rendering.
+const PRE_AUTHED_ROUTE_NAMES = new Set([
+  'Welcome',
+  'LocationPermission',
+  'OnboardingWardrobe',
+  'OnboardingFit',
+  'OnboardingStyles',
+  'OnboardingLoading',
+  'OnboardingCompleted',
+  'OnboardingOutro',
+  'Auth',
+]);
+
+const isDiscoveryRouteMounted = (navRef: NavRef): boolean => {
+  const current = navRef.getCurrentRoute()?.name;
+  return Boolean(current) && !PRE_AUTHED_ROUTE_NAMES.has(current as string);
+};
 
 /**
  * Resolve a parsed deep-link by side-effecting on navigation +
@@ -267,9 +284,10 @@ export const dispatchDeepLink = async (
       [
         `source: ${source}`,
         `isReady: ${navRef.isReady()}`,
-        `routeNames (${state?.routeNames?.length ?? 0}): ${state?.routeNames?.join(', ') ?? 'none'}`,
-        `current route: ${state?.routes?.[state.index ?? 0]?.name ?? 'unknown'}`,
-        `will navigate: ${state?.routeNames?.includes('DiscoveryOutfitDetail') ?? false}`,
+        `getState routeNames (${state?.routeNames?.length ?? 0}): ${state?.routeNames?.join(', ') ?? 'none'}`,
+        `getState current route: ${state?.routes?.[state.index ?? 0]?.name ?? 'unknown'}`,
+        `getCurrentRoute(): ${navRef.getCurrentRoute()?.name ?? 'unknown'}`,
+        `will navigate (new check): ${isDiscoveryRouteMounted(navRef)}`,
       ].join('\n'),
     );
     // Logged-out OR mid-onboarding — `DiscoveryOutfitDetail` isn't a

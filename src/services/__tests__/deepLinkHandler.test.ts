@@ -64,6 +64,10 @@ const makeNavRef = (
     routeNames,
     routes: [{ name: routeNames[0] }],
   }),
+  // `isDiscoveryRouteMounted` reads this, not `getState()` (see the AU-457
+  // review-fix round-2 comment in deepLinkHandler.ts) — keep in sync with
+  // `getState()`'s `routes[0]` above, same "current root route" semantics.
+  getCurrentRoute: () => ({ name: routeNames[0] }),
 });
 
 let openUrlSpy: jest.SpyInstance;
