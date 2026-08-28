@@ -16,7 +16,7 @@ import { OnboardingLoadingScreen } from '../onboarding/v2/OnboardingLoadingScree
 import { OnboardingCompletedScreen } from '../onboarding/v2/OnboardingCompletedScreen';
 import { OnboardingOutroScreen } from '../onboarding/v2/OnboardingOutroScreen';
 import { useAuth } from '../context/AuthContext';
-import { View, StyleSheet } from 'react-native';
+import { AppState, View, StyleSheet } from 'react-native';
 import { theme } from '../theme/theme';
 import { MacgieLoader } from '../components/macgie';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
@@ -102,6 +102,26 @@ export const AppNavigator = () => {
     }
   }, [user]);
 
+  // AU-457 review-fix: a real-device Universal Link tap (continueUserActivity,
+  // distinct from the auxi:// custom scheme) was observed opening the app
+  // straight to Home instead of the deep-linked screen on some cold starts /
+  // background resumes, with no reproducible single trigger — `onReady` (once
+  // per mount) and the `[user]` effect above (once per login) don't cover
+  // every timing window a real device can land in. AppState 'active' is a
+  // broad, cheap safety net: every time the app is foregrounded, ask again.
+  // `replayPendingDeepLink` no-ops instantly when nothing is stashed, so this
+  // is safe to fire on every resume, not just the ones that need it.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active' && navigationRef.isReady()) {
+        replayPendingDeepLink(navigationRef.current).catch(err =>
+          console.warn('[AppNavigator] resume replayPendingDeepLink failed', err),
+        );
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   // Analytics §3.8 #56 — screen_viewed. Single global listener on
   // NavigationContainer.onStateChange resolves the current route name from the
   // shared navigationRef and fires once per route NAME change. Param-only
@@ -170,12 +190,30 @@ export const AppNavigator = () => {
       ref={navigationRef}
       onReady={() => {
         applyPendingScreenIntent();
-        // Cold-start deep link (verify-email / reset-password) that arrived
-        // via `getInitialURL()` before this container was ready — see
-        // `deepLinkHandler.ts`'s `pendingDeepLink` slot.
+        // Cold-start deep link (verify-email / reset-password / discovery-
+        // outfit) that arrived via `getInitialURL()` / `continueUserActivity`
+        // before this container was ready — see `deepLinkHandler.ts`'s
+        // `pendingDeepLink` slot.
         replayPendingDeepLink(navigationRef.current).catch(err =>
           console.warn('[AppNavigator] replayPendingDeepLink failed', err),
         );
+        // AU-457 review-fix: a real Universal Link cold start (as opposed to
+        // the auxi:// custom scheme) was observed sometimes landing on Home
+        // instead of the deep-linked screen, with no single reproducible
+        // trigger — `getInitialURL()` resolving asynchronously can race past
+        // this one-shot `onReady` call. A few cheap, short-lived retries give
+        // that async resolution room to land without needing a second event
+        // to hang the replay off of; each call no-ops instantly once nothing
+        // is pending.
+        [400, 900, 1600, 2600].forEach(delay => {
+          setTimeout(() => {
+            if (navigationRef.isReady()) {
+              replayPendingDeepLink(navigationRef.current).catch(err =>
+                console.warn('[AppNavigator] retry replayPendingDeepLink failed', err),
+              );
+            }
+          }, delay);
+        });
         handleNavStateChange();
       }}
       onStateChange={handleNavStateChange}
