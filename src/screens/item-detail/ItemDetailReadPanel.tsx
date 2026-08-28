@@ -16,10 +16,9 @@ interface ItemDetailReadPanelProps {
   isCommonSystemItem: boolean;
   openedFromSuggestion: boolean;
   isCatalogItem: boolean;
-  /** Whether the Trash affordance may show. Default items are deletable
-   *  only once the user has uploaded enough items of their own; SYSTEM
-   *  catalog rows never are. Resolved by the parent screen against
-   *  `useDefaultItemRemovalStatus`. */
+  /** Whether the Trash affordance may show. Everything in the user's own
+   *  wardrobe is deletable, seeded starter items included; only SYSTEM
+   *  catalog rows are not theirs to remove. Resolved by the parent screen. */
   canDelete: boolean;
   usageFrequency: UsageFrequency;
   saving: boolean;
@@ -143,10 +142,10 @@ export const ItemDetailReadPanel: React.FC<ItemDetailReadPanelProps> = ({
 
         <View style={styles.bottomRow}>
           <View style={styles.leftRow}>
-            {/* Trash shows for the user's own uploads always, and for
-                Macgie's default items once they've uploaded enough of their
-                own (see `canDelete` in ItemDetailScreen). While a default
-                item is still locked the user demotes it via Less use. */}
+            {/* Trash shows for everything in the user's own wardrobe —
+                uploads, Database picks and Macgie's seeded starter items
+                alike. Only a SYSTEM catalog row hides it (see `canDelete`
+                in ItemDetailScreen). */}
             {canDelete ? (
               <TouchableOpacity
                 testID="item-detail-delete-btn"

@@ -23,10 +23,8 @@ import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
 import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { useAiConsentGate } from '../hooks/useAiConsentGate';
-import { useDefaultItemRemovalStatus } from '../hooks/useDefaultItemRemovalStatus';
 import { Icons } from '../assets/icons';
 import {
-  defaultItemRemovalKeys,
   getItemFitLabel,
   getItemStyleTags,
   getItemUsageFrequency,
@@ -311,18 +309,12 @@ export const ItemDetailScreen = () => {
   // desync the catalog).
   const isCatalogItem = isCommonSystemItem || isDefaultItem;
 
-  // Only ask the server about the unlock when it could change something on
-  // this screen — i.e. when the item on screen is actually a default item.
-  const { unlocked: canRemoveDefaultItems, remaining: ownItemsRemaining } =
-    useDefaultItemRemovalStatus(isDefaultItem);
-
-  // The Trash affordance: the user's own uploads always, default items once
-  // they've uploaded enough of their own. Mirrors the backend guard in
-  // WardrobeService.soft_delete_item — the server is still the authority, this
-  // just keeps a button that would 403 off the screen.
-  const canDelete = isDefaultItem
-    ? canRemoveDefaultItems
-    : !isCommonSystemItem;
+  // The wardrobe is the user's: everything in it deletes, seeded starter items
+  // included. The only row this screen can show that isn't theirs to remove is
+  // a SYSTEM catalog item, reachable via a Home suggestion's fallbackItem —
+  // deleting one of those would remove it for every user. Mirrors the backend
+  // guard in WardrobeService.soft_delete_item.
+  const canDelete = !isCommonSystemItem;
 
   // Field-driven picker: the draft value + setter are looked up per field —
   // collapses the former parallel `switch (field)` blocks with identical
@@ -414,21 +406,13 @@ export const ItemDetailScreen = () => {
       return;
     }
 
-    // AU-287 defense-in-depth: the Trash button is already hidden whenever
+    // Defense-in-depth: the Trash button is already hidden whenever
     // `canDelete` is false, but keep this guard in case handleDelete is wired
     // up by another caller in the future (long-press, swipe, etc.).
     if (!canDelete) {
       toast.show({
         type: 'error',
-        // A locked default item gets the "upload N more" message with the
-        // real shortfall; SYSTEM catalog rows get the flat "never" copy,
-        // since no amount of uploading makes them removable.
-        text1:
-          isDefaultItem && ownItemsRemaining !== null
-            ? t('wardrobe.itemDetail.toast_default_delete_locked', {
-                remaining: ownItemsRemaining,
-              })
-            : t('wardrobe.itemDetail.toast_catalog_delete_blocked'),
+        text1: t('wardrobe.itemDetail.toast_catalog_delete_blocked'),
         position: 'bottom',
       });
       return;
@@ -462,11 +446,6 @@ export const ItemDetailScreen = () => {
                 position: 'bottom',
               });
               queryClient.invalidateQueries({ queryKey: wardrobeKeys.all });
-              // Deleting one of the user's OWN items moves the own-item count
-              // and can re-lock default-item removal.
-              queryClient.invalidateQueries({
-                queryKey: defaultItemRemovalKeys.all,
-              });
               navigation.goBack();
             } catch (error) {
               console.error('Failed to delete item', error);
