@@ -69,7 +69,10 @@ export interface SaveFavouriteResponse {
  * user picked themselves for one of ours.
  */
 export interface FavouriteItem
-  extends Pick<Item, 'id' | 'image_url' | 'image_png' | 'name' | 'category'> {
+  extends Pick<
+    Item,
+    'id' | 'image_url' | 'image_png' | 'image_studio' | 'name' | 'category'
+  > {
   is_common_item?: boolean;
   /** True only for Macgie's seeded starter items — drives the "Macgie"
    *  badge + read-only/delete gating. A catalog item the user PICKED
