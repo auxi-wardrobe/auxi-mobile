@@ -15,15 +15,26 @@ import { apiClient } from './apiClient';
 //     rethrows every other error. Both the deep link (phase 09) and the
 //     detail screen (phase 08) need this "gone → fall back" semantic.
 //   • `trend_tag` on the wire (snake_case); the client param is `trendTag`.
+//   • The feed and trend-tags are GENDER-FILTERED server-side from the
+//     authenticated user's onboarding direction. Nothing is sent for it; the
+//     applied value comes BACK as `applied_gender`. Detail is deliberately
+//     NOT filtered, so a shared deep link always resolves.
 //   • `composite_image_url` / `season` / `image_png` may be `null`.
 
 export type DiscoverySeason = 'spring' | 'summer' | 'fall' | 'winter';
+
+/**
+ * Wardrobe-gender target on an outfit. `null` = visible to every wardrobe
+ * (rows curated before gender targeting shipped).
+ */
+export type DiscoveryGender = 'M' | 'W' | 'U';
 
 export interface DiscoveryOutfitCard {
   id: string;
   title: string;
   composite_image_url: string | null;
   season: DiscoverySeason | null;
+  gender: DiscoveryGender | null;
   trend_tags: string[];
   item_count: number;
 }
@@ -52,6 +63,18 @@ export interface DiscoveryOutfitsResponse {
   total: number;
   limit: number;
   offset: number;
+  /**
+   * The wardrobe gender the BACKEND applied to this feed, derived from the
+   * user's persisted onboarding direction — `null` when the user has no
+   * direction on file and the feed came back unfiltered.
+   *
+   * Reported, never requested: there is no client parameter for this and no
+   * way to override it, so do NOT add one to `DiscoveryListParams`. Menswear
+   * users receive only `M` outfits, Womenswear only `W`, Mixed all three
+   * (backend AU-305 rule). `total` is already the gender-filtered count, so
+   * pagination needs no adjustment.
+   */
+  applied_gender: DiscoveryGender | null;
 }
 
 export interface DiscoveryListParams {
