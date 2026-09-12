@@ -56,6 +56,8 @@ import IconDownload from '../images/icon_download.svg';
 import IconThumbUp from '../images/icon_thumb_up.svg';
 import IconThumbDown from '../images/icon_thumb_down.svg';
 import IconEnhanceImage from '../images/icon_enhance_image.svg';
+import IconBell from '../images/icon_bell.svg';
+import IconHome from '../images/icon_home.svg';
 
 export const Icons = {
   Water: IconWater,
@@ -116,6 +118,8 @@ export const Icons = {
   ThumbUp: IconThumbUp,
   ThumbDown: IconThumbDown,
   EnhanceImage: IconEnhanceImage,
+  Bell: IconBell,
+  Home: IconHome,
 };
 
 export {

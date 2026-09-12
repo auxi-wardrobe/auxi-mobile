@@ -133,8 +133,8 @@ jest.mock('../../context/SidebarContext', () => ({
 jest.mock('../../components/layout/Header', () => ({
   Header: { MenuTitleAction: () => null, BackTitle: () => null },
 }));
-jest.mock('../../components/features/HomeWardrobeNavFooter', () => ({
-  HomeWardrobeNavFooter: () => null,
+jest.mock('../../components/features/AppNavFooter', () => ({
+  AppNavFooter: () => null,
 }));
 jest.mock('../../components/features/WardrobeWelcomeDialog', () => ({
   WardrobeWelcomeDialog: () => null,

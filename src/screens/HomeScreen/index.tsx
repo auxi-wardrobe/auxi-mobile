@@ -76,7 +76,7 @@ import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import { TrendingDropCard } from '../../components/features/TrendingDropCard';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
-import { HomeWardrobeNavFooter } from '../../components/features/HomeWardrobeNavFooter';
+import { AppNavFooter } from '../../components/features/AppNavFooter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OUTFITS_PER_SET } from '../../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../../hooks/usePinReducer';
@@ -111,6 +111,7 @@ import {
   isScheduledHash,
   withScheduledPrefix,
 } from './scheduled-outfits';
+import { buildPersonaFrom } from './build-persona';
 import { styles } from './styles';
 import {
   readHomeDeckSnapshot,
@@ -178,21 +179,14 @@ export const HomeScreen = () => {
     scheduledSheetsRef.current = scheduledSheets;
   }, [scheduledSheets]);
 
-  // Persona preferences threaded into every `/build` `user` payload so the
-  // engine biases formality (style_direction) + statement level
-  // (confidence_level). Omit unset keys so the backend keeps its defaults.
-  // Mirrored into a ref for the pin-regenerate effect, which reads from refs.
-  const buildPersona = useMemo(() => {
-    const meta = user?.user_metadata;
-    return {
-      ...(meta?.style_direction
-        ? { style_direction: meta.style_direction }
-        : {}),
-      ...(meta?.confidence_level
-        ? { confidence_level: meta.confidence_level }
-        : {}),
-    };
-  }, [user?.user_metadata]);
+  // Persona preferences threaded into every `/build` `user` payload. Shared
+  // with the landing page's cold start (see `build-persona.ts`) so both
+  // entry points build on identical inputs. Mirrored into a ref for the
+  // pin-regenerate effect, which reads from refs.
+  const buildPersona = useMemo(
+    () => buildPersonaFrom(user?.user_metadata),
+    [user?.user_metadata],
+  );
   const buildPersonaRef = useRef(buildPersona);
   useEffect(() => {
     buildPersonaRef.current = buildPersona;
@@ -1811,7 +1805,7 @@ export const HomeScreen = () => {
         onWearThis={handleWearThisForOutfit}
       />
 
-      <HomeWardrobeNavFooter active="home" testID="home-footer-nav-toggle" />
+      <AppNavFooter active="outfit" testID="home-footer-nav-toggle" />
 
       {/* Shared bottom-left feedback FAB — the same component Wardrobe mounts,
           so the footer cluster reads identically across the nav toggle. Keeps

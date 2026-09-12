@@ -113,6 +113,14 @@ export interface V05OnboardingSelection {
 
 export type AppStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
+  // The app's DEFAULT landing page (registered first in the authenticated
+  // stack). A dashboard: today's picks, the newest Discovery outfits and the
+  // popular-feature shortcuts. Distinct from `Home` below, which is the AI
+  // outfit recommender the sidebar calls "See my outfits" — the two are
+  // separate destinations on the shared 4-tab `AppNavFooter`, and `Home` keeps
+  // its route name so deep links, push taps and `screen_viewed` analytics stay
+  // continuous. No params: every entry point lands on the same dashboard.
+  HomeLanding: undefined;
   // AU-307 phase 05 — ItemDetail "Build around this" navigates Home with
   // `pinFromDetail` set to the item id. HomeScreen consumes it on mount via
   // `CONFIRM_PIN_FROM_DETAIL` (skipping the confirm modal), then clears

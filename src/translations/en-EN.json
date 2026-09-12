@@ -555,7 +555,10 @@
       "a11y_temp_idle": "Adjust outfit temperature",
       "a11y_temp_active": "Outfit temperature override active. Tap to change.",
       "temp_toast_override": "Using {{temp}}°C for outfit suggestions",
-      "temp_toast_current": "Using current weather for outfit suggestions"
+      "temp_toast_current": "Using current weather for outfit suggestions",
+      "a11y_nav_home_landing": "Home",
+      "a11y_nav_outfit": "See my outfits",
+      "a11y_nav_discovery": "Discovery"
     },
     "pin": {
       "modal_title": "Keep this item",
@@ -773,7 +776,9 @@
       "setting": "Setting",
       "outfit_canvas": "Outfit Canvas",
       "logout": "Log out",
-      "discovery": "Discovery"
+      "discovery": "Discovery",
+      "home": "Home",
+      "a11y_home": "Home"
     },
     "schedule": {
       "title": "Schedule",
@@ -1177,6 +1182,46 @@
       "item_saved_state": "Saved",
       "item_save_failed_title": "Couldn't save this item",
       "item_save_failed_body": "Please try again in a moment."
+    },
+    "homeLanding": {
+      "greeting_morning": "Good morning",
+      "greeting_afternoon": "Good afternoon",
+      "greeting_evening": "Good evening",
+      "greeting_morning_named": "Good morning, {{name}}",
+      "greeting_afternoon_named": "Good afternoon, {{name}}",
+      "greeting_evening_named": "Good evening, {{name}}",
+      "see_more": "see more",
+      "todays_picks": "Today's picks",
+      "discovery": "Discovery",
+      "popular_features": "Popular features",
+      "chip_scheduled": "Scheduled",
+      "chip_ready": "Ready for today",
+      "remix": "Remix",
+      "wear_this": "Wear this",
+      "picks_empty_title": "No picks yet today",
+      "picks_empty_body": "Let Macgie put together an outfit from your wardrobe.",
+      "picks_empty_cta": "See my outfit",
+      "feature_add_items": "Add items",
+      "feature_schedule": "Outfit Schedule",
+      "feature_capsule": "Capsule Wardrobe",
+      "feature_find_matching": "Find Matching",
+      "feature_show_wearing": "Show me wearing",
+      "feature_discover": "Discover",
+      "a11y_notifications": "Notification settings",
+      "a11y_see_more_picks": "See all of today's outfits",
+      "a11y_see_more_discovery": "See all Discovery outfits",
+      "a11y_remix": "Remix this outfit",
+      "a11y_wear_this": "Wear this outfit",
+      "weather_temp": "{{temp}}°C",
+      "picks_failed_body": "Couldn't load a suggestion just now. Open your outfits to try again.",
+      "notifications_title": "Results",
+      "notifications_empty": "Nothing new. Try-on renders and studio shots land here when they're ready.",
+      "notification_tryon_title": "Your try-on is ready",
+      "notification_tryon_body": "See how this outfit looks on you",
+      "notification_beautify_title": "Studio shot ready",
+      "notification_beautify_body": "Review the enhanced photo of {{name}}",
+      "notification_item_fallback": "your item",
+      "a11y_notifications_unread": "{{count}} new results"
     }
   }
 }

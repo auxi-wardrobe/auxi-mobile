@@ -555,7 +555,10 @@
       "a11y_temp_idle": "Ajuster la température des tenues",
       "a11y_temp_active": "Réglage de température actif. Touchez pour modifier.",
       "temp_toast_override": "Suggestions basées sur {{temp}}°C",
-      "temp_toast_current": "Suggestions basées sur la météo actuelle"
+      "temp_toast_current": "Suggestions basées sur la météo actuelle",
+      "a11y_nav_home_landing": "Accueil",
+      "a11y_nav_outfit": "Voir mes tenues",
+      "a11y_nav_discovery": "Découverte"
     },
     "pin": {
       "modal_title": "Garder cet article",
@@ -773,7 +776,9 @@
       "setting": "Paramètres",
       "outfit_canvas": "Canevas de tenue",
       "logout": "Se déconnecter",
-      "discovery": "Découverte"
+      "discovery": "Découverte",
+      "home": "Accueil",
+      "a11y_home": "Accueil"
     },
     "schedule": {
       "title": "Planning",
@@ -1177,6 +1182,46 @@
       "item_saved_state": "Enregistré",
       "item_save_failed_title": "Impossible d'enregistrer cet article",
       "item_save_failed_body": "Veuillez réessayer dans un instant."
+    },
+    "homeLanding": {
+      "greeting_morning": "Bonjour",
+      "greeting_afternoon": "Bon après-midi",
+      "greeting_evening": "Bonsoir",
+      "greeting_morning_named": "Bonjour, {{name}}",
+      "greeting_afternoon_named": "Bon après-midi, {{name}}",
+      "greeting_evening_named": "Bonsoir, {{name}}",
+      "see_more": "voir plus",
+      "todays_picks": "Sélection du jour",
+      "discovery": "Découverte",
+      "popular_features": "Fonctions populaires",
+      "chip_scheduled": "Planifié",
+      "chip_ready": "Prêt pour aujourd'hui",
+      "remix": "Remixer",
+      "wear_this": "Porter ceci",
+      "picks_empty_title": "Pas encore de sélection aujourd'hui",
+      "picks_empty_body": "Laissez Macgie composer une tenue avec votre garde-robe.",
+      "picks_empty_cta": "Voir ma tenue",
+      "feature_add_items": "Ajouter des pièces",
+      "feature_schedule": "Planning de tenues",
+      "feature_capsule": "Garde-robe capsule",
+      "feature_find_matching": "Trouver un accord",
+      "feature_show_wearing": "Me voir porter",
+      "feature_discover": "Découvrir",
+      "a11y_notifications": "Réglages des notifications",
+      "a11y_see_more_picks": "Voir toutes les tenues du jour",
+      "a11y_see_more_discovery": "Voir toutes les tenues Découverte",
+      "a11y_remix": "Remixer cette tenue",
+      "a11y_wear_this": "Porter cette tenue",
+      "weather_temp": "{{temp}} °C",
+      "picks_failed_body": "Impossible de charger une suggestion pour l'instant. Ouvrez vos tenues pour réessayer.",
+      "notifications_title": "Résultats",
+      "notifications_empty": "Rien de neuf. Les essayages et les photos studio arrivent ici une fois prêts.",
+      "notification_tryon_title": "Votre essayage est prêt",
+      "notification_tryon_body": "Voyez cette tenue sur vous",
+      "notification_beautify_title": "Photo studio prête",
+      "notification_beautify_body": "Vérifiez la photo retouchée de {{name}}",
+      "notification_item_fallback": "votre pièce",
+      "a11y_notifications_unread": "{{count}} nouveaux résultats"
     }
   }
 }

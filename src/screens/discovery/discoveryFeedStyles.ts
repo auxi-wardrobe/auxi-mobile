@@ -16,6 +16,11 @@ export const discoveryFeedStyles = StyleSheet.create({
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingTop: theme.spacing.m,
   },
+  // The feed sits above the in-flow AppNavFooter, so it must take the
+  // remaining column height rather than sizing to its content.
+  list: {
+    flex: 1,
+  },
   gridContent: {
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingTop: theme.spacing.m,

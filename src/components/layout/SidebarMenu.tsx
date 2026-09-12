@@ -75,11 +75,43 @@ export const SidebarMenu: React.FC = () => {
   }, []);
 
   const isHomeActive = routeName === 'Home';
+  const isLandingActive = routeName === 'HomeLanding';
 
   return (
     <View style={[styles.menu, { paddingTop: insets.top + 16 }]}>
-      {/* Top group — "See my outfits" → Home */}
+      {/* Top group — "Home" (the landing dashboard) then "See my outfits"
+          (the AI recommender). Two distinct destinations: the first is where
+          the app opens, the second is the outfit engine. */}
       <View style={styles.topGroup}>
+        <TouchableOpacity
+          style={[styles.pill, !isLandingActive && styles.pillInactive]}
+          testID={
+            isLandingActive
+              ? 'sidebar-pill-home-active'
+              : 'sidebar-pill-home'
+          }
+          accessibilityLabel={t('sidebar.a11y_home')}
+          onPress={() => go('HomeLanding', close)}
+        >
+          <Icons.Home
+            width={24}
+            height={24}
+            color={
+              isLandingActive
+                ? theme.colors.figmaTextDark
+                : theme.colors.uacTextPrimaryBase
+            }
+          />
+          <Text
+            style={[
+              styles.pillText,
+              !isLandingActive && styles.pillTextInactive,
+            ]}
+          >
+            {t('sidebar.home')}
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.pill, !isHomeActive && styles.pillInactive]}
           testID={

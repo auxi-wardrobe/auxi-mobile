@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '../components/design-system/lib';
 import { Shimmer } from '../components/features/Shimmer';
-import { HomeWardrobeNavFooter } from '../components/features/HomeWardrobeNavFooter';
+import { AppNavFooter } from '../components/features/AppNavFooter';
 import { FeedbackFab } from '../components/features/FeedbackFab';
 import { WardrobeWelcomeDialog } from '../components/features/WardrobeWelcomeDialog';
 import { Header } from '../components/layout/Header';
@@ -801,7 +801,7 @@ export const WardrobeScreen = () => {
         // mounts alongside so the footer cluster matches Home pixel-for-pixel
         // across the animation-less nav swap.
         <>
-          <HomeWardrobeNavFooter
+          <AppNavFooter
             active="wardrobe"
             testID="wardrobe-footer-nav-toggle"
           />
