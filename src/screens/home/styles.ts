@@ -240,15 +240,13 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaCardSurface,
     borderRadius: theme.borderRadius.figmaTile,
     padding: theme.spacing.m,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: theme.spacing.s,
+    // Label-only tiles: nothing to lay a row out against any more, so the
+    // label just sits top-left in the tile's padding box.
+    justifyContent: 'flex-start',
   },
   featureLabel: {
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.uacTextBase,
-    flexShrink: 1,
   },
 
   // ── Notification bell + sheet ───────────────────────────────────────────
