@@ -1160,11 +1160,18 @@
       "item_count_one": "{{count}} article",
       "item_count_other": "{{count}} articles",
       "filter": {
-        "all": "Tous",
+        "season_title": "Saison",
+        "all_seasons": "Toutes saisons",
         "season_spring": "Printemps",
         "season_summer": "Été",
         "season_fall": "Automne",
-        "season_winter": "Hiver"
+        "season_winter": "Hiver",
+        "tag_title": "Tags",
+        "all_tags": "Tous les tags",
+        "reset": "Par défaut",
+        "apply": "Afficher",
+        "a11y_open_season": "Filtre par saison, {{selection}}",
+        "a11y_open_tag": "Filtre par tag, {{selection}}"
       },
       "error_title": "Une erreur s'est produite",
       "empty_title": "Aucune tenue pour le moment",

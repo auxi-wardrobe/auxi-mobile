@@ -1,95 +1,120 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { MChip } from '../../components/design-system/lib';
+import { FilterSummaryChip } from '../../components/features/FilterSummaryChip';
 import { theme } from '../../theme/theme';
 import type { DiscoverySeason } from '../../services/discoveryService';
-
-const SEASONS: DiscoverySeason[] = ['spring', 'summer', 'fall', 'winter'];
+import { HORIZONTAL_PADDING } from './discovery-grid';
+import { DiscoveryFilterSheet } from './DiscoveryFilterSheet';
+import {
+  DISCOVERY_SEASONS,
+  summaryLabel,
+  toggleSeason,
+  toggleTrendTag,
+} from './discovery-filter';
 
 interface DiscoveryFilterRowProps {
-  /** `null` = the "All" season chip is selected. */
-  season: DiscoverySeason | null;
-  onSeasonChange: (season: DiscoverySeason | null) => void;
-  /** `null` = no trend-tag filter active. */
-  trendTag: string | null;
-  onTrendTagChange: (tag: string | null) => void;
+  /** Committed season selection. Empty === "All season". */
+  seasons: DiscoverySeason[];
+  onSeasonsChange: (seasons: DiscoverySeason[]) => void;
+  /** Committed trend-tag selection. Empty === every tag. */
+  selectedTrendTags: string[];
+  onTrendTagsChange: (tags: string[]) => void;
+  /** Every tag the backend currently serves (`/discovery/trend-tags`). */
   trendTags: string[];
 }
 
 /**
- * Season chips (4 fixed + "All") + trend-tag chips derived from
- * `useDiscoveryTrendTags()`. Single-select per axis, combinable across axes
- * (season AND tag can both be active) — two independent horizontal-scroll
- * rows so neither axis's chip count crowds the other.
+ * Discovery filter bar — the same interaction as the wardrobe grid's
+ * (`WardrobeFilterSortBar`): two summary pills, each opening a bottom sheet of
+ * MULTI-select chips committed on "Show". Season defaults to "All season" and
+ * tags to "All tags"; both axes accept more than one value at a time.
+ *
+ * Replaces the two horizontal chip rows this screen shipped with, which were
+ * single-select per axis and off-pattern next to the wardrobe.
  */
 export const DiscoveryFilterRow: React.FC<DiscoveryFilterRowProps> = ({
-  season,
-  onSeasonChange,
-  trendTag,
-  onTrendTagChange,
+  seasons,
+  onSeasonsChange,
+  selectedTrendTags,
+  onTrendTagsChange,
   trendTags,
 }) => {
   const { t } = useTranslation();
+  const [seasonSheetVisible, setSeasonSheetVisible] = useState(false);
+  const [tagSheetVisible, setTagSheetVisible] = useState(false);
+
+  const seasonLabelFor = (season: DiscoverySeason) =>
+    t(`discovery.filter.season_${season}`);
+  const allSeasonsLabel = t('discovery.filter.all_seasons');
+  const allTagsLabel = t('discovery.filter.all_tags');
+
+  const seasonLabel = summaryLabel(seasons, seasonLabelFor, allSeasonsLabel);
+  const tagLabel = summaryLabel(
+    selectedTrendTags,
+    tag => tag,
+    allTagsLabel,
+  );
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
-      >
-        <MChip
-          selected={season === null}
-          onPress={() => onSeasonChange(null)}
-          testID="discovery-chip-season-all"
-          accessibilityLabel={t('discovery.filter.all')}
-        >
-          {t('discovery.filter.all')}
-        </MChip>
-        {SEASONS.map(value => (
-          <MChip
-            key={value}
-            selected={season === value}
-            onPress={() => onSeasonChange(season === value ? null : value)}
-            testID={`discovery-chip-season-${value}`}
-            accessibilityLabel={t(`discovery.filter.season_${value}`)}
-          >
-            {t(`discovery.filter.season_${value}`)}
-          </MChip>
-        ))}
-      </ScrollView>
-
+    <View style={styles.row}>
+      <FilterSummaryChip
+        label={seasonLabel}
+        onPress={() => setSeasonSheetVisible(true)}
+        testID="discovery-season-trigger"
+        accessibilityLabel={t('discovery.filter.a11y_open_season', {
+          selection: seasonLabel,
+        })}
+      />
+      {/* The tag pill only exists once the backend has served some tags —
+          an empty sheet would be a dead end. */}
       {trendTags.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.row}
-        >
-          {trendTags.map(tag => (
-            <MChip
-              key={tag}
-              selected={trendTag === tag}
-              onPress={() => onTrendTagChange(trendTag === tag ? null : tag)}
-              testID={`discovery-chip-tag-${tag}`}
-              accessibilityLabel={tag}
-            >
-              {tag}
-            </MChip>
-          ))}
-        </ScrollView>
+        <FilterSummaryChip
+          label={tagLabel}
+          onPress={() => setTagSheetVisible(true)}
+          testID="discovery-tag-trigger"
+          accessibilityLabel={t('discovery.filter.a11y_open_tag', {
+            selection: tagLabel,
+          })}
+        />
       ) : null}
+
+      <DiscoveryFilterSheet
+        visible={seasonSheetVisible}
+        title={t('discovery.filter.season_title')}
+        allLabel={allSeasonsLabel}
+        options={DISCOVERY_SEASONS.map(season => ({
+          value: season,
+          label: seasonLabelFor(season),
+        }))}
+        selected={seasons}
+        onToggle={toggleSeason}
+        onDismiss={() => setSeasonSheetVisible(false)}
+        onApply={onSeasonsChange}
+        testIDPrefix="discovery-season"
+      />
+
+      <DiscoveryFilterSheet
+        visible={tagSheetVisible}
+        title={t('discovery.filter.tag_title')}
+        allLabel={allTagsLabel}
+        options={trendTags.map(tag => ({ value: tag, label: tag }))}
+        selected={selectedTrendTags}
+        onToggle={(current, tag) => toggleTrendTag(current, tag, trendTags)}
+        onDismiss={() => setTagSheetVisible(false)}
+        onApply={onTrendTagsChange}
+        testIDPrefix="discovery-tag"
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    gap: theme.spacing.xs,
-  },
   row: {
     flexDirection: 'row',
-    gap: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.m,
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: theme.spacing.xs,
   },
 });

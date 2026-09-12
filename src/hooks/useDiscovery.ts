@@ -18,10 +18,20 @@ import {
 export const DISCOVERY_QUERY_KEY = 'discovery';
 const DISCOVERY_STALE_TIME_MS = 60_000;
 
-/** Feed query — refetches whenever the season/tag filter changes. */
+/** Feed query — one cache entry per (season, tag, offset) page. */
 export const useDiscoveryOutfits = (filters: DiscoveryListParams = {}) =>
   useQuery<DiscoveryOutfitsResponse>({
-    queryKey: [DISCOVERY_QUERY_KEY, 'outfits', filters.season ?? null, filters.trendTag ?? null],
+    // `offset` is part of the key, not just the closure: without it every page
+    // of a given filter shares one cache entry, so advancing the offset returns
+    // the cached first page (still fresh inside `staleTime`) and pagination
+    // silently stops after page 1.
+    queryKey: [
+      DISCOVERY_QUERY_KEY,
+      'outfits',
+      filters.season ?? null,
+      filters.trendTag ?? null,
+      filters.offset ?? 0,
+    ],
     queryFn: () => discoveryService.listOutfits(filters),
     staleTime: DISCOVERY_STALE_TIME_MS,
     refetchOnWindowFocus: false,

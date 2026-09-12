@@ -1160,11 +1160,18 @@
       "item_count_one": "{{count}} item",
       "item_count_other": "{{count}} items",
       "filter": {
-        "all": "All",
+        "season_title": "Season",
+        "all_seasons": "All season",
         "season_spring": "Spring",
         "season_summer": "Summer",
         "season_fall": "Fall",
-        "season_winter": "Winter"
+        "season_winter": "Winter",
+        "tag_title": "Tags",
+        "all_tags": "All tags",
+        "reset": "Default",
+        "apply": "Show",
+        "a11y_open_season": "Season filter, {{selection}}",
+        "a11y_open_tag": "Tag filter, {{selection}}"
       },
       "error_title": "Something went wrong",
       "empty_title": "No outfits yet",

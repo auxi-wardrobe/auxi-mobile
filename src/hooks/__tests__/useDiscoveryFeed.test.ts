@@ -161,7 +161,7 @@ describe('useDiscoveryFeed — discovery_feed_empty', () => {
     expect(emptyEvents()).toHaveLength(1);
     mockTrack.mockClear();
 
-    act(() => get().onSeasonChange('summer'));
+    act(() => get().onSeasonsChange(['summer']));
     rerender();
 
     expect(emptyEvents()).toHaveLength(0);
@@ -199,6 +199,62 @@ describe('useDiscoveryFeed — wardrobe_gender on discovery_feed_viewed', () => 
     const { unmount } = mountHook();
 
     expect(viewedEvents()[0][1]).toEqual({ wardrobe_gender: 'M' });
+    unmount();
+  });
+});
+
+describe('useDiscoveryFeed — multi-select filter state', () => {
+  it('starts with both axes on "All" (empty selection) and no filter active', () => {
+    const { get, unmount } = mountHook();
+
+    expect(get().seasons).toEqual([]);
+    expect(get().selectedTrendTags).toEqual([]);
+    expect(get().isFilterActive).toBe(false);
+    unmount();
+  });
+
+  it('keeps more than one season at a time', () => {
+    const { get, rerender, unmount } = mountHook();
+
+    act(() => get().onSeasonsChange(['summer', 'winter']));
+    rerender();
+
+    expect(get().seasons).toEqual(['summer', 'winter']);
+    expect(get().isFilterActive).toBe(true);
+    unmount();
+  });
+
+  it('keeps more than one trend tag at a time', () => {
+    const { get, rerender, unmount } = mountHook();
+
+    act(() => get().onTrendTagsChange(['quiet luxury', 'workwear']));
+    rerender();
+
+    expect(get().selectedTrendTags).toEqual(['quiet luxury', 'workwear']);
+    expect(get().isFilterActive).toBe(true);
+    unmount();
+  });
+
+  it('reports a multi-selection as a joined filter_value, and "all" when cleared', () => {
+    const { get, rerender, unmount } = mountHook();
+    mockTrack.mockClear();
+
+    act(() => get().onSeasonsChange(['spring', 'fall']));
+    rerender();
+    act(() => get().onTrendTagsChange([]));
+    rerender();
+
+    const applied = mockTrack.mock.calls.filter(
+      (c) => c[0] === 'discovery_filter_applied',
+    );
+    expect(applied[0][1]).toEqual({
+      filter_type: 'season',
+      filter_value: 'spring,fall',
+    });
+    expect(applied[1][1]).toEqual({
+      filter_type: 'trend',
+      filter_value: 'all',
+    });
     unmount();
   });
 });

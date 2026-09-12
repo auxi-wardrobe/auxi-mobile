@@ -1142,11 +1142,18 @@
       "item_count_one": "{{count}} món đồ",
       "item_count_other": "{{count}} món đồ",
       "filter": {
-        "all": "Tất cả",
+        "season_title": "Mùa",
+        "all_seasons": "Tất cả mùa",
         "season_spring": "Xuân",
         "season_summer": "Hè",
         "season_fall": "Thu",
-        "season_winter": "Đông"
+        "season_winter": "Đông",
+        "tag_title": "Thẻ",
+        "all_tags": "Tất cả thẻ",
+        "reset": "Mặc định",
+        "apply": "Hiển thị",
+        "a11y_open_season": "Bộ lọc mùa, {{selection}}",
+        "a11y_open_tag": "Bộ lọc thẻ, {{selection}}"
       },
       "error_title": "Đã xảy ra lỗi",
       "empty_title": "Chưa có bộ trang phục nào",
