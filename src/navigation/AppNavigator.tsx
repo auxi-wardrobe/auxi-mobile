@@ -5,6 +5,7 @@ import { track } from '../services/analytics';
 import { createAppStack } from './createStack';
 import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
+import { HomeLandingScreen } from '../screens/home/HomeLandingScreen';
 import { AppWelcomeScreen } from '../screens/AppWelcomeScreen';
 import { ItemDetailScreen } from '../screens/ItemDetailScreen';
 import { EnhanceImageScreen } from '../screens/item-detail/EnhanceImageScreen';
@@ -262,10 +263,22 @@ export const AppNavigator = () => {
                   where the user starts exploring, not steps in a back-stack, so
                   the iOS swipe-right-to-go-back gesture is disabled on them
                   (OutfitCanvas below is likewise disabled). */}
+              {/* HomeLanding is registered FIRST, so it is the screen the app
+                  opens on (and the one the whole stack pops back to). The four
+                  AppNavFooter destinations — HomeLanding, Home, Discovery,
+                  Wardrobe — all carry `animation: 'none'` so switching tabs
+                  swaps the page content in place under a footer that appears to
+                  stay put (the Facebook-tabs illusion the Home|Wardrobe toggle
+                  already used). Keep the four in sync or the illusion breaks. */}
+              <Stack.Screen
+                name="HomeLanding"
+                component={HomeLandingScreen}
+                options={{ gestureEnabled: false, animation: 'none' }}
+              />
               <Stack.Screen
                 name="Home"
                 component={HomeScreen}
-                options={{ gestureEnabled: false }}
+                options={{ gestureEnabled: false, animation: 'none' }}
               />
               <Stack.Screen
                 name="Settings"
@@ -292,13 +305,9 @@ export const AppNavigator = () => {
                 name="SettingsAbout"
                 component={SettingsAboutScreen}
               />
-              {/* Facebook-style tab swap for the Home | Wardrobe footer toggle:
-                  both screens render the identical HomeWardrobeNavFooter at the
-                  same bottom anchor, so with no push/pop slide the footer reads
-                  as one persistent bar whose thumb switches while only the page
-                  content swaps in place. `animation: 'none'` on Wardrobe covers
-                  both directions — Home→Wardrobe pushes it, Wardrobe→Home pops
-                  it, and each transition uses Wardrobe's own animation option. */}
+              {/* One of the four AppNavFooter tab destinations — see the
+                  HomeLanding registration above for why they all share
+                  `animation: 'none'`. */}
               <Stack.Screen
                 name="Wardrobe"
                 component={WardrobeScreen}
@@ -321,7 +330,7 @@ export const AppNavigator = () => {
               <Stack.Screen
                 name="Discovery"
                 component={DiscoveryScreen}
-                options={{ gestureEnabled: false }}
+                options={{ gestureEnabled: false, animation: 'none' }}
               />
               <Stack.Screen
                 name="DiscoveryOutfitDetail"

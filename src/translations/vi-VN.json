@@ -555,7 +555,10 @@
       "a11y_temp_idle": "Điều chỉnh nhiệt độ trang phục",
       "a11y_temp_active": "Đang ghi đè nhiệt độ trang phục. Chạm để thay đổi.",
       "temp_toast_override": "Đang dùng {{temp}}°C để gợi ý trang phục",
-      "temp_toast_current": "Đang dùng thời tiết hiện tại để gợi ý trang phục"
+      "temp_toast_current": "Đang dùng thời tiết hiện tại để gợi ý trang phục",
+      "a11y_nav_home_landing": "Trang chủ",
+      "a11y_nav_outfit": "Xem bộ đồ của tôi",
+      "a11y_nav_discovery": "Khám phá"
     },
     "pin": {
       "modal_title": "Giữ món đồ này",
@@ -772,7 +775,9 @@
       "setting": "Cài đặt",
       "outfit_canvas": "Canvas phối đồ",
       "logout": "Đăng xuất",
-      "discovery": "Khám phá"
+      "discovery": "Khám phá",
+      "home": "Trang chủ",
+      "a11y_home": "Trang chủ"
     },
     "schedule": {
       "title": "Lịch",
@@ -1159,6 +1164,36 @@
       "item_saved_state": "Đã lưu",
       "item_save_failed_title": "Không thể lưu món đồ này",
       "item_save_failed_body": "Vui lòng thử lại sau ít phút."
+    },
+    "homeLanding": {
+      "greeting_morning": "Chào buổi sáng",
+      "greeting_afternoon": "Chào buổi chiều",
+      "greeting_evening": "Chào buổi tối",
+      "greeting_morning_named": "Chào buổi sáng, {{name}}",
+      "greeting_afternoon_named": "Chào buổi chiều, {{name}}",
+      "greeting_evening_named": "Chào buổi tối, {{name}}",
+      "see_more": "xem thêm",
+      "todays_picks": "Gợi ý hôm nay",
+      "discovery": "Khám phá",
+      "popular_features": "Tính năng phổ biến",
+      "chip_scheduled": "Đã lên lịch",
+      "chip_ready": "Sẵn sàng cho hôm nay",
+      "remix": "Phối lại",
+      "wear_this": "Mặc bộ này",
+      "picks_empty_title": "Chưa có gợi ý cho hôm nay",
+      "picks_empty_body": "Để Macgie phối một bộ đồ từ tủ đồ của bạn.",
+      "picks_empty_cta": "Xem bộ đồ của tôi",
+      "feature_add_items": "Thêm món đồ",
+      "feature_schedule": "Lịch mặc đồ",
+      "feature_capsule": "Tủ đồ Capsule",
+      "feature_find_matching": "Tìm đồ phối",
+      "feature_show_wearing": "Xem tôi mặc thử",
+      "feature_discover": "Khám phá",
+      "a11y_notifications": "Cài đặt thông báo",
+      "a11y_see_more_picks": "Xem tất cả bộ đồ hôm nay",
+      "a11y_see_more_discovery": "Xem tất cả bộ đồ Khám phá",
+      "a11y_remix": "Phối lại bộ đồ này",
+      "a11y_wear_this": "Mặc bộ đồ này"
     }
   }
 }

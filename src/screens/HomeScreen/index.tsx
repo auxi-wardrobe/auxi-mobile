@@ -76,7 +76,7 @@ import { InfoSnackbar } from '../../components/feedback/InfoSnackbar';
 import { OutfitSwipeDeck } from '../../components/features/OutfitSwipeDeck';
 import { TrendingDropCard } from '../../components/features/TrendingDropCard';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
-import { HomeWardrobeNavFooter } from '../../components/features/HomeWardrobeNavFooter';
+import { AppNavFooter } from '../../components/features/AppNavFooter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OUTFITS_PER_SET } from '../../utils/groupOutfitsIntoSets';
 import { usePinReducer } from '../../hooks/usePinReducer';
@@ -1811,7 +1811,7 @@ export const HomeScreen = () => {
         onWearThis={handleWearThisForOutfit}
       />
 
-      <HomeWardrobeNavFooter active="home" testID="home-footer-nav-toggle" />
+      <AppNavFooter active="outfit" testID="home-footer-nav-toggle" />
 
       {/* Shared bottom-left feedback FAB — the same component Wardrobe mounts,
           so the footer cluster reads identically across the nav toggle. Keeps

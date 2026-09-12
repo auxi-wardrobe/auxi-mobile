@@ -13,6 +13,7 @@ import { track } from '../../services/analytics';
 import { AppStackParamList } from '../../types/navigation';
 import { useDiscoveryFeed } from '../../hooks/useDiscoveryFeed';
 import type { DiscoveryOutfitCard as DiscoveryOutfitCardData } from '../../services/discoveryService';
+import { AppNavFooter } from '../../components/features/AppNavFooter';
 import { DiscoveryOutfitCard } from './DiscoveryOutfitCard';
 import { DiscoveryFilterRow } from './DiscoveryFilterRow';
 import {
@@ -84,6 +85,7 @@ export const DiscoveryScreen = () => {
       ) : (
         <FlatList
           testID="discovery-grid"
+          style={styles.list}
           data={outfits}
           keyExtractor={item => item.id}
           numColumns={2}
@@ -106,6 +108,9 @@ export const DiscoveryScreen = () => {
           }
         />
       )}
+
+      {/* Same bottom anchor as the other three tab hosts — see AppNavFooter. */}
+      <AppNavFooter active="discovery" testID="discovery-footer-nav" />
     </SafeAreaView>
   );
 };
