@@ -5,8 +5,17 @@ import type { DiscoveryOutfitCard } from '../../../services/discoveryService';
 import { SectionHeader } from './SectionHeader';
 import { styles } from '../styles';
 
-/** Cards in the landing strip — one row of three, matching the design. */
-export const DISCOVERY_STRIP_SIZE = 3;
+/**
+ * Cards in the landing strip — one row of TWO.
+ *
+ * The row's children are `flex: 1` with a single gap between them, so this
+ * count alone sets how wide each card is; there is no per-card width to keep
+ * in sync. Two also means each card is close to double the area it had at
+ * three, which suits the portrait lookbook crop (`DISCOVERY_CARD_RATIO`).
+ * The loading skeleton reads the same constant, so placeholders and real
+ * cards can never disagree about the row.
+ */
+export const DISCOVERY_STRIP_SIZE = 2;
 
 type Props = {
   outfits: DiscoveryOutfitCard[];
