@@ -17,6 +17,8 @@ export const GUTTER = theme.spacing.uacBodyPadding;
 export const PICK_TILE_GAP = theme.spacing.uacDimension12;
 /** Discovery strip card aspect (portrait lookbook shot). */
 export const DISCOVERY_CARD_RATIO = 3 / 4;
+/** Popular-features tile aspect — landscape, width : height = 4 : 3. */
+export const FEATURE_TILE_RATIO = 4 / 3;
 
 export const styles = StyleSheet.create({
   screen: {
@@ -236,10 +238,17 @@ export const styles = StyleSheet.create({
     // shares the remainder so the row fills the gutter edge to edge.
     flexBasis: '30%',
     flexGrow: 1,
-    minHeight: 96,
+    // Flex sets the WIDTH (main axis); the ratio derives the height from it.
+    // No minHeight alongside it — a floor would win on narrow screens and
+    // quietly break the very ratio this sets.
+    aspectRatio: FEATURE_TILE_RATIO,
     backgroundColor: theme.colors.figmaCardSurface,
     borderRadius: theme.borderRadius.figmaTile,
-    padding: theme.spacing.m,
+    // 12, not the 16 used elsewhere on this page: at 4:3 a tile on a 320px
+    // screen is only 62px tall, and 16px padding would leave 30px for a
+    // two-line label that needs 32 (12px text, 16px line height) — the label
+    // would spill out of the tile. 12 clears two lines at every phone width.
+    padding: theme.spacing.uacDimension12,
     // Label-only tiles: nothing to lay a row out against any more, so the
     // label just sits top-left in the tile's padding box.
     justifyContent: 'flex-start',
