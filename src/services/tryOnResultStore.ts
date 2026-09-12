@@ -48,13 +48,29 @@ let results = new Map<string, StoredResult>();
 // lookup keep using the synchronous `getTryOnResult`.
 type TryOnResultSnapshot = ReadonlyMap<string, string>;
 
+/** One remembered try-on result, with the time it landed. */
+export interface TryOnResultEntry {
+  readonly hash: string;
+  readonly url: string;
+  readonly savedAt: number;
+}
+
 let snapshot: TryOnResultSnapshot = new Map();
+// Second published view, for readers that need WHEN each render landed and not
+// just its URL — the Home notification feed orders "your try-on is ready" rows
+// against the beautify ones by time. Published (rather than derived on call)
+// so it is a valid `useSyncExternalStore` snapshot: a fresh array per call
+// would change identity on every render and spin React.
+let entriesSnapshot: readonly TryOnResultEntry[] = [];
 const listeners = new Set<() => void>();
 
 const publish = (): void => {
   snapshot = new Map(
     Array.from(results.values(), entry => [entry.hash, entry.url]),
   );
+  // Insertion order is oldest-first (see `recordTryOnResult`) — reverse so the
+  // freshest result leads.
+  entriesSnapshot = Array.from(results.values()).reverse();
   listeners.forEach(listener => listener());
 };
 
@@ -72,6 +88,14 @@ export const subscribeTryOnResults = (listener: () => void): (() => void) => {
  * snapshot and a safe `useMemo` dependency.
  */
 export const getTryOnResultsSnapshot = (): TryOnResultSnapshot => snapshot;
+
+/**
+ * Every remembered result, MOST RECENT FIRST. Same publish/identity contract
+ * as `getTryOnResultsSnapshot` above, so it is safe both as a
+ * `useSyncExternalStore` snapshot and as a `useMemo` dependency.
+ */
+export const getTryOnResultEntries = (): readonly TryOnResultEntry[] =>
+  entriesSnapshot;
 
 const storageKeyFor = (userId: string): string => `${KEY_PREFIX}${userId}`;
 

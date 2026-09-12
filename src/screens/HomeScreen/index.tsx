@@ -111,6 +111,7 @@ import {
   isScheduledHash,
   withScheduledPrefix,
 } from './scheduled-outfits';
+import { buildPersonaFrom } from './build-persona';
 import { styles } from './styles';
 import {
   readHomeDeckSnapshot,
@@ -178,21 +179,14 @@ export const HomeScreen = () => {
     scheduledSheetsRef.current = scheduledSheets;
   }, [scheduledSheets]);
 
-  // Persona preferences threaded into every `/build` `user` payload so the
-  // engine biases formality (style_direction) + statement level
-  // (confidence_level). Omit unset keys so the backend keeps its defaults.
-  // Mirrored into a ref for the pin-regenerate effect, which reads from refs.
-  const buildPersona = useMemo(() => {
-    const meta = user?.user_metadata;
-    return {
-      ...(meta?.style_direction
-        ? { style_direction: meta.style_direction }
-        : {}),
-      ...(meta?.confidence_level
-        ? { confidence_level: meta.confidence_level }
-        : {}),
-    };
-  }, [user?.user_metadata]);
+  // Persona preferences threaded into every `/build` `user` payload. Shared
+  // with the landing page's cold start (see `build-persona.ts`) so both
+  // entry points build on identical inputs. Mirrored into a ref for the
+  // pin-regenerate effect, which reads from refs.
+  const buildPersona = useMemo(
+    () => buildPersonaFrom(user?.user_metadata),
+    [user?.user_metadata],
+  );
   const buildPersonaRef = useRef(buildPersona);
   useEffect(() => {
     buildPersonaRef.current = buildPersona;

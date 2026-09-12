@@ -1193,7 +1193,17 @@
       "a11y_see_more_picks": "Xem tất cả bộ đồ hôm nay",
       "a11y_see_more_discovery": "Xem tất cả bộ đồ Khám phá",
       "a11y_remix": "Phối lại bộ đồ này",
-      "a11y_wear_this": "Mặc bộ đồ này"
+      "a11y_wear_this": "Mặc bộ đồ này",
+      "weather_temp": "{{temp}}°C",
+      "picks_failed_body": "Chưa tải được gợi ý lúc này. Mở trang bộ đồ để thử lại.",
+      "notifications_title": "Kết quả",
+      "notifications_empty": "Chưa có gì mới. Ảnh mặc thử và ảnh studio sẽ hiện ở đây khi xong.",
+      "notification_tryon_title": "Ảnh mặc thử đã xong",
+      "notification_tryon_body": "Xem bộ đồ này trông thế nào trên bạn",
+      "notification_beautify_title": "Ảnh studio đã xong",
+      "notification_beautify_body": "Xem lại ảnh đã làm đẹp của {{name}}",
+      "notification_item_fallback": "món đồ của bạn",
+      "a11y_notifications_unread": "{{count}} kết quả mới"
     }
   }
 }

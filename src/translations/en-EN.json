@@ -1211,7 +1211,17 @@
       "a11y_see_more_picks": "See all of today's outfits",
       "a11y_see_more_discovery": "See all Discovery outfits",
       "a11y_remix": "Remix this outfit",
-      "a11y_wear_this": "Wear this outfit"
+      "a11y_wear_this": "Wear this outfit",
+      "weather_temp": "{{temp}}°C",
+      "picks_failed_body": "Couldn't load a suggestion just now. Open your outfits to try again.",
+      "notifications_title": "Results",
+      "notifications_empty": "Nothing new. Try-on renders and studio shots land here when they're ready.",
+      "notification_tryon_title": "Your try-on is ready",
+      "notification_tryon_body": "See how this outfit looks on you",
+      "notification_beautify_title": "Studio shot ready",
+      "notification_beautify_body": "Review the enhanced photo of {{name}}",
+      "notification_item_fallback": "your item",
+      "a11y_notifications_unread": "{{count}} new results"
     }
   }
 }

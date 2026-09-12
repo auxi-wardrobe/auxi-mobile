@@ -1211,7 +1211,17 @@
       "a11y_see_more_picks": "Voir toutes les tenues du jour",
       "a11y_see_more_discovery": "Voir toutes les tenues Découverte",
       "a11y_remix": "Remixer cette tenue",
-      "a11y_wear_this": "Porter cette tenue"
+      "a11y_wear_this": "Porter cette tenue",
+      "weather_temp": "{{temp}} °C",
+      "picks_failed_body": "Impossible de charger une suggestion pour l'instant. Ouvrez vos tenues pour réessayer.",
+      "notifications_title": "Résultats",
+      "notifications_empty": "Rien de neuf. Les essayages et les photos studio arrivent ici une fois prêts.",
+      "notification_tryon_title": "Votre essayage est prêt",
+      "notification_tryon_body": "Voyez cette tenue sur vous",
+      "notification_beautify_title": "Photo studio prête",
+      "notification_beautify_body": "Vérifiez la photo retouchée de {{name}}",
+      "notification_item_fallback": "votre pièce",
+      "a11y_notifications_unread": "{{count}} nouveaux résultats"
     }
   }
 }

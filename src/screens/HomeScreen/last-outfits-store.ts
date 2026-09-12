@@ -25,7 +25,15 @@ const keyFor = (userId: string | number): string => `${KEY_PREFIX}${userId}`;
 
 // A stored sheet is the display essentials only (items carry their own image
 // urls, so no hydration is needed on restore).
-type StoredSheet = Pick<OutfitSheet, 'items' | 'outfitHash' | 'caption'>;
+//
+// `savedAt` (epoch ms) was added so a reader can tell TODAY's suggestions from
+// a previous day's — the Home landing page shows these under "Today's picks"
+// and cold-starts a fresh build when the blob is stale. It is OPTIONAL on read:
+// a blob written before this field existed simply has no date, and is treated
+// as unknown-age rather than stale, so nothing regresses on upgrade.
+type StoredSheet = Pick<OutfitSheet, 'items' | 'outfitHash' | 'caption'> & {
+  savedAt?: number;
+};
 
 const isStoredSheetArray = (value: unknown): value is StoredSheet[] =>
   Array.isArray(value) &&
@@ -48,6 +56,7 @@ export const persistLatestOutfits = (
   userId: string | number | undefined,
   outfits: OutfitSheet[],
   max: number,
+  now: number = Date.now(),
 ): void => {
   if (userId == null || outfits.length === 0 || max <= 0) {
     return;
@@ -56,6 +65,7 @@ export const persistLatestOutfits = (
     items: o.items,
     outfitHash: o.outfitHash,
     caption: o.caption ?? null,
+    savedAt: now,
   }));
   AsyncStorage.setItem(keyFor(userId), JSON.stringify(trimmed)).catch(() => {});
 };
@@ -67,18 +77,38 @@ export const persistLatestOutfits = (
  */
 export const readLatestOutfits = async (
   userId: string | number | undefined,
-): Promise<OutfitSheet[]> => {
+): Promise<OutfitSheet[]> => (await readLatestOutfitsEntry(userId)).sheets;
+
+/**
+ * As `readLatestOutfits`, plus WHEN the blob was written (epoch ms), or `null`
+ * when it is unknown — either because there is nothing stored or because the
+ * blob predates the `savedAt` field. Callers that care about freshness (the
+ * landing page's "Today's picks") use this; everything else keeps the simpler
+ * accessor above.
+ */
+export const readLatestOutfitsEntry = async (
+  userId: string | number | undefined,
+): Promise<{ sheets: OutfitSheet[]; savedAt: number | null }> => {
+  const empty = { sheets: [] as OutfitSheet[], savedAt: null };
   if (userId == null) {
-    return [];
+    return empty;
   }
   try {
     const raw = await AsyncStorage.getItem(keyFor(userId));
     if (!raw) {
-      return [];
+      return empty;
     }
     const parsed = JSON.parse(raw) as unknown;
-    return isStoredSheetArray(parsed) ? parsed : [];
+    if (!isStoredSheetArray(parsed)) {
+      return empty;
+    }
+    // Every sheet in one write shares a timestamp; read it off the newest.
+    const savedAt = parsed[parsed.length - 1]?.savedAt;
+    return {
+      sheets: parsed,
+      savedAt: typeof savedAt === 'number' ? savedAt : null,
+    };
   } catch {
-    return [];
+    return empty;
   }
 };

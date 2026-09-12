@@ -14,7 +14,7 @@ import { Icons } from '../../../assets/icons';
 import { resolveItemImage } from '../../../utils/url';
 import type { Item } from '../../../types/item';
 import type { OutfitSheet } from '../../HomeScreen/types';
-import type { TodaysPicksSource } from '../todays-picks';
+import type { TodaysPicksFailure, TodaysPicksSource } from '../todays-picks';
 import { SectionHeader } from './SectionHeader';
 import { GUTTER, styles } from '../styles';
 
@@ -25,6 +25,10 @@ type Props = {
   sheets: OutfitSheet[];
   source: TodaysPicksSource;
   loading: boolean;
+  /** Why there is nothing to show, when there is nothing to show. */
+  failure: TodaysPicksFailure;
+  /** Empty-state CTA when the wardrobe is too small to compose an outfit. */
+  onAddItems: () => void;
   /** "see more" + the empty state's CTA — both open the outfit recommender. */
   onSeeMore: () => void;
   /** Remix the visible outfit on the Outfit Canvas. */
@@ -71,7 +75,9 @@ export const TodaysPicksSection: React.FC<Props> = ({
   sheets,
   source,
   loading,
+  failure,
   onSeeMore,
+  onAddItems,
   onRemix,
   onWearThis,
   onItemPress,
@@ -104,6 +110,39 @@ export const TodaysPicksSection: React.FC<Props> = ({
     return labels;
   }, [source, visible, t]);
 
+  const emptyState = useMemo(() => {
+    if (failure === 'wardrobeGap') {
+      return {
+        testID: 'home-landing-picks-wardrobe-gap',
+        titleKey: 'home.wardrobe_gap_title',
+        bodyKey: 'home.wardrobe_gap_body',
+        ctaKey: 'home.add_to_wardrobe',
+        action: 'addItems' as const,
+      };
+    }
+    if (failure === 'aiLimit') {
+      return {
+        testID: 'home-landing-picks-ai-limit',
+        titleKey: 'home.ai_limit_title',
+        bodyKey: 'home.ai_limit_body',
+        // No CTA: tapping cannot give the budget back. The recommender owns
+        // the "view latest outfits" affordance for this state.
+        ctaKey: null,
+        action: 'none' as const,
+      };
+    }
+    return {
+      testID: 'home-landing-picks-empty',
+      titleKey: 'homeLanding.picks_empty_title',
+      bodyKey:
+        failure === 'failed'
+          ? 'homeLanding.picks_failed_body'
+          : 'homeLanding.picks_empty_body',
+      ctaKey: 'homeLanding.picks_empty_cta',
+      action: 'seeMore' as const,
+    };
+  }, [failure]);
+
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
     if (next !== page) {
@@ -127,24 +166,25 @@ export const TodaysPicksSection: React.FC<Props> = ({
           ))}
         </View>
       ) : sheets.length === 0 ? (
-        <View style={styles.stateBox} testID="home-landing-picks-empty">
-          <Text style={styles.stateTitle}>
-            {t('homeLanding.picks_empty_title')}
-          </Text>
-          <Text style={styles.stateBody}>
-            {t('homeLanding.picks_empty_body')}
-          </Text>
-          <TouchableOpacity
-            testID="home-landing-picks-empty-cta"
-            accessibilityRole="button"
-            accessibilityLabel={t('homeLanding.picks_empty_cta')}
-            activeOpacity={0.82}
-            onPress={onSeeMore}
-          >
-            <Text style={styles.stateCta}>
-              {t('homeLanding.picks_empty_cta')}
-            </Text>
-          </TouchableOpacity>
+        // Each failure gets its OWN copy and CTA: a wardrobe too small to
+        // compose an outfit needs items, not a retry, and a spent daily AI
+        // budget is not an error the user can act on by tapping again.
+        <View style={styles.stateBox} testID={emptyState.testID}>
+          <Text style={styles.stateTitle}>{t(emptyState.titleKey)}</Text>
+          <Text style={styles.stateBody}>{t(emptyState.bodyKey)}</Text>
+          {emptyState.ctaKey ? (
+            <TouchableOpacity
+              testID="home-landing-picks-empty-cta"
+              accessibilityRole="button"
+              accessibilityLabel={t(emptyState.ctaKey)}
+              activeOpacity={0.82}
+              onPress={
+                emptyState.action === 'addItems' ? onAddItems : onSeeMore
+              }
+            >
+              <Text style={styles.stateCta}>{t(emptyState.ctaKey)}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       ) : (
         <>

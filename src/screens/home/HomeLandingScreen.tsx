@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -20,10 +20,13 @@ import {
   DISCOVERY_STRIP_SIZE,
 } from './components/DiscoveryStrip';
 import { PopularFeaturesGrid } from './components/PopularFeaturesGrid';
+import { NotificationSheet } from './components/NotificationSheet';
 import { destinationFor } from './feature-routes';
 import { useHomeGreeting } from './hooks/useHomeGreeting';
 import { useHomeWeather } from './hooks/useHomeWeather';
 import { useTodaysPicks } from './hooks/useTodaysPicks';
+import { useHomeNotifications } from './hooks/useHomeNotifications';
+import type { HomeNotification } from './notifications/notification-feed';
 import { styles } from './styles';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'HomeLanding'>;
@@ -47,7 +50,14 @@ export const HomeLandingScreen = () => {
 
   const { greeting } = useHomeGreeting();
   const { weather } = useHomeWeather();
-  const { sheets, source, loading: picksLoading } = useTodaysPicks();
+  const {
+    sheets,
+    source,
+    loading: picksLoading,
+    failure: picksFailure,
+  } = useTodaysPicks(weather ? weather.temp_c : null);
+  const { feed, unseen, markSeen } = useHomeNotifications();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   // Same query key the Discovery feed uses (unfiltered, first page), so the
   // strip warms the cache the full page then reads.
@@ -115,6 +125,30 @@ export const HomeLandingScreen = () => {
     navigation.navigate('DiscoveryOutfitDetail', { outfitId: outfit.id });
   };
 
+  const handleNotification = (notification: HomeNotification) => {
+    track('home_landing_notification_opened', { kind: notification.kind });
+    // Opening a result is what marks it read — the badge should survive a
+    // glance at the list and only clear for the rows actually acted on.
+    markSeen([notification.id]);
+    setNotificationsOpen(false);
+    if (notification.kind === 'tryon') {
+      if (notification.compositeUrl) {
+        navigation.navigate('TryOnResult', {
+          compositeUrl: notification.compositeUrl,
+        });
+      }
+      return;
+    }
+    // Same destination the beautify push deep link uses: EnhanceImage resolves
+    // the candidate from the item id on mount, and `displayUri` is only the
+    // hold-to-compare baseline, so an empty one degrades gracefully.
+    navigation.navigate('EnhanceImage', {
+      itemId: notification.targetId,
+      displayUri: '',
+      origin: 'wardrobe',
+    });
+  };
+
   const handleFeature = (key: string) => {
     track('home_landing_feature_tapped', { feature: key });
     const destination = destinationFor(key);
@@ -145,13 +179,14 @@ export const HomeLandingScreen = () => {
         <HomeLandingHeader
           greeting={greeting}
           weather={weather}
+          unseenNotifications={unseen}
           onOpenMenu={openSidebar}
-          // No notification centre exists yet; the bell opens the settings
-          // that actually control notifications (daily reminders) rather than
-          // being a dead control.
           onOpenNotifications={() => {
-            track('home_landing_notifications_tapped');
-            navigation.navigate('Settings');
+            track('home_landing_notifications_opened', {
+              unseen_count: unseen,
+              total_count: feed.length,
+            });
+            setNotificationsOpen(true);
           }}
         />
 
@@ -159,7 +194,9 @@ export const HomeLandingScreen = () => {
           sheets={sheets}
           source={source}
           loading={picksLoading}
+          failure={picksFailure}
           onSeeMore={() => openRecommender('picks_see_more')}
+          onAddItems={() => popToOrNavigate(navigation, 'Wardrobe')}
           onRemix={handleRemix}
           onWearThis={() => openRecommender('wear_this')}
           onItemPress={handleItemPress}
@@ -175,6 +212,13 @@ export const HomeLandingScreen = () => {
 
         <PopularFeaturesGrid onSelect={handleFeature} />
       </ScrollView>
+
+      <NotificationSheet
+        visible={notificationsOpen}
+        notifications={feed}
+        onDismiss={() => setNotificationsOpen(false)}
+        onSelect={handleNotification}
+      />
 
       {/* Last in-flow child at the same bottom anchor every tab host uses —
           keep the placement identical or the persistent-bar illusion breaks. */}
