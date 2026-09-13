@@ -40,6 +40,7 @@ import { AiLimitSheet } from '../../components/features/AiLimitSheet';
 import { UsageLimitSheet } from '../../components/features/UsageLimitSheet';
 import { DiscardGenerationDialog } from './DiscardGenerationDialog';
 import { AppStackParamList } from '../../types/navigation';
+import { popToOrNavigate } from '../../navigation/popToOrNavigate';
 import { PhotoSourceSheet } from './components';
 import { renderStomStepScreen } from './StomStepScreen';
 import { StomStepLayout } from './StomStepLayout';
@@ -163,12 +164,17 @@ export const SeeThisOnMeScreen: React.FC = () => {
     ((asset: Asset) => void | Promise<void>) | null
   >(null);
 
-  // popTo (not navigate): reuse the existing Home instance so the current
-  // outfit suggestions + swipe position survive the round-trip. navigate() can
-  // push a duplicate Home under RN7 (see HomeWardrobeNavFooter), remounting it
-  // and resetting the deck. popTo falls back to pushing a fresh Home if none is
-  // in the stack.
-  const goHome = useCallback(() => navigation.popTo('Home'), [navigation]);
+  // "Back to home" on the result preview = the app's landing page
+  // (`HomeLanding`, the AppNavFooter home tab and the stack's default screen)
+  // — NOT the `Home` recommender, which is the separate "See my outfits"
+  // destination. popToOrNavigate pops back to the landing instance already in
+  // the stack, so its content survives the round-trip; RN7 `navigate` alone
+  // would push a duplicate and remount it. It pushes one only when the stack
+  // has none.
+  const goHome = useCallback(
+    () => popToOrNavigate(navigation, 'HomeLanding'),
+    [navigation],
+  );
 
   // Subscribe to the background-safe generation store (AU-358). Both async
   // steps (shapes gen + render) run OUTSIDE this component so they survive the
