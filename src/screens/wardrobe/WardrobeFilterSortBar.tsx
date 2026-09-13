@@ -1,41 +1,13 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { PressableScale } from '../../components/primitives/PressableScale';
-import { Icons } from '../../assets/icons';
-import { theme } from '../../theme/theme';
+import { StyleSheet, View } from 'react-native';
+import { FilterSummaryChip } from '../../components/features/FilterSummaryChip';
 import { HORIZONTAL_PADDING } from './wardrobe-grid';
 
 // Wardrobe filter/sort summary chips (Figma "wardrobe" / "item(s) selected").
 // Two pill chips at the top-right of the grid: the left one summarises the
 // active type filter (multi-select), the right one the active sort. Each opens
-// its own bottom sheet. A leading chevron-down signals "tap to open options".
-interface SummaryChipProps {
-  label: string;
-  onPress: () => void;
-  testID: string;
-  accessibilityLabel: string;
-}
-
-const SummaryChip = ({
-  label,
-  onPress,
-  testID,
-  accessibilityLabel,
-}: SummaryChipProps) => (
-  <PressableScale
-    onPress={onPress}
-    style={styles.chip}
-    activeOpacity={0.85}
-    testID={testID}
-    accessibilityLabel={accessibilityLabel}
-  >
-    <Icons.ChevronDown width={16} height={16} />
-    <Text style={styles.chipText} numberOfLines={1}>
-      {label}
-    </Text>
-  </PressableScale>
-);
-
+// its own bottom sheet. The pill itself is `FilterSummaryChip`, shared with the
+// Discovery feed's season/tag filters.
 interface WardrobeFilterSortBarProps {
   filterLabel: string;
   sortLabel: string;
@@ -54,13 +26,13 @@ export const WardrobeFilterSortBar = ({
   sortAccessibilityLabel,
 }: WardrobeFilterSortBarProps) => (
   <View style={styles.row}>
-    <SummaryChip
+    <FilterSummaryChip
       label={filterLabel}
       onPress={onOpenFilter}
       testID="wardrobe-filter-trigger"
       accessibilityLabel={filterAccessibilityLabel}
     />
-    <SummaryChip
+    <FilterSummaryChip
       label={sortLabel}
       onPress={onOpenSort}
       testID="wardrobe-sort-trigger"
@@ -77,20 +49,5 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 12,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 36,
-    maxWidth: 200,
-    paddingHorizontal: 14,
-    borderRadius: theme.borderRadius.round,
-    backgroundColor: theme.colors.figmaInsightPillBg,
-  },
-  chipText: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextPrimary,
-    flexShrink: 1,
   },
 });

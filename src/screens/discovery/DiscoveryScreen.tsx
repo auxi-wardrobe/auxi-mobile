@@ -36,16 +36,16 @@ export const DiscoveryScreen = () => {
   const { open: openSidebar } = useSidebar();
 
   const {
-    season,
-    trendTag,
+    seasons,
+    selectedTrendTags,
     trendTags,
     outfits,
     isFilterActive,
     loading,
     loadingMore,
     loadError,
-    onSeasonChange,
-    onTrendTagChange,
+    onSeasonsChange,
+    onTrendTagsChange,
     onEndReached,
     onRetry,
   } = useDiscoveryFeed();
@@ -69,14 +69,18 @@ export const DiscoveryScreen = () => {
       />
 
       <DiscoveryFilterRow
-        season={season}
-        onSeasonChange={onSeasonChange}
-        trendTag={trendTag}
-        onTrendTagChange={onTrendTagChange}
+        seasons={seasons}
+        onSeasonsChange={onSeasonsChange}
+        selectedTrendTags={selectedTrendTags}
+        onTrendTagsChange={onTrendTagsChange}
         trendTags={trendTags}
       />
 
-      {loading ? (
+      {/* `loadingMore` with nothing on screen is the client-narrowing path:
+          a multi-select filter can blank out whole server pages, and the hook
+          is walking forward to fill the grid. Showing the skeleton rather than
+          the empty state keeps "no matches" from flashing mid-search. */}
+      {loading || (loadingMore && outfits.length === 0) ? (
         <DiscoveryFeedLoadingGrid />
       ) : loadError ? (
         <DiscoveryFeedError onRetry={onRetry} />

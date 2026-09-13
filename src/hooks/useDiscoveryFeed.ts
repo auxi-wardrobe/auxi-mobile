@@ -1,9 +1,16 @@
 // useDiscoveryFeed — Discovery feed screen state (AU-457).
 //
 // Owns filter selection, page accumulation, and the feed's analytics events
-// (`discovery_feed_viewed` on focus, `discovery_filter_applied` on chip tap,
+// (`discovery_feed_viewed` on focus, `discovery_filter_applied` on apply,
 // `discovery_feed_empty` on a blacked-out cohort) so DiscoveryScreen stays
 // wiring-only (mirrors `useActiveTrendingDrop`).
+//
+// Both filter axes are MULTI-select (season and trend tag), matching the
+// wardrobe type filter. `GET /discovery/outfits` only accepts one value per
+// axis, so an axis with 2+ selections is dropped from the request and narrowed
+// client-side over the accumulated pages — see `screens/discovery/
+// discovery-filter.ts` for the split, and the MIN_NARROWED_RESULTS effect
+// below for the pagination consequence.
 //
 // The feed is gender-filtered SERVER-side from the user's onboarding
 // direction — this hook sends nothing for it and needs no gender state. It
@@ -12,10 +19,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { track } from '../services/analytics';
+import { useDiscoveryOutfits, useDiscoveryTrendTags } from './useDiscovery';
 import {
-  useDiscoveryOutfits,
-  useDiscoveryTrendTags,
-} from './useDiscovery';
+  analyticsValue,
+  narrowOutfits,
+  needsClientNarrowing,
+  toServerFilters,
+} from '../screens/discovery/discovery-filter';
 import type {
   DiscoveryGender,
   DiscoveryOutfitCard,
@@ -24,9 +34,15 @@ import type {
 
 const PAGE_SIZE = 20;
 
+// When an axis is narrowed client-side a whole server page can survive as zero
+// tiles, leaving nothing to scroll and so no `onEndReached` to fetch the next
+// page. The hook keeps pulling pages until the grid holds at least one
+// screenful (2 columns x 3 rows) or the catalogue runs out.
+const MIN_NARROWED_RESULTS = 6;
+
 export interface UseDiscoveryFeed {
-  season: DiscoverySeason | null;
-  trendTag: string | null;
+  seasons: DiscoverySeason[];
+  selectedTrendTags: string[];
   trendTags: string[];
   outfits: DiscoveryOutfitCard[];
   isFilterActive: boolean;
@@ -34,65 +50,140 @@ export interface UseDiscoveryFeed {
   loadingMore: boolean;
   loadError: boolean;
   hasMore: boolean;
-  onSeasonChange: (next: DiscoverySeason | null) => void;
-  onTrendTagChange: (next: string | null) => void;
+  onSeasonsChange: (next: DiscoverySeason[]) => void;
+  onTrendTagsChange: (next: string[]) => void;
   onEndReached: () => void;
   onRetry: () => void;
 }
 
 export const useDiscoveryFeed = (): UseDiscoveryFeed => {
-  const [season, setSeason] = useState<DiscoverySeason | null>(null);
-  const [trendTag, setTrendTag] = useState<string | null>(null);
+  const [seasons, setSeasons] = useState<DiscoverySeason[]>([]);
+  const [selectedTrendTags, setSelectedTrendTags] = useState<string[]>([]);
   const [offset, setOffset] = useState(0);
-  const [outfits, setOutfits] = useState<DiscoveryOutfitCard[]>([]);
+  const [rawOutfits, setRawOutfits] = useState<DiscoveryOutfitCard[]>([]);
+  const [total, setTotal] = useState(0);
+  const [lastPageCount, setLastPageCount] = useState(0);
+  // Offset of the most recently merged page — `null` until the first one
+  // lands. Compared against `offset` so the auto-advance below can tell "the
+  // page I asked for is in" from "the request is still in flight".
+  const [loadedOffset, setLoadedOffset] = useState<number | null>(null);
 
+  // Identity of the current filter selection — the thing page accumulation is
+  // scoped to. A plain string so it compares by value: the selection arrays get
+  // a fresh identity on every "Show" tap even when nothing actually changed.
+  const filterKey = `${seasons.join(',')}|${selectedTrendTags.join(',')}`;
+
+  const serverFilters = toServerFilters(seasons, selectedTrendTags);
   const filters = useMemo(
     () => ({
-      season: season ?? undefined,
-      trendTag: trendTag ?? undefined,
+      season: serverFilters.season,
+      trendTag: serverFilters.trendTag,
       limit: PAGE_SIZE,
       offset,
     }),
-    [season, trendTag, offset],
+    [serverFilters.season, serverFilters.trendTag, offset],
   );
 
   const outfitsQuery = useDiscoveryOutfits(filters);
   const trendTagsQuery = useDiscoveryTrendTags();
 
-  // A filter change starts a fresh page — reset the accumulator and offset so
-  // the list reflects the new filtered set instead of the prior page's tail.
-  useEffect(() => {
-    setOffset(0);
-    setOutfits([]);
-  }, [season, trendTag]);
+  // Pages held by offset rather than blind-appended, keyed by the filter they
+  // belong to. Blind appending breaks two ways that both show up as duplicated
+  // or vanished tiles: a background refetch of page 0 lands while `offset` is
+  // already 20 (appending page 0 a second time), and returning to a filter
+  // whose first page is still cached delivers no new `data` identity to append
+  // at all.
+  const pagesRef = useRef<{
+    key: string;
+    pages: Map<number, DiscoveryOutfitCard[]>;
+  }>({ key: filterKey, pages: new Map() });
 
   useEffect(() => {
-    if (!outfitsQuery.data) {
+    const data = outfitsQuery.data;
+    if (!data) {
       return;
     }
-    setOutfits(prev =>
-      offset === 0
-        ? outfitsQuery.data.outfits
-        : [...prev, ...outfitsQuery.data.outfits],
+    const store = pagesRef.current;
+    if (store.key !== filterKey) {
+      store.key = filterKey;
+      store.pages = new Map();
+    }
+    store.pages.set(data.offset ?? offset, data.outfits);
+    setRawOutfits(
+      [...store.pages.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .flatMap(([, page]) => page),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outfitsQuery.data]);
+    setTotal(data.total);
+    setLastPageCount(data.outfits.length);
+    setLoadedOffset(data.offset ?? offset);
+  }, [outfitsQuery.data, filterKey, offset]);
 
-  const total = outfitsQuery.data?.total ?? 0;
-  const hasMore = outfits.length < total;
+  // A filter change starts a fresh page. Done in the change handlers rather
+  // than in an effect so the reset lands in the SAME commit as the selection —
+  // an effect would let one render pair the new filter with the old offset.
+  const resetPages = useCallback(() => {
+    setOffset(0);
+    setRawOutfits([]);
+    setTotal(0);
+    setLastPageCount(0);
+    setLoadedOffset(null);
+  }, []);
+
+  // What the grid actually renders: the accumulated pages with any 2+-value
+  // axis applied locally (a no-op when the backend could express the filter).
+  const outfits = useMemo(
+    () => narrowOutfits(rawOutfits, seasons, selectedTrendTags),
+    [rawOutfits, seasons, selectedTrendTags],
+  );
+
+  // A page that comes back empty means the catalogue is exhausted regardless of
+  // what `total` claims — without it a stale total would spin the auto-advance
+  // below forever.
+  const exhausted = lastPageCount === 0 && rawOutfits.length > 0;
+  const hasMore = !exhausted && rawOutfits.length < total;
   const loading = outfitsQuery.isLoading && offset === 0;
   const loadingMore = outfitsQuery.isFetching && offset > 0;
-  const loadError = outfitsQuery.isError && outfits.length === 0;
+  const loadError = outfitsQuery.isError && rawOutfits.length === 0;
+
+  // Client-side narrowing can hide an entire server page, so the list would
+  // render empty with no way to scroll for more. Pull pages until the grid has
+  // a screenful or the catalogue ends.
+  //
+  // `loadedOffset === offset` is the step gate: it advances only once the page
+  // it last asked for has actually been merged, so an in-flight request can
+  // never be skipped over. That also makes the walk terminate — every pass
+  // costs one real page, and `hasMore` goes false once the merged pages cover
+  // `total` (or a page comes back empty).
+  const narrowing = needsClientNarrowing(seasons, selectedTrendTags);
+  useEffect(() => {
+    if (!narrowing || !hasMore || loading || loadingMore || loadError) {
+      return;
+    }
+    if (loadedOffset !== offset || outfits.length >= MIN_NARROWED_RESULTS) {
+      return;
+    }
+    setOffset(prev => prev + PAGE_SIZE);
+  }, [
+    narrowing,
+    hasMore,
+    loading,
+    loadingMore,
+    loadError,
+    outfits.length,
+    offset,
+    loadedOffset,
+  ]);
 
   // Fires once per screen focus (mount + every re-focus), with whatever
   // filter is active AT focus time — refs avoid re-firing on every in-session
   // filter tweak (that path is covered by discovery_filter_applied below).
-  const seasonRef = useRef(season);
-  const trendTagRef = useRef(trendTag);
+  const seasonsRef = useRef(seasons);
+  const trendTagsRef = useRef(selectedTrendTags);
   useEffect(() => {
-    seasonRef.current = season;
-    trendTagRef.current = trendTag;
-  }, [season, trendTag]);
+    seasonsRef.current = seasons;
+    trendTagsRef.current = selectedTrendTags;
+  }, [seasons, selectedTrendTags]);
 
   // What the server said it applied. Held in a ref because the focus event
   // fires BEFORE the first query resolves — on a cold start it is still null
@@ -107,9 +198,11 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
   useFocusEffect(
     useCallback(() => {
       track('discovery_feed_viewed', {
-        ...(seasonRef.current ? { filter_season: seasonRef.current } : {}),
-        ...(trendTagRef.current
-          ? { filter_trend_tag: trendTagRef.current }
+        ...(seasonsRef.current.length
+          ? { filter_season: analyticsValue(seasonsRef.current) }
+          : {}),
+        ...(trendTagsRef.current.length
+          ? { filter_trend_tag: analyticsValue(trendTagsRef.current) }
           : {}),
         ...(appliedGenderRef.current
           ? { wardrobe_gender: appliedGenderRef.current }
@@ -123,7 +216,7 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
   // logs. This event is how that becomes visible in Mixpanel instead of in a
   // support ticket. Only fires on an UNFILTERED empty feed: a filter that
   // matches nothing is a normal user action, not a coverage failure.
-  const isFilterActive = season !== null || trendTag !== null;
+  const isFilterActive = seasons.length > 0 || selectedTrendTags.length > 0;
   const emptyTrackedRef = useRef(false);
   useEffect(() => {
     const settled = !!outfitsQuery.data && !outfitsQuery.isFetching;
@@ -142,21 +235,29 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
     });
   }, [outfitsQuery.data, outfitsQuery.isFetching, isFilterActive]);
 
-  const onSeasonChange = useCallback((next: DiscoverySeason | null) => {
-    setSeason(next);
-    track('discovery_filter_applied', {
-      filter_type: 'season',
-      filter_value: next ?? 'all',
-    });
-  }, []);
+  const onSeasonsChange = useCallback(
+    (next: DiscoverySeason[]) => {
+      setSeasons(next);
+      resetPages();
+      track('discovery_filter_applied', {
+        filter_type: 'season',
+        filter_value: analyticsValue(next),
+      });
+    },
+    [resetPages],
+  );
 
-  const onTrendTagChange = useCallback((next: string | null) => {
-    setTrendTag(next);
-    track('discovery_filter_applied', {
-      filter_type: 'trend',
-      filter_value: next ?? 'all',
-    });
-  }, []);
+  const onTrendTagsChange = useCallback(
+    (next: string[]) => {
+      setSelectedTrendTags(next);
+      resetPages();
+      track('discovery_filter_applied', {
+        filter_type: 'trend',
+        filter_value: analyticsValue(next),
+      });
+    },
+    [resetPages],
+  );
 
   const onEndReached = useCallback(() => {
     if (!loading && !loadingMore && !loadError && hasMore) {
@@ -170,8 +271,8 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
   }, [outfitsQuery]);
 
   return {
-    season,
-    trendTag,
+    seasons,
+    selectedTrendTags,
     trendTags: trendTagsQuery.data ?? [],
     outfits,
     isFilterActive,
@@ -179,8 +280,8 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
     loadingMore,
     loadError,
     hasMore,
-    onSeasonChange,
-    onTrendTagChange,
+    onSeasonsChange,
+    onTrendTagsChange,
     onEndReached,
     onRetry,
   };
