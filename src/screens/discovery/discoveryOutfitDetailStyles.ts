@@ -1,6 +1,12 @@
 import { StyleSheet } from 'react-native';
 import { theme } from '../../theme/theme';
 
+/** Hairline gutter between the hero cover and each screen edge (design spec). */
+export const COVER_SIDE_GUTTER = 1;
+
+/** Ratio used only until the real image reports its own (avoids a 0-height frame). */
+export const COVER_FALLBACK_RATIO = 3 / 4;
+
 // Shared styles for DiscoveryOutfitDetailScreen + its extracted
 // subcomponents (DiscoveryDetailStates, DiscoveryOutfitSummary) — kept in one
 // file so the screen file itself stays under the 200-LOC guideline.
@@ -30,12 +36,30 @@ export const discoveryOutfitDetailStyles = StyleSheet.create({
   retryWrap: {
     marginTop: theme.spacing.l,
   },
+  // No top padding — the cover is the first thing under the status bar, with
+  // the back chip floating on top of it (no header bar on this screen).
   scrollContent: {
     paddingBottom: theme.spacing.l,
   },
+  // Floating back chip over the hero image (same treatment as the body-photo
+  // detail view): the canonical 44×44 `TopIconButton`, absolutely positioned
+  // at the sticky tier so it stays tappable above the scrolling cover.
+  floatingBack: {
+    position: 'absolute',
+    top: theme.spacing.s,
+    left: theme.spacing.m,
+    zIndex: theme.zIndex.sticky,
+  },
+  // Hero cover — edge-to-edge but for a 1px hairline gutter each side (design
+  // call: the image reads as the top of the screen, not as a card inset from
+  // it). NO fixed `aspectRatio` here: the frame adopts the uploaded image's own
+  // ratio, measured at runtime in `DiscoveryOutfitSummary`, so a tall or a
+  // square composite is never cropped. `overflow: hidden` keeps the image
+  // inside the rounded corners.
   coverFrame: {
-    width: '100%',
-    aspectRatio: 3 / 4,
+    marginHorizontal: COVER_SIDE_GUTTER,
+    borderRadius: theme.borderRadius.l,
+    overflow: 'hidden',
     backgroundColor: theme.colors.figmaCardSurface,
   },
   cover: {
