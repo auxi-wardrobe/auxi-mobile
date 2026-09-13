@@ -10,9 +10,12 @@ import { theme } from '../../theme/theme';
 // the one that looks unusual at this size — it is deliberate, not an oversight.
 //
 // Colors likewise come from `theme` tokens — no literal hex (CLAUDE.md).
-// Horizontal rhythm: one 24px screen gutter (`uacBodyPadding`) applied by the
-// scroll content; sections never add a second one.
-export const GUTTER = theme.spacing.uacBodyPadding;
+// Horizontal rhythm: one 12px screen gutter applied by the scroll content;
+// sections never add a second one. 12 is the app-wide screen inset — the
+// canonical <Header> pads by it (`Header.tsx` PAD) and the recommender and
+// wardrobe grids sit on it — so the landing lines up with every sibling page
+// instead of being inset twice as far.
+export const GUTTER = theme.spacing.uacDimension12;
 /** Today's-picks garment tile: 3 across the gutter-inset row. */
 export const PICK_TILE_GAP = theme.spacing.uacDimension12;
 /** Discovery strip card aspect (portrait lookbook shot). */
@@ -274,7 +277,9 @@ export const styles = StyleSheet.create({
     borderColor: theme.colors.white,
   },
   sheetBody: {
-    paddingHorizontal: GUTTER,
+    // The notification sheet keeps its own 24px inset — it is an overlay
+    // surface, not the page, so it does NOT follow the screen gutter above.
+    paddingHorizontal: theme.spacing.uacBodyPadding,
     paddingTop: theme.spacing.l,
     paddingBottom: theme.spacing.l,
   },

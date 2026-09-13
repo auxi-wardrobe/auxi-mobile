@@ -32,7 +32,7 @@ import {
   View,
 } from 'react-native';
 import { useReducedMotion } from '../../../theme/motion';
-import { color, radius, role, shadow, type } from '../m-tokens';
+import { color, radius, role, shadow, space, type } from '../m-tokens';
 
 const slug = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
@@ -174,9 +174,12 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   // md icon (footer nav): 6px frame + 40px icon tabs (24px glyph + 8px
-  // padding) → a 52px-tall pill with a 40×40 thumb.
+  // padding) → a 52px-tall pill with a 40×40 thumb. `columnGap` separates the
+  // tabs by 4px so adjacent glyphs get air (the thumb still tracks each tab's
+  // measured x/width, so it lands on the tab, not the gap). Height unchanged.
   fbarIconMd: {
     padding: 6,
+    columnGap: space.s1,
   },
   fthumb: {
     position: 'absolute',
