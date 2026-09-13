@@ -3,11 +3,13 @@ import { theme } from '../../theme/theme';
 
 // Landing-page styles.
 //
-// TYPOGRAPHY: every text style on this page is 12px — the three 12px aliases
-// (`uacBodyXsRegular` / `uacBodyXsMedium` / `interSemiboldXs`) carry the whole
-// page, so weight is the ONLY thing that varies and nothing here hardcodes a
-// fontSize. If you add a text style, pick one of those three. The greeting is
-// the one that looks unusual at this size — it is deliberate, not an oversight.
+// TYPOGRAPHY: every text style in the page BODY is 12px — the three 12px
+// aliases (`uacBodyXsRegular` / `uacBodyXsMedium` / `interSemiboldXs`) carry
+// the whole page, so weight is the ONLY thing that varies and nothing here
+// hardcodes a fontSize. If you add a body text style, pick one of those three.
+// The greeting is the one that looks unusual at this size — it is deliberate,
+// not an oversight. The single exception is `brand`, the header wordmark: a
+// bar title, so it takes the same 16px alias every other page's title uses.
 //
 // Colors likewise come from `theme` tokens — no literal hex (CLAUDE.md).
 // Horizontal rhythm: one 12px screen gutter applied by the scroll content;
@@ -42,12 +44,13 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: theme.spacing.s,
   },
-  // Brand wordmark, centred in the header row. 12px semibold like everything
-  // else on this page (see the TYPOGRAPHY note above) — the canonical
-  // <Header>'s title alias is 16, but the page rule wins inside the page.
-  // flex:1 between two equal 44×44 icon buttons puts it dead centre.
+  // Brand wordmark, centred in the header row. This is the ONE deliberate
+  // exception to the 12px page rule above: it is a bar title, so it takes
+  // `uacBodyMdSemibold` (16/24) — the exact alias `<Header>` gives every other
+  // page's title — rather than a page body size. Everything below it stays
+  // 12px. flex:1 between two equal 44×44 icon buttons puts it dead centre.
   brand: {
-    ...theme.typography.aliases.interSemiboldXs,
+    ...theme.typography.aliases.uacBodyMdSemibold,
     color: theme.colors.uacTextBase,
     flex: 1,
     textAlign: 'center',
