@@ -6,7 +6,11 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/layout/Header';
-import { PillButton } from '../../components/primitives/FigmaPrimitives';
+import {
+  PillButton,
+  TopIconButton,
+} from '../../components/primitives/FigmaPrimitives';
+import { Icons } from '../../assets/icons';
 import { toast } from '../../components/design-system/lib';
 import { theme } from '../../theme/theme';
 import { track } from '../../services/analytics';
@@ -114,14 +118,24 @@ export const DiscoveryOutfitDetailScreen = () => {
     });
   };
 
+  const back = () => navigation.goBack();
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Header.BackTitle
-        title={outfit?.title ?? t('discovery.title')}
-        onBack={() => navigation.goBack()}
-        leftTestID="discovery-detail-back"
-        leftAccessibilityLabel={t('uac.common.back')}
-      />
+      {/* The loaded screen has NO header bar: the cover image is the top of the
+          screen and the back chip floats on it (design call — same treatment as
+          `BodyPhotoDetailView`, the other image-hero detail view). The empty
+          states have no image to float on, so they keep the canonical
+          `Header.BackTitle`. Exactly one of the two renders at a time, so
+          `discovery-detail-back` stays a unique Maestro selector either way. */}
+      {outfit && !loading ? null : (
+        <Header.BackTitle
+          title={t('discovery.title')}
+          onBack={back}
+          leftTestID="discovery-detail-back"
+          leftAccessibilityLabel={t('uac.common.back')}
+        />
+      )}
 
       {loading ? (
         <DiscoveryDetailLoading />
@@ -141,6 +155,15 @@ export const DiscoveryOutfitDetailScreen = () => {
             <DiscoveryOutfitSummary outfit={outfit} />
             <DiscoveryItemStrip outfitId={outfit.id} items={outfit.items} />
           </ScrollView>
+
+          <View style={styles.floatingBack}>
+            <TopIconButton
+              testID="discovery-detail-back"
+              accessibilityLabel={t('uac.common.back')}
+              onPress={back}
+              icon={<Icons.ChevronLeft width={24} height={24} />}
+            />
+          </View>
 
           <View style={[styles.stickyCta, { paddingBottom: insets.bottom + theme.spacing.s }]}>
             <BlurView
