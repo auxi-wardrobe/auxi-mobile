@@ -17,8 +17,14 @@ type Props = {
 };
 
 /**
- * Landing header: drawer button · notification button, then the time-of-day
- * greeting and today's weather.
+ * Landing header: drawer button · Macgie wordmark · notification button, then
+ * the time-of-day greeting and today's weather.
+ *
+ * The wordmark is the only place the brand name appears in the app chrome, so
+ * it is centred between the two 44×44 icon buttons — equal side slots, exactly
+ * the canonical <Header> layout (icon · title · icon), which is what every
+ * other page's bar looks like. It is a proper noun, so it is NOT run through
+ * i18n: "Macgie" is the same string in every locale.
  *
  * The bell is NOT a settings shortcut: it opens the results the user started
  * and walked away from (a finished "See this on me" render, a ready
@@ -59,6 +65,11 @@ export const HomeLandingHeader: React.FC<Props> = ({
           onPress={onOpenMenu}
           icon={<Icons.Menu width={24} height={24} />}
         />
+
+        <Text style={styles.brand} testID="home-landing-brand" numberOfLines={1}>
+          Macgie
+        </Text>
+
         {/* testID flips its suffix rather than going undefined, so Maestro can
             select the bell in either state (CLAUDE.md). */}
         <TopIconButton
