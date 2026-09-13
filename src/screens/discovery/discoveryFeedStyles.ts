@@ -9,9 +9,9 @@ export const discoveryFeedStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.figmaBackground,
   },
+  // First-load skeleton host — same two-column frame as the real grid.
   grid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: GRID_GAP,
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingTop: theme.spacing.m,
@@ -25,9 +25,15 @@ export const discoveryFeedStyles = StyleSheet.create({
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingTop: theme.spacing.m,
   },
-  gridRow: {
+  // Two independent columns side by side: tiles flow down each one at their
+  // own height, which is what staggers the grid. `gap` gives the vertical
+  // rhythm the packer assumes (GRID_GAP per tile, see `tileHeight`).
+  masonry: {
+    flexDirection: 'row',
     gap: GRID_GAP,
-    marginBottom: GRID_GAP,
+  },
+  masonryColumn: {
+    gap: GRID_GAP,
   },
   footerLoading: {
     marginTop: GRID_GAP,

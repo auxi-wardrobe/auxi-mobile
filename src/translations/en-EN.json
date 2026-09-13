@@ -1157,8 +1157,6 @@
     },
     "discovery": {
       "title": "Discovery",
-      "item_count_one": "{{count}} item",
-      "item_count_other": "{{count}} items",
       "filter": {
         "season_title": "Season",
         "all_seasons": "All season",
