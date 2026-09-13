@@ -3,29 +3,51 @@ import { View, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { MButton } from '../../components/design-system/lib';
 import { Shimmer } from '../../components/features/Shimmer';
-import { TILE_WIDTH } from './discovery-grid';
+import { GRID_COLUMNS, TILE_WIDTH } from './discovery-grid';
 import { discoveryFeedStyles as styles } from './discoveryFeedStyles';
 
-const TILE_HEIGHT = TILE_WIDTH * (4 / 3);
+// Uneven on purpose: the skeleton announces the masonry that is about to
+// land, so a column of identical boxes would be a small lie about the layout.
+// Ratios are height-as-multiple-of-column-width, laid out column by column.
+const SKELETON_COLUMNS = [
+  [1.25, 0.85, 1.1],
+  [0.9, 1.35, 1.0],
+];
 
-/** First-load skeleton — 6 shimmer tiles filling out the 2-column grid. */
+const FOOTER_TILE_HEIGHT = TILE_WIDTH * (4 / 3);
+
+/** First-load skeleton — 6 shimmer tiles filling out the masonry columns. */
 export const DiscoveryFeedLoadingGrid: React.FC = () => (
   <View style={styles.grid}>
-    {Array.from({ length: 6 }).map((_, index) => (
-      <Shimmer
-        key={`discovery-loading-tile-${index}`}
-        width={TILE_WIDTH}
-        height={TILE_HEIGHT}
-        testID={`discovery-loading-tile-${index}`}
-      />
+    {SKELETON_COLUMNS.slice(0, GRID_COLUMNS).map((column, columnIndex) => (
+      <View
+        key={`discovery-loading-column-${columnIndex}`}
+        style={styles.masonryColumn}
+      >
+        {column.map((ratio, rowIndex) => {
+          const index = columnIndex + rowIndex * GRID_COLUMNS;
+          return (
+            <Shimmer
+              key={`discovery-loading-tile-${index}`}
+              width={TILE_WIDTH}
+              height={Math.round(TILE_WIDTH * ratio)}
+              testID={`discovery-loading-tile-${index}`}
+            />
+          );
+        })}
+      </View>
     ))}
   </View>
 );
 
-/** Pagination-in-flight footer for the FlatList. */
+/** Pagination-in-flight footer for the feed. */
 export const DiscoveryFeedLoadingMoreFooter: React.FC = () => (
   <View style={styles.footerLoading}>
-    <Shimmer width={TILE_WIDTH} height={TILE_HEIGHT} testID="discovery-loading-more" />
+    <Shimmer
+      width={TILE_WIDTH}
+      height={FOOTER_TILE_HEIGHT}
+      testID="discovery-loading-more"
+    />
   </View>
 );
 

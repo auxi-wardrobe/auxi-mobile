@@ -1157,8 +1157,6 @@
     },
     "discovery": {
       "title": "Découverte",
-      "item_count_one": "{{count}} article",
-      "item_count_other": "{{count}} articles",
       "filter": {
         "season_title": "Saison",
         "all_seasons": "Toutes saisons",

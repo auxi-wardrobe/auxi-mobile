@@ -1139,8 +1139,6 @@
     },
     "discovery": {
       "title": "Khám phá",
-      "item_count_one": "{{count}} món đồ",
-      "item_count_other": "{{count}} món đồ",
       "filter": {
         "season_title": "Mùa",
         "all_seasons": "Tất cả mùa",

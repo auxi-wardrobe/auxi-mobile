@@ -1,29 +1,35 @@
 import React, { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import { PressableScale } from '../../components/primitives/PressableScale';
 import { theme } from '../../theme/theme';
 import type { DiscoveryOutfitCard as DiscoveryOutfitCardData } from '../../services/discoveryService';
-import { TILE_WIDTH } from './discovery-grid';
+import { DEFAULT_TILE_RATIO, TILE_WIDTH, clampTileRatio } from './discovery-grid';
 
 interface DiscoveryOutfitCardProps {
   outfit: DiscoveryOutfitCardData;
   index: number;
+  /**
+   * Cover width/height as uploaded, measured by `useDiscoveryMasonry`. The
+   * frame takes the column's full width and derives its height from this —
+   * that variance IS the masonry.
+   */
+  aspectRatio?: number;
   onPress: (outfit: DiscoveryOutfitCardData) => void;
 }
 
 /**
- * One tile in the Discovery 2-column grid. Cover image (with a token-styled
- * placeholder on missing/failed image — the cover URL can be a long-lived
- * public link, but a network hiccup still shouldn't render a broken frame),
- * title, season/tag pills, item count.
+ * One tile in the Discovery masonry grid: full-column-width cover at the
+ * uploaded aspect ratio (with a token-styled placeholder on missing/failed
+ * image — the cover URL can be a long-lived public link, but a network hiccup
+ * still shouldn't render a broken frame), season/tag pills over it, and a
+ * single 12/16 regular title underneath. Nothing else below the image.
  */
 export const DiscoveryOutfitCard: React.FC<DiscoveryOutfitCardProps> = ({
   outfit,
   index,
+  aspectRatio = DEFAULT_TILE_RATIO,
   onPress,
 }) => {
-  const { t } = useTranslation();
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = !!outfit.composite_image_url && !imageFailed;
   const firstTag = outfit.trend_tags[0];
@@ -36,7 +42,9 @@ export const DiscoveryOutfitCard: React.FC<DiscoveryOutfitCardProps> = ({
       style={styles.card}
       onPress={() => onPress(outfit)}
     >
-      <View style={styles.imageFrame}>
+      <View
+        style={[styles.imageFrame, { aspectRatio: clampTileRatio(aspectRatio) }]}
+      >
         {showImage ? (
           <Image
             source={{ uri: outfit.composite_image_url as string }}
@@ -66,11 +74,10 @@ export const DiscoveryOutfitCard: React.FC<DiscoveryOutfitCardProps> = ({
         </View>
       </View>
 
+      {/* Single line, always — the packer budgets exactly one line of caption
+          (CAPTION_BLOCK_HEIGHT) when it computes column heights. */}
       <Text style={styles.title} numberOfLines={1}>
         {outfit.title}
-      </Text>
-      <Text style={styles.itemCount}>
-        {t('discovery.item_count', { count: outfit.item_count })}
       </Text>
     </PressableScale>
   );
@@ -82,7 +89,6 @@ const styles = StyleSheet.create({
   },
   imageFrame: {
     width: TILE_WIDTH,
-    height: TILE_WIDTH * (4 / 3),
     borderRadius: theme.borderRadius.figmaTile,
     backgroundColor: theme.colors.figmaCardSurface,
     overflow: 'hidden',
@@ -122,13 +128,11 @@ const styles = StyleSheet.create({
     color: theme.colors.uacBackgroundNeutral50,
     textTransform: 'capitalize',
   },
+  // Text-xs Regular 12/16 (`uacBodyXsRegular`) — the caption is the only thing
+  // under the cover now; the item count moved out (design call, Sep 2026).
   title: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextPrimary,
     marginTop: theme.spacing.xs,
-  },
-  itemCount: {
-    ...theme.typography.aliases.interBodySm,
-    color: theme.colors.figmaTextSecondary,
   },
 });

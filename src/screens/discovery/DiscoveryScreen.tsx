@@ -1,5 +1,10 @@
-import React from 'react';
-import { FlatList } from 'react-native';
+import React, { useCallback } from 'react';
+import {
+  ScrollView,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -16,6 +21,7 @@ import type { DiscoveryOutfitCard as DiscoveryOutfitCardData } from '../../servi
 import { AppNavFooter } from '../../components/features/AppNavFooter';
 import { DiscoveryOutfitCard } from './DiscoveryOutfitCard';
 import { DiscoveryFilterRow } from './DiscoveryFilterRow';
+import { useDiscoveryMasonry } from './useDiscoveryMasonry';
 import {
   DiscoveryFeedEmpty,
   DiscoveryFeedError,
@@ -28,6 +34,11 @@ type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
   'Discovery'
 >;
+
+// Same reach as the FlatList `onEndReachedThreshold` this grid replaced: fetch
+// once the tail is within 0.4 viewports. A masonry grid can't be a FlatList —
+// the two columns advance independently, so there are no rows to virtualise.
+const END_REACHED_THRESHOLD = 0.4;
 
 export const DiscoveryScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
@@ -50,6 +61,8 @@ export const DiscoveryScreen = () => {
     onRetry,
   } = useDiscoveryFeed();
 
+  const { columns, sizing } = useDiscoveryMasonry(outfits);
+
   const handleOutfitPress = (outfit: DiscoveryOutfitCardData, index: number) => {
     track('discovery_outfit_opened', {
       outfit_id: outfit.id,
@@ -58,6 +71,25 @@ export const DiscoveryScreen = () => {
     });
     navigation.navigate('DiscoveryOutfitDetail', { outfitId: outfit.id });
   };
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // Tiles still being measured are not on screen yet, so "near the end"
+      // is a lie until they land — paginating here would fetch a page the
+      // user hasn't reached.
+      if (sizing) {
+        return;
+      }
+      const { layoutMeasurement, contentOffset, contentSize } =
+        event.nativeEvent;
+      const distanceFromEnd =
+        contentSize.height - layoutMeasurement.height - contentOffset.y;
+      if (distanceFromEnd <= layoutMeasurement.height * END_REACHED_THRESHOLD) {
+        onEndReached();
+      }
+    },
+    [onEndReached, sizing],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -87,30 +119,38 @@ export const DiscoveryScreen = () => {
       ) : outfits.length === 0 ? (
         <DiscoveryFeedEmpty isFilterActive={isFilterActive} />
       ) : (
-        <FlatList
+        <ScrollView
           testID="discovery-grid"
           style={styles.list}
-          data={outfits}
-          keyExtractor={item => item.id}
-          numColumns={2}
-          columnWrapperStyle={styles.gridRow}
           contentContainerStyle={[
             styles.gridContent,
             { paddingBottom: insets.bottom + 24 },
           ]}
-          renderItem={({ item, index }) => (
-            <DiscoveryOutfitCard
-              outfit={item}
-              index={index}
-              onPress={outfit => handleOutfitPress(outfit, index)}
-            />
-          )}
-          onEndReachedThreshold={0.4}
-          onEndReached={onEndReached}
-          ListFooterComponent={
-            loadingMore ? <DiscoveryFeedLoadingMoreFooter /> : null
-          }
-        />
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
+          <View style={styles.masonry}>
+            {columns.map((column, columnIndex) => (
+              <View
+                key={`discovery-column-${columnIndex}`}
+                testID={`discovery-column-${columnIndex}`}
+                style={styles.masonryColumn}
+              >
+                {column.map(tile => (
+                  <DiscoveryOutfitCard
+                    key={tile.item.id}
+                    outfit={tile.item}
+                    index={tile.index}
+                    aspectRatio={tile.ratio}
+                    onPress={outfit => handleOutfitPress(outfit, tile.index)}
+                  />
+                ))}
+              </View>
+            ))}
+          </View>
+
+          {loadingMore || sizing ? <DiscoveryFeedLoadingMoreFooter /> : null}
+        </ScrollView>
       )}
 
       {/* Same bottom anchor as the other three tab hosts — see AppNavFooter. */}
