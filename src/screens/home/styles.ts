@@ -42,6 +42,16 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: theme.spacing.s,
   },
+  // Brand wordmark, centred in the header row. 12px semibold like everything
+  // else on this page (see the TYPOGRAPHY note above) — the canonical
+  // <Header>'s title alias is 16, but the page rule wins inside the page.
+  // flex:1 between two equal 44×44 icon buttons puts it dead centre.
+  brand: {
+    ...theme.typography.aliases.interSemiboldXs,
+    color: theme.colors.uacTextBase,
+    flex: 1,
+    textAlign: 'center',
+  },
   greeting: {
     ...theme.typography.aliases.interSemiboldXs,
     color: theme.colors.uacTextBase,
