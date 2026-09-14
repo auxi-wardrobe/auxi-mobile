@@ -5,7 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { Header } from '../../components/layout/Header';
+import { Header, HEADER_ICON_INSET } from '../../components/layout/Header';
 import {
   PillButton,
   TopIconButton,
@@ -124,10 +124,14 @@ export const DiscoveryOutfitDetailScreen = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* The loaded screen has NO header bar: the cover image is the top of the
           screen and the back chip floats on it (design call — same treatment as
-          `BodyPhotoDetailView`, the other image-hero detail view). The empty
-          states have no image to float on, so they keep the canonical
+          `BodyPhotoDetailView`, the other image-hero detail view — though that
+          one is still on its own pre-canonical 8/22 offset). The empty states
+          have no image to float on, so they keep the canonical
           `Header.BackTitle`. Exactly one of the two renders at a time, so
-          `discovery-detail-back` stays a unique Maestro selector either way. */}
+          `discovery-detail-back` stays a unique Maestro selector either way —
+          and both land the chip on the SAME pixel (`HEADER_ICON_INSET`, see
+          `styles.floatingBack`), so it never jumps between the two branches or
+          against any other screen's back button. */}
       {outfit && !loading ? null : (
         <Header.BackTitle
           title={t('discovery.title')}
@@ -156,7 +160,15 @@ export const DiscoveryOutfitDetailScreen = () => {
             <DiscoveryItemStrip outfitId={outfit.id} items={outfit.items} />
           </ScrollView>
 
-          <View style={styles.floatingBack}>
+          {/* `top` comes from the inset at runtime — see `styles.floatingBack`:
+              absolute children ignore the SafeAreaView's top padding, so
+              without this the chip sits under the Dynamic Island. */}
+          <View
+            style={[
+              styles.floatingBack,
+              { top: insets.top + HEADER_ICON_INSET },
+            ]}
+          >
             <TopIconButton
               testID="discovery-detail-back"
               accessibilityLabel={t('uac.common.back')}
