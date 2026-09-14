@@ -31,6 +31,19 @@ import { TopIconButton } from '../primitives/FigmaPrimitives';
 const SLOT = 44;
 const PAD = theme.spacing.uacDimension12; // 12
 
+/**
+ * Offset of the header's left icon chip from the top-left corner of the bar
+ * (12/12 — the bar's own padding). Exported so the handful of header-less
+ * image-hero screens that FLOAT a back chip over the cover instead of sitting
+ * it in a bar (DiscoveryOutfitDetailScreen) can pin it to the exact same spot:
+ * the back button must not shift when the user moves between screens, nor when
+ * a screen swaps its own empty-state `Header.BackTitle` for the floating chip.
+ * Absolute children are laid out from the parent's padding box, so a
+ * `SafeAreaView edges={['top']}` parent puts `top: HEADER_ICON_INSET` at the
+ * same y as a header rendered inside it.
+ */
+export const HEADER_ICON_INSET = PAD;
+
 type HeaderBackground = 'solid' | 'tint' | 'blur' | 'transparent';
 
 interface HeaderProps {

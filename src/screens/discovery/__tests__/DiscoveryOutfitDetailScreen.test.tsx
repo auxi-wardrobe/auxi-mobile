@@ -24,6 +24,7 @@ import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DiscoveryOutfitDetailScreen } from '../DiscoveryOutfitDetailScreen';
 import { theme } from '../../../theme/theme';
+import { HEADER_ICON_INSET } from '../../../components/layout/Header';
 import { COVER_SIDE_GUTTER } from '../discoveryOutfitDetailStyles';
 
 // ---- mocks ------------------------------------------------------------------
@@ -250,6 +251,13 @@ describe('DiscoveryOutfitDetailScreen — hero cover', () => {
     );
     expect(flat?.position).toBe('absolute');
     expect(flat?.zIndex).toBe(theme.zIndex.sticky);
+
+    // ...but at the canonical back-button offset, not an eyeballed one. The
+    // chip must sit exactly where `Header`'s left slot sits (12/12) so it
+    // doesn't shift against every other screen's back button — nor against
+    // this screen's own empty-state `Header.BackTitle` when the outfit loads.
+    expect(flat?.top).toBe(HEADER_ICON_INSET);
+    expect(flat?.left).toBe(HEADER_ICON_INSET);
 
     press(oneByTestID(r.root, 'discovery-detail-back'));
     expect(mockGoBack).toHaveBeenCalled();

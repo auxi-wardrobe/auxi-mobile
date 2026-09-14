@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { HEADER_ICON_INSET } from '../../components/layout/Header';
 import { theme } from '../../theme/theme';
 
 /** Hairline gutter between the hero cover and each screen edge (design spec). */
@@ -41,13 +42,17 @@ export const discoveryOutfitDetailStyles = StyleSheet.create({
   scrollContent: {
     paddingBottom: theme.spacing.l,
   },
-  // Floating back chip over the hero image (same treatment as the body-photo
-  // detail view): the canonical 44×44 `TopIconButton`, absolutely positioned
-  // at the sticky tier so it stays tappable above the scrolling cover.
+  // Floating back chip over the hero image: the canonical 44×44
+  // `TopIconButton`, absolutely positioned at the sticky tier so it stays
+  // tappable above the scrolling cover. Its offset is `HEADER_ICON_INSET`
+  // (12/12, exported by the canonical `Header`) — NOT an eyeballed pair of
+  // spacing tokens: the chip has to land on the same pixel as every other
+  // back button in the app, including this screen's own empty-state
+  // `Header.BackTitle`, so it doesn't jump when the outfit finishes loading.
   floatingBack: {
     position: 'absolute',
-    top: theme.spacing.s,
-    left: theme.spacing.m,
+    top: HEADER_ICON_INSET,
+    left: HEADER_ICON_INSET,
     zIndex: theme.zIndex.sticky,
   },
   // Hero cover — edge-to-edge but for a 1px hairline gutter each side (design

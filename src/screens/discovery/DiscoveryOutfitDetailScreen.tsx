@@ -124,10 +124,14 @@ export const DiscoveryOutfitDetailScreen = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* The loaded screen has NO header bar: the cover image is the top of the
           screen and the back chip floats on it (design call — same treatment as
-          `BodyPhotoDetailView`, the other image-hero detail view). The empty
-          states have no image to float on, so they keep the canonical
+          `BodyPhotoDetailView`, the other image-hero detail view — though that
+          one is still on its own pre-canonical 8/22 offset). The empty states
+          have no image to float on, so they keep the canonical
           `Header.BackTitle`. Exactly one of the two renders at a time, so
-          `discovery-detail-back` stays a unique Maestro selector either way. */}
+          `discovery-detail-back` stays a unique Maestro selector either way —
+          and both land the chip on the SAME pixel (`HEADER_ICON_INSET`, see
+          `styles.floatingBack`), so it never jumps between the two branches or
+          against any other screen's back button. */}
       {outfit && !loading ? null : (
         <Header.BackTitle
           title={t('discovery.title')}
