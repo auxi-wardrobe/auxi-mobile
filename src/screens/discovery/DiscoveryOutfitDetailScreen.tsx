@@ -5,7 +5,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { Header } from '../../components/layout/Header';
+import { Header, HEADER_ICON_INSET } from '../../components/layout/Header';
 import {
   PillButton,
   TopIconButton,
@@ -160,7 +160,15 @@ export const DiscoveryOutfitDetailScreen = () => {
             <DiscoveryItemStrip outfitId={outfit.id} items={outfit.items} />
           </ScrollView>
 
-          <View style={styles.floatingBack}>
+          {/* `top` comes from the inset at runtime — see `styles.floatingBack`:
+              absolute children ignore the SafeAreaView's top padding, so
+              without this the chip sits under the Dynamic Island. */}
+          <View
+            style={[
+              styles.floatingBack,
+              { top: insets.top + HEADER_ICON_INSET },
+            ]}
+          >
             <TopIconButton
               testID="discovery-detail-back"
               accessibilityLabel={t('uac.common.back')}

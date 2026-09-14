@@ -44,14 +44,20 @@ export const discoveryOutfitDetailStyles = StyleSheet.create({
   },
   // Floating back chip over the hero image: the canonical 44×44
   // `TopIconButton`, absolutely positioned at the sticky tier so it stays
-  // tappable above the scrolling cover. Its offset is `HEADER_ICON_INSET`
-  // (12/12, exported by the canonical `Header`) — NOT an eyeballed pair of
-  // spacing tokens: the chip has to land on the same pixel as every other
-  // back button in the app, including this screen's own empty-state
-  // `Header.BackTitle`, so it doesn't jump when the outfit finishes loading.
+  // tappable above the scrolling cover. `left` is `HEADER_ICON_INSET` (12,
+  // exported by the canonical `Header`) — NOT an eyeballed spacing token: the
+  // chip has to land on the same pixel as every other back button in the app,
+  // including this screen's own empty-state `Header.BackTitle`, so it doesn't
+  // jump when the outfit finishes loading.
+  //
+  // NO `top` here, on purpose — it is set at runtime as
+  // `insets.top + HEADER_ICON_INSET` by the screen. An absolutely-positioned
+  // child with an explicit `top` is laid out from its parent's padding-box
+  // edge, so the `SafeAreaView edges={['top']}` padding that pushes a normal
+  // header down does NOT move this chip: a static `top: 12` put it under the
+  // status bar / Dynamic Island, ~47–59px above every other back button.
   floatingBack: {
     position: 'absolute',
-    top: HEADER_ICON_INSET,
     left: HEADER_ICON_INSET,
     zIndex: theme.zIndex.sticky,
   },

@@ -37,6 +37,26 @@ let mockRouteParams: Record<string, unknown> = {
   source: 'deep_link',
 };
 
+// The global jest.setup mock pins insets to 0 — which is exactly why a static
+// `top: 12` on the floating chip LOOKED correct while sitting under the Dynamic
+// Island on a real device. Override it locally so the offset can be exercised
+// with a realistic notch inset.
+let mockInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+jest.mock('react-native-safe-area-context', () => {
+  // `require` inside the factory (not the outer `React` import): a jest.mock
+  // factory is hoisted above the imports and may not close over them. Aliased
+  // to avoid shadowing the outer binding.
+  const ReactRuntime = require('react');
+  const passthrough = ({ children }: { children: unknown }) =>
+    ReactRuntime.createElement(ReactRuntime.Fragment, null, children);
+  return {
+    SafeAreaProvider: passthrough,
+    SafeAreaView: passthrough,
+    useSafeAreaInsets: () => mockInsets,
+    useSafeAreaFrame: () => ({ x: 0, y: 0, width: 390, height: 844 }),
+  };
+});
+
 jest.mock('@react-navigation/native', () => {
   const navigation = {
     navigate: (...args: unknown[]) => mockNavigate(...args),
@@ -180,6 +200,7 @@ const outfitFixture = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockInsets = { top: 0, right: 0, bottom: 0, left: 0 };
   mockRouteParams = { outfitId: 'bogus-outfit-id', source: 'deep_link' };
   // Natural size of the uploaded composite — the hero frame must adopt it.
   jest
@@ -252,14 +273,38 @@ describe('DiscoveryOutfitDetailScreen — hero cover', () => {
     expect(flat?.position).toBe('absolute');
     expect(flat?.zIndex).toBe(theme.zIndex.sticky);
 
-    // ...but at the canonical back-button offset, not an eyeballed one. The
-    // chip must sit exactly where `Header`'s left slot sits (12/12) so it
-    // doesn't shift against every other screen's back button — nor against
-    // this screen's own empty-state `Header.BackTitle` when the outfit loads.
-    expect(flat?.top).toBe(HEADER_ICON_INSET);
+    // ...at the canonical back-button offset, not an eyeballed one: the chip
+    // must sit exactly where `Header`'s left slot sits so it doesn't shift
+    // against every other screen's back button — nor against this screen's own
+    // empty-state `Header.BackTitle` when the outfit finishes loading.
     expect(flat?.left).toBe(HEADER_ICON_INSET);
+    expect(flat?.top).toBe(HEADER_ICON_INSET); // insets.top === 0 here
 
     press(oneByTestID(r.root, 'discovery-detail-back'));
     expect(mockGoBack).toHaveBeenCalled();
+  });
+
+  // Regression: the chip is `position: absolute`, and an absolute child with an
+  // explicit `top` is laid out from its parent's padding-box EDGE — so the
+  // `SafeAreaView edges={['top']}` padding that pushes a normal `Header` down
+  // does NOT move it. A static `top: 12` therefore sat ~47-59px too high, under
+  // the status bar / Dynamic Island, while the empty-state `Header.BackTitle`
+  // on this same screen sat correctly at `insets.top + 12`.
+  it('adds the top safe-area inset so the chip clears the status bar', async () => {
+    mockInsets = { top: 59, right: 0, bottom: 34, left: 0 }; // iPhone 15 portrait
+    mockGetOutfit.mockResolvedValue(outfitFixture);
+
+    const r = await renderScreen();
+    const back = byTestID(r.root, 'discovery-detail-back')[0];
+    const flat = StyleSheet.flatten(
+      nearestPositionedAncestor(back)?.props?.style,
+    );
+
+    // Same y as a `Header` left slot inside the same SafeAreaView, which is a
+    // flow child and so lands at insets.top + its own 12px padding.
+    expect(flat?.top).toBe(59 + HEADER_ICON_INSET);
+    expect(flat?.top).toBeGreaterThan(HEADER_ICON_INSET);
+    // Horizontal has no inset in portrait — it must NOT pick one up.
+    expect(flat?.left).toBe(HEADER_ICON_INSET);
   });
 });
