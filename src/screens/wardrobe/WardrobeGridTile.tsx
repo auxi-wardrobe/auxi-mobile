@@ -5,7 +5,7 @@ import { LoadableRemoteImage } from '../../components/features/LoadableRemoteIma
 import { PressableScale } from '../../components/primitives/PressableScale';
 import { WardrobeItem } from '../../services/wardrobeService';
 import { theme } from '../../theme/theme';
-import { resolveItemImage } from '../../utils/url';
+import { resolveItemImageSources } from '../../utils/url';
 import { Icons } from '../../assets/icons';
 import { TILE_HEIGHT, TILE_WIDTH, resolveTileStatus } from './wardrobe-grid';
 import { TileStatusBadge } from '../../components/features/TileStatusBadge';
@@ -27,7 +27,10 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const imageUrl = resolveItemImage({
+  // Ordered chain, not a single winner: a clone's `processed/` cutout URL can
+  // be dead while the `common_items/` original still loads, so the tile falls
+  // back down the chain on error instead of rendering blank.
+  const [imageUrl, ...imageFallbacks] = resolveItemImageSources({
     image_studio: item.image_studio ?? null,
     image_png: item.image_png ?? null,
     image_url: item.image_url ?? '',
@@ -58,6 +61,7 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
       {imageUrl ? (
         <LoadableRemoteImage
           uri={imageUrl}
+          fallbackUris={imageFallbacks}
           cache="force-cache"
           resizeMode="contain"
           skeletonTestID={`wardrobe-image-skeleton-${item.id}`}

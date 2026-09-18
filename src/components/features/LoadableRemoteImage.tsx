@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Image,
   StyleSheet,
@@ -10,9 +10,16 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SkeletonTile } from './SkeletonTile';
+import { useImageFallback } from '../../hooks/useImageFallback';
 
 interface LoadableRemoteImageProps {
   uri: string;
+  /**
+   * Lower-precedence URLs to fall back to, in order, when `uri` fails to
+   * load. Lets a dead `processed/` cutout degrade to the still-alive
+   * `common_items/` original instead of rendering a blank tile.
+   */
+  fallbackUris?: string[];
   cache?: ImageURISource['cache'];
   resizeMode?: ImageResizeMode;
   imageStyle?: StyleProp<ImageStyle>;
@@ -23,6 +30,7 @@ interface LoadableRemoteImageProps {
 
 export const LoadableRemoteImage: React.FC<LoadableRemoteImageProps> = ({
   uri,
+  fallbackUris,
   cache,
   resizeMode = 'cover',
   imageStyle,
@@ -30,16 +38,29 @@ export const LoadableRemoteImage: React.FC<LoadableRemoteImageProps> = ({
   style,
   skeletonTestID,
 }) => {
-  const [loaded, setLoaded] = useState<{ uri: string; complete: boolean }>({
-    uri,
+  const sources = useMemo(
+    () => [uri, ...(fallbackUris ?? [])].filter(Boolean),
+    [uri, fallbackUris],
+  );
+  const { uri: activeUri, allFailed, onError } = useImageFallback(sources);
+
+  const [loaded, setLoaded] = useState<{ uri?: string; complete: boolean }>({
+    uri: activeUri,
     complete: false,
   });
 
   const handleImageSettled = useCallback(() => {
-    setLoaded({ uri, complete: true });
-  }, [uri]);
+    setLoaded({ uri: activeUri, complete: true });
+  }, [activeUri]);
 
-  const loading = loaded.uri !== uri || !loaded.complete;
+  // A failed candidate is retired and the next one starts loading, so keep the
+  // skeleton up across the swap rather than flashing a broken frame.
+  const handleImageError = useCallback(() => {
+    onError();
+    handleImageSettled();
+  }, [onError, handleImageSettled]);
+
+  const loading = !allFailed && (loaded.uri !== activeUri || !loaded.complete);
 
   return (
     <View style={[styles.container, style]}>
@@ -49,14 +70,16 @@ export const LoadableRemoteImage: React.FC<LoadableRemoteImageProps> = ({
           testID={skeletonTestID ?? 'loadable-image-skeleton'}
         />
       ) : null}
-      <Image
-        testID={imageTestID}
-        source={{ uri, cache }}
-        style={[styles.image, imageStyle, loading && styles.imageLoading]}
-        resizeMode={resizeMode}
-        onLoadEnd={handleImageSettled}
-        onError={handleImageSettled}
-      />
+      {activeUri ? (
+        <Image
+          testID={imageTestID}
+          source={{ uri: activeUri, cache }}
+          style={[styles.image, imageStyle, loading && styles.imageLoading]}
+          resizeMode={resizeMode}
+          onLoadEnd={handleImageSettled}
+          onError={handleImageError}
+        />
+      ) : null}
     </View>
   );
 };

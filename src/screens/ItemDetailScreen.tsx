@@ -37,7 +37,8 @@ import {
 } from '../services/wardrobeService';
 import { theme } from '../theme/theme';
 import { AppStackParamList } from '../types/navigation';
-import { getImageUrl } from '../utils/url';
+import { resolveItemImageSources } from '../utils/url';
+import { useImageFallback } from '../hooks/useImageFallback';
 import { track } from '../services/analytics';
 import {
   areTagsEqual,
@@ -247,15 +248,21 @@ export const ItemDetailScreen = () => {
   }, [enhancedItem, navigation]);
 
   // AU-312 review fix: prefer the background-removed cutout (`image_png`)
-  // like every other surface (see utils/url.ts resolveItemImage). That
-  // helper's input requires a non-optional `image_url` (legacy Item shape),
-  // which WardrobeItem doesn't satisfy — apply the same precedence
-  // (image_studio → image_png → image_url) via getImageUrl directly. The
-  // accepted studio shot (AI enhancement) wins when present.
-  const imageUrl = useMemo(
-    () => getImageUrl(item?.image_studio || item?.image_png || item?.image_url),
+  // like every other surface. Taken as an ordered chain (image_studio →
+  // image_png → image_url) so a dead `processed/` cutout falls back to the
+  // still-alive `common_items/` original instead of leaving the frame empty
+  // with only the item name showing.
+  const imageSources = useMemo(
+    () =>
+      resolveItemImageSources({
+        image_studio: item?.image_studio ?? null,
+        image_png: item?.image_png ?? null,
+        image_url: item?.image_url ?? '',
+      }),
     [item],
   );
+  const { uri: imageUrl, onError: handleImageError } =
+    useImageFallback(imageSources);
 
   // Fit the Figma 378×504 (3:4) image frame into the measured flexible
   // region: width-bound on tall screens (region width − 2×18 margins),
@@ -715,6 +722,7 @@ export const ItemDetailScreen = () => {
                 source={{ uri: imageUrl }}
                 style={styles.image}
                 resizeMode="cover"
+                onError={handleImageError}
               />
             ) : (
               <View style={styles.imageFallback}>

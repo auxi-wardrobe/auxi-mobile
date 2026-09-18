@@ -110,12 +110,33 @@ jest.mock('../../services/wardrobeService', () => ({
 }));
 
 // Cuts the utils/url → apiClient → react-native-keychain import chain.
-jest.mock('../../utils/url', () => ({
-  resolveItemImage: (item?: {
+// `resolveItemImageSources` mirrors the real ordered chain (studio → cutout →
+// original, empties and duplicates dropped) because the tile now walks it on
+// image load error rather than picking a single winner.
+jest.mock('../../utils/url', () => {
+  const resolveItemImageSources = (item?: {
+    image_studio?: string | null;
     image_png?: string | null;
     image_url?: string;
-  }) => item?.image_png || item?.image_url || null,
-}));
+  }): string[] => {
+    const sources: string[] = [];
+    for (const candidate of [
+      item?.image_studio,
+      item?.image_png,
+      item?.image_url,
+    ]) {
+      if (candidate?.trim() && !sources.includes(candidate)) {
+        sources.push(candidate);
+      }
+    }
+    return sources;
+  };
+  return {
+    resolveItemImageSources,
+    resolveItemImage: (item?: Parameters<typeof resolveItemImageSources>[0]) =>
+      resolveItemImageSources(item)[0] ?? null,
+  };
+});
 
 jest.mock('../../services/analytics', () => ({
   track: jest.fn(),
