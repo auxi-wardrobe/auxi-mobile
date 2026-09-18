@@ -1,4 +1,4 @@
-import { StyleSheet, Text, ScrollView, View, Image } from 'react-native';
+import { StyleSheet, Text, ScrollView, View } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -10,6 +10,7 @@ import { toast } from '../components/design-system/lib';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Header } from '../components/layout/Header';
+import { LoadableRemoteImage } from '../components/features/LoadableRemoteImage';
 import { theme } from '../theme/theme';
 import { Icons } from '../assets/icons';
 
@@ -20,7 +21,7 @@ import { PressableScale } from '../components/primitives/PressableScale';
 
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { AppStackParamList } from '../types/navigation';
-import { resolveItemImage } from '../utils/url';
+import { resolveItemImageSources } from '../utils/url';
 import { track } from '../services/analytics';
 // Shared wardrobe grid spec (Figma node 2850:16492) — the Database picker
 // renders the exact same 3-column grid, tabs, and tile geometry as Wardrobe.
@@ -192,10 +193,12 @@ export const DatabaseScreen = () => {
   // Same tile visual as WardrobeGridTile, with the wardrobe select-mode
   // treatment (figmaAction ring + top-right check) extended to multi-select.
   const renderGridTile = (item: WardrobeItem, index: number) => {
-    const imageUrl = resolveItemImage({
-      // AU-437: same tile visual as WardrobeGridTile, so it must feed the
-      // same three sources — omitting image_studio showed the pre-enhance
-      // photo here while the wardrobe grid showed the enhanced one.
+    // AU-437: same tile visual as WardrobeGridTile, so it must feed the
+    // same three sources — omitting image_studio showed the pre-enhance
+    // photo here while the wardrobe grid showed the enhanced one. Taken as an
+    // ordered chain so a dead `processed/` cutout falls back to the still-alive
+    // `common_items/` original rather than rendering blank.
+    const [imageUrl, ...imageFallbacks] = resolveItemImageSources({
       image_studio: item.image_studio ?? null,
       image_png: item.image_png ?? null,
       image_url: item.image_url ?? '',
@@ -214,10 +217,12 @@ export const DatabaseScreen = () => {
         accessibilityLabel={item.name || t('wardrobe.list.a11y_item_fallback')}
       >
         {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl, cache: 'force-cache' }}
-            style={styles.tileImage}
+          <LoadableRemoteImage
+            uri={imageUrl}
+            fallbackUris={imageFallbacks}
+            cache="force-cache"
             resizeMode="contain"
+            skeletonTestID={`database-image-skeleton-${item.id}`}
           />
         ) : (
           <View style={styles.tileFallback}>
@@ -328,10 +333,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-  },
-  tileImage: {
-    width: '100%',
-    height: '100%',
   },
   tileFallback: {
     flex: 1,

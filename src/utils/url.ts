@@ -39,6 +39,37 @@ export const getImageUrl = (
 };
 
 /**
+ * Ordered display-image candidates for a garment, best first:
+ * accepted AI studio shot (`image_studio`) → background-removed cutout
+ * (`image_png`) → original photo (`image_url`). Each is normalised through
+ * `getImageUrl`; empty values and duplicates are dropped.
+ *
+ * Why a CHAIN and not a single winner: an onboarding clone copies the SYSTEM
+ * catalog item's `processed/` blob URLs, and those blobs could be deleted
+ * while the clone row kept pointing at them. The higher-precedence URL is
+ * then non-empty but dead, so picking on string presence alone renders a
+ * blank tile even though the `common_items/` original is still alive. Callers
+ * walk this list on load error (see `useImageFallback`) so a dead cutout
+ * degrades to the original instead of to nothing.
+ */
+export const resolveItemImageSources = (
+  item: Pick<Item, 'image_png' | 'image_url'> & {
+    image_studio?: string | null;
+  },
+): string[] => {
+  const candidates = [item.image_studio, item.image_png, item.image_url];
+  const sources: string[] = [];
+
+  for (const candidate of candidates) {
+    if (!candidate?.trim()) continue;
+    const resolved = getImageUrl(candidate) || candidate;
+    if (resolved && !sources.includes(resolved)) sources.push(resolved);
+  }
+
+  return sources;
+};
+
+/**
  * Pick the display image for a garment item. Precedence (beautify spec §5):
  * accepted AI studio shot (`image_studio`) → background-removed cutout
  * (`image_png`) → original photo (`image_url`). Runs the winner through
@@ -49,9 +80,4 @@ export const resolveItemImage = (
   item: Pick<Item, 'image_png' | 'image_url'> & {
     image_studio?: string | null;
   },
-): string | undefined => {
-  const studio = item.image_studio?.trim() ? item.image_studio : undefined;
-  const png = item.image_png?.trim() ? item.image_png : undefined;
-  const source = studio ?? png ?? item.image_url;
-  return getImageUrl(source) || source || undefined;
-};
+): string | undefined => resolveItemImageSources(item)[0];

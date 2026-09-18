@@ -135,8 +135,29 @@ jest.mock('../../services/wardrobeService', () => ({
 }));
 
 // Cuts the utils/url → apiClient → react-native-keychain import chain.
+// `resolveItemImageSources` mirrors the real ordered chain (studio → cutout →
+// original, empties and duplicates dropped): the screen now walks it on image
+// load error so a dead cutout degrades to the original instead of leaving the
+// frame empty with only the item name showing.
 jest.mock('../../utils/url', () => ({
   getImageUrl: (url?: string | null) => url ?? undefined,
+  resolveItemImageSources: (item?: {
+    image_studio?: string | null;
+    image_png?: string | null;
+    image_url?: string;
+  }): string[] => {
+    const sources: string[] = [];
+    for (const candidate of [
+      item?.image_studio,
+      item?.image_png,
+      item?.image_url,
+    ]) {
+      if (candidate?.trim() && !sources.includes(candidate)) {
+        sources.push(candidate);
+      }
+    }
+    return sources;
+  },
 }));
 
 const mockedToastShow = (toast as unknown as { show: jest.Mock }).show;
