@@ -84,12 +84,10 @@ platform :ios do
       include_bitcode: false
     )
 
-    upload_to_testflight(
-      api_key: api_key,
-      skip_waiting_for_build_processing: true,
-      skip_submission: true,
-      changelog: "Internal build #{new_build}"
-    )
+    # Apple's Transporter/altool backend occasionally 504s mid-upload on large
+    # IPAs — transient, not our fault. Retrying the upload alone (no rebuild)
+    # is much cheaper than re-running the whole lane.
+    upload_ipa_with_retry(api_key, new_build)
 
     tag = "v#{marketing_version}-build#{new_build}"
     add_git_tag(tag: tag, message: "TestFlight #{tag}")
@@ -106,6 +104,27 @@ platform :ios do
 
   error do |lane, exception|
     UI.error("Lane #{lane} failed: #{exception.message}")
+  end
+end
+
+def upload_ipa_with_retry(api_key, new_build, max_attempts: 3)
+  attempt = 1
+  begin
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+      changelog: "Internal build #{new_build}"
+    )
+  rescue => e
+    if attempt < max_attempts
+      wait = 30 * attempt
+      UI.important("upload_to_testflight attempt #{attempt}/#{max_attempts} failed (#{e.message}) — retrying in #{wait}s")
+      sleep(wait)
+      attempt += 1
+      retry
+    end
+    raise
   end
 end
 
