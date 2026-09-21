@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, View } from 'react-native';
 import { Item } from '../../../types/item';
-import { resolveItemImage } from '../../../utils/url';
+import { resolveItemImageSources } from '../../../utils/url';
+import { useImageFallback } from '../../../hooks/useImageFallback';
 import { resolveTileStatus } from '../../../utils/tile-status';
 import { TileStatusBadge } from '../../../components/features/TileStatusBadge';
 import { styles } from '../styles';
@@ -11,7 +12,10 @@ import { styles } from '../styles';
 // for precedence; pre-phase-03 backend responses (fields absent) degrade to
 // "common" on every tile, matching today's behaviour.
 export const GarmentPreview = ({ item }: { item: Item }) => {
-  const imageUrl = resolveItemImage(item);
+  // Walk image_studio → image_png → image_url on load error: a dead
+  // `processed/` cutout must degrade to the live original, not a blank tile.
+  const sources = useMemo(() => resolveItemImageSources(item), [item]);
+  const { uri: imageUrl, onError } = useImageFallback(sources);
   const status = resolveTileStatus(item);
 
   return (
@@ -21,6 +25,7 @@ export const GarmentPreview = ({ item }: { item: Item }) => {
           source={{ uri: imageUrl }}
           style={styles.cardImage}
           resizeMode="contain"
+          onError={onError}
         />
       ) : (
         <View style={styles.cardFallback} />

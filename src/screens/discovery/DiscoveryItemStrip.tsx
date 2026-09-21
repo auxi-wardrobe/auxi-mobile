@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { theme } from '../../theme/theme';
 import { AppStackParamList } from '../../types/navigation';
+import { resolveItemImageSources } from '../../utils/url';
+import { useImageFallback } from '../../hooks/useImageFallback';
 import type { DiscoveryOutfitItem } from '../../services/discoveryService';
 
 type ScreenNavigation = NativeStackNavigationProp<
@@ -17,6 +19,27 @@ interface DiscoveryItemStripProps {
 }
 
 const THUMB_SIZE = 96;
+
+// Dead `processed/` cutout falls back to the live original (see url.ts).
+const StripThumb: React.FC<{ item: DiscoveryOutfitItem }> = ({ item }) => {
+  const sources = useMemo(
+    () =>
+      resolveItemImageSources({
+        image_png: item.image_png,
+        image_url: item.image_url,
+      }),
+    [item.image_png, item.image_url],
+  );
+  const { uri, onError } = useImageFallback(sources);
+  return (
+    <Image
+      source={{ uri }}
+      style={styles.thumb}
+      resizeMode="cover"
+      onError={onError}
+    />
+  );
+};
 
 /**
  * Ordered horizontal strip of an outfit's garments. Tapping an item pushes
@@ -63,11 +86,7 @@ export const DiscoveryItemStrip: React.FC<DiscoveryItemStripProps> = ({
           style={styles.tile}
           onPress={() => handlePress(item)}
         >
-          <Image
-            source={{ uri: item.image_png ?? item.image_url }}
-            style={styles.thumb}
-            resizeMode="cover"
-          />
+          <StripThumb item={item} />
           <Text style={styles.name} numberOfLines={1}>
             {item.name}
           </Text>

@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Icons } from '../../../assets/icons';
-import { resolveItemImage } from '../../../utils/url';
+import { resolveItemImageSources } from '../../../utils/url';
+import { useImageFallback } from '../../../hooks/useImageFallback';
 import type { Item } from '../../../types/item';
 import type { OutfitSheet } from '../../HomeScreen/types';
 import type { TodaysPicksFailure, TodaysPicksSource } from '../todays-picks';
@@ -43,7 +44,9 @@ const PickTile: React.FC<{
   index: number;
   onPress: () => void;
 }> = ({ item, index, onPress }) => {
-  const imageUrl = resolveItemImage(item);
+  // Dead `processed/` cutout falls back to the live original (see url.ts).
+  const sources = useMemo(() => resolveItemImageSources(item), [item]);
+  const { uri: imageUrl, onError } = useImageFallback(sources);
   return (
     <TouchableOpacity
       style={styles.pickTile}
@@ -58,6 +61,7 @@ const PickTile: React.FC<{
           source={{ uri: imageUrl }}
           style={styles.pickTileImage}
           resizeMode="contain"
+          onError={onError}
         />
       ) : null}
     </TouchableOpacity>

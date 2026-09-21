@@ -14,7 +14,7 @@ import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 import { LoadableRemoteImage } from '../../components/features/LoadableRemoteImage';
-import { resolveItemImage } from '../../utils/url';
+import { resolveItemImage, resolveItemImageSources } from '../../utils/url';
 import { HomeView } from '../../components/features/HomeViewToggleFooter';
 import {
   COLLAGE_ASPECT,
@@ -145,7 +145,11 @@ const Tile: React.FC<{
   style?: StyleProp<ViewStyle>;
 }> = ({ item, testIDPrefix, onItemPress, style }) => {
   const { t } = useTranslation();
-  const imageUrl = resolveItemImage(item);
+  // Ordered chain: a dead `processed/` cutout falls back to the live original.
+  const [imageUrl, ...imageFallbacks] = useMemo(
+    () => resolveItemImageSources(item),
+    [item],
+  );
   const status = resolveTileStatus(item);
 
   return (
@@ -161,6 +165,7 @@ const Tile: React.FC<{
       {imageUrl ? (
         <LoadableRemoteImage
           uri={imageUrl}
+          fallbackUris={imageFallbacks}
           resizeMode="cover"
           skeletonTestID={`${testIDPrefix}-image-skeleton-${item.id}`}
         />
