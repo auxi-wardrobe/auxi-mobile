@@ -328,6 +328,10 @@ export type AppStackParamList = {
         items?: Array<{
           id: string;
           imageUrl: string;
+          // Lower-precedence URLs (see resolveItemImageSources) to fall back
+          // to on the canvas when `imageUrl` — a dead `processed/` cutout —
+          // fails to load.
+          imageFallbackUrls?: string[];
           category?: string;
           // AU-392 D1 (2026-07-30): tile-status fields, same wire shape as
           // `Item`/`TileStatusInput` (src/utils/tile-status.ts) so the Remix

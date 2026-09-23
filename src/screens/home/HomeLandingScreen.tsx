@@ -9,7 +9,7 @@ import { useSidebar } from '../../context/SidebarContext';
 import { track } from '../../services/analytics';
 import { useDiscoveryOutfits } from '../../hooks/useDiscovery';
 import type { DiscoveryOutfitCard } from '../../services/discoveryService';
-import { resolveItemImage } from '../../utils/url';
+import { resolveItemImageSources } from '../../utils/url';
 import type { Item } from '../../types/item';
 import type { OutfitSheet } from '../HomeScreen/types';
 import { AppNavFooter } from '../../components/features/AppNavFooter';
@@ -85,15 +85,22 @@ export const HomeLandingScreen = () => {
     navigation.navigate('OutfitCanvas', {
       entry: 'remix',
       items: sheet.items
-        .map(item => ({
-          id: item.id,
-          imageUrl: resolveItemImage(item) ?? '',
-          category: item.category,
-          is_common_item: item.is_common_item,
-          user_id: item.user_id,
-          is_new: item.is_new,
-          usage_frequency: item.usage_frequency,
-        }))
+        .map(item => {
+          // Dead `processed/` cutout falls back to the live original on the
+          // canvas, same chain ItemDetail/Home already walk (utils/url.ts).
+          const [imageUrl, ...imageFallbackUrls] =
+            resolveItemImageSources(item);
+          return {
+            id: item.id,
+            imageUrl: imageUrl ?? '',
+            imageFallbackUrls,
+            category: item.category,
+            is_common_item: item.is_common_item,
+            user_id: item.user_id,
+            is_new: item.is_new,
+            usage_frequency: item.usage_frequency,
+          };
+        })
         .filter(item => !!item.imageUrl),
     });
   };

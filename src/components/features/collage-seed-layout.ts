@@ -1,5 +1,5 @@
 import { Item } from '../../types/item';
-import { resolveItemImage } from '../../utils/url';
+import { resolveItemImageSources } from '../../utils/url';
 import { resolveTileStatus, TileStatus } from '../../utils/tile-status';
 import type { CanvasItemData } from './OutfitCanvasSurface';
 
@@ -181,6 +181,11 @@ const ACCESSORY_ZONE: Record<Exclude<AccessoryRole, 'BAG'>, string> = {
 export type CollageSeedItem = {
   id: string;
   imageUri: string;
+  // Lower-precedence URLs to fall back to when `imageUri` fails to load (a
+  // dead `processed/` cutout degrading to the still-alive original — see
+  // `resolveItemImageSources` in utils/url.ts). Carried through Node/Placed
+  // verbatim; the layout math never reads it.
+  imageFallbackUris?: string[];
   category?: string;
   status?: TileStatus;
 };
@@ -244,6 +249,7 @@ const classifyRole = (raw?: string): Role => {
 interface Node {
   id: string;
   imageUri: string;
+  imageFallbackUris?: string[]; // carried through, never read by layout math
   role: Role;
   category?: string; // raw category, carried through so the editor can re-seed
   status?: TileStatus; // AU-392: carried through, never read by layout math
@@ -450,6 +456,7 @@ export const seedCanvasLayout = (
   const nodes: Node[] = items.map(it => ({
     id: it.id,
     imageUri: it.imageUri,
+    imageFallbackUris: it.imageFallbackUris,
     role: classifyRole(it.category),
     category: it.category,
     status: it.status,
@@ -573,6 +580,7 @@ export const seedCanvasLayout = (
   return placed.map(p => ({
     id: p.id,
     imageSource: { uri: p.imageUri },
+    fallbackUris: p.imageFallbackUris,
     x: p.cx - p.size / 2,
     y: p.cy - p.size / 2,
     width: p.size,
@@ -625,13 +633,20 @@ export const seedFromOutfit = (
   seedCanvasLayout(
     items
       .filter((it): it is Item => !!it)
-      .map(it => ({
-        id: it.id,
-        imageUri: resolveItemImage(it) || '',
-        category: it.category,
-        // AU-392 D1: Home collage-play now shows the same 4-state badge as the
-        // grid — `Item` satisfies `TileStatusInput` structurally, no cast.
-        status: resolveTileStatus(it),
-      })),
+      .map(it => {
+        // Dead `processed/` cutout falls back to the live original (AU-392
+        // sweep follow-up: this path picked a single URL by presence and
+        // rendered a blank tile when it 404'd — see utils/url.ts).
+        const [imageUri, ...imageFallbackUris] = resolveItemImageSources(it);
+        return {
+          id: it.id,
+          imageUri: imageUri || '',
+          imageFallbackUris,
+          category: it.category,
+          // AU-392 D1: Home collage-play now shows the same 4-state badge as
+          // the grid — `Item` satisfies `TileStatusInput` structurally, no cast.
+          status: resolveTileStatus(it),
+        };
+      }),
     surfaceWidth,
   );
