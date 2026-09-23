@@ -57,8 +57,8 @@ export const buildColdStartOutfits = async ({
 
   const result = await recommendV05({
     weather: { temp_c: tempC, is_rainy: false },
+    // No `gender`: the server resolves it from the profile (plan 260923).
     user: {
-      gender: 'U',
       occasion: mode,
       ...buildPersonaFrom(user?.user_metadata),
     },

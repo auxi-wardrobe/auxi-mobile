@@ -503,7 +503,6 @@
       "a11y_nav_home": "Trang chủ",
       "a11y_nav_wardrobe": "Đến tủ đồ",
       "clear": "Bỏ chọn",
-      "seen_all_hint": "Đã xem hết — gợi ý lặp lại",
       "explore_limit_title": "Bạn đã khám phá hầu hết các cách phối đồ",
       "explore_limit_body": "Chúng tôi đã hiển thị gần như mọi bộ đồ có thể với các lựa chọn hiện tại của bạn.",
       "explore_limit_tips_intro": "Để khám phá thêm phong cách:",
@@ -558,7 +557,12 @@
       "temp_toast_current": "Đang dùng thời tiết hiện tại để gợi ý trang phục",
       "a11y_nav_home_landing": "Trang chủ",
       "a11y_nav_outfit": "Xem bộ đồ của tôi",
-      "a11y_nav_discovery": "Khám phá"
+      "a11y_nav_discovery": "Khám phá",
+      "exhausted_title": "Bạn đã xem hết các cách phối",
+      "exhausted_body": "Đó là tất cả cách phối tủ đồ của bạn tạo được cho thời tiết và dịp này. Hãy thêm đồ, đổi dịp, hoặc xem lại từ đầu.",
+      "exhausted_hint": "Bạn đã xem hết các cách phối cho thời tiết và dịp này.",
+      "start_over": "Xem lại từ đầu",
+      "a11y_start_over": "Xem lại các cách phối từ đầu"
     },
     "pin": {
       "modal_title": "Giữ món đồ này",
@@ -703,7 +707,15 @@
       "a11y_logout": "Đăng xuất khỏi tài khoản của bạn",
       "dialog_logout_title": "Đăng xuất",
       "dialog_logout_body": "Bạn sẽ cần đăng nhập lại để dùng Auxi.",
-      "privacy_control_body": "Kiểm soát những gì bạn chia sẻ với Auxi và các nhà cung cấp AI. Bạn có thể thay đổi bất cứ lúc nào."
+      "privacy_control_body": "Kiểm soát những gì bạn chia sẻ với Auxi và các nhà cung cấp AI. Bạn có thể thay đổi bất cứ lúc nào.",
+      "wardrobe_direction": "Tủ đồ",
+      "wardrobe_menswear_label": "Đồ nam",
+      "wardrobe_womenswear_label": "Đồ nữ",
+      "wardrobe_not_set": "Chưa chọn",
+      "a11y_change_wardrobe": "Đổi tủ đồ",
+      "dialog_wardrobe_title": "Tủ đồ của bạn",
+      "dialog_wardrobe_body": "Thay đổi nội dung Khám phá và bộ đồ khởi đầu của Macgie. Đồ bạn tự thêm vẫn được giữ nguyên.",
+      "error_update_wardrobe": "Không thể cập nhật tủ đồ"
     },
     "outfitCanvas": {
       "a11y_close_picker": "Đóng bộ chọn",

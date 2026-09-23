@@ -9,7 +9,8 @@ export type RadioOption<K extends string> = {
 
 type RadioOptionListProps<K extends string> = {
   options: Array<RadioOption<K>>;
-  selected: K;
+  /** `null` = nothing picked yet (e.g. an unset wardrobe direction). */
+  selected: K | null;
   onSelect: (key: K) => void;
   testIDPrefix: string;
 };
@@ -35,7 +36,7 @@ export function RadioOptionList<K extends string>({
         description: option.description,
         testID: `${testIDPrefix}-${option.key}`,
       }))}
-      value={selected}
+      value={selected ?? ''}
       onChange={value => onSelect(value as K)}
       testID={testIDPrefix}
     />

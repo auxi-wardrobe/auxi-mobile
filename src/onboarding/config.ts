@@ -41,9 +41,8 @@ const TILE_ART = {
   wardrobe: {
     Womenswear: require('../assets/images/onboarding/wardrobe-womenswear.png'),
     Menswear: require('../assets/images/onboarding/wardrobe-menswear.png'),
-    Mixed: require('../assets/images/onboarding/wardrobe-mixed.png'),
   } as Record<WardrobeDirection, ImageSourcePropType>,
-  // Step 2 — fit, per wardrobe branch (nodes 2849:8423 / 8443 / 8460). Keyed
+  // Step 2 — fit, per wardrobe branch (nodes 2849:8423 / 8443). Keyed
   // by the fit WIRE value so the screen resolves art straight from selection.
   fit: {
     Menswear: {
@@ -56,16 +55,11 @@ const TILE_ART = {
       'Classic Fit': require('../assets/images/onboarding/fit-women-regular.png'),
       'Relaxed Fit': require('../assets/images/onboarding/fit-women-relaxed.png'),
     },
-    Mixed: {
-      'Slim Fit': require('../assets/images/onboarding/fit-mixed-slim.png'),
-      'Classic Fit': require('../assets/images/onboarding/fit-mixed-regular.png'),
-      'Relaxed Fit': require('../assets/images/onboarding/fit-mixed-relaxed.png'),
-    },
   } as Record<WardrobeDirection, Record<FitPreference, ImageSourcePropType>>,
   // Step 3 — style picks, per wardrobe branch (Figma frames: Menswear
-  // 2849:9748, Womenswear 2849:9793, Mixed 2849:9838). Each wardrobe shows the
-  // SAME 5 labels but DIFFERENT outfit flat-lays, mirroring the Step 2 `fit`
-  // pattern — so a Womenswear/Mixed user no longer sees the men's outfits.
+  // 2849:9748, Womenswear 2849:9793). Each wardrobe shows the SAME 5 labels
+  // but DIFFERENT outfit flat-lays, mirroring the Step 2 `fit` pattern — so a
+  // Womenswear user never sees the men's outfits.
   // `Formal` reuses each frame's "Classic" tile (the closest visual match,
   // since the backend vocabulary has `Formal` where Figma labelled "Classic").
   style: {
@@ -82,13 +76,6 @@ const TILE_ART = {
       Casual: require('../assets/images/onboarding/style-women-casual.png'),
       Soft: require('../assets/images/onboarding/style-women-soft.png'),
       Bold: require('../assets/images/onboarding/style-women-bold.png'),
-    },
-    Mixed: {
-      Minimal: require('../assets/images/onboarding/style-mixed-minimal.png'),
-      Formal: require('../assets/images/onboarding/style-mixed-formal.png'),
-      Casual: require('../assets/images/onboarding/style-mixed-casual.png'),
-      Soft: require('../assets/images/onboarding/style-mixed-soft.png'),
-      Bold: require('../assets/images/onboarding/style-mixed-bold.png'),
     },
   } as Record<WardrobeDirection, Record<StyleTag, ImageSourcePropType>>,
 };
@@ -109,7 +96,7 @@ export const fitTileArt = (
 
 /**
  * Step 3 tile art for a style option within the chosen wardrobe branch — the
- * style imagery differs per wardrobe (Menswear/Womenswear/Mixed) exactly like
+ * style imagery differs per wardrobe (Menswear/Womenswear) exactly like
  * `fitTileArt`, so the screen resolves art from the route's `wardrobe_direction`
  * + the option's StyleTag wire value.
  */
@@ -146,11 +133,12 @@ export interface WardrobeOption {
   label: string;
 }
 
-// Figma node 2849:8339 order: Womenswear (left), Menswear (right), then Mixed.
+// Figma node 2849:8339 order: Womenswear (left), Menswear (right). The solo
+// "Mixed" tile was retired (plan 260923) — the wardrobe is switchable later in
+// Settings › Personalization.
 export const WARDROBE_OPTIONS: WardrobeOption[] = [
   { value: 'Womenswear', label: 'Womenswear' },
   { value: 'Menswear', label: 'Menswear' },
-  { value: 'Mixed', label: 'Mixed' },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────

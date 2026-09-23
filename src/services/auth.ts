@@ -6,6 +6,7 @@ import {
   AuthResponse,
   ResetPreferencesResponse,
   User,
+  UserWardrobeDirection,
 } from '../types/auth';
 import { BASE_URL } from '../config/env';
 import { apiClient } from './apiClient';
@@ -257,6 +258,26 @@ export const authService = {
       return response.data;
     } catch (error) {
       console.error('Update user error', error);
+      reportAuthError(error);
+      throw error;
+    }
+  },
+
+  /**
+   * PUT /api/me/wardrobe-direction (plan 260923) — switch Menswear ↔
+   * Womenswear. The server also regenerates the Macgie starter items for the
+   * new direction; the user's own items are untouched.
+   */
+  updateWardrobeDirection: async (
+    direction: UserWardrobeDirection,
+  ): Promise<{ user: User; changed: boolean; reseeded_items: number }> => {
+    try {
+      const response = await apiClient.put('/me/wardrobe-direction', {
+        wardrobe_direction: direction,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Update wardrobe direction error', error);
       reportAuthError(error);
       throw error;
     }

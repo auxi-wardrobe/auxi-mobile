@@ -27,6 +27,8 @@ export type BuildViaV05Input = {
   style_feedback?: string;
   pinned_item_id?: string | null;
   current_outfit_hash?: string;
+  /** Plan 260923 — "Start over": forget what was shown, rebuild fresh. */
+  reset_seen?: boolean;
   __gen?: number;
   __tempApplyId?: number;
 };

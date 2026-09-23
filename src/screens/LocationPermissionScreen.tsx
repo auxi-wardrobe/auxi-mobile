@@ -31,8 +31,8 @@ export const LocationPermissionScreen = () => {
 
   // Both location-permission outcomes funnel into the first wardrobe-direction
   // step (OnboardingWardrobe). Skipping straight to the fit picker would
-  // silently default wardrobe_direction to "Mixed", which violates the V05
-  // spec contract requiring an explicit direction pick. AU-249.
+  // leave wardrobe_direction unset, which violates the V05 spec contract
+  // requiring an explicit direction pick. AU-249.
   const goToOnboarding = () => navigation.navigate('OnboardingWardrobe');
 
   useFocusEffect(

@@ -19,6 +19,7 @@ import {
   User,
   UserMetadata,
   UserStyleDirection,
+  UserWardrobeDirection,
 } from '../../types/auth';
 import type { Language } from '../../translations';
 
@@ -80,6 +81,26 @@ export const buildDirectionOptions = (
     description: t('settings.direction_polished_desc'),
   },
 ];
+
+// Plan 260923 — Menswear / Womenswear (the retired "Mixed" is not offered).
+export const buildWardrobeOptions = (
+  t: TFunction,
+): Array<{ key: UserWardrobeDirection; label: string }> => [
+  { key: 'Menswear', label: t('settings.wardrobe_menswear_label') },
+  { key: 'Womenswear', label: t('settings.wardrobe_womenswear_label') },
+];
+
+/**
+ * The stored wardrobe direction, or null when unset / a legacy value (e.g.
+ * the retired "Mixed") — the row then reads "Not set" and the dialog opens
+ * with nothing pre-selected, so the user makes an explicit pick.
+ */
+export const resolveWardrobeDirection = (
+  metadata?: UserMetadata | null,
+): UserWardrobeDirection | null => {
+  const value = metadata?.wardrobe_direction;
+  return value === 'Menswear' || value === 'Womenswear' ? value : null;
+};
 
 export const buildFrequencyOptions = (
   t: TFunction,

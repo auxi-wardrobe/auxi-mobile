@@ -503,7 +503,6 @@
       "a11y_nav_home": "Home",
       "a11y_nav_wardrobe": "Go to wardrobe",
       "clear": "Clear",
-      "seen_all_hint": "You've seen them all — suggestions will repeat",
       "explore_limit_title": "You've explored most outfit combinations",
       "explore_limit_body": "We've shown almost every outfit available with your current selections.",
       "explore_limit_tips_intro": "To discover more looks:",
@@ -558,7 +557,12 @@
       "temp_toast_current": "Using current weather for outfit suggestions",
       "a11y_nav_home_landing": "Home",
       "a11y_nav_outfit": "See my outfits",
-      "a11y_nav_discovery": "Discovery"
+      "a11y_nav_discovery": "Discovery",
+      "exhausted_title": "You've seen every outfit",
+      "exhausted_body": "That’s every combination your wardrobe makes for this weather and occasion. Add pieces, switch the occasion, or start over.",
+      "exhausted_hint": "You've now seen every outfit for this weather and occasion.",
+      "start_over": "Start over",
+      "a11y_start_over": "Show your outfits again from the start"
     },
     "pin": {
       "modal_title": "Keep this item",
@@ -703,7 +707,15 @@
       "a11y_logout": "Log out of your account",
       "dialog_logout_title": "Log out",
       "dialog_logout_body": "You'll need to sign in again to use Auxi.",
-      "privacy_control_body": "Control what you share with Auxi and our AI providers. You can change these anytime."
+      "privacy_control_body": "Control what you share with Auxi and our AI providers. You can change these anytime.",
+      "wardrobe_direction": "Wardrobe",
+      "wardrobe_menswear_label": "Menswear",
+      "wardrobe_womenswear_label": "Womenswear",
+      "wardrobe_not_set": "Not set",
+      "a11y_change_wardrobe": "Change wardrobe",
+      "dialog_wardrobe_title": "Your wardrobe",
+      "dialog_wardrobe_body": "Changes what Discovery shows you and your Macgie starter pieces. Items you added yourself stay.",
+      "error_update_wardrobe": "Failed to update wardrobe"
     },
     "outfitCanvas": {
       "a11y_close_picker": "Close picker",

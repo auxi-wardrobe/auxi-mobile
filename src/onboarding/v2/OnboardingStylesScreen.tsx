@@ -1,9 +1,9 @@
 /**
  * Onboarding V2 — Step 3/3: style picks (Figma frames: Menswear 2849:9748 /
- * 2849:9883 pinned, Womenswear 2849:9793, Mixed 2849:9838).
+ * 2849:9883 pinned, Womenswear 2849:9793).
  *
  * Tile art is PER-WARDROBE (like Step 2 fit): the 5 labels are constant but the
- * outfit flat-lays differ by `wardrobe_direction`, so a Womenswear/Mixed user
+ * outfit flat-lays differ by `wardrobe_direction`, so a Womenswear user
  * sees their own outfits — resolved via `styleTileArt(wardrobe_direction, …)`.
  *
  * D7: max 2 ranked picks shown with numbered pin badges (D6, View+number).
