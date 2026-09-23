@@ -88,6 +88,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
           route.params.items.map(it => ({
             id: it.id,
             imageUri: it.imageUrl,
+            imageFallbackUris: it.imageFallbackUrls,
             category: it.category,
             // AU-392 D1 (2026-07-30): Remix is in scope for the status badge —
             // `it` carries the same wire-shape fields as `TileStatusInput`.

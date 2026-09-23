@@ -13,7 +13,7 @@ import { ImageSourcePropType } from 'react-native';
 import { WardrobeItem } from '../../services/wardrobeService';
 import { CanvasItemData } from '../../components/features/OutfitCanvasSurface';
 import { addSeededItems } from '../../components/features/collage-seed-layout';
-import { getImageUrl } from '../../utils/url';
+import { resolveItemImageSources } from '../../utils/url';
 import { resolveTileStatus } from '../../utils/tile-status';
 import { CANVAS_WIDTH } from './canvas-dimensions';
 import {
@@ -69,14 +69,19 @@ export function useCanvasAddItems({
         // Precedence: accepted AI studio shot → bg-removed cutout → original
         // photo (matches resolveItemImage in utils/url.ts; inlined here
         // because WardrobeItem's image_url is optional, unlike Item's).
-        const uri = getImageUrl(
-          item.image_studio || item.image_png || item.image_url,
-        );
+        // Full chain (not just the winner) so a dead `processed/` cutout
+        // falls back to the still-alive original instead of a blank piece.
+        const [uri, ...fallbackUris] = resolveItemImageSources({
+          image_studio: item.image_studio,
+          image_png: item.image_png,
+          image_url: item.image_url ?? '',
+        });
         return {
           id: `item-${item.id}-${stamp}-${i}`,
           // The real wardrobe id, carried so a saved creation can launch try-on.
           wardrobeItemId: item.id,
           uri,
+          fallbackUris,
           category: item.category,
           imageSource: uri ? { uri } : testJeansImg,
           // AU-392 sweep fix (2026-07-30, qa-ui HIGH finding): resolve the
@@ -120,6 +125,7 @@ export function useCanvasAddItems({
           return {
             id: p.id,
             imageUri: p.uri ?? '',
+            imageFallbackUris: p.fallbackUris,
             category: p.category,
             status: p.status,
           };

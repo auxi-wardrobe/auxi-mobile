@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Image,
@@ -15,6 +15,7 @@ import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { theme } from '../../theme/theme';
 import { motion } from '../../theme/motion';
 import { getItemHitArea } from './canvas-hit-area';
+import { useImageFallback } from '../../hooks/useImageFallback';
 import { TileStatus } from '../../utils/tile-status';
 import { TileStatusBadge } from './TileStatusBadge';
 
@@ -51,6 +52,11 @@ export type CanvasItemData = {
   // key). Carried so a saved creation can launch Self Visualization / try-on,
   // which needs real wardrobe item ids. Absent for mock/seeded items.
   wardrobeItemId?: string;
+  // Lower-precedence remote URLs to fall back to when `imageSource` (a
+  // `{ uri }`) fails to load — a dead `processed/` cutout degrades to the
+  // still-alive original instead of rendering a blank piece on the canvas.
+  // Ignored when `imageSource` is a local require()'d image.
+  fallbackUris?: string[];
   // AU-392: 4-state tile status (new / less_use / common / none), carried
   // through from the seed layer (`collage-seed-layout.ts`) for the badge
   // overlay when the surface renders with `showStatusBadge`. Never derived
@@ -155,6 +161,27 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   enablePinchZoom = false,
   showStatusBadge = false,
 }) => {
+  // Remote sources to try in order, primary first; a dead cutout URL falls
+  // back to the live original instead of the piece rendering blank. Local
+  // require()'d sources (numbers/module refs, not { uri }) have no fallback
+  // chain — pass through as-is.
+  const remoteSources = useMemo(() => {
+    const primary =
+      typeof item.imageSource === 'object' &&
+      item.imageSource !== null &&
+      'uri' in item.imageSource
+        ? item.imageSource.uri
+        : undefined;
+    if (!primary) return [];
+    return [primary, ...(item.fallbackUris ?? [])];
+  }, [item.imageSource, item.fallbackUris]);
+  const { uri: resolvedUri, onError: onImageError } =
+    useImageFallback(remoteSources);
+  const resolvedSource: ImageSourcePropType =
+    remoteSources.length > 0
+      ? { uri: resolvedUri }
+      : item.imageSource;
+
   const dragOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   // 0 → 1 "lifted" cue (scale up) while an armed drag is in progress.
   const lift = useRef(new Animated.Value(0)).current;
@@ -410,10 +437,11 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
     >
       <View pointerEvents="none">
         <Image
-          source={item.imageSource}
+          source={resolvedSource}
           style={{ width: item.width, height: item.height }}
           resizeMode="contain"
           onLoadEnd={() => onImageLoad?.(item.id)}
+          onError={onImageError}
         />
       </View>
       {showStatusBadge && item.status ? (
