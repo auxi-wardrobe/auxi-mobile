@@ -21,6 +21,9 @@ const ROUTE_PARAMS = { wardrobe_direction: 'Womenswear' as const };
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
   useRoute: () => ({ params: ROUTE_PARAMS }),
+  // Screens fire their `onboarding_step_viewed` event on focus; the effect is
+  // irrelevant to these gating tests, so run it as a no-op.
+  useFocusEffect: () => undefined,
 }));
 
 import { OnboardingWardrobeScreen } from '../OnboardingWardrobeScreen';
@@ -77,11 +80,16 @@ describe('OnboardingWardrobeScreen — Continue gating + forwarding', () => {
 
   it('forwards the selected wire wardrobe_direction to OnboardingFit', () => {
     const { root } = render(<OnboardingWardrobeScreen />);
-    press(oneByTestID(root, 'onboarding-wardrobe-tile-mixed'));
+    press(oneByTestID(root, 'onboarding-wardrobe-tile-womenswear'));
     press(oneByTestID(root, 'onboarding-wardrobe-continue'));
     expect(mockNavigate).toHaveBeenCalledWith('OnboardingFit', {
-      wardrobe_direction: 'Mixed',
+      wardrobe_direction: 'Womenswear',
     });
+  });
+
+  it('offers only Menswear + Womenswear (Mixed retired, plan 260923)', () => {
+    const { root } = render(<OnboardingWardrobeScreen />);
+    expect(() => oneByTestID(root, 'onboarding-wardrobe-tile-mixed')).toThrow();
   });
 
   it('does not navigate when no selection (guarded handleContinue)', () => {

@@ -26,7 +26,12 @@ import {
   logInRevenueCat,
   logOutRevenueCat,
 } from '../services/revenueCat';
-import { LoginRequest, RegisterRequest, User } from '../types/auth';
+import {
+  LoginRequest,
+  RegisterRequest,
+  User,
+  UserWardrobeDirection,
+} from '../types/auth';
 
 /**
  * The auth method that produced the current/upcoming session. Used as a
@@ -57,6 +62,14 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
   updateCurrentUser: (data: Partial<User>) => Promise<User>;
+  /**
+   * Plan 260923 — Settings › Wardrobe (Menswear / Womenswear). Persists via
+   * `PUT /me/wardrobe-direction` (server re-seeds starter items) and swaps in
+   * the echoed user. Rethrows so the caller can keep its dialog open.
+   */
+  updateWardrobeDirection: (
+    direction: UserWardrobeDirection,
+  ) => Promise<{ user: User; changed: boolean }>;
   /**
    * Optimistically flip the in-memory user to premium for instant post-purchase
    * UX. This does NOT persist to the backend — the RevenueCat webhook is the
@@ -126,6 +139,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const updatedUser = await authService.updateUser(data);
       setUser(updatedUser);
       return updatedUser;
+    },
+    [],
+  );
+
+  const updateWardrobeDirection = useCallback(
+    async (direction: UserWardrobeDirection) => {
+      const result = await authService.updateWardrobeDirection(direction);
+      setUser(result.user);
+      return { user: result.user, changed: result.changed };
     },
     [],
   );
@@ -458,6 +480,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         logout,
         refreshUser,
         updateCurrentUser,
+        updateWardrobeDirection,
         markPremiumOptimistic,
         resetUserPreferences,
         deleteAccount,

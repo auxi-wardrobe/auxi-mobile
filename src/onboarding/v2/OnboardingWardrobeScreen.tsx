@@ -1,8 +1,8 @@
 /**
  * Onboarding V2 — Step 1/3: wardrobe direction (Figma node 2849:8339).
  *
- * Tile grid (2-up Womenswear/Menswear + solo Mixed), each a 3:4 v2 selection
- * card. Selecting a tile enables the bottom-anchored Continue (Figma shows a
+ * Tile grid (2-up Womenswear/Menswear — "Mixed" retired in plan 260923),
+ * each a 3:4 v2 selection card. Selecting a tile enables the bottom-anchored Continue (Figma shows a
  * disabled grey CTA until a pick is made — unlike legacy tap=navigate).
  * Continue forwards `{wardrobe_direction}` to Step 2.
  *
@@ -61,16 +61,7 @@ export const OnboardingWardrobeScreen = () => {
     navigation.navigate('OnboardingFit', { wardrobe_direction: selected });
   };
 
-  // Row 1 = first two options side-by-side; row 2 = remaining (solo) tile.
-  const [primaryRow, secondaryRow] = [
-    WARDROBE_OPTIONS.slice(0, 2),
-    WARDROBE_OPTIONS.slice(2),
-  ];
-
-  const renderTile = (
-    option: (typeof WARDROBE_OPTIONS)[number],
-    solo: boolean,
-  ) => {
+  const renderTile = (option: (typeof WARDROBE_OPTIONS)[number]) => {
     const isSelected = selected === option.value;
     return (
       <TouchableOpacity
@@ -81,7 +72,7 @@ export const OnboardingWardrobeScreen = () => {
         accessibilityState={{ selected: isSelected }}
         activeOpacity={0.85}
         onPress={() => handleSelect(option.value)}
-        style={solo ? styles.tileSolo : styles.tileFlex}
+        style={styles.tileFlex}
       >
         <OnboardingSelectionCard
           variant="v2"
@@ -113,10 +104,7 @@ export const OnboardingWardrobeScreen = () => {
           </View>
           <View style={styles.grid}>
             <View style={styles.gridRow}>
-              {primaryRow.map(option => renderTile(option, false))}
-            </View>
-            <View style={styles.gridRow}>
-              {secondaryRow.map(option => renderTile(option, true))}
+              {WARDROBE_OPTIONS.map(renderTile)}
             </View>
           </View>
         </View>
@@ -156,6 +144,5 @@ const styles = StyleSheet.create({
   grid: { gap: theme.spacing.xs, paddingBottom: theme.spacing.uacDimension20 },
   gridRow: { flexDirection: 'row', gap: theme.spacing.xs },
   tileFlex: { flex: 1 },
-  tileSolo: { width: '50%' },
   cta: { alignSelf: 'center', width: 327, borderRadius: theme.borderRadius.l },
 });

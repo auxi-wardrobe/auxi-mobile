@@ -138,6 +138,7 @@ import {
 } from './components/HomeErrorState';
 import { HomeWardrobeGapState } from './components/HomeWardrobeGapState';
 import { HomeEmptyState } from './components/HomeEmptyState';
+import { HomeExhaustedState } from './components/HomeExhaustedState';
 import { HomeHeader } from './components/HomeHeader';
 import { HomeLoadingState } from './components/HomeLoadingState';
 import { HomeToastLayer } from './components/HomeToastLayer';
@@ -238,8 +239,11 @@ export const HomeScreen = () => {
     [pinDispatch],
   );
   const [styleFeedback, setStyleFeedback] = useState<string | null>(null);
-  const [hasCycled, setHasCycled] = useState(false);
-  const [cycledHintDismissed, setCycledHintDismissed] = useState(false);
+  // Plan 260923 — every distinct outfit for this weather + occasion was shown
+  // (server `exhausted`). Replaces the old `cycled` re-serve hint: the server
+  // no longer repeats outfits, it says so.
+  const [isExhausted, setIsExhausted] = useState(false);
+  const [exhaustedHintDismissed, setExhaustedHintDismissed] = useState(false);
   const [isWardrobeGap, setIsWardrobeGap] = useState(false);
   // "View latest outfits" fallback on the styling-limit page — true while the
   // history fetch + hydration is in flight, so the CTA shows a spinner.
@@ -256,6 +260,8 @@ export const HomeScreen = () => {
   const inFlightCountRef = useRef(0);
   const poolDepletedRef = useRef(false);
   const isFirstLoadRef = useRef(true);
+  // Fires `recommendation_exhausted` once per exhaustion (not per re-render).
+  const isExhaustedRef = useRef(false);
   const fetchGenerationRef = useRef(0);
   const ensureBufferRef = useRef<(force?: boolean) => void>(() => {});
   const pinnedItemIdRef = useRef<string | null>(null);
@@ -378,7 +384,8 @@ export const HomeScreen = () => {
       input: BuildViaV05Input,
     ): Promise<{
       outfits: Outfit[];
-      cycled?: boolean;
+      exhausted?: boolean;
+      seenCount?: number;
       wardrobeGap?: boolean;
     }> => {
       const mode = input.mode ?? DEFAULT_RECOMMENDATION_MODE;
@@ -392,13 +399,15 @@ export const HomeScreen = () => {
           temp_c: overrideTempCRef.current ?? weather.tempC,
           is_rainy: false,
         },
-        user: { gender: 'U', occasion, ...buildPersona },
+        // No `gender`: the server resolves it from the profile (plan 260923).
+        user: { occasion, ...buildPersona },
         intent: { mood: mood as never },
         count: 3,
         mode,
         style_feedback: input.style_feedback,
         pinned_item_id: input.pinned_item_id ?? undefined,
         current_outfit_hash: input.current_outfit_hash,
+        ...(input.reset_seen ? { reset_seen: true } : {}),
       });
 
       return {
@@ -407,7 +416,8 @@ export const HomeScreen = () => {
           outfit_hash: o.outfit_hash,
           caption: o.reasoning_human,
         })) as unknown as Outfit[],
-        cycled: v05.cycled,
+        exhausted: v05.exhausted,
+        seenCount: v05.seenCount,
         wardrobeGap: v05.wardrobeGap,
       };
     },
@@ -451,9 +461,22 @@ export const HomeScreen = () => {
         }
       }
 
-      const flags = data as { cycled?: boolean; wardrobeGap?: boolean };
-      if (flags?.cycled) {
-        setHasCycled(true);
+      const flags = data as {
+        exhausted?: boolean;
+        seenCount?: number;
+        wardrobeGap?: boolean;
+      };
+      if (flags?.exhausted) {
+        if (!isExhaustedRef.current) {
+          isExhaustedRef.current = true;
+          track('recommendation_exhausted', {
+            occasion: variables?.mode ?? selectedModeRef.current,
+            ...(typeof flags.seenCount === 'number'
+              ? { outfits_seen: flags.seenCount }
+              : {}),
+          });
+        }
+        setIsExhausted(true);
       }
 
       let addedCount = 0;
@@ -490,7 +513,9 @@ export const HomeScreen = () => {
         poolDepletedRef.current = false;
         limitSheetShownRef.current = false;
         if (addedCount > 0) {
-          setHasCycled(false);
+          isExhaustedRef.current = false;
+          setIsExhausted(false);
+          setExhaustedHintDismissed(false);
           setIsWardrobeGap(false);
         }
       } else {
@@ -786,7 +811,6 @@ export const HomeScreen = () => {
         is_rainy: false,
       },
       user: {
-        gender: 'U' as const,
         occasion: selectedModeRef.current,
         ...buildPersonaRef.current,
       },
@@ -828,7 +852,8 @@ export const HomeScreen = () => {
             unfavoritedSwipeCountRef.current = 0;
             poolDepletedRef.current = false;
             limitSheetShownRef.current = false;
-            setHasCycled(false);
+            isExhaustedRef.current = false;
+            setIsExhausted(false);
             setIsWardrobeGap(false);
           }
         }
@@ -1598,6 +1623,28 @@ export const HomeScreen = () => {
     [navigation],
   );
 
+  // Plan 260923 — "Start over": the user saw every outfit for this weather +
+  // occasion. Forget that server-side (`reset_seen`) and rebuild a fresh deck
+  // from the top of the coverage order.
+  const handleStartOver = useCallback(() => {
+    track('recommendation_seen_reset', { occasion: selectedModeRef.current });
+    resetV05Session();
+    fetchGenerationRef.current += 1;
+    poolDepletedRef.current = false;
+    isFirstLoadRef.current = true;
+    isExhaustedRef.current = false;
+    setIsExhausted(false);
+    setExhaustedHintDismissed(false);
+    requestRecommendation(
+      {
+        mode: selectedModeRef.current,
+        style_feedback: styleFeedbackRef.current ?? undefined,
+        reset_seen: true,
+      },
+      { force: true },
+    );
+  }, [requestRecommendation]);
+
   // "View latest outfits" on the styling-limit page. The user is over their
   // daily AI budget, so we can't build fresh looks — instead we restore the
   // recommendation sheets Home last showed them (persisted per user to disk, so
@@ -1632,7 +1679,8 @@ export const HomeScreen = () => {
       setActiveIndex(0);
       activeIndexRef.current = 0;
       setIsWardrobeGap(false);
-      setHasCycled(false);
+      isExhaustedRef.current = false;
+      setIsExhausted(false);
       track('ai_limit_view_latest_shown', { count: sheets.length });
     } catch (error) {
       console.warn('view latest outfits failed', error);
@@ -1663,14 +1711,19 @@ export const HomeScreen = () => {
       {/* Floating toast layer (z-index tier 5) — sits on top of the grid,
           never stacks with the cards. */}
       <View style={styles.noticeStack} pointerEvents="box-none">
-        {hasCycled &&
+        {isExhausted &&
         !isWardrobeGap &&
         optionSets.length > 0 &&
-        !cycledHintDismissed ? (
+        !exhaustedHintDismissed ? (
           <InfoSnackbar
-            message={t('home.seen_all_hint')}
-            onClose={() => setCycledHintDismissed(true)}
-            testID="home-cycled-hint"
+            message={t('home.exhausted_hint')}
+            action={{
+              label: t('home.start_over'),
+              onPress: handleStartOver,
+              testID: 'home-exhausted-hint-start-over',
+            }}
+            onClose={() => setExhaustedHintDismissed(true)}
+            testID="home-exhausted-hint"
           />
         ) : null}
       </View>
@@ -1680,6 +1733,11 @@ export const HomeScreen = () => {
       ) : optionSets.length === 0 && isWardrobeGap ? (
         <HomeWardrobeGapState
           onAddItems={() => navigation.navigate('Wardrobe')}
+        />
+      ) : optionSets.length === 0 && isExhausted ? (
+        <HomeExhaustedState
+          onAddItems={() => navigation.navigate('Wardrobe')}
+          onStartOver={handleStartOver}
         />
       ) : optionSets.length === 0 && startError ? (
         <HomeErrorState

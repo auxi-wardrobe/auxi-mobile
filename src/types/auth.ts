@@ -16,8 +16,17 @@ export interface UserDailyNotificationSettings {
   frequency?: DailyNotificationFrequency;
 }
 
+/**
+ * Wardrobe direction (Menswear / Womenswear) — drives what the app picks for
+ * the user (Discovery, catalog, starter items). "Mixed" was retired in plan
+ * 260923; a legacy value may still be read, so treat unknown strings as unset.
+ */
+export type UserWardrobeDirection = 'Menswear' | 'Womenswear';
+
 export interface UserMetadata {
   daily_notification?: UserDailyNotificationSettings;
+  /** Written by onboarding / `PUT /me/wardrobe-direction` — read-only here. */
+  wardrobe_direction?: string;
   style_direction?: UserStyleDirection;
   confidence_level?: UserConfidenceLevel;
   display_state?: UserDisplayState;

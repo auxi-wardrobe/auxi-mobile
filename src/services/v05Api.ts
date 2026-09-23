@@ -17,11 +17,12 @@ import type { UserConfidenceLevel, UserStyleDirection } from '../types/auth';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * `wardrobe_direction` accepted by `/onboarding/generate`. Spelling +
- * casing matches the backend's literal allowlist (`Menswear` /
- * `Womenswear` / `Mixed`) — these are user-facing labels, not enum codes.
+ * `wardrobe_direction` accepted by `/onboarding/generate` and
+ * `PUT /api/me/wardrobe-direction`. Spelling + casing matches the backend's
+ * literal allowlist (`Menswear` / `Womenswear`) — user-facing labels, not
+ * enum codes. "Mixed" was retired (plan 260923): unisex items reach both.
  */
-export const WARDROBE_DIRECTIONS = ['Menswear', 'Womenswear', 'Mixed'] as const;
+export const WARDROBE_DIRECTIONS = ['Menswear', 'Womenswear'] as const;
 export type WardrobeDirection = (typeof WARDROBE_DIRECTIONS)[number];
 
 /**
@@ -64,8 +65,8 @@ export type Mood = (typeof MOODS)[number];
 
 /**
  * V05 category families — first-class taxonomy used in pool sizes, item
- * shapes, and outfit composition. `FULL_BODY` is Womenswear/Mixed only;
- * the engine drops `FULL_BODY` outfits when `user.gender = "M"`.
+ * shapes, and outfit composition. `FULL_BODY` is Womenswear only for
+ * app-chosen items (starter seeds); a user's own dress is never hidden.
  */
 export const CATEGORY_FAMILIES = [
   'TOP',
@@ -176,8 +177,16 @@ export interface BuildWeather {
   is_rainy?: boolean;
 }
 
-/** `user` input — all fields optional with backend defaults. */
+/**
+ * `user` input — all fields optional with backend defaults.
+ *
+ * `gender` is DEPRECATED and ignored by the backend (plan 260923): the server
+ * resolves the wardrobe gender from the profile (`wardrobe_direction`). Do not
+ * send it — the app used to hard-code `'U'`, which let women's catalog items
+ * into men's suggestions.
+ */
 export interface BuildUser {
+  /** @deprecated ignored server-side — see above. */
   gender?: 'M' | 'W' | 'U';
   occasion?: string;
   /**
@@ -222,6 +231,11 @@ export interface BuildRecommendationInput {
   // ownership/SYSTEM-source validation; 410 / 422 errors map to
   // PINNED_ITEM_GONE on the reducer.
   pinned_item_id?: string;
+  /**
+   * Plan 260923 — forget which outfits were already shown for this weather
+   * bucket + occasion and start over (the "Show again from the start" CTA).
+   */
+  reset_seen?: boolean;
 }
 
 /**
@@ -361,12 +375,20 @@ export interface BuildRecommendationResponse {
    */
   session_id?: string | null;
   /**
-   * True when even the SYSTEM common-items catalog can't fill the
-   * climate-starved slot. When true, `outfits` is empty and the client
-   * should render a wardrobe-gap CTA per `wardrobe_gap_reason`.
+   * True when the user's OWN wardrobe can't fill a required slot for this
+   * weather (outfits are never padded with catalog items). When true,
+   * `outfits` is empty and the client renders a wardrobe-gap CTA.
    */
   wardrobe_gap?: boolean;
   wardrobe_gap_reason?: V05WardrobeGapReason | null;
+  /**
+   * Plan 260923 — every distinct outfit this wardrobe can make for this
+   * weather + occasion has been shown. `outfits` is empty; tell the user and
+   * offer "add items" / "start over" (`reset_seen`).
+   */
+  exhausted?: boolean;
+  /** Distinct outfits shown so far in this context. */
+  outfits_seen_count?: number;
   /**
    * True when fewer than 3 tier pools (safe/elevated/exploratory) could
    * be filled — wardrobe too small to cover all tiers. UI may relabel
@@ -410,8 +432,8 @@ export interface TryAnotherInput {
 /**
  * Response for `/try_another` (contract §4). `outfit` reuses the existing
  * `V05Outfit` / `V05OutfitItem` shapes already defined above. `outfit` is
- * `null` only when `fallback=true` (pool exhausted + recompose failed) or
- * on a wardrobe gap.
+ * `null` when `exhausted` (every outfit shown), on a wardrobe gap, or when
+ * `fallback=true` (transient failure — the façade rebuilds once).
  */
 export interface TryAnotherResponse {
   outfit: V05Outfit | null;
@@ -424,14 +446,18 @@ export interface TryAnotherResponse {
   trace?: BuildTrace;
   message: string | null;
   /**
-   * Backend sustainability contract (2026-05-27): `true` when the unique
-   * variation pool was exhausted and this is a controlled RE-SERVE of a
-   * previously-seen outfit. `fallback` is `false` and a real `outfit` is
-   * still present — render it like any normal outfit; do NOT treat this as
-   * a dead-end. `fallback_flags` may also include `"variations_cycled"`.
+   * @deprecated Plan 260923 — always `false`: the server never re-serves a
+   * seen outfit any more. See `exhausted`.
    */
   cycled?: boolean;
-  /** Spec v2 §4.6 — set when no outfit is composable even with commons. */
+  /**
+   * Plan 260923 — every distinct outfit for the session's weather + occasion
+   * was shown. `outfit` is null and `fallback` is false: tell the user; do
+   * NOT silently rebuild (a rebuild would say the same).
+   */
+  exhausted?: boolean;
+  outfits_seen_count?: number;
+  /** Spec v2 §4.6 — the user's wardrobe can't dress this climate. */
   wardrobe_gap?: boolean;
   wardrobe_gap_reason?: V05WardrobeGapReason | null;
 }
@@ -592,17 +618,21 @@ export const resetV05Session = (): void => {
 
 /**
  * Façade result. `outfits` is the V05 build batch HomeScreen maps + dedups
- * (unchanged). The optional flags let HomeScreen distinguish exhaustion cases
- * without re-plumbing the raw `/try_another` response:
- *   - `cycled`: a real (re-served) outfit is present — render normally; HOME
- *     may show a subtle "seen them all" hint. Never a dead-end.
- *   - `wardrobeGap`: GENUINE dead-end — the wardrobe is too small to compose
- *     any outfit. `outfits` is empty. HOME surfaces a terminal "add items" CTA.
- * `/build` results carry neither flag.
+ * (unchanged). The optional flags let HomeScreen distinguish the terminal
+ * states without re-plumbing the raw responses:
+ *   - `exhausted`: every distinct outfit for this weather + occasion was
+ *     shown (plan 260923). `outfits` is empty. HOME tells the user and offers
+ *     "add items" / "start over".
+ *   - `wardrobeGap`: the wardrobe can't dress this climate. `outfits` is
+ *     empty. HOME surfaces a terminal "add items" CTA.
  */
 export interface RecommendV05Result {
   outfits: V05Outfit[];
+  /** @deprecated always false since plan 260923 (no server re-serves). */
   cycled?: boolean;
+  exhausted?: boolean;
+  /** Distinct outfits shown so far in this context (server count). */
+  seenCount?: number;
   wardrobeGap?: boolean;
   /**
    * AU-307 phase 04 — propagated from /build's `low_confidence`. True when
@@ -637,6 +667,11 @@ export interface RecommendV05Params {
   style_feedback?: string;
   pinned_item_id?: string;
   mode?: V05RecommendationMode;
+  /**
+   * Plan 260923 — start over: forces a fresh `/build` with `reset_seen=true`
+   * (forgets what was shown for this weather bucket + occasion).
+   */
+  reset_seen?: boolean;
 }
 
 const RETRY_LOCKED_MAX_ATTEMPTS = 3;
@@ -680,6 +715,7 @@ const buildAndStore = async (
       ...(params.pinned_item_id
         ? { pinned_item_id: params.pinned_item_id }
         : {}),
+      ...(params.reset_seen ? { reset_seen: true } : {}),
     },
     options,
   );
@@ -700,6 +736,8 @@ const buildAndStore = async (
     // instead of a blank deck. Previously only `/try_another` surfaced this,
     // so a NEW user whose first `/build` returned no outfit saw a blank screen.
     wardrobeGap: data.wardrobe_gap === true,
+    exhausted: data.exhausted === true,
+    seenCount: data.outfits_seen_count,
   };
 };
 
@@ -710,12 +748,11 @@ const buildAndStore = async (
  *
  * Returns `RecommendV05Result` — `outfits` keeps HomeScreen's existing
  * `V05Outfit → legacy Outfit` mapping + append/dedup logic unchanged.
- * `/try_another` returns a single outfit → a one-element batch. With the
- * backend sustainability fix (2026-05-27) transient exhaustion now re-serves
- * a real outfit flagged `cycled` (still a one-element batch). A GENUINE
- * `wardrobe_gap` is the only remaining empty batch — surfaced via the
- * `wardrobeGap` flag so HomeScreen can show a terminal CTA instead of a
- * silent freeze.
+ * `/try_another` returns a single outfit → a one-element batch. Plan 260923:
+ * the server never re-serves; an empty batch is either `exhausted` (every
+ * outfit shown) or `wardrobeGap` (wardrobe can't dress the climate) — both
+ * terminal states HomeScreen renders explicitly. A transient `fallback`
+ * triggers one silent rebuild.
  *
  * Error handling (contract §5/§6):
  *   - 410 `session_expired` (incl. cross-user ownership) → silent reset + build
@@ -728,8 +765,8 @@ export const recommendV05 = async (
   params: RecommendV05Params,
   options?: { signal?: AbortSignal },
 ): Promise<RecommendV05Result> => {
-  // Cold start / post-reset → /build.
-  if (!v05SessionId) {
+  // Cold start / post-reset / explicit "start over" → /build.
+  if (!v05SessionId || params.reset_seen) {
     return buildAndStore(params, options);
   }
 
@@ -744,26 +781,29 @@ export const recommendV05 = async (
   for (let attempt = 0; attempt < RETRY_LOCKED_MAX_ATTEMPTS; attempt++) {
     try {
       const data = await tryAnother(tryAnotherInput, options);
-      // `cycled` re-serves a real outfit (uniques exhausted, controlled
-      // re-serve) — pass it through with the outfit so HomeScreen can show a
-      // subtle hint. A GENUINE `wardrobe_gap` is the honest dead-end (no
-      // outfit) — surface it so HomeScreen renders a terminal CTA instead of a
-      // silent freeze. `cycled` may also appear in `fallback_flags`
-      // ("variations_cycled") — the top-level field is authoritative.
       if (data.outfit?.outfit_hash) {
         v05LastOutfitHash = data.outfit.outfit_hash;
       }
-      // Feed the served variation into long-term memory too (no-op on a
-      // `cycled` re-serve of the same hash — recordServedOutfit dedups).
       if (data.outfit) {
         recordServedOutfit(data.outfit);
       }
-      const cycled =
-        data.cycled === true ||
-        data.fallback_flags?.includes('variations_cycled');
+      // Plan 260923 — a transient server failure (timeout / engine error)
+      // comes back as `fallback` with no outfit and no terminal flag. Rebuild
+      // once: "already shown" is persistent server-side, so the rebuild
+      // continues with unseen outfits instead of repeating.
+      if (
+        !data.outfit &&
+        data.fallback &&
+        !data.exhausted &&
+        !data.wardrobe_gap
+      ) {
+        resetV05Session();
+        return buildAndStore(params, options);
+      }
       return {
         outfits: data.outfit ? [data.outfit] : [],
-        cycled,
+        exhausted: data.exhausted === true,
+        seenCount: data.outfits_seen_count,
         wardrobeGap: data.wardrobe_gap === true,
         sessionId: data.session_id ?? v05SessionId,
       };

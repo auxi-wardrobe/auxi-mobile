@@ -107,7 +107,7 @@ describe('config — D7 pick count', () => {
 });
 
 describe('config — per-wardrobe Step-3 style art (mirrors fitTileArt)', () => {
-  it('resolves all 15 (3 wardrobes × 5 styles) style tile images', () => {
+  it('resolves all 10 (2 wardrobes × 5 styles) style tile images', () => {
     let resolved = 0;
     WARDROBE_DIRECTIONS.forEach(wardrobe => {
       STYLE_TAGS.forEach(style => {
@@ -119,19 +119,16 @@ describe('config — per-wardrobe Step-3 style art (mirrors fitTileArt)', () => 
         resolved += 1;
       });
     });
-    expect(resolved).toBe(15);
+    expect(resolved).toBe(10);
   });
 
   it('serves a DISTINCT image per wardrobe for the same style (no cross-leak)', () => {
-    // The whole point of this change: Womenswear/Mixed must NOT reuse the
-    // menswear art. For each style, the three wardrobe variants are distinct.
+    // The whole point of this change: Womenswear must NOT reuse the
+    // menswear art. For each style, the two wardrobe variants are distinct.
     STYLE_TAGS.forEach(style => {
       const men = styleTileArt('Menswear', style);
       const women = styleTileArt('Womenswear', style);
-      const mixed = styleTileArt('Mixed', style);
       expect(men).not.toBe(women);
-      expect(women).not.toBe(mixed);
-      expect(men).not.toBe(mixed);
     });
   });
 

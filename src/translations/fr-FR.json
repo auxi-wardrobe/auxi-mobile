@@ -503,7 +503,6 @@
       "a11y_nav_home": "Accueil",
       "a11y_nav_wardrobe": "Aller à la garde-robe",
       "clear": "Effacer",
-      "seen_all_hint": "Vous avez tout vu — les suggestions se répètent",
       "explore_limit_title": "Vous avez exploré la plupart des combinaisons",
       "explore_limit_body": "Nous avons montré presque toutes les tenues disponibles avec vos sélections actuelles.",
       "explore_limit_tips_intro": "Pour découvrir plus de looks :",
@@ -558,7 +557,12 @@
       "temp_toast_current": "Suggestions basées sur la météo actuelle",
       "a11y_nav_home_landing": "Accueil",
       "a11y_nav_outfit": "Voir mes tenues",
-      "a11y_nav_discovery": "Découverte"
+      "a11y_nav_discovery": "Découverte",
+      "exhausted_title": "Vous avez vu toutes les tenues",
+      "exhausted_body": "C'est toutes les combinaisons de votre garde-robe pour cette météo et cette occasion. Ajoutez des pièces, changez d'occasion ou recommencez.",
+      "exhausted_hint": "Vous avez vu toutes les tenues pour cette météo et cette occasion.",
+      "start_over": "Recommencer",
+      "a11y_start_over": "Revoir vos tenues depuis le début"
     },
     "pin": {
       "modal_title": "Garder cet article",
@@ -703,7 +707,15 @@
       "a11y_logout": "Se déconnecter de votre compte",
       "dialog_logout_title": "Déconnexion",
       "dialog_logout_body": "Vous devrez vous reconnecter pour utiliser Auxi.",
-      "privacy_control_body": "Contrôlez ce que vous partagez avec Auxi et nos fournisseurs d'IA. Vous pouvez modifier ces choix à tout moment."
+      "privacy_control_body": "Contrôlez ce que vous partagez avec Auxi et nos fournisseurs d'IA. Vous pouvez modifier ces choix à tout moment.",
+      "wardrobe_direction": "Garde-robe",
+      "wardrobe_menswear_label": "Homme",
+      "wardrobe_womenswear_label": "Femme",
+      "wardrobe_not_set": "Non défini",
+      "a11y_change_wardrobe": "Changer de garde-robe",
+      "dialog_wardrobe_title": "Votre garde-robe",
+      "dialog_wardrobe_body": "Modifie ce que Découverte vous montre et vos pièces de départ Macgie. Les pièces que vous avez ajoutées restent.",
+      "error_update_wardrobe": "Échec de la mise à jour de la garde-robe"
     },
     "outfitCanvas": {
       "a11y_close_picker": "Fermer le sélecteur",
