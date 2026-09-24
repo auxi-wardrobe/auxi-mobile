@@ -17,7 +17,7 @@ const reportFavouriteError = (error: unknown): void => {
 export interface SaveFavouritePayload {
   outfit_hash: string;
   item_ids: string[];
-  source: 'home';
+  source: 'home' | 'discovery';
   /**
    * AU-318: bounded mood vocabulary ids (≤8) — chip ids from
    * `components/features/mood-chips.ts`, validated server-side against

@@ -97,6 +97,27 @@ jest.mock('../../../services/discoveryService', () => ({
   },
 }));
 
+const mockSaveFavourite = jest.fn();
+const mockRemoveFavourite = jest.fn();
+jest.mock('../../../services/favouriteService', () => ({
+  favouriteService: {
+    saveFavourite: (...args: unknown[]) => mockSaveFavourite(...args),
+    removeFavourite: (...args: unknown[]) => mockRemoveFavourite(...args),
+  },
+}));
+
+// The real context imports AuthContext → RevenueCat, which Jest can't parse.
+const mockMarkSaved = jest.fn();
+jest.mock('../../../context/FavouritesSeenContext', () => ({
+  useFavouritesSeen: () => ({
+    hasUnseen: false,
+    markSaved: mockMarkSaved,
+    markSeen: jest.fn(),
+  }),
+}));
+
+jest.mock('../../../services/analytics', () => ({ track: jest.fn() }));
+
 // ---- helpers ----------------------------------------------------------------
 
 const byTestID = (root: ReactTestInstance, id: string): ReactTestInstance[] =>
@@ -306,5 +327,93 @@ describe('DiscoveryOutfitDetailScreen — hero cover', () => {
     expect(flat?.top).toBeGreaterThan(HEADER_ICON_INSET);
     // Horizontal has no inset in portrait — it must NOT pick one up.
     expect(flat?.left).toBe(HEADER_ICON_INSET);
+  });
+});
+
+/**
+ * Bottom action bar: [Remix ✂] · ♡ · [See on me].
+ */
+describe('DiscoveryOutfitDetailScreen — action bar', () => {
+  beforeEach(() => {
+    mockRouteParams = { outfitId: 'outfit-1', source: 'feed' };
+    mockGetOutfit.mockResolvedValue(outfitFixture);
+  });
+
+  it('renders all three actions', async () => {
+    const r = await renderScreen();
+    expect(byTestID(r.root, 'discovery-detail-remix').length).toBeGreaterThan(0);
+    expect(byTestID(r.root, 'discovery-detail-favourite').length).toBeGreaterThan(0);
+    expect(byTestID(r.root, 'discovery-detail-see-on-me-cta').length).toBeGreaterThan(0);
+  });
+
+  it('Remix sends the outfit pieces to the canvas editor', async () => {
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'discovery-detail-remix'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('OutfitCanvas', {
+      entry: 'remix',
+      items: [
+        expect.objectContaining({
+          id: 'item-1',
+          imageUrl: 'https://cdn.example/item-1.png',
+          category: 'Top',
+          is_common_item: true,
+        }),
+      ],
+    });
+  });
+
+  it('heart saves the outfit to favourites, then a second tap removes it', async () => {
+    mockSaveFavourite.mockResolvedValue({
+      id: 'fav-9',
+      outfit_hash: 'discovery_outfit-1',
+      created_at: '2026-09-24T00:00:00Z',
+      updated: false,
+    });
+    mockRemoveFavourite.mockResolvedValue({ message: 'ok' });
+
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'discovery-detail-favourite'));
+    await flushPromises();
+
+    expect(mockSaveFavourite).toHaveBeenCalledWith({
+      outfit_hash: 'discovery_outfit-1',
+      item_ids: ['item-1'],
+      source: 'discovery',
+      title: 'Soft tailoring',
+    });
+    expect(mockMarkSaved).toHaveBeenCalled();
+    // Stateful testID flips instead of going undefined.
+    press(oneByTestID(r.root, 'discovery-detail-favourite-saved'));
+    await flushPromises();
+
+    expect(mockRemoveFavourite).toHaveBeenCalledWith('fav-9');
+    expect(byTestID(r.root, 'discovery-detail-favourite').length).toBeGreaterThan(0);
+  });
+
+  it('heart falls back to unsaved when the save fails', async () => {
+    mockSaveFavourite.mockRejectedValue(new Error('boom'));
+
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'discovery-detail-favourite'));
+    await flushPromises();
+
+    expect(byTestID(r.root, 'discovery-detail-favourite').length).toBeGreaterThan(0);
+    expect(byTestID(r.root, 'discovery-detail-favourite-saved')).toHaveLength(0);
+  });
+
+  it('See on me routes through the reuse-confirm gate', async () => {
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'discovery-detail-see-on-me-cta'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      'SeeThisOnMeConfirm',
+      expect.objectContaining({
+        outfit: expect.objectContaining({
+          outfitHash: 'discovery_outfit-1',
+          itemIds: ['item-1'],
+        }),
+      }),
+    );
   });
 });
