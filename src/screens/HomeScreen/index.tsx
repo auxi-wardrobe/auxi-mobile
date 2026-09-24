@@ -56,7 +56,7 @@ import {
   classifyRecommendationError,
   getApiErrorCode,
 } from '../../utils/aiError';
-import { resolveItemImage } from '../../utils/url';
+import { resolveItemImage, resolveItemImageSources } from '../../utils/url';
 import {
   markAiLimitReached,
   clearAiLimit,
@@ -1577,17 +1577,25 @@ export const HomeScreen = () => {
     const current = listOutfitsRef.current[activeIndexRef.current];
     const items = (current?.items ?? [])
       .filter((it): it is Item => !!it)
-      .map(it => ({
-        id: it.id,
-        imageUrl: resolveItemImage(it) || it.image_url,
-        category: it.category,
-        // AU-392 D1: carry the status fields through so the Remix editor can
-        // resolve the same badge shown on the Home tile being remixed.
-        is_common_item: it.is_common_item,
-        user_id: it.user_id,
-        is_new: it.is_new,
-        usage_frequency: it.usage_frequency,
-      }));
+      .map(it => {
+        // Dead `processed/` cutout falls back to the live original on the
+        // canvas — same chain HomeLandingScreen's Remix already walks
+        // (utils/url.ts). A single-URL pick here left this Remix path
+        // (the suggestion deck) rendering a blank piece when the cutout 404s.
+        const [imageUrl, ...imageFallbackUrls] = resolveItemImageSources(it);
+        return {
+          id: it.id,
+          imageUrl: imageUrl || it.image_url,
+          imageFallbackUrls,
+          category: it.category,
+          // AU-392 D1: carry the status fields through so the Remix editor can
+          // resolve the same badge shown on the Home tile being remixed.
+          is_common_item: it.is_common_item,
+          user_id: it.user_id,
+          is_new: it.is_new,
+          usage_frequency: it.usage_frequency,
+        };
+      });
     navigation.navigate(
       'OutfitCanvas',
       items.length ? { items, entry: 'remix' } : { entry: 'remix' },
