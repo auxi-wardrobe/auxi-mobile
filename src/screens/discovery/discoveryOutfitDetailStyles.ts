@@ -121,29 +121,4 @@ export const discoveryOutfitDetailStyles = StyleSheet.create({
     color: theme.colors.uacBackgroundNeutral50,
     textTransform: 'capitalize',
   },
-  // Sticky CTA — house treatment per header-footer-rules.md §3b: blur + white
-  // tint overlay, z-index tier `sticky`, bottom safe-area respected.
-  stickyCta: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: theme.zIndex.sticky,
-    paddingHorizontal: theme.spacing.m,
-    paddingTop: theme.spacing.s,
-    alignItems: 'center',
-  },
-  stickyCtaTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.figmaBlurTintWhite80,
-  },
-  ctaButton: {
-    alignSelf: 'stretch',
-  },
-  ctaHint: {
-    ...theme.typography.aliases.interCaptionXxs,
-    color: theme.colors.figmaTextSecondary,
-    textAlign: 'center',
-    marginTop: theme.spacing.xs,
-  },
 });

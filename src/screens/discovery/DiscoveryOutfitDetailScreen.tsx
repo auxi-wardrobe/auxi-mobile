@@ -1,21 +1,18 @@
 import React, { useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Header, HEADER_ICON_INSET } from '../../components/layout/Header';
-import {
-  PillButton,
-  TopIconButton,
-} from '../../components/primitives/FigmaPrimitives';
+import { TopIconButton } from '../../components/primitives/FigmaPrimitives';
 import { Icons } from '../../assets/icons';
 import { toast } from '../../components/design-system/lib';
 import { theme } from '../../theme/theme';
 import { track } from '../../services/analytics';
 import { AppStackParamList } from '../../types/navigation';
 import { useDiscoveryOutfit } from '../../hooks/useDiscovery';
+import { resolveItemImageSources } from '../../utils/url';
 import { DiscoveryItemStrip } from './DiscoveryItemStrip';
 import { DiscoveryOutfitSummary } from './DiscoveryOutfitSummary';
 import {
@@ -24,14 +21,17 @@ import {
   DiscoveryDetailUnavailable,
 } from './DiscoveryDetailStates';
 import { discoveryOutfitDetailStyles as styles } from './discoveryOutfitDetailStyles';
+import {
+  DISCOVERY_ACTION_BAR_HEIGHT,
+  DiscoveryDetailActionBar,
+} from './DiscoveryDetailActionBar';
+import { discoveryOutfitHash, useDiscoveryFavourite } from './useDiscoveryFavourite';
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
   'DiscoveryOutfitDetail'
 >;
 type ScreenRoute = RouteProp<AppStackParamList, 'DiscoveryOutfitDetail'>;
-
-const STICKY_CTA_HEIGHT = 88;
 
 export const DiscoveryOutfitDetailScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
@@ -71,6 +71,7 @@ export const DiscoveryOutfitDetailScreen = () => {
 
   const itemCount = outfit?.items.length ?? 0;
   const canSeeOnMe = itemCount >= 1 && itemCount <= 4;
+  const favourite = useDiscoveryFavourite(outfit);
 
   const handleBrowseDiscovery = () => {
     toast.show({
@@ -108,7 +109,7 @@ export const DiscoveryOutfitDetailScreen = () => {
     // straight to `SeeThisOnMe` (see FavouriteScreen.tsx:260 worked example).
     navigation.navigate('SeeThisOnMeConfirm', {
       outfit: {
-        outfitHash: `discovery_${outfit.id}`,
+        outfitHash: discoveryOutfitHash(outfit.id),
         itemIds: outfit.items.map(item => item.id),
         itemImageUrls: outfit.items
           .map(item => item.image_png ?? item.image_url)
@@ -116,6 +117,30 @@ export const DiscoveryOutfitDetailScreen = () => {
         stylingNote: outfit.description,
       },
     });
+  };
+
+  // Remix → drop the outfit's pieces onto the canvas editor, same param shape
+  // Home's Remix sends (`entry: 'remix'` gives the canvas a back chevron).
+  const handleRemix = () => {
+    if (!outfit) {
+      return;
+    }
+    track('discovery_remix_tapped', { outfit_id: outfit.id, item_count: itemCount });
+    const items = outfit.items.map(item => {
+      // Cutout → original fallback chain, as Home's Remix (utils/url.ts).
+      const [imageUrl, ...imageFallbackUrls] = resolveItemImageSources(item);
+      return {
+        id: item.id,
+        imageUrl: imageUrl || item.image_url,
+        imageFallbackUrls,
+        category: item.category,
+        is_common_item: item.is_common_item,
+      };
+    });
+    navigation.navigate(
+      'OutfitCanvas',
+      items.length ? { items, entry: 'remix' } : { entry: 'remix' },
+    );
   };
 
   const back = () => navigation.goBack();
@@ -153,7 +178,7 @@ export const DiscoveryOutfitDetailScreen = () => {
             testID="discovery-detail-scroll"
             contentContainerStyle={[
               styles.scrollContent,
-              { paddingBottom: insets.bottom + STICKY_CTA_HEIGHT + theme.spacing.m },
+              { paddingBottom: insets.bottom + DISCOVERY_ACTION_BAR_HEIGHT + theme.spacing.l },
             ]}
           >
             <DiscoveryOutfitSummary outfit={outfit} />
@@ -177,29 +202,13 @@ export const DiscoveryOutfitDetailScreen = () => {
             />
           </View>
 
-          <View style={[styles.stickyCta, { paddingBottom: insets.bottom + theme.spacing.s }]}>
-            <BlurView
-              style={StyleSheet.absoluteFill}
-              blurType="light"
-              blurAmount={4}
-              reducedTransparencyFallbackColor={theme.colors.figmaItemDetailHeaderBg}
-              pointerEvents="none"
-            />
-            <View style={styles.stickyCtaTint} pointerEvents="none" />
-            <PillButton
-              testID="discovery-detail-see-on-me-cta"
-              variant="filled"
-              title={t('discovery.see_on_me_cta')}
-              onPress={handleSeeOnMe}
-              disabled={!canSeeOnMe}
-              style={styles.ctaButton}
-            />
-            {!canSeeOnMe ? (
-              <Text style={styles.ctaHint} testID="discovery-detail-see-on-me-unavailable">
-                {t('discovery.see_on_me_unavailable')}
-              </Text>
-            ) : null}
-          </View>
+          <DiscoveryDetailActionBar
+            onRemix={handleRemix}
+            onToggleFavourite={favourite.toggle}
+            favouriteState={favourite.state}
+            onSeeOnMe={handleSeeOnMe}
+            canSeeOnMe={canSeeOnMe}
+          />
         </>
       ) : null}
     </SafeAreaView>
