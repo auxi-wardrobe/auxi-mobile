@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   Dimensions,
   ScrollView,
@@ -19,7 +26,7 @@ import { useSchedule } from '../context/ScheduleContext';
 import { theme } from '../theme/theme';
 import { Icons } from '../assets/icons';
 import IconMinusCircle from '../assets/images/icon_minus_circle.svg';
-import IconSparkle from '../assets/images/icon_sparkle.svg';
+import IconSeeOnMe from '../assets/images/icon_see_on_me.svg';
 import { track } from '../services/analytics';
 import { dateFromKey, toDayKey } from '../utils/dateKey';
 import { AppStackParamList } from '../types/navigation';
@@ -28,6 +35,11 @@ import { resolveWardrobeItemId } from '../services/creationsService';
 import { FavouriteOutfitCard } from './favourite/FavouriteOutfitCard';
 import { CreationCollageCard } from './myCreations/CreationCollageCard';
 import { AddToScheduleSheet } from './schedule/AddToScheduleSheet';
+import { useIsOutfitGenerating } from './see-this-on-me/use-outfit-generating';
+import {
+  getTryOnResultsSnapshot,
+  subscribeTryOnResults,
+} from '../services/tryOnResultStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -67,6 +79,97 @@ const startOfWeek = (d: Date): Date => {
 };
 
 const DAY_MS = 86400000;
+
+// Same key the Favourite page and the See-on-me flow use for a saved outfit's
+// try-on result (`tryOnResultStore` is keyed on it).
+const outfitHashOf = (favourite: Favourite): string =>
+  favourite.outfit_context?.outfit_hash ?? favourite.id;
+
+// One scheduled favourite = the display-only card + its own action row.
+// #164 hoisted per-card actions off FavouriteOutfitCard (now display-only). The
+// Favourite screen replaced them with one sticky bar acting on the snapped
+// outfit, but Schedule lists several outfits per day — each needs its own
+// controls — so a compact per-card Remove (unschedule) + See-on-me row sits
+// beneath the card here. The calendar-add button is intentionally absent: the
+// outfit is already on the calendar.
+//
+// Try-on parity with Favourite (CEO 2026-08-27 layout): when the outfit already
+// has a generated "See on me" photo, the card leads with the photo + garment
+// rail (`tryOnImageUrl`) and the CTA flips to "Retake", going straight into
+// capture — exactly the Favourite grid behaviour. While a render for this
+// outfit is still generating in the background the CTA shows its loading state
+// so a duplicate job can't be launched. Its own component because
+// `useIsOutfitGenerating` is a hook and runs once per card.
+const ScheduledFavouriteItem: React.FC<{
+  favourite: Favourite;
+  tryOnImageUrl: string | null;
+  onRemove: () => void;
+  onSelfVisualization: (retake: boolean) => void;
+  onItemPress: (itemId: string) => void;
+}> = ({
+  favourite,
+  tryOnImageUrl,
+  onRemove,
+  onSelfVisualization,
+  onItemPress,
+}) => {
+  const { t } = useTranslation();
+  const outfitHash = outfitHashOf(favourite);
+  const isGenerating = useIsOutfitGenerating(outfitHash);
+  const hasTryOnResult = tryOnImageUrl !== null;
+  const selfVisualizationLabel = hasTryOnResult
+    ? t('favourite.retake')
+    : t('favourite.self_visualization');
+
+  return (
+    <View style={styles.scheduledItem}>
+      <FavouriteOutfitCard
+        favourite={favourite}
+        view="grid"
+        tryOnImageUrl={tryOnImageUrl}
+        outfitHash={outfitHash}
+        onItemPress={onItemPress}
+      />
+      <View style={styles.scheduledActions}>
+        {/* Borderless 24px danger glyph — same reason as the Favourite action
+            bar's remove: no MIconButton variant expresses it. Here Remove means
+            unschedule. */}
+        <TouchableOpacity
+          testID={`schedule-remove-${favourite.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={t('schedule.remove_a11y')}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.scheduledRemove}
+          onPress={onRemove}
+        >
+          <IconMinusCircle
+            width={24}
+            height={24}
+            color={theme.colors.figmaItemDetailDanger}
+          />
+        </TouchableOpacity>
+        {/* Same DS secondary button + gradient "See on me" glyph as the
+            Favourite action bar (the glyph carries its own gradient, so no
+            iconColor tint). */}
+        <MButton
+          variant="secondary"
+          testID={
+            hasTryOnResult
+              ? `schedule-self-visualization-${favourite.id}-retake`
+              : `schedule-self-visualization-${favourite.id}`
+          }
+          accessibilityLabel={selfVisualizationLabel}
+          rightIcon={IconSeeOnMe}
+          loading={isGenerating}
+          onPress={() => onSelfVisualization(hasTryOnResult)}
+        >
+          {selfVisualizationLabel}
+        </MButton>
+      </View>
+    </View>
+  );
+};
 
 const buildStripDays = (today: Date, selectedKey?: string): ScheduleDay[] => {
   const todayKey = toDayKey(today);
@@ -203,23 +306,37 @@ export const ScheduleScreen: React.FC = () => {
     );
   };
 
-  // Mirror the Favourite page's "See this on me" entry so a scheduled outfit
-  // offers the same self-visualization action.
-  const handleSelfVisualization = (favourite: Favourite) => {
-    track('favourite_try_on_tapped', { favorite_id: favourite.id });
+  // Saved "See on me" photos, keyed by outfit hash. Subscribed (not read once)
+  // so a render that completes while Schedule is open flips that card to the
+  // photo layout immediately — same as the Favourite page.
+  const tryOnResults = useSyncExternalStore(
+    subscribeTryOnResults,
+    getTryOnResultsSnapshot,
+  );
+
+  // Mirror the Favourite page's "See this on me" / "Retake" entry so a
+  // scheduled outfit offers the same self-visualization action.
+  const handleSelfVisualization = (favourite: Favourite, retake: boolean) => {
+    track('favourite_try_on_tapped', { favorite_id: favourite.id, retake });
     const items = favourite.outfit_items ?? [];
+    const outfit = {
+      outfitHash: outfitHashOf(favourite),
+      itemIds: items.map(item => item.id),
+      itemImageUrls: items
+        .map(item => item.image_png ?? item.image_url)
+        .filter((url): url is string => !!url),
+      stylingNote: favourite.outfit_context?.reasoning_human ?? '',
+    };
+    if (retake) {
+      // The card already shows this outfit's photo — skip the reuse-confirm
+      // gate and the cached preview and go straight to capture (the stored
+      // photo stays until a new render succeeds), as on the Favourite page.
+      navigation.navigate('SeeThisOnMe', { outfit, reuseAction: 'capture' });
+      return;
+    }
     // Via the reuse-confirm gate (see FavouriteScreen) so the confirm sheet
     // shows over the Schedule page rather than an empty See-on-me shell.
-    navigation.navigate('SeeThisOnMeConfirm', {
-      outfit: {
-        outfitHash: favourite.outfit_context?.outfit_hash ?? favourite.id,
-        itemIds: items.map(item => item.id),
-        itemImageUrls: items
-          .map(item => item.image_png ?? item.image_url)
-          .filter((url): url is string => !!url),
-        stylingNote: favourite.outfit_context?.reasoning_human ?? '',
-      },
-    });
+    navigation.navigate('SeeThisOnMeConfirm', { outfit });
   };
 
   return (
@@ -314,55 +431,22 @@ export const ScheduleScreen: React.FC = () => {
           >
             {selectedDayOutfits.map(outfit =>
               outfit.kind === 'favourite' ? (
-                // #164 hoisted per-card actions off FavouriteOutfitCard (now
-                // display-only). The Favourite screen replaced them with one
-                // sticky bar acting on the snapped outfit, but Schedule lists
-                // several outfits per day — each needs its own controls — so a
-                // compact per-card Remove (unschedule) + See-on-me row sits
-                // beneath the card here (feature-specific, not the snap-one
-                // Favourite pattern). The calendar-add button is intentionally
-                // absent: the outfit is already on the calendar.
-                <View key={outfit.favourite.id} style={styles.scheduledItem}>
-                  <FavouriteOutfitCard
-                    favourite={outfit.favourite}
-                    view="grid"
-                    onItemPress={itemId =>
-                      navigation.navigate('ItemDetail', { itemId })
-                    }
-                  />
-                  <View style={styles.scheduledActions}>
-                    {/* Borderless 24px danger glyph — same reason as the
-                        Favourite action bar's remove: no MIconButton variant
-                        expresses it. Here Remove means unschedule. */}
-                    <TouchableOpacity
-                      testID={`schedule-remove-${outfit.favourite.id}`}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('schedule.remove_a11y')}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      style={styles.scheduledRemove}
-                      onPress={() =>
-                        unscheduleOutfit(selectedKey, outfit.favourite.id)
-                      }
-                    >
-                      <IconMinusCircle
-                        width={24}
-                        height={24}
-                        color={theme.colors.figmaItemDetailDanger}
-                      />
-                    </TouchableOpacity>
-                    <MButton
-                      variant="secondary"
-                      testID={`schedule-self-visualization-${outfit.favourite.id}`}
-                      accessibilityLabel={t('favourite.self_visualization')}
-                      rightIcon={IconSparkle}
-                      iconColor={theme.colors.figmaAiSparkle}
-                      onPress={() => handleSelfVisualization(outfit.favourite)}
-                    >
-                      {t('favourite.self_visualization')}
-                    </MButton>
-                  </View>
-                </View>
+                <ScheduledFavouriteItem
+                  key={outfit.favourite.id}
+                  favourite={outfit.favourite}
+                  tryOnImageUrl={
+                    tryOnResults.get(outfitHashOf(outfit.favourite)) ?? null
+                  }
+                  onRemove={() =>
+                    unscheduleOutfit(selectedKey, outfit.favourite.id)
+                  }
+                  onSelfVisualization={retake =>
+                    handleSelfVisualization(outfit.favourite, retake)
+                  }
+                  onItemPress={itemId =>
+                    navigation.navigate('ItemDetail', { itemId })
+                  }
+                />
               ) : (
                 <CreationCollageCard
                   key={outfit.creation.id}
