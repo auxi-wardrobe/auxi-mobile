@@ -12,9 +12,10 @@
 // discovery-filter.ts` for the split, and the MIN_NARROWED_RESULTS effect
 // below for the pagination consequence.
 //
-// The feed is gender-filtered SERVER-side from the user's onboarding
-// direction — this hook sends nothing for it and needs no gender state. It
-// only reports the applied value so a blackout is visible in Mixpanel.
+// The feed is gender-filtered SERVER-side from the user's wardrobe direction
+// (Menswear → M+U outfits, Womenswear → W+U) — this hook sends nothing for it
+// and needs no gender state. It only reports the applied value so a blackout
+// is visible in Mixpanel.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -211,7 +212,7 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
     }, []),
   );
 
-  // Strict gender targeting means a cohort with no published outfits for its
+  // Gender targeting means a cohort with no published M/W/U outfits for its
   // gender gets a silently EMPTY feed — no error, no crash, nothing to see in
   // logs. This event is how that becomes visible in Mixpanel instead of in a
   // support ticket. Only fires on an UNFILTERED empty feed: a filter that

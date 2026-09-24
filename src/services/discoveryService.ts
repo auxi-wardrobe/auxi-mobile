@@ -65,14 +65,15 @@ export interface DiscoveryOutfitsResponse {
   offset: number;
   /**
    * The wardrobe gender the BACKEND applied to this feed, derived from the
-   * user's persisted onboarding direction — `null` when the user has no
-   * direction on file and the feed came back unfiltered.
+   * user's wardrobe direction (Menswear/Womenswear, set at onboarding or in
+   * Settings; legacy `users.gender` as a fallback) — `null` when no gender
+   * resolves and the feed came back unfiltered.
    *
    * Reported, never requested: there is no client parameter for this and no
    * way to override it, so do NOT add one to `DiscoveryListParams`. Menswear
-   * users receive only `M` outfits, Womenswear only `W`, Mixed all three
-   * (backend AU-305 rule). `total` is already the gender-filtered count, so
-   * pagination needs no adjustment.
+   * users receive `M` + `U` outfits, Womenswear `W` + `U` (`U` = both
+   * wardrobes); untagged (`gender: null`) outfits reach everyone. `total` is
+   * already the gender-filtered count, so pagination needs no adjustment.
    */
   applied_gender: DiscoveryGender | null;
 }
