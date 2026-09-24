@@ -22,6 +22,7 @@ import { AppNavFooter } from '../../components/features/AppNavFooter';
 import { DiscoveryOutfitCard } from './DiscoveryOutfitCard';
 import { DiscoveryFilterRow } from './DiscoveryFilterRow';
 import { useDiscoveryMasonry } from './useDiscoveryMasonry';
+import { showsSkeletonGrid } from './discovery-grid';
 import {
   DiscoveryFeedEmpty,
   DiscoveryFeedError,
@@ -61,7 +62,7 @@ export const DiscoveryScreen = () => {
     onRetry,
   } = useDiscoveryFeed();
 
-  const { columns, sizing } = useDiscoveryMasonry(outfits);
+  const { columns, placed, sizing } = useDiscoveryMasonry(outfits);
 
   const handleOutfitPress = (outfit: DiscoveryOutfitCardData, index: number) => {
     track('discovery_outfit_opened', {
@@ -108,11 +109,16 @@ export const DiscoveryScreen = () => {
         trendTags={trendTags}
       />
 
-      {/* `loadingMore` with nothing on screen is the client-narrowing path:
-          a multi-select filter can blank out whole server pages, and the hook
-          is walking forward to fill the grid. Showing the skeleton rather than
-          the empty state keeps "no matches" from flashing mid-search. */}
-      {loading || (loadingMore && outfits.length === 0) ? (
+      {/* Skeleton covers both "no data yet" and "data, but no cover measured
+          yet" — see `showsSkeletonGrid`. Showing it rather than the empty state
+          also keeps "no matches" from flashing mid-search while the hook walks
+          pages forward for a client-narrowed filter. */}
+      {showsSkeletonGrid({
+        loading,
+        loadingMore,
+        outfitCount: outfits.length,
+        placed,
+      }) ? (
         <DiscoveryFeedLoadingGrid />
       ) : loadError ? (
         <DiscoveryFeedError onRetry={onRetry} />

@@ -105,3 +105,25 @@ export const packMasonry = <T>(
 
   return { columns, placed };
 };
+
+/**
+ * Whether the feed should still show the skeleton rather than the grid.
+ *
+ * `placed === 0` with outfits in hand is the gap this closes: the query has
+ * resolved, so `loading` is false, but no cover has been measured yet and the
+ * packer has nothing to lay out. Without this the screen would sit visually
+ * empty for as long as the first cover takes to size — up to SIZE_TIMEOUT_MS
+ * if that one cover is slow, since packing is prefix-gated on it.
+ *
+ * `loadingMore` with an empty feed is the client-narrowing path (a multi-select
+ * filter can blank out whole server pages while the hook walks forward).
+ */
+export const showsSkeletonGrid = (state: {
+  loading: boolean;
+  loadingMore: boolean;
+  outfitCount: number;
+  placed: number;
+}): boolean =>
+  state.loading ||
+  (state.loadingMore && state.outfitCount === 0) ||
+  (state.outfitCount > 0 && state.placed === 0);

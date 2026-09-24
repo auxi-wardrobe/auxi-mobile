@@ -1,5 +1,6 @@
 import {
   DEFAULT_TILE_RATIO,
+  showsSkeletonGrid,
   MAX_TILE_RATIO,
   MIN_TILE_RATIO,
   TILE_WIDTH,
@@ -83,5 +84,41 @@ describe('packMasonry', () => {
   it('measures height from the column width, the caption and the gap', () => {
     // A square cover is exactly one column wide and one column tall.
     expect(tileHeight(1)).toBeCloseTo(TILE_WIDTH + 20 + 12);
+  });
+});
+
+describe('showsSkeletonGrid', () => {
+  const state = {
+    loading: false,
+    loadingMore: false,
+    outfitCount: 0,
+    placed: 0,
+  };
+
+  it('covers the first load', () => {
+    expect(showsSkeletonGrid({ ...state, loading: true })).toBe(true);
+  });
+
+  it('covers a client-narrowed filter walking pages forward', () => {
+    expect(showsSkeletonGrid({ ...state, loadingMore: true })).toBe(true);
+  });
+
+  it('holds while outfits are in hand but no cover has been measured', () => {
+    // The gap this exists for: the query resolved, so `loading` is false, but
+    // the packer has nothing placed yet. Dropping the skeleton here leaves the
+    // screen visually empty until the first cover sizes.
+    expect(showsSkeletonGrid({ ...state, outfitCount: 20, placed: 0 })).toBe(
+      true,
+    );
+  });
+
+  it('gives way as soon as the first tile is placed', () => {
+    expect(showsSkeletonGrid({ ...state, outfitCount: 20, placed: 1 })).toBe(
+      false,
+    );
+  });
+
+  it('stays out of the way of the empty state', () => {
+    expect(showsSkeletonGrid(state)).toBe(false);
   });
 });
