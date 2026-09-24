@@ -141,6 +141,16 @@ interface DraggableItemProps {
   // parent clear a per-item "adding…" status once freshly-added remote images
   // have decoded onto the canvas.
   onImageLoad?: (id: string) => void;
+  // Fired when a dead primary URL is swapped for a lower-precedence fallback
+  // (the `image_studio`/`image_png`/`image_url` chain — see `fallbackUris`
+  // above). The PARENT owns `items`, not this component, so without this the
+  // fallback only ever exists in this component's local render state: Save
+  // (which serializes `item.imageSource` from the parent's array) would still
+  // persist the dead URL even though the canvas is visibly showing the
+  // recovered image. Lets the parent promote the working URL into
+  // `item.imageSource` so anything reading the item afterwards — Save, undo
+  // history — agrees with what's on screen.
+  onImageSourceResolved?: (id: string, uri: string) => void;
   enablePinchZoom?: boolean;
   // AU-392: render `item.status` as a bottom-centre pill (see SurfaceProps).
   showStatusBadge?: boolean;
@@ -158,6 +168,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   onRotationChange,
   onDragActiveChange,
   onImageLoad,
+  onImageSourceResolved,
   enablePinchZoom = false,
   showStatusBadge = false,
 }) => {
@@ -181,6 +192,17 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
     remoteSources.length > 0
       ? { uri: resolvedUri }
       : item.imageSource;
+
+  // The fallback swap above only lives in THIS component's render state —
+  // `item.imageSource` in the parent's array still points at the original
+  // (dead) URL until we tell it otherwise. Promote the recovered URL up once
+  // it actually differs from the primary, so Save/undo-history agree with
+  // what's rendering (see `onImageSourceResolved` doc on DraggableItemProps).
+  useEffect(() => {
+    if (resolvedUri && resolvedUri !== remoteSources[0]) {
+      onImageSourceResolved?.(item.id, resolvedUri);
+    }
+  }, [resolvedUri, remoteSources, item.id, onImageSourceResolved]);
 
   const dragOffset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   // 0 → 1 "lifted" cue (scale up) while an armed drag is in progress.
@@ -522,6 +544,10 @@ type SurfaceProps = {
   onDragActiveChange?: (active: boolean) => void;
   // Notifies the parent when an item's image has finished loading.
   onImageLoad?: (id: string) => void;
+  // Notifies the parent when a dead primary URL fell back to a working
+  // lower-precedence one, so it can promote that URL into its own item
+  // record (see DraggableItemProps for why this matters for Save).
+  onImageSourceResolved?: (id: string, uri: string) => void;
   testID?: string;
   enablePinchZoom?: boolean;
   // AU-392: render each item's status pill (new / less_use / common). Default
@@ -547,6 +573,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
   dragActivation = 'immediate',
   onDragActiveChange,
   onImageLoad,
+  onImageSourceResolved,
   testID,
   enablePinchZoom = false,
   showStatusBadge = false,
@@ -573,6 +600,7 @@ export const OutfitCanvasSurface: React.FC<SurfaceProps> = ({
           onRotationChange={onRotationChange}
           onDragActiveChange={onDragActiveChange}
           onImageLoad={onImageLoad}
+          onImageSourceResolved={onImageSourceResolved}
           enablePinchZoom={enablePinchZoom}
           showStatusBadge={showStatusBadge}
         />

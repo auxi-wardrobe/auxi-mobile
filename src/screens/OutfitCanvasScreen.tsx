@@ -217,6 +217,22 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
   const { addStatusVisible, handlePickerConfirm, handleItemImageLoad } =
     useCanvasAddItems({ setItems, pushHistory, setPickerVisible });
 
+  // A dead primary cutout URL recovered onto a lower-precedence fallback (see
+  // OutfitCanvasSurface's `onImageSourceResolved`). Promote it into the
+  // item's own `imageSource` so Save persists the URL that's actually
+  // rendering, not the dead one. Not a user edit — no history push, no
+  // dirty/unsaved-changes flag.
+  const handleItemImageSourceResolved = useCallback(
+    (id: string, uri: string) => {
+      setItems(prev =>
+        prev.map(it =>
+          it.id === id ? { ...it, imageSource: { uri } } : it,
+        ),
+      );
+    },
+    [setItems],
+  );
+
   // Tag actions
   const handleRemoveTag = useCallback((tag: string) => {
     setTags(prev => prev.filter(existing => existing !== tag));
@@ -494,6 +510,7 @@ export const OutfitCanvasScreen: React.FC<Props> = ({ navigation }) => {
                 onScaleChange={handleScaleChange}
                 onRotationChange={handleRotationChange}
                 onImageLoad={handleItemImageLoad}
+                onImageSourceResolved={handleItemImageSourceResolved}
                 showGrid
                 itemTestIDPrefix="canvas-item"
                 enablePinchZoom
