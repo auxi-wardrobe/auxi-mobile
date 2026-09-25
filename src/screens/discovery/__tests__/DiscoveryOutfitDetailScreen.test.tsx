@@ -26,6 +26,7 @@ import { DiscoveryOutfitDetailScreen } from '../DiscoveryOutfitDetailScreen';
 import { theme } from '../../../theme/theme';
 import { HEADER_ICON_INSET } from '../../../components/layout/Header';
 import { COVER_SIDE_GUTTER } from '../discoveryOutfitDetailStyles';
+import { toast } from '../../../components/design-system/lib';
 
 // ---- mocks ------------------------------------------------------------------
 
@@ -389,6 +390,57 @@ describe('DiscoveryOutfitDetailScreen — action bar', () => {
 
     expect(mockRemoveFavourite).toHaveBeenCalledWith('fav-9');
     expect(byTestID(r.root, 'discovery-detail-favourite').length).toBeGreaterThan(0);
+  });
+
+  it('a successful save shows a 3s "tap to view" toast that opens Favourites', async () => {
+    // m-toast-service is a global jest.fn mock (jest.setup.js); give `show` an id.
+    const showSpy = jest.mocked(toast.show).mockReturnValue('toast-7');
+    const hideSpy = jest.mocked(toast.hide);
+    mockSaveFavourite.mockResolvedValue({
+      id: 'fav-9',
+      outfit_hash: 'discovery_outfit-1',
+      created_at: '2026-09-24T00:00:00Z',
+      updated: false,
+    });
+    mockRemoveFavourite.mockResolvedValue({ message: 'ok' });
+
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'discovery-detail-favourite'));
+    await flushPromises();
+
+    expect(showSpy).toHaveBeenCalledTimes(1);
+    const opts = showSpy.mock.calls[0][0];
+    expect(opts).toMatchObject({
+      type: 'success',
+      text1: "This outfit's items are saved to Favourites",
+      text2: 'Tap to see them',
+      visibilityTime: 3000,
+      testID: 'discovery-detail-favourite-saved-toast',
+    });
+
+    act(() => {
+      opts.onPress?.();
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('Favourite', { showBackButton: true });
+
+    // Un-hearting while the toast may still be up retracts it.
+    press(oneByTestID(r.root, 'discovery-detail-favourite-saved'));
+    await flushPromises();
+    expect(hideSpy).toHaveBeenCalledWith('toast-7');
+    showSpy.mockReset();
+  });
+
+  it('a failed save never shows the saved toast', async () => {
+    const showSpy = jest.mocked(toast.show);
+    mockSaveFavourite.mockRejectedValue(new Error('boom'));
+
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'discovery-detail-favourite'));
+    await flushPromises();
+
+    expect(showSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ testID: 'discovery-detail-favourite-saved-toast' }),
+    );
   });
 
   it('heart falls back to unsaved when the save fails', async () => {
