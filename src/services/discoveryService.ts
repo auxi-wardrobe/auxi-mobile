@@ -20,6 +20,9 @@ import { apiClient } from './apiClient';
 //     applied value comes BACK as `applied_gender`. Detail is deliberately
 //     NOT filtered, so a shared deep link always resolves.
 //   • `composite_image_url` / `season` / `image_png` may be `null`.
+//   • An outfit can carry SEVERAL seasons: read `seasons` (calendar order,
+//     `[]` = all-season) via `outfitSeasons()` (screens/discovery/discovery-filter.ts), never `season` — that is a
+//     deprecated mirror of the first entry only.
 
 export type DiscoverySeason = 'spring' | 'summer' | 'fall' | 'winter';
 
@@ -33,7 +36,11 @@ export interface DiscoveryOutfitCard {
   id: string;
   title: string;
   composite_image_url: string | null;
+  /** @deprecated first entry of `seasons` only — use `outfitSeasons()`. */
   season: DiscoverySeason | null;
+  /** Every season the outfit is tagged with; `[]` = all-season. Optional
+   *  only because backends before the multi-season change omit it. */
+  seasons?: DiscoverySeason[];
   gender: DiscoveryGender | null;
   trend_tags: string[];
   item_count: number;

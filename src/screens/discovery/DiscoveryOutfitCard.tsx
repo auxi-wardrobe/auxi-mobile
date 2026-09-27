@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from '../../components/primitives/PressableScale';
 import { theme } from '../../theme/theme';
 import type { DiscoveryOutfitCard as DiscoveryOutfitCardData } from '../../services/discoveryService';
+import { outfitSeasons } from './discovery-filter';
 import { DEFAULT_TILE_RATIO, TILE_WIDTH, clampTileRatio } from './discovery-grid';
 
 interface DiscoveryOutfitCardProps {
@@ -33,6 +34,12 @@ export const DiscoveryOutfitCard: React.FC<DiscoveryOutfitCardProps> = ({
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = !!outfit.composite_image_url && !imageFailed;
   const firstTag = outfit.trend_tags[0];
+  // One season pill, whatever the count: the tile has room for two pills
+  // (season + first tag), so a multi-season outfit reads "spring +1".
+  const seasons = outfitSeasons(outfit);
+  const seasonPill = seasons.length
+    ? `${seasons[0]}${seasons.length > 1 ? ` +${seasons.length - 1}` : ''}`
+    : null;
 
   return (
     <PressableScale
@@ -61,9 +68,9 @@ export const DiscoveryOutfitCard: React.FC<DiscoveryOutfitCardProps> = ({
         )}
 
         <View style={styles.pillRow}>
-          {outfit.season ? (
+          {seasonPill ? (
             <View style={styles.pill}>
-              <Text style={styles.pillText}>{outfit.season}</Text>
+              <Text style={styles.pillText}>{seasonPill}</Text>
             </View>
           ) : null}
           {firstTag ? (
