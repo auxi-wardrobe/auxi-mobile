@@ -150,6 +150,18 @@ describe('narrowOutfits', () => {
     );
   });
 
+  it('matches a multi-season outfit on ANY of its seasons', () => {
+    // `season` is the legacy mirror (first entry); `seasons` is the truth.
+    const springFall = {
+      ...outfit('m', 'spring', []),
+      seasons: ['spring', 'fall'],
+    } as DiscoveryOutfitCard;
+    expect(narrowOutfits([springFall], ['summer', 'fall'], [])).toEqual([
+      springFall,
+    ]);
+    expect(narrowOutfits([springFall], ['summer', 'winter'], [])).toEqual([]);
+  });
+
   it('ORs the selections within the tag axis', () => {
     expect(narrowOutfits(ALL, [], ['quiet luxury', 'y2k'])).toEqual([
       SUMMER_QUIET,
