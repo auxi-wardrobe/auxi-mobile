@@ -1,4 +1,4 @@
-// Discovery feed filters — multi-select season + multi-select trend tag.
+// Discovery feed filters — multi-select season, trend tag and color.
 //
 // Mirrors `screens/wardrobe/wardrobe-filter.ts` deliberately: the Discovery
 // filter is the SAME interaction as the wardrobe type filter (a summary pill
@@ -15,6 +15,10 @@
 //   • 2+ selected → the axis is dropped from the request and narrowed
 //                   CLIENT-side over the accumulated pages, the same
 //                   "fetch wide, narrow locally" trade the wardrobe grid makes.
+//
+// Color is the exception: `GET /discovery/outfits` takes a comma-separated
+// `color` list and ORs it server-side, so every color selection is sent as-is
+// and never narrowed here.
 //
 // Everything below is pure so it can be unit-tested without a renderer.
 
@@ -152,3 +156,15 @@ export const summaryLabel = <T extends string>(
 /** Stable analytics dimension for a filter axis — 'all' or the joined values. */
 export const analyticsValue = (selected: string[]): string =>
   selected.length === 0 ? 'all' : selected.join(',');
+
+/**
+ * Toggle one color code. Like tags, colors are server-authored, so
+ * `available` (the `/discovery/colors` codes, palette order) supplies the
+ * canonical order; a selected code no longer offered keeps its place at the
+ * end so the user can still see and clear it.
+ */
+export const toggleColor = (
+  selected: string[],
+  code: string,
+  available: string[],
+): string[] => toggleTrendTag(selected, code, available);

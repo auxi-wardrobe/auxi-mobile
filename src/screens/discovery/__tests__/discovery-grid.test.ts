@@ -81,9 +81,10 @@ describe('packMasonry', () => {
     expect(second.columns[1].slice(0, 1)).toEqual(first.columns[1]);
   });
 
-  it('measures height from the column width, the caption and the gap', () => {
+  it('measures height from the column width, the caption (title + swatch row) and the gap', () => {
     // A square cover is exactly one column wide and one column tall.
-    expect(tileHeight(1)).toBeCloseTo(TILE_WIDTH + 20 + 12);
+    // Caption = title (16 + 4 marginTop) + swatch row (12 + 4 marginTop).
+    expect(tileHeight(1)).toBeCloseTo(TILE_WIDTH + 20 + 16 + 12);
   });
 });
 

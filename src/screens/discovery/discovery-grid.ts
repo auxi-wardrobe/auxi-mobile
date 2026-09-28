@@ -39,11 +39,19 @@ export const clampTileRatio = (ratio: number): number => {
 };
 
 /**
- * Caption block below each cover: title lineHeight (16) + its marginTop (4).
- * Constant because the title is single-line — the packer needs a tile's total
- * height BEFORE layout, so a wrapping title would make the estimate a guess.
+ * Color-swatch row under the title (`DiscoveryColorSwatches`): 12pt dots +
+ * 4pt marginTop. Rendered at this height even when an outfit has no colors,
+ * so every tile's caption block is the same size.
  */
-export const CAPTION_BLOCK_HEIGHT = 20;
+export const SWATCH_ROW_HEIGHT = 16;
+
+/**
+ * Caption block below each cover: title lineHeight (16) + its marginTop (4)
+ * + the swatch row. Constant because the title is single-line and the swatch
+ * row is fixed-height — the packer needs a tile's total height BEFORE layout,
+ * so a wrapping title would make the estimate a guess.
+ */
+export const CAPTION_BLOCK_HEIGHT = 20 + SWATCH_ROW_HEIGHT;
 
 export const tileHeight = (ratio: number): number =>
   TILE_WIDTH / clampTileRatio(ratio) + CAPTION_BLOCK_HEIGHT + GRID_GAP;

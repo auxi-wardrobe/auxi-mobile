@@ -141,8 +141,76 @@ const FAVOURITES = [
   ]),
 ];
 
+// ── Discovery mock data ──────────────────────────────────────────────────────
+// Mirrors the backend palette (`utils/discovery_colors.py`) so the sandbox
+// shows the color swatch row under each card title and a working color filter
+// without a deployed backend. The color handlers apply `?color=` the same way
+// the server does (outfit matches if it has ANY selected code).
+const D_PALETTE: Record<string, [string, string]> = {
+  BLK: ['Black', '#1A1A1A'], WHT: ['White', '#FFFFFF'], GRY: ['Grey', '#9E9E9E'],
+  BEG: ['Beige', '#D9C9A8'], CAM: ['Camel', '#C19A6B'], BRN: ['Brown', '#7B4B2A'],
+  RED: ['Red', '#BE1E2D'], GRN: ['Green', '#56825A'], LBL: ['Light Blue', '#ADD8E6'],
+  BLU: ['Blue', '#4682B4'], NVY: ['Navy', '#1F2A44'],
+};
+const D_ORDER = Object.keys(D_PALETTE);
+const dColor = (code: string) => ({ code, label: D_PALETTE[code][0], hex: D_PALETTE[code][1] });
+// Cover art: the outfit's colors as stacked bands, at a given aspect ratio, so
+// the masonry still staggers and the cover visibly matches its swatches.
+const dCover = (codes: string[], w: number, h: number) => {
+  const band = h / codes.length;
+  const rects = codes
+    .map((c, i) => `<rect x="0" y="${i * band}" width="${w}" height="${band + 1}" fill="${D_PALETTE[c][1]}"/>`)
+    .join('');
+  return 'data:image/svg+xml;base64,' + btoa(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${rects}</svg>`,
+  );
+};
+const D_OUTFITS = ([
+  ['d-1', 'Quiet luxury layers', ['CAM', 'WHT', 'BRN'], 600, 800, ['fall', 'winter'], ['quiet-luxury']],
+  ['d-2', 'Monochrome city', ['BLK', 'GRY', 'BLK'], 600, 900, [], ['minimal']],
+  ['d-3', 'Weekend denim', ['LBL', 'WHT', 'BLU'], 600, 700, ['spring', 'summer'], ['casual']],
+  ['d-4', 'Navy workwear', ['NVY', 'WHT', 'BRN'], 600, 820, ['fall'], ['workwear']],
+  ['d-5', 'Red accent', ['BLK', 'RED'], 600, 760, ['winter'], ['statement']],
+  ['d-6', 'Earth tones', ['GRN', 'BEG', 'BRN'], 600, 880, ['spring'], ['quiet-luxury']],
+  ['d-7', 'Clean summer whites', ['WHT', 'BEG'], 600, 720, ['summer'], ['minimal']],
+  ['d-8', 'Grey on grey', ['GRY', 'NVY', 'BLK', 'WHT', 'BEG', 'CAM'], 600, 840, [], ['workwear']],
+] as Array<[string, string, string[], number, number, string[], string[]]>).map(
+  ([id, title, codes, w, h, seasons, tags]) => {
+    const distinct = codes.filter((c, i) => codes.indexOf(c) === i);
+    return {
+      id, title, composite_image_url: dCover(codes, w, h),
+      season: seasons[0] ?? null, seasons, gender: 'U', trend_tags: tags,
+      colors: distinct.map(dColor), item_count: codes.length,
+    };
+  },
+);
+const discoveryHandlers = [
+  http.get('*/api/discovery/outfits', ({ request }) => {
+    const q = new URL(request.url).searchParams;
+    const wanted = (q.get('color') ?? '').split(',').filter(Boolean);
+    const season = q.get('season');
+    const tag = q.get('trend_tag');
+    const all = D_OUTFITS.filter(o =>
+      (!wanted.length || o.colors.some(c => wanted.includes(c.code))) &&
+      (!season || o.seasons.includes(season)) &&
+      (!tag || o.trend_tags.includes(tag)));
+    const limit = Number(q.get('limit') ?? 20);
+    const offset = Number(q.get('offset') ?? 0);
+    const page = all.slice(offset, offset + limit);
+    return HttpResponse.json({ outfits: page, count: page.length, total: all.length, limit, offset, applied_gender: 'M' });
+  }),
+  http.get('*/api/discovery/trend-tags', () =>
+    HttpResponse.json({ tags: [...new Set(D_OUTFITS.flatMap(o => o.trend_tags))].sort() })),
+  http.get('*/api/discovery/colors', () => {
+    const counts: Record<string, number> = {};
+    D_OUTFITS.forEach(o => o.colors.forEach(c => { counts[c.code] = (counts[c.code] ?? 0) + 1; }));
+    return HttpResponse.json({ colors: D_ORDER.filter(c => counts[c]).map(c => ({ ...dColor(c), count: counts[c] })) });
+  }),
+];
+
 export const handlers = [
   ...capsuleHandlers,
+  ...discoveryHandlers,
   http.get('*/api/me', () => HttpResponse.json(user)),
   http.get('*/me', () => HttpResponse.json(user)),
   http.post('*/api/auth/refresh', () => HttpResponse.json(tokens())),

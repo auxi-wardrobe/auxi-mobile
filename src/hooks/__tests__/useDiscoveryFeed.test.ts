@@ -46,9 +46,22 @@ type FeedQuery = {
 
 let mockFeedQuery: FeedQuery;
 
+// Every params object the hook asked the feed query for, in render order —
+// lets a test assert what goes on the wire without an HTTP layer.
+const mockOutfitParams: Array<Record<string, unknown>> = [];
+
 jest.mock('../useDiscovery', () => ({
-  useDiscoveryOutfits: () => mockFeedQuery,
+  useDiscoveryOutfits: (params: Record<string, unknown>) => {
+    mockOutfitParams.push(params);
+    return mockFeedQuery;
+  },
   useDiscoveryTrendTags: () => ({ data: [] }),
+  useDiscoveryColors: () => ({
+    data: [
+      { code: 'BLK', label: 'Black', hex: '#1A1A1A', count: 3 },
+      { code: 'NVY', label: 'Navy', hex: '#1F2A44', count: 1 },
+    ],
+  }),
 }));
 
 // Imported after the mocks so the hook picks them up.
@@ -101,6 +114,7 @@ const viewedEvents = () => mockTrack.mock.calls.filter((c) => c[0] === 'discover
 
 beforeEach(() => {
   mockTrack.mockClear();
+  mockOutfitParams.length = 0;
   mockFeedQuery = populatedFeed();
 });
 
@@ -255,6 +269,54 @@ describe('useDiscoveryFeed — multi-select filter state', () => {
       filter_type: 'trend',
       filter_value: 'all',
     });
+    unmount();
+  });
+});
+
+describe('useDiscoveryFeed — color filter', () => {
+  it('starts on "All colors" and exposes the served color options', () => {
+    const { get, unmount } = mountHook();
+
+    expect(get().selectedColors).toEqual([]);
+    expect(get().colorOptions.map((c) => c.code)).toEqual(['BLK', 'NVY']);
+    unmount();
+  });
+
+  it('sends every selected color to the server and restarts at offset 0', () => {
+    const { get, rerender, unmount } = mountHook();
+
+    act(() => get().onColorsChange(['NVY', 'BLK']));
+    rerender();
+
+    const last = mockOutfitParams[mockOutfitParams.length - 1];
+    expect(last.colors).toEqual(['NVY', 'BLK']);
+    expect(last.offset).toBe(0);
+    expect(get().isFilterActive).toBe(true);
+    unmount();
+  });
+
+  it('reports the color selection as filter_type "color"', () => {
+    const { get, rerender, unmount } = mountHook();
+    mockTrack.mockClear();
+
+    act(() => get().onColorsChange(['NVY']));
+    rerender();
+
+    const applied = mockTrack.mock.calls.filter(
+      (c) => c[0] === 'discovery_filter_applied',
+    );
+    expect(applied[0][1]).toEqual({ filter_type: 'color', filter_value: 'NVY' });
+    unmount();
+  });
+
+  it('does not fire discovery_feed_empty when only a color filter empties the feed', () => {
+    const { get, rerender, unmount } = mountHook();
+    act(() => get().onColorsChange(['NVY']));
+    mockFeedQuery = emptyFeed('M');
+    rerender();
+    rerender();
+
+    expect(emptyEvents()).toHaveLength(0);
     unmount();
   });
 });
