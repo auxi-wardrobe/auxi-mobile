@@ -95,6 +95,13 @@ export const SHAREABLE_SCREENS: ShareableScreen[] = [
     target: { kind: 'app', name: 'Wardrobe' },
   },
   {
+    key: 'discovery',
+    label: 'Discovery',
+    group: 'App',
+    authState: 'app',
+    target: { kind: 'app', name: 'Discovery' },
+  },
+  {
     key: 'favourite',
     label: 'Favourite',
     group: 'App',

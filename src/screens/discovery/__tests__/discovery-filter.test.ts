@@ -16,6 +16,7 @@ import {
   toServerFilters,
   toggleSeason,
   toggleTrendTag,
+  toggleColor,
 } from '../discovery-filter';
 
 const outfit = (
@@ -208,5 +209,20 @@ describe('analyticsValue', () => {
 
   it('joins a multi-selection into one stable dimension', () => {
     expect(analyticsValue(['spring', 'fall'])).toBe('spring,fall');
+  });
+});
+
+describe('toggleColor', () => {
+  const palette = ['BLK', 'WHT', 'NVY'];
+
+  it('adds and removes a code, keeping palette order regardless of tap order', () => {
+    const one = toggleColor([], 'NVY', palette);
+    const two = toggleColor(one, 'BLK', palette);
+    expect(two).toEqual(['BLK', 'NVY']);
+    expect(toggleColor(two, 'NVY', palette)).toEqual(['BLK']);
+  });
+
+  it('keeps a selected code the server no longer offers, at the end', () => {
+    expect(toggleColor(['RED'], 'WHT', palette)).toEqual(['WHT', 'RED']);
   });
 });
