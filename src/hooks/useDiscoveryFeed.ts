@@ -14,6 +14,14 @@
 // discovery-filter.ts` for the split, and the MIN_NARROWED_RESULTS effect
 // below for the pagination consequence.
 //
+// The feed is shown in RANDOM order, not newest-first: each mount of the
+// screen draws a shuffle seed and sends it with every page. The server's
+// permutation is deterministic per seed, so offset paging stays duplicate-
+// and gap-free, and a filter change reshuffles only the filtered subset under
+// the same seed. Returning from an outfit detail is a re-focus, not a
+// re-mount, so the order (and scroll position) survives the round trip; a
+// fresh visit to the page gets a fresh order.
+//
 // The feed is gender-filtered SERVER-side from the user's wardrobe direction
 // (Menswear → M+U outfits, Womenswear → W+U) — this hook sends nothing for it
 // and needs no gender state. It only reports the applied value so a blackout
@@ -23,6 +31,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { track } from '../services/analytics';
 import {
+  newDiscoveryShuffleSeed,
   useDiscoveryColors,
   useDiscoveryOutfits,
   useDiscoveryTrendTags,
@@ -70,6 +79,7 @@ export interface UseDiscoveryFeed {
 }
 
 export const useDiscoveryFeed = (): UseDiscoveryFeed => {
+  const [seed] = useState(newDiscoveryShuffleSeed);
   const [seasons, setSeasons] = useState<DiscoverySeason[]>([]);
   const [selectedTrendTags, setSelectedTrendTags] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
@@ -95,10 +105,17 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
       season: serverFilters.season,
       trendTag: serverFilters.trendTag,
       colors: selectedColors,
+      seed,
       limit: PAGE_SIZE,
       offset,
     }),
-    [serverFilters.season, serverFilters.trendTag, selectedColors, offset],
+    [
+      serverFilters.season,
+      serverFilters.trendTag,
+      selectedColors,
+      seed,
+      offset,
+    ],
   );
 
   const outfitsQuery = useDiscoveryOutfits(filters);

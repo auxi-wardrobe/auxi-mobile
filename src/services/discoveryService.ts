@@ -117,6 +117,13 @@ export interface DiscoveryListParams {
   colors?: string[];
   limit?: number;
   offset?: number;
+  /**
+   * Shuffle seed. Sent: the server returns the set in a random order that is
+   * fixed for this seed, so every page slices the same permutation (no
+   * repeats, no gaps). Omitted: the curated `sort_order` / newest-first order.
+   * Backends before the shuffle ignore it and serve the curated order.
+   */
+  seed?: string;
 }
 
 const getErrorStatus = (error: unknown): number | undefined =>
@@ -135,6 +142,7 @@ export const discoveryService = {
           color: params.colors?.length ? params.colors.join(',') : undefined,
           limit: params.limit,
           offset: params.offset,
+          seed: params.seed,
         },
       });
       return response.data as DiscoveryOutfitsResponse;
