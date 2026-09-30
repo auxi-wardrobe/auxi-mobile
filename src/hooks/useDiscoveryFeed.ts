@@ -31,6 +31,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { track } from '../services/analytics';
 import {
+  newDiscoveryShuffleSeed,
   useDiscoveryColors,
   useDiscoveryOutfits,
   useDiscoveryTrendTags,
@@ -56,11 +57,6 @@ const PAGE_SIZE = 20;
 // screenful (2 columns x 3 rows) or the catalogue runs out.
 const MIN_NARROWED_RESULTS = 6;
 
-// Opaque to the server (it only hashes it), so it needs to be distinct per
-// visit, not cryptographically random.
-const newShuffleSeed = (): string =>
-  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-
 export interface UseDiscoveryFeed {
   seasons: DiscoverySeason[];
   selectedTrendTags: string[];
@@ -83,7 +79,7 @@ export interface UseDiscoveryFeed {
 }
 
 export const useDiscoveryFeed = (): UseDiscoveryFeed => {
-  const [seed] = useState(newShuffleSeed);
+  const [seed] = useState(newDiscoveryShuffleSeed);
   const [seasons, setSeasons] = useState<DiscoverySeason[]>([]);
   const [selectedTrendTags, setSelectedTrendTags] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);

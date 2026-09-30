@@ -26,8 +26,9 @@ type Props = {
 };
 
 /**
- * A peek at the newest curated Discovery outfits (curated order, unlike the
- * full page, which is shuffled per visit — see `useDiscoveryFeed`).
+ * A peek at a random pair of Discovery outfits, reshuffled each time Home is
+ * focused (see HomeLandingScreen). The full page draws its own per-visit
+ * shuffle — see `useDiscoveryFeed`.
  */
 export const DiscoveryStrip: React.FC<Props> = ({
   outfits,

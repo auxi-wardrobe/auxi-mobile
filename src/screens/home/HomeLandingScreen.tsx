@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -7,7 +7,10 @@ import { AppStackParamList } from '../../types/navigation';
 import { popToOrNavigate } from '../../navigation/popToOrNavigate';
 import { useSidebar } from '../../context/SidebarContext';
 import { track } from '../../services/analytics';
-import { useDiscoveryOutfits } from '../../hooks/useDiscovery';
+import {
+  newDiscoveryShuffleSeed,
+  useDiscoveryOutfits,
+} from '../../hooks/useDiscovery';
 import type { DiscoveryOutfitCard } from '../../services/discoveryService';
 import { resolveItemImageSources } from '../../utils/url';
 import type { Item } from '../../types/item';
@@ -59,10 +62,25 @@ export const HomeLandingScreen = () => {
   const { feed, unseen, markSeen } = useHomeNotifications();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Unseeded, so the strip keeps the curated newest-first order. The
-  // Discovery page itself sends a per-visit shuffle seed, so it does not
-  // share this cache entry.
-  const discoveryQuery = useDiscoveryOutfits({ limit: 20, offset: 0 });
+  // Random picks, reshuffled every time Home comes back into focus (Home
+  // usually stays mounted under the stack, so a per-mount seed would freeze
+  // the strip for the whole session). The first focus keeps the mount seed —
+  // no double fetch on cold start — and `keepPrevious` holds the old cards
+  // on screen while the new pair loads instead of flashing the skeleton.
+  const [discoverySeed, setDiscoverySeed] = useState(newDiscoveryShuffleSeed);
+  const discoveryFocusedRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (discoveryFocusedRef.current) {
+        setDiscoverySeed(newDiscoveryShuffleSeed());
+      }
+      discoveryFocusedRef.current = true;
+    }, []),
+  );
+  const discoveryQuery = useDiscoveryOutfits(
+    { limit: DISCOVERY_STRIP_SIZE, offset: 0, seed: discoverySeed },
+    { keepPrevious: true },
+  );
   const discoveryOutfits = (discoveryQuery.data?.outfits ?? []).slice(
     0,
     DISCOVERY_STRIP_SIZE,

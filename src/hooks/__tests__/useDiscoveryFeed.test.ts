@@ -51,6 +51,7 @@ let mockFeedQuery: FeedQuery;
 const mockOutfitParams: Array<Record<string, unknown>> = [];
 
 jest.mock('../useDiscovery', () => ({
+  newDiscoveryShuffleSeed: jest.requireActual('../useDiscovery').newDiscoveryShuffleSeed,
   useDiscoveryOutfits: (params: Record<string, unknown>) => {
     mockOutfitParams.push(params);
     return mockFeedQuery;
