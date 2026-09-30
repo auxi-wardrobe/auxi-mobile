@@ -19,7 +19,7 @@ import {
 export const DISCOVERY_QUERY_KEY = 'discovery';
 const DISCOVERY_STALE_TIME_MS = 60_000;
 
-/** Feed query — one cache entry per (season, tag, colors, offset) page. */
+/** Feed query — one cache entry per (season, tag, colors, seed, offset) page. */
 export const useDiscoveryOutfits = (filters: DiscoveryListParams = {}) =>
   useQuery<DiscoveryOutfitsResponse>({
     // `offset` is part of the key, not just the closure: without it every page
@@ -32,6 +32,9 @@ export const useDiscoveryOutfits = (filters: DiscoveryListParams = {}) =>
       filters.season ?? null,
       filters.trendTag ?? null,
       filters.colors?.length ? filters.colors.join(',') : null,
+      // A different seed is a different order: page 2 of one shuffle must
+      // never be served from the cache of another.
+      filters.seed ?? null,
       filters.offset ?? 0,
     ],
     queryFn: () => discoveryService.listOutfits(filters),

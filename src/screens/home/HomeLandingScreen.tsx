@@ -59,8 +59,9 @@ export const HomeLandingScreen = () => {
   const { feed, unseen, markSeen } = useHomeNotifications();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  // Same query key the Discovery feed uses (unfiltered, first page), so the
-  // strip warms the cache the full page then reads.
+  // Unseeded, so the strip keeps the curated newest-first order. The
+  // Discovery page itself sends a per-visit shuffle seed, so it does not
+  // share this cache entry.
   const discoveryQuery = useDiscoveryOutfits({ limit: 20, offset: 0 });
   const discoveryOutfits = (discoveryQuery.data?.outfits ?? []).slice(
     0,

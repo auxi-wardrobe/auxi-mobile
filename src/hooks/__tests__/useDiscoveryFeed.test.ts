@@ -320,3 +320,32 @@ describe('useDiscoveryFeed — color filter', () => {
     unmount();
   });
 });
+
+describe('useDiscoveryFeed — random order (shuffle seed)', () => {
+  const seeds = () => mockOutfitParams.map((p) => p.seed);
+
+  it('sends one non-empty seed on every request for the life of the screen', () => {
+    const { get, rerender, unmount } = mountHook();
+
+    act(() => get().onColorsChange(['BLK']));
+    rerender();
+
+    const seen = new Set(seeds());
+    expect(seen.size).toBe(1);
+    const [seed] = [...seen];
+    expect(typeof seed).toBe('string');
+    expect((seed as string).length).toBeGreaterThan(0);
+    unmount();
+  });
+
+  it('draws a fresh seed on a new visit (re-mount), so the order changes', () => {
+    const first = mountHook();
+    const firstSeed = mockOutfitParams[0].seed;
+    first.unmount();
+
+    mockOutfitParams.length = 0;
+    const second = mountHook();
+    expect(mockOutfitParams[0].seed).not.toBe(firstSeed);
+    second.unmount();
+  });
+});

@@ -14,6 +14,14 @@
 // discovery-filter.ts` for the split, and the MIN_NARROWED_RESULTS effect
 // below for the pagination consequence.
 //
+// The feed is shown in RANDOM order, not newest-first: each mount of the
+// screen draws a shuffle seed and sends it with every page. The server's
+// permutation is deterministic per seed, so offset paging stays duplicate-
+// and gap-free, and a filter change reshuffles only the filtered subset under
+// the same seed. Returning from an outfit detail is a re-focus, not a
+// re-mount, so the order (and scroll position) survives the round trip; a
+// fresh visit to the page gets a fresh order.
+//
 // The feed is gender-filtered SERVER-side from the user's wardrobe direction
 // (Menswear → M+U outfits, Womenswear → W+U) — this hook sends nothing for it
 // and needs no gender state. It only reports the applied value so a blackout
@@ -48,6 +56,11 @@ const PAGE_SIZE = 20;
 // screenful (2 columns x 3 rows) or the catalogue runs out.
 const MIN_NARROWED_RESULTS = 6;
 
+// Opaque to the server (it only hashes it), so it needs to be distinct per
+// visit, not cryptographically random.
+const newShuffleSeed = (): string =>
+  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
 export interface UseDiscoveryFeed {
   seasons: DiscoverySeason[];
   selectedTrendTags: string[];
@@ -70,6 +83,7 @@ export interface UseDiscoveryFeed {
 }
 
 export const useDiscoveryFeed = (): UseDiscoveryFeed => {
+  const [seed] = useState(newShuffleSeed);
   const [seasons, setSeasons] = useState<DiscoverySeason[]>([]);
   const [selectedTrendTags, setSelectedTrendTags] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
@@ -95,10 +109,17 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
       season: serverFilters.season,
       trendTag: serverFilters.trendTag,
       colors: selectedColors,
+      seed,
       limit: PAGE_SIZE,
       offset,
     }),
-    [serverFilters.season, serverFilters.trendTag, selectedColors, offset],
+    [
+      serverFilters.season,
+      serverFilters.trendTag,
+      selectedColors,
+      seed,
+      offset,
+    ],
   );
 
   const outfitsQuery = useDiscoveryOutfits(filters);
