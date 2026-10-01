@@ -630,3 +630,22 @@ Admin-curated multi-item outfit browsing (`GET /api/discovery/outfits`, `GET /ap
 > `discovery_load_retry_tapped` (no properties) fires on the feed's error-state Retry button — mirrors the `wardrobe_load_retry_tapped` pattern (§10 "Wardrobe load-error recovery") but isn't a funnel step on its own; add it there if the recovery-rate cut becomes useful.
 >
 > Save-to-wardrobe terminal state: `useSaveCommonItemToWardrobe.ts` keeps a module-scope `Set<itemId>` (mirrors `seenRecommendations`) so re-opening an already-saved item's detail screen later in the session still shows "Saved" — this is a UI-state guard against the clone endpoint's non-idempotency, not a tracked event.
+
+### 5.28 Make It Yours (AU-458)
+
+On `DiscoveryOutfitDetailScreen`, "Make it yours" recreates the inspiration outfit from the user's OWN wardrobe (`POST /api/discovery/outfits/{id}/make-it-yours` — deterministic, no AI call, free). The flow swaps the detail's bottom panel in place (Figma 5456:18648): loading → result (`success` / `partial` / `no_match` / `no_wardrobe`) or error → Close. Generated outfits are saved with the existing `POST /favourites` (`source: 'make_it_yours'`). **Out of scope for AU-458: match %, "N items · M outfits" summary, quality bands — so no score/quality properties are sent; add them with the follow-up ticket.** **PII: none — `outfit_id` is the Discovery outfit's internal DB id; `error_code` is a closed enum.**
+
+The same redesign (Figma 5456:18703) removed Remix and the heart from the Discovery detail footer, so `discovery_remix_tapped`, `discovery_outfit_unfavorited`, `discovery_favourite_toast_tapped` and `outfit_favorited` with `source: 'discovery'` no longer fire (they were never listed in §5.27).
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `make_it_yours_started` | "Make it yours" tapped (after the in-flight guard — repeated taps while loading don't fire) | `src/screens/make-it-yours/useMakeItYoursRun.ts` `start` | `outfit_id` |
+| `make_it_yours_retried` | "Try again" on the error state | `useMakeItYoursRun.ts` `retry` | `outfit_id` |
+| `make_it_yours_completed` | The match resolved (any state) | `useMakeItYoursRun.ts` | `outfit_id`, `state` (`success` \| `partial` \| `no_match` \| `no_wardrobe`), `outfit_count`, `duration_ms` (includes the 1.8s minimum loading time), `algorithm_version` |
+| `make_it_yours_failed` | Error state shown | `useMakeItYoursRun.ts` | `outfit_id`, `error_code` (`network_error` \| `timeout` \| `server_error` \| `not_found` \| `rate_limited`) |
+| `make_it_yours_cancelled` | Cancel / Back / Android hardware back while loading — intentional, no error shown | `useMakeItYoursRun.ts` `cancel` | `outfit_id`, `elapsed_ms` |
+| `make_it_yours_outfit_favourited` / `make_it_yours_outfit_unfavourited` | "Save" / "Saved" toggled on the outfit on screen | `src/screens/make-it-yours/useMakeItYoursPanel.ts` `toggleSave` | `outfit_id`, `rank` (1-based carousel position), `is_complete` |
+| `make_it_yours_favourites_opened` | "Saved — open Favourites…" link under a saved outfit (the See on Me path: Make It Yours → Favourites → See on Me) | `useMakeItYoursPanel.ts` `openFavourites` | `outfit_id` |
+| `make_it_yours_empty_cta_tapped` | CTA on a non-success result | `useMakeItYoursPanel.ts` / `MakeItYoursActions.tsx` | `state`, `cta` (`explore_another` \| `add_clothes` \| `back`) |
+
+> **Funnel (§10):** `discovery_outfit_opened` → `make_it_yours_started` → `make_it_yours_completed` (`state = success`) → `make_it_yours_outfit_favourited` → `make_it_yours_favourites_opened` → See on Me start (existing try-on events from Favourites). Break `make_it_yours_completed` down by `state` — a high `no_wardrobe` share means the entry is reaching users before they've added clothes; a high `no_match` share means the matching thresholds (backend `make_it_yours_constants.py`) are too strict. `make_it_yours_cancelled ÷ make_it_yours_started` is the loading-abandon rate.
