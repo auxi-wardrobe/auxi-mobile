@@ -1,52 +1,34 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
-import { Icons } from '../../assets/icons';
-import IconHeartFilled from '../../assets/images/icon_heart_filled.svg';
+import { button } from '../../components/design-system/m-tokens';
 import { theme } from '../../theme/theme';
-import type { DiscoveryFavouriteState } from './useDiscoveryFavourite';
+
+const BUTTON_HEIGHT = button.primaryHeight;
 
 type Props = {
-  onRemix: () => void;
-  onToggleFavourite: () => void;
-  favouriteState: DiscoveryFavouriteState;
-  onSeeOnMe: () => void;
-  /** False when the outfit's item count is outside the try-on 1..4 cap. */
-  canSeeOnMe: boolean;
+  /** The row's buttons — wrap each in `actionBarStyles.grow` to share the width. */
+  children: React.ReactNode;
+  /** Optional caption under the row (e.g. "not available for try-on"). */
+  hint?: string;
+  testID?: string;
 };
 
-const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
-
 /**
- * Sticky action bar for the Discovery outfit detail:
- *   [Remix ✂]      ♡      [See on me]
- * Remix drops the outfit's pieces onto the canvas, the heart saves the outfit
- * to Favourites, "See on me" runs the try-on flow.
- *
- * House sticky-footer treatment (header-footer-rules §3b): blur + white tint,
- * sticky z-tier, bottom safe-area. Raw TouchableOpacity (not MButton /
- * MIconButton) for the same reason as Home's `OutfitActionRow` and
- * `FavouriteActionBar`: these are borderless text/glyph actions, which the DS
- * buttons (fixed fill/outline + 20px icon) can't express.
+ * Sticky footer shell for the Discovery outfit detail — house sticky-footer
+ * treatment (header-footer-rules §3b): blur + white tint, sticky z-tier,
+ * bottom safe-area. Figma button group (5456:18703 / 5456:21357): 56px `lg`
+ * buttons, 12 apart, 16 top padding. The row content depends on the screen
+ * state (idle detail vs the AU-458 Make It Yours states), so callers supply it.
  */
-export const DiscoveryDetailActionBar: React.FC<Props> = ({
-  onRemix,
-  onToggleFavourite,
-  favouriteState,
-  onSeeOnMe,
-  canSeeOnMe,
-}) => {
-  const { t } = useTranslation();
+export const DiscoveryDetailActionBar: React.FC<Props> = ({ children, hint, testID }) => {
   const insets = useSafeAreaInsets();
-  // Filled while saved, and optimistically while a save is in flight; hollow
-  // while a remove is in flight so the tap reads as instant either way.
-  const heartFilled = favouriteState === 'saved' || favouriteState === 'saving';
-  const heartBusy = favouriteState === 'saving' || favouriteState === 'removing';
-
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom + theme.spacing.s }]}>
+    <View
+      testID={testID}
+      style={[styles.container, { paddingBottom: insets.bottom + theme.spacing.s }]}
+    >
       <BlurView
         style={StyleSheet.absoluteFill}
         blurType="light"
@@ -55,76 +37,18 @@ export const DiscoveryDetailActionBar: React.FC<Props> = ({
         pointerEvents="none"
       />
       <View style={styles.tint} pointerEvents="none" />
-
-      <View style={styles.row}>
-        <TouchableOpacity
-          testID="discovery-detail-remix"
-          accessibilityRole="button"
-          accessibilityLabel={t('discovery.a11y_remix')}
-          activeOpacity={0.7}
-          hitSlop={HIT_SLOP}
-          style={[styles.slot, styles.slotStart]}
-          onPress={onRemix}
-        >
-          <Text style={styles.label} numberOfLines={1}>
-            {t('discovery.remix_cta')}
-          </Text>
-          <Icons.Remix width={20} height={20} color={theme.colors.uacTextBase} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          testID={
-            heartFilled ? 'discovery-detail-favourite-saved' : 'discovery-detail-favourite'
-          }
-          accessibilityRole="button"
-          accessibilityLabel={t(
-            heartFilled ? 'discovery.a11y_remove_favourite' : 'discovery.a11y_save_favourite',
-          )}
-          accessibilityState={{ selected: heartFilled, busy: heartBusy }}
-          activeOpacity={0.7}
-          hitSlop={HIT_SLOP}
-          style={styles.heart}
-          onPress={onToggleFavourite}
-          disabled={heartBusy}
-        >
-          {heartFilled ? (
-            <IconHeartFilled width={32} height={32} color={theme.colors.uacTextBase} />
-          ) : (
-            <Icons.Heart width={24} height={24} color={theme.colors.uacTextBase} />
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          testID="discovery-detail-see-on-me-cta"
-          accessibilityRole="button"
-          accessibilityLabel={t('discovery.see_on_me_cta')}
-          accessibilityState={{ disabled: !canSeeOnMe }}
-          activeOpacity={0.7}
-          hitSlop={HIT_SLOP}
-          style={[styles.slot, styles.slotEnd]}
-          onPress={onSeeOnMe}
-          disabled={!canSeeOnMe}
-        >
-          <Text
-            style={[styles.label, !canSeeOnMe && styles.labelDisabled]}
-            numberOfLines={1}
-          >
-            {t('discovery.see_on_me_cta')}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {!canSeeOnMe ? (
+      <View style={styles.row}>{children}</View>
+      {hint ? (
         <Text style={styles.hint} testID="discovery-detail-see-on-me-unavailable">
-          {t('discovery.see_on_me_unavailable')}
+          {hint}
         </Text>
       ) : null}
     </View>
   );
 };
 
-/** Row height (48) + top padding — the screen pads its scroll content by this. */
-export const DISCOVERY_ACTION_BAR_HEIGHT = 48 + theme.spacing.s;
+/** Button height (56) + top padding — the screen pads its scroll content by this. */
+export const DISCOVERY_ACTION_BAR_HEIGHT = BUTTON_HEIGHT + theme.spacing.m;
 
 const styles = StyleSheet.create({
   container: {
@@ -134,45 +58,16 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: theme.zIndex.sticky,
     paddingHorizontal: theme.spacing.m,
-    paddingTop: theme.spacing.s,
+    paddingTop: theme.spacing.m,
   },
   tint: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: theme.colors.figmaBlurTintWhite80,
   },
-  // Three equal columns so the heart sits dead-centre no matter how long the
-  // side labels translate (fr/vi run longer than en).
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
-  },
-  slot: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.s,
-    height: 48,
-  },
-  slotStart: {
-    justifyContent: 'flex-start',
-  },
-  slotEnd: {
-    justifyContent: 'flex-end',
-  },
-  heart: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: {
-    ...theme.typography.aliases.uacBodyMdMedium,
-    color: theme.colors.uacTextBase,
-    flexShrink: 1,
-  },
-  labelDisabled: {
-    color: theme.colors.figmaTextSecondary,
+    gap: theme.spacing.uacDimension12,
   },
   hint: {
     ...theme.typography.aliases.interCaptionXxs,
@@ -180,4 +75,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: theme.spacing.xs,
   },
+});
+
+/** Layout helpers for the buttons callers put in the row. */
+export const actionBarStyles = StyleSheet.create({
+  grow: { flex: 1 },
 });

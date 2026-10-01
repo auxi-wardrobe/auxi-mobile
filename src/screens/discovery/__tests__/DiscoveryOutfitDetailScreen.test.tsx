@@ -26,7 +26,7 @@ import { DiscoveryOutfitDetailScreen } from '../DiscoveryOutfitDetailScreen';
 import { theme } from '../../../theme/theme';
 import { HEADER_ICON_INSET } from '../../../components/layout/Header';
 import { COVER_SIDE_GUTTER } from '../discoveryOutfitDetailStyles';
-import { toast } from '../../../components/design-system/lib';
+import { MIN_LOADING_MS } from '../../make-it-yours/useMakeItYoursRun';
 
 // ---- mocks ------------------------------------------------------------------
 
@@ -63,6 +63,7 @@ jest.mock('@react-navigation/native', () => {
     navigate: (...args: unknown[]) => mockNavigate(...args),
     popTo: (...args: unknown[]) => mockPopTo(...args),
     goBack: (...args: unknown[]) => mockGoBack(...args),
+    setOptions: jest.fn(),
     addListener: jest.fn(() => jest.fn()),
     dispatch: jest.fn(),
   };
@@ -76,7 +77,7 @@ jest.mock('@react-navigation/native', () => {
 // Resolve t() against real en-EN copy so testID/label wiring stays honest.
 jest.mock('react-i18next', () => {
   const en = require('../../../translations/en-EN.json').boilerplate;
-  const t = (key: string) => {
+  const t = (key: string, vars?: Record<string, unknown>) => {
     const value = key
       .split('.')
       .reduce<unknown>(
@@ -86,7 +87,9 @@ jest.mock('react-i18next', () => {
             : undefined,
         en,
       );
-    return typeof value === 'string' ? value : key;
+    return typeof value === 'string'
+      ? value.replace(/{{(\w+)}}/g, (_m, name) => String(vars?.[name] ?? ''))
+      : key;
   };
   return { useTranslation: () => ({ t }) };
 });
@@ -96,6 +99,12 @@ jest.mock('../../../services/discoveryService', () => ({
   discoveryService: {
     getOutfit: (...args: unknown[]) => mockGetOutfit(...args),
   },
+}));
+
+const mockRunMakeItYours = jest.fn();
+jest.mock('../../../services/makeItYoursService', () => ({
+  ...jest.requireActual('../../../services/makeItYoursService'),
+  makeItYoursService: { run: (...args: unknown[]) => mockRunMakeItYours(...args) },
 }));
 
 const mockSaveFavourite = jest.fn();
@@ -332,7 +341,8 @@ describe('DiscoveryOutfitDetailScreen — hero cover', () => {
 });
 
 /**
- * Bottom action bar: [Remix ✂] · ♡ · [See on me].
+ * Bottom action bar (Figma 5456:18703): [Make it yours ⌕] [See on me].
+ * Remix + heart were dropped with the AU-458 redesign.
  */
 describe('DiscoveryOutfitDetailScreen — action bar', () => {
   beforeEach(() => {
@@ -340,118 +350,12 @@ describe('DiscoveryOutfitDetailScreen — action bar', () => {
     mockGetOutfit.mockResolvedValue(outfitFixture);
   });
 
-  it('renders all three actions', async () => {
+  it('renders Make it yours + See on me only', async () => {
     const r = await renderScreen();
-    expect(byTestID(r.root, 'discovery-detail-remix').length).toBeGreaterThan(0);
-    expect(byTestID(r.root, 'discovery-detail-favourite').length).toBeGreaterThan(0);
+    expect(byTestID(r.root, 'discovery-detail-make-it-yours').length).toBeGreaterThan(0);
     expect(byTestID(r.root, 'discovery-detail-see-on-me-cta').length).toBeGreaterThan(0);
-  });
-
-  it('Remix sends the outfit pieces to the canvas editor', async () => {
-    const r = await renderScreen();
-    press(oneByTestID(r.root, 'discovery-detail-remix'));
-
-    expect(mockNavigate).toHaveBeenCalledWith('OutfitCanvas', {
-      entry: 'remix',
-      items: [
-        expect.objectContaining({
-          id: 'item-1',
-          imageUrl: 'https://cdn.example/item-1.png',
-          category: 'Top',
-          is_common_item: true,
-        }),
-      ],
-    });
-  });
-
-  it('heart saves the outfit to favourites, then a second tap removes it', async () => {
-    mockSaveFavourite.mockResolvedValue({
-      id: 'fav-9',
-      outfit_hash: 'discovery_outfit-1',
-      created_at: '2026-09-24T00:00:00Z',
-      updated: false,
-    });
-    mockRemoveFavourite.mockResolvedValue({ message: 'ok' });
-
-    const r = await renderScreen();
-    press(oneByTestID(r.root, 'discovery-detail-favourite'));
-    await flushPromises();
-
-    expect(mockSaveFavourite).toHaveBeenCalledWith({
-      outfit_hash: 'discovery_outfit-1',
-      item_ids: ['item-1'],
-      source: 'discovery',
-      title: 'Soft tailoring',
-    });
-    expect(mockMarkSaved).toHaveBeenCalled();
-    // Stateful testID flips instead of going undefined.
-    press(oneByTestID(r.root, 'discovery-detail-favourite-saved'));
-    await flushPromises();
-
-    expect(mockRemoveFavourite).toHaveBeenCalledWith('fav-9');
-    expect(byTestID(r.root, 'discovery-detail-favourite').length).toBeGreaterThan(0);
-  });
-
-  it('a successful save shows a 3s "tap to view" toast that opens Favourites', async () => {
-    // m-toast-service is a global jest.fn mock (jest.setup.js); give `show` an id.
-    const showSpy = jest.mocked(toast.show).mockReturnValue('toast-7');
-    const hideSpy = jest.mocked(toast.hide);
-    mockSaveFavourite.mockResolvedValue({
-      id: 'fav-9',
-      outfit_hash: 'discovery_outfit-1',
-      created_at: '2026-09-24T00:00:00Z',
-      updated: false,
-    });
-    mockRemoveFavourite.mockResolvedValue({ message: 'ok' });
-
-    const r = await renderScreen();
-    press(oneByTestID(r.root, 'discovery-detail-favourite'));
-    await flushPromises();
-
-    expect(showSpy).toHaveBeenCalledTimes(1);
-    const opts = showSpy.mock.calls[0][0];
-    expect(opts).toMatchObject({
-      type: 'success',
-      text1: "This outfit's items are saved to Favourites",
-      text2: 'Tap to see them',
-      visibilityTime: 3000,
-      testID: 'discovery-detail-favourite-saved-toast',
-    });
-
-    act(() => {
-      opts.onPress?.();
-    });
-    expect(mockNavigate).toHaveBeenCalledWith('Favourite', { showBackButton: true });
-
-    // Un-hearting while the toast may still be up retracts it.
-    press(oneByTestID(r.root, 'discovery-detail-favourite-saved'));
-    await flushPromises();
-    expect(hideSpy).toHaveBeenCalledWith('toast-7');
-    showSpy.mockReset();
-  });
-
-  it('a failed save never shows the saved toast', async () => {
-    const showSpy = jest.mocked(toast.show);
-    mockSaveFavourite.mockRejectedValue(new Error('boom'));
-
-    const r = await renderScreen();
-    press(oneByTestID(r.root, 'discovery-detail-favourite'));
-    await flushPromises();
-
-    expect(showSpy).not.toHaveBeenCalledWith(
-      expect.objectContaining({ testID: 'discovery-detail-favourite-saved-toast' }),
-    );
-  });
-
-  it('heart falls back to unsaved when the save fails', async () => {
-    mockSaveFavourite.mockRejectedValue(new Error('boom'));
-
-    const r = await renderScreen();
-    press(oneByTestID(r.root, 'discovery-detail-favourite'));
-    await flushPromises();
-
-    expect(byTestID(r.root, 'discovery-detail-favourite').length).toBeGreaterThan(0);
-    expect(byTestID(r.root, 'discovery-detail-favourite-saved')).toHaveLength(0);
+    expect(byTestID(r.root, 'discovery-detail-remix')).toHaveLength(0);
+    expect(byTestID(r.root, 'discovery-detail-favourite')).toHaveLength(0);
   });
 
   it('See on me routes through the reuse-confirm gate', async () => {
@@ -467,5 +371,154 @@ describe('DiscoveryOutfitDetailScreen — action bar', () => {
         }),
       }),
     );
+  });
+});
+
+/**
+ * AU-458 Make It Yours — the flow swaps the detail body + footer in place
+ * (Figma 5456:18648): loading → result / message states → Close.
+ */
+const ownedItem = {
+  id: 'mine-1',
+  name: 'My top',
+  image_url: 'https://cdn.example/mine-1.png',
+  image_png: null,
+  image_studio: null,
+  category: 'top',
+  category_code: 'TOP',
+  layer_code: 'L2',
+  is_common_item: false,
+};
+
+const miyResult = (overrides: Record<string, unknown> = {}) => ({
+  state: 'success',
+  algorithm_version: 'miy-1',
+  inspiration: { id: 'outfit-1', title: 'Soft tailoring', composite_image_url: null },
+  outfits: [
+    {
+      outfit_hash: 'miy_abc',
+      is_complete: false,
+      slots: [
+        { inspiration_item_id: 'item-1', role: 'TOP', item: ownedItem },
+        { inspiration_item_id: 'item-2', role: 'FOOTWEAR', item: null },
+      ],
+    },
+  ],
+  relevant_items: [],
+  ...overrides,
+});
+
+describe('DiscoveryOutfitDetailScreen — Make It Yours', () => {
+  beforeEach(() => {
+    mockRouteParams = { outfitId: 'outfit-1', source: 'feed' };
+    mockGetOutfit.mockResolvedValue(outfitFixture);
+  });
+  afterEach(() => jest.useRealTimers());
+
+  /** Render, tap the CTA, and let the min loading time + request settle. */
+  const openWith = async (result: unknown, { fail = false } = {}) => {
+    if (fail) {
+      mockRunMakeItYours.mockRejectedValue(result);
+    } else {
+      mockRunMakeItYours.mockResolvedValue(result);
+    }
+    const r = await renderScreen();
+    jest.useFakeTimers();
+    press(oneByTestID(r.root, 'discovery-detail-make-it-yours'));
+    expect(byTestID(r.root, 'make-it-yours-loading').length).toBeGreaterThan(0);
+    await act(async () => {
+      jest.advanceTimersByTime(MIN_LOADING_MS);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    return r;
+  };
+
+  it('shows only the user\'s own pieces, and saves the outfit', async () => {
+    mockSaveFavourite.mockResolvedValue({ id: 'fav-1', outfit_hash: 'miy_abc', created_at: '', updated: false });
+    const r = await openWith(miyResult());
+
+    expect(mockRunMakeItYours).toHaveBeenCalledWith('outfit-1', expect.anything());
+    expect(byTestID(r.root, 'make-it-yours-result').length).toBeGreaterThan(0);
+    // The detail body (item strip) is replaced, the cover stays.
+    expect(byTestID(r.root, 'discovery-detail-cover').length).toBeGreaterThan(0);
+    // Only the user's own items are rendered: the missing slot is left out,
+    // never filled with the inspiration's catalog image.
+    const imageUris = r.root
+      .findAll(n => n.type === Image)
+      .map(n => (n.props.source as { uri?: string } | undefined)?.uri);
+    expect(imageUris).toContain('https://cdn.example/mine-1.png');
+    expect(imageUris).not.toContain('https://cdn.example/item-1.png');
+
+    press(oneByTestID(r.root, 'make-it-yours-save'));
+    await flushPromises();
+    expect(mockSaveFavourite).toHaveBeenCalledWith({
+      outfit_hash: 'miy_abc',
+      item_ids: ['mine-1'],
+      source: 'make_it_yours',
+    });
+    expect(byTestID(r.root, 'make-it-yours-save-saved').length).toBeGreaterThan(0);
+
+    press(oneByTestID(r.root, 'make-it-yours-open-favourites'));
+    expect(mockNavigate).toHaveBeenCalledWith('Favourite', { showBackButton: true });
+  });
+
+  it('Close and Back return to the detail without leaving the screen', async () => {
+    const r = await openWith(miyResult());
+    press(oneByTestID(r.root, 'discovery-detail-back'));
+    expect(mockGoBack).not.toHaveBeenCalled();
+    expect(byTestID(r.root, 'make-it-yours-result')).toHaveLength(0);
+    expect(byTestID(r.root, 'discovery-detail-make-it-yours').length).toBeGreaterThan(0);
+  });
+
+  it('Cancel while loading returns to the detail silently', async () => {
+    mockRunMakeItYours.mockImplementation(
+      (_id: string, signal: AbortSignal) =>
+        new Promise((_, reject) =>
+          signal.addEventListener('abort', () => reject({ code: 'ERR_CANCELED' })),
+        ),
+    );
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'discovery-detail-make-it-yours'));
+    press(oneByTestID(r.root, 'make-it-yours-cancel'));
+    await flushPromises();
+    expect(byTestID(r.root, 'make-it-yours-loading')).toHaveLength(0);
+    expect(byTestID(r.root, 'make-it-yours-error')).toHaveLength(0);
+    expect(byTestID(r.root, 'discovery-detail-make-it-yours').length).toBeGreaterThan(0);
+  });
+
+  it('no wardrobe ≠ no match: distinct copy and CTAs', async () => {
+    const r = await openWith(miyResult({ state: 'no_wardrobe', outfits: [] }));
+    expect(byTestID(r.root, 'make-it-yours-no-wardrobe').length).toBeGreaterThan(0);
+    press(oneByTestID(r.root, 'make-it-yours-add-clothes'));
+    expect(mockNavigate).toHaveBeenCalledWith('Wardrobe');
+  });
+
+  it('partial shows the owned pieces that matched', async () => {
+    const r = await openWith(
+      miyResult({ state: 'partial', outfits: [], relevant_items: [ownedItem] }),
+    );
+    expect(byTestID(r.root, 'make-it-yours-partial').length).toBeGreaterThan(0);
+    expect(byTestID(r.root, 'make-it-yours-relevant-item-mine-1').length).toBeGreaterThan(0);
+  });
+
+  it('no match offers another inspiration (pops to the feed)', async () => {
+    const r = await openWith(miyResult({ state: 'no_match', outfits: [] }));
+    expect(byTestID(r.root, 'make-it-yours-no-match').length).toBeGreaterThan(0);
+    press(oneByTestID(r.root, 'make-it-yours-find-another'));
+    expect(mockPopTo).toHaveBeenCalledWith('Discovery');
+  });
+
+  it('a failed request shows the retry state', async () => {
+    const r = await openWith({ response: { status: 500 } }, { fail: true });
+    expect(byTestID(r.root, 'make-it-yours-error').length).toBeGreaterThan(0);
+    expect(byTestID(r.root, 'make-it-yours-retry').length).toBeGreaterThan(0);
+  });
+
+  it('a look that no longer exists offers another inspiration, not a retry', async () => {
+    const r = await openWith({ response: { status: 404 } }, { fail: true });
+    expect(byTestID(r.root, 'make-it-yours-retry')).toHaveLength(0);
+    press(oneByTestID(r.root, 'make-it-yours-find-another'));
+    expect(mockPopTo).toHaveBeenCalledWith('Discovery');
   });
 });

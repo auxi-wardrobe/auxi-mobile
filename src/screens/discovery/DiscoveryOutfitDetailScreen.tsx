@@ -12,7 +12,6 @@ import { theme } from '../../theme/theme';
 import { track } from '../../services/analytics';
 import { AppStackParamList } from '../../types/navigation';
 import { useDiscoveryOutfit } from '../../hooks/useDiscovery';
-import { resolveItemImageSources } from '../../utils/url';
 import { DiscoveryItemStrip } from './DiscoveryItemStrip';
 import { DiscoveryOutfitSummary } from './DiscoveryOutfitSummary';
 import {
@@ -25,7 +24,11 @@ import {
   DISCOVERY_ACTION_BAR_HEIGHT,
   DiscoveryDetailActionBar,
 } from './DiscoveryDetailActionBar';
-import { discoveryOutfitHash, useDiscoveryFavourite } from './useDiscoveryFavourite';
+import { MakeItYoursActions } from '../make-it-yours/MakeItYoursActions';
+import { MakeItYoursBody } from '../make-it-yours/MakeItYoursBody';
+import { useMakeItYoursPanel } from '../make-it-yours/useMakeItYoursPanel';
+import { useRevealPanelScroll } from '../make-it-yours/useRevealPanelScroll';
+import { canSeeOutfitOnMe, discoverySeeOnMeParams } from './discovery-see-on-me';
 
 type ScreenNavigation = NativeStackNavigationProp<
   AppStackParamList,
@@ -69,9 +72,10 @@ export const DiscoveryOutfitDetailScreen = () => {
     });
   }, [source, loading, outfit, outfitId]);
 
-  const itemCount = outfit?.items.length ?? 0;
-  const canSeeOnMe = itemCount >= 1 && itemCount <= 4;
-  const favourite = useDiscoveryFavourite(outfit);
+  const canSeeOnMe = canSeeOutfitOnMe(outfit);
+  // AU-458: "Make it yours" swaps the body + footer in place (Figma 5456:18648).
+  const makeItYours = useMakeItYoursPanel(outfit?.id);
+  const { scrollRef, onContentSizeChange } = useRevealPanelScroll(makeItYours.mode.kind);
 
   const handleBrowseDiscovery = () => {
     toast.show({
@@ -79,21 +83,10 @@ export const DiscoveryOutfitDetailScreen = () => {
       text1: t('discovery.outfit_unavailable_toast'),
       position: 'bottom',
     });
-    // popTo (not navigate) — mirrors ItemDetailScreen.handleBuildAround /
-    // try-on-completion-notice's showTryOnCompletionNotice: this screen was
-    // reached via the discovery-outfit deep link, which can land here after
-    // popping through an arbitrary number of screens (whatever the deep link
-    // pushed). A plain `navigate('Discovery')` updates the JS nav state (pop
-    // to an existing `Discovery` instance, or push a fresh one) but — per the
-    // same react-native-screens desync this codebase already hit and fixed
-    // twice — can leave the screen(s) it popped past only torn down at the JS
-    // level, not the native one, so the OLD screen's still-registered native
-    // touch handling can keep intercepting taps meant for the newly-revealed
-    // `Discovery` header (reported: hamburger stops opening the drawer, only
-    // on the instance reached this way — AU-457 retry #4 finding). `popTo`
-    // issues real pop semantics so the removed screen(s) are properly torn
-    // down; resolution (existing instance vs fresh push) is identical to
-    // plain `navigate` — same as SidebarMenu's `go('Discovery', close)`.
+    // popTo, NOT navigate (AU-457 retry #4): after a deep link, `navigate`
+    // can leave popped screens torn down only in JS, not natively, so their
+    // stale touch handlers swallow taps on the revealed Discovery header.
+    // Same fix as ItemDetailScreen.handleBuildAround / try-on-completion-notice.
     navigation.popTo('Discovery');
   };
 
@@ -103,47 +96,18 @@ export const DiscoveryOutfitDetailScreen = () => {
     }
     track('discovery_see_on_me_tapped', {
       outfit_id: outfit.id,
-      item_count: itemCount,
+      item_count: outfit.items.length,
     });
     // Reuse-confirm gate owns consent/AI-limit/usage gating — never navigate
     // straight to `SeeThisOnMe` (see FavouriteScreen.tsx:260 worked example).
-    navigation.navigate('SeeThisOnMeConfirm', {
-      outfit: {
-        outfitHash: discoveryOutfitHash(outfit.id),
-        itemIds: outfit.items.map(item => item.id),
-        itemImageUrls: outfit.items
-          .map(item => item.image_png ?? item.image_url)
-          .filter((url): url is string => !!url),
-        stylingNote: outfit.description,
-      },
-    });
+    navigation.navigate('SeeThisOnMeConfirm', discoverySeeOnMeParams(outfit));
   };
 
-  // Remix → drop the outfit's pieces onto the canvas editor, same param shape
-  // Home's Remix sends (`entry: 'remix'` gives the canvas a back chevron).
-  const handleRemix = () => {
-    if (!outfit) {
-      return;
-    }
-    track('discovery_remix_tapped', { outfit_id: outfit.id, item_count: itemCount });
-    const items = outfit.items.map(item => {
-      // Cutout → original fallback chain, as Home's Remix (utils/url.ts).
-      const [imageUrl, ...imageFallbackUrls] = resolveItemImageSources(item);
-      return {
-        id: item.id,
-        imageUrl: imageUrl || item.image_url,
-        imageFallbackUrls,
-        category: item.category,
-        is_common_item: item.is_common_item,
-      };
-    });
-    navigation.navigate(
-      'OutfitCanvas',
-      items.length ? { items, entry: 'remix' } : { entry: 'remix' },
-    );
-  };
+  // Make It Yours "Find another inspiration" — same popTo rationale as above.
+  const handleFindAnother = () => navigation.popTo('Discovery');
 
-  const back = () => navigation.goBack();
+  // While Make It Yours is open, Back closes it instead of leaving (Scenario 12).
+  const back = () => (makeItYours.isOpen ? makeItYours.back() : navigation.goBack());
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -175,14 +139,20 @@ export const DiscoveryOutfitDetailScreen = () => {
       ) : outfit ? (
         <>
           <ScrollView
+            ref={scrollRef}
+            onContentSizeChange={onContentSizeChange}
             testID="discovery-detail-scroll"
             contentContainerStyle={[
               styles.scrollContent,
               { paddingBottom: insets.bottom + DISCOVERY_ACTION_BAR_HEIGHT + theme.spacing.l },
             ]}
           >
-            <DiscoveryOutfitSummary outfit={outfit} />
-            <DiscoveryItemStrip outfitId={outfit.id} items={outfit.items} />
+            <DiscoveryOutfitSummary outfit={outfit} showDetails={!makeItYours.isOpen} />
+            {makeItYours.isOpen ? (
+              <MakeItYoursBody panel={makeItYours} />
+            ) : (
+              <DiscoveryItemStrip outfitId={outfit.id} items={outfit.items} />
+            )}
           </ScrollView>
 
           {/* `top` comes from the inset at runtime — see `styles.floatingBack`:
@@ -203,12 +173,19 @@ export const DiscoveryOutfitDetailScreen = () => {
           </View>
 
           <DiscoveryDetailActionBar
-            onRemix={handleRemix}
-            onToggleFavourite={favourite.toggle}
-            favouriteState={favourite.state}
-            onSeeOnMe={handleSeeOnMe}
-            canSeeOnMe={canSeeOnMe}
-          />
+            hint={
+              !makeItYours.isOpen && !canSeeOnMe
+                ? t('discovery.see_on_me_unavailable')
+                : undefined
+            }
+          >
+            <MakeItYoursActions
+              panel={makeItYours}
+              onSeeOnMe={handleSeeOnMe}
+              canSeeOnMe={canSeeOnMe}
+              onFindAnother={handleFindAnother}
+            />
+          </DiscoveryDetailActionBar>
         </>
       ) : null}
     </SafeAreaView>

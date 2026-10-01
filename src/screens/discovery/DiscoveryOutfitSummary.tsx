@@ -9,6 +9,11 @@ import {
 
 interface DiscoveryOutfitSummaryProps {
   outfit: DiscoveryOutfitDetail;
+  /**
+   * `false` renders the cover only — the Make It Yours panel (AU-458) takes
+   * the body's place under the image. Default `true`.
+   */
+  showDetails?: boolean;
 }
 
 /**
@@ -54,6 +59,7 @@ const useNaturalRatio = (uri: string | null): number | null => {
 /** Cover image (with a token-styled fallback) + title + description + season/tag pills. */
 export const DiscoveryOutfitSummary: React.FC<DiscoveryOutfitSummaryProps> = ({
   outfit,
+  showDetails = true,
 }) => {
   const coverUri = outfit.composite_image_url;
   const ratio = useNaturalRatio(coverUri);
@@ -63,7 +69,10 @@ export const DiscoveryOutfitSummary: React.FC<DiscoveryOutfitSummaryProps> = ({
     <>
       <View
         testID="discovery-detail-cover"
-        style={[styles.coverFrame, { aspectRatio: ratio ?? COVER_FALLBACK_RATIO }]}
+        style={[
+          styles.coverFrame,
+          { aspectRatio: ratio ?? COVER_FALLBACK_RATIO },
+        ]}
       >
         {coverUri ? (
           <Image
@@ -82,27 +91,29 @@ export const DiscoveryOutfitSummary: React.FC<DiscoveryOutfitSummaryProps> = ({
         )}
       </View>
 
-      <View style={styles.body}>
-        <Text style={styles.title}>{outfit.title}</Text>
-        {outfit.description ? (
-          <Text style={styles.description}>{outfit.description}</Text>
-        ) : null}
+      {showDetails ? (
+        <View style={styles.body}>
+          <Text style={styles.title}>{outfit.title}</Text>
+          {outfit.description ? (
+            <Text style={styles.description}>{outfit.description}</Text>
+          ) : null}
 
-        {seasons.length > 0 || outfit.trend_tags.length > 0 ? (
-          <View style={styles.pillRow}>
-            {seasons.map(season => (
-              <View key={season} style={styles.pill}>
-                <Text style={styles.pillText}>{season}</Text>
-              </View>
-            ))}
-            {outfit.trend_tags.map(tag => (
-              <View key={tag} style={styles.pill}>
-                <Text style={styles.pillText}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-      </View>
+          {seasons.length > 0 || outfit.trend_tags.length > 0 ? (
+            <View style={styles.pillRow}>
+              {seasons.map(season => (
+                <View key={season} style={styles.pill}>
+                  <Text style={styles.pillText}>{season}</Text>
+                </View>
+              ))}
+              {outfit.trend_tags.map(tag => (
+                <View key={tag} style={styles.pill}>
+                  <Text style={styles.pillText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </>
   );
 };
