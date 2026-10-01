@@ -3,6 +3,8 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from '../../components/primitives/PressableScale';
 import { theme } from '../../theme/theme';
 import type { DiscoveryOutfitCard as DiscoveryOutfitCardData } from '../../services/discoveryService';
+import { outfitSeasons } from './discovery-filter';
+import { DiscoveryColorSwatches } from './DiscoveryColorSwatches';
 import { DEFAULT_TILE_RATIO, TILE_WIDTH, clampTileRatio } from './discovery-grid';
 
 interface DiscoveryOutfitCardProps {
@@ -21,8 +23,9 @@ interface DiscoveryOutfitCardProps {
  * One tile in the Discovery masonry grid: full-column-width cover at the
  * uploaded aspect ratio (with a token-styled placeholder on missing/failed
  * image — the cover URL can be a long-lived public link, but a network hiccup
- * still shouldn't render a broken frame), season/tag pills over it, and a
- * single 12/16 regular title underneath. Nothing else below the image.
+ * still shouldn't render a broken frame), season/tag pills over it, a single
+ * 12/16 regular title underneath, and the outfit's item colors as a swatch
+ * row directly under the title.
  */
 export const DiscoveryOutfitCard: React.FC<DiscoveryOutfitCardProps> = ({
   outfit,
@@ -33,6 +36,12 @@ export const DiscoveryOutfitCard: React.FC<DiscoveryOutfitCardProps> = ({
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = !!outfit.composite_image_url && !imageFailed;
   const firstTag = outfit.trend_tags[0];
+  // One season pill, whatever the count: the tile has room for two pills
+  // (season + first tag), so a multi-season outfit reads "spring +1".
+  const seasons = outfitSeasons(outfit);
+  const seasonPill = seasons.length
+    ? `${seasons[0]}${seasons.length > 1 ? ` +${seasons.length - 1}` : ''}`
+    : null;
 
   return (
     <PressableScale
@@ -61,9 +70,9 @@ export const DiscoveryOutfitCard: React.FC<DiscoveryOutfitCardProps> = ({
         )}
 
         <View style={styles.pillRow}>
-          {outfit.season ? (
+          {seasonPill ? (
             <View style={styles.pill}>
-              <Text style={styles.pillText}>{outfit.season}</Text>
+              <Text style={styles.pillText}>{seasonPill}</Text>
             </View>
           ) : null}
           {firstTag ? (
@@ -79,6 +88,11 @@ export const DiscoveryOutfitCard: React.FC<DiscoveryOutfitCardProps> = ({
       <Text style={styles.title} numberOfLines={1}>
         {outfit.title}
       </Text>
+
+      <DiscoveryColorSwatches
+        colors={outfit.colors ?? []}
+        testID={`discovery-card-${index}-colors`}
+      />
     </PressableScale>
   );
 };
@@ -128,8 +142,9 @@ const styles = StyleSheet.create({
     color: theme.colors.uacBackgroundNeutral50,
     textTransform: 'capitalize',
   },
-  // Text-xs Regular 12/16 (`uacBodyXsRegular`) — the caption is the only thing
-  // under the cover now; the item count moved out (design call, Sep 2026).
+  // Text-xs Regular 12/16 (`uacBodyXsRegular`) — the title, then the color
+  // swatch row, are the only things under the cover; the item count moved out
+  // (design call, Sep 2026).
   title: {
     ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextPrimary,

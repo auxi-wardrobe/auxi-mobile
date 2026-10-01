@@ -26,9 +26,9 @@ type Props = {
 };
 
 /**
- * A three-card peek at the newest curated Discovery outfits. Reads the same
- * `useDiscoveryOutfits` query the Discovery feed uses, so opening the full page
- * right after is served from cache rather than a second round trip.
+ * A peek at a random pair of Discovery outfits, reshuffled each time Home is
+ * focused (see HomeLandingScreen). The full page draws its own per-visit
+ * shuffle — see `useDiscoveryFeed`.
  */
 export const DiscoveryStrip: React.FC<Props> = ({
   outfits,

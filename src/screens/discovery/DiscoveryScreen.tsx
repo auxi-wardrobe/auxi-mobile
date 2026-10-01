@@ -51,6 +51,8 @@ export const DiscoveryScreen = () => {
     seasons,
     selectedTrendTags,
     trendTags,
+    selectedColors,
+    colorOptions,
     outfits,
     isFilterActive,
     loading,
@@ -58,6 +60,7 @@ export const DiscoveryScreen = () => {
     loadError,
     onSeasonsChange,
     onTrendTagsChange,
+    onColorsChange,
     onEndReached,
     onRetry,
   } = useDiscoveryFeed();
@@ -107,6 +110,9 @@ export const DiscoveryScreen = () => {
         selectedTrendTags={selectedTrendTags}
         onTrendTagsChange={onTrendTagsChange}
         trendTags={trendTags}
+        selectedColors={selectedColors}
+        onColorsChange={onColorsChange}
+        colorOptions={colorOptions}
       />
 
       {/* Skeleton covers both "no data yet" and "data, but no cover measured

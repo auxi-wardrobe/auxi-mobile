@@ -1,4 +1,4 @@
-// Discovery feed filters — multi-select season + multi-select trend tag.
+// Discovery feed filters — multi-select season, trend tag and color.
 //
 // Mirrors `screens/wardrobe/wardrobe-filter.ts` deliberately: the Discovery
 // filter is the SAME interaction as the wardrobe type filter (a summary pill
@@ -16,12 +16,23 @@
 //                   CLIENT-side over the accumulated pages, the same
 //                   "fetch wide, narrow locally" trade the wardrobe grid makes.
 //
+// Color is the exception: `GET /discovery/outfits` takes a comma-separated
+// `color` list and ORs it server-side, so every color selection is sent as-is
+// and never narrowed here.
+//
 // Everything below is pure so it can be unit-tested without a renderer.
 
 import type {
   DiscoveryOutfitCard,
   DiscoverySeason,
 } from '../../services/discoveryService';
+
+/** An outfit's seasons, falling back to the legacy single `season` (served
+ *  by backends before the multi-season change). `[]` = all-season. */
+export const outfitSeasons = (
+  outfit: Pick<DiscoveryOutfitCard, 'season' | 'seasons'>,
+): DiscoverySeason[] =>
+  outfit.seasons ?? (outfit.season ? [outfit.season] : []);
 
 /** Canonical season order — drives both the chip order and the summary label. */
 export const DISCOVERY_SEASONS: DiscoverySeason[] = [
@@ -102,9 +113,12 @@ export const needsClientNarrowing = (
  * Only axes with 2+ selections are narrowed. An axis with exactly one value
  * was already applied by the backend and is deliberately left alone: the
  * server owns the definition of "this outfit belongs to summer" (an outfit's
- * `season` is nullable and the backend may well serve untagged rows for a
- * season query), and re-deriving it here from `outfit.season === season` would
+ * seasons may be empty and the backend may well serve untagged rows for a
+ * season query), and re-deriving it here from `outfitSeasons()` would
  * quietly change what a single-season filter returns.
+ *
+ * An outfit can carry several seasons, so a season match is "any of the
+ * outfit's seasons is selected" — a spring+fall outfit passes summer+fall.
  *
  * Within an axis the selections are OR'd (summer OR winter); across axes they
  * are AND'd (a summer/winter outfit that also carries one of the chosen tags).
@@ -120,7 +134,7 @@ export const narrowOutfits = (
   const bySeason = seasons.length > 1 ? seasons : null;
   const byTag = trendTags.length > 1 ? trendTags : null;
   return outfits.filter(outfit => {
-    if (bySeason && (!outfit.season || !bySeason.includes(outfit.season))) {
+    if (bySeason && !outfitSeasons(outfit).some(s => bySeason.includes(s))) {
       return false;
     }
     if (byTag && !outfit.trend_tags?.some(tag => byTag.includes(tag))) {
@@ -142,3 +156,15 @@ export const summaryLabel = <T extends string>(
 /** Stable analytics dimension for a filter axis — 'all' or the joined values. */
 export const analyticsValue = (selected: string[]): string =>
   selected.length === 0 ? 'all' : selected.join(',');
+
+/**
+ * Toggle one color code. Like tags, colors are server-authored, so
+ * `available` (the `/discovery/colors` codes, palette order) supplies the
+ * canonical order; a selected code no longer offered keeps its place at the
+ * end so the user can still see and clear it.
+ */
+export const toggleColor = (
+  selected: string[],
+  code: string,
+  available: string[],
+): string[] => toggleTrendTag(selected, code, available);

@@ -5,6 +5,7 @@ import { apiClient } from './apiClient';
 //   GET /discovery/outfits            → paginated, filterable feed
 //   GET /discovery/outfits/{id}       → one outfit's full detail
 //   GET /discovery/trend-tags         → distinct tags across servable outfits
+//   GET /discovery/colors             → colors present across servable outfits
 // See `wardrobe-backend/API_DOCUMENTATION.md` §Discovery (AU-457) for the full
 // contract, including the 1..4 item cap (D2) and the deliberately identical
 // 404 envelope for "missing" vs "unpublished" outfits.
@@ -19,7 +20,13 @@ import { apiClient } from './apiClient';
 //     authenticated user's onboarding direction. Nothing is sent for it; the
 //     applied value comes BACK as `applied_gender`. Detail is deliberately
 //     NOT filtered, so a shared deep link always resolves.
+//   • `color` on the wire is ONE comma-separated string (`NVY,WHT`), not an
+//     array — axios would encode an array as `color[]=`, which FastAPI does
+//     not read. The server ORs the codes (outfit has ANY selected color).
 //   • `composite_image_url` / `season` / `image_png` may be `null`.
+//   • An outfit can carry SEVERAL seasons: read `seasons` (calendar order,
+//     `[]` = all-season) via `outfitSeasons()` (screens/discovery/discovery-filter.ts), never `season` — that is a
+//     deprecated mirror of the first entry only.
 
 export type DiscoverySeason = 'spring' | 'summer' | 'fall' | 'winter';
 
@@ -29,13 +36,37 @@ export type DiscoverySeason = 'spring' | 'summer' | 'fall' | 'winter';
  */
 export type DiscoveryGender = 'M' | 'W' | 'U';
 
+/**
+ * One swatch in an outfit's color row / the color filter. `code` is the
+ * backend palette code (`NVY`, `WHT`, …) and is what the filter sends;
+ * `hex` is a server-supplied display color for the dot; `label` is the
+ * English fallback when no `discovery.colors.<code>` translation exists.
+ */
+export interface DiscoveryColor {
+  code: string;
+  label: string;
+  hex: string;
+}
+
+/** A filter-sheet color: the swatch plus how many servable outfits carry it. */
+export interface DiscoveryColorOption extends DiscoveryColor {
+  count: number;
+}
+
 export interface DiscoveryOutfitCard {
   id: string;
   title: string;
   composite_image_url: string | null;
+  /** @deprecated first entry of `seasons` only — use `outfitSeasons()`. */
   season: DiscoverySeason | null;
+  /** Every season the outfit is tagged with; `[]` = all-season. Optional
+   *  only because backends before the multi-season change omit it. */
+  seasons?: DiscoverySeason[];
   gender: DiscoveryGender | null;
   trend_tags: string[];
+  /** Distinct item colors in item order. Optional only because backends
+   *  before the color filter omit it — treat missing as `[]`. */
+  colors?: DiscoveryColor[];
   item_count: number;
 }
 
@@ -48,6 +79,7 @@ export interface DiscoveryOutfitItem {
   category: string;
   category_code: string;
   layer_code: string;
+  color_code?: string | null;
   is_common_item: boolean;
 }
 
@@ -65,14 +97,15 @@ export interface DiscoveryOutfitsResponse {
   offset: number;
   /**
    * The wardrobe gender the BACKEND applied to this feed, derived from the
-   * user's persisted onboarding direction — `null` when the user has no
-   * direction on file and the feed came back unfiltered.
+   * user's wardrobe direction (Menswear/Womenswear, set at onboarding or in
+   * Settings; legacy `users.gender` as a fallback) — `null` when no gender
+   * resolves and the feed came back unfiltered.
    *
    * Reported, never requested: there is no client parameter for this and no
    * way to override it, so do NOT add one to `DiscoveryListParams`. Menswear
-   * users receive only `M` outfits, Womenswear only `W`, Mixed all three
-   * (backend AU-305 rule). `total` is already the gender-filtered count, so
-   * pagination needs no adjustment.
+   * users receive `M` + `U` outfits, Womenswear `W` + `U` (`U` = both
+   * wardrobes); untagged (`gender: null`) outfits reach everyone. `total` is
+   * already the gender-filtered count, so pagination needs no adjustment.
    */
   applied_gender: DiscoveryGender | null;
 }
@@ -80,8 +113,17 @@ export interface DiscoveryOutfitsResponse {
 export interface DiscoveryListParams {
   season?: DiscoverySeason;
   trendTag?: string;
+  /** Palette codes; the outfit matches if it has ANY of them. */
+  colors?: string[];
   limit?: number;
   offset?: number;
+  /**
+   * Shuffle seed. Sent: the server returns the set in a random order that is
+   * fixed for this seed, so every page slices the same permutation (no
+   * repeats, no gaps). Omitted: the curated `sort_order` / newest-first order.
+   * Backends before the shuffle ignore it and serve the curated order.
+   */
+  seed?: string;
 }
 
 const getErrorStatus = (error: unknown): number | undefined =>
@@ -97,8 +139,10 @@ export const discoveryService = {
         params: {
           season: params.season,
           trend_tag: params.trendTag,
+          color: params.colors?.length ? params.colors.join(',') : undefined,
           limit: params.limit,
           offset: params.offset,
+          seed: params.seed,
         },
       });
       return response.data as DiscoveryOutfitsResponse;
@@ -134,6 +178,19 @@ export const discoveryService = {
       return (response.data?.tags as string[] | undefined) ?? [];
     } catch (error) {
       console.error('listTrendTags error', error);
+      throw error;
+    }
+  },
+
+  /** Colors present across the viewer's servable outfits (palette order). */
+  listColors: async (): Promise<DiscoveryColorOption[]> => {
+    try {
+      const response = await apiClient.get('/discovery/colors');
+      return (
+        (response.data?.colors as DiscoveryColorOption[] | undefined) ?? []
+      );
+    } catch (error) {
+      console.error('listColors error', error);
       throw error;
     }
   },

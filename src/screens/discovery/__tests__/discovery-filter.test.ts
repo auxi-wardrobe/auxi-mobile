@@ -16,6 +16,7 @@ import {
   toServerFilters,
   toggleSeason,
   toggleTrendTag,
+  toggleColor,
 } from '../discovery-filter';
 
 const outfit = (
@@ -150,6 +151,18 @@ describe('narrowOutfits', () => {
     );
   });
 
+  it('matches a multi-season outfit on ANY of its seasons', () => {
+    // `season` is the legacy mirror (first entry); `seasons` is the truth.
+    const springFall = {
+      ...outfit('m', 'spring', []),
+      seasons: ['spring', 'fall'],
+    } as DiscoveryOutfitCard;
+    expect(narrowOutfits([springFall], ['summer', 'fall'], [])).toEqual([
+      springFall,
+    ]);
+    expect(narrowOutfits([springFall], ['summer', 'winter'], [])).toEqual([]);
+  });
+
   it('ORs the selections within the tag axis', () => {
     expect(narrowOutfits(ALL, [], ['quiet luxury', 'y2k'])).toEqual([
       SUMMER_QUIET,
@@ -196,5 +209,20 @@ describe('analyticsValue', () => {
 
   it('joins a multi-selection into one stable dimension', () => {
     expect(analyticsValue(['spring', 'fall'])).toBe('spring,fall');
+  });
+});
+
+describe('toggleColor', () => {
+  const palette = ['BLK', 'WHT', 'NVY'];
+
+  it('adds and removes a code, keeping palette order regardless of tap order', () => {
+    const one = toggleColor([], 'NVY', palette);
+    const two = toggleColor(one, 'BLK', palette);
+    expect(two).toEqual(['BLK', 'NVY']);
+    expect(toggleColor(two, 'NVY', palette)).toEqual(['BLK']);
+  });
+
+  it('keeps a selected code the server no longer offers, at the end', () => {
+    expect(toggleColor(['RED'], 'WHT', palette)).toEqual(['WHT', 'RED']);
   });
 });

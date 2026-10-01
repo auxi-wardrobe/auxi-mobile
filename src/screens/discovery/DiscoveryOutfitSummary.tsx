@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Image, Text, View } from 'react-native';
 import type { DiscoveryOutfitDetail } from '../../services/discoveryService';
+import { outfitSeasons } from './discovery-filter';
 import {
   COVER_FALLBACK_RATIO,
   discoveryOutfitDetailStyles as styles,
@@ -62,6 +63,7 @@ export const DiscoveryOutfitSummary: React.FC<DiscoveryOutfitSummaryProps> = ({
 }) => {
   const coverUri = outfit.composite_image_url;
   const ratio = useNaturalRatio(coverUri);
+  const seasons = outfitSeasons(outfit);
 
   return (
     <>
@@ -96,13 +98,13 @@ export const DiscoveryOutfitSummary: React.FC<DiscoveryOutfitSummaryProps> = ({
             <Text style={styles.description}>{outfit.description}</Text>
           ) : null}
 
-          {outfit.season || outfit.trend_tags.length > 0 ? (
+          {seasons.length > 0 || outfit.trend_tags.length > 0 ? (
             <View style={styles.pillRow}>
-              {outfit.season ? (
-                <View style={styles.pill}>
-                  <Text style={styles.pillText}>{outfit.season}</Text>
+              {seasons.map(season => (
+                <View key={season} style={styles.pill}>
+                  <Text style={styles.pillText}>{season}</Text>
                 </View>
-              ) : null}
+              ))}
               {outfit.trend_tags.map(tag => (
                 <View key={tag} style={styles.pill}>
                   <Text style={styles.pillText}>{tag}</Text>
