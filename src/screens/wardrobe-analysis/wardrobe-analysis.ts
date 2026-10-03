@@ -145,7 +145,7 @@ export interface CategoryCounts {
   tops: number;
   bottoms: number;
   shoes: number;
-  /** Everything that isn't a top, bottom or shoe (dresses, outerwear, accessories…). */
+  /** Everything that isn't a top, bottom (incl. one-pieces) or shoe — outerwear, accessories… */
   others: number;
 }
 
@@ -158,7 +158,9 @@ export const computeCategoryCounts = (
   items.forEach(item => {
     const group = classifyItem(item);
     if (group === 'top') tops += 1;
-    else if (group === 'bottom') bottoms += 1;
+    // One-pieces are reported under bottoms (product decision): the
+    // "bottoms" tile matches the Bottoms group in Item Types.
+    else if (group === 'bottom' || group === 'one_piece') bottoms += 1;
     else if (group === 'shoes') shoes += 1;
   });
   return {
@@ -245,6 +247,9 @@ const GENERIC_SUBCATEGORIES = new Set([
   'other',
 ]);
 
+/** The single Bottoms row every one-piece is counted under. */
+export const ONE_PIECE_TYPE_ID = 'one_piece';
+
 /** Type id for items whose type can't be told (rendered "Other"). */
 export const OTHER_TYPE_ID = 'other';
 
@@ -292,9 +297,15 @@ export const computeItemTypes = (items: WardrobeItem[]): ItemTypeGroup[] => {
   const groupCounts = new Map<CategoryGroup, number>();
 
   items.forEach(item => {
-    const group = classifyItem(item);
+    const itemGroup = classifyItem(item);
+    // One-pieces (dresses, jumpsuits…) are ONE row — "One Piece" — inside
+    // Bottoms rather than a group of their own (product decision).
+    const isOnePiece = itemGroup === 'one_piece';
+    const group: CategoryGroup = isOnePiece ? 'bottom' : itemGroup;
     groupCounts.set(group, (groupCounts.get(group) ?? 0) + 1);
-    const type = itemType(item, group);
+    const type = isOnePiece
+      ? { typeId: ONE_PIECE_TYPE_ID, label: ONE_PIECE_TYPE_ID }
+      : itemType(item, group);
     const key = type.typeId ? `type:${type.typeId}` : `raw:${type.label}`;
     const types = byGroup.get(group) ?? new Map<string, ItemTypeEntry>();
     const entry = types.get(key) ?? { ...type, count: 0 };

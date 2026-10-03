@@ -11,6 +11,7 @@ import {
   isPatterned,
   itemColorFamily,
   itemType,
+  ONE_PIECE_TYPE_ID,
   OTHER_TYPE_ID,
 } from '../wardrobe-analysis';
 
@@ -72,9 +73,9 @@ describe('computeCategoryCounts', () => {
     expect(counts).toEqual({
       total: 7,
       tops: 2,
-      bottoms: 1,
+      bottoms: 2, // bottom + dress (one-pieces count as bottoms)
       shoes: 1,
-      others: 3,
+      others: 2,
     });
   });
 
@@ -226,18 +227,17 @@ describe('computeItemTypes', () => {
     ]);
   });
 
-  it('keeps one_piece items in the One Piece group', () => {
+  it('folds one-pieces into Bottoms as a single "One Piece" row', () => {
     const groups = computeItemTypes([
+      item({ category: 'bottom', subcategory: 'jeans' }),
       item({ category: 'one_piece', subcategory: 'dress' }),
       item({ category: 'one_piece', name: 'Linen Jumpsuit' }),
-      item({ category: 'one_piece' }),
+      item({ category: 'dress' }),
     ]);
-    expect(groups).toHaveLength(1);
-    expect(groups[0].group).toBe('one_piece');
+    expect(groups.map(g => [g.group, g.count])).toEqual([['bottom', 4]]);
     expect(groups[0].types.map(t => [t.typeId, t.count])).toEqual([
-      ['dress', 1],
-      ['jumpsuit', 1],
-      [OTHER_TYPE_ID, 1],
+      [ONE_PIECE_TYPE_ID, 3],
+      ['jeans', 1],
     ]);
   });
 
