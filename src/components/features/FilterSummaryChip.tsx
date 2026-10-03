@@ -13,12 +13,18 @@ import { theme } from '../../theme/theme';
  * Shared by the wardrobe grid (`WardrobeFilterSortBar`) and the Discovery feed
  * (`DiscoveryFilterRow`) so the two filters stay the same component rather
  * than two lookalikes that drift apart.
+ *
+ * Action variant (`trailingIcon`): the same pill with no chevron and an icon
+ * after the label — the wardrobe "Analysis" entry (Figma "wardrobe"), which
+ * opens a screen rather than a sheet but sits in the same chip row.
  */
 interface FilterSummaryChipProps {
   label: string;
   onPress: () => void;
   testID: string;
   accessibilityLabel: string;
+  /** Replaces the leading chevron with an icon after the label. */
+  trailingIcon?: React.ReactNode;
 }
 
 export const FilterSummaryChip = ({
@@ -26,6 +32,7 @@ export const FilterSummaryChip = ({
   onPress,
   testID,
   accessibilityLabel,
+  trailingIcon,
 }: FilterSummaryChipProps) => (
   <PressableScale
     onPress={onPress}
@@ -34,10 +41,11 @@ export const FilterSummaryChip = ({
     testID={testID}
     accessibilityLabel={accessibilityLabel}
   >
-    <Icons.ChevronDown width={16} height={16} />
+    {trailingIcon ? null : <Icons.ChevronDown width={16} height={16} />}
     <Text style={styles.chipText} numberOfLines={1}>
       {label}
     </Text>
+    {trailingIcon}
   </PressableScale>
 );
 

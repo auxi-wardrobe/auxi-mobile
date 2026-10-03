@@ -164,6 +164,10 @@ export type AppStackParamList = {
   Wardrobe:
     | { mode?: 'select'; excludeItemId?: string; pendingImportUrl?: string }
     | undefined;
+  // Wardrobe Analysis — counts per category, colour distribution, item types
+  // and the skin-tone "best colours" card. Pushed from the Wardrobe grid's
+  // "Analysis" chip; everything is derived from the cached wardrobe list.
+  WardrobeAnalysis: undefined;
   // `returnToSchedule` is set when the user reached this page via the Schedule
   // "+" source picker — after scheduling an outfit we send them back to
   // Schedule (focused on the chosen day) instead of staying here. `scheduleDate`
