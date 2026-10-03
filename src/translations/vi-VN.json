@@ -429,6 +429,7 @@
         "color_empty": "Màu sắc sẽ hiện ở đây khi món đồ được gắn thẻ.",
         "color_share": "({{count}}) {{value}}%",
         "types_title": "Loại món đồ",
+        "a11y_type_group": "{{label}}, {{count}} món",
         "groups": {
           "top": "Áo",
           "bottom": "Quần/váy",

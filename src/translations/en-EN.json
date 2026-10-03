@@ -429,10 +429,11 @@
         "color_empty": "Colors appear here once your items are tagged.",
         "color_share": "({{count}}) {{value}}%",
         "types_title": "Item Types",
+        "a11y_type_group": "{{label}}, {{count}} items",
         "groups": {
-          "top": "Top",
+          "top": "Tops",
           "bottom": "Bottoms",
-          "one_piece": "One-piece",
+          "one_piece": "One Piece",
           "outerwear": "Outerwear",
           "shoes": "Shoes",
           "accessory": "Accessories",

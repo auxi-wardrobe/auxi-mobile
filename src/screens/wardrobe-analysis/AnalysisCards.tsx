@@ -1,7 +1,14 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
+import { Icons } from '../../assets/icons';
+import {
+  configureCollapseNext,
+  configureExpandNext,
+  motion,
+  useReducedMotion,
+} from '../../theme/motion';
 import {
   CategoryCounts,
   ColorShare,
@@ -136,19 +143,101 @@ export const ItemTypesCard = ({ groups }: { groups: ItemTypeGroup[] }) => {
   return (
     <View style={styles.card} testID="analysis-item-types-card">
       <Text style={styles.cardTitle}>{t('wardrobe.analysis.types_title')}</Text>
-      {groups.map((group, index) => (
-        <View
-          key={group.group}
-          style={[styles.typeGroup, index > 0 && styles.typeGroupDivider]}
-          testID={`analysis-type-group-${group.group}`}
-        >
-          <View style={styles.typeRow}>
-            <Text style={styles.groupText}>
-              {t(`wardrobe.analysis.groups.${group.group}`)}
-            </Text>
-            <Text style={styles.groupText}>{group.count}</Text>
-          </View>
-          {group.types.map(type => (
+      <View>
+        {groups.map((group, index) => (
+          <ItemTypeGroupRow
+            key={group.group}
+            group={group}
+            showDivider={index > 0}
+          />
+        ))}
+      </View>
+    </View>
+  );
+};
+
+/**
+ * One collapsible category (Figma "Item Types" dropdown): chevron + name +
+ * count; tapping reveals its subtypes (Shoes 2 → Loafers 1, Sneakers 1).
+ * Collapsed by default. The chevron turns to point up while open.
+ */
+const ItemTypeGroupRow = ({
+  group,
+  showDivider,
+}: {
+  group: ItemTypeGroup;
+  showDivider: boolean;
+}) => {
+  const { t } = useTranslation();
+  const reduced = useReducedMotion();
+  const [expanded, setExpanded] = useState(false);
+  const rotation = useRef(new Animated.Value(0)).current;
+  const label = t(`wardrobe.analysis.groups.${group.group}`);
+
+  const toggle = () => {
+    const next = !expanded;
+    if (next) {
+      configureExpandNext(reduced);
+    } else {
+      configureCollapseNext(reduced);
+    }
+    setExpanded(next);
+    if (reduced) {
+      rotation.setValue(next ? 1 : 0);
+      return;
+    }
+    Animated.timing(rotation, {
+      toValue: next ? 1 : 0,
+      duration: next ? motion.duration.medium : motion.duration.normal,
+      easing: next ? motion.easing.enter : motion.easing.exit,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const chevronStyle = {
+    transform: [
+      {
+        rotate: rotation.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['0deg', '180deg'],
+        }),
+      },
+    ],
+  };
+
+  return (
+    <View
+      style={[
+        showDivider && styles.typeGroupDivider,
+        expanded && styles.typeGroupExpanded,
+      ]}
+      testID={`analysis-type-group-${group.group}`}
+    >
+      <Pressable
+        onPress={toggle}
+        style={styles.groupHeader}
+        testID={`analysis-type-group-toggle-${group.group}${
+          expanded ? '-expanded' : ''
+        }`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={t('wardrobe.analysis.a11y_type_group', {
+          label,
+          count: group.count,
+        })}
+      >
+        <Animated.View style={chevronStyle}>
+          <Icons.ChevronDown
+            width={CHEVRON_SIZE}
+            height={CHEVRON_SIZE}
+            color={theme.colors.figmaTextPrimary}
+          />
+        </Animated.View>
+        <Text style={[styles.groupText, styles.groupLabel]}>{label}</Text>
+        <Text style={styles.groupText}>{group.count}</Text>
+      </Pressable>
+      {expanded
+        ? group.types.map(type => (
             <View
               key={type.typeId ?? `raw:${type.label}`}
               style={styles.typeRow}
@@ -161,9 +250,8 @@ export const ItemTypesCard = ({ groups }: { groups: ItemTypeGroup[] }) => {
               </Text>
               <Text style={styles.rowText}>{type.count}</Text>
             </View>
-          ))}
-        </View>
-      ))}
+          ))
+        : null}
     </View>
   );
 };
@@ -171,6 +259,7 @@ export const ItemTypesCard = ({ groups }: { groups: ItemTypeGroup[] }) => {
 const STAT_TILE_HEIGHT = 136;
 const STACKED_BAR_HEIGHT = 20;
 const TRACK_HEIGHT = 8;
+const CHEVRON_SIZE = 20;
 
 export const cardStyles = StyleSheet.create({
   card: {
@@ -276,20 +365,32 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: theme.ds.line,
   },
-  typeGroup: {
-    gap: theme.spacing.xs,
+  typeGroupExpanded: {
+    paddingBottom: theme.spacing.s,
   },
   typeGroupDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.colors.figmaDivider,
-    paddingTop: theme.spacing.s,
   },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.s,
+    // 44pt touch target, no extra padding (Figma row rhythm).
+    minHeight: 44,
+  },
+  groupLabel: {
+    flex: 1,
+  },
+  // Subtype rows sit under the group label (indented past the chevron).
   typeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingLeft: CHEVRON_SIZE + theme.spacing.s,
+    paddingVertical: 2,
   },
   groupText: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.uacBodyMdSemibold,
     color: theme.colors.figmaTextPrimary,
   },
   rowText: {

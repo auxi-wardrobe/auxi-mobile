@@ -429,6 +429,7 @@
         "color_empty": "Les couleurs apparaîtront ici une fois vos articles étiquetés.",
         "color_share": "({{count}}) {{value}} %",
         "types_title": "Types d'articles",
+        "a11y_type_group": "{{label}}, {{count}} articles",
         "groups": {
           "top": "Hauts",
           "bottom": "Bas",
