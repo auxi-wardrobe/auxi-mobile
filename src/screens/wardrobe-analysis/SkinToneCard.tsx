@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.m,
   },
   matchLabel: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextPrimary,
   },
   matchLabelText: {
@@ -187,11 +187,11 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaTextPrimary,
   },
   matchTotal: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextPrimary,
   },
   emptyTitle: {
-    ...theme.typography.aliases.interSemiboldXs,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
   },
   summaryRow: {
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   toneTitle: {
-    ...theme.typography.aliases.interSemiboldXs,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     textTransform: 'uppercase',
   },
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     minHeight: 24,
   },
   bodyText: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextPrimary,
   },
   colorGrid: {
@@ -244,11 +244,11 @@ const styles = StyleSheet.create({
     borderColor: theme.ds.line,
   },
   colorName: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextPrimary,
   },
   tipsTitle: {
-    ...theme.typography.aliases.interSemiboldXs,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
   },
   tips: {

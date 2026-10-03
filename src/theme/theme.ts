@@ -262,7 +262,7 @@ export const theme = {
         letterSpacing: 0.15,
       },
       // Wardrobe Analysis — the one "highlight" size (stat-tile numbers,
-      // best-colour match count). The screen uses only 12px + this 32px.
+      // best-colour match count). The screen uses only 14px + this 32px.
       interDisplayRegular: {
         fontFamily: 'Inter-Regular',
         fontSize: 32,

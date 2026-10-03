@@ -262,10 +262,10 @@ const ItemTypeGroupRow = ({
   );
 };
 
-const STAT_TILE_HEIGHT = 136;
+const STAT_TILE_HEIGHT = 148;
 // Label run starts just under the 32/40 number (paddingTop 16 + 40).
 const STAT_LABEL_TOP = 58;
-const STAT_LABEL_BOX = 96;
+const STAT_LABEL_BOX = 110;
 const STACKED_BAR_HEIGHT = 20;
 const TRACK_HEIGHT = 8;
 const CHEVRON_SIZE = 16;
@@ -278,7 +278,7 @@ export const cardStyles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   cardTitle: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextPrimary,
   },
 });
@@ -327,10 +327,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // 12px so the longest label ("accessories" / "accessoires") fits the
-  // vertical run under the number without truncating.
+  // Vertical label under the number; the tile is tall enough for the
+  // longest one ("accessories" / "accessoires") at 14px.
   statLabel: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextPrimary,
     // Longer than the vertical run on purpose: it's centred in the slot, the
     // text itself (~76pt for "accessories") still fits, and a box sized to
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-90deg' }],
   },
   emptyText: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
   },
   stackedBar: {
@@ -408,11 +408,11 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   groupText: {
-    ...theme.typography.aliases.interSemiboldXs,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
   },
   rowText: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextPrimary,
   },
 });

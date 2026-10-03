@@ -255,12 +255,12 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xl,
   },
   stateTitle: {
-    ...theme.typography.aliases.interSemiboldXs,
+    ...theme.typography.aliases.interSemiboldXsSm,
     color: theme.colors.figmaTextPrimary,
     textAlign: 'center',
   },
   stateBody: {
-    ...theme.typography.aliases.uacBodyXsRegular,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.figmaTextSecondary,
     textAlign: 'center',
   },
