@@ -263,12 +263,12 @@ const ItemTypeGroupRow = ({
 };
 
 const STAT_TILE_HEIGHT = 136;
-// Label run starts just under the 24/32 number (paddingTop 24 + 32).
+// Label run starts just under the 32/40 number (paddingTop 16 + 40).
 const STAT_LABEL_TOP = 58;
 const STAT_LABEL_BOX = 96;
 const STACKED_BAR_HEIGHT = 20;
 const TRACK_HEIGHT = 8;
-const CHEVRON_SIZE = 20;
+const CHEVRON_SIZE = 16;
 
 export const cardStyles = StyleSheet.create({
   card: {
@@ -278,7 +278,7 @@ export const cardStyles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   cardTitle: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextPrimary,
   },
 });
@@ -296,7 +296,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.ds.color.cream,
     overflow: 'hidden',
     alignItems: 'center',
-    paddingTop: theme.spacing.l,
+    // 16 + the 40pt line of the 32px number ends at 56, just above the
+    // vertical label run (STAT_LABEL_TOP).
+    paddingTop: theme.spacing.m,
   },
   statTileTotal: {
     backgroundColor: theme.colors.figmaItemDetailOptionDotBorder,
@@ -309,7 +311,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.figmaItemDetailOptionDotBorder,
   },
   statValue: {
-    ...theme.typography.aliases.playfairDisplaySection,
+    ...theme.typography.aliases.interDisplayRegular,
     color: theme.colors.figmaTextPrimary,
   },
   // Vertical label (Figma reads bottom-to-top): the slot fills the space
@@ -338,7 +340,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-90deg' }],
   },
   emptyText: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextSecondary,
   },
   stackedBar: {
@@ -406,11 +408,11 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   groupText: {
-    ...theme.typography.aliases.uacBodyMdSemibold,
+    ...theme.typography.aliases.interSemiboldXs,
     color: theme.colors.figmaTextPrimary,
   },
   rowText: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextPrimary,
   },
 });

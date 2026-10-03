@@ -171,27 +171,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.m,
     backgroundColor: theme.ds.color.warm100,
-    borderRadius: theme.ds.radius.xs,
+    borderRadius: theme.ds.radius.sm, // 12, like the other cards
     paddingHorizontal: theme.spacing.l,
     paddingVertical: theme.spacing.m,
   },
   matchLabel: {
-    ...theme.typography.aliases.uacBodyMdRegular,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextPrimary,
   },
   matchLabelText: {
     flex: 1,
   },
   matchCount: {
-    ...theme.typography.aliases.playfairDisplaySection,
+    ...theme.typography.aliases.interDisplayRegular,
     color: theme.colors.figmaTextPrimary,
   },
   matchTotal: {
-    ...theme.typography.aliases.uacBodyMdRegular,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextPrimary,
   },
   emptyTitle: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXs,
     color: theme.colors.figmaTextPrimary,
   },
   summaryRow: {
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   portrait: {
     width: PORTRAIT_SIZE,
     height: PORTRAIT_SIZE,
-    borderRadius: theme.spacing.s,
+    borderRadius: theme.borderRadius.m,
     backgroundColor: theme.ds.color.cream,
   },
   summaryText: {
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   toneTitle: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXs,
     color: theme.colors.figmaTextPrimary,
     textTransform: 'uppercase',
   },
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     minHeight: 24,
   },
   bodyText: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextPrimary,
   },
   colorGrid: {
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   colorTile: {
     width: '100%',
     aspectRatio: 1,
-    borderRadius: theme.ds.radius.xs,
+    borderRadius: theme.borderRadius.m, // 8
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: theme.ds.line,
   },
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     color: theme.colors.figmaTextPrimary,
   },
   tipsTitle: {
-    ...theme.typography.aliases.interSemiboldXsSm,
+    ...theme.typography.aliases.interSemiboldXs,
     color: theme.colors.figmaTextPrimary,
   },
   tips: {
