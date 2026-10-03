@@ -8,7 +8,8 @@ import {
   computeColorDistribution,
   computeItemTypes,
   formatPercent,
-  itemColorFamilies,
+  isPatterned,
+  itemColorFamily,
   itemType,
 } from '../wardrobe-analysis';
 
@@ -202,34 +203,64 @@ describe('computeItemTypes', () => {
   });
 });
 
-describe('itemColorFamilies', () => {
+describe('itemColorFamily', () => {
   it('reads catalog palette codes when there is no AI colour', () => {
-    expect(itemColorFamilies(item({ color_code: 'NVY' }))).toEqual(['navy']);
+    expect(itemColorFamily(item({ color_code: 'NVY' }))).toBe('navy');
     expect(
-      itemColorFamilies(item({ physical_attributes: { color_code: 'blk' } })),
-    ).toEqual(['black']);
+      itemColorFamily(item({ physical_attributes: { color_code: 'blk' } })),
+    ).toBe('black');
     expect(
-      itemColorFamilies(item({ human_readable_id: 'USR_L2_TEE_WHT_REG_01' })),
-    ).toEqual(['white']);
-    expect(itemColorFamilies(item({ color_code: 'MUL' }))).toEqual([
-      OTHER_COLOR_ID,
-    ]);
+      itemColorFamily(item({ human_readable_id: 'USR_L2_TEE_WHT_REG_01' })),
+    ).toBe('white');
   });
 
-  it('returns every tagged colour, deduplicated, and ignores the code', () => {
+  it('counts a solid item as its dominant colour only', () => {
+    // White shirt with black buttons → white.
     expect(
-      itemColorFamilies(
+      itemColorFamily(
+        item({ dominant_color: 'white', colors: ['white', 'black'] }),
+      ),
+    ).toBe('white');
+    expect(
+      itemColorFamily(item({ dominant_color: 'black', pattern: 'solid' })),
+    ).toBe('black');
+  });
+
+  it('puts patterned items in other', () => {
+    expect(
+      itemColorFamily(item({ dominant_color: 'navy', pattern: 'striped' })),
+    ).toBe(OTHER_COLOR_ID);
+    expect(
+      itemColorFamily(
         item({
-          dominant_color: 'navy',
-          colors: ['navy blue', 'white', 'off-white'],
           color_code: 'BLK',
+          physical_attributes: { pattern_type: 'PLAID' },
         }),
       ),
-    ).toEqual(['navy', 'white', 'beige']);
+    ).toBe(OTHER_COLOR_ID);
+    expect(itemColorFamily(item({ color_code: 'MUL' }))).toBe(OTHER_COLOR_ID);
+    expect(itemColorFamily(item({ dominant_color: 'floral print' }))).toBe(
+      OTHER_COLOR_ID,
+    );
   });
 
-  it('is empty when the item has no colour at all', () => {
-    expect(itemColorFamilies(item({ name: 'Mystery' }))).toEqual([]);
+  it('is null when the item has no colour at all', () => {
+    expect(itemColorFamily(item({ name: 'Mystery' }))).toBeNull();
+  });
+});
+
+describe('isPatterned', () => {
+  it.each([
+    [{ pattern: 'solid', dominant_color: 'black' }, false],
+    [{ pattern: 'Plain', dominant_color: 'black' }, false],
+    [{ dominant_color: 'black' }, false],
+    [{ physical_attributes: { pattern_type: 'SOLID' } }, false],
+    [{ pattern: 'floral' }, true],
+    [{ physical_attributes: { pattern_type: 'STRIPED' } }, true],
+    [{ dominant_color: 'black and white stripe' }, true],
+    [{ dominant_color: 'leopard' }, true],
+  ])('%o → %s', (fields, expected) => {
+    expect(isPatterned(item(fields as Partial<WardrobeItem>))).toBe(expected);
   });
 });
 
@@ -250,26 +281,22 @@ describe('colorFamilyFor', () => {
 });
 
 describe('computeColorDistribution', () => {
-  it('counts every colour an item contains, as a share of tagged items', () => {
+  it('counts each item once — patterns as other — summing to 100%', () => {
     const shares = computeColorDistribution([
       item({ dominant_color: 'black' }),
-      item({ dominant_color: 'Black' }),
-      item({ dominant_color: 'white' }),
+      item({ dominant_color: 'Black', pattern: 'solid' }),
+      item({ dominant_color: 'white', colors: ['white', 'black'] }),
+      item({ dominant_color: 'navy', pattern: 'striped' }),
       item({ dominant_color: 'leopard print' }),
-      item({ colors: ['navy', 'white'] }), // striped: counts for both
-      item({}), // untagged: not in the denominator
+      item({}), // no colour: not in the denominator
     ]);
     expect(shares.map(s => [s.id, s.count])).toEqual([
       ['black', 2],
-      ['white', 2],
-      ['navy', 1],
-      [OTHER_COLOR_ID, 1],
+      ['white', 1],
+      [OTHER_COLOR_ID, 2],
     ]);
-    // 5 tagged items: black 2/5, white 2/5 — multi-colour items make the
-    // shares add up past 100%.
     expect(shares[0].percent).toBeCloseTo(40);
-    expect(shares[1].percent).toBeCloseTo(40);
-    expect(shares.reduce((sum, s) => sum + s.percent, 0)).toBeCloseTo(120);
+    expect(shares.reduce((sum, s) => sum + s.percent, 0)).toBeCloseTo(100);
   });
 
   it('counts catalog items that only carry a palette code', () => {

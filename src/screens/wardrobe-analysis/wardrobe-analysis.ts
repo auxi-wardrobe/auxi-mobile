@@ -284,13 +284,9 @@ export interface ColorShare {
   /** Colour-family id (`COLOR_FAMILIES[].id`) or `OTHER_COLOR_ID`. */
   id: string;
   hex: string;
-  /** Items that contain this colour (an item can count towards several). */
+  /** Items counted under this colour — each item counts exactly once. */
   count: number;
-  /**
-   * 0–100, share of the colour-tagged items that contain this colour. A
-   * striped navy/white shirt counts for both, so the shares can add up to
-   * more than 100% (as in the Figma).
-   */
+  /** 0–100, share of the coloured items; the shares always add up to 100. */
   percent: number;
 }
 
@@ -298,31 +294,61 @@ const FAMILY_BY_CODE = new Map(
   COLOR_FAMILIES.flatMap(f => f.codes.map(code => [code, f.id] as const)),
 );
 
-/** Every colour name the AI / user tagged: the dominant colour + all of `colors`. */
-const taggedColorNames = (item: WardrobeItem): string[] => {
-  const names: unknown[] = [
-    item.dominant_color,
-    ...(Array.isArray(item.colors) ? item.colors : []),
-  ];
-  return names
-    .filter((name): name is string => typeof name === 'string')
-    .map(name => name.trim())
-    .filter(Boolean);
+// Palette code for "multi-colour" — never a single family.
+const MULTI_COLOR_CODE = 'MUL';
+
+// Colour names that describe a pattern rather than one colour
+// ("black and white stripe", "floral print", "leopard").
+const PATTERN_WORDS =
+  /\b(?:stripe|striped|floral|print|printed|plaid|check|checked|checkered|gingham|tartan|polka|dot|leopard|zebra|animal|camo|camouflage|paisley|tie[- ]?dye|multi|multicolou?r|pattern|patterned|graphic|geometric|houndstooth|herringbone)/i;
+
+const isSolidPattern = (value: unknown): boolean | null => {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'solid' || normalized === 'plain';
+};
+
+/** The colour the item is analysed by: its dominant colour, else its first tagged colour. */
+const primaryColorName = (item: WardrobeItem): string | null => {
+  const dominant =
+    typeof item.dominant_color === 'string' ? item.dominant_color.trim() : '';
+  if (dominant) return dominant;
+  const first = Array.isArray(item.colors) ? item.colors[0] : undefined;
+  return typeof first === 'string' && first.trim() ? first.trim() : null;
 };
 
 /**
- * Every colour family the item contains, deduplicated (empty when it has no
- * colour at all). AI tags (photo uploads, or colours the user edited) win;
- * catalog items fall back to their palette `color_code` — an unknown code
- * (e.g. MUL = multi) is "other".
+ * True when the item is patterned (striped, floral, plaid, multi-colour…)
+ * rather than one solid colour. Read from the AI `pattern`, the catalog
+ * `physical_attributes.pattern_type`, the MUL palette code, or a pattern word
+ * in the colour name itself.
  */
-export const itemColorFamilies = (item: WardrobeItem): string[] => {
-  const names = taggedColorNames(item);
-  if (names.length > 0) {
-    return Array.from(new Set(names.map(colorFamilyFor)));
-  }
+export const isPatterned = (item: WardrobeItem): boolean => {
+  const attrs = item.physical_attributes as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  if (isSolidPattern(item.pattern) === false) return true;
+  if (isSolidPattern(attrs?.pattern_type) === false) return true;
+  if (itemColorCode(item) === MULTI_COLOR_CODE) return true;
+  const name = primaryColorName(item);
+  return name !== null && PATTERN_WORDS.test(name);
+};
+
+/**
+ * The ONE colour family an item counts towards, or null when it has no colour
+ * at all. A solid item counts as its colour — the dominant one when the AI
+ * tagged several (a white shirt with black buttons is white); a patterned
+ * item (stripes, florals, multi-colour…) counts as "other". AI tags win over
+ * the catalog palette `color_code`; an unknown code is "other".
+ */
+export const itemColorFamily = (item: WardrobeItem): string | null => {
+  const name = primaryColorName(item);
   const code = itemColorCode(item);
-  return code ? [FAMILY_BY_CODE.get(code) ?? OTHER_COLOR_ID] : [];
+  if (!name && !code) return null;
+  if (isPatterned(item)) return OTHER_COLOR_ID;
+  if (name) return colorFamilyFor(name);
+  return FAMILY_BY_CODE.get(code as string) ?? OTHER_COLOR_ID;
 };
 
 export const colorFamilyFor = (colorName: string): string => {
@@ -337,31 +363,30 @@ export const colorFamilyFor = (colorName: string): string => {
 const HEX_BY_FAMILY = new Map(COLOR_FAMILIES.map(f => [f.id, f.hex]));
 
 /**
- * Every colour in the wardrobe with the share of items that contain it,
- * largest first ("other" always last). Items without any colour are left out
- * of the denominator, so untagged items don't read as a mystery colour.
+ * Share of each colour family across the wardrobe, largest first ("other" —
+ * patterned and unrecognised colours — always last). Every coloured item
+ * counts exactly once, so the shares add up to 100%. Items without any colour
+ * are left out of the denominator, so they don't read as a mystery colour.
  */
 export const computeColorDistribution = (
   items: WardrobeItem[],
 ): ColorShare[] => {
   const counts = new Map<string, number>();
-  let tagged = 0;
+  let coloured = 0;
   items.forEach(item => {
-    const families = itemColorFamilies(item);
-    if (families.length === 0) return;
-    tagged += 1;
-    families.forEach(family =>
-      counts.set(family, (counts.get(family) ?? 0) + 1),
-    );
+    const family = itemColorFamily(item);
+    if (!family) return;
+    coloured += 1;
+    counts.set(family, (counts.get(family) ?? 0) + 1);
   });
-  if (tagged === 0) return [];
+  if (coloured === 0) return [];
 
   return Array.from(counts.entries())
     .map(([id, count]) => ({
       id,
       hex: HEX_BY_FAMILY.get(id) ?? OTHER_COLOR_HEX,
       count,
-      percent: (count / tagged) * 100,
+      percent: (count / coloured) * 100,
     }))
     .sort((a, b) => {
       if (a.id === OTHER_COLOR_ID) return 1;
