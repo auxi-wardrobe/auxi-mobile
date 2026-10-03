@@ -121,3 +121,32 @@ export const COLOR_FAMILIES: ColorFamily[] = [
 
 /** Swatch for colours that match no family (multi-colour, prints, unknown). */
 export const OTHER_COLOR_HEX = '#d0d5dd';
+
+/**
+ * Representative swatch per backend palette code, for comparing a catalog
+ * item's colour against the skin-tone best colours (a family swatch would be
+ * too coarse: LBL light blue and IND indigo are both "blue"). MUL (multi) has
+ * no single colour and is deliberately absent.
+ */
+export const COLOR_CODE_HEX: Record<string, string> = {
+  BLK: '#17181c',
+  WHT: '#ffffff',
+  GRY: '#9e9e9e',
+  CRM: '#f3ead8',
+  BEG: '#e6d3b3',
+  TAN: '#c8a77e',
+  CAM: '#b9864f',
+  BRN: '#723913',
+  MTL: '#c0c0c0',
+  RED: '#c62828',
+  BUR: '#6c0111',
+  PNK: '#e58fae',
+  YEL: '#f1c232',
+  OLV: '#608c3a',
+  GRN: '#2f8f5b',
+  LBL: '#a0c2f1',
+  BLU: '#5b8fd1',
+  IND: '#3f3d8f',
+  NVY: '#193579',
+  LAV: '#c5a5d3',
+};

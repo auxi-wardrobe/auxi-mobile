@@ -5,7 +5,12 @@
  * needs no new endpoint.
  */
 import { ITEM_TYPES } from '../../content/item-types';
-import { COLOR_FAMILIES, OTHER_COLOR_HEX } from '../../content/wardrobe-colors';
+import {
+  COLOR_CODE_HEX,
+  COLOR_FAMILIES,
+  OTHER_COLOR_HEX,
+} from '../../content/wardrobe-colors';
+import { isHexColor, isSimilarToAny } from '../../utils/color-similarity';
 import {
   WardrobeItem,
   matchesCategoryFilter,
@@ -447,6 +452,45 @@ export const computeColorDistribution = (
       return b.count - a.count;
     });
 };
+
+// ---------------------------------------------------------------------------
+// Best-colour match (skin-tone card)
+// ---------------------------------------------------------------------------
+
+/**
+ * The single colour an item reads as, as a hex — or null when it has none or
+ * is patterned (stripes / florals / multi-colour aren't one colour to
+ * compare). Most precise first: the AI / user-edited `color_hex` (ItemDetail
+ * writes it alongside the colour label), then the catalog palette code, then
+ * the swatch of the colour family its name falls in.
+ */
+export const itemColorHex = (item: WardrobeItem): string | null => {
+  if (isPatterned(item)) return null;
+  // Typed as a string, but AI tagging actually returns an array aligned with
+  // `colors` (docs_agent: "color_hex": ["#7BA5D6", "#FFFFFF"]).
+  const colorHex = item.color_hex as unknown;
+  const rawHex = Array.isArray(colorHex) ? colorHex[0] : colorHex;
+  if (isHexColor(rawHex)) return rawHex.trim();
+  const code = itemColorCode(item);
+  if (code && COLOR_CODE_HEX[code]) return COLOR_CODE_HEX[code];
+  const family = itemColorFamily(item);
+  return family && family !== OTHER_COLOR_ID
+    ? HEX_BY_FAMILY.get(family) ?? null
+    : null;
+};
+
+/**
+ * How many items are in a colour at least 70% alike (perceptually) to one of
+ * `palette` — "Items in colors similar to your best colors: 15 / 45".
+ */
+export const countItemsInPalette = (
+  items: WardrobeItem[],
+  palette: string[],
+): number =>
+  items.reduce((n, item) => {
+    const hex = itemColorHex(item);
+    return hex && isSimilarToAny(hex, palette) ? n + 1 : n;
+  }, 0);
 
 /**
  * "34.5" / "34,5" — one decimal, trailing ".0" dropped, decimal separator per

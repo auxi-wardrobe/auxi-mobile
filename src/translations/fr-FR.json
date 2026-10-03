@@ -523,7 +523,10 @@
           "tip_2": "Portez les couleurs près du visage pour voir l'effet",
           "tip_3": "La lumière naturelle montre les vraies couleurs",
           "tip_4": "La confiance est votre meilleur accessoire !",
-          "tip_5": "Expérimentez et portez ce qui vous fait vous sentir beau ou belle"
+          "tip_5": "Expérimentez et portez ce qui vous fait vous sentir beau ou belle",
+          "match_title": "Articles aux couleurs proches de vos meilleures couleurs",
+          "match_total": " /{{total}}",
+          "match_a11y": "{{count}} articles sur {{total}} ont une couleur proche de vos meilleures couleurs"
         },
         "sheet": {
           "title": "Modifier votre teint",

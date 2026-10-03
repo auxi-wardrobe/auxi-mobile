@@ -3,11 +3,13 @@
  * "Analysis" chip.
  *
  *   - Stat tiles: total items + tops / bottoms / shoes / accessories.
- *   - Color distribution: stacked bar + the top colour families.
- *   - Item types: per-category subtype counts.
- *   - Skin tone: the user's self-reported tone, the colours that flatter it
- *     and tips; "change" opens the skin-tone sheet, whose portraits follow the
- *     user's wardrobe gender (men / women).
+ *   - Color distribution: stacked bar + every colour family (one per item;
+ *     patterned items are "other").
+ *   - Skin tone: the user's self-reported tone, how many items are in a
+ *     colour similar to its best colours, the colours themselves and tips;
+ *     "change" opens the skin-tone sheet, whose portraits follow the user's
+ *     wardrobe gender (men / women).
+ *   - Item types: collapsible per-category subtype counts.
  *
  * Everything is computed client-side from the shared wardrobe list cache
  * (`wardrobeKeys.list('All')`), so arriving from Wardrobe renders instantly.
@@ -27,7 +29,7 @@ import { useSkinTone } from '../../hooks/useSkinTone';
 import { track } from '../../services/analytics';
 import { wardrobeKeys, wardrobeService } from '../../services/wardrobeService';
 import { theme } from '../../theme/theme';
-import type { SkinToneId } from '../../content/skin-tones';
+import { SKIN_TONE_BY_ID, type SkinToneId } from '../../content/skin-tones';
 import type { AppStackParamList } from '../../types/navigation';
 import {
   AnalysisStatTiles,
@@ -42,6 +44,7 @@ import {
   computeCategoryCounts,
   computeColorDistribution,
   computeItemTypes,
+  countItemsInPalette,
 } from './wardrobe-analysis';
 
 type Navigation = NativeStackNavigationProp<
@@ -127,30 +130,64 @@ export const WardrobeAnalysisScreen = () => {
     }
   };
 
+  // "Items in colors similar to your best colors" — only once the wardrobe
+  // has loaded and holds something to compare.
+  const paletteMatch = useMemo(
+    () =>
+      skinTone && wardrobeQuery.data && counts.total > 0
+        ? {
+            count: countItemsInPalette(
+              items,
+              SKIN_TONE_BY_ID[skinTone].palette.map(swatch => swatch.hex),
+            ),
+            total: counts.total,
+          }
+        : null,
+    [skinTone, wardrobeQuery.data, items, counts.total],
+  );
+
+  // Sits between the colour distribution and Item Types (Figma).
+  const skinToneCard = (
+    <SkinToneCard
+      skinTone={skinTone}
+      gender={gender}
+      paletteMatch={paletteMatch}
+      onChange={openSheet}
+    />
+  );
+
   const renderBody = () => {
     if (wardrobeQuery.isLoading) {
       return (
-        <View style={styles.centerState} testID="analysis-loading">
-          <DotsLoader color={theme.colors.figmaAction} />
-        </View>
+        <>
+          <View style={styles.centerState} testID="analysis-loading">
+            <DotsLoader color={theme.colors.figmaAction} />
+          </View>
+          {skinToneCard}
+        </>
       );
     }
     if (wardrobeQuery.isError && !wardrobeQuery.data) {
       return (
-        <View style={styles.centerState} testID="analysis-error-state">
-          <Text style={styles.stateTitle}>
-            {t('common.load_wardrobe_failed_title')}
-          </Text>
-          <Text style={styles.stateBody}>{t('wardrobe.list.error_body')}</Text>
-          <MButton
-            variant="secondary"
-            onPress={() => wardrobeQuery.refetch()}
-            testID="analysis-error-retry"
-            accessibilityLabel={t('wardrobe.analysis.a11y_retry')}
-          >
-            {t('wardrobe.analysis.retry')}
-          </MButton>
-        </View>
+        <>
+          <View style={styles.centerState} testID="analysis-error-state">
+            <Text style={styles.stateTitle}>
+              {t('common.load_wardrobe_failed_title')}
+            </Text>
+            <Text style={styles.stateBody}>
+              {t('wardrobe.list.error_body')}
+            </Text>
+            <MButton
+              variant="secondary"
+              onPress={() => wardrobeQuery.refetch()}
+              testID="analysis-error-retry"
+              accessibilityLabel={t('wardrobe.analysis.a11y_retry')}
+            >
+              {t('wardrobe.analysis.retry')}
+            </MButton>
+          </View>
+          {skinToneCard}
+        </>
       );
     }
     return (
@@ -161,11 +198,10 @@ export const WardrobeAnalysisScreen = () => {
             {t('wardrobe.analysis.empty_body')}
           </Text>
         ) : (
-          <>
-            <ColorDistributionCard shares={colorShares} />
-            <ItemTypesCard groups={itemTypes} />
-          </>
+          <ColorDistributionCard shares={colorShares} />
         )}
+        {skinToneCard}
+        {counts.total > 0 ? <ItemTypesCard groups={itemTypes} /> : null}
       </>
     );
   };
@@ -185,11 +221,6 @@ export const WardrobeAnalysisScreen = () => {
         testID="analysis-scroll"
       >
         {renderBody()}
-        <SkinToneCard
-          skinTone={skinTone}
-          gender={gender}
-          onChange={openSheet}
-        />
       </ScrollView>
 
       <SkinToneSheet

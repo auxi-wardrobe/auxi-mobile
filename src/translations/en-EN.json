@@ -523,7 +523,10 @@
           "tip_2": "Wear colors close to your face to see the effect",
           "tip_3": "Natural light shows true colors best",
           "tip_4": "Confidence is your best accessory!",
-          "tip_5": "Experiment & wear what makes you feel beautiful"
+          "tip_5": "Experiment & wear what makes you feel beautiful",
+          "match_title": "Items in Colors Similar to Your Best Colors",
+          "match_total": " /{{total}}",
+          "match_a11y": "{{count}} of {{total}} items are in colors similar to your best colors"
         },
         "sheet": {
           "title": "Change your skin tone",

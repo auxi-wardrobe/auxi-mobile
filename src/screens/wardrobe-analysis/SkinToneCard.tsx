@@ -19,17 +19,25 @@ const TIP_KEYS = ['1', '2', '3', '4', '5'] as const;
 interface SkinToneCardProps {
   skinTone: SkinToneId | null;
   gender: SkinToneGender;
+  /**
+   * Items in a colour ≥70% alike to one of the tone's best colours, out of
+   * all items. Null until the wardrobe has loaded (the banner is hidden).
+   */
+  paletteMatch?: { count: number; total: number } | null;
   onChange: () => void;
 }
 
 /**
- * Skin-tone card at the bottom of Wardrobe Analysis. With a tone saved it
- * shows the portrait + undertone, the colours that flatter it and general
- * tips; without one it invites the user to pick (opens the same sheet).
+ * Skin-tone card on Wardrobe Analysis (between the colour distribution and
+ * Item Types). With a tone saved it shows how many items already sit in the
+ * tone's best colours, the portrait + undertone, the colours that flatter it
+ * and general tips; without one it invites the user to pick (opens the same
+ * sheet).
  */
 export const SkinToneCard = ({
   skinTone,
   gender,
+  paletteMatch = null,
   onChange,
 }: SkinToneCardProps) => {
   const { t } = useTranslation();
@@ -60,6 +68,29 @@ export const SkinToneCard = ({
 
   return (
     <View style={styles.card} testID={`analysis-skin-tone-card-${skinTone}`}>
+      {paletteMatch ? (
+        <View
+          style={styles.matchBanner}
+          testID="analysis-skin-tone-match"
+          accessible
+          accessibilityLabel={t('wardrobe.analysis.skin_tone.match_a11y', {
+            count: paletteMatch.count,
+            total: paletteMatch.total,
+          })}
+        >
+          <Text style={[styles.matchLabel, styles.matchLabelText]}>
+            {t('wardrobe.analysis.skin_tone.match_title')}
+          </Text>
+          <Text style={styles.matchCount}>
+            {paletteMatch.count}
+            <Text style={styles.matchTotal}>
+              {t('wardrobe.analysis.skin_tone.match_total', {
+                total: paletteMatch.total,
+              })}
+            </Text>
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.summaryRow}>
         <Image
           source={skinTonePortrait(gender, skinTone)}
@@ -133,6 +164,31 @@ const styles = StyleSheet.create({
     borderRadius: theme.ds.radius.sm,
     padding: theme.spacing.uacDimension12,
     gap: theme.spacing.uacDimension12,
+  },
+  // Figma: warm band at the top of the card, label left, "15 /45" right.
+  matchBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.m,
+    backgroundColor: theme.ds.color.warm100,
+    borderRadius: theme.ds.radius.xs,
+    paddingHorizontal: theme.spacing.l,
+    paddingVertical: theme.spacing.m,
+  },
+  matchLabel: {
+    ...theme.typography.aliases.uacBodyMdRegular,
+    color: theme.colors.figmaTextPrimary,
+  },
+  matchLabelText: {
+    flex: 1,
+  },
+  matchCount: {
+    ...theme.typography.aliases.playfairDisplaySection,
+    color: theme.colors.figmaTextPrimary,
+  },
+  matchTotal: {
+    ...theme.typography.aliases.uacBodyMdRegular,
+    color: theme.colors.figmaTextPrimary,
   },
   emptyTitle: {
     ...theme.typography.aliases.interSemiboldXsSm,

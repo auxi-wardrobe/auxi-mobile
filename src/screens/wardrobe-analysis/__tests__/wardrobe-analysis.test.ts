@@ -7,6 +7,8 @@ import {
   computeCategoryCounts,
   computeColorDistribution,
   computeItemTypes,
+  countItemsInPalette,
+  itemColorHex,
   formatPercent,
   isPatterned,
   itemColorFamily,
@@ -379,6 +381,47 @@ describe('computeColorDistribution', () => {
 
   it('is empty when nothing is colour-tagged', () => {
     expect(computeColorDistribution([item({}), item({})])).toEqual([]);
+  });
+});
+
+describe('itemColorHex', () => {
+  it('prefers color_hex, then the palette code, then the family swatch', () => {
+    expect(
+      itemColorHex(
+        item({ color_hex: ['#7BA5D6', '#FFFFFF'] as unknown as string }),
+      ),
+    ).toBe('#7BA5D6');
+    expect(itemColorHex(item({ color_hex: '#123456' }))).toBe('#123456');
+    expect(itemColorHex(item({ color_code: 'LBL' }))).toBe('#a0c2f1');
+    expect(itemColorHex(item({ dominant_color: 'navy blue' }))).toBe('#193579');
+  });
+
+  it('has no single colour for patterned or colourless items', () => {
+    expect(
+      itemColorHex(item({ dominant_color: 'navy', pattern: 'striped' })),
+    ).toBeNull();
+    expect(itemColorHex(item({ color_code: 'MUL' }))).toBeNull();
+    expect(itemColorHex(item({ dominant_color: 'leopard' }))).toBeNull();
+    expect(itemColorHex(item({}))).toBeNull();
+  });
+});
+
+describe('countItemsInPalette', () => {
+  // Fair / Light best colours include soft navy #233661 and baby blue #a0c2f1.
+  const FAIR = ['#c5a5d3', '#cc8698', '#c3ebe3', '#a0c2f1', '#233661'];
+
+  it('counts items whose colour is ≥70% alike to a best colour', () => {
+    const n = countItemsInPalette(
+      [
+        item({ color_code: 'NVY' }), // navy ≈ soft navy ✓
+        item({ color_hex: '#7ba5d6' }), // light blue ≈ baby blue ✓
+        item({ dominant_color: 'red' }), // ✗
+        item({ dominant_color: 'navy', pattern: 'striped' }), // patterned ✗
+        item({}), // no colour ✗
+      ],
+      FAIR,
+    );
+    expect(n).toBe(2);
   });
 });
 

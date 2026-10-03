@@ -523,7 +523,10 @@
           "tip_2": "Mặc màu gần mặt để thấy rõ hiệu quả",
           "tip_3": "Ánh sáng tự nhiên cho thấy màu thật nhất",
           "tip_4": "Tự tin là phụ kiện đẹp nhất!",
-          "tip_5": "Thử nghiệm & mặc những gì khiến bạn thấy đẹp"
+          "tip_5": "Thử nghiệm & mặc những gì khiến bạn thấy đẹp",
+          "match_title": "Số món có màu tương đồng với màu hợp nhất của bạn",
+          "match_total": " /{{total}}",
+          "match_a11y": "{{count}} trên {{total}} món có màu tương đồng với màu hợp nhất của bạn"
         },
         "sheet": {
           "title": "Đổi màu da",
