@@ -417,7 +417,6 @@
         "retry": "Réessayer",
         "a11y_retry": "Recharger votre garde-robe",
         "empty_body": "Ajoutez des articles à votre garde-robe pour voir son analyse.",
-        "percent": "{{value}} %",
         "stats": {
           "total": "articles",
           "tops": "hauts",
@@ -428,6 +427,7 @@
         },
         "color_title": "Répartition des couleurs",
         "color_empty": "Les couleurs apparaîtront ici une fois vos articles étiquetés.",
+        "color_share": "({{count}}) {{value}} %",
         "types_title": "Types d'articles",
         "groups": {
           "top": "Hauts",

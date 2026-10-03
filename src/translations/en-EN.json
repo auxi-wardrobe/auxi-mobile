@@ -417,7 +417,6 @@
         "retry": "Try again",
         "a11y_retry": "Retry loading your wardrobe",
         "empty_body": "Add items to your wardrobe to see its analysis.",
-        "percent": "{{value}}%",
         "stats": {
           "total": "items",
           "tops": "tops",
@@ -428,6 +427,7 @@
         },
         "color_title": "Color distribution",
         "color_empty": "Colors appear here once your items are tagged.",
+        "color_share": "({{count}}) {{value}}%",
         "types_title": "Item Types",
         "groups": {
           "top": "Top",

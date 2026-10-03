@@ -101,7 +101,8 @@ export const ColorDistributionCard = ({ shares }: { shares: ColorShare[] }) => {
                 <View style={styles.colorHeader}>
                   <Text style={styles.rowText}>{colorName(share.id)}</Text>
                   <Text style={styles.rowText}>
-                    {t('wardrobe.analysis.percent', {
+                    {t('wardrobe.analysis.color_share', {
+                      count: share.count,
                       value: formatPercent(share.percent, i18n.language),
                     })}
                   </Text>

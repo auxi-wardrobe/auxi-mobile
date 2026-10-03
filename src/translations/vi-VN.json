@@ -417,7 +417,6 @@
         "retry": "Thử lại",
         "a11y_retry": "Tải lại tủ đồ của bạn",
         "empty_body": "Thêm món đồ vào tủ để xem phân tích.",
-        "percent": "{{value}}%",
         "stats": {
           "total": "món",
           "tops": "áo",
@@ -428,6 +427,7 @@
         },
         "color_title": "Phân bổ màu sắc",
         "color_empty": "Màu sắc sẽ hiện ở đây khi món đồ được gắn thẻ.",
+        "color_share": "({{count}}) {{value}}%",
         "types_title": "Loại món đồ",
         "groups": {
           "top": "Áo",
