@@ -261,6 +261,13 @@ export const theme = {
         lineHeight: 24,
         letterSpacing: 0.15,
       },
+      // Wardrobe Analysis — the one "highlight" size (stat-tile numbers,
+      // best-colour match count). The screen uses only 14px + this 32px.
+      interDisplayRegular: {
+        fontFamily: 'Inter-Regular',
+        fontSize: 32,
+        lineHeight: 40,
+      },
       // Settings redesign (node 2850:15840) — main-list big time value.
       // Figma heading/H2 = Poppins Bold 32/40, letter-spacing −0.64.
       interTimeLg: {

@@ -144,6 +144,9 @@ Comprehensive instrumentation landed 2026-06-16 per `plans/260616-0950-mixpanel-
 | `wardrobe_url_import_submitted` (PR #215) | User taps Import on the web-image preview | `ImportFromWebScreen.tsx:213` | `url_domain?` (hostname only — never the raw URL) |
 | `wardrobe_url_import_completed` (PR #215) | Web-image import created the wardrobe item | `WardrobeScreen.tsx:185` | `method` (`import_web`), `item_id?`, `category?` |
 | `wardrobe_url_import_failed` (PR #215) | Web-image import threw (network / service) | `WardrobeScreen.tsx:192` | — |
+| `wardrobe_analysis_viewed` | Wardrobe Analysis screen opened (from the grid's "Analysis" chip) — once per visit, after the wardrobe list has loaded | `wardrobe-analysis/WardrobeAnalysisScreen.tsx` | `item_count`, `color_family_count`, `has_skin_tone` (bool), `skin_tone_variant` (`men` / `women` — the portrait set shown, from `wardrobe_direction`, falling back to `users.gender`) |
+| `skin_tone_sheet_opened` | "change" / "Choose my skin tone" tapped on the Analysis skin-tone card | `wardrobe-analysis/WardrobeAnalysisScreen.tsx` (`openSheet`) | `skin_tone_variant` (`men` / `women`), `current_skin_tone?` (`fair_light` / `light_medium` / `medium_tan` / `deep_dark`) |
+| `skin_tone_selected` | OK in the skin-tone sheet saved a NEW tone (re-picking the current tone is a no-op and does not fire). Stored on device for now — `user_metadata` rejects unknown keys | `wardrobe-analysis/WardrobeAnalysisScreen.tsx` (`applySkinTone`) | `skin_tone`, `skin_tone_variant` (`men` / `women`), `previous_skin_tone?` |
 | `add_item_method_selected` `import_web` | "Import from web" method picked in the add sheet | `WardrobeScreen.tsx:326` | `method` (`import_web`) |
 
 ### 5.5 Favourite + try-on outcomes

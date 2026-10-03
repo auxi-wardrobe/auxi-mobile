@@ -577,6 +577,15 @@ export const WardrobeScreen = () => {
             sortAccessibilityLabel={t('wardrobe.list.sort.a11y_open', {
               option: t(SORT_OPTION_BY_VALUE[sortValue].labelKey),
             })}
+            analysis={
+              isSelectMode
+                ? undefined
+                : {
+                    label: t('wardrobe.analysis.entry_label'),
+                    accessibilityLabel: t('wardrobe.analysis.a11y_open'),
+                    onPress: () => navigation.navigate('WardrobeAnalysis'),
+                  }
+            }
           />
         ) : null}
 

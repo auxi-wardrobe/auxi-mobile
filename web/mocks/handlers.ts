@@ -40,21 +40,22 @@ const tokens = () => ({ access_token: 'mock-access-token', refresh_token: 'mock-
 
 // ── Capsule Wardrobe mock data ───────────────────────────────────────────────
 // Rich WardrobeItem-shaped items so the capsule tiles/detail render with images.
-const cItem = (id: string, name: string, fam: string, category: string, formality: string) => ({
+// `color` feeds the Wardrobe Analysis colour distribution in the sandbox.
+const cItem = (id: string, name: string, fam: string, category: string, formality: string, color: string | null = null) => ({
   id, name, image_url: img(name, fam), image_png: null, image_studio: null,
-  category, category_family: fam.toUpperCase(), color_code: null, colors: [],
-  dominant_color: null, color_hex: null, occasion: [], mood: [], style_tags: ['minimal'],
+  category, subcategory: category, category_family: fam.toUpperCase(), color_code: null, colors: color ? [color] : [],
+  dominant_color: color, color_hex: null, occasion: [], mood: [], style_tags: ['minimal'],
   description: null, formality_level: formality, is_common_item: false, is_favorited: false,
   usage_frequency: 'NORMAL', is_preparing: false, is_exploration_item: false,
   beautify_status: null, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
 });
 const C_ITEMS = [
-  cItem('citm-1', 'White Oxford Shirt', 'top', 'shirt', 'smart_casual'),
-  cItem('citm-2', 'Navy Trousers', 'bottom', 'trousers', 'smart_casual'),
-  cItem('citm-3', 'Leather Loafers', 'footwear', 'shoes', 'smart_casual'),
-  cItem('citm-4', 'Charcoal Blazer', 'outerwear', 'blazer', 'formal'),
-  cItem('citm-5', 'Beige Knit', 'top', 'knit', 'casual'),
-  cItem('citm-6', 'Wool Scarf', 'accessory', 'scarf', 'casual'),
+  cItem('citm-1', 'White Oxford Shirt', 'top', 'shirt', 'smart_casual', 'white'),
+  cItem('citm-2', 'Navy Trousers', 'bottom', 'trousers', 'smart_casual', 'navy'),
+  cItem('citm-3', 'Leather Loafers', 'footwear', 'shoes', 'smart_casual', 'brown'),
+  cItem('citm-4', 'Charcoal Blazer', 'outerwear', 'blazer', 'formal', 'charcoal'),
+  cItem('citm-5', 'Beige Knit', 'top', 'knit', 'casual', 'beige'),
+  cItem('citm-6', 'Wool Scarf', 'accessory', 'scarf', 'casual', 'black'),
 ];
 const cById: Record<string, ReturnType<typeof cItem>> = Object.fromEntries(C_ITEMS.map(i => [i.id, i]));
 const cOutfit = (id: string, ids: string[], note: string) => ({

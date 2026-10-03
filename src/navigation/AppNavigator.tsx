@@ -21,6 +21,7 @@ import { AppState, View, StyleSheet } from 'react-native';
 import { theme } from '../theme/theme';
 import { MacgieLoader } from '../components/macgie';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
+import { WardrobeAnalysisScreen } from '../screens/wardrobe-analysis/WardrobeAnalysisScreen';
 import { BodyScreen } from '../screens/BodyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { UpgradeScreen } from '../screens/UpgradeScreen';
@@ -312,6 +313,10 @@ export const AppNavigator = () => {
                 name="Wardrobe"
                 component={WardrobeScreen}
                 options={{ gestureEnabled: false, animation: 'none' }}
+              />
+              <Stack.Screen
+                name="WardrobeAnalysis"
+                component={WardrobeAnalysisScreen}
               />
               <Stack.Screen name="Favourite" component={FavouriteScreen} />
               <Stack.Screen

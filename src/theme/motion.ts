@@ -14,7 +14,13 @@ export const motion = {
     reveal: 700,
   },
   distance: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
-  scale: { background: 0.96, press: 0.97, hover: 1.02, select: 1.03, emphasis: 1.05 },
+  scale: {
+    background: 0.96,
+    press: 0.97,
+    hover: 1.02,
+    select: 1.03,
+    emphasis: 1.05,
+  },
   opacity: { hidden: 0, subtle: 0.6, visible: 1 },
   stagger: { tight: 40, normal: 80, relaxed: 120 },
   elevation: { sm: 2, md: 4, lg: 8 },
@@ -52,6 +58,27 @@ export const configureCollapseNext = (reduced: boolean): void => {
     update: { type: LayoutAnimation.Types.easeIn },
     delete: {
       type: LayoutAnimation.Types.easeIn,
+      property: LayoutAnimation.Properties.opacity,
+    },
+  });
+};
+
+/**
+ * Counterpart of `configureCollapseNext` for content being REVEALED inline
+ * (e.g. an accordion section opening): slower than the collapse
+ * (`duration.medium` vs `normal` — open/close asymmetry, motion-rules.md) with
+ * a decelerate curve (`easeOut` stands in for `easing.enter`). New rows fade
+ * in. No-op under reduce-motion.
+ */
+export const configureExpandNext = (reduced: boolean): void => {
+  if (reduced) {
+    return;
+  }
+  LayoutAnimation.configureNext({
+    duration: motion.duration.medium,
+    update: { type: LayoutAnimation.Types.easeOut },
+    create: {
+      type: LayoutAnimation.Types.easeOut,
       property: LayoutAnimation.Properties.opacity,
     },
   });
