@@ -3,7 +3,6 @@ import { track } from '../../services/analytics';
 import {
   buildAroundMatchService,
   type BuildAroundMatchResponse,
-  type BuildAroundStyle,
 } from '../../services/buildAroundMatchService';
 import {
   MIN_LOADING_MS,
@@ -25,9 +24,9 @@ const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 /**
  * Drives one "find the best match from Discovery" run for an anchor item.
  *
- *   start(style)  idle|error → loading → onDone(result)  (or → error)
+ *   start(tag)    idle|error → loading → onDone(result)  (or → error)
  *   cancel()      loading → idle, request aborted, NO error surfaced
- *   retry()       error → loading with the same style
+ *   retry()       error → loading with the same tag
  *
  * Repeated `start()` while loading is a no-op (no duplicate jobs). Mirrors
  * `useMakeItYoursRun` (same minimum loading time so the three steps can be
@@ -41,7 +40,7 @@ export const useBuildAroundMatch = (
   const [errorCode, setErrorCode] = useState<MakeItYoursErrorCode | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const startedAtRef = useRef(0);
-  const styleRef = useRef<BuildAroundStyle>('surprise_me');
+  const tagRef = useRef<string | null>(null);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
@@ -51,7 +50,7 @@ export const useBuildAroundMatch = (
     if (!itemId || controllerRef.current) {
       return;
     }
-    const style = styleRef.current;
+    const trendTag = tagRef.current;
     const controller = new AbortController();
     controllerRef.current = controller;
     startedAtRef.current = Date.now();
@@ -59,7 +58,7 @@ export const useBuildAroundMatch = (
     setErrorCode(null);
 
     Promise.all([
-      buildAroundMatchService.run(itemId, style, controller.signal),
+      buildAroundMatchService.run(itemId, trendTag, controller.signal),
       delay(MIN_LOADING_MS),
     ])
       .then(([result]) => {
@@ -67,7 +66,7 @@ export const useBuildAroundMatch = (
         controllerRef.current = null;
         track('build_around_discovery_completed', {
           item_id: itemId,
-          style,
+          trend_tag: trendTag,
           state: result.state,
           duration_ms: Date.now() - startedAtRef.current,
           algorithm_version: result.algorithm_version,
@@ -79,17 +78,17 @@ export const useBuildAroundMatch = (
         if (controller.signal.aborted || isCancel(error)) return;
         controllerRef.current = null;
         const code = toErrorCode(error);
-        track('build_around_discovery_failed', { item_id: itemId, style, error_code: code });
+        track('build_around_discovery_failed', { item_id: itemId, trend_tag: trendTag, error_code: code });
         setErrorCode(code);
         setStatus('error');
       });
   }, [itemId]);
 
   const start = useCallback(
-    (style: BuildAroundStyle) => {
+    (trendTag: string | null) => {
       if (!itemId || controllerRef.current) return;
-      styleRef.current = style;
-      track('build_around_discovery_started', { item_id: itemId, style });
+      tagRef.current = trendTag;
+      track('build_around_discovery_started', { item_id: itemId, trend_tag: trendTag });
       run();
     },
     [itemId, run],
@@ -97,7 +96,7 @@ export const useBuildAroundMatch = (
 
   const retry = useCallback(() => {
     if (!itemId || controllerRef.current) return;
-    track('build_around_discovery_retried', { item_id: itemId, style: styleRef.current });
+    track('build_around_discovery_retried', { item_id: itemId, trend_tag: tagRef.current });
     run();
   }, [itemId, run]);
 
@@ -109,7 +108,7 @@ export const useBuildAroundMatch = (
       if (itemId) {
         track('build_around_discovery_cancelled', {
           item_id: itemId,
-          style: styleRef.current,
+          trend_tag: tagRef.current,
           elapsed_ms: Date.now() - startedAtRef.current,
         });
       }

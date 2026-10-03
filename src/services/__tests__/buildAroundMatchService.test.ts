@@ -4,6 +4,7 @@ import {
   matchedItemIds,
   matchedItems,
   normalizeBuildAroundState,
+  pickRandomTags,
 } from '../buildAroundMatchService';
 
 jest.mock('../apiClient', () => ({ apiClient: { post: jest.fn() } }));
@@ -39,20 +40,20 @@ const BODY = {
 beforeEach(() => postMock.mockReset());
 
 describe('buildAroundMatchService', () => {
-  it('posts the anchor item and omits style for "Surprise me"', async () => {
+  it('posts the anchor item and omits trend_tag for "Surprise me"', async () => {
     postMock.mockResolvedValue({ data: BODY });
-    await buildAroundMatchService.run('A', 'surprise_me');
+    await buildAroundMatchService.run('A', null);
     expect(postMock).toHaveBeenCalledWith(
       '/discovery/build-around',
-      { item_id: 'A', style: undefined },
+      { item_id: 'A', trend_tag: undefined },
       expect.objectContaining({ timeout: expect.any(Number) }),
     );
   });
 
-  it('sends the chosen style', async () => {
+  it('sends the chosen Discovery tag', async () => {
     postMock.mockResolvedValue({ data: BODY });
-    await buildAroundMatchService.run('A', 'monochrome');
-    expect(postMock.mock.calls[0][1]).toEqual({ item_id: 'A', style: 'monochrome' });
+    await buildAroundMatchService.run('A', 'quiet-luxury');
+    expect(postMock.mock.calls[0][1]).toEqual({ item_id: 'A', trend_tag: 'quiet-luxury' });
   });
 
   it('keeps a real success and exposes only owned pieces, anchor included', async () => {
@@ -68,6 +69,18 @@ describe('buildAroundMatchService', () => {
     expect((await buildAroundMatchService.run('A', 'casual')).state).toBe('no_match');
     postMock.mockResolvedValueOnce({ data: { ...BODY, outfit: null } });
     expect((await buildAroundMatchService.run('A', 'casual')).state).toBe('no_match');
+  });
+
+  it('pickRandomTags returns distinct tags, capped, without mutating the input', () => {
+    const tags = ['a', 'b', 'c', 'd', 'e', 'f', 'a'];
+    const copy = [...tags];
+    const picked = pickRandomTags(tags, 5);
+    expect(picked).toHaveLength(5);
+    expect(new Set(picked).size).toBe(5);
+    expect(picked.every(t => tags.includes(t))).toBe(true);
+    expect(tags).toEqual(copy);
+    expect(pickRandomTags([], 5)).toEqual([]);
+    expect(pickRandomTags(['x', 'y'], 5).sort()).toEqual(['x', 'y']);
   });
 
   it('normalizeBuildAroundState keeps known states', () => {

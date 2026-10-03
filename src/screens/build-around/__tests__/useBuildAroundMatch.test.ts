@@ -73,7 +73,7 @@ describe('useBuildAroundMatch', () => {
     expect(get().status).toBe('idle');
     expect(trackMock).toHaveBeenCalledWith(
       'build_around_discovery_completed',
-      expect.objectContaining({ item_id: 'A', style: 'minimal', state: 'success' }),
+      expect.objectContaining({ item_id: 'A', trend_tag: 'minimal', state: 'success' }),
     );
   });
 

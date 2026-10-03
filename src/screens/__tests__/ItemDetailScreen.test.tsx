@@ -110,6 +110,9 @@ jest.mock('react-i18next', () => {
 });
 
 const mockGetWardrobeItem = jest.fn();
+jest.mock('../../hooks/useDiscovery', () => ({
+  useDiscoveryTrendTags: () => ({ data: ['minimal', 'casual'] }),
+}));
 const mockBuildAroundRun = jest.fn(() => new Promise(() => undefined));
 jest.mock('../../services/buildAroundMatchService', () => ({
   ...jest.requireActual('../../services/buildAroundMatchService'),
@@ -339,7 +342,7 @@ describe('read mode', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('Home', expect.anything());
   });
 
-  it('sheet → Discovery method reveals the style chips and Build starts the search', async () => {
+  it('sheet → Discovery method reveals Surprise me + random Discovery tag chips and Build starts the search', async () => {
     mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
 
     const r = await renderScreen();
@@ -348,6 +351,7 @@ describe('read mode', () => {
 
     press(oneByTestID(r.root, 'build-around-option-discovery'));
     expect(byTestID(r.root, 'build-around-style-section').length).toBeGreaterThan(0);
+    press(oneByTestID(r.root, 'build-around-style-surprise-me-selected'));
     press(oneByTestID(r.root, 'build-around-style-minimal'));
     press(oneByTestID(r.root, 'build-around-build'));
 

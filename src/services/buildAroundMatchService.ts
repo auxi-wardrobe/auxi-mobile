@@ -11,7 +11,7 @@ import {
 // AND (b) contains A, and returns the owned pieces — A + B + C … — that
 // reproduce that Discovery look.
 //
-//   POST /discovery/build-around   { item_id, style? }
+//   POST /discovery/build-around   { item_id, trend_tag? }
 //
 // CONTRACT STATUS: proposed by the mobile side, NOT yet implemented in
 // `wardrobe-backend`. The response deliberately reuses the Make It Yours slot
@@ -20,20 +20,24 @@ import {
 //   • `state: 'success'` ⇒ `outfit` is non-null, `outfit.is_complete` is true,
 //     and one of its slots' items is the anchor (`item.id === anchor item_id`).
 //   • Any other / unknown `state` is treated as `no_match` (forward-compat).
-//   • `style` is omitted for "Surprise me"; otherwise one of `BUILD_AROUND_STYLES`.
+//   • `trend_tag` is omitted for "Surprise me"; otherwise one of the tags from
+//     `GET /discovery/trend-tags` (same vocabulary as the Discovery filter), and
+//     the matched outfit must carry that tag.
 //   • 404 = the anchor item is gone, 422 = anchor not eligible (system item),
 //     429 = rate limited. Unknown keys are ignored.
 
-export const BUILD_AROUND_STYLES = [
-  'surprise_me',
-  'minimal',
-  'casual',
-  'elevated',
-  'classic',
-  'monochrome',
-] as const;
+/** Chips shown on the sheet besides "Surprise me" — random Discovery tags. */
+export const BUILD_AROUND_TAG_CHIP_COUNT = 5;
 
-export type BuildAroundStyle = (typeof BUILD_AROUND_STYLES)[number];
+/** Pick up to `count` distinct tags in random order (Fisher–Yates on a copy). */
+export const pickRandomTags = (tags: readonly string[], count: number): string[] => {
+  const pool = [...new Set(tags)];
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+};
 
 export type BuildAroundMatchState = 'success' | 'no_match' | 'no_wardrobe';
 
@@ -70,12 +74,12 @@ export const buildAroundMatchService = {
    */
   run: async (
     itemId: string,
-    style: BuildAroundStyle,
+    trendTag: string | null,
     signal?: AbortSignal,
   ): Promise<BuildAroundMatchResponse> => {
     const response = await apiClient.post(
       '/discovery/build-around',
-      { item_id: itemId, style: style === 'surprise_me' ? undefined : style },
+      { item_id: itemId, trend_tag: trendTag ?? undefined },
       { signal, timeout: BUILD_AROUND_TIMEOUT_MS },
     );
     const data = response.data as BuildAroundMatchResponse;

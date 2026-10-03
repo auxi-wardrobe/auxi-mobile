@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { track } from '../../services/analytics';
-import type { BuildAroundStyle } from '../../services/buildAroundMatchService';
 import type { AppStackParamList } from '../../types/navigation';
 import type { BuildAroundSheetMode } from './BuildAroundSheet';
 import { useBuildAroundMatch } from './useBuildAroundMatch';
@@ -66,10 +65,14 @@ export const useBuildAroundFlow = (itemId: string) => {
   }, [navigation, itemId]);
 
   const buildFromDiscovery = useCallback(
-    (style: BuildAroundStyle) => {
-      track('build_around_method_chosen', { item_id: itemId, method: 'discovery', style });
+    (trendTag: string | null) => {
+      track('build_around_method_chosen', {
+        item_id: itemId,
+        method: 'discovery',
+        trend_tag: trendTag,
+      });
       setEmpty(null);
-      run.start(style);
+      run.start(trendTag);
     },
     [itemId, run],
   );

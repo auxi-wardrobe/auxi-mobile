@@ -652,15 +652,15 @@ The same redesign (Figma 5456:18703) removed Remix and the heart from the Discov
 
 ### 5.29 Build around this → Find the best match from Discovery
 
-On `ItemDetailScreen`, "Build around this" opens a method sheet ("How should we build your outfit?"): **Build around your items only** (the original pin-and-rebuild on Home, unchanged) or **Find the best match from Discovery** (+ a style chip: Surprise me / Minimal / Casual / Elevated / Classic / Monochrome). The Discovery method calls `POST /api/discovery/build-around` `{ item_id, style? }` — the reverse of Make It Yours: it returns owned pieces (anchor A + B + C …) that rebuild a Discovery outfit. **Backend contract is proposed by mobile and not yet implemented** (`src/services/buildAroundMatchService.ts`). Saved with `POST /favourites` `source: 'build_around_discovery'`. **PII: none — `item_id` is the wardrobe item's internal id; `style` / `error_code` / `state` are closed enums.**
+On `ItemDetailScreen`, "Build around this" opens a method sheet ("How should we build your outfit?"): **Build around your items only** (the original pin-and-rebuild on Home, unchanged) or **Find the best match from Discovery** (+ a chip row: "Surprise me" plus 5 random Discovery trend tags from `GET /discovery/trend-tags`). The Discovery method calls `POST /api/discovery/build-around` `{ item_id, trend_tag? }` — the reverse of Make It Yours: it returns owned pieces (anchor A + B + C …) that rebuild a Discovery outfit. **Backend contract is proposed by mobile and not yet implemented** (`src/services/buildAroundMatchService.ts`). Saved with `POST /favourites` `source: 'build_around_discovery'`. **PII: none — `item_id` is the wardrobe item's internal id; `trend_tag` is a curated Discovery tag; `error_code` / `state` are closed enums.**
 
 | Event | Trigger | Location | Properties |
 |---|---|---|---|
 | `build_around_sheet_opened` | "Build around this" tapped | `src/screens/build-around/useBuildAroundFlow.ts` `open` | `item_id` |
-| `build_around_method_chosen` | "Build" tapped on the sheet | `useBuildAroundFlow.ts` | `item_id`, `method` (`wardrobe` \| `discovery`), `style` (discovery only) |
-| `build_around_discovery_started` / `_retried` | Search started / "Try again" | `src/screens/build-around/useBuildAroundMatch.ts` | `item_id`, `style` |
-| `build_around_discovery_completed` | Search resolved (any state) | `useBuildAroundMatch.ts` | `item_id`, `style`, `state` (`success` \| `no_match` \| `no_wardrobe`), `duration_ms` (includes the 1.8s minimum loading time), `algorithm_version` |
-| `build_around_discovery_failed` | Error state shown | `useBuildAroundMatch.ts` | `item_id`, `style`, `error_code` (`network_error` \| `timeout` \| `server_error` \| `not_found` \| `rate_limited`) |
-| `build_around_discovery_cancelled` | Cancel / scrim / back while loading | `useBuildAroundMatch.ts` `cancel` | `item_id`, `style`, `elapsed_ms` |
+| `build_around_method_chosen` | "Build" tapped on the sheet | `useBuildAroundFlow.ts` | `item_id`, `method` (`wardrobe` \| `discovery`), `trend_tag` (discovery only; null = Surprise me) |
+| `build_around_discovery_started` / `_retried` | Search started / "Try again" | `src/screens/build-around/useBuildAroundMatch.ts` | `item_id`, `trend_tag` |
+| `build_around_discovery_completed` | Search resolved (any state) | `useBuildAroundMatch.ts` | `item_id`, `trend_tag`, `state` (`success` \| `no_match` \| `no_wardrobe`), `duration_ms` (includes the 1.8s minimum loading time), `algorithm_version` |
+| `build_around_discovery_failed` | Error state shown | `useBuildAroundMatch.ts` | `item_id`, `trend_tag`, `error_code` (`network_error` \| `timeout` \| `server_error` \| `not_found` \| `rate_limited`) |
+| `build_around_discovery_cancelled` | Cancel / scrim / back while loading | `useBuildAroundMatch.ts` `cancel` | `item_id`, `trend_tag`, `elapsed_ms` |
 | `build_around_discovery_favourited` / `_unfavourited` | Save / Saved toggled on the result | `src/screens/build-around/BuildAroundMatchResultScreen.tsx` | `item_id`, `outfit_id` (the matched Discovery outfit) |
 

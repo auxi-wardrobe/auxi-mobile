@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Icons } from '../../assets/icons';
@@ -7,9 +7,10 @@ import { MButton, MChip } from '../../components/design-system/lib';
 import { ContextualBottomSheet } from '../../components/features/ContextualBottomSheet';
 import { MacgieLoader } from '../../components/macgie/MacgieLoader';
 import { theme } from '../../theme/theme';
+import { useDiscoveryTrendTags } from '../../hooks/useDiscovery';
 import {
-  BUILD_AROUND_STYLES,
-  type BuildAroundStyle,
+  BUILD_AROUND_TAG_CHIP_COUNT,
+  pickRandomTags,
 } from '../../services/buildAroundMatchService';
 import type { MakeItYoursErrorCode } from '../make-it-yours/useMakeItYoursRun';
 import { buildAroundSheetStyles as styles } from './buildAroundSheetStyles';
@@ -31,7 +32,8 @@ type Props = {
   /** Method 1 — the existing wardrobe-only algorithm (pin + rebuild on Home). */
   onBuildWithWardrobe: () => void;
   /** Method 2 — find the Discovery outfit the user can build around the item. */
-  onBuildFromDiscovery: (style: BuildAroundStyle) => void;
+  /** `null` = "Surprise me" (no tag constraint). */
+  onBuildFromDiscovery: (trendTag: string | null) => void;
   onCancelLoading: () => void;
   onRetry: () => void;
   /** Empty state → back to the method choice. */
@@ -49,6 +51,12 @@ const ERROR_BODY: Record<MakeItYoursErrorCode, string> = {
 };
 
 const MASCOT_SIZE = 56;
+
+/** `quiet-luxury` → `Quiet luxury` (Discovery tags are slugs). */
+export const tagLabel = (tag: string): string => {
+  const spaced = tag.replace(/[-_]+/g, ' ').trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+};
 
 const OptionRow: React.FC<{
   method: BuildAroundMethod;
@@ -99,13 +107,22 @@ export const BuildAroundSheet: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const [method, setMethod] = useState<BuildAroundMethod>('wardrobe');
-  const [style, setStyle] = useState<BuildAroundStyle>('surprise_me');
+  // `null` = Surprise me. Otherwise one of the randomly offered Discovery tags.
+  const [tag, setTag] = useState<string | null>(null);
+
+  // Random Discovery tags, drawn once per open (not on every re-render, or the
+  // chips would reshuffle under the user's finger).
+  const { data: allTags } = useDiscoveryTrendTags();
+  const tagChips = useMemo(
+    () => (visible ? pickRandomTags(allTags ?? [], BUILD_AROUND_TAG_CHIP_COUNT) : []),
+    [visible, allTags],
+  );
 
   // A fresh open always starts from the default (the existing behaviour).
   useEffect(() => {
     if (!visible) {
       setMethod('wardrobe');
-      setStyle('surprise_me');
+      setTag(null);
     }
   }, [visible]);
 
@@ -113,7 +130,7 @@ export const BuildAroundSheet: React.FC<Props> = ({
     if (method === 'wardrobe') {
       onBuildWithWardrobe();
     } else {
-      onBuildFromDiscovery(style);
+      onBuildFromDiscovery(tag);
     }
   };
 
@@ -145,14 +162,21 @@ export const BuildAroundSheet: React.FC<Props> = ({
                 <Text style={styles.headerTitle}>{t('buildAround.style_title')}</Text>
               </View>
               <View style={styles.chips}>
-                {BUILD_AROUND_STYLES.map(key => (
+                <MChip
+                  selected={tag === null}
+                  onPress={() => setTag(null)}
+                  testID={`build-around-style-surprise-me${tag === null ? '-selected' : ''}`}
+                >
+                  {t('buildAround.style_surprise_me')}
+                </MChip>
+                {tagChips.map(key => (
                   <MChip
                     key={key}
-                    selected={style === key}
-                    onPress={() => setStyle(key)}
-                    testID={`build-around-style-${key}${style === key ? '-selected' : ''}`}
+                    selected={tag === key}
+                    onPress={() => setTag(key)}
+                    testID={`build-around-style-${key}${tag === key ? '-selected' : ''}`}
                   >
-                    {t(`buildAround.style_${key}`)}
+                    {tagLabel(key)}
                   </MChip>
                 ))}
               </View>
