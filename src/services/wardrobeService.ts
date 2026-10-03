@@ -201,6 +201,11 @@ export const matchesCategoryFilter = (
       );
     case 'one_piece':
       return (
+        // `one_piece` is the API value the app itself writes (ItemDetail
+        // `toApiCategory`) — without it those items fell out of the
+        // One-Piece filter and the Analysis one-piece group.
+        normalizedItem.includes('one_piece') ||
+        normalizedItem.includes('onepiece') ||
         normalizedItem.includes('dress') ||
         normalizedItem.includes('one-piece') ||
         normalizedItem.includes('one piece') ||

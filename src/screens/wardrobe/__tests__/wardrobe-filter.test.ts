@@ -90,3 +90,12 @@ describe('uploadCategoryHint', () => {
     expect(uploadCategoryHint(['Bottoms'])).toBe('Bottoms');
   });
 });
+
+describe('One-Piece filter', () => {
+  it('keeps items stored with the API value `one_piece`', () => {
+    const ONE_PIECE = item('op', 'one_piece');
+    expect(filterItemsByCategories([TOP, ONE_PIECE], ['One-Piece'])).toEqual([
+      ONE_PIECE,
+    ]);
+  });
+});

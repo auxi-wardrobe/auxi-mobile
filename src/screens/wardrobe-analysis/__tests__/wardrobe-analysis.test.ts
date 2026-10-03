@@ -43,6 +43,8 @@ describe('classifyCategory', () => {
     ['outerwear', 'outerwear'],
     ['denim jacket', 'outerwear'],
     ['dress', 'one_piece'],
+    ['one_piece', 'one_piece'],
+    ['One-piece', 'one_piece'],
     ['shirt dress', 'one_piece'],
     ['accessory', 'accessory'],
     ['hat', 'accessory'],
@@ -221,6 +223,21 @@ describe('computeItemTypes', () => {
           ['boots', 1],
         ],
       ],
+    ]);
+  });
+
+  it('keeps one_piece items in the One Piece group', () => {
+    const groups = computeItemTypes([
+      item({ category: 'one_piece', subcategory: 'dress' }),
+      item({ category: 'one_piece', name: 'Linen Jumpsuit' }),
+      item({ category: 'one_piece' }),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].group).toBe('one_piece');
+    expect(groups[0].types.map(t => [t.typeId, t.count])).toEqual([
+      ['dress', 1],
+      ['jumpsuit', 1],
+      [OTHER_TYPE_ID, 1],
     ]);
   });
 
