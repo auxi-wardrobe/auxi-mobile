@@ -20,6 +20,8 @@ import {
 import { MacgieLoader } from '../components/macgie';
 import { ItemDetailEditPanel } from './item-detail/ItemDetailEditPanel';
 import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
+import { BuildAroundSheet } from './build-around/BuildAroundSheet';
+import { useBuildAroundFlow } from './build-around/useBuildAroundFlow';
 import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { useAiConsentGate } from '../hooks/useAiConsentGate';
@@ -652,15 +654,11 @@ export const ItemDetailScreen = () => {
   // still preparing, failed processing, and already-enhanced items never get
   // the FAB. Full rules: enhance-session.ts#canEnhanceItem.
 
-  const handleBuildAround = () => {
-    // ItemDetail is presented as a modal layer (AppNavigator
-    // presentation:'modal'). navigate('Home',…) to a screen BELOW the modal
-    // updates JS nav state but can leave the native iOS modal still presented
-    // → desync: the sheet stays stuck on top and nothing responds. popTo issues
-    // pop semantics (like the back button's goBack) that dismiss the modal AND
-    // land on Home with the pin intent.
-    navigation.popTo('Home', { pinFromDetail: itemId });
-  };
+  // "Build around this" opens the method sheet: wardrobe-only (the original
+  // pin-and-rebuild on Home, which pops this modal — see useBuildAroundFlow)
+  // or the best Discovery match built from the user's own items.
+  const buildAround = useBuildAroundFlow(itemId);
+  const handleBuildAround = buildAround.open;
 
   if (loading) {
     return (
@@ -837,6 +835,8 @@ export const ItemDetailScreen = () => {
       {/* B1 consent gate for the AI enhancement flow — shown on first FAB tap
           when AI data-sharing consent hasn't been granted yet. */}
       <AiConsentDialog {...enhanceDialogProps} />
+
+      <BuildAroundSheet {...buildAround.sheetProps} />
     </View>
   );
 };
