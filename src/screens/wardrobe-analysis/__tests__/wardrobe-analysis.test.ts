@@ -60,7 +60,7 @@ describe('classifyCategory', () => {
 });
 
 describe('computeCategoryCounts', () => {
-  it('counts tops / bottoms (+ one-pieces) / shoes / accessories', () => {
+  it('counts tops (+ outerwear) / bottoms (+ one-pieces) / shoes / accessories', () => {
     const counts = computeCategoryCounts([
       item({ category: 'top' }),
       item({ category: 'shirt' }),
@@ -72,10 +72,10 @@ describe('computeCategoryCounts', () => {
     ]);
     expect(counts).toEqual({
       total: 7,
-      tops: 2,
+      tops: 3, // top + shirt + jacket (outerwear counts as tops)
       bottoms: 2, // bottom + dress (one-pieces count as bottoms)
       shoes: 1,
-      accessories: 1, // bag; the jacket has no tile, only the total
+      accessories: 1, // bag
     });
   });
 

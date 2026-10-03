@@ -141,8 +141,9 @@ const classifyItem = (item: WardrobeItem): CategoryGroup => {
 };
 
 export interface CategoryCounts {
-  /** Every item — including outerwear / unclassified, which have no tile. */
+  /** Every item — including unclassified ones, which have no tile. */
   total: number;
+  /** Tops, plus outerwear. */
   tops: number;
   /** Bottoms, plus one-pieces (they live in the Bottoms group). */
   bottoms: number;
@@ -159,7 +160,8 @@ export const computeCategoryCounts = (
   let accessories = 0;
   items.forEach(item => {
     const group = classifyItem(item);
-    if (group === 'top') tops += 1;
+    // Outerwear is reported under tops (product decision).
+    if (group === 'top' || group === 'outerwear') tops += 1;
     // One-pieces are reported under bottoms (product decision): the
     // "bottoms" tile matches the Bottoms group in Item Types.
     else if (group === 'bottom' || group === 'one_piece') bottoms += 1;
