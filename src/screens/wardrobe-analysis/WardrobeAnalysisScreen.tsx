@@ -2,7 +2,7 @@
  * Wardrobe Analysis (Figma "Analysis"). Reached from the Wardrobe grid's
  * "Analysis" chip.
  *
- *   - Stat tiles: total items + tops / bottoms / shoes / others.
+ *   - Stat tiles: total items + tops / bottoms / shoes / accessories.
  *   - Color distribution: stacked bar + the top colour families.
  *   - Item types: per-category subtype counts.
  *   - Skin tone: the user's self-reported tone, the colours that flatter it

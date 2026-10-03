@@ -141,12 +141,13 @@ const classifyItem = (item: WardrobeItem): CategoryGroup => {
 };
 
 export interface CategoryCounts {
+  /** Every item — including outerwear / unclassified, which have no tile. */
   total: number;
   tops: number;
+  /** Bottoms, plus one-pieces (they live in the Bottoms group). */
   bottoms: number;
   shoes: number;
-  /** Everything that isn't a top, bottom (incl. one-pieces) or shoe — outerwear, accessories… */
-  others: number;
+  accessories: number;
 }
 
 export const computeCategoryCounts = (
@@ -155,6 +156,7 @@ export const computeCategoryCounts = (
   let tops = 0;
   let bottoms = 0;
   let shoes = 0;
+  let accessories = 0;
   items.forEach(item => {
     const group = classifyItem(item);
     if (group === 'top') tops += 1;
@@ -162,14 +164,9 @@ export const computeCategoryCounts = (
     // "bottoms" tile matches the Bottoms group in Item Types.
     else if (group === 'bottom' || group === 'one_piece') bottoms += 1;
     else if (group === 'shoes') shoes += 1;
+    else if (group === 'accessory') accessories += 1;
   });
-  return {
-    total: items.length,
-    tops,
-    bottoms,
-    shoes,
-    others: items.length - tops - bottoms - shoes,
-  };
+  return { total: items.length, tops, bottoms, shoes, accessories };
 };
 
 export interface ItemTypeEntry {

@@ -422,7 +422,7 @@
           "tops": "hauts",
           "bottoms": "bas",
           "shoes": "chaussures",
-          "others": "autres",
+          "accessories": "accessoires",
           "a11y": "{{count}} {{label}}"
         },
         "color_title": "Répartition des couleurs",

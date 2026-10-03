@@ -60,7 +60,7 @@ describe('classifyCategory', () => {
 });
 
 describe('computeCategoryCounts', () => {
-  it('counts tops / bottoms / shoes and folds everything else into others', () => {
+  it('counts tops / bottoms (+ one-pieces) / shoes / accessories', () => {
     const counts = computeCategoryCounts([
       item({ category: 'top' }),
       item({ category: 'shirt' }),
@@ -75,7 +75,7 @@ describe('computeCategoryCounts', () => {
       tops: 2,
       bottoms: 2, // bottom + dress (one-pieces count as bottoms)
       shoes: 1,
-      others: 2,
+      accessories: 1, // bag; the jacket has no tile, only the total
     });
   });
 
@@ -84,7 +84,7 @@ describe('computeCategoryCounts', () => {
       item({ category: 'clothing', subcategory: 'trousers' }),
       item({ category: 'garment', subcategory: 'knit' }),
     ]);
-    expect(counts).toMatchObject({ tops: 1, bottoms: 1, others: 0 });
+    expect(counts).toMatchObject({ tops: 1, bottoms: 1 });
   });
 
   it('is all zero for an empty wardrobe', () => {
@@ -93,7 +93,7 @@ describe('computeCategoryCounts', () => {
       tops: 0,
       bottoms: 0,
       shoes: 0,
-      others: 0,
+      accessories: 0,
     });
   });
 });

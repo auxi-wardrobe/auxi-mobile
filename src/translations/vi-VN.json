@@ -422,7 +422,7 @@
           "tops": "áo",
           "bottoms": "quần/váy",
           "shoes": "giày",
-          "others": "khác",
+          "accessories": "phụ kiện",
           "a11y": "{{count}} {{label}}"
         },
         "color_title": "Phân bổ màu sắc",

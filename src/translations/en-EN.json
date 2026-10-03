@@ -422,7 +422,7 @@
           "tops": "tops",
           "bottoms": "bottoms",
           "shoes": "shoes",
-          "others": "others",
+          "accessories": "accessories",
           "a11y": "{{count}} {{label}}"
         },
         "color_title": "Color distribution",

@@ -20,11 +20,17 @@ import {
 // Figma "Analysis" — the three data cards above the skin-tone card.
 
 // ---------------------------------------------------------------------------
-// Stat tiles: 45 items · 15 tops · 12 bottoms · 6 shoes · 8 others
+// Stat tiles: 45 items · 15 tops · 12 bottoms · 6 shoes · 8 accessories
 // ---------------------------------------------------------------------------
 
 type StatKey = keyof CategoryCounts;
-const STAT_KEYS: StatKey[] = ['total', 'tops', 'bottoms', 'shoes', 'others'];
+const STAT_KEYS: StatKey[] = [
+  'total',
+  'tops',
+  'bottoms',
+  'shoes',
+  'accessories',
+];
 
 export const AnalysisStatTiles = ({ counts }: { counts: CategoryCounts }) => {
   const { t } = useTranslation();
@@ -257,6 +263,9 @@ const ItemTypeGroupRow = ({
 };
 
 const STAT_TILE_HEIGHT = 136;
+// Label run starts just under the 24/32 number (paddingTop 24 + 32).
+const STAT_LABEL_TOP = 58;
+const STAT_LABEL_BOX = 96;
 const STACKED_BAR_HEIGHT = 20;
 const TRACK_HEIGHT = 8;
 const CHEVRON_SIZE = 20;
@@ -307,17 +316,24 @@ const styles = StyleSheet.create({
   // under the number and the text is rotated inside it.
   statLabelSlot: {
     position: 'absolute',
-    top: 64,
-    bottom: theme.spacing.s,
-    left: 0,
-    right: 0,
+    top: STAT_LABEL_TOP,
+    bottom: theme.spacing.xs,
+    // Wider than the tile so the (pre-rotation) text box isn't squeezed to
+    // the tile width; once rotated the text sits inside the tile.
+    left: -STAT_LABEL_BOX,
+    right: -STAT_LABEL_BOX,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // 12px so the longest label ("accessories" / "accessoires") fits the
+  // vertical run under the number without truncating.
   statLabel: {
-    ...theme.typography.aliases.interBodySm,
+    ...theme.typography.aliases.uacBodyXsRegular,
     color: theme.colors.figmaTextPrimary,
-    width: 64,
+    // Longer than the vertical run on purpose: it's centred in the slot, the
+    // text itself (~76pt for "accessories") still fits, and a box sized to
+    // the run would ellipsize it.
+    width: STAT_LABEL_BOX,
     textAlign: 'center',
     transform: [{ rotate: '-90deg' }],
   },
