@@ -200,45 +200,86 @@ const escapeRegExp = (value: string): string =>
 // Keyword → type, matched at the start of a word (see content/item-types.ts).
 const TYPE_MATCHERS = ITEM_TYPES.map(type => ({
   id: type.id,
+  group: type.group as CategoryGroup,
   pattern: new RegExp(
     `\\b(?:${type.keywords.map(escapeRegExp).join('|')})`,
     'i',
   ),
 }));
 
+// Types an item of `group` may take. An unclassified item ("other") may take
+// any type; everything else only its own group's types, so a top whose name
+// starts a word with "ring" never reads as Jewelry.
+const allowedIn = (group: CategoryGroup, typeGroup: CategoryGroup): boolean =>
+  group === 'other' || group === typeGroup;
+
 // AI tags are snake_case ("t_shirt"); match them like words.
-const typeByKeyword = (text: unknown): string | null => {
+const typeByKeyword = (text: unknown, group: CategoryGroup): string | null => {
   if (typeof text !== 'string' || !text.trim()) return null;
   const words = text.replace(/_/g, ' ');
-  return TYPE_MATCHERS.find(m => m.pattern.test(words))?.id ?? null;
+  return (
+    TYPE_MATCHERS.find(m => allowedIn(group, m.group) && m.pattern.test(words))
+      ?.id ?? null
+  );
 };
 
 const TYPE_BY_CODE = new Map(
-  ITEM_TYPES.flatMap(type => type.codes.map(code => [code, type.id] as const)),
+  ITEM_TYPES.flatMap(type => type.codes.map(code => [code, type] as const)),
 );
 
+const GENERIC_SUBCATEGORIES = new Set([
+  'top',
+  'tops',
+  'bottom',
+  'bottoms',
+  'shoe',
+  'shoes',
+  'footwear',
+  'accessory',
+  'accessories',
+  'outerwear',
+  'one piece',
+  'one_piece',
+  'one-piece',
+  'clothing',
+  'other',
+]);
+
+/** Type id for items whose type can't be told (rendered "Other"). */
+export const OTHER_TYPE_ID = 'other';
+
 /**
- * The item's type: catalog `category_code` (LOF → loafers), else a keyword in
- * the AI `subcategory`, else a keyword in its `name` ("Black Leather
- * Loafers"), else in its category ("jeans"). Unrecognised items keep their raw subcategory as the label, and
- * as a last resort fall back to the category.
+ * The item's type within its group: catalog `category_code` (LOF → loafers),
+ * else a keyword in the AI `subcategory`, its `name` ("Black Leather
+ * Loafers"), the AI `description` ("Light blue denim shirt with white
+ * buttons…"), then its category ("jeans"). Only types of the item's own group
+ * are considered. An unrecognised AI subcategory is kept as a raw label
+ * ("Bustier"); with nothing to go on the item is "other" — never a repeat of
+ * the group name.
  */
 export const itemType = (
   item: WardrobeItem,
-): { typeId: string | null; label: string } | null => {
+  group: CategoryGroup = classifyItem(item),
+): { typeId: string | null; label: string } => {
   const code = itemCategoryCode(item);
+  const byCode = code ? TYPE_BY_CODE.get(code) : undefined;
   const typeId =
-    (code ? TYPE_BY_CODE.get(code) : undefined) ??
-    typeByKeyword(item.subcategory) ??
-    typeByKeyword(item.name) ??
-    typeByKeyword(item.category) ??
-    null;
+    (byCode && allowedIn(group, byCode.group as CategoryGroup)
+      ? byCode.id
+      : null) ??
+    typeByKeyword(item.subcategory, group) ??
+    typeByKeyword(item.name, group) ??
+    typeByKeyword(item.description, group) ??
+    typeByKeyword(item.category, group);
   if (typeId) return { typeId, label: typeId };
-  const raw =
-    (typeof item.subcategory === 'string' && item.subcategory.trim()) ||
-    item.category?.trim() ||
-    '';
-  return raw ? { typeId: null, label: titleCase(raw) } : null;
+
+  const subcategory =
+    typeof item.subcategory === 'string' ? item.subcategory.trim() : '';
+  // A subcategory that just restates the group ("top", "shoes") says nothing.
+  if (subcategory && !GENERIC_SUBCATEGORIES.has(subcategory.toLowerCase())) {
+    return { typeId: null, label: titleCase(subcategory) };
+  }
+  return { typeId: OTHER_TYPE_ID, label: OTHER_TYPE_ID };
 };
 
 /**
@@ -253,8 +294,7 @@ export const computeItemTypes = (items: WardrobeItem[]): ItemTypeGroup[] => {
   items.forEach(item => {
     const group = classifyItem(item);
     groupCounts.set(group, (groupCounts.get(group) ?? 0) + 1);
-    const type = itemType(item);
-    if (!type) return;
+    const type = itemType(item, group);
     const key = type.typeId ? `type:${type.typeId}` : `raw:${type.label}`;
     const types = byGroup.get(group) ?? new Map<string, ItemTypeEntry>();
     const entry = types.get(key) ?? { ...type, count: 0 };
@@ -267,9 +307,12 @@ export const computeItemTypes = (items: WardrobeItem[]): ItemTypeGroup[] => {
     group => ({
       group,
       count: groupCounts.get(group) ?? 0,
-      types: Array.from(byGroup.get(group)?.values() ?? []).sort(
-        (a, b) => b.count - a.count || a.label.localeCompare(b.label),
-      ),
+      types: Array.from(byGroup.get(group)?.values() ?? []).sort((a, b) => {
+        // "Other" (type unknown) always closes the list.
+        if (a.typeId === OTHER_TYPE_ID) return 1;
+        if (b.typeId === OTHER_TYPE_ID) return -1;
+        return b.count - a.count || a.label.localeCompare(b.label);
+      }),
     }),
   );
 };

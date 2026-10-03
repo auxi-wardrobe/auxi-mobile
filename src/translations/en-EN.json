@@ -577,7 +577,8 @@
           "socks": "Socks",
           "sunglasses": "Sunglasses",
           "watch": "Watch",
-          "jewelry": "Jewelry"
+          "jewelry": "Jewelry",
+          "other": "Other"
         }
       }
     },

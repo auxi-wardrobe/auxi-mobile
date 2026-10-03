@@ -11,6 +11,7 @@ import {
   isPatterned,
   itemColorFamily,
   itemType,
+  OTHER_TYPE_ID,
 } from '../wardrobe-analysis';
 
 let seq = 0;
@@ -117,7 +118,7 @@ describe('itemType', () => {
     [{ category: 'top', name: 'Short Sleeve Shirt' }, 'shirt'],
     [{ category: 'accessory', name: 'Wool Socks' }, 'socks'],
   ])('%o → %s', (fields, expected) => {
-    expect(itemType(item(fields as Partial<WardrobeItem>))?.typeId).toBe(
+    expect(itemType(item(fields as Partial<WardrobeItem>)).typeId).toBe(
       expected,
     );
   });
@@ -125,6 +126,42 @@ describe('itemType', () => {
   it('keeps an unrecognised subcategory as a raw label', () => {
     expect(itemType(item({ category: 'top', subcategory: 'bustier' }))).toEqual(
       { typeId: null, label: 'Bustier' },
+    );
+  });
+
+  it('reads the AI description when subcategory and name say nothing', () => {
+    expect(
+      itemType(
+        item({
+          category: 'top',
+          subcategory: 'top',
+          name: 'My favourite',
+          description: 'Light blue denim shirt with white buttons.',
+        }),
+      ).typeId,
+    ).toBe('shirt');
+  });
+
+  it("only takes types of the item's own group", () => {
+    // A top named "Ringer …" must not become Jewelry; a top whose
+    // description mentions jeans must not become Jeans.
+    expect(itemType(item({ category: 'top', name: 'Ringer' })).typeId).toBe(
+      OTHER_TYPE_ID,
+    );
+    expect(
+      itemType(
+        item({
+          category: 'top',
+          description: 'Cropped blouse, pairs well with jeans and loafers.',
+        }),
+      ).typeId,
+    ).toBe('blouse');
+  });
+
+  it('is "other" — not the group name again — when nothing is known', () => {
+    expect(itemType(item({ category: 'top' })).typeId).toBe(OTHER_TYPE_ID);
+    expect(itemType(item({ category: 'top', subcategory: 'top' })).typeId).toBe(
+      OTHER_TYPE_ID,
     );
   });
 
@@ -184,6 +221,18 @@ describe('computeItemTypes', () => {
           ['boots', 1],
         ],
       ],
+    ]);
+  });
+
+  it('lists unknown-type items as "other", last', () => {
+    const [tops] = computeItemTypes([
+      item({ category: 'top' }),
+      item({ category: 'top' }),
+      item({ category: 'top', subcategory: 'blouse' }),
+    ]);
+    expect(tops.types.map(t => [t.typeId, t.count])).toEqual([
+      ['blouse', 1],
+      [OTHER_TYPE_ID, 2],
     ]);
   });
 

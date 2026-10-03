@@ -577,7 +577,8 @@
           "socks": "Chaussettes",
           "sunglasses": "Lunettes de soleil",
           "watch": "Montre",
-          "jewelry": "Bijoux"
+          "jewelry": "Bijoux",
+          "other": "Autres"
         }
       }
     },
