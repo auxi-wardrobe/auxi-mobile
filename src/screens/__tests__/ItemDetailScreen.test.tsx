@@ -110,6 +110,14 @@ jest.mock('react-i18next', () => {
 });
 
 const mockGetWardrobeItem = jest.fn();
+// The real flag module pulls in the ESM-only Unleash SDK, which jest can't load.
+jest.mock('../../services/featureFlags', () => ({
+  FLAGS: { BUILD_AROUND_DISCOVERY: 'build_around_discovery' },
+}));
+let mockBuildAroundFlag = true;
+jest.mock('../../hooks/useFeatureFlag', () => ({
+  useFeatureFlag: () => mockBuildAroundFlag,
+}));
 jest.mock('../../hooks/useDiscovery', () => ({
   useDiscoveryTrendTags: () => ({ data: ['minimal', 'casual'] }),
 }));
@@ -315,6 +323,19 @@ describe('read mode', () => {
   // ItemDetail is presented as presentation:'modal'; navigate() to a screen
   // below the modal desyncs JS nav state from the native presentation, leaving
   // the sheet stuck on top and unresponsive ("can't close, can't do anything").
+  it('flag OFF: "Build around this" skips the sheet and pops to Home with pinFromDetail', async () => {
+    mockBuildAroundFlag = false;
+    try {
+      mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+      const r = await renderScreen();
+      press(oneByTestID(r.root, 'item-detail-mix-btn'));
+      expect(byTestID(r.root, 'build-around-choose')).toHaveLength(0);
+      expect(mockPopTo).toHaveBeenCalledWith('Home', { pinFromDetail: 'item-1' });
+    } finally {
+      mockBuildAroundFlag = true;
+    }
+  });
+
   it('"Build around this" opens the method sheet without leaving the screen', async () => {
     mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
 

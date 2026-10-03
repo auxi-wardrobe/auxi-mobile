@@ -77,6 +77,17 @@ describe('useBuildAroundMatch', () => {
     );
   });
 
+  it('omits trend_tag from analytics for Surprise me (never null)', async () => {
+    runMock.mockResolvedValue(RESULT);
+    const { get } = mount();
+    act(() => get().start(null));
+    await flush();
+    for (const [, props] of trackMock.mock.calls) {
+      expect(props).not.toHaveProperty('trend_tag');
+    }
+    expect(runMock).toHaveBeenCalledWith('A', null, expect.any(Object));
+  });
+
   it('holds the loading state for MIN_LOADING_MS even if the API is instant', async () => {
     runMock.mockResolvedValue(RESULT);
     const { get, onDone } = mount();

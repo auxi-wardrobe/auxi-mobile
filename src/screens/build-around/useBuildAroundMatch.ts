@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { track } from '../../services/analytics';
 import {
   buildAroundMatchService,
+  trendTagProps,
   type BuildAroundMatchResponse,
 } from '../../services/buildAroundMatchService';
 import {
@@ -66,7 +67,7 @@ export const useBuildAroundMatch = (
         controllerRef.current = null;
         track('build_around_discovery_completed', {
           item_id: itemId,
-          trend_tag: trendTag,
+          ...trendTagProps(trendTag),
           state: result.state,
           duration_ms: Date.now() - startedAtRef.current,
           algorithm_version: result.algorithm_version,
@@ -78,7 +79,7 @@ export const useBuildAroundMatch = (
         if (controller.signal.aborted || isCancel(error)) return;
         controllerRef.current = null;
         const code = toErrorCode(error);
-        track('build_around_discovery_failed', { item_id: itemId, trend_tag: trendTag, error_code: code });
+        track('build_around_discovery_failed', { item_id: itemId, ...trendTagProps(trendTag), error_code: code });
         setErrorCode(code);
         setStatus('error');
       });
@@ -88,7 +89,7 @@ export const useBuildAroundMatch = (
     (trendTag: string | null) => {
       if (!itemId || controllerRef.current) return;
       tagRef.current = trendTag;
-      track('build_around_discovery_started', { item_id: itemId, trend_tag: trendTag });
+      track('build_around_discovery_started', { item_id: itemId, ...trendTagProps(trendTag) });
       run();
     },
     [itemId, run],
@@ -96,7 +97,7 @@ export const useBuildAroundMatch = (
 
   const retry = useCallback(() => {
     if (!itemId || controllerRef.current) return;
-    track('build_around_discovery_retried', { item_id: itemId, trend_tag: tagRef.current });
+    track('build_around_discovery_retried', { item_id: itemId, ...trendTagProps(tagRef.current) });
     run();
   }, [itemId, run]);
 
@@ -108,7 +109,7 @@ export const useBuildAroundMatch = (
       if (itemId) {
         track('build_around_discovery_cancelled', {
           item_id: itemId,
-          trend_tag: tagRef.current,
+          ...trendTagProps(tagRef.current),
           elapsed_ms: Date.now() - startedAtRef.current,
         });
       }

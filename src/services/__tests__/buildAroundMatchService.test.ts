@@ -5,6 +5,7 @@ import {
   matchedItems,
   normalizeBuildAroundState,
   pickRandomTags,
+  trendTagProps,
 } from '../buildAroundMatchService';
 
 jest.mock('../apiClient', () => ({ apiClient: { post: jest.fn() } }));
@@ -81,6 +82,12 @@ describe('buildAroundMatchService', () => {
     expect(tags).toEqual(copy);
     expect(pickRandomTags([], 5)).toEqual([]);
     expect(pickRandomTags(['x', 'y'], 5).sort()).toEqual(['x', 'y']);
+  });
+
+  it('trendTagProps omits the key for Surprise me, never sends null', () => {
+    expect(trendTagProps(null)).toEqual({});
+    expect('trend_tag' in trendTagProps(null)).toBe(false);
+    expect(trendTagProps('minimal')).toEqual({ trend_tag: 'minimal' });
   });
 
   it('normalizeBuildAroundState keeps known states', () => {

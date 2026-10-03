@@ -39,6 +39,13 @@ export const pickRandomTags = (tags: readonly string[], count: number): string[]
   return pool.slice(0, count);
 };
 
+/**
+ * Analytics props for the chosen tag. "Surprise me" (`null`) OMITS the key —
+ * the tracking rules say never send `null` for an unknown/absent property.
+ */
+export const trendTagProps = (trendTag: string | null): { trend_tag?: string } =>
+  trendTag ? { trend_tag: trendTag } : {};
+
 export type BuildAroundMatchState = 'success' | 'no_match' | 'no_wardrobe';
 
 const KNOWN_STATES: readonly BuildAroundMatchState[] = ['success', 'no_match', 'no_wardrobe'];
