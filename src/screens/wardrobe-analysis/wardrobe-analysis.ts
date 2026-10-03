@@ -284,8 +284,13 @@ export interface ColorShare {
   /** Colour-family id (`COLOR_FAMILIES[].id`) or `OTHER_COLOR_ID`. */
   id: string;
   hex: string;
+  /** Items that contain this colour (an item can count towards several). */
   count: number;
-  /** 0–100, share of the items that have a colour tag. */
+  /**
+   * 0–100, share of the colour-tagged items that contain this colour. A
+   * striped navy/white shirt counts for both, so the shares can add up to
+   * more than 100% (as in the Figma).
+   */
   percent: number;
 }
 
@@ -293,26 +298,31 @@ const FAMILY_BY_CODE = new Map(
   COLOR_FAMILIES.flatMap(f => f.codes.map(code => [code, f.id] as const)),
 );
 
-/** The colour name an item is analysed by: its dominant colour, else its first tagged colour. */
-const primaryColorName = (item: WardrobeItem): string | null => {
-  const dominant =
-    typeof item.dominant_color === 'string' ? item.dominant_color.trim() : '';
-  if (dominant) return dominant;
-  const first = Array.isArray(item.colors) ? item.colors[0] : undefined;
-  return typeof first === 'string' && first.trim() ? first.trim() : null;
+/** Every colour name the AI / user tagged: the dominant colour + all of `colors`. */
+const taggedColorNames = (item: WardrobeItem): string[] => {
+  const names: unknown[] = [
+    item.dominant_color,
+    ...(Array.isArray(item.colors) ? item.colors : []),
+  ];
+  return names
+    .filter((name): name is string => typeof name === 'string')
+    .map(name => name.trim())
+    .filter(Boolean);
 };
 
 /**
- * The item's colour family, or null when it has no colour at all. AI tags
- * (photo uploads, or a colour the user edited) win; catalog items fall back to
- * their palette `color_code` — an unknown code (e.g. MUL = multi) is "other".
+ * Every colour family the item contains, deduplicated (empty when it has no
+ * colour at all). AI tags (photo uploads, or colours the user edited) win;
+ * catalog items fall back to their palette `color_code` — an unknown code
+ * (e.g. MUL = multi) is "other".
  */
-export const itemColorFamily = (item: WardrobeItem): string | null => {
-  const name = primaryColorName(item);
-  if (name) return colorFamilyFor(name);
+export const itemColorFamilies = (item: WardrobeItem): string[] => {
+  const names = taggedColorNames(item);
+  if (names.length > 0) {
+    return Array.from(new Set(names.map(colorFamilyFor)));
+  }
   const code = itemColorCode(item);
-  if (code) return FAMILY_BY_CODE.get(code) ?? OTHER_COLOR_ID;
-  return null;
+  return code ? [FAMILY_BY_CODE.get(code) ?? OTHER_COLOR_ID] : [];
 };
 
 export const colorFamilyFor = (colorName: string): string => {
@@ -327,9 +337,9 @@ export const colorFamilyFor = (colorName: string): string => {
 const HEX_BY_FAMILY = new Map(COLOR_FAMILIES.map(f => [f.id, f.hex]));
 
 /**
- * Share of each colour family across the wardrobe, largest first ("other"
- * always last). Items without any colour tag are left out of the denominator,
- * so untagged items don't read as a mystery colour.
+ * Every colour in the wardrobe with the share of items that contain it,
+ * largest first ("other" always last). Items without any colour are left out
+ * of the denominator, so untagged items don't read as a mystery colour.
  */
 export const computeColorDistribution = (
   items: WardrobeItem[],
@@ -337,10 +347,12 @@ export const computeColorDistribution = (
   const counts = new Map<string, number>();
   let tagged = 0;
   items.forEach(item => {
-    const family = itemColorFamily(item);
-    if (!family) return;
+    const families = itemColorFamilies(item);
+    if (families.length === 0) return;
     tagged += 1;
-    counts.set(family, (counts.get(family) ?? 0) + 1);
+    families.forEach(family =>
+      counts.set(family, (counts.get(family) ?? 0) + 1),
+    );
   });
   if (tagged === 0) return [];
 

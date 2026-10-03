@@ -61,9 +61,6 @@ export const AnalysisStatTiles = ({ counts }: { counts: CategoryCounts }) => {
 // Color distribution: stacked bar + one row per colour family
 // ---------------------------------------------------------------------------
 
-// Rows listed under the stacked bar; the bar itself shows every family.
-const MAX_COLOR_ROWS = 5;
-
 export const ColorDistributionCard = ({ shares }: { shares: ColorShare[] }) => {
   const { t, i18n } = useTranslation();
   const colorName = (id: string) =>
@@ -91,7 +88,7 @@ export const ColorDistributionCard = ({ shares }: { shares: ColorShare[] }) => {
               />
             ))}
           </View>
-          {shares.slice(0, MAX_COLOR_ROWS).map(share => (
+          {shares.map(share => (
             <View
               key={share.id}
               style={styles.colorRow}

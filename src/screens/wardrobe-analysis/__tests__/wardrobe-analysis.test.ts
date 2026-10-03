@@ -8,7 +8,7 @@ import {
   computeColorDistribution,
   computeItemTypes,
   formatPercent,
-  itemColorFamily,
+  itemColorFamilies,
   itemType,
 } from '../wardrobe-analysis';
 
@@ -202,26 +202,34 @@ describe('computeItemTypes', () => {
   });
 });
 
-describe('itemColorFamily', () => {
+describe('itemColorFamilies', () => {
   it('reads catalog palette codes when there is no AI colour', () => {
-    expect(itemColorFamily(item({ color_code: 'NVY' }))).toBe('navy');
+    expect(itemColorFamilies(item({ color_code: 'NVY' }))).toEqual(['navy']);
     expect(
-      itemColorFamily(item({ physical_attributes: { color_code: 'blk' } })),
-    ).toBe('black');
+      itemColorFamilies(item({ physical_attributes: { color_code: 'blk' } })),
+    ).toEqual(['black']);
     expect(
-      itemColorFamily(item({ human_readable_id: 'USR_L2_TEE_WHT_REG_01' })),
-    ).toBe('white');
-    expect(itemColorFamily(item({ color_code: 'MUL' }))).toBe(OTHER_COLOR_ID);
+      itemColorFamilies(item({ human_readable_id: 'USR_L2_TEE_WHT_REG_01' })),
+    ).toEqual(['white']);
+    expect(itemColorFamilies(item({ color_code: 'MUL' }))).toEqual([
+      OTHER_COLOR_ID,
+    ]);
   });
 
-  it('prefers the AI / user-edited colour over the code', () => {
+  it('returns every tagged colour, deduplicated, and ignores the code', () => {
     expect(
-      itemColorFamily(item({ dominant_color: 'olive', color_code: 'BLK' })),
-    ).toBe('olive');
+      itemColorFamilies(
+        item({
+          dominant_color: 'navy',
+          colors: ['navy blue', 'white', 'off-white'],
+          color_code: 'BLK',
+        }),
+      ),
+    ).toEqual(['navy', 'white', 'beige']);
   });
 
-  it('is null when the item has no colour at all', () => {
-    expect(itemColorFamily(item({ name: 'Mystery' }))).toBeNull();
+  it('is empty when the item has no colour at all', () => {
+    expect(itemColorFamilies(item({ name: 'Mystery' }))).toEqual([]);
   });
 });
 
@@ -242,23 +250,26 @@ describe('colorFamilyFor', () => {
 });
 
 describe('computeColorDistribution', () => {
-  it('shares are of colour-tagged items only, largest first, other last', () => {
+  it('counts every colour an item contains, as a share of tagged items', () => {
     const shares = computeColorDistribution([
       item({ dominant_color: 'black' }),
       item({ dominant_color: 'Black' }),
       item({ dominant_color: 'white' }),
       item({ dominant_color: 'leopard print' }),
-      item({ colors: ['navy', 'white'] }),
+      item({ colors: ['navy', 'white'] }), // striped: counts for both
       item({}), // untagged: not in the denominator
     ]);
     expect(shares.map(s => [s.id, s.count])).toEqual([
       ['black', 2],
-      ['white', 1],
+      ['white', 2],
       ['navy', 1],
       [OTHER_COLOR_ID, 1],
     ]);
+    // 5 tagged items: black 2/5, white 2/5 — multi-colour items make the
+    // shares add up past 100%.
     expect(shares[0].percent).toBeCloseTo(40);
-    expect(shares.reduce((sum, s) => sum + s.percent, 0)).toBeCloseTo(100);
+    expect(shares[1].percent).toBeCloseTo(40);
+    expect(shares.reduce((sum, s) => sum + s.percent, 0)).toBeCloseTo(120);
   });
 
   it('counts catalog items that only carry a palette code', () => {
