@@ -151,8 +151,16 @@ export const ItemTypesCard = ({ groups }: { groups: ItemTypeGroup[] }) => {
             <Text style={styles.groupText}>{group.count}</Text>
           </View>
           {group.types.map(type => (
-            <View key={type.label} style={styles.typeRow}>
-              <Text style={styles.rowText}>{type.label}</Text>
+            <View
+              key={type.typeId ?? `raw:${type.label}`}
+              style={styles.typeRow}
+              testID={`analysis-type-${group.group}-${type.typeId ?? 'raw'}`}
+            >
+              <Text style={styles.rowText}>
+                {type.typeId
+                  ? t(`wardrobe.analysis.types.${type.typeId}`)
+                  : type.label}
+              </Text>
               <Text style={styles.rowText}>{type.count}</Text>
             </View>
           ))}

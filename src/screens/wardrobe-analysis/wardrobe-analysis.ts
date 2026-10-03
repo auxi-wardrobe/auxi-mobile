@@ -4,6 +4,7 @@
  * (`wardrobeKeys.list('All')`), so the screen opens instantly from Wardrobe and
  * needs no new endpoint.
  */
+import { ITEM_TYPES } from '../../content/item-types';
 import { COLOR_FAMILIES, OTHER_COLOR_HEX } from '../../content/wardrobe-colors';
 import {
   WardrobeItem,
@@ -21,6 +22,42 @@ import {
  */
 export const analysableItems = (items: WardrobeItem[]): WardrobeItem[] =>
   items.filter(item => !item.is_deleted && !item.is_preparing);
+
+// ---------------------------------------------------------------------------
+// Catalog codes
+// ---------------------------------------------------------------------------
+
+// Catalog items (Macgie starter items, database adds) carry structured codes
+// instead of AI tags: `category_code` (TEE, LOF…) and `physical_attributes.
+// color_code` (BLK, NVY…). Both are also baked into `human_readable_id`
+// (`{SYS|USR}_{LAYER}_{CATEGORY}_{COLOR}_{FIT}_{INDEX}`, e.g.
+// `USR_L2_TEE_WHT_REG_01`), which is the fallback when the list endpoint
+// omits the explicit fields.
+const HRID_PATTERN = /^(?:SYS|USR)_[A-Z0-9]+_([A-Z]{2,4})_([A-Z]{2,4})(?:_|$)/;
+
+const asCode = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim() ? value.trim().toUpperCase() : null;
+
+const hridParts = (item: WardrobeItem): RegExpMatchArray | null =>
+  typeof item.human_readable_id === 'string'
+    ? item.human_readable_id.toUpperCase().match(HRID_PATTERN)
+    : null;
+
+export const itemCategoryCode = (item: WardrobeItem): string | null =>
+  asCode(item.category_code) ?? hridParts(item)?.[1] ?? null;
+
+export const itemColorCode = (item: WardrobeItem): string | null => {
+  const attrs = item.physical_attributes as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  return (
+    asCode(item.color_code) ??
+    asCode(attrs?.color_code) ??
+    hridParts(item)?.[2] ??
+    null
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Category groups (stat tiles + item-type breakdown)
@@ -74,13 +111,33 @@ const matchesGroup = (
 export const classifyCategory = (category: string | undefined): CategoryGroup =>
   CLASSIFY_ORDER.find(group => matchesGroup(category, group)) ?? 'other';
 
-/** By category; when that is unrecognised, by the AI subcategory ("trousers", "knit"…). */
+// docs_agent CATEGORY_CODE_TO_CATEGORY.
+const GROUP_BY_CATEGORY_CODE: Record<string, CategoryGroup> = {
+  UND: 'top',
+  TEE: 'top',
+  SHR: 'top',
+  BLZ: 'outerwear',
+  JKT: 'outerwear',
+  JNS: 'bottom',
+  CHI: 'bottom',
+  PNT: 'bottom',
+  SNK: 'shoes',
+  BTS: 'shoes',
+  LOF: 'shoes',
+};
+
+/**
+ * By category; when that is unrecognised, by the catalog `category_code`, then
+ * by the AI subcategory ("trousers", "knit"…).
+ */
 const classifyItem = (item: WardrobeItem): CategoryGroup => {
   const byCategory = classifyCategory(item.category);
-  if (byCategory !== 'other' || typeof item.subcategory !== 'string') {
-    return byCategory;
-  }
-  return classifyCategory(item.subcategory);
+  if (byCategory !== 'other') return byCategory;
+  const code = itemCategoryCode(item);
+  if (code && GROUP_BY_CATEGORY_CODE[code]) return GROUP_BY_CATEGORY_CODE[code];
+  return typeof item.subcategory === 'string'
+    ? classifyCategory(item.subcategory)
+    : 'other';
 };
 
 export interface CategoryCounts {
@@ -114,7 +171,12 @@ export const computeCategoryCounts = (
 };
 
 export interface ItemTypeEntry {
-  /** Display label, title-cased from the item's subcategory (or category). */
+  /**
+   * Known type (`ITEM_TYPES[].id`, rendered via `wardrobe.analysis.types.*`)
+   * — or null for an unrecognised one, shown by its raw `label`.
+   */
+  typeId: string | null;
+  /** Fallback display text for an unrecognised type (title-cased tag). */
   label: string;
   count: number;
 }
@@ -132,12 +194,51 @@ const titleCase = (value: string): string =>
     .toLowerCase()
     .replace(/(^|\s)\S/g, ch => ch.toUpperCase());
 
-const itemTypeLabel = (item: WardrobeItem): string | null => {
+const escapeRegExp = (value: string): string =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Keyword → type, matched at the start of a word (see content/item-types.ts).
+const TYPE_MATCHERS = ITEM_TYPES.map(type => ({
+  id: type.id,
+  pattern: new RegExp(
+    `\\b(?:${type.keywords.map(escapeRegExp).join('|')})`,
+    'i',
+  ),
+}));
+
+// AI tags are snake_case ("t_shirt"); match them like words.
+const typeByKeyword = (text: unknown): string | null => {
+  if (typeof text !== 'string' || !text.trim()) return null;
+  const words = text.replace(/_/g, ' ');
+  return TYPE_MATCHERS.find(m => m.pattern.test(words))?.id ?? null;
+};
+
+const TYPE_BY_CODE = new Map(
+  ITEM_TYPES.flatMap(type => type.codes.map(code => [code, type.id] as const)),
+);
+
+/**
+ * The item's type: catalog `category_code` (LOF → loafers), else a keyword in
+ * the AI `subcategory`, else a keyword in its `name` ("Black Leather
+ * Loafers"), else in its category ("jeans"). Unrecognised items keep their raw subcategory as the label, and
+ * as a last resort fall back to the category.
+ */
+export const itemType = (
+  item: WardrobeItem,
+): { typeId: string | null; label: string } | null => {
+  const code = itemCategoryCode(item);
+  const typeId =
+    (code ? TYPE_BY_CODE.get(code) : undefined) ??
+    typeByKeyword(item.subcategory) ??
+    typeByKeyword(item.name) ??
+    typeByKeyword(item.category) ??
+    null;
+  if (typeId) return { typeId, label: typeId };
   const raw =
     (typeof item.subcategory === 'string' && item.subcategory.trim()) ||
     item.category?.trim() ||
     '';
-  return raw ? titleCase(raw) : null;
+  return raw ? { typeId: null, label: titleCase(raw) } : null;
 };
 
 /**
@@ -146,16 +247,19 @@ const itemTypeLabel = (item: WardrobeItem): string | null => {
  * omitted when empty; subtypes are sorted by count, then name.
  */
 export const computeItemTypes = (items: WardrobeItem[]): ItemTypeGroup[] => {
-  const byGroup = new Map<CategoryGroup, Map<string, number>>();
+  const byGroup = new Map<CategoryGroup, Map<string, ItemTypeEntry>>();
   const groupCounts = new Map<CategoryGroup, number>();
 
   items.forEach(item => {
     const group = classifyItem(item);
     groupCounts.set(group, (groupCounts.get(group) ?? 0) + 1);
-    const label = itemTypeLabel(item);
-    if (!label) return;
-    const types = byGroup.get(group) ?? new Map<string, number>();
-    types.set(label, (types.get(label) ?? 0) + 1);
+    const type = itemType(item);
+    if (!type) return;
+    const key = type.typeId ? `type:${type.typeId}` : `raw:${type.label}`;
+    const types = byGroup.get(group) ?? new Map<string, ItemTypeEntry>();
+    const entry = types.get(key) ?? { ...type, count: 0 };
+    entry.count += 1;
+    types.set(key, entry);
     byGroup.set(group, types);
   });
 
@@ -163,9 +267,9 @@ export const computeItemTypes = (items: WardrobeItem[]): ItemTypeGroup[] => {
     group => ({
       group,
       count: groupCounts.get(group) ?? 0,
-      types: Array.from(byGroup.get(group)?.entries() ?? [])
-        .map(([label, count]) => ({ label, count }))
-        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+      types: Array.from(byGroup.get(group)?.values() ?? []).sort(
+        (a, b) => b.count - a.count || a.label.localeCompare(b.label),
+      ),
     }),
   );
 };
@@ -185,6 +289,10 @@ export interface ColorShare {
   percent: number;
 }
 
+const FAMILY_BY_CODE = new Map(
+  COLOR_FAMILIES.flatMap(f => f.codes.map(code => [code, f.id] as const)),
+);
+
 /** The colour name an item is analysed by: its dominant colour, else its first tagged colour. */
 const primaryColorName = (item: WardrobeItem): string | null => {
   const dominant =
@@ -192,6 +300,19 @@ const primaryColorName = (item: WardrobeItem): string | null => {
   if (dominant) return dominant;
   const first = Array.isArray(item.colors) ? item.colors[0] : undefined;
   return typeof first === 'string' && first.trim() ? first.trim() : null;
+};
+
+/**
+ * The item's colour family, or null when it has no colour at all. AI tags
+ * (photo uploads, or a colour the user edited) win; catalog items fall back to
+ * their palette `color_code` — an unknown code (e.g. MUL = multi) is "other".
+ */
+export const itemColorFamily = (item: WardrobeItem): string | null => {
+  const name = primaryColorName(item);
+  if (name) return colorFamilyFor(name);
+  const code = itemColorCode(item);
+  if (code) return FAMILY_BY_CODE.get(code) ?? OTHER_COLOR_ID;
+  return null;
 };
 
 export const colorFamilyFor = (colorName: string): string => {
@@ -216,10 +337,9 @@ export const computeColorDistribution = (
   const counts = new Map<string, number>();
   let tagged = 0;
   items.forEach(item => {
-    const name = primaryColorName(item);
-    if (!name) return;
+    const family = itemColorFamily(item);
+    if (!family) return;
     tagged += 1;
-    const family = colorFamilyFor(name);
     counts.set(family, (counts.get(family) ?? 0) + 1);
   });
   if (tagged === 0) return [];
