@@ -78,7 +78,7 @@ export const MakeItYoursMessagePanel: React.FC<MessagePanelProps> = ({
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.pager}
-          contentContainerStyle={[styles.page, styles.stripContent]}
+          contentContainerStyle={[styles.pageTiles, styles.stripContent]}
           testID="make-it-yours-relevant-items"
         >
           {items.map(item => (

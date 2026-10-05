@@ -61,7 +61,14 @@ export const makeItYoursStyles = StyleSheet.create({
   pager: {
     alignSelf: 'stretch',
   },
+  // One outfit card: its tile row, plus "Discover more options" on the last
+  // revealed card.
   page: {
+    alignItems: 'center',
+    gap: theme.spacing.m,
+  },
+  pageTiles: {
+    alignSelf: 'stretch',
     flexDirection: 'row',
     gap: TILE_GAP,
   },

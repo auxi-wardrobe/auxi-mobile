@@ -463,6 +463,47 @@ describe('DiscoveryOutfitDetailScreen — Make It Yours', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Favourite', { showBackButton: true });
   });
 
+  it('reveals outfits 3 at a time behind "Discover more options"', async () => {
+    const outfits = Array.from({ length: 8 }, (_, i) => ({
+      outfit_hash: `miy_${i}`,
+      is_complete: true,
+      slots: [{ inspiration_item_id: 'item-1', role: 'TOP', item: { ...ownedItem, id: `mine-${i}` } }],
+    }));
+    const r = await openWith(miyResult({ outfits }));
+    const shown = () => outfits.filter((_, i) => byTestID(r.root, `make-it-yours-outfit-${i}`).length > 0).length;
+    // testID propagates down MButton's composite layers — count the host view.
+    const ctaIn = (node: ReactTestInstance) =>
+      byTestID(node, 'make-it-yours-discover-more').filter(n => typeof n.type === 'string');
+    const cta = () => ctaIn(r.root);
+
+    // outfits[0:3], CTA on the 3rd card.
+    expect(shown()).toBe(3);
+    expect(cta()).toHaveLength(1);
+    expect(ctaIn(oneByTestID(r.root, 'make-it-yours-outfit-2'))).toHaveLength(1);
+
+    // → outfits[3:6], CTA moves to the 6th card.
+    press(oneByTestID(r.root, 'make-it-yours-discover-more'));
+    expect(shown()).toBe(6);
+    expect(ctaIn(oneByTestID(r.root, 'make-it-yours-outfit-5'))).toHaveLength(1);
+    expect(ctaIn(oneByTestID(r.root, 'make-it-yours-outfit-2'))).toHaveLength(0);
+
+    // → outfits[6:8]: everything shown, CTA gone.
+    press(oneByTestID(r.root, 'make-it-yours-discover-more'));
+    expect(shown()).toBe(8);
+    expect(cta()).toHaveLength(0);
+  });
+
+  it('hides "Discover more options" when there are 3 outfits or fewer', async () => {
+    const outfits = Array.from({ length: 3 }, (_, i) => ({
+      outfit_hash: `miy_${i}`,
+      is_complete: true,
+      slots: [{ inspiration_item_id: 'item-1', role: 'TOP', item: { ...ownedItem, id: `mine-${i}` } }],
+    }));
+    const r = await openWith(miyResult({ outfits }));
+    expect(byTestID(r.root, 'make-it-yours-outfit-2').length).toBeGreaterThan(0);
+    expect(byTestID(r.root, 'make-it-yours-discover-more')).toHaveLength(0);
+  });
+
   it('Close and Back return to the detail without leaving the screen', async () => {
     const r = await openWith(miyResult());
     press(oneByTestID(r.root, 'discovery-detail-back'));
