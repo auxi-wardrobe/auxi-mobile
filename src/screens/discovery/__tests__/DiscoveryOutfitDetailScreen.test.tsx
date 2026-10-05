@@ -463,6 +463,65 @@ describe('DiscoveryOutfitDetailScreen — Make It Yours', () => {
     expect(mockNavigate).toHaveBeenCalledWith('Favourite', { showBackButton: true });
   });
 
+  it('reveals outfits 3 at a time behind a "Discover more options" page', async () => {
+    const outfits = Array.from({ length: 8 }, (_, i) => ({
+      outfit_hash: `miy_${i}`,
+      is_complete: true,
+      slots: [{ inspiration_item_id: 'item-1', role: 'TOP', item: { ...ownedItem, id: `mine-${i}` } }],
+    }));
+    const r = await openWith(miyResult({ outfits }));
+    const shown = () => outfits.filter((_, i) => byTestID(r.root, `make-it-yours-outfit-${i}`).length > 0).length;
+    // The pager's pages, in order: outfit cards, then the CTA page.
+    const pages = () =>
+      pager()
+        .findAll(n => typeof n.type === 'string' && /^make-it-yours-(outfit-\d+|more-page)$/.test(n.props.testID))
+        .map(n => n.props.testID as string);
+    const pager = () => oneByTestID(r.root, 'make-it-yours-pager');
+
+    // outfits[0:3], then the CTA as its own page after card 3 — not under it.
+    expect(shown()).toBe(3);
+    expect(pages()).toEqual([
+      'make-it-yours-outfit-0',
+      'make-it-yours-outfit-1',
+      'make-it-yours-outfit-2',
+      'make-it-yours-more-page',
+    ]);
+    expect(byTestID(oneByTestID(r.root, 'make-it-yours-outfit-2'), 'make-it-yours-discover-more')).toHaveLength(0);
+
+    // Swiping onto the CTA page keeps Save on card 3, never an unrevealed outfit.
+    mockSaveFavourite.mockResolvedValue({ id: 'fav-2', outfit_hash: 'miy_2', created_at: '', updated: false });
+    act(() => {
+      pager().props.onLayout({ nativeEvent: { layout: { width: 100 } } });
+    });
+    act(() => {
+      pager().props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: 300 } } });
+    });
+    press(oneByTestID(r.root, 'make-it-yours-save'));
+    await flushPromises();
+    expect(mockSaveFavourite).toHaveBeenLastCalledWith(expect.objectContaining({ outfit_hash: 'miy_2' }));
+
+    // → outfits[3:6]; the CTA page moves after card 6.
+    press(oneByTestID(r.root, 'make-it-yours-discover-more'));
+    expect(shown()).toBe(6);
+    expect(pages().slice(-2)).toEqual(['make-it-yours-outfit-5', 'make-it-yours-more-page']);
+
+    // → outfits[6:8]: everything shown, CTA page gone.
+    press(oneByTestID(r.root, 'make-it-yours-discover-more'));
+    expect(shown()).toBe(8);
+    expect(byTestID(r.root, 'make-it-yours-more-page')).toHaveLength(0);
+  });
+
+  it('hides "Discover more options" when there are 3 outfits or fewer', async () => {
+    const outfits = Array.from({ length: 3 }, (_, i) => ({
+      outfit_hash: `miy_${i}`,
+      is_complete: true,
+      slots: [{ inspiration_item_id: 'item-1', role: 'TOP', item: { ...ownedItem, id: `mine-${i}` } }],
+    }));
+    const r = await openWith(miyResult({ outfits }));
+    expect(byTestID(r.root, 'make-it-yours-outfit-2').length).toBeGreaterThan(0);
+    expect(byTestID(r.root, 'make-it-yours-more-page')).toHaveLength(0);
+  });
+
   it('Close and Back return to the detail without leaving the screen', async () => {
     const r = await openWith(miyResult());
     press(oneByTestID(r.root, 'discovery-detail-back'));

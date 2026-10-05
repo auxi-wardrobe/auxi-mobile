@@ -65,6 +65,12 @@ export const makeItYoursStyles = StyleSheet.create({
     flexDirection: 'row',
     gap: TILE_GAP,
   },
+  // "Discover more options" page after the last revealed outfit; the pager
+  // sizes it to the outfit pages' height, the CTA sits centred in it.
+  morePage: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tile: {
     flex: 1,
     aspectRatio: 3 / 4,
