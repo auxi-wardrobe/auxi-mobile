@@ -2,8 +2,7 @@ import { apiClient } from '../apiClient';
 import {
   buildAroundMatchService,
   isBuildAroundSuccess,
-  matchedItemIds,
-  matchedItems,
+  outfitItemIds,
   normalizeBuildAroundState,
   pickRandomTags,
   trendTagProps,
@@ -23,20 +22,24 @@ const item = (id: string) => ({
   layer_code: 'BASE',
   is_common_item: false,
 });
-const OUTFIT = {
+const LOOK = {
+  inspiration: { id: 'o1', title: 'Look', composite_image_url: null },
+  anchor_match: 'exact',
   outfit_hash: 'ba_1',
-  is_complete: true,
+  is_complete: false,
   slots: [
-    { inspiration_item_id: 'i1', role: 'top', item: item('A') },
-    { inspiration_item_id: 'i2', role: 'bottom', item: item('B') },
-    { inspiration_item_id: 'i3', role: 'shoes', item: null },
+    { inspiration_item_id: 'i1', role: 'top', source: 'wardrobe', item: item('A') },
+    { inspiration_item_id: 'i2', role: 'bottom', source: 'wardrobe', item: item('B') },
+    { inspiration_item_id: 'i3', role: 'shoes', source: 'discovery', item: item('D') },
   ],
 };
 const BODY = {
   state: 'success',
-  algorithm_version: 'ba-1',
-  inspiration: { id: 'o1', title: 'Look', composite_image_url: null },
-  outfit: OUTFIT,
+  algorithm_version: 'ba-2',
+  outfits: [LOOK],
+  // Deprecated ba-1 fields — never read.
+  inspiration: null,
+  outfit: null,
 };
 
 beforeEach(() => postMock.mockReset());
@@ -58,29 +61,47 @@ describe('buildAroundMatchService', () => {
     expect(postMock.mock.calls[0][1]).toEqual({ item_id: 'A', trend_tag: 'quiet-luxury' });
   });
 
-  it('keeps a real success and exposes only owned pieces, anchor included', async () => {
+  it('keeps a real success with every look and its sources', async () => {
     postMock.mockResolvedValue({ data: BODY });
     const res = await buildAroundMatchService.run('A', 'casual');
     expect(res.state).toBe('success');
-    expect(matchedItems(res.outfit).map(i => i.id)).toEqual(['A', 'B']);
-    expect(matchedItemIds(res.outfit!)).toEqual(['A', 'B']);
+    expect(isBuildAroundSuccess(res)).toBe(true);
+    expect(res.outfits).toHaveLength(1);
+    expect(res.outfits[0].slots.map(s => s.source)).toEqual(['wardrobe', 'wardrobe', 'discovery']);
+    expect(outfitItemIds(res.outfits[0])).toEqual(['A', 'B', 'D']);
+  });
+
+  it('never claims ownership when unsure', async () => {
+    const odd = {
+      ...LOOK,
+      anchor_match: 'brand_new',
+      is_complete: true, // recomputed from the slots, not trusted
+      slots: [
+        { ...LOOK.slots[0] },
+        { ...LOOK.slots[1], source: 'brand_new_source' },
+        { ...LOOK.slots[2], item: null }, // dropped
+      ],
+    };
+    postMock.mockResolvedValue({ data: { ...BODY, outfits: [odd] } });
+    const [look] = (await buildAroundMatchService.run('A', null)).outfits;
+    expect(look.slots.map(s => s.source)).toEqual(['wardrobe', 'discovery']);
+    expect(look.anchor_match).toBe('similar');
+    expect(look.is_complete).toBe(false);
   });
 
   it('downgrades an unknown state, or a success with nothing to show, to no_match', async () => {
     postMock.mockResolvedValueOnce({ data: { ...BODY, state: 'brand_new_state' } });
     expect((await buildAroundMatchService.run('A', 'casual')).state).toBe('no_match');
-    postMock.mockResolvedValueOnce({ data: { ...BODY, outfit: null } });
+    postMock.mockResolvedValueOnce({ data: { ...BODY, outfits: [] } });
     expect((await buildAroundMatchService.run('A', 'casual')).state).toBe('no_match');
-    postMock.mockResolvedValueOnce({ data: { ...BODY, inspiration: null } });
+    postMock.mockResolvedValueOnce({ data: { ...BODY, outfits: [{ ...LOOK, inspiration: null }] } });
     expect((await buildAroundMatchService.run('A', 'casual')).state).toBe('no_match');
   });
 
-  it('passes the backend non-success shape (null inspiration / outfit) through', async () => {
-    postMock.mockResolvedValue({
-      data: { state: 'no_wardrobe', algorithm_version: 'ba-1', inspiration: null, outfit: null },
-    });
+  it('passes a non-success state through with no looks', async () => {
+    postMock.mockResolvedValue({ data: { state: 'no_match', algorithm_version: 'ba-2', outfits: [] } });
     const res = await buildAroundMatchService.run('A', null);
-    expect(res).toMatchObject({ state: 'no_wardrobe', inspiration: null, outfit: null });
+    expect(res).toEqual({ state: 'no_match', algorithm_version: 'ba-2', outfits: [] });
     expect(isBuildAroundSuccess(res)).toBe(false);
   });
 

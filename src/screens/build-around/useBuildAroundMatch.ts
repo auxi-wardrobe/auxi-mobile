@@ -69,6 +69,7 @@ export const useBuildAroundMatch = (
           item_id: itemId,
           ...trendTagProps(trendTag),
           state: result.state,
+          outfit_count: result.outfits.length,
           duration_ms: Date.now() - startedAtRef.current,
           algorithm_version: result.algorithm_version,
         });

@@ -186,24 +186,49 @@ const D_OUTFITS = ([
   },
 );
 const discoveryHandlers = [
-  // "Build around this → Find the best match from Discovery" (proposed
-  // contract, see services/buildAroundMatchService.ts): echoes the anchor item
-  // + two other owned pieces, matched to the first Discovery look.
+  // "Build around this → Find the best match from Discovery" (ba-2 contract,
+  // see services/buildAroundMatchService.ts): every look "containing" the
+  // anchor — here the first three Discovery looks, best first. The anchor +
+  // some owned pieces come from the wardrobe; the rest are Discovery pieces
+  // (`source: 'discovery'`) so the preview shows the badge. Look 3 is a
+  // near-color alternative (`anchor_match: 'similar'`).
   http.post('*/api/discovery/build-around', async ({ request }) => {
     const { item_id: anchorId } = (await request.json()) as { item_id: string };
-    const look = D_OUTFITS[0];
-    const owned = [anchorId, ...C_ITEMS.map(i => i.id).filter(id => id !== anchorId)].slice(0, 3);
-    const byId = (id: string) => C_ITEMS.find(i => i.id === id) ?? { ...C_ITEMS[0], id };
+    const owned = C_ITEMS.filter(i => i.id !== anchorId);
+    const anchor = C_ITEMS.find(i => i.id === anchorId) ?? { ...C_ITEMS[0], id: anchorId };
+    const piece = (src: (typeof C_ITEMS)[number], lookId: string) => ({
+      ...src,
+      id: `${lookId}-${src.id}`,
+      is_common_item: true,
+    });
+    const plan: Array<[number, number, 'exact' | 'similar']> = [
+      [0, 2, 'exact'], // owns 3 of 4
+      [1, 1, 'exact'], // owns 2 of 4
+      [2, 0, 'similar'], // owns only the anchor
+    ];
     await delay(1200);
     return HttpResponse.json({
       state: 'success',
-      algorithm_version: 'mock-1',
-      inspiration: { id: look.id, title: look.title, composite_image_url: look.composite_image_url },
-      outfit: {
-        outfit_hash: `mock_ba_${owned.join('_')}`,
-        is_complete: true,
-        slots: owned.map((id, i) => ({ inspiration_item_id: `mock-i${i}`, role: '', item: byId(id) })),
-      },
+      algorithm_version: 'mock-2',
+      outfits: plan.map(([lookIndex, ownedCount, anchorMatch]) => {
+        const look = D_OUTFITS[lookIndex];
+        const others = owned.slice(0, 3);
+        const slots = [
+          { source: 'wardrobe', item: anchor },
+          ...others.map((src, i) =>
+            i < ownedCount
+              ? { source: 'wardrobe', item: src }
+              : { source: 'discovery', item: piece(src, look.id) },
+          ),
+        ];
+        return {
+          inspiration: { id: look.id, title: look.title, composite_image_url: look.composite_image_url },
+          anchor_match: anchorMatch,
+          outfit_hash: `mock_ba_${look.id}_${anchorId}`,
+          is_complete: ownedCount === others.length,
+          slots: slots.map((slot, i) => ({ inspiration_item_id: `${look.id}-i${i}`, role: '', ...slot })),
+        };
+      }),
     });
   }),
   http.get('*/api/discovery/outfits', ({ request }) => {
