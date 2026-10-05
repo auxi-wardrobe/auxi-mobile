@@ -19,9 +19,16 @@ const trackMock = track as jest.Mock;
 
 const RESULT = {
   state: 'success',
-  algorithm_version: 'ba-1',
-  inspiration: { id: 'o1', title: 'Look', composite_image_url: null },
-  outfit: { outfit_hash: 'ba_x', is_complete: true, slots: [] },
+  algorithm_version: 'ba-2',
+  outfits: [
+    {
+      inspiration: { id: 'o1', title: 'Look', composite_image_url: null },
+      anchor_match: 'exact',
+      outfit_hash: 'ba_x',
+      is_complete: true,
+      slots: [],
+    },
+  ],
 };
 
 type Api = ReturnType<typeof useBuildAroundMatch>;

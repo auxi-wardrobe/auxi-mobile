@@ -22,8 +22,8 @@ type EmptyReason = 'no_match' | 'no_wardrobe';
  *
  * Dismissing the sheet at any point cancels a running search.
  *
- * Gated by `build_around_discovery` (keep OFF in prod until auxi-backend#192
- * is deployed):
+ * Gated by `build_around_discovery` (keep OFF in prod until auxi-backend#193
+ * — the ba-2 multi-look contract — is deployed):
  * flag OFF → `open()` skips the sheet and runs the wardrobe method directly,
  * i.e. exactly the pre-feature behaviour.
  */

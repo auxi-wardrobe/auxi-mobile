@@ -1,5 +1,6 @@
-// "Find the best match from Discovery" result: owned pieces (anchor + others)
-// under the matched Discovery cover, Save favourites the OWNED outfit.
+// "Find the best match from Discovery" result: one page per Discovery look
+// containing the anchor; unowned pieces carry a Discovery badge; the cover,
+// title and Save follow the look on screen.
 
 import React from 'react';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
@@ -35,22 +36,29 @@ const item = (id: string) => ({
   layer_code: 'BASE',
   is_common_item: false,
 });
-const mockParams = {
-  itemId: 'A',
-  result: {
-    state: 'success',
-    algorithm_version: 'ba-1',
-    inspiration: { id: 'o1', title: 'Quiet luxury', composite_image_url: null },
-    outfit: {
-      outfit_hash: 'ba_1',
-      is_complete: true,
-      slots: [
-        { inspiration_item_id: 'i1', role: 'top', item: item('A') },
-        { inspiration_item_id: 'i2', role: 'bottom', item: item('B') },
-        { inspiration_item_id: 'i3', role: 'shoes', item: null },
-      ],
-    },
-  },
+const look = (
+  id: string,
+  title: string,
+  slots: Array<[string, 'wardrobe' | 'discovery']>,
+  anchor_match: 'exact' | 'similar' = 'exact',
+) => ({
+  inspiration: { id, title, composite_image_url: null },
+  anchor_match,
+  outfit_hash: `ba_${id}`,
+  is_complete: slots.every(([, source]) => source === 'wardrobe'),
+  slots: slots.map(([itemId, source], i) => ({
+    inspiration_item_id: `${id}-i${i}`,
+    role: '',
+    source,
+    item: { ...item(itemId), is_common_item: source === 'discovery' },
+  })),
+});
+let mockParams: { itemId: string; result: Record<string, unknown> };
+const setLooks = (...outfits: ReturnType<typeof look>[]) => {
+  mockParams = {
+    itemId: 'A',
+    result: { state: 'success', algorithm_version: 'ba-2', outfits },
+  };
 };
 
 const byTestID = (root: ReactTestInstance, id: string) =>
@@ -69,18 +77,43 @@ const render = async () => {
 };
 
 beforeEach(() => {
+  setLooks(
+    look('o1', 'Quiet luxury', [['A', 'wardrobe'], ['B', 'wardrobe'], ['D1', 'discovery']]),
+    look('o2', 'Weekend', [['A', 'wardrobe'], ['D2', 'discovery']], 'similar'),
+  );
   mockGoBack.mockReset();
   (favouriteService.saveFavourite as jest.Mock).mockReset();
 });
 
 describe('BuildAroundMatchResultScreen', () => {
-  it('shows the Discovery look title and only the owned pieces, anchor flagged', async () => {
+  it('shows the first look: title, owned pieces, anchor flagged, Discovery pieces badged', async () => {
     const { root } = await render();
     expect(byTestID(root, 'build-around-result-title')[0].props.children).toBe('Quiet luxury');
     expect(byTestID(root, 'build-around-result-item-A-anchor').length).toBeGreaterThan(0);
     expect(byTestID(root, 'build-around-result-item-B').length).toBeGreaterThan(0);
-    // The empty slot is simply left out — never a fabricated tile.
-    expect(byTestID(root, 'build-around-result-item-null')).toHaveLength(0);
+    expect(byTestID(root, 'build-around-result-item-D1-discovery').length).toBeGreaterThan(0);
+    expect(byTestID(root, 'build-around-result-item-D1-badge').length).toBeGreaterThan(0);
+    // Owned pieces carry no badge.
+    expect(byTestID(root, 'build-around-result-item-B-badge')).toHaveLength(0);
+    // Exact-color look → no "similar" label.
+    expect(byTestID(root, 'build-around-result-similar')).toHaveLength(0);
+  });
+
+  it('renders one page per look with dots, and swiping switches the title', async () => {
+    const { root } = await render();
+    expect(byTestID(root, 'build-around-result-items-1').length).toBeGreaterThan(0);
+    expect(byTestID(root, 'build-around-result-dots').length).toBeGreaterThan(0);
+    const pager = byTestID(root, 'build-around-result-pager')[0];
+    act(() => pager.props.onLayout({ nativeEvent: { layout: { width: 300 } } }));
+    act(() => pager.props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: 300 } } }));
+    expect(byTestID(root, 'build-around-result-title')[0].props.children).toBe('Weekend');
+    expect(byTestID(root, 'build-around-result-similar').length).toBeGreaterThan(0);
+  });
+
+  it('hides the dots for a single look', async () => {
+    setLooks(look('o1', 'Quiet luxury', [['A', 'wardrobe']]));
+    const { root } = await render();
+    expect(byTestID(root, 'build-around-result-dots')).toHaveLength(0);
   });
 
   it('Close goes back', async () => {
@@ -89,7 +122,7 @@ describe('BuildAroundMatchResultScreen', () => {
     expect(mockGoBack).toHaveBeenCalled();
   });
 
-  it('Save favourites the owned item ids with source build_around_discovery', async () => {
+  it('Save favourites the look on screen (Discovery pieces included)', async () => {
     (favouriteService.saveFavourite as jest.Mock).mockResolvedValue({ id: 'fav-1' });
     const { root } = await render();
     await act(async () => {
@@ -97,8 +130,8 @@ describe('BuildAroundMatchResultScreen', () => {
     });
     expect(favouriteService.saveFavourite).toHaveBeenCalledWith(
       expect.objectContaining({
-        outfit_hash: 'ba_1',
-        item_ids: ['A', 'B'],
+        outfit_hash: 'ba_o1',
+        item_ids: ['A', 'B', 'D1'],
         source: 'build_around_discovery',
         title: 'Quiet luxury',
       }),
