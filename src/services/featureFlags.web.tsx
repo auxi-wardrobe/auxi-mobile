@@ -11,6 +11,10 @@ import React from 'react';
 
 export const FLAGS = {
   TRENDING_ITEM_DROP: 'trending_item_drop',
+  // "Build around this → Find the best match from Discovery". Gated until
+  // `POST /discovery/build-around` ships in the backend; OFF = "Build around
+  // this" keeps its original direct pin-and-rebuild behaviour (no sheet).
+  BUILD_AROUND_DISCOVERY: 'build_around_discovery',
 } as const;
 
 export type FlagName = (typeof FLAGS)[keyof typeof FLAGS];

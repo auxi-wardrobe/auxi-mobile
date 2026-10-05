@@ -186,6 +186,26 @@ const D_OUTFITS = ([
   },
 );
 const discoveryHandlers = [
+  // "Build around this → Find the best match from Discovery" (proposed
+  // contract, see services/buildAroundMatchService.ts): echoes the anchor item
+  // + two other owned pieces, matched to the first Discovery look.
+  http.post('*/api/discovery/build-around', async ({ request }) => {
+    const { item_id: anchorId } = (await request.json()) as { item_id: string };
+    const look = D_OUTFITS[0];
+    const owned = [anchorId, ...C_ITEMS.map(i => i.id).filter(id => id !== anchorId)].slice(0, 3);
+    const byId = (id: string) => C_ITEMS.find(i => i.id === id) ?? { ...C_ITEMS[0], id };
+    await delay(1200);
+    return HttpResponse.json({
+      state: 'success',
+      algorithm_version: 'mock-1',
+      inspiration: { id: look.id, title: look.title, composite_image_url: look.composite_image_url },
+      outfit: {
+        outfit_hash: `mock_ba_${owned.join('_')}`,
+        is_complete: true,
+        slots: owned.map((id, i) => ({ inspiration_item_id: `mock-i${i}`, role: '', item: byId(id) })),
+      },
+    });
+  }),
   http.get('*/api/discovery/outfits', ({ request }) => {
     const q = new URL(request.url).searchParams;
     const wanted = (q.get('color') ?? '').split(',').filter(Boolean);

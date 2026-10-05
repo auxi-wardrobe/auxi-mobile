@@ -9,6 +9,7 @@ import type { BodyShape } from '../services/bodyService';
 import type { CapsuleOutfitSource } from '../services/capsuleService';
 import type { UsageLimitFeature } from '../hooks/useUsageLimitGate';
 import type { DiscoverySeason } from '../services/discoveryService';
+import type { BuildAroundMatchSuccess } from '../services/buildAroundMatchService';
 
 /**
  * AU-242 — UAC v2 auth stack routes.
@@ -280,6 +281,11 @@ export type AppStackParamList = {
     displayUri: string;
     origin?: 'itemDetail' | 'wardrobe';
   };
+  // "Build around this → Find the best match from Discovery" result: the
+  // matched Discovery look + the owned pieces (anchor `itemId` + others) that
+  // rebuild it. Pushed ON TOP of the ItemDetail modal (never navigate below a
+  // presented modal). `result` is the serializable service response.
+  BuildAroundMatchResult: { itemId: string; result: BuildAroundMatchSuccess };
   // __DEV__-only in-app Design System reference / style-guide catalog.
   // Reached from the Settings "Version" row in dev builds; not shipped to prod.
   DesignSystem: undefined;

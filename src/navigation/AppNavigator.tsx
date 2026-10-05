@@ -9,6 +9,7 @@ import { HomeLandingScreen } from '../screens/home/HomeLandingScreen';
 import { AppWelcomeScreen } from '../screens/AppWelcomeScreen';
 import { ItemDetailScreen } from '../screens/ItemDetailScreen';
 import { EnhanceImageScreen } from '../screens/item-detail/EnhanceImageScreen';
+import { BuildAroundMatchResultScreen } from '../screens/build-around/BuildAroundMatchResultScreen';
 import { LocationPermissionScreen } from '../screens/LocationPermissionScreen';
 import { OnboardingWardrobeScreen } from '../onboarding/v2/OnboardingWardrobeScreen';
 import { OnboardingFitScreen } from '../onboarding/v2/OnboardingFitScreen';
@@ -374,6 +375,12 @@ export const AppNavigator = () => {
               <Stack.Screen
                 name="EnhanceImage"
                 component={EnhanceImageScreen}
+              />
+              {/* "Find the best match from Discovery" result — pushed on top
+                  of the ItemDetail modal, same pattern as EnhanceImage. */}
+              <Stack.Screen
+                name="BuildAroundMatchResult"
+                component={BuildAroundMatchResultScreen}
               />
               <Stack.Screen name="Database" component={DatabaseScreen} />
               <Stack.Screen

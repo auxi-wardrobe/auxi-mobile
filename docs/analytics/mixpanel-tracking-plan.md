@@ -652,3 +652,18 @@ The same redesign (Figma 5456:18703) removed Remix and the heart from the Discov
 | `make_it_yours_empty_cta_tapped` | CTA on a non-success result | `useMakeItYoursPanel.ts` / `MakeItYoursActions.tsx` | `state`, `cta` (`explore_another` \| `add_clothes` \| `back`) |
 
 > **Funnel (§10):** `discovery_outfit_opened` → `make_it_yours_started` → `make_it_yours_completed` (`state = success`) → `make_it_yours_outfit_favourited` → `make_it_yours_favourites_opened` → See on Me start (existing try-on events from Favourites). Break `make_it_yours_completed` down by `state` — a high `no_wardrobe` share means the entry is reaching users before they've added clothes; a high `no_match` share means the matching thresholds (backend `make_it_yours_constants.py`) are too strict. `make_it_yours_cancelled ÷ make_it_yours_started` is the loading-abandon rate.
+
+### 5.29 Build around this → Find the best match from Discovery
+
+On `ItemDetailScreen`, "Build around this" opens a method sheet ("How should we build your outfit?"): **Build around your items only** (the original pin-and-rebuild on Home, unchanged) or **Find the best match from Discovery** (+ a chip row: "Surprise me" plus 5 random Discovery trend tags from `GET /discovery/trend-tags`). The Discovery method calls `POST /api/discovery/build-around` `{ item_id, trend_tag? }` — the reverse of Make It Yours: it returns owned pieces (anchor A + B + C …) that rebuild a Discovery outfit. **Backend contract is proposed by mobile and not yet implemented — the Discovery method is gated by the Unleash flag `build_around_discovery` (OFF ⇒ "Build around this" keeps the original direct pin-and-rebuild, no sheet; ON in the web preview, served by the msw mock)** (`src/services/buildAroundMatchService.ts`). Saved with `POST /favourites` `source: 'build_around_discovery'`. **PII: none — `item_id` is the wardrobe item's internal id; `trend_tag` is a curated Discovery tag; `error_code` / `state` are closed enums.**
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `build_around_sheet_opened` | "Build around this" tapped | `src/screens/build-around/useBuildAroundFlow.ts` `open` | `item_id` |
+| `build_around_method_chosen` | "Build" tapped on the sheet | `useBuildAroundFlow.ts` | `item_id`, `method` (`wardrobe` \| `discovery`), `trend_tag` (discovery only; omitted for Surprise me) |
+| `build_around_discovery_started` / `_retried` | Search started / "Try again" | `src/screens/build-around/useBuildAroundMatch.ts` | `item_id`, `trend_tag` |
+| `build_around_discovery_completed` | Search resolved (any state) | `useBuildAroundMatch.ts` | `item_id`, `trend_tag`, `state` (`success` \| `no_match` \| `no_wardrobe`), `duration_ms` (includes the 1.8s minimum loading time), `algorithm_version` |
+| `build_around_discovery_failed` | Error state shown | `useBuildAroundMatch.ts` | `item_id`, `trend_tag`, `error_code` (`network_error` \| `timeout` \| `server_error` \| `not_found` \| `rate_limited`) |
+| `build_around_discovery_cancelled` | Cancel / scrim / back while loading | `useBuildAroundMatch.ts` `cancel` | `item_id`, `trend_tag`, `elapsed_ms` |
+| `build_around_discovery_favourited` / `_unfavourited` | Save / Saved toggled on the result | `src/screens/build-around/BuildAroundMatchResultScreen.tsx` | `item_id`, `outfit_id` (the matched Discovery outfit) |
+

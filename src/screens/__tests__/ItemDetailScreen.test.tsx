@@ -110,6 +110,24 @@ jest.mock('react-i18next', () => {
 });
 
 const mockGetWardrobeItem = jest.fn();
+// The real flag module pulls in the ESM-only Unleash SDK, which jest can't load.
+jest.mock('../../services/featureFlags', () => ({
+  FLAGS: { BUILD_AROUND_DISCOVERY: 'build_around_discovery' },
+}));
+let mockBuildAroundFlag = true;
+jest.mock('../../hooks/useFeatureFlag', () => ({
+  useFeatureFlag: () => mockBuildAroundFlag,
+}));
+jest.mock('../../hooks/useDiscovery', () => ({
+  useDiscoveryTrendTags: () => ({ data: ['minimal', 'casual'] }),
+}));
+const mockBuildAroundRun = jest.fn(() => new Promise(() => undefined));
+jest.mock('../../services/buildAroundMatchService', () => ({
+  ...jest.requireActual('../../services/buildAroundMatchService'),
+  buildAroundMatchService: {
+    run: (...args: unknown[]) => (mockBuildAroundRun as (...a: unknown[]) => unknown)(...args),
+  },
+}));
 const mockDeleteWardrobeItem = jest.fn();
 const mockMarkWardrobeItemReviewed = jest.fn();
 const mockUpdateWardrobeItemAttributes = jest.fn();
@@ -305,14 +323,62 @@ describe('read mode', () => {
   // ItemDetail is presented as presentation:'modal'; navigate() to a screen
   // below the modal desyncs JS nav state from the native presentation, leaving
   // the sheet stuck on top and unresponsive ("can't close, can't do anything").
-  it('"Build around this" pops to Home with pinFromDetail (not navigate)', async () => {
+  it('flag OFF: "Build around this" skips the sheet and pops to Home with pinFromDetail', async () => {
+    mockBuildAroundFlag = false;
+    try {
+      mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+      const r = await renderScreen();
+      press(oneByTestID(r.root, 'item-detail-mix-btn'));
+      expect(byTestID(r.root, 'build-around-choose')).toHaveLength(0);
+      expect(mockPopTo).toHaveBeenCalledWith('Home', { pinFromDetail: 'item-1' });
+    } finally {
+      mockBuildAroundFlag = true;
+    }
+  });
+
+  it('"Build around this" opens the method sheet without leaving the screen', async () => {
     mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
 
     const r = await renderScreen();
     press(oneByTestID(r.root, 'item-detail-mix-btn'));
 
+    expect(byTestID(r.root, 'build-around-choose').length).toBeGreaterThan(0);
+    expect(mockPopTo).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  // Regression: the wardrobe-only method must still leave the modal via popTo
+  // (pop semantics that dismiss the native modal layer), NOT navigate('Home',…).
+  // ItemDetail is presented as presentation:'modal'; navigate() to a screen
+  // below the modal desyncs JS nav state from the native presentation, leaving
+  // the sheet stuck on top and unresponsive ("can't close, can't do anything").
+  it('sheet → "Build" with the default method pops to Home with pinFromDetail (not navigate)', async () => {
+    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'item-detail-mix-btn'));
+    press(oneByTestID(r.root, 'build-around-build'));
+
     expect(mockPopTo).toHaveBeenCalledWith('Home', { pinFromDetail: 'item-1' });
     expect(mockNavigate).not.toHaveBeenCalledWith('Home', expect.anything());
+  });
+
+  it('sheet → Discovery method reveals Surprise me + random Discovery tag chips and Build starts the search', async () => {
+    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'item-detail-mix-btn'));
+    expect(byTestID(r.root, 'build-around-style-section')).toHaveLength(0);
+
+    press(oneByTestID(r.root, 'build-around-option-discovery'));
+    expect(byTestID(r.root, 'build-around-style-section').length).toBeGreaterThan(0);
+    press(oneByTestID(r.root, 'build-around-style-surprise-me-selected'));
+    press(oneByTestID(r.root, 'build-around-style-minimal'));
+    press(oneByTestID(r.root, 'build-around-build'));
+
+    expect(mockBuildAroundRun).toHaveBeenCalledWith('item-1', 'minimal', expect.anything());
+    expect(mockPopTo).not.toHaveBeenCalled();
+    expect(byTestID(r.root, 'build-around-loading').length).toBeGreaterThan(0);
   });
 
   it('has no heart button and no read-mode attribute rows', async () => {
