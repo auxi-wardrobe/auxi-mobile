@@ -4,7 +4,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { track } from '../../services/analytics';
 import { FLAGS } from '../../services/featureFlags';
-import { trendTagProps } from '../../services/buildAroundMatchService';
+import { isBuildAroundSuccess, trendTagProps } from '../../services/buildAroundMatchService';
 import type { AppStackParamList } from '../../types/navigation';
 import type { BuildAroundSheetMode } from './BuildAroundSheet';
 import { useBuildAroundMatch } from './useBuildAroundMatch';
@@ -22,7 +22,8 @@ type EmptyReason = 'no_match' | 'no_wardrobe';
  *
  * Dismissing the sheet at any point cancels a running search.
  *
- * Gated by `build_around_discovery` (the backend endpoint is not live yet):
+ * Gated by `build_around_discovery` (keep OFF in prod until auxi-backend#192
+ * is deployed):
  * flag OFF → `open()` skips the sheet and runs the wardrobe method directly,
  * i.e. exactly the pre-feature behaviour.
  */
@@ -33,7 +34,7 @@ export const useBuildAroundFlow = (itemId: string) => {
   const [empty, setEmpty] = useState<EmptyReason | null>(null);
 
   const run = useBuildAroundMatch(itemId, result => {
-    if (result.state === 'success') {
+    if (isBuildAroundSuccess(result)) {
       setVisible(false);
       navigation.push('BuildAroundMatchResult', { itemId, result });
       return;

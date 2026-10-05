@@ -1,6 +1,7 @@
 import { apiClient } from '../apiClient';
 import {
   buildAroundMatchService,
+  isBuildAroundSuccess,
   matchedItemIds,
   matchedItems,
   normalizeBuildAroundState,
@@ -70,6 +71,17 @@ describe('buildAroundMatchService', () => {
     expect((await buildAroundMatchService.run('A', 'casual')).state).toBe('no_match');
     postMock.mockResolvedValueOnce({ data: { ...BODY, outfit: null } });
     expect((await buildAroundMatchService.run('A', 'casual')).state).toBe('no_match');
+    postMock.mockResolvedValueOnce({ data: { ...BODY, inspiration: null } });
+    expect((await buildAroundMatchService.run('A', 'casual')).state).toBe('no_match');
+  });
+
+  it('passes the backend non-success shape (null inspiration / outfit) through', async () => {
+    postMock.mockResolvedValue({
+      data: { state: 'no_wardrobe', algorithm_version: 'ba-1', inspiration: null, outfit: null },
+    });
+    const res = await buildAroundMatchService.run('A', null);
+    expect(res).toMatchObject({ state: 'no_wardrobe', inspiration: null, outfit: null });
+    expect(isBuildAroundSuccess(res)).toBe(false);
   });
 
   it('pickRandomTags returns distinct tags, capped, without mutating the input', () => {

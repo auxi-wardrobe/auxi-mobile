@@ -13,17 +13,19 @@ import {
 //
 //   POST /discovery/build-around   { item_id, trend_tag? }
 //
-// CONTRACT STATUS: proposed by the mobile side, NOT yet implemented in
-// `wardrobe-backend`. The response deliberately reuses the Make It Yours slot
-// model (`MakeItYoursOutfit` / `MakeItYoursItem`) so the backend can share the
-// matcher. Rules the client relies on:
-//   • `state: 'success'` ⇒ `outfit` is non-null, `outfit.is_complete` is true,
-//     and one of its slots' items is the anchor (`item.id === anchor item_id`).
+// CONTRACT: implemented by auxi-backend#192 (`algorithm_version: 'ba-1'`,
+// `API_DOCUMENTATION.md` §Build Around This → Discovery). The response reuses
+// the Make It Yours slot model (`MakeItYoursOutfit` / `MakeItYoursItem`).
+// Rules the client relies on:
+//   • `state: 'success'` ⇒ `inspiration` and `outfit` are non-null,
+//     `outfit.is_complete` is true, and one of its slots' items is the anchor
+//     (`item.id === anchor item_id`). Any other state ⇒ both are `null`.
 //   • Any other / unknown `state` is treated as `no_match` (forward-compat).
 //   • `trend_tag` is omitted for "Surprise me"; otherwise one of the tags from
 //     `GET /discovery/trend-tags` (same vocabulary as the Discovery filter), and
 //     the matched outfit must carry that tag.
-//   • 404 = the anchor item is gone, 422 = anchor not eligible (system item),
+//   • 404 = the anchor item is gone, 422 = anchor not eligible
+//     (`detail.code`: common_item | item_processing | unclassified_item),
 //     429 = rate limited. Unknown keys are ignored.
 
 /** Chips shown on the sheet besides "Surprise me" — random Discovery tags. */
@@ -50,14 +52,32 @@ export type BuildAroundMatchState = 'success' | 'no_match' | 'no_wardrobe';
 
 const KNOWN_STATES: readonly BuildAroundMatchState[] = ['success', 'no_match', 'no_wardrobe'];
 
+export interface BuildAroundInspiration {
+  id: string;
+  title: string;
+  composite_image_url: string | null;
+}
+
 export interface BuildAroundMatchResponse {
   state: BuildAroundMatchState;
   algorithm_version: string;
-  /** The Discovery outfit the owned pieces were matched to. */
-  inspiration: { id: string; title: string; composite_image_url: string | null };
+  /** The Discovery outfit the owned pieces were matched to; `null` unless `state === 'success'`. */
+  inspiration: BuildAroundInspiration | null;
   /** `null` unless `state === 'success'`. */
   outfit: MakeItYoursOutfit | null;
 }
+
+/** A result the result screen can render: a matched look + its owned pieces. */
+export type BuildAroundMatchSuccess = BuildAroundMatchResponse & {
+  state: 'success';
+  inspiration: BuildAroundInspiration;
+  outfit: MakeItYoursOutfit;
+};
+
+export const isBuildAroundSuccess = (
+  result: BuildAroundMatchResponse,
+): result is BuildAroundMatchSuccess =>
+  result.state === 'success' && result.inspiration !== null && result.outfit !== null;
 
 /** Same patience as Make It Yours — the search scans the Discovery pool. */
 export const BUILD_AROUND_TIMEOUT_MS = 20000;
@@ -92,10 +112,13 @@ export const buildAroundMatchService = {
     const data = response.data as BuildAroundMatchResponse;
     const state = normalizeBuildAroundState(data.state);
     const outfit = data.outfit ?? null;
+    const inspiration = data.inspiration ?? null;
+    const showable = matchedItems(outfit).length > 0 && inspiration !== null;
     return {
       ...data,
       // A "success" with nothing to show is a no_match, never an empty screen.
-      state: state === 'success' && matchedItems(outfit).length === 0 ? 'no_match' : state,
+      state: state === 'success' && !showable ? 'no_match' : state,
+      inspiration,
       outfit,
     };
   },
