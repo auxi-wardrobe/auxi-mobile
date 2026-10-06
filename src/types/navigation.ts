@@ -5,6 +5,8 @@ import type {
   WardrobeDirection,
 } from '../services/v05Api';
 import type { LegalScreenParams } from '../screens/legal/LegalDocumentScreen';
+import type { CategoryFilter } from '../screens/wardrobe/wardrobe-filter';
+import type { SortValue } from '../screens/wardrobe/wardrobe-sort';
 import type { BodyShape } from '../services/bodyService';
 import type { CapsuleOutfitSource } from '../services/capsuleService';
 import type { UsageLimitFeature } from '../hooks/useUsageLimitGate';
@@ -169,6 +171,12 @@ export type AppStackParamList = {
   // and the skin-tone "best colours" card. Pushed from the Wardrobe grid's
   // "Analysis" chip; everything is derived from the cached wardrobe list.
   WardrobeAnalysis: undefined;
+  // Multi-select "Delete items" — pushed from the Wardrobe grid's trash chip.
+  // Carries the grid's active category filter + sort so the delete grid
+  // mirrors what the user was looking at; both default to All / newest-first.
+  WardrobeDeleteItems:
+    | { categories?: CategoryFilter[]; sort?: SortValue }
+    | undefined;
   // `returnToSchedule` is set when the user reached this page via the Schedule
   // "+" source picker — after scheduling an outfit we send them back to
   // Schedule (focused on the chosen day) instead of staying here. `scheduleDate`

@@ -17,14 +17,22 @@ import { theme } from '../../theme/theme';
  * Action variant (`trailingIcon`): the same pill with no chevron and an icon
  * after the label — the wardrobe "Analysis" entry (Figma "wardrobe"), which
  * opens a screen rather than a sheet but sits in the same chip row.
+ *
+ * Icon-only variant (`icon`): a 36×36 circle carrying just the glyph — the
+ * wardrobe "Delete" entry (Figma "wardrobe - delete enable"), which closes the
+ * chip row after "Analysis". Icon-only means `accessibilityLabel` is the only
+ * thing VoiceOver can read, so it stays required.
  */
 interface FilterSummaryChipProps {
-  label: string;
+  /** Ignored by the icon-only variant (`icon`). */
+  label?: string;
   onPress: () => void;
   testID: string;
   accessibilityLabel: string;
   /** Replaces the leading chevron with an icon after the label. */
   trailingIcon?: React.ReactNode;
+  /** Icon-only circle: renders just this glyph, no chevron or label. */
+  icon?: React.ReactNode;
 }
 
 export const FilterSummaryChip = ({
@@ -33,19 +41,24 @@ export const FilterSummaryChip = ({
   testID,
   accessibilityLabel,
   trailingIcon,
+  icon,
 }: FilterSummaryChipProps) => (
   <PressableScale
     onPress={onPress}
-    style={styles.chip}
+    style={[styles.chip, icon ? styles.chipIconOnly : null]}
     activeOpacity={0.85}
     testID={testID}
     accessibilityLabel={accessibilityLabel}
   >
-    {trailingIcon ? null : <Icons.ChevronDown width={16} height={16} />}
-    <Text style={styles.chipText} numberOfLines={1}>
-      {label}
-    </Text>
-    {trailingIcon}
+    {icon ?? (
+      <>
+        {trailingIcon ? null : <Icons.ChevronDown width={16} height={16} />}
+        <Text style={styles.chipText} numberOfLines={1}>
+          {label}
+        </Text>
+        {trailingIcon}
+      </>
+    )}
   </PressableScale>
 );
 
@@ -59,6 +72,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: theme.borderRadius.round,
     backgroundColor: theme.colors.figmaInsightPillBg,
+  },
+  // Same height/fill/radius as the labelled pill, squared off into a circle.
+  chipIconOnly: {
+    width: 36,
+    paddingHorizontal: 0,
+    justifyContent: 'center',
   },
   chipText: {
     ...theme.typography.aliases.interBodySm,

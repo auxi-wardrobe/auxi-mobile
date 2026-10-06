@@ -23,6 +23,7 @@ import { theme } from '../theme/theme';
 import { MacgieLoader } from '../components/macgie';
 import { WardrobeScreen } from '../screens/WardrobeScreen';
 import { WardrobeAnalysisScreen } from '../screens/wardrobe-analysis/WardrobeAnalysisScreen';
+import { WardrobeDeleteItemsScreen } from '../screens/wardrobe/WardrobeDeleteItemsScreen';
 import { BodyScreen } from '../screens/BodyScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { UpgradeScreen } from '../screens/UpgradeScreen';
@@ -318,6 +319,10 @@ export const AppNavigator = () => {
               <Stack.Screen
                 name="WardrobeAnalysis"
                 component={WardrobeAnalysisScreen}
+              />
+              <Stack.Screen
+                name="WardrobeDeleteItems"
+                component={WardrobeDeleteItemsScreen}
               />
               <Stack.Screen name="Favourite" component={FavouriteScreen} />
               <Stack.Screen

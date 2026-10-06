@@ -11,7 +11,10 @@ import { HORIZONTAL_PADDING } from './wardrobe-grid';
 // its own bottom sheet. The pill itself is `FilterSummaryChip`, shared with the
 // Discovery feed's season/tag filters. A third, optional "Analysis" chip
 // (label + chart icon) opens the Wardrobe Analysis screen; it's omitted in the
-// single-item picker mode, where the user is choosing, not browsing.
+// single-item picker mode, where the user is choosing, not browsing. A fourth,
+// optional icon-only trash chip (Figma "wardrobe - delete enable") sits after
+// Analysis and opens the multi-select "Delete items" screen; same picker-mode
+// omission.
 interface WardrobeFilterSortBarProps {
   filterLabel: string;
   sortLabel: string;
@@ -21,6 +24,10 @@ interface WardrobeFilterSortBarProps {
   sortAccessibilityLabel: string;
   analysis?: {
     label: string;
+    accessibilityLabel: string;
+    onPress: () => void;
+  };
+  deleteItems?: {
     accessibilityLabel: string;
     onPress: () => void;
   };
@@ -34,6 +41,7 @@ export const WardrobeFilterSortBar = ({
   filterAccessibilityLabel,
   sortAccessibilityLabel,
   analysis,
+  deleteItems,
 }: WardrobeFilterSortBarProps) => (
   <View style={styles.row}>
     <FilterSummaryChip
@@ -56,6 +64,20 @@ export const WardrobeFilterSortBar = ({
         accessibilityLabel={analysis.accessibilityLabel}
         trailingIcon={
           <Icons.Analysis
+            width={16}
+            height={16}
+            color={theme.colors.figmaTextPrimary}
+          />
+        }
+      />
+    ) : null}
+    {deleteItems ? (
+      <FilterSummaryChip
+        onPress={deleteItems.onPress}
+        testID="wardrobe-delete-trigger"
+        accessibilityLabel={deleteItems.accessibilityLabel}
+        icon={
+          <Icons.Trash
             width={16}
             height={16}
             color={theme.colors.figmaTextPrimary}
