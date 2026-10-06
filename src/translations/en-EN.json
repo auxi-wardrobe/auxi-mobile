@@ -342,7 +342,12 @@
         "empty": "No items to select yet",
         "add_item": "Add Item",
         "added_toast": "Added {{count}} item(s) to your wardrobe",
-        "added_partial_toast": "Added {{added}}, {{failed}} couldn't be added"
+        "added_partial_toast": "Added {{added}}, {{failed}} couldn't be added",
+        "search_open_a11y": "Search items",
+        "search_close_a11y": "Close search",
+        "search_placeholder": "Search by item name",
+        "search_input_a11y": "Search items by name",
+        "search_empty": "No items match “{{query}}”"
       },
       "import_web": {
         "title": "Import from web",

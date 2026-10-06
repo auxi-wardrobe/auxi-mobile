@@ -342,7 +342,12 @@
         "empty": "Aucun article à sélectionner",
         "add_item": "Ajouter",
         "added_toast": "{{count}} article(s) ajouté(s) à votre garde-robe",
-        "added_partial_toast": "{{added}} ajouté(s), {{failed}} n'ont pas pu être ajouté(s)"
+        "added_partial_toast": "{{added}} ajouté(s), {{failed}} n'ont pas pu être ajouté(s)",
+        "search_open_a11y": "Rechercher des articles",
+        "search_close_a11y": "Fermer la recherche",
+        "search_placeholder": "Rechercher par nom d'article",
+        "search_input_a11y": "Rechercher des articles par nom",
+        "search_empty": "Aucun article ne correspond à « {{query}} »"
       },
       "import_web": {
         "title": "Importer depuis le web",

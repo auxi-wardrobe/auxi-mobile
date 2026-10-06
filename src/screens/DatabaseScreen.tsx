@@ -1,12 +1,12 @@
-import { StyleSheet, Text, ScrollView, View } from 'react-native';
+import { Keyboard, StyleSheet, Text, ScrollView, View } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { toast } from '../components/design-system/lib';
+import { MInput, toast } from '../components/design-system/lib';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Header } from '../components/layout/Header';
@@ -16,13 +16,17 @@ import { Icons } from '../assets/icons';
 
 import { CategoryTabs } from '../components/features/CategoryTabs';
 import { Shimmer } from '../components/features/Shimmer';
-import { PillButton } from '../components/primitives/FigmaPrimitives';
+import {
+  PillButton,
+  TopIconButton,
+} from '../components/primitives/FigmaPrimitives';
 import { PressableScale } from '../components/primitives/PressableScale';
 
 import { wardrobeService, WardrobeItem } from '../services/wardrobeService';
 import { AppStackParamList } from '../types/navigation';
 import { resolveItemImageSources } from '../utils/url';
 import { track } from '../services/analytics';
+import { matchesItemName } from '../utils/item-name-search';
 // Shared wardrobe grid spec (Figma node 2850:16492) — the Database picker
 // renders the exact same 3-column grid, tabs, and tile geometry as Wardrobe.
 import {
@@ -58,7 +62,40 @@ export const DatabaseScreen = () => {
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const isFocused = useIsFocused();
+
+  // Name search runs client-side over the already-fetched (category-filtered)
+  // catalog — the common-items endpoint has no query param. Selections are
+  // keyed by id, so narrowing the grid never drops items already picked.
+  const visibleItems = useMemo(
+    () => items.filter(item => matchesItemName(item.name, searchQuery)),
+    [items, searchQuery],
+  );
+  const isSearching = searchQuery.trim().length > 0;
+
+  const toggleSearch = () => {
+    if (searchOpen) {
+      Keyboard.dismiss();
+      setSearchQuery('');
+      setSearchOpen(false);
+    } else {
+      setSearchOpen(true);
+    }
+  };
+
+  const handleSearchSubmit = () => {
+    if (!isSearching) {
+      return;
+    }
+    // Never ship the raw query (free text) — length + hit count only.
+    track('wardrobe_search_initiated', {
+      source: 'database',
+      query_length: searchQuery.trim().length,
+      result_count: visibleItems.length,
+    });
+  };
 
   const fetchItems = useCallback(async () => {
     try {
@@ -115,9 +152,8 @@ export const DatabaseScreen = () => {
       return;
     }
 
-    // Note: `wardrobe_search_initiated` is NOT fired here — DatabaseScreen has
-    // no search-submit step today (grid-browse-and-pick UI). Event moved to
-    // tracking-plan §6 as gap; wire when a real search box ships.
+    // `wardrobe_search_initiated` fires on the search field's submit key
+    // (handleSearchSubmit), not here — this is the basket-commit step.
     setSubmitting(true);
 
     // Clone each selected item via the per-item endpoint
@@ -247,7 +283,7 @@ export const DatabaseScreen = () => {
     );
   };
 
-  const hasItems = items.length > 0;
+  const hasItems = visibleItems.length > 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -256,11 +292,53 @@ export const DatabaseScreen = () => {
         leftTestID="database-back-button"
         leftAccessibilityLabel={t('uac.common.back')}
         onBack={handleBack}
+        right={
+          <TopIconButton
+            onPress={toggleSearch}
+            testID={
+              searchOpen
+                ? 'database-search-toggle-open'
+                : 'database-search-toggle'
+            }
+            accessibilityLabel={t(
+              searchOpen
+                ? 'wardrobe.database.search_close_a11y'
+                : 'wardrobe.database.search_open_a11y',
+            )}
+            icon={
+              searchOpen ? (
+                <Icons.CloseThin width={24} height={24} />
+              ) : (
+                <Icons.Search width={24} height={24} />
+              )
+            }
+          />
+        }
       />
+
+      {searchOpen ? (
+        <View style={styles.searchBar}>
+          <MInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder={t('wardrobe.database.search_placeholder')}
+            leftIcon={Icons.Search}
+            autoFocus
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+            onSubmitEditing={handleSearchSubmit}
+            testID="database-search-input"
+            accessibilityLabel={t('wardrobe.database.search_input_a11y')}
+          />
+        </View>
+      ) : null}
 
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerStyle={styles.scrollContent}
       >
         <CategoryTabs
@@ -273,11 +351,17 @@ export const DatabaseScreen = () => {
           renderLoadingGrid()
         ) : hasItems ? (
           <View testID="database-grid-root" style={styles.grid}>
-            {items.map(renderGridTile)}
+            {visibleItems.map(renderGridTile)}
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>{t('wardrobe.database.empty')}</Text>
+            <Text style={styles.emptyTitle} testID="database-empty-state">
+              {isSearching
+                ? t('wardrobe.database.search_empty', {
+                    query: searchQuery.trim(),
+                  })
+                : t('wardrobe.database.empty')}
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -305,6 +389,10 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flex: 1,
+  },
+  searchBar: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingBottom: theme.spacing.s,
   },
   scrollContent: {
     paddingTop: 12,
