@@ -586,6 +586,24 @@ export const WardrobeScreen = () => {
                     onPress: () => navigation.navigate('WardrobeAnalysis'),
                   }
             }
+            deleteItems={
+              isSelectMode
+                ? undefined
+                : {
+                    accessibilityLabel: t('wardrobe.delete_items.entry_a11y'),
+                    onPress: () => {
+                      track('wardrobe_delete_mode_opened', {
+                        item_count: items.length,
+                      });
+                      // Carry the grid's current filter + sort so the delete
+                      // grid shows exactly what the user was just looking at.
+                      navigation.navigate('WardrobeDeleteItems', {
+                        categories: selectedCategories,
+                        sort: sortValue,
+                      });
+                    },
+                  }
+            }
           />
         ) : null}
 

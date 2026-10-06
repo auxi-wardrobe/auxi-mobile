@@ -584,6 +584,22 @@
           "other": "Khác",
           "one_piece": "Đồ liền thân"
         }
+      },
+      "delete_items": {
+        "entry_a11y": "Xoá món đồ",
+        "title": "Xoá món đồ",
+        "a11y_back": "Quay lại tủ đồ",
+        "cancel": "Huỷ",
+        "delete": "Xoá",
+        "delete_count": "Xoá ({{count}})",
+        "a11y_delete_other": "Xoá {{count}} món đồ đã chọn",
+        "confirm_title_other": "Xoá {{count}} món đồ?",
+        "confirm_body": "Hành động này không thể hoàn tác.",
+        "toast_deleted_other": "Đã xoá {{count}} món đồ",
+        "toast_partial": "Không thể xoá {{failed}}/{{count}} món đồ",
+        "toast_failed_title": "Xoá thất bại",
+        "toast_failed_body": "Chúng tôi không thể xoá các món đồ này.",
+        "empty_body": "Không có món đồ nào để xoá."
       }
     },
     "mood": {

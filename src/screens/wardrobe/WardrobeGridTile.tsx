@@ -16,6 +16,14 @@ interface WardrobeGridTileProps {
   isSelectMode: boolean;
   selectedItemId: string | null;
   onPress: (item: WardrobeItem) => void;
+  /**
+   * Multi-select override (Delete items screen). When defined, wins over the
+   * single-select `isSelectMode`/`selectedItemId` pair and the tile renders the
+   * selection ring only — no corner check (Figma "wardrobe - delete selected").
+   */
+  selected?: boolean;
+  /** Overrides the grid's `wardrobe-item-*` testID (e.g. the delete grid). */
+  testID?: string;
 }
 
 export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
@@ -24,6 +32,8 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
   isSelectMode,
   selectedItemId,
   onPress,
+  selected,
+  testID,
 }) => {
   const { t } = useTranslation();
 
@@ -42,13 +52,17 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
   // tiles keep the backend-dynamic `wardrobe-item-<id>` testID (both match
   // the `wardrobe-item-.*` prefix, so existing flows still work).
   const tileTestID =
-    index === 0 ? 'wardrobe-item-first' : `wardrobe-item-${item.id}`;
+    testID ??
+    (index === 0 ? 'wardrobe-item-first' : `wardrobe-item-${item.id}`);
 
   // A tile shows at most one status pill, bottom-centre. Preparing items show
   // the processing overlay instead of a status pill.
   const status = item.is_preparing ? null : resolveTileStatus(item);
 
-  const isSelected = isSelectMode && selectedItemId === item.id;
+  const isMultiSelect = selected !== undefined;
+  const isSelected = isMultiSelect
+    ? selected
+    : isSelectMode && selectedItemId === item.id;
 
   return (
     <PressableScale
@@ -57,6 +71,7 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
       onPress={() => onPress(item)}
       testID={tileTestID}
       accessibilityLabel={item.name || t('wardrobe.list.a11y_item_fallback')}
+      accessibilityState={isMultiSelect ? { selected: isSelected } : undefined}
     >
       {imageUrl ? (
         <LoadableRemoteImage
@@ -97,7 +112,7 @@ export const WardrobeGridTile: React.FC<WardrobeGridTileProps> = ({
 
       {/* Single-select check — top-right, only the picked tile in select
           mode. Pure visual confirmation of the current selection. */}
-      {isSelected ? (
+      {isSelected && !isMultiSelect ? (
         <View
           style={styles.tileSelectedCheck}
           testID={`wardrobe-select-check-${item.id}`}
@@ -122,7 +137,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: theme.colors.figmaDetailSurface,
   },
-  // Single-select highlight ring (picker mode).
+  // Selection ring — single-select picker AND the multi-select delete grid.
   tileSelected: {
     borderWidth: 2,
     borderColor: theme.colors.figmaAction,

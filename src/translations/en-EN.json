@@ -584,6 +584,25 @@
           "other": "Other",
           "one_piece": "One Piece"
         }
+      },
+      "delete_items": {
+        "entry_a11y": "Delete items",
+        "title": "Delete items",
+        "a11y_back": "Back to wardrobe",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "delete_count": "Delete ({{count}})",
+        "a11y_delete_one": "Delete {{count}} selected item",
+        "a11y_delete_other": "Delete {{count}} selected items",
+        "confirm_title_one": "Delete {{count}} item?",
+        "confirm_title_other": "Delete {{count}} items?",
+        "confirm_body": "This action cannot be undone.",
+        "toast_deleted_one": "{{count}} item deleted",
+        "toast_deleted_other": "{{count}} items deleted",
+        "toast_partial": "{{failed}} of {{count}} items could not be deleted",
+        "toast_failed_title": "Delete failed",
+        "toast_failed_body": "We could not delete these items.",
+        "empty_body": "There are no items to delete."
       }
     },
     "mood": {

@@ -584,6 +584,25 @@
           "other": "Autres",
           "one_piece": "Une pièce"
         }
+      },
+      "delete_items": {
+        "entry_a11y": "Supprimer des articles",
+        "title": "Supprimer des articles",
+        "a11y_back": "Retour à la garde-robe",
+        "cancel": "Annuler",
+        "delete": "Supprimer",
+        "delete_count": "Supprimer ({{count}})",
+        "a11y_delete_one": "Supprimer {{count}} article sélectionné",
+        "a11y_delete_other": "Supprimer {{count}} articles sélectionnés",
+        "confirm_title_one": "Supprimer {{count}} article ?",
+        "confirm_title_other": "Supprimer {{count}} articles ?",
+        "confirm_body": "Cette action est irréversible.",
+        "toast_deleted_one": "{{count}} article supprimé",
+        "toast_deleted_other": "{{count}} articles supprimés",
+        "toast_partial": "{{failed}} articles sur {{count}} n'ont pas pu être supprimés",
+        "toast_failed_title": "Échec de la suppression",
+        "toast_failed_body": "Nous n'avons pas pu supprimer ces articles.",
+        "empty_body": "Aucun article à supprimer."
       }
     },
     "mood": {
