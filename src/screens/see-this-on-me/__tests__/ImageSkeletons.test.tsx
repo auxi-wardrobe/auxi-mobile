@@ -37,6 +37,26 @@ const hasTestID = (
   testID: string,
 ): boolean => r.root.findAll(n => n.props?.testID === testID).length > 0;
 
+// OutfitPreview only mounts the image once its area has been measured (it
+// aspect-fits a 9:16 rect into the onLayout size), so tests drive that layout.
+const layoutPreviewArea = (
+  r: TestRenderer.ReactTestRenderer,
+  width: number,
+  height: number,
+) => {
+  let area = r.root.findByProps({ testID: 'stom-preview-image-frame' }).parent;
+  while (area && typeof area.props.onLayout !== 'function') {
+    area = area.parent;
+  }
+  if (!area) {
+    throw new Error('no onLayout ancestor for the preview frame');
+  }
+  const target = area;
+  act(() => {
+    target.props.onLayout({ nativeEvent: { layout: { width, height } } });
+  });
+};
+
 test('outfit preview renders a skeleton while the generated try-on image loads', () => {
   let r!: TestRenderer.ReactTestRenderer;
   act(() => {
@@ -47,6 +67,7 @@ test('outfit preview renders a skeleton while the generated try-on image loads',
       />,
     );
   });
+  layoutPreviewArea(r, 390, 600);
 
   expect(hasTestID(r, 'stom-preview-image-skeleton')).toBe(true);
 });
@@ -62,9 +83,23 @@ test('outfit preview uses a 9:16 portrait image frame', () => {
     );
   });
 
-  const frame = r.root.findByProps({ testID: 'stom-preview-image-frame' });
-  const style = StyleSheet.flatten(frame.props.style);
-  expect(style?.aspectRatio).toBe(9 / 16);
+  // The frame is aspect-FIT into the measured area (no `aspectRatio` style):
+  // check the fitted rect is 9:16 both when the area is wider than 9:16
+  // (height-bound) and taller (width-bound).
+  const fittedFor = (width: number, height: number) => {
+    layoutPreviewArea(r, width, height);
+    return StyleSheet.flatten(
+      r.root.findByProps({ testID: 'stom-preview-image-frame' }).props.style,
+    ) as { width: number; height: number };
+  };
+
+  const wide = fittedFor(400, 600); // 0.67 > 0.5625 → height-bound
+  expect(wide.height).toBe(600);
+  expect(wide.width / wide.height).toBeCloseTo(9 / 16);
+
+  const tall = fittedFor(300, 700); // 0.43 < 0.5625 → width-bound
+  expect(tall.width).toBe(300);
+  expect(tall.width / tall.height).toBeCloseTo(9 / 16);
 });
 
 test('photo thumbnail renders a skeleton while the selected user photo loads', () => {

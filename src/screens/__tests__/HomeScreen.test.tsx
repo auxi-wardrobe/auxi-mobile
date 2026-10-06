@@ -13,6 +13,7 @@
  * queries, flush inside act).
  */
 import React from 'react';
+import { Modal } from 'react-native';
 import TestRenderer, { act, ReactTestInstance } from 'react-test-renderer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HomeScreen } from '../HomeScreen';
@@ -57,9 +58,23 @@ jest.mock('../../services/favouriteService', () => ({
   favouriteService: { saveFavourite: jest.fn() },
 }));
 
-jest.mock('../../services/analytics', () => ({
-  track: jest.fn(),
-}));
+// Analytics is out of scope here and HomeScreen calls a growing set of typed
+// helpers (trackRecommendationViewedOnce, trackTemperature*, …). Stub EVERY
+// named export as a jest.fn so a new helper can't crash the suite again.
+jest.mock('../../services/analytics', () => {
+  const stubs: Record<string | symbol, unknown> = { __esModule: true };
+  return new Proxy(stubs, {
+    get: (target, key) => {
+      if (key === 'then') {
+        return undefined;
+      }
+      if (!(key in target)) {
+        target[key] = jest.fn();
+      }
+      return target[key];
+    },
+  });
+});
 
 // Cuts the utils/url → apiClient → react-native-keychain import chain.
 jest.mock('../../utils/url', () => ({
@@ -67,6 +82,14 @@ jest.mock('../../utils/url', () => ({
     image_png?: string | null;
     image_url?: string;
   }) => item?.image_png || item?.image_url || null,
+  resolveItemImageSources: (item?: {
+    image_studio?: string | null;
+    image_png?: string | null;
+    image_url?: string;
+  }) =>
+    [item?.image_studio, item?.image_png, item?.image_url].filter(
+      (s): s is string => !!s,
+    ),
   getImageUrl: (url?: string | null) => url ?? undefined,
 }));
 
@@ -221,11 +244,13 @@ describe('HomeScreen item tap (AU-312)', () => {
       byTestID(root, 'home-tile-hash-0001-0')[0].props.onPress();
     });
 
-    // Every RN Modal in the tree (pickers, dialogs) must stay closed; the
+    // Every RN Modal in the tree (pickers, sheets) must stay closed; the
     // old ItemDetailBottomSheet (visible-on-tap Modal) no longer exists.
-    const openModals = root.findAll(
-      n => typeof n.type !== 'string' && n.props?.visible === true,
-    );
+    // Match the Modal type itself — other components take a `visible` prop
+    // too (e.g. WearThisFooter, which is legitimately shown).
+    const openModals = root
+      .findAllByType(Modal)
+      .filter(n => n.props.visible === true);
     expect(openModals.length).toBe(0);
     expect(mockNavigate).toHaveBeenCalledTimes(1);
   });

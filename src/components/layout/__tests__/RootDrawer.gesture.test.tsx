@@ -10,6 +10,7 @@ const mockClose = jest.fn(() => {
 });
 
 type MockGestureChain = {
+  enabled: () => MockGestureChain;
   onUpdate: () => MockGestureChain;
   onEnd: () => MockGestureChain;
   runOnJS: () => MockGestureChain;
@@ -37,6 +38,7 @@ jest.mock('react-native-gesture-handler', () => {
   const MockReact = require('react');
   const { View: NativeView } = require('react-native');
   const chain: MockGestureChain = {
+    enabled: () => chain,
     onUpdate: () => chain,
     onEnd: () => chain,
     runOnJS: () => chain,

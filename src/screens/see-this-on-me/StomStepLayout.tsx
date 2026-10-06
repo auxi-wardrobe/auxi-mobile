@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   promptText: {
-    ...theme.typography.aliases.poppinsTimeLg,
+    ...theme.typography.aliases.interTimeLg,
     color: theme.colors.uacTextBase,
   },
   promptIcon: {

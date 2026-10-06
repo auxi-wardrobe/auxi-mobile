@@ -94,6 +94,19 @@ jest.mock('@react-navigation/native', () => {
     CommonActions: {
       reset: state => ({ type: 'RESET', payload: state }),
     },
+    // A mounted test screen is always focused — run the callback as an effect.
+    useFocusEffect: effect => React.useEffect(effect, [effect]),
+    // `navigationRef` (src/navigation/navigationRef.ts) is created at import
+    // time. A never-ready ref: every caller guards on isReady() first, so
+    // deep-link / push handlers become no-ops under jest.
+    createNavigationContainerRef: () => ({
+      current: null,
+      isReady: () => false,
+      navigate: jest.fn(),
+      dispatch: jest.fn(),
+      getCurrentRoute: () => undefined,
+      addListener: jest.fn(() => jest.fn()),
+    }),
   };
 });
 
@@ -124,11 +137,16 @@ jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
   const makeChainableGesture = () => {
     const chain = {};
-    ['onStart', 'onUpdate', 'onEnd', 'maxDuration', 'runOnJS'].forEach(
-      method => {
-        chain[method] = jest.fn(() => chain);
-      },
-    );
+    [
+      'enabled',
+      'onStart',
+      'onUpdate',
+      'onEnd',
+      'maxDuration',
+      'runOnJS',
+    ].forEach(method => {
+      chain[method] = jest.fn(() => chain);
+    });
     return chain;
   };
   return {
@@ -141,7 +159,100 @@ jest.mock('react-native-gesture-handler', () => {
     },
     GestureDetector: ({ children }) =>
       React.createElement(React.Fragment, null, children),
+    // App.tsx wraps the whole tree in this (App.test.tsx smoke render).
+    GestureHandlerRootView: ({ children }) =>
+      React.createElement(React.Fragment, null, children),
   };
+});
+
+// react-native-purchases (RevenueCat): native store bridge, absent in jest —
+// and its `@revenuecat/purchases-js-hybrid-mappings` dependency ships ESM that
+// babel-jest doesn't transform, so the bare import alone failed every suite
+// that reaches `services/revenueCat.ts` (App, HomeScreen, UpgradeScreen).
+// Stub the SDK boundary: no offerings, purchases/restores resolve with an
+// empty customerInfo. Suites that exercise purchase flows mock
+// `services/revenueCat` themselves.
+jest.mock('react-native-purchases', () => {
+  const emptyCustomerInfo = { entitlements: { active: {}, all: {} } };
+  const Purchases = {
+    setLogLevel: jest.fn(),
+    configure: jest.fn(),
+    logIn: jest.fn(() =>
+      Promise.resolve({ customerInfo: emptyCustomerInfo, created: false }),
+    ),
+    logOut: jest.fn(() => Promise.resolve(emptyCustomerInfo)),
+    getOfferings: jest.fn(() => Promise.resolve({ current: null, all: {} })),
+    purchasePackage: jest.fn(() =>
+      Promise.resolve({ customerInfo: emptyCustomerInfo }),
+    ),
+    restorePurchases: jest.fn(() => Promise.resolve(emptyCustomerInfo)),
+  };
+  return {
+    __esModule: true,
+    default: Purchases,
+    LOG_LEVEL: {
+      VERBOSE: 'VERBOSE',
+      DEBUG: 'DEBUG',
+      INFO: 'INFO',
+      WARN: 'WARN',
+      ERROR: 'ERROR',
+    },
+  };
+});
+
+// @unleash/unleash-react-native-sdk: ESM-only package whose `exports` map has
+// no `require` condition, so Jest's CommonJS resolver can't even find it
+// (Metro resolves it via the `react-native` field — the app is unaffected).
+// Stub it as the "no key configured" client: every flag OFF, no network. The
+// FlagProvider renders children straight through, matching the real
+// provider's never-gate-boot contract.
+jest.mock(
+  '@unleash/unleash-react-native-sdk',
+  () => {
+    const React = require('react');
+    class UnleashClient {
+      on() {}
+      off() {}
+      isEnabled() {
+        return false;
+      }
+      updateToggles() {
+        return Promise.resolve();
+      }
+      updateContext() {
+        return Promise.resolve();
+      }
+    }
+    return {
+      UnleashClient,
+      FlagProvider: ({ children }) =>
+        React.createElement(React.Fragment, null, children),
+      useUnleashClient: () => new UnleashClient(),
+      useUnleashContext: () => () => Promise.resolve(),
+    };
+    // `virtual`: the module path itself is unresolvable under Jest (see above).
+  },
+  { virtual: true },
+);
+
+// @react-native-camera-roll/camera-roll: TurboModule looked up at import time
+// (getEnforcing throws when the native binary isn't there). Only `saveAsset`
+// is used (hooks/use-save-image.ts).
+jest.mock('@react-native-camera-roll/camera-roll', () => ({
+  CameraRoll: {
+    saveAsset: jest.fn(() => Promise.resolve({ node: {} })),
+  },
+}));
+
+// react-native-webview: untranspiled ESM + a native view. Render a plain View
+// so screens that embed a WebView (Import from web) can mount.
+jest.mock('react-native-webview', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const WebView = React.forwardRef((props, ref) =>
+    React.createElement(View, { ...props, ref }),
+  );
+  return { __esModule: true, default: WebView, WebView };
 });
 
 // react-native-keychain: in-memory stub. AuthContext bootstrap reads the token
