@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   introHeadline: {
-    ...theme.typography.aliases.poppinsTimeLg,
+    ...theme.typography.aliases.interTimeLg,
     color: theme.colors.uacTextBase,
   },
   introRow: {
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.s,
   },
   introTipText: {
-    ...theme.typography.aliases.poppinsBodySm,
+    ...theme.typography.aliases.interBodySm,
     color: theme.colors.uacTextBase,
     flexShrink: 1,
   },

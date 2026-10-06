@@ -78,9 +78,12 @@ rule: `.claude/rules/web-preview-on-system-required.md`.
   the pattern into new files.
 
 ## Verification (run before claiming done)
-- `npx tsc --noEmit` — must pass. Legacy `_HomeScreen.tsx` errors are expected.
-- `yarn lint` — current baseline has 4 errors (all in `_HomeScreen.tsx`) and
-  3 warnings; don't add more.
+- `npx tsc --noEmit` — must pass with **0 errors**.
+- `yarn test` — must pass (all suites green). CI (`.github/workflows/ci.yml`)
+  runs typecheck + jest on every PR and on `main`; don't merge red.
+- `yarn lint` — current baseline has 5 errors (all outside `src/`:
+  `docs/deep-linking/well-known-worker.js`, `web/`) and 24 warnings; don't
+  add more.
 - iOS smoke test: `yarn ios:sim`. Bring up the full stack with
   `./scripts/qa-boot.sh` from the umbrella root.
 - **Build flakiness?** Node is pinned to 20 via `.nvmrc` (RN 0.83 needs ≥20;

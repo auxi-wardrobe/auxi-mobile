@@ -31,6 +31,16 @@ const NOW = new Date('2026-09-12T09:00:00');
 const TODAY = new Date('2026-09-12T07:30:00').getTime();
 const YESTERDAY = new Date('2026-09-11T23:59:00').getTime();
 
+// pickTodaysSheets / shouldColdStart read the real clock (isPersistedStale's
+// default `now`), so pin it to NOW — otherwise TODAY is only "today" on
+// 2026-09-12 and the suite rots the day after it was written.
+beforeAll(() => {
+  jest.useFakeTimers({ now: NOW });
+});
+afterAll(() => {
+  jest.useRealTimers();
+});
+
 const input = (over: Partial<TodaysPicksInput> = {}): TodaysPicksInput => ({
   scheduled: [],
   deck: [],

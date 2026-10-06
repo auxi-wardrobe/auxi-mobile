@@ -30,6 +30,10 @@ const ROUTE_PARAMS = {
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
   useRoute: () => ({ params: ROUTE_PARAMS }),
+  // Screens fire their step analytics from useFocusEffect; a mounted test
+  // screen is always focused, so run the callback like a plain effect.
+  useFocusEffect: (effect: () => void | (() => void)) =>
+    require('react').useEffect(effect, [effect]),
 }));
 
 const byTestID = (root: ReactTestInstance, id: string): ReactTestInstance[] =>

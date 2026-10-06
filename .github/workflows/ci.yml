@@ -1,0 +1,44 @@
+# JS CI — typecheck + unit tests on every PR and on main.
+#
+# Why this exists: until Oct 2026 nothing ran jest or tsc in CI (the only PR
+# workflow was the iOS archive smoke + CodeQL). Tests rotted silently — 10
+# suites / 27 tests red and 3 tsc errors on main, two of which hid real app
+# bugs (Enhance FAB shown on ineligible items; See-this-on-me headlines
+# rendering unstyled). This gate keeps `main` green.
+#
+# Lint is not gated yet: `yarn lint` still has pre-existing errors outside
+# src/ (docs/, web/). Add it here once that baseline is zero.
+
+name: auxi JS CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: js-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Same LTS as auxi-archive-smoke.yml (see AU-326 there).
+          node-version: "22"
+          cache: yarn
+
+      - name: Install JS deps
+        run: yarn install --frozen-lockfile
+
+      - name: Typecheck
+        run: yarn typecheck
+
+      - name: Unit tests
+        run: yarn test --ci

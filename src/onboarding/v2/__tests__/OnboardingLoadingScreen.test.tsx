@@ -26,6 +26,10 @@ const SELECTION = {
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ replace: mockReplace, navigate: mockNavigate }),
   useRoute: () => ({ params: { selection: SELECTION } }),
+  // Screens fire their step analytics from useFocusEffect; a mounted test
+  // screen is always focused, so run the callback like a plain effect.
+  useFocusEffect: (effect: () => void | (() => void)) =>
+    require('react').useEffect(effect, [effect]),
 }));
 
 const mockGenerate = jest.fn();

@@ -26,6 +26,10 @@ const SELECTION = {
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
   useRoute: () => ({ params: { selection: SELECTION } }),
+  // Screens fire their step analytics from useFocusEffect; a mounted test
+  // screen is always focused, so run the callback like a plain effect.
+  useFocusEffect: (effect: () => void | (() => void)) =>
+    require('react').useEffect(effect, [effect]),
 }));
 
 const mockCompleteOnboarding = jest.fn();
@@ -108,9 +112,14 @@ describe('OnboardingOutroScreen — the only completion point', () => {
       wardrobe_direction: 'Womenswear',
       fit_preference: 'Slim Fit',
     });
-    // ordering: track fires AFTER completeOnboarding (Phase 5 fix)
+    // ordering: track fires AFTER completeOnboarding (Phase 5 fix). Only the
+    // completion event counts — the screen also fires its own
+    // onboarding_step_viewed on focus, before any tap.
+    const completedCall = mockTrack.mock.calls.findIndex(
+      ([event]) => event === 'onboarding_completed',
+    );
     expect(mockCompleteOnboarding.mock.invocationCallOrder[0]).toBeLessThan(
-      mockTrack.mock.invocationCallOrder[0],
+      mockTrack.mock.invocationCallOrder[completedCall],
     );
   });
 
@@ -126,7 +135,10 @@ describe('OnboardingOutroScreen — the only completion point', () => {
     await flush();
 
     expect(mockCompleteOnboarding).toHaveBeenCalledTimes(1);
-    expect(mockTrack).not.toHaveBeenCalled();
+    expect(mockTrack).not.toHaveBeenCalledWith(
+      'onboarding_completed',
+      expect.anything(),
+    );
     // CTA re-enabled (isFinishing reset) so the user can retry
     expect(
       oneByTestID(root, 'onboarding-outro-see-outfit').props.disabled,

@@ -39,8 +39,18 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 const mockTrack = jest.fn();
+// The typed purchase helpers are thin wrappers over `track`; forward them to
+// the same spy with their real event names so assertions see one stream.
 jest.mock('../../services/analytics', () => ({
   track: (...args: unknown[]) => mockTrack(...args),
+  trackPurchaseStarted: (plan: string) =>
+    mockTrack('purchase_started', { plan }),
+  trackPurchaseSucceeded: (plan: string, productId: string) =>
+    mockTrack('purchase_succeeded', { plan, product_id: productId }),
+  trackPurchaseFailed: (reason: string) =>
+    mockTrack('purchase_failed', { reason }),
+  trackPurchaseRestored: (restored: boolean) =>
+    mockTrack('purchase_restored', { restored }),
 }));
 
 const mockToastShow = jest.fn();

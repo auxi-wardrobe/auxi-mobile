@@ -23,6 +23,7 @@ import { ItemDetailReadPanel } from './item-detail/ItemDetailReadPanel';
 import { BuildAroundSheet } from './build-around/BuildAroundSheet';
 import { useBuildAroundFlow } from './build-around/useBuildAroundFlow';
 import { OptionPickerSheet } from './item-detail/OptionPickerSheet';
+import { canEnhanceItem } from './item-detail/enhance-session';
 import { AiConsentDialog } from '../components/features/AiConsentDialog';
 import { useAiConsentGate } from '../hooks/useAiConsentGate';
 import { useSaveCommonItemToWardrobe } from '../hooks/useSaveCommonItemToWardrobe';
@@ -653,6 +654,7 @@ export const ItemDetailScreen = () => {
   // processing successfully (cutout exists) — catalog/seeded items, items
   // still preparing, failed processing, and already-enhanced items never get
   // the FAB. Full rules: enhance-session.ts#canEnhanceItem.
+  const canEnhance = item ? canEnhanceItem(item) : false;
 
   // "Build around this" opens the method sheet: wardrobe-only (the original
   // pin-and-rebuild on Home, which pops this modal — see useBuildAroundFlow)
@@ -755,7 +757,7 @@ export const ItemDetailScreen = () => {
             Hidden while editing (the edit panel owns its own save state) and
             whenever the item is not enhanceable (catalog / preparing /
             already enhanced — see canEnhance). */}
-        {imageFrame && !isEditing ? (
+        {imageFrame && !isEditing && canEnhance ? (
           <TouchableOpacity
             testID="item-detail-enhance-fab"
             accessibilityRole="button"
