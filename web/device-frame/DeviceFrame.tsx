@@ -215,15 +215,26 @@ export const DeviceFrame: React.FC = () => {
       style={{
         ...btnStyle,
         position: 'fixed',
-        top: 'calc(10px + env(safe-area-inset-top))',
-        right: 10,
+        // Mobile: the app is full-viewport, so a top-right button would sit on
+        // every header's right action slot (search, +, download…). Park it as
+        // a tab on the right edge, mid-height — clear of headers and sticky
+        // bottom CTAs alike. Desktop keeps the corner (the frame is centred).
+        ...(isMobile
+          ? {
+              top: '50%',
+              right: 0,
+              transform: 'translateY(-50%)',
+              borderRadius: '8px 0 0 8px',
+              padding: '10px 8px',
+            }
+          : { top: 'calc(10px + env(safe-area-inset-top))', right: 10 }),
         zIndex: 20,
         background: open ? '#fff' : 'rgba(28,28,30,0.92)',
         color: open ? '#000' : '#fff',
         border: open ? 'none' : '1px solid rgba(255,255,255,0.3)',
       }}
     >
-      {open ? '✕ Close' : '⚙ Screens'}
+      {isMobile ? (open ? '✕' : '⚙') : open ? '✕ Close' : '⚙ Screens'}
     </button>
   );
 
@@ -231,8 +242,9 @@ export const DeviceFrame: React.FC = () => {
     <div
       style={{
         position: 'fixed',
-        top: 'calc(56px + env(safe-area-inset-top))',
-        right: 10,
+        ...(isMobile
+          ? { top: '50%', right: 44, transform: 'translateY(-50%)' }
+          : { top: 'calc(56px + env(safe-area-inset-top))', right: 10 }),
         zIndex: 20,
         background: '#1c1c1e',
         padding: 12,
