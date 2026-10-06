@@ -342,7 +342,12 @@
         "empty": "Chưa có món nào để chọn",
         "add_item": "Thêm món",
         "added_toast": "Đã thêm {{count}} món vào tủ đồ",
-        "added_partial_toast": "Đã thêm {{added}}, {{failed}} không thể thêm"
+        "added_partial_toast": "Đã thêm {{added}}, {{failed}} không thể thêm",
+        "search_open_a11y": "Tìm món đồ",
+        "search_close_a11y": "Đóng tìm kiếm",
+        "search_placeholder": "Tìm theo tên món đồ",
+        "search_input_a11y": "Tìm món đồ theo tên",
+        "search_empty": "Không có món nào khớp với “{{query}}”"
       },
       "import_web": {
         "title": "Nhập từ web",

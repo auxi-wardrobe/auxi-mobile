@@ -404,11 +404,15 @@ URL), `wardrobe_url_import_completed`, `wardrobe_url_import_failed`. The
 `add_item_method_selected {method: 'import_web'}` option is back on
 `WardrobeScreen` (`WardrobeScreen.tsx:326`).
 
-### 6.3.b Wardrobe — search submit step not built
+### 6.3.b Wardrobe — database search (WIRED)
 
-- `wardrobe_search_initiated`
+- `wardrobe_search_initiated` — `{ source: 'database', query_length, result_count }`
 
-`DatabaseScreen` today is a grid-browse-and-pick UI with no search box; the "Add" button is a basket-commit step, not a search submit. Event removed from §5 to avoid skewing the search funnel. Wire on a real search-query dispatcher when search lands.
+`DatabaseScreen` now has a name search (header search icon, far right → field
+under the header; filters the catalog client-side). The event fires on the
+keyboard search/return key with a non-empty query — not per keystroke. The raw
+query is free text and is NEVER sent; only its length and the hit count. Funnel:
+`wardrobe_search_initiated` → `wardrobe_search_result_selected` → `wardrobe_item_added`.
 
 ### 6.4 Favourite + try-on outcomes — UI not built
 

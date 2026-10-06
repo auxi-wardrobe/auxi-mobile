@@ -50,6 +50,7 @@ import IconOutfitCanvas from '../images/icon_outfit_canvas.svg';
 import IconEye from '../images/icon_eye.svg';
 import IconEyeOff from '../images/icon_eye_off.svg';
 import IconCalendar from '../images/icon_calendar.svg';
+import IconSearch from '../images/icon_search.svg';
 import IconSearchDatabase from '../images/icon_search_database.svg';
 import IconTakePhoto from '../images/icon_take_photo.svg';
 import IconSearchImages from '../images/icon_search_images.svg';
@@ -113,6 +114,7 @@ export const Icons = {
   Eye: IconEye,
   EyeOff: IconEyeOff,
   Calendar: IconCalendar,
+  Search: IconSearch,
   SearchDatabase: IconSearchDatabase,
   TakePhoto: IconTakePhoto,
   SearchImages: IconSearchImages,
@@ -166,6 +168,7 @@ export {
   IconEye,
   IconEyeOff,
   IconCalendar,
+  IconSearch,
   IconSearchDatabase,
   IconTakePhoto,
   IconSearchImages,
