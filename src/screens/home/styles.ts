@@ -146,7 +146,8 @@ export const styles = StyleSheet.create({
   pickRow: {
     flexDirection: 'row',
     gap: PICK_TILE_GAP,
-    marginTop: theme.spacing.m,
+    // Message chips → card row: 8px.
+    marginTop: theme.spacing.s,
   },
   // A pick row that sits straight under the title (loading, or no chips).
   pickRowUnderHeader: {
