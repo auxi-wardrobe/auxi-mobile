@@ -65,12 +65,12 @@ const DiscoveryAwareTile: React.FC<{ slot: BuildAroundSlot; anchorId: string }> 
 
 /**
  * Result of "Find the best match from Discovery" (Figma "find the best .
- * detail"): every Discovery look containing the anchor item, one swipeable
- * page each (best first: exact color, then the looks the user owns most of).
- * The cover + title follow the look on screen. Each look's pieces are the
- * user's own where possible; a piece they don't own is the Discovery item with
- * a "Discovery" badge. Close dismisses; Save favourites the look on screen
- * (`source: 'build_around_discovery'`).
+ * detail"): one swipeable page per Discovery look that contains the anchor's
+ * exact piece (N such looks ⇒ N pages; best first = the looks the user owns
+ * most of). The cover + title follow the look on screen. Each look's pieces
+ * are the user's own where possible (the anchor always is); a piece they don't
+ * own is the Discovery item with a "Discovery" badge. Close dismisses; Save
+ * favourites the look on screen (`source: 'build_around_discovery'`).
  */
 export const BuildAroundMatchResultScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
@@ -97,7 +97,6 @@ export const BuildAroundMatchResultScreen = () => {
       outfit_id: outfit.inspiration.id,
       rank: pageIndex + 1,
       is_complete: outfit.is_complete,
-      anchor_match: outfit.anchor_match,
     });
     favourites.toggle(outfit.outfit_hash, () => ({
       outfit_hash: outfit.outfit_hash,
@@ -151,11 +150,6 @@ export const BuildAroundMatchResultScreen = () => {
             <Text style={miyStyles.title} accessibilityRole="header" testID="build-around-result-title">
               {inspiration.title}
             </Text>
-            {outfit.anchor_match === 'similar' ? (
-              <MBadge tone="soft" testID="build-around-result-similar">
-                {t('buildAround.similar_badge')}
-              </MBadge>
-            ) : null}
           </View>
           <View style={miyStyles.resultBlock}>
             <ScrollView

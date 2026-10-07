@@ -74,7 +74,6 @@ describe('buildAroundMatchService', () => {
   it('never claims ownership when unsure', async () => {
     const odd = {
       ...LOOK,
-      anchor_match: 'brand_new',
       is_complete: true, // recomputed from the slots, not trusted
       slots: [
         { ...LOOK.slots[0] },
@@ -85,8 +84,65 @@ describe('buildAroundMatchService', () => {
     postMock.mockResolvedValue({ data: { ...BODY, outfits: [odd] } });
     const [look] = (await buildAroundMatchService.run('A', null)).outfits;
     expect(look.slots.map(s => s.source)).toEqual(['wardrobe', 'discovery']);
-    expect(look.anchor_match).toBe('similar');
+    expect(look.anchor_match).toBe('exact');
     expect(look.is_complete).toBe(false);
+  });
+
+  it('keeps only looks that contain the exact anchor piece', async () => {
+    const look = (id: string, extra: Record<string, unknown> = {}) => ({
+      ...LOOK,
+      inspiration: { ...LOOK.inspiration, id },
+      outfit_hash: `ba_${id}`,
+      ...extra,
+    });
+    postMock.mockResolvedValue({
+      data: {
+        ...BODY,
+        outfits: [
+          look('o1'),
+          look('near', { anchor_match: 'similar' }), // near color — not the same piece
+          look('odd', { anchor_match: 'brand_new' }), // unknown — can't confirm exact
+          look('no-anchor', { slots: LOOK.slots.slice(1) }), // anchor missing
+          look('not-owned', {
+            slots: [{ ...LOOK.slots[0], source: 'discovery' }, ...LOOK.slots.slice(1)],
+          }),
+          look('o2'),
+        ],
+      },
+    });
+    const res = await buildAroundMatchService.run('A', null);
+    expect(res.outfits.map(o => o.inspiration.id)).toEqual(['o1', 'o2']);
+  });
+
+  it('returns one result per Discovery look (3 looks ⇒ 3 results)', async () => {
+    const rebuild = (id: string, hash: string) => ({
+      ...LOOK,
+      inspiration: { ...LOOK.inspiration, id },
+      outfit_hash: hash,
+    });
+    postMock.mockResolvedValue({
+      data: {
+        ...BODY,
+        outfits: [
+          rebuild('o1', 'h1'),
+          rebuild('o1', 'h1-alt'), // a second rebuild of the same look
+          rebuild('o2', 'h2'),
+          rebuild('o3', 'h3'),
+          rebuild('o2', 'h2-alt'),
+        ],
+      },
+    });
+    const res = await buildAroundMatchService.run('A', null);
+    expect(res.outfits.map(o => o.outfit_hash)).toEqual(['h1', 'h2', 'h3']);
+  });
+
+  it('is a no_match when no look contains the exact piece', async () => {
+    postMock.mockResolvedValue({
+      data: { ...BODY, outfits: [{ ...LOOK, anchor_match: 'similar' }] },
+    });
+    const res = await buildAroundMatchService.run('A', null);
+    expect(res.state).toBe('no_match');
+    expect(res.outfits).toEqual([]);
   });
 
   it('downgrades an unknown state, or a success with nothing to show, to no_match', async () => {

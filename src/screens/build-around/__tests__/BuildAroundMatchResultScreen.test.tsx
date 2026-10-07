@@ -1,5 +1,5 @@
 // "Find the best match from Discovery" result: one page per Discovery look
-// containing the anchor; unowned pieces carry a Discovery badge; the cover,
+// containing the anchor's exact piece; unowned pieces carry a Discovery badge; the cover,
 // title and Save follow the look on screen.
 
 import React from 'react';
@@ -40,10 +40,9 @@ const look = (
   id: string,
   title: string,
   slots: Array<[string, 'wardrobe' | 'discovery']>,
-  anchor_match: 'exact' | 'similar' = 'exact',
 ) => ({
   inspiration: { id, title, composite_image_url: null },
-  anchor_match,
+  anchor_match: 'exact' as const,
   outfit_hash: `ba_${id}`,
   is_complete: slots.every(([, source]) => source === 'wardrobe'),
   slots: slots.map(([itemId, source], i) => ({
@@ -79,7 +78,7 @@ const render = async () => {
 beforeEach(() => {
   setLooks(
     look('o1', 'Quiet luxury', [['A', 'wardrobe'], ['B', 'wardrobe'], ['D1', 'discovery']]),
-    look('o2', 'Weekend', [['A', 'wardrobe'], ['D2', 'discovery']], 'similar'),
+    look('o2', 'Weekend', [['A', 'wardrobe'], ['D2', 'discovery']]),
   );
   mockGoBack.mockReset();
   (favouriteService.saveFavourite as jest.Mock).mockReset();
@@ -95,8 +94,6 @@ describe('BuildAroundMatchResultScreen', () => {
     expect(byTestID(root, 'build-around-result-item-D1-badge').length).toBeGreaterThan(0);
     // Owned pieces carry no badge.
     expect(byTestID(root, 'build-around-result-item-B-badge')).toHaveLength(0);
-    // Exact-color look → no "similar" label.
-    expect(byTestID(root, 'build-around-result-similar')).toHaveLength(0);
   });
 
   it('renders one page per look with dots, and swiping switches the title', async () => {
@@ -107,7 +104,8 @@ describe('BuildAroundMatchResultScreen', () => {
     act(() => pager.props.onLayout({ nativeEvent: { layout: { width: 300 } } }));
     act(() => pager.props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: 300 } } }));
     expect(byTestID(root, 'build-around-result-title')[0].props.children).toBe('Weekend');
-    expect(byTestID(root, 'build-around-result-similar').length).toBeGreaterThan(0);
+    // The anchor is the user's own piece on every look.
+    expect(byTestID(root, 'build-around-result-item-A-anchor').length).toBeGreaterThan(1);
   });
 
   it('hides the dots for a single look', async () => {
