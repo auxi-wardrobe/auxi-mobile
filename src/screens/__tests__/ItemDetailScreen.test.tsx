@@ -352,25 +352,25 @@ describe('read mode', () => {
   // ItemDetail is presented as presentation:'modal'; navigate() to a screen
   // below the modal desyncs JS nav state from the native presentation, leaving
   // the sheet stuck on top and unresponsive ("can't close, can't do anything").
-  it('sheet → "Build" with the default method pops to Home with pinFromDetail (not navigate)', async () => {
+  it('sheet → wardrobe method → "Build" pops to Home with pinFromDetail (not navigate)', async () => {
     mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
 
     const r = await renderScreen();
     press(oneByTestID(r.root, 'item-detail-mix-btn'));
+    press(oneByTestID(r.root, 'build-around-option-wardrobe'));
+    expect(byTestID(r.root, 'build-around-style-section')).toHaveLength(0);
     press(oneByTestID(r.root, 'build-around-build'));
 
     expect(mockPopTo).toHaveBeenCalledWith('Home', { pinFromDetail: 'item-1' });
     expect(mockNavigate).not.toHaveBeenCalledWith('Home', expect.anything());
   });
 
-  it('sheet → Discovery method reveals Surprise me + random Discovery tag chips and Build starts the search', async () => {
+  it('sheet defaults to Discovery: Surprise me + random Discovery tag chips, and Build starts the search', async () => {
     mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
 
     const r = await renderScreen();
     press(oneByTestID(r.root, 'item-detail-mix-btn'));
-    expect(byTestID(r.root, 'build-around-style-section')).toHaveLength(0);
-
-    press(oneByTestID(r.root, 'build-around-option-discovery'));
+    expect(byTestID(r.root, 'build-around-option-discovery-selected').length).toBeGreaterThan(0);
     expect(byTestID(r.root, 'build-around-style-section').length).toBeGreaterThan(0);
     press(oneByTestID(r.root, 'build-around-style-surprise-me-selected'));
     press(oneByTestID(r.root, 'build-around-style-minimal'));
@@ -379,6 +379,17 @@ describe('read mode', () => {
     expect(mockBuildAroundRun).toHaveBeenCalledWith('item-1', 'minimal', expect.anything());
     expect(mockPopTo).not.toHaveBeenCalled();
     expect(byTestID(r.root, 'build-around-loading').length).toBeGreaterThan(0);
+  });
+
+  it('sheet → Build with the default (Discovery + Surprise me) searches with no tag', async () => {
+    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'item-detail-mix-btn'));
+    press(oneByTestID(r.root, 'build-around-build'));
+
+    expect(mockBuildAroundRun).toHaveBeenCalledWith('item-1', null, expect.anything());
+    expect(mockPopTo).not.toHaveBeenCalled();
   });
 
   it('has no heart button and no read-mode attribute rows', async () => {

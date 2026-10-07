@@ -62,29 +62,34 @@ const OptionRow: React.FC<{
   method: BuildAroundMethod;
   selected: boolean;
   onSelect: (method: BuildAroundMethod) => void;
-}> = ({ method, selected, onSelect }) => {
+  /** Extra content shown inside the selected option's card (style chips). */
+  children?: React.ReactNode;
+}> = ({ method, selected, onSelect, children }) => {
   const { t } = useTranslation();
   const Icon = method === 'wardrobe' ? Icons.Wardrobe : Icons.Globe;
   return (
-    <Pressable
-      onPress={() => onSelect(method)}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      accessibilityLabel={t(`buildAround.option_${method}_title`)}
-      testID={`build-around-option-${method}${selected ? '-selected' : ''}`}
-      style={styles.option}
-    >
-      <View style={styles.optionIcon}>
-        <Icon width={24} height={24} color={theme.ds.color.ink} />
-      </View>
-      <View style={styles.optionText}>
-        <Text style={styles.optionTitle}>{t(`buildAround.option_${method}_title`)}</Text>
-        <Text style={styles.optionDescription}>{t(`buildAround.option_${method}_body`)}</Text>
-      </View>
-      <View style={[styles.radio, selected && styles.radioOn]}>
-        {selected ? <View style={styles.radioDot} /> : null}
-      </View>
-    </Pressable>
+    <View style={[styles.optionCard, selected && styles.optionCardOn]}>
+      <Pressable
+        onPress={() => onSelect(method)}
+        accessibilityRole="radio"
+        accessibilityState={{ selected }}
+        accessibilityLabel={t(`buildAround.option_${method}_title`)}
+        testID={`build-around-option-${method}${selected ? '-selected' : ''}`}
+        style={styles.option}
+      >
+        <View style={styles.optionIcon}>
+          <Icon width={28} height={28} color={theme.ds.color.ink} />
+        </View>
+        <View style={styles.optionText}>
+          <Text style={styles.optionTitle}>{t(`buildAround.option_${method}_title`)}</Text>
+          <Text style={styles.optionDescription}>{t(`buildAround.option_${method}_body`)}</Text>
+        </View>
+        <View style={[styles.radio, selected && styles.radioOn]}>
+          {selected ? <View style={styles.radioDot} /> : null}
+        </View>
+      </Pressable>
+      {selected ? children : null}
+    </View>
   );
 };
 
@@ -106,7 +111,8 @@ export const BuildAroundSheet: React.FC<Props> = ({
   onBackToChoice,
 }) => {
   const { t } = useTranslation();
-  const [method, setMethod] = useState<BuildAroundMethod>('wardrobe');
+  // Default = Discovery (design: "default option" — find the best match).
+  const [method, setMethod] = useState<BuildAroundMethod>('discovery');
   // `null` = Surprise me. Otherwise one of the randomly offered Discovery tags.
   const [tag, setTag] = useState<string | null>(null);
 
@@ -118,10 +124,10 @@ export const BuildAroundSheet: React.FC<Props> = ({
     [visible, allTags],
   );
 
-  // A fresh open always starts from the default (the existing behaviour).
+  // A fresh open always starts from the default (Discovery + Surprise me).
   useEffect(() => {
     if (!visible) {
-      setMethod('wardrobe');
+      setMethod('discovery');
       setTag(null);
     }
   }, [visible]);
@@ -150,38 +156,36 @@ export const BuildAroundSheet: React.FC<Props> = ({
 
           <View style={styles.options} accessibilityRole="radiogroup">
             <OptionRow method="wardrobe" selected={method === 'wardrobe'} onSelect={setMethod} />
-            <OptionRow method="discovery" selected={method === 'discovery'} onSelect={setMethod} />
-          </View>
-
-          {method === 'discovery' ? (
-            <View testID="build-around-style-section">
-              <View style={styles.styleHeader}>
-                <View style={styles.headerIcon}>
-                  <Icons.Remix width={14} height={14} color={theme.ds.color.white} />
+            <OptionRow method="discovery" selected={method === 'discovery'} onSelect={setMethod}>
+              <View testID="build-around-style-section" style={styles.styleSection}>
+                <Text style={styles.styleTitle}>{t('buildAround.style_title')}</Text>
+                <View style={styles.chips}>
+                  <View style={styles.chipCell}>
+                    <MChip
+                      block
+                      selected={tag === null}
+                      onPress={() => setTag(null)}
+                      testID={`build-around-style-surprise-me${tag === null ? '-selected' : ''}`}
+                    >
+                      {t('buildAround.style_surprise_me')}
+                    </MChip>
+                  </View>
+                  {tagChips.map(key => (
+                    <View key={key} style={styles.chipCell}>
+                      <MChip
+                        block
+                        selected={tag === key}
+                        onPress={() => setTag(key)}
+                        testID={`build-around-style-${key}${tag === key ? '-selected' : ''}`}
+                      >
+                        {tagLabel(key)}
+                      </MChip>
+                    </View>
+                  ))}
                 </View>
-                <Text style={styles.headerTitle}>{t('buildAround.style_title')}</Text>
               </View>
-              <View style={styles.chips}>
-                <MChip
-                  selected={tag === null}
-                  onPress={() => setTag(null)}
-                  testID={`build-around-style-surprise-me${tag === null ? '-selected' : ''}`}
-                >
-                  {t('buildAround.style_surprise_me')}
-                </MChip>
-                {tagChips.map(key => (
-                  <MChip
-                    key={key}
-                    selected={tag === key}
-                    onPress={() => setTag(key)}
-                    testID={`build-around-style-${key}${tag === key ? '-selected' : ''}`}
-                  >
-                    {tagLabel(key)}
-                  </MChip>
-                ))}
-              </View>
-            </View>
-          ) : null}
+            </OptionRow>
+          </View>
 
           <View style={styles.actions}>
             <View style={styles.grow}>
