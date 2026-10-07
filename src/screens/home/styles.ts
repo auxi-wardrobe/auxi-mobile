@@ -20,6 +20,8 @@ import { theme } from '../../theme/theme';
 export const GUTTER = theme.spacing.uacDimension12;
 /** Gap between every card on the landing (picks, discovery, features): 4px. */
 export const PICK_TILE_GAP = theme.spacing.uacDimension4;
+/** Section title → first block below it (chips, cards, state box): 12px. */
+export const SECTION_HEADER_GAP = theme.spacing.uacDimension12;
 /** Discovery strip card aspect (portrait lookbook shot). */
 export const DISCOVERY_CARD_RATIO = 3 / 4;
 /** Popular-features tile aspect — landscape, width : height = 4 : 3. */
@@ -129,7 +131,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.s,
-    marginTop: theme.spacing.m,
+    marginTop: SECTION_HEADER_GAP,
   },
   chip: {
     backgroundColor: theme.colors.figmaCaptionPillBg,
@@ -145,6 +147,10 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: PICK_TILE_GAP,
     marginTop: theme.spacing.m,
+  },
+  // A pick row that sits straight under the title (loading, or no chips).
+  pickRowUnderHeader: {
+    marginTop: SECTION_HEADER_GAP,
   },
   pickTile: {
     flex: 1,
@@ -200,7 +206,7 @@ export const styles = StyleSheet.create({
 
   // ── Empty / error states shared by the two feed sections ────────────────
   stateBox: {
-    marginTop: theme.spacing.m,
+    marginTop: SECTION_HEADER_GAP,
     backgroundColor: theme.colors.figmaCardSurface,
     borderRadius: theme.borderRadius.figmaTile,
     padding: theme.spacing.l,
@@ -227,7 +233,7 @@ export const styles = StyleSheet.create({
   discoveryRow: {
     flexDirection: 'row',
     gap: PICK_TILE_GAP,
-    marginTop: theme.spacing.m,
+    marginTop: SECTION_HEADER_GAP,
   },
   discoveryCard: {
     flex: 1,
@@ -246,7 +252,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: PICK_TILE_GAP,
-    marginTop: theme.spacing.m,
+    marginTop: SECTION_HEADER_GAP,
   },
   featureTile: {
     // Exactly three per row: a 30% basis leaves room for the two 4px gaps
