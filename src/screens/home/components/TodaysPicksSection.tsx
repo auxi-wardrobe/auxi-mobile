@@ -164,7 +164,10 @@ export const TodaysPicksSection: React.FC<Props> = ({
       />
 
       {loading ? (
-        <View style={styles.pickRow} testID="home-landing-picks-loading">
+        <View
+          style={[styles.pickRow, styles.pickRowUnderHeader]}
+          testID="home-landing-picks-loading"
+        >
           {Array.from({ length: TILES_PER_PAGE }).map((_, index) => (
             <View key={index} style={styles.pickTileEmpty} />
           ))}
@@ -218,7 +221,11 @@ export const TodaysPicksSection: React.FC<Props> = ({
             {sheets.map((sheet, sheetIndex) => (
               <View
                 key={sheet.outfitHash}
-                style={[styles.pickRow, { width: pageWidth }]}
+                style={[
+                  styles.pickRow,
+                  chips.length === 0 && styles.pickRowUnderHeader,
+                  { width: pageWidth },
+                ]}
               >
                 {Array.from({ length: TILES_PER_PAGE }).map((_, tileIndex) => {
                   const item = sheet.items[tileIndex];
