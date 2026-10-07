@@ -108,7 +108,11 @@ export const BuildAroundMatchResultScreen = () => {
   }, [outfit, saved, favourites, itemId, pageIndex]);
 
   const onPagerLayout = (e: LayoutChangeEvent) => setPageWidth(e.nativeEvent.layout.width);
-  const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  // Track the page from `onScroll`, not `onMomentumScrollEnd`: react-native-web
+  // never fires momentum events, so on web the cover, title and Save stayed on
+  // the first look while the items swiped. Rounding switches the look as soon
+  // as the next page is more than half in view, on every platform.
+  const onPagerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!pageWidth) return;
     const next = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
     const clamped = Math.min(Math.max(next, 0), outfits.length - 1);
@@ -163,7 +167,8 @@ export const BuildAroundMatchResultScreen = () => {
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               onLayout={onPagerLayout}
-              onMomentumScrollEnd={onMomentumEnd}
+              onScroll={onPagerScroll}
+              scrollEventThrottle={16}
               style={miyStyles.pager}
               testID="build-around-result-pager"
             >
