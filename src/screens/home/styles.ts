@@ -18,8 +18,8 @@ import { theme } from '../../theme/theme';
 // wardrobe grids sit on it — so the landing lines up with every sibling page
 // instead of being inset twice as far.
 export const GUTTER = theme.spacing.uacDimension12;
-/** Today's-picks garment tile: 3 across the gutter-inset row. */
-export const PICK_TILE_GAP = theme.spacing.uacDimension12;
+/** Gap between every card on the landing (picks, discovery, features): 4px. */
+export const PICK_TILE_GAP = theme.spacing.uacDimension4;
 /** Discovery strip card aspect (portrait lookbook shot). */
 export const DISCOVERY_CARD_RATIO = 3 / 4;
 /** Popular-features tile aspect — landscape, width : height = 4 : 3. */
@@ -249,8 +249,8 @@ export const styles = StyleSheet.create({
     marginTop: theme.spacing.m,
   },
   featureTile: {
-    // Exactly three per row: a 30% basis leaves room for the two 12px gaps
-    // (3 × 30% + 24px fits any phone width; a 4th never does), then flexGrow
+    // Exactly three per row: a 30% basis leaves room for the two 4px gaps
+    // (3 × 30% + 8px fits any phone width; a 4th never does), then flexGrow
     // shares the remainder so the row fills the gutter edge to edge.
     flexBasis: '30%',
     flexGrow: 1,
