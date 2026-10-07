@@ -89,6 +89,68 @@ describe('buildAroundMatchService', () => {
     expect(look.is_complete).toBe(false);
   });
 
+  it('keeps only looks that contain the anchor piece, exact matches first', async () => {
+    const look = (id: string, extra: Record<string, unknown> = {}) => ({
+      ...LOOK,
+      inspiration: { ...LOOK.inspiration, id },
+      outfit_hash: `ba_${id}`,
+      ...extra,
+    });
+    postMock.mockResolvedValue({
+      data: {
+        ...BODY,
+        outfits: [
+          look('near', { anchor_match: 'similar' }), // near color — after exact ones
+          look('o1'),
+          look('no-anchor', { slots: LOOK.slots.slice(1) }), // anchor missing
+          look('not-owned', {
+            slots: [{ ...LOOK.slots[0], source: 'discovery' }, ...LOOK.slots.slice(1)],
+          }),
+          look('odd', { anchor_match: 'brand_new' }), // unknown → similar
+          look('o2'),
+        ],
+      },
+    });
+    const res = await buildAroundMatchService.run('A', null);
+    expect(res.outfits.map(o => [o.inspiration.id, o.anchor_match])).toEqual([
+      ['o1', 'exact'],
+      ['o2', 'exact'],
+      ['near', 'similar'],
+      ['odd', 'similar'],
+    ]);
+  });
+
+  it('returns one result per Discovery look (3 looks ⇒ 3 results)', async () => {
+    const rebuild = (id: string, hash: string) => ({
+      ...LOOK,
+      inspiration: { ...LOOK.inspiration, id },
+      outfit_hash: hash,
+    });
+    postMock.mockResolvedValue({
+      data: {
+        ...BODY,
+        outfits: [
+          rebuild('o1', 'h1'),
+          rebuild('o1', 'h1-alt'), // a second rebuild of the same look
+          rebuild('o2', 'h2'),
+          rebuild('o3', 'h3'),
+          rebuild('o2', 'h2-alt'),
+        ],
+      },
+    });
+    const res = await buildAroundMatchService.run('A', null);
+    expect(res.outfits.map(o => o.outfit_hash)).toEqual(['h1', 'h2', 'h3']);
+  });
+
+  it('is a no_match when no look contains the anchor piece', async () => {
+    postMock.mockResolvedValue({
+      data: { ...BODY, outfits: [{ ...LOOK, slots: LOOK.slots.slice(1) }] },
+    });
+    const res = await buildAroundMatchService.run('A', null);
+    expect(res.state).toBe('no_match');
+    expect(res.outfits).toEqual([]);
+  });
+
   it('downgrades an unknown state, or a success with nothing to show, to no_match', async () => {
     postMock.mockResolvedValueOnce({ data: { ...BODY, state: 'brand_new_state' } });
     expect((await buildAroundMatchService.run('A', 'casual')).state).toBe('no_match');

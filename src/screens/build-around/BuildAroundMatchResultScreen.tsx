@@ -65,12 +65,12 @@ const DiscoveryAwareTile: React.FC<{ slot: BuildAroundSlot; anchorId: string }> 
 
 /**
  * Result of "Find the best match from Discovery" (Figma "find the best .
- * detail"): every Discovery look containing the anchor item, one swipeable
- * page each (best first: exact color, then the looks the user owns most of).
- * The cover + title follow the look on screen. Each look's pieces are the
- * user's own where possible; a piece they don't own is the Discovery item with
- * a "Discovery" badge. Close dismisses; Save favourites the look on screen
- * (`source: 'build_around_discovery'`).
+ * detail"): one swipeable page per Discovery look that contains the anchor's
+ * piece (N such looks ⇒ N pages). Exact matches first, then near-color ones
+ * labelled "Close match"; within each, the looks the user owns most of first. The cover + title follow the look on screen. Each look's pieces
+ * are the user's own where possible (the anchor always is); a piece they don't
+ * own is the Discovery item with a "Discovery" badge. Close dismisses; Save
+ * favourites the look on screen (`source: 'build_around_discovery'`).
  */
 export const BuildAroundMatchResultScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
@@ -108,7 +108,11 @@ export const BuildAroundMatchResultScreen = () => {
   }, [outfit, saved, favourites, itemId, pageIndex]);
 
   const onPagerLayout = (e: LayoutChangeEvent) => setPageWidth(e.nativeEvent.layout.width);
-  const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  // Track the page from `onScroll`, not `onMomentumScrollEnd`: react-native-web
+  // never fires momentum events, so on web the cover, title and Save stayed on
+  // the first look while the items swiped. Rounding switches the look as soon
+  // as the next page is more than half in view, on every platform.
+  const onPagerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (!pageWidth) return;
     const next = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
     const clamped = Math.min(Math.max(next, 0), outfits.length - 1);
@@ -163,7 +167,8 @@ export const BuildAroundMatchResultScreen = () => {
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               onLayout={onPagerLayout}
-              onMomentumScrollEnd={onMomentumEnd}
+              onScroll={onPagerScroll}
+              scrollEventThrottle={16}
               style={miyStyles.pager}
               testID="build-around-result-pager"
             >

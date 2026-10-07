@@ -201,6 +201,8 @@ const discoveryHandlers = [
       id: `${lookId}-${src.id}`,
       is_common_item: true,
     });
+    // Three Discovery looks contain the anchor's piece ⇒ three results
+    // (two exact, one near-color "Close match").
     const plan: Array<[number, number, 'exact' | 'similar']> = [
       [0, 2, 'exact'], // owns 3 of 4
       [1, 1, 'exact'], // owns 2 of 4

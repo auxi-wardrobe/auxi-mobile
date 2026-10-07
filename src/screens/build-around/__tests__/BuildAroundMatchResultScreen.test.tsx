@@ -1,5 +1,5 @@
 // "Find the best match from Discovery" result: one page per Discovery look
-// containing the anchor; unowned pieces carry a Discovery badge; the cover,
+// containing the anchor's exact piece; unowned pieces carry a Discovery badge; the cover,
 // title and Save follow the look on screen.
 
 import React from 'react';
@@ -42,7 +42,7 @@ const look = (
   slots: Array<[string, 'wardrobe' | 'discovery']>,
   anchor_match: 'exact' | 'similar' = 'exact',
 ) => ({
-  inspiration: { id, title, composite_image_url: null },
+  inspiration: { id, title, composite_image_url: `https://x/${id}-cover.png` },
   anchor_match,
   outfit_hash: `ba_${id}`,
   is_complete: slots.every(([, source]) => source === 'wardrobe'),
@@ -95,19 +95,39 @@ describe('BuildAroundMatchResultScreen', () => {
     expect(byTestID(root, 'build-around-result-item-D1-badge').length).toBeGreaterThan(0);
     // Owned pieces carry no badge.
     expect(byTestID(root, 'build-around-result-item-B-badge')).toHaveLength(0);
-    // Exact-color look → no "similar" label.
+    // Exact match → no "Close match" label.
     expect(byTestID(root, 'build-around-result-similar')).toHaveLength(0);
   });
 
-  it('renders one page per look with dots, and swiping switches the title', async () => {
+  it('renders one page per look with dots; swiping switches the cover, title and Save', async () => {
+    (favouriteService.saveFavourite as jest.Mock).mockResolvedValue({ id: 'fav-2' });
+    const cover = (root: ReactTestInstance) =>
+      byTestID(root, 'discovery-detail-cover-image')[0].props.source.uri;
     const { root } = await render();
     expect(byTestID(root, 'build-around-result-items-1').length).toBeGreaterThan(0);
     expect(byTestID(root, 'build-around-result-dots').length).toBeGreaterThan(0);
+    expect(cover(root)).toBe('https://x/o1-cover.png');
     const pager = byTestID(root, 'build-around-result-pager')[0];
+    // Halfway is not enough to switch the look.
     act(() => pager.props.onLayout({ nativeEvent: { layout: { width: 300 } } }));
-    act(() => pager.props.onMomentumScrollEnd({ nativeEvent: { contentOffset: { x: 300 } } }));
+    act(() => pager.props.onScroll({ nativeEvent: { contentOffset: { x: 140 } } }));
+    expect(cover(root)).toBe('https://x/o1-cover.png');
+    act(() => pager.props.onLayout({ nativeEvent: { layout: { width: 300 } } }));
+    act(() => pager.props.onScroll({ nativeEvent: { contentOffset: { x: 300 } } }));
     expect(byTestID(root, 'build-around-result-title')[0].props.children).toBe('Weekend');
+    // Each look has its own Discovery photo.
+    expect(cover(root)).toBe('https://x/o2-cover.png');
+    // The anchor is the user's own piece on every look.
+    expect(byTestID(root, 'build-around-result-item-A-anchor').length).toBeGreaterThan(1);
+    // Near-color look → "Close match" label.
     expect(byTestID(root, 'build-around-result-similar').length).toBeGreaterThan(0);
+    // Save favourites the look on screen, not the first one.
+    await act(async () => {
+      byTestID(root, 'build-around-result-save')[0].props.onPress();
+    });
+    expect(favouriteService.saveFavourite).toHaveBeenCalledWith(
+      expect.objectContaining({ outfit_hash: 'ba_o2', title: 'Weekend' }),
+    );
   });
 
   it('hides the dots for a single look', async () => {

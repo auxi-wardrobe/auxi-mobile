@@ -1522,7 +1522,7 @@
       "a11y_unsave": "Remove this outfit from favourites",
       "save_prompt": "Curious how it looks on you? Save it to Favourites",
       "discovery_tag": "Discovery",
-      "similar_badge": "Similar alternative",
+      "similar_badge": "Close match",
       "a11y_outfit_page": "Look {{index}} of {{count}}",
       "a11y_discovery_piece": "{{name}}, from Discovery, not in your wardrobe",
       "loading_title": "Finding the best match",
