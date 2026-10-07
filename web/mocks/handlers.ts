@@ -201,17 +201,18 @@ const discoveryHandlers = [
       id: `${lookId}-${src.id}`,
       is_common_item: true,
     });
-    // Three Discovery looks contain the anchor's exact piece ⇒ three results.
-    const plan: Array<[number, number]> = [
-      [0, 2], // owns 3 of 4
-      [1, 1], // owns 2 of 4
-      [2, 0], // owns only the anchor
+    // Three Discovery looks contain the anchor's piece ⇒ three results
+    // (two exact, one near-color "Close match").
+    const plan: Array<[number, number, 'exact' | 'similar']> = [
+      [0, 2, 'exact'], // owns 3 of 4
+      [1, 1, 'exact'], // owns 2 of 4
+      [2, 0, 'similar'], // owns only the anchor
     ];
     await delay(1200);
     return HttpResponse.json({
       state: 'success',
       algorithm_version: 'mock-2',
-      outfits: plan.map(([lookIndex, ownedCount]) => {
+      outfits: plan.map(([lookIndex, ownedCount, anchorMatch]) => {
         const look = D_OUTFITS[lookIndex];
         const others = owned.slice(0, 3);
         const slots = [
@@ -224,7 +225,7 @@ const discoveryHandlers = [
         ];
         return {
           inspiration: { id: look.id, title: look.title, composite_image_url: look.composite_image_url },
-          anchor_match: 'exact',
+          anchor_match: anchorMatch,
           outfit_hash: `mock_ba_${look.id}_${anchorId}`,
           is_complete: ownedCount === others.length,
           slots: slots.map((slot, i) => ({ inspiration_item_id: `${look.id}-i${i}`, role: '', ...slot })),

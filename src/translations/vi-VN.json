@@ -1501,6 +1501,7 @@
       "a11y_unsave": "Bỏ set đồ này khỏi mục yêu thích",
       "save_prompt": "Tò mò xem trên người bạn trông thế nào? Lưu vào Yêu thích nhé",
       "discovery_tag": "Discovery",
+      "similar_badge": "Gần giống",
       "a11y_outfit_page": "Outfit {{index}} / {{count}}",
       "a11y_discovery_piece": "{{name}}, từ Discovery, chưa có trong tủ đồ của bạn",
       "loading_title": "Đang tìm set khớp nhất",

@@ -1522,6 +1522,7 @@
       "a11y_unsave": "Retirer cette tenue des favoris",
       "save_prompt": "Curieux de voir ce que ça donne sur toi ? Enregistre-la dans tes favoris",
       "discovery_tag": "Discovery",
+      "similar_badge": "Presque identique",
       "a11y_outfit_page": "Look {{index}} sur {{count}}",
       "a11y_discovery_piece": "{{name}}, issu de Discovery, absent de votre garde-robe",
       "loading_title": "Recherche du meilleur look",

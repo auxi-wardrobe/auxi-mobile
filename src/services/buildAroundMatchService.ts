@@ -2,14 +2,15 @@ import { apiClient } from './apiClient';
 import type { MakeItYoursItem } from './makeItYoursService';
 
 // "Build around this" → "Find the best match from Discovery": the reverse of
-// Make It Yours. The user anchors ONE wardrobe item (A, e.g. black chelsea
-// boots). A result is a real Discovery look that already contains A's exact
-// piece (same garment + silhouette + color) — never one Discovery image with
-// a pile of loosely similar items. Each such look is rebuilt from the user's
-// wardrobe where possible; pieces the user doesn't own stay the Discovery item
-// and are tagged "Discovery" in the UI. One result per Discovery look: three
-// looks contain black chelsea boots ⇒ exactly three results. Looks the user
-// owns more of come first.
+// Make It Yours. The user anchors ONE wardrobe item (A, e.g. a blue denim
+// shirt). A result is a real Discovery look that already contains A's piece —
+// never one Discovery image with a pile of loosely similar items. Each such
+// look is rebuilt from the user's wardrobe where possible; pieces the user
+// doesn't own stay the Discovery item and are tagged "Discovery" in the UI.
+// One result per Discovery look: three looks contain the piece ⇒ exactly three
+// results. Two tiers: looks with A's exact piece first, then looks with a
+// near-color version of it (labelled "Close match"); within a tier the backend
+// order (most-owned first) is kept.
 //
 //   POST /discovery/build-around   { item_id, trend_tag? }
 //
@@ -21,12 +22,13 @@ import type { MakeItYoursItem } from './makeItYoursService';
 //     `no_wardrobe` is only sent by the old `ba-1` engine.
 //   • An unknown `source` is treated as `discovery` — never claim a piece is
 //     owned when unsure.
+//     An unknown `anchor_match` is treated as `similar` — never claim an
+//     exact match when unsure.
 //   • The client enforces the product rule regardless of what the backend
-//     sends (see `normalizeOutfits`): a look is kept only if
-//     `anchor_match === 'exact'` (near-color `similar` / unknown → dropped)
-//     AND one of its slots is the anchor itself (`item.id === item_id`,
-//     `source: 'wardrobe'`); repeats of the same Discovery look
-//     (`inspiration.id`) collapse to the first (best-ranked) one.
+//     sends (see `normalizeOutfits`): a look is kept only if one of its slots
+//     is the anchor itself (`item.id === item_id`, `source: 'wardrobe'`);
+//     repeats of the same Discovery look (`inspiration.id`) collapse to the
+//     first (best-ranked) one; `exact` looks are ordered before `similar`.
 //   • `trend_tag` is omitted for "Surprise me"; otherwise one of the tags from
 //     `GET /discovery/trend-tags`, and every returned look carries that tag.
 //   • 404 = the anchor item is gone, 422 = anchor not eligible
@@ -69,10 +71,7 @@ const KNOWN_STATES: readonly BuildAroundMatchState[] = [
 /** `wardrobe` = the user owns this piece; `discovery` = a Discovery piece they don't. */
 export type BuildAroundSlotSource = 'wardrobe' | 'discovery';
 
-/**
- * `exact` = the look has A's piece in A's color; `similar` = a near color.
- * Only `exact` looks reach the UI — `similar` is parsed for forward-compat.
- */
+/** `exact` = the look has A's piece in A's color; `similar` = a near color. */
 export type BuildAroundAnchorMatch = 'exact' | 'similar';
 
 export interface BuildAroundInspiration {
@@ -145,22 +144,15 @@ const normalizeSlot = (slot: RawSlot): BuildAroundSlot[] =>
 
 const normalizeOutfit = (outfit: RawOutfit, anchorId: string): BuildAroundOutfit[] => {
   const slots = (outfit.slots ?? []).flatMap(normalizeSlot);
-  // The look must contain the user's exact piece: an exact-color match whose
-  // anchor slot IS the user's item. Anything looser is not a result.
+  // The look must contain the user's piece: its anchor slot IS the user's item.
   const hasAnchor = slots.some(
     slot => slot.item.id === anchorId && slot.source === 'wardrobe',
   );
-  if (
-    !outfit.inspiration?.id ||
-    !outfit.outfit_hash ||
-    outfit.anchor_match !== 'exact' ||
-    !hasAnchor
-  )
-    return [];
+  if (!outfit.inspiration?.id || !outfit.outfit_hash || !hasAnchor) return [];
   return [
     {
       inspiration: outfit.inspiration,
-      anchor_match: 'exact',
+      anchor_match: outfit.anchor_match === 'exact' ? 'exact' : 'similar',
       outfit_hash: outfit.outfit_hash,
       is_complete: slots.every(slot => slot.source === 'wardrobe'),
       slots,
@@ -169,22 +161,26 @@ const normalizeOutfit = (outfit: RawOutfit, anchorId: string): BuildAroundOutfit
 };
 
 /**
- * Valid looks in backend order (best first), one per Discovery look — the
- * number of results equals the number of Discovery looks that contain the
- * anchor's exact piece.
+ * Valid looks, one per Discovery look — the number of results equals the
+ * number of Discovery looks that contain the anchor's piece. Exact matches
+ * come first, then close (near-color) ones; each tier keeps the backend order.
  */
 const normalizeOutfits = (
   outfits: readonly RawOutfit[],
   anchorId: string,
 ): BuildAroundOutfit[] => {
   const seen = new Set<string>();
-  return outfits
+  const looks = outfits
     .flatMap(outfit => normalizeOutfit(outfit, anchorId))
     .filter(outfit => {
       if (seen.has(outfit.inspiration.id)) return false;
       seen.add(outfit.inspiration.id);
       return true;
     });
+  return [
+    ...looks.filter(look => look.anchor_match === 'exact'),
+    ...looks.filter(look => look.anchor_match === 'similar'),
+  ];
 };
 
 /** Ids to send to `POST /favourites` for a look (Discovery pieces included). */

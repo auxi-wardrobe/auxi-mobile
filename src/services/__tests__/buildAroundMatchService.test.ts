@@ -74,6 +74,7 @@ describe('buildAroundMatchService', () => {
   it('never claims ownership when unsure', async () => {
     const odd = {
       ...LOOK,
+      anchor_match: 'brand_new',
       is_complete: true, // recomputed from the slots, not trusted
       slots: [
         { ...LOOK.slots[0] },
@@ -84,11 +85,11 @@ describe('buildAroundMatchService', () => {
     postMock.mockResolvedValue({ data: { ...BODY, outfits: [odd] } });
     const [look] = (await buildAroundMatchService.run('A', null)).outfits;
     expect(look.slots.map(s => s.source)).toEqual(['wardrobe', 'discovery']);
-    expect(look.anchor_match).toBe('exact');
+    expect(look.anchor_match).toBe('similar');
     expect(look.is_complete).toBe(false);
   });
 
-  it('keeps only looks that contain the exact anchor piece', async () => {
+  it('keeps only looks that contain the anchor piece, exact matches first', async () => {
     const look = (id: string, extra: Record<string, unknown> = {}) => ({
       ...LOOK,
       inspiration: { ...LOOK.inspiration, id },
@@ -99,19 +100,24 @@ describe('buildAroundMatchService', () => {
       data: {
         ...BODY,
         outfits: [
+          look('near', { anchor_match: 'similar' }), // near color — after exact ones
           look('o1'),
-          look('near', { anchor_match: 'similar' }), // near color — not the same piece
-          look('odd', { anchor_match: 'brand_new' }), // unknown — can't confirm exact
           look('no-anchor', { slots: LOOK.slots.slice(1) }), // anchor missing
           look('not-owned', {
             slots: [{ ...LOOK.slots[0], source: 'discovery' }, ...LOOK.slots.slice(1)],
           }),
+          look('odd', { anchor_match: 'brand_new' }), // unknown → similar
           look('o2'),
         ],
       },
     });
     const res = await buildAroundMatchService.run('A', null);
-    expect(res.outfits.map(o => o.inspiration.id)).toEqual(['o1', 'o2']);
+    expect(res.outfits.map(o => [o.inspiration.id, o.anchor_match])).toEqual([
+      ['o1', 'exact'],
+      ['o2', 'exact'],
+      ['near', 'similar'],
+      ['odd', 'similar'],
+    ]);
   });
 
   it('returns one result per Discovery look (3 looks ⇒ 3 results)', async () => {
@@ -136,9 +142,9 @@ describe('buildAroundMatchService', () => {
     expect(res.outfits.map(o => o.outfit_hash)).toEqual(['h1', 'h2', 'h3']);
   });
 
-  it('is a no_match when no look contains the exact piece', async () => {
+  it('is a no_match when no look contains the anchor piece', async () => {
     postMock.mockResolvedValue({
-      data: { ...BODY, outfits: [{ ...LOOK, anchor_match: 'similar' }] },
+      data: { ...BODY, outfits: [{ ...LOOK, slots: LOOK.slots.slice(1) }] },
     });
     const res = await buildAroundMatchService.run('A', null);
     expect(res.state).toBe('no_match');

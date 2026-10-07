@@ -40,9 +40,10 @@ const look = (
   id: string,
   title: string,
   slots: Array<[string, 'wardrobe' | 'discovery']>,
+  anchor_match: 'exact' | 'similar' = 'exact',
 ) => ({
   inspiration: { id, title, composite_image_url: null },
-  anchor_match: 'exact' as const,
+  anchor_match,
   outfit_hash: `ba_${id}`,
   is_complete: slots.every(([, source]) => source === 'wardrobe'),
   slots: slots.map(([itemId, source], i) => ({
@@ -78,7 +79,7 @@ const render = async () => {
 beforeEach(() => {
   setLooks(
     look('o1', 'Quiet luxury', [['A', 'wardrobe'], ['B', 'wardrobe'], ['D1', 'discovery']]),
-    look('o2', 'Weekend', [['A', 'wardrobe'], ['D2', 'discovery']]),
+    look('o2', 'Weekend', [['A', 'wardrobe'], ['D2', 'discovery']], 'similar'),
   );
   mockGoBack.mockReset();
   (favouriteService.saveFavourite as jest.Mock).mockReset();
@@ -94,6 +95,8 @@ describe('BuildAroundMatchResultScreen', () => {
     expect(byTestID(root, 'build-around-result-item-D1-badge').length).toBeGreaterThan(0);
     // Owned pieces carry no badge.
     expect(byTestID(root, 'build-around-result-item-B-badge')).toHaveLength(0);
+    // Exact match → no "Close match" label.
+    expect(byTestID(root, 'build-around-result-similar')).toHaveLength(0);
   });
 
   it('renders one page per look with dots, and swiping switches the title', async () => {
@@ -106,6 +109,8 @@ describe('BuildAroundMatchResultScreen', () => {
     expect(byTestID(root, 'build-around-result-title')[0].props.children).toBe('Weekend');
     // The anchor is the user's own piece on every look.
     expect(byTestID(root, 'build-around-result-item-A-anchor').length).toBeGreaterThan(1);
+    // Near-color look → "Close match" label.
+    expect(byTestID(root, 'build-around-result-similar').length).toBeGreaterThan(0);
   });
 
   it('hides the dots for a single look', async () => {
