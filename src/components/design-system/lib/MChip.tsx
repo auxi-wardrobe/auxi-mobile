@@ -23,6 +23,8 @@ export interface MChipProps {
   onPress?: () => void;
   removable?: boolean;
   onRemove?: () => void;
+  /** Stretch to the parent's width with a centred label (equal-width chip grids). */
+  block?: boolean;
   testID?: string;
   accessibilityLabel?: string;
 }
@@ -33,6 +35,7 @@ export const MChip: React.FC<MChipProps> = ({
   onPress,
   removable,
   onRemove,
+  block,
   testID,
   accessibilityLabel,
 }) => {
@@ -101,6 +104,7 @@ export const MChip: React.FC<MChipProps> = ({
         style={[
           styles.chip,
           removable && styles.chipRemovable,
+          block && styles.chipBlock,
           {
             backgroundColor: removable ? color.p200 : bg,
             opacity: removable ? collapse : 1,
@@ -193,6 +197,7 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   chipRemovable: { paddingLeft: 11 },
+  chipBlock: { justifyContent: 'center', paddingVertical: 12 },
   chipText: {
     ...type.bodySm,
     fontFamily: type.h3.fontFamily,

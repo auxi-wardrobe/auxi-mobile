@@ -6,6 +6,8 @@ import { theme } from '../../theme/theme';
 // the edge-to-edge panel, scrim and motion come from ContextualBottomSheet.
 
 const ICON_CHIP = 28;
+// Half the gutter between the 3-column style chips (cells pad, row un-pads).
+const CHIP_HALF_GAP = theme.spacing.s / 2;
 
 export const buildAroundSheetStyles = StyleSheet.create({
   header: {
@@ -31,15 +33,23 @@ export const buildAroundSheetStyles = StyleSheet.create({
     marginTop: theme.spacing.s,
   },
   options: {
-    marginTop: theme.spacing.s,
+    marginTop: theme.spacing.m,
+    gap: theme.spacing.s,
+  },
+  // Every option sits in a card; only the selected one is filled, so the
+  // content never shifts when the selection moves.
+  optionCard: {
+    borderRadius: theme.ds.radius.sm,
+    paddingHorizontal: theme.spacing.uacDimension12,
+  },
+  optionCardOn: {
+    backgroundColor: theme.ds.color.cream,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.m,
     paddingVertical: theme.spacing.m,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.figmaDivider,
   },
   optionIcon: {
     width: ICON_CHIP,
@@ -77,17 +87,24 @@ export const buildAroundSheetStyles = StyleSheet.create({
     borderRadius: theme.ds.radius.full,
     backgroundColor: theme.ds.color.white,
   },
-  styleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.s,
-    marginTop: theme.spacing.m,
+  styleSection: {
+    paddingBottom: theme.spacing.uacDimension12,
+  },
+  styleTitle: {
+    ...theme.typography.aliases.interBodySm,
+    color: theme.ds.color.ink,
+    textAlign: 'center',
   },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.s,
+    rowGap: theme.spacing.s,
     marginTop: theme.spacing.m,
+    marginHorizontal: -CHIP_HALF_GAP,
+  },
+  chipCell: {
+    width: '33.333%',
+    paddingHorizontal: CHIP_HALF_GAP,
   },
   actions: {
     flexDirection: 'row',
