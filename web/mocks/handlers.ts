@@ -192,10 +192,18 @@ const discoveryHandlers = [
   // some owned pieces come from the wardrobe; the rest are Discovery pieces
   // (`source: 'discovery'`) so the preview shows the badge. Look 3 is a
   // near-color alternative (`anchor_match: 'similar'`).
+  // The Home "Build your look" entry sends every chosen anchor in `item_ids`
+  // (`item_id` stays the first one); each look then carries ALL of them as
+  // owned pieces, so the multi-item result shows every chosen item.
   http.post('*/api/discovery/build-around', async ({ request }) => {
-    const { item_id: anchorId } = (await request.json()) as { item_id: string };
-    const owned = C_ITEMS.filter(i => i.id !== anchorId);
-    const anchor = C_ITEMS.find(i => i.id === anchorId) ?? { ...C_ITEMS[0], id: anchorId };
+    const { item_id: anchorId, item_ids: anchorIds = [anchorId] } = (await request.json()) as {
+      item_id: string;
+      item_ids?: string[];
+    };
+    const owned = C_ITEMS.filter(i => !anchorIds.includes(i.id));
+    const anchors = anchorIds.map(
+      id => C_ITEMS.find(i => i.id === id) ?? { ...C_ITEMS[0], id },
+    );
     const piece = (src: (typeof C_ITEMS)[number], lookId: string) => ({
       ...src,
       id: `${lookId}-${src.id}`,
@@ -216,7 +224,7 @@ const discoveryHandlers = [
         const look = D_OUTFITS[lookIndex];
         const others = owned.slice(0, 3);
         const slots = [
-          { source: 'wardrobe', item: anchor },
+          ...anchors.map(anchor => ({ source: 'wardrobe', item: anchor })),
           ...others.map((src, i) =>
             i < ownedCount
               ? { source: 'wardrobe', item: src }

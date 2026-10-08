@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFeatureFlag } from '../../hooks/useFeatureFlag';
@@ -33,14 +33,19 @@ export const useBuildAroundFlow = (itemId: string) => {
   const [visible, setVisible] = useState(false);
   const [empty, setEmpty] = useState<EmptyReason | null>(null);
 
-  const run = useBuildAroundMatch(itemId, result => {
-    if (isBuildAroundSuccess(result)) {
-      setVisible(false);
-      navigation.push('BuildAroundMatchResult', { itemId, result });
-      return;
-    }
-    setEmpty(result.state === 'no_wardrobe' ? 'no_wardrobe' : 'no_match');
-  });
+  const anchorIds = useMemo(() => [itemId], [itemId]);
+  const run = useBuildAroundMatch(
+    anchorIds,
+    result => {
+      if (isBuildAroundSuccess(result)) {
+        setVisible(false);
+        navigation.push('BuildAroundMatchResult', { itemId, result });
+        return;
+      }
+      setEmpty(result.state === 'no_wardrobe' ? 'no_wardrobe' : 'no_match');
+    },
+    'item_detail',
+  );
   const { cancel } = run;
 
   const mode: BuildAroundSheetMode =
@@ -86,7 +91,7 @@ export const useBuildAroundFlow = (itemId: string) => {
         ...trendTagProps(trendTag),
       });
       setEmpty(null);
-      run.start(trendTag);
+      run.start(trendTag ? [trendTag] : []);
     },
     [itemId, run],
   );

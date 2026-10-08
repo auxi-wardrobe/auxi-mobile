@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   LayoutChangeEvent,
   NativeScrollEvent,
@@ -35,15 +35,15 @@ import { buildAroundResultStyles as styles } from './buildAroundResultStyles';
 type ScreenNavigation = NativeStackNavigationProp<AppStackParamList, 'BuildAroundMatchResult'>;
 type ScreenRoute = RouteProp<AppStackParamList, 'BuildAroundMatchResult'>;
 
-const DiscoveryAwareTile: React.FC<{ slot: BuildAroundSlot; anchorId: string }> = ({
+const DiscoveryAwareTile: React.FC<{ slot: BuildAroundSlot; anchorIds: readonly string[] }> = ({
   slot,
-  anchorId,
+  anchorIds,
 }) => {
   const { t } = useTranslation();
   const { item } = slot;
   const name = item.name ?? item.category;
   const fromDiscovery = slot.source === 'discovery';
-  const suffix = item.id === anchorId ? '-anchor' : fromDiscovery ? '-discovery' : '';
+  const suffix = anchorIds.includes(item.id) ? '-anchor' : fromDiscovery ? '-discovery' : '';
   return (
     <View
       style={miyStyles.tile}
@@ -71,10 +71,15 @@ const DiscoveryAwareTile: React.FC<{ slot: BuildAroundSlot; anchorId: string }> 
  * are the user's own where possible (the anchor always is); a piece they don't
  * own is the Discovery item with a "Discovery" badge. Close dismisses; Save
  * favourites the look on screen (`source: 'build_around_discovery'`).
+ *
+ * Reached from ItemDetail (one anchor, `itemId`) and from the Home "Build your
+ * look" section (`itemIds`, up to three anchors; `itemId` is the first). Every
+ * anchor's tile carries the `-anchor` testID suffix.
  */
 export const BuildAroundMatchResultScreen = () => {
   const navigation = useNavigation<ScreenNavigation>();
-  const { itemId, result } = useRoute<ScreenRoute>().params;
+  const { itemId, itemIds, result } = useRoute<ScreenRoute>().params;
+  const anchorIds = useMemo(() => itemIds ?? [itemId], [itemIds, itemId]);
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
@@ -94,6 +99,7 @@ export const BuildAroundMatchResultScreen = () => {
   const toggleSave = useCallback(() => {
     track(saved ? 'build_around_discovery_unfavourited' : 'build_around_discovery_favourited', {
       item_id: itemId,
+      item_count: anchorIds.length,
       outfit_id: outfit.inspiration.id,
       rank: pageIndex + 1,
       is_complete: outfit.is_complete,
@@ -105,7 +111,7 @@ export const BuildAroundMatchResultScreen = () => {
       source: 'build_around_discovery',
       title: outfit.inspiration.title,
     }));
-  }, [outfit, saved, favourites, itemId, pageIndex]);
+  }, [outfit, saved, favourites, itemId, anchorIds.length, pageIndex]);
 
   const onPagerLayout = (e: LayoutChangeEvent) => setPageWidth(e.nativeEvent.layout.width);
   // Track the page from `onScroll`, not `onMomentumScrollEnd`: react-native-web
@@ -120,6 +126,7 @@ export const BuildAroundMatchResultScreen = () => {
     setPageIndex(clamped);
     track('build_around_discovery_outfit_viewed', {
       item_id: itemId,
+      item_count: anchorIds.length,
       outfit_id: outfits[clamped].inspiration.id,
       rank: clamped + 1,
       outfit_count: outfits.length,
@@ -186,7 +193,7 @@ export const BuildAroundMatchResultScreen = () => {
                     <DiscoveryAwareTile
                       key={`${slot.inspiration_item_id}-${slot.item.id}`}
                       slot={slot}
-                      anchorId={itemId}
+                      anchorIds={anchorIds}
                     />
                   ))}
                 </View>

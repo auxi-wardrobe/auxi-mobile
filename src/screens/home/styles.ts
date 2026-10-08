@@ -248,6 +248,71 @@ export const styles = StyleSheet.create({
     height: '100%',
   },
 
+  // ── Build your look ─────────────────────────────────────────────────────
+  // Title → one-line brief, then a 3-column card row (the chosen items plus
+  // an "Add item" card while there is room; empty spacers keep every card the
+  // same width whatever the count), a tag chip row and the right-aligned
+  // "Find the best match" action.
+  buildLookSubtitle: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
+    marginTop: theme.spacing.xs,
+  },
+  buildLookRow: {
+    flexDirection: 'row',
+    gap: PICK_TILE_GAP,
+    marginTop: SECTION_HEADER_GAP,
+  },
+  buildLookCard: {
+    flex: 1,
+    aspectRatio: DISCOVERY_CARD_RATIO,
+    backgroundColor: theme.colors.figmaCardSurface,
+    borderRadius: theme.borderRadius.figmaTile,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buildLookCardSpacer: {
+    flex: 1,
+  },
+  buildLookCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  // Trash chip rides the card's top-right corner, inset so it never touches
+  // the rounded edge (same inset the result screen's Discovery badge uses).
+  buildLookRemove: {
+    position: 'absolute',
+    top: theme.spacing.xs,
+    right: theme.spacing.xs,
+  },
+  buildLookAddLabel: {
+    ...theme.typography.aliases.uacBodyXsRegular,
+    color: theme.colors.uacTextBase,
+    marginTop: theme.spacing.s,
+  },
+  // Tag chips reuse `chip` (the beige caption pill); a chosen tag flips to the
+  // selected-chip fill with white text, same pair the "You selected" chips use.
+  buildLookChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  buildLookChipOn: {
+    backgroundColor: theme.colors.figmaChipBg,
+  },
+  buildLookChipTextOn: {
+    color: theme.colors.white,
+  },
+  buildLookFindRow: {
+    alignItems: 'flex-end',
+    marginTop: theme.spacing.m,
+  },
+  buildLookFindDisabled: {
+    color: theme.colors.uacTextSubtle100,
+    opacity: 0.6,
+  },
+
   // ── Popular features ────────────────────────────────────────────────────
   featureGrid: {
     flexDirection: 'row',

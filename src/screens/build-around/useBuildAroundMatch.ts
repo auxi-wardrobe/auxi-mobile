@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { track } from '../../services/analytics';
 import {
   buildAroundMatchService,
-  trendTagProps,
+  trendTagsProps,
   type BuildAroundMatchResponse,
 } from '../../services/buildAroundMatchService';
 import {
@@ -12,6 +12,9 @@ import {
 } from '../make-it-yours/useMakeItYoursRun';
 
 export type BuildAroundRunStatus = 'idle' | 'loading' | 'error';
+
+/** Where the search was started from — an analytics dimension on every event. */
+export type BuildAroundEntry = 'item_detail' | 'home_landing';
 
 type HttpError = { code?: string; name?: string };
 
@@ -23,35 +26,55 @@ const isCancel = (error: unknown): boolean => {
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 /**
- * Drives one "find the best match from Discovery" run for an anchor item.
+ * Drives one "find the best match from Discovery" run for one or more anchor
+ * items (ItemDetail passes one; the Home "Build your look" section up to three).
  *
- *   start(tag)    idle|error → loading → onDone(result)  (or → error)
+ *   start(tags)   idle|error → loading → onDone(result)  (or → error)
  *   cancel()      loading → idle, request aborted, NO error surfaced
- *   retry()       error → loading with the same tag
+ *   retry()       error → loading with the same tags
  *
  * Repeated `start()` while loading is a no-op (no duplicate jobs). Mirrors
  * `useMakeItYoursRun` (same minimum loading time so the three steps can be
  * read, same abort-on-unmount guarantee).
+ *
+ * Analytics keep the single-anchor shape (`item_id` = first anchor,
+ * `trend_tag` = first tag) and add `item_count` / `entry`; `trend_tags` only
+ * appears when more than one tag was chosen.
  */
 export const useBuildAroundMatch = (
-  itemId: string | undefined,
+  itemIds: readonly string[],
   onDone: (result: BuildAroundMatchResponse) => void,
+  entry: BuildAroundEntry = 'item_detail',
 ) => {
   const [status, setStatus] = useState<BuildAroundRunStatus>('idle');
   const [errorCode, setErrorCode] = useState<MakeItYoursErrorCode | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const startedAtRef = useRef(0);
-  const tagRef = useRef<string | null>(null);
+  const tagsRef = useRef<string[]>([]);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+  // Read at call time, so a changed selection never restarts a running job.
+  const itemIdsRef = useRef(itemIds);
+  itemIdsRef.current = itemIds;
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 
+  const baseProps = useCallback(
+    (ids: readonly string[]) => ({
+      item_id: ids[0],
+      item_count: ids.length,
+      entry,
+      ...trendTagsProps(tagsRef.current),
+    }),
+    [entry],
+  );
+
   const run = useCallback(() => {
-    if (!itemId || controllerRef.current) {
+    const ids = [...itemIdsRef.current];
+    if (ids.length === 0 || controllerRef.current) {
       return;
     }
-    const trendTag = tagRef.current;
+    const trendTags = tagsRef.current;
     const controller = new AbortController();
     controllerRef.current = controller;
     startedAtRef.current = Date.now();
@@ -59,15 +82,14 @@ export const useBuildAroundMatch = (
     setErrorCode(null);
 
     Promise.all([
-      buildAroundMatchService.run(itemId, trendTag, controller.signal),
+      buildAroundMatchService.run({ itemIds: ids, trendTags }, controller.signal),
       delay(MIN_LOADING_MS),
     ])
       .then(([result]) => {
         if (controller.signal.aborted) return;
         controllerRef.current = null;
         track('build_around_discovery_completed', {
-          item_id: itemId,
-          ...trendTagProps(trendTag),
+          ...baseProps(ids),
           state: result.state,
           outfit_count: result.outfits.length,
           duration_ms: Date.now() - startedAtRef.current,
@@ -80,44 +102,46 @@ export const useBuildAroundMatch = (
         if (controller.signal.aborted || isCancel(error)) return;
         controllerRef.current = null;
         const code = toErrorCode(error);
-        track('build_around_discovery_failed', { item_id: itemId, ...trendTagProps(trendTag), error_code: code });
+        track('build_around_discovery_failed', { ...baseProps(ids), error_code: code });
         setErrorCode(code);
         setStatus('error');
       });
-  }, [itemId]);
+  }, [baseProps]);
 
   const start = useCallback(
-    (trendTag: string | null) => {
-      if (!itemId || controllerRef.current) return;
-      tagRef.current = trendTag;
-      track('build_around_discovery_started', { item_id: itemId, ...trendTagProps(trendTag) });
+    (trendTags: readonly string[]) => {
+      const ids = itemIdsRef.current;
+      if (ids.length === 0 || controllerRef.current) return;
+      tagsRef.current = [...trendTags];
+      track('build_around_discovery_started', baseProps(ids));
       run();
     },
-    [itemId, run],
+    [baseProps, run],
   );
 
   const retry = useCallback(() => {
-    if (!itemId || controllerRef.current) return;
-    track('build_around_discovery_retried', { item_id: itemId, ...trendTagProps(tagRef.current) });
+    const ids = itemIdsRef.current;
+    if (ids.length === 0 || controllerRef.current) return;
+    track('build_around_discovery_retried', baseProps(ids));
     run();
-  }, [itemId, run]);
+  }, [baseProps, run]);
 
   const cancel = useCallback(() => {
     const controller = controllerRef.current;
     if (controller) {
       controller.abort();
       controllerRef.current = null;
-      if (itemId) {
+      const ids = itemIdsRef.current;
+      if (ids.length > 0) {
         track('build_around_discovery_cancelled', {
-          item_id: itemId,
-          ...trendTagProps(tagRef.current),
+          ...baseProps(ids),
           elapsed_ms: Date.now() - startedAtRef.current,
         });
       }
     }
     setStatus('idle');
     setErrorCode(null);
-  }, [itemId]);
+  }, [baseProps]);
 
   return { status, errorCode, start, retry, cancel };
 };

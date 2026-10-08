@@ -12,7 +12,16 @@ import type { MakeItYoursItem } from './makeItYoursService';
 // near-color version of it (labelled "Close match"); within a tier the backend
 // order (most-owned first) is kept.
 //
-//   POST /discovery/build-around   { item_id, trend_tag? }
+//   POST /discovery/build-around   { item_id, item_ids?, trend_tag?, trend_tags? }
+//
+// Two entry points share this call: ItemDetail ("Build around this", ONE
+// anchor, at most one tag) and the Home landing "Build your look" section (up
+// to `BUILD_LOOK_MAX_ITEMS` anchors, up to `BUILD_LOOK_MAX_TAGS` tags). The
+// request always carries the ba-2 fields the backend already reads
+// (`item_id` = the first anchor, `trend_tag` = the first tag) PLUS the full
+// lists (`item_ids`, `trend_tags`); a backend that only knows ba-2 ignores the
+// lists and answers for the first anchor, and the client still ranks whatever
+// comes back by how many of the chosen anchors each look contains.
 //
 // CONTRACT: auxi-backend#193 (`algorithm_version: 'ba-2'`), `API_DOCUMENTATION.md`
 // §Build Around This → Discovery. Rules the client relies on:
@@ -39,6 +48,19 @@ import type { MakeItYoursItem } from './makeItYoursService';
 /** Chips shown on the sheet besides "Surprise me" — random Discovery tags. */
 export const BUILD_AROUND_TAG_CHIP_COUNT = 5;
 
+/** Home "Build your look": the most wardrobe items a search can anchor on. */
+export const BUILD_LOOK_MAX_ITEMS = 3;
+/** Home "Build your look": the most Discovery tags a search can carry. */
+export const BUILD_LOOK_MAX_TAGS = 3;
+
+/** What one search anchors on: the user's items (≥ 1) and optional tags. */
+export interface BuildAroundRequest {
+  /** Wardrobe item ids, in the order the user chose them; the first is `item_id`. */
+  itemIds: string[];
+  /** Discovery trend tags; empty = "Surprise me" (no tag constraint). */
+  trendTags: string[];
+}
+
 /** Pick up to `count` distinct tags in random order (Fisher–Yates on a copy). */
 export const pickRandomTags = (
   tags: readonly string[],
@@ -59,6 +81,18 @@ export const pickRandomTags = (
 export const trendTagProps = (
   trendTag: string | null,
 ): { trend_tag?: string } => (trendTag ? { trend_tag: trendTag } : {});
+
+/**
+ * Analytics props for a tag LIST: `trend_tag` stays the first tag (so the
+ * existing single-tag funnels keep working) and `trend_tags` is only added
+ * when there is more than one. Empty list ⇒ no keys at all.
+ */
+export const trendTagsProps = (
+  trendTags: readonly string[],
+): { trend_tag?: string; trend_tags?: string[] } => ({
+  ...trendTagProps(trendTags[0] ?? null),
+  ...(trendTags.length > 1 ? { trend_tags: [...trendTags] } : {}),
+});
 
 export type BuildAroundMatchState = 'success' | 'no_match' | 'no_wardrobe';
 
@@ -95,6 +129,12 @@ export interface BuildAroundOutfit {
   /** Every piece comes from the user's wardrobe. */
   is_complete: boolean;
   slots: BuildAroundSlot[];
+  /**
+   * How many of the requested anchors this look contains as owned pieces
+   * (1..itemIds.length). Looks with more of the user's chosen items rank
+   * first; a single-anchor search always has 1 here.
+   */
+  anchor_coverage: number;
 }
 
 export interface BuildAroundMatchResponse {
@@ -142,13 +182,21 @@ const normalizeSlot = (slot: RawSlot): BuildAroundSlot[] =>
       ]
     : [];
 
-const normalizeOutfit = (outfit: RawOutfit, anchorId: string): BuildAroundOutfit[] => {
+const normalizeOutfit = (
+  outfit: RawOutfit,
+  anchorIds: readonly string[],
+): BuildAroundOutfit[] => {
   const slots = (outfit.slots ?? []).flatMap(normalizeSlot);
-  // The look must contain the user's piece: its anchor slot IS the user's item.
-  const hasAnchor = slots.some(
-    slot => slot.item.id === anchorId && slot.source === 'wardrobe',
+  // The look must contain the user's piece(s): an anchor slot IS one of the
+  // user's items. With several anchors, a look that has at least one of them
+  // is kept and `anchor_coverage` says how many it has.
+  const owned = new Set(
+    slots
+      .filter(slot => slot.source === 'wardrobe')
+      .map(slot => slot.item.id),
   );
-  if (!outfit.inspiration?.id || !outfit.outfit_hash || !hasAnchor) return [];
+  const coverage = anchorIds.filter(id => owned.has(id)).length;
+  if (!outfit.inspiration?.id || !outfit.outfit_hash || coverage === 0) return [];
   return [
     {
       inspiration: outfit.inspiration,
@@ -156,31 +204,40 @@ const normalizeOutfit = (outfit: RawOutfit, anchorId: string): BuildAroundOutfit
       outfit_hash: outfit.outfit_hash,
       is_complete: slots.every(slot => slot.source === 'wardrobe'),
       slots,
+      anchor_coverage: coverage,
     },
   ];
 };
 
 /**
  * Valid looks, one per Discovery look — the number of results equals the
- * number of Discovery looks that contain the anchor's piece. Exact matches
- * come first, then close (near-color) ones; each tier keeps the backend order.
+ * number of Discovery looks that contain the anchor's piece. Looks containing
+ * MORE of the chosen anchors come first (only matters for a multi-item
+ * search); within the same coverage exact matches come before close
+ * (near-color) ones; each tier keeps the backend order (stable sort).
  */
 const normalizeOutfits = (
   outfits: readonly RawOutfit[],
-  anchorId: string,
+  anchorIds: readonly string[],
 ): BuildAroundOutfit[] => {
   const seen = new Set<string>();
   const looks = outfits
-    .flatMap(outfit => normalizeOutfit(outfit, anchorId))
+    .flatMap(outfit => normalizeOutfit(outfit, anchorIds))
     .filter(outfit => {
       if (seen.has(outfit.inspiration.id)) return false;
       seen.add(outfit.inspiration.id);
       return true;
     });
-  return [
-    ...looks.filter(look => look.anchor_match === 'exact'),
-    ...looks.filter(look => look.anchor_match === 'similar'),
-  ];
+  const tier = (look: BuildAroundOutfit) => (look.anchor_match === 'exact' ? 0 : 1);
+  return looks
+    .map((look, index) => ({ look, index }))
+    .sort(
+      (a, b) =>
+        b.look.anchor_coverage - a.look.anchor_coverage ||
+        tier(a.look) - tier(b.look) ||
+        a.index - b.index,
+    )
+    .map(({ look }) => look);
 };
 
 /** Ids to send to `POST /favourites` for a look (Discovery pieces included). */
@@ -193,13 +250,24 @@ export const buildAroundMatchService = {
    * as an intentional cancel, not a failure.
    */
   run: async (
-    itemId: string,
-    trendTag: string | null,
+    request: BuildAroundRequest,
     signal?: AbortSignal,
   ): Promise<BuildAroundMatchResponse> => {
+    const itemIds = [...new Set(request.itemIds)].slice(0, BUILD_LOOK_MAX_ITEMS);
+    const trendTags = [...new Set(request.trendTags)].slice(0, BUILD_LOOK_MAX_TAGS);
+    if (itemIds.length === 0) {
+      throw new Error('buildAroundMatchService.run: at least one item id is required');
+    }
     const response = await apiClient.post(
       '/discovery/build-around',
-      { item_id: itemId, trend_tag: trendTag ?? undefined },
+      {
+        item_id: itemIds[0],
+        // Lists only when they say more than the scalar fields do, so a
+        // single-anchor / single-tag request is byte-for-byte the ba-2 one.
+        item_ids: itemIds.length > 1 ? itemIds : undefined,
+        trend_tag: trendTags[0],
+        trend_tags: trendTags.length > 1 ? trendTags : undefined,
+      },
       { signal, timeout: BUILD_AROUND_TIMEOUT_MS },
     );
     const data = (response.data ?? {}) as {
@@ -209,7 +277,7 @@ export const buildAroundMatchService = {
     };
     const state = normalizeBuildAroundState(data.state);
     const outfits =
-      state === 'success' ? normalizeOutfits(data.outfits ?? [], itemId) : [];
+      state === 'success' ? normalizeOutfits(data.outfits ?? [], itemIds) : [];
     return {
       // A "success" with nothing to show is a no_match, never an empty screen.
       state: state === 'success' && outfits.length === 0 ? 'no_match' : state,

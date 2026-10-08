@@ -376,7 +376,10 @@ describe('read mode', () => {
     press(oneByTestID(r.root, 'build-around-style-minimal'));
     press(oneByTestID(r.root, 'build-around-build'));
 
-    expect(mockBuildAroundRun).toHaveBeenCalledWith('item-1', 'minimal', expect.anything());
+    expect(mockBuildAroundRun).toHaveBeenCalledWith(
+      { itemIds: ['item-1'], trendTags: ['minimal'] },
+      expect.anything(),
+    );
     expect(mockPopTo).not.toHaveBeenCalled();
     expect(byTestID(r.root, 'build-around-loading').length).toBeGreaterThan(0);
   });
@@ -388,7 +391,10 @@ describe('read mode', () => {
     press(oneByTestID(r.root, 'item-detail-mix-btn'));
     press(oneByTestID(r.root, 'build-around-build'));
 
-    expect(mockBuildAroundRun).toHaveBeenCalledWith('item-1', null, expect.anything());
+    expect(mockBuildAroundRun).toHaveBeenCalledWith(
+      { itemIds: ['item-1'], trendTags: [] },
+      expect.anything(),
+    );
     expect(mockPopTo).not.toHaveBeenCalled();
   });
 
