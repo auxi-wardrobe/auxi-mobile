@@ -126,6 +126,9 @@ jest.mock('../../services/buildAroundMatchService', () => ({
   ...jest.requireActual('../../services/buildAroundMatchService'),
   buildAroundMatchService: {
     run: (...args: unknown[]) => (mockBuildAroundRun as (...a: unknown[]) => unknown)(...args),
+    // One item ⇒ the hook's runMany is exactly run.
+    runMany: (ids: string[], ...rest: unknown[]) =>
+      (mockBuildAroundRun as (...a: unknown[]) => unknown)(ids[0], ...rest),
   },
 }));
 const mockDeleteWardrobeItem = jest.fn();

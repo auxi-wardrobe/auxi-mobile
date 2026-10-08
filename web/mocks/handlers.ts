@@ -192,6 +192,10 @@ const discoveryHandlers = [
   // some owned pieces come from the wardrobe; the rest are Discovery pieces
   // (`source: 'discovery'`) so the preview shows the badge. Look 3 is a
   // near-color alternative (`anchor_match: 'similar'`).
+  // The Home "Build your look" entry sends this SAME request once per chosen
+  // item and merges the answers on the client, so slot ids are keyed by the
+  // piece (`<look>-<item>`): the same Discovery piece gets the same id in
+  // every answer, which is what the merge relies on.
   http.post('*/api/discovery/build-around', async ({ request }) => {
     const { item_id: anchorId } = (await request.json()) as { item_id: string };
     const owned = C_ITEMS.filter(i => i.id !== anchorId);
@@ -216,11 +220,11 @@ const discoveryHandlers = [
         const look = D_OUTFITS[lookIndex];
         const others = owned.slice(0, 3);
         const slots = [
-          { source: 'wardrobe', item: anchor },
+          { source: 'wardrobe', item: anchor, pieceId: anchor.id },
           ...others.map((src, i) =>
             i < ownedCount
-              ? { source: 'wardrobe', item: src }
-              : { source: 'discovery', item: piece(src, look.id) },
+              ? { source: 'wardrobe', item: src, pieceId: src.id }
+              : { source: 'discovery', item: piece(src, look.id), pieceId: src.id },
           ),
         ];
         return {
@@ -228,7 +232,11 @@ const discoveryHandlers = [
           anchor_match: anchorMatch,
           outfit_hash: `mock_ba_${look.id}_${anchorId}`,
           is_complete: ownedCount === others.length,
-          slots: slots.map((slot, i) => ({ inspiration_item_id: `${look.id}-i${i}`, role: '', ...slot })),
+          slots: slots.map(({ pieceId, ...slot }) => ({
+            inspiration_item_id: `${look.id}-${pieceId}`,
+            role: '',
+            ...slot,
+          })),
         };
       }),
     });

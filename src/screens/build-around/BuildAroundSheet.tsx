@@ -5,7 +5,6 @@ import { Icons } from '../../assets/icons';
 import IconHomePin from '../../assets/images/icon_home_pin.svg';
 import { MButton, MChip } from '../../components/design-system/lib';
 import { ContextualBottomSheet } from '../../components/features/ContextualBottomSheet';
-import { MacgieLoader } from '../../components/macgie/MacgieLoader';
 import { theme } from '../../theme/theme';
 import { useDiscoveryTrendTags } from '../../hooks/useDiscovery';
 import {
@@ -13,6 +12,11 @@ import {
   pickRandomTags,
 } from '../../services/buildAroundMatchService';
 import type { MakeItYoursErrorCode } from '../make-it-yours/useMakeItYoursRun';
+import {
+  BUILD_AROUND_ERROR_BODY,
+  BuildAroundLoadingView,
+  BuildAroundMessageView,
+} from './BuildAroundStateViews';
 import { buildAroundSheetStyles as styles } from './buildAroundSheetStyles';
 
 export type BuildAroundMethod = 'wardrobe' | 'discovery';
@@ -39,18 +43,6 @@ type Props = {
   /** Empty state → back to the method choice. */
   onBackToChoice: () => void;
 };
-
-const LOADING_STEPS = ['loading_step_1', 'loading_step_2', 'loading_step_3'] as const;
-
-const ERROR_BODY: Record<MakeItYoursErrorCode, string> = {
-  network_error: 'buildAround.error_body',
-  timeout: 'buildAround.error_body',
-  server_error: 'buildAround.error_server_body',
-  not_found: 'buildAround.error_not_found_body',
-  rate_limited: 'buildAround.error_rate_limited_body',
-};
-
-const MASCOT_SIZE = 56;
 
 /** `quiet-luxury` → `Quiet luxury` (Discovery tags are slugs). */
 export const tagLabel = (tag: string): string => {
@@ -201,83 +193,43 @@ export const BuildAroundSheet: React.FC<Props> = ({
           </View>
         </View>
       ) : mode.kind === 'loading' ? (
-        <View
-          testID="build-around-loading"
-          accessible
-          accessibilityRole="progressbar"
-          accessibilityLabel={t('buildAround.a11y_loading')}
-          accessibilityState={{ busy: true }}
-        >
-          <View style={styles.stateBlock}>
-            <MacgieLoader variant="inline" size={MASCOT_SIZE} asLogo />
-            <Text style={styles.stateTitle}>{t('buildAround.loading_title')}</Text>
-            <View>
-              {LOADING_STEPS.map(key => (
-                <Text key={key} style={styles.step}>
-                  {`•  ${t(`buildAround.${key}`)}`}
-                </Text>
-              ))}
-            </View>
-          </View>
-          <View style={styles.actions}>
-            <View style={styles.grow}>
-              <MButton loading disabled testID="build-around-build-loading">
-                {t('buildAround.build')}
-              </MButton>
-            </View>
-            <View style={styles.grow}>
-              <MButton
-                variant="secondary"
-                onPress={onCancelLoading}
-                testID="build-around-loading-cancel"
-              >
-                {t('buildAround.cancel')}
-              </MButton>
-            </View>
-          </View>
-        </View>
+        <BuildAroundLoadingView onCancel={onCancelLoading} busyLabel={t('buildAround.build')} />
       ) : mode.kind === 'empty' ? (
-        <View testID={`build-around-${mode.reason.replace('_', '-')}`}>
-          <View style={styles.stateBlock}>
-            <Text style={styles.stateTitle}>{t(`buildAround.${mode.reason}_title`)}</Text>
-            <Text style={styles.stateBody}>{t(`buildAround.${mode.reason}_body`)}</Text>
-          </View>
-          <View style={styles.actions}>
-            <View style={styles.grow}>
-              <MButton variant="secondary" onPress={onBackToChoice} testID="build-around-empty-back">
-                {t('buildAround.back')}
-              </MButton>
-            </View>
-            <View style={styles.grow}>
-              <MButton onPress={onBuildWithWardrobe} testID="build-around-empty-use-wardrobe">
-                {t('buildAround.use_my_items')}
-              </MButton>
-            </View>
-          </View>
-        </View>
+        <BuildAroundMessageView
+          testID={`build-around-${mode.reason.replace('_', '-')}`}
+          title={t(`buildAround.${mode.reason}_title`)}
+          body={t(`buildAround.${mode.reason}_body`)}
+          secondary={{
+            label: t('buildAround.back'),
+            onPress: onBackToChoice,
+            testID: 'build-around-empty-back',
+          }}
+          primary={{
+            label: t('buildAround.use_my_items'),
+            onPress: onBuildWithWardrobe,
+            testID: 'build-around-empty-use-wardrobe',
+          }}
+        />
       ) : (
-        <View testID="build-around-error">
-          <View style={styles.stateBlock}>
-            <Text style={styles.stateTitle}>{t('buildAround.error_title')}</Text>
-            <Text style={styles.stateBody}>
-              {t(ERROR_BODY[mode.code ?? 'network_error'])}
-            </Text>
-          </View>
-          <View style={styles.actions}>
-            <View style={styles.grow}>
-              <MButton variant="secondary" onPress={onDismiss} testID="build-around-error-close">
-                {t('buildAround.close')}
-              </MButton>
-            </View>
-            {mode.code === 'not_found' ? null : (
-              <View style={styles.grow}>
-                <MButton onPress={onRetry} testID="build-around-retry">
-                  {t('buildAround.try_again')}
-                </MButton>
-              </View>
-            )}
-          </View>
-        </View>
+        <BuildAroundMessageView
+          testID="build-around-error"
+          title={t('buildAround.error_title')}
+          body={t(BUILD_AROUND_ERROR_BODY[mode.code ?? 'network_error'])}
+          secondary={{
+            label: t('buildAround.close'),
+            onPress: onDismiss,
+            testID: 'build-around-error-close',
+          }}
+          primary={
+            mode.code === 'not_found'
+              ? undefined
+              : {
+                  label: t('buildAround.try_again'),
+                  onPress: onRetry,
+                  testID: 'build-around-retry',
+                }
+          }
+        />
       )}
     </ContextualBottomSheet>
   );

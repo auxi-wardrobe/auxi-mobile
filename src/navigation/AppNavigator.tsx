@@ -6,6 +6,7 @@ import { createAppStack } from './createStack';
 import { AuthNavigator } from './AuthNavigator';
 import { HomeScreen } from '../screens/HomeScreen';
 import { HomeLandingScreen } from '../screens/home/HomeLandingScreen';
+import { BuildYourLookPickItemsScreen } from '../screens/home/BuildYourLookPickItemsScreen';
 import { AppWelcomeScreen } from '../screens/AppWelcomeScreen';
 import { ItemDetailScreen } from '../screens/ItemDetailScreen';
 import { EnhanceImageScreen } from '../screens/item-detail/EnhanceImageScreen';
@@ -386,6 +387,13 @@ export const AppNavigator = () => {
               <Stack.Screen
                 name="BuildAroundMatchResult"
                 component={BuildAroundMatchResultScreen}
+              />
+              {/* Home "Build your look" → Add item: full-page wardrobe picker,
+                  pushed over HomeLanding; hands the picks back with
+                  navigate(HomeLanding, merge). */}
+              <Stack.Screen
+                name="BuildYourLookPickItems"
+                component={BuildYourLookPickItemsScreen}
               />
               <Stack.Screen name="Database" component={DatabaseScreen} />
               <Stack.Screen

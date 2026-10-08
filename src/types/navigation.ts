@@ -122,8 +122,16 @@ export type AppStackParamList = {
   // outfit recommender the sidebar calls "See my outfits" — the two are
   // separate destinations on the shared 4-tab `AppNavFooter`, and `Home` keeps
   // its route name so deep links, push taps and `screen_viewed` analytics stay
-  // continuous. No params: every entry point lands on the same dashboard.
-  HomeLanding: undefined;
+  // continuous. Every entry point lands on the same dashboard; the one
+  // param is a hand-back from the "Build your look" wardrobe picker
+  // (`BuildYourLookPickItems` navigates here with `merge: true`), consumed
+  // on arrival and cleared with `setParams` so a re-focus never re-adds.
+  HomeLanding: { buildLookAddItemIds?: string[] } | undefined;
+  // Home "Build your look" → "Add item": a full-page wardrobe picker (same
+  // shape as CapsuleSelectItems). `selectedIds` = the items already on the
+  // Home section, shown as "Added" and not re-pickable; the picker allows
+  // `BUILD_LOOK_MAX_ITEMS - selectedIds.length` more.
+  BuildYourLookPickItems: { selectedIds: string[] };
   // AU-307 phase 05 — ItemDetail "Build around this" navigates Home with
   // `pinFromDetail` set to the item id. HomeScreen consumes it on mount via
   // `CONFIRM_PIN_FROM_DETAIL` (skipping the confirm modal), then clears
@@ -292,8 +300,14 @@ export type AppStackParamList = {
   // "Build around this → Find the best match from Discovery" result: the
   // matched Discovery look + the owned pieces (anchor `itemId` + others) that
   // rebuild it. Pushed ON TOP of the ItemDetail modal (never navigate below a
-  // presented modal). `result` is the serializable service response.
-  BuildAroundMatchResult: { itemId: string; result: BuildAroundMatchSuccess };
+  // presented modal). `result` is the serializable service response. The
+  // Home "Build your look" entry passes every anchor in `itemIds` (`itemId`
+  // is then the first of them); ItemDetail passes `itemId` alone.
+  BuildAroundMatchResult: {
+    itemId: string;
+    itemIds?: string[];
+    result: BuildAroundMatchSuccess;
+  };
   // __DEV__-only in-app Design System reference / style-guide catalog.
   // Reached from the Settings "Version" row in dev builds; not shipped to prod.
   DesignSystem: undefined;

@@ -24,11 +24,15 @@ import {
 } from './components/DiscoveryStrip';
 import { PopularFeaturesGrid } from './components/PopularFeaturesGrid';
 import { NotificationSheet } from './components/NotificationSheet';
+import { BuildYourLookSection } from './components/BuildYourLookSection';
+import { BuildYourLookTagSheet } from './components/BuildYourLookTagSheet';
+import { BuildYourLookStatusSheet } from './components/BuildYourLookStatusSheet';
 import { destinationFor } from './feature-routes';
 import { useHomeGreeting } from './hooks/useHomeGreeting';
 import { useHomeWeather } from './hooks/useHomeWeather';
 import { useTodaysPicks } from './hooks/useTodaysPicks';
 import { useHomeNotifications } from './hooks/useHomeNotifications';
+import { useBuildYourLook } from './hooks/useBuildYourLook';
 import type { HomeNotification } from './notifications/notification-feed';
 import { styles } from './styles';
 
@@ -61,6 +65,9 @@ export const HomeLandingScreen = () => {
   } = useTodaysPicks(weather ? weather.temp_c : null);
   const { feed, unseen, markSeen } = useHomeNotifications();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  // "Build your look": up to three wardrobe items (+ Discovery tags) → the
+  // same Discovery search / result screen as ItemDetail's "Build around this".
+  const buildLook = useBuildYourLook();
 
   // Random picks, reshuffled every time Home comes back into focus (Home
   // usually stays mounted under the stack, so a per-mount seed would freeze
@@ -178,6 +185,17 @@ export const HomeLandingScreen = () => {
   const handleFeature = (key: string) => {
     track('home_landing_feature_tapped', { feature: key });
     const destination = destinationFor(key);
+    if (destination.kind === 'build_look') {
+      // "Find Matching" = start a Build-your-look search: open its Add-item
+      // step (the wardrobe picker). Without the section (flag off) the
+      // recommender is the closest thing to "find matching".
+      if (buildLook.enabled) {
+        buildLook.sectionProps.onAddItem();
+      } else {
+        openRecommender(`feature_${key}`);
+      }
+      return;
+    }
     if (destination.kind === 'recommender') {
       openRecommender(`feature_${key}`);
       return;
@@ -236,8 +254,19 @@ export const HomeLandingScreen = () => {
           onOutfitPress={handleDiscoveryPress}
         />
 
+        {buildLook.enabled ? (
+          <BuildYourLookSection {...buildLook.sectionProps} />
+        ) : null}
+
         <PopularFeaturesGrid onSelect={handleFeature} />
       </ScrollView>
+
+      {buildLook.enabled ? (
+        <>
+          <BuildYourLookTagSheet {...buildLook.tagSheetProps} />
+          <BuildYourLookStatusSheet {...buildLook.statusSheetProps} />
+        </>
+      ) : null}
 
       <NotificationSheet
         visible={notificationsOpen}

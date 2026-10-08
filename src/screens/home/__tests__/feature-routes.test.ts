@@ -20,8 +20,8 @@ describe('popular-feature destinations', () => {
     expect(Object.keys(FEATURE_DESTINATIONS).sort()).toEqual(rendered);
   });
 
-  it('routes "find matching" to the recommender, not a plain route', () => {
-    expect(destinationFor('find_match')).toEqual({ kind: 'recommender' });
+  it('routes "find matching" to the Build-your-look Add-item step, not a plain route', () => {
+    expect(destinationFor('find_match')).toEqual({ kind: 'build_look' });
   });
 
   it.each([

@@ -672,5 +672,16 @@ On `ItemDetailScreen`, "Build around this" opens a method sheet ("How should we 
 | `build_around_discovery_outfit_viewed` | Swiped to another look on the result | `src/screens/build-around/BuildAroundMatchResultScreen.tsx` | `item_id`, `outfit_id` (the Discovery look), `rank` (1-based page), `outfit_count` |
 | `build_around_discovery_failed` | Error state shown | `useBuildAroundMatch.ts` | `item_id`, `trend_tag`, `error_code` (`network_error` \| `timeout` \| `server_error` \| `not_found` \| `rate_limited`) |
 | `build_around_discovery_cancelled` | Cancel / scrim / back while loading | `useBuildAroundMatch.ts` `cancel` | `item_id`, `trend_tag`, `elapsed_ms` |
-| `build_around_discovery_favourited` / `_unfavourited` | Save / Saved toggled on the look on screen | `src/screens/build-around/BuildAroundMatchResultScreen.tsx` | `item_id`, `outfit_id` (the Discovery look), `rank` (1-based page), `is_complete` (every piece owned), `anchor_match` (`exact` \| `similar`) |
+| `build_around_discovery_favourited` / `_unfavourited` | Save / Saved toggled on the look on screen | `src/screens/build-around/BuildAroundMatchResultScreen.tsx` | `item_id`, `item_count`, `outfit_id` (the Discovery look), `rank` (1-based page), `is_complete` (every piece owned), `anchor_match` (`exact` \| `similar`) |
+
+**Home "Build your look" entry (section under Discovery on `HomeLandingScreen`, same flag):** the user anchors up to 3 wardrobe items (full-page wardrobe picker `BuildYourLookPickItems`) and optionally ONE Discovery tag (sheet: "Surprise me" or a tag, the same choice as the ItemDetail method sheet), then "Find the best match" lands on the SAME result screen. The search is the SAME request as ItemDetail's, sent once per chosen item (`runMany`) and merged on the client (`mergeBuildAroundResults`): a look that came back for several items ranks first, otherwise the ranking and rendering are exactly the single-item ones. Every `build_around_discovery_*` event above now also carries **`entry`** (`item_detail` \| `home_landing`) and **`item_count`** (anchors, 1–3). The empty state's "Use my items" fires `build_around_method_chosen` with `method: wardrobe`, `entry: home_landing`. **PII: none — ids and curated tags only.**
+
+| Event | Trigger | Location | Properties |
+|---|---|---|---|
+| `home_build_look_add_item_tapped` | "Add item" card on the Home section | `src/screens/home/hooks/useBuildYourLook.ts` | `item_count` (before the add) |
+| `home_build_look_items_added` | Picker confirmed | `src/screens/home/BuildYourLookPickItemsScreen.tsx` | `added_count`, `item_count` (after) |
+| `home_build_look_item_removed` | Trash on a chosen item | `useBuildYourLook.ts` | `item_id` |
+| `home_build_look_add_tags_tapped` | "+ add tags" chip | `useBuildYourLook.ts` | `trend_tag` (the current one; omitted for Surprise me) |
+| `home_build_look_tag_changed` | Tag sheet Done, or the tag chip's × | `useBuildYourLook.ts` | `trend_tag` (omitted for Surprise me) |
+| `home_build_look_find_tapped` | "Find the best match" (≥ 1 item) | `useBuildYourLook.ts` | `item_count`, `trend_tag` |
 

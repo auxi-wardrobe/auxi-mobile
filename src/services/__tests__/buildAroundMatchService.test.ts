@@ -4,6 +4,7 @@ import {
   isBuildAroundSuccess,
   outfitItemIds,
   normalizeBuildAroundState,
+  mergeBuildAroundResults,
   pickRandomTags,
   trendTagProps,
 } from '../buildAroundMatchService';
@@ -165,6 +166,120 @@ describe('buildAroundMatchService', () => {
     const res = await buildAroundMatchService.run('A', null);
     expect(res).toEqual({ state: 'no_match', algorithm_version: 'ba-2', outfits: [] });
     expect(isBuildAroundSuccess(res)).toBe(false);
+  });
+
+  it('runMany with one item is exactly run', async () => {
+    postMock.mockResolvedValue({ data: BODY });
+    const many = await buildAroundMatchService.runMany(['A'], 'casual');
+    const one = await buildAroundMatchService.run('A', 'casual');
+    expect(postMock).toHaveBeenCalledTimes(2);
+    expect(postMock.mock.calls[0][1]).toEqual(postMock.mock.calls[1][1]);
+    expect(many).toEqual(one);
+  });
+
+  it('runMany sends the single-item request once per chosen item (deduped, capped at 3)', async () => {
+    postMock.mockResolvedValue({ data: BODY });
+    await buildAroundMatchService.runMany(['A', 'B', 'A', 'C', 'D'], 'minimal');
+    expect(postMock.mock.calls.map(call => call[1])).toEqual([
+      { item_id: 'A', trend_tag: 'minimal' },
+      { item_id: 'B', trend_tag: 'minimal' },
+      { item_id: 'C', trend_tag: 'minimal' },
+    ]);
+  });
+
+  it('runMany rejects an empty anchor list without calling the API', async () => {
+    await expect(buildAroundMatchService.runMany([], null)).rejects.toThrow();
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  describe('mergeBuildAroundResults', () => {
+    const look = (
+      id: string,
+      slots: Array<[string, string, 'wardrobe' | 'discovery']>,
+      anchor_match: 'exact' | 'similar' = 'exact',
+    ) => ({
+      inspiration: { id, title: id, composite_image_url: null },
+      anchor_match,
+      outfit_hash: `ba_${id}`,
+      is_complete: slots.every(([, , source]) => source === 'wardrobe'),
+      anchor_coverage: 1,
+      slots: slots.map(([pieceId, itemId, source]) => ({
+        inspiration_item_id: `${id}-${pieceId}`,
+        role: '',
+        source,
+        item: item(itemId),
+      })),
+    });
+    const ok = (...outfits: ReturnType<typeof look>[]) => ({
+      state: 'success' as const,
+      algorithm_version: 'ba-2',
+      outfits,
+    });
+    const none = (state: 'no_match' | 'no_wardrobe' = 'no_match') => ({
+      state,
+      algorithm_version: 'ba-2',
+      outfits: [],
+    });
+
+    it('is the identity for a single result', () => {
+      const result = ok(look('o1', [['p1', 'A', 'wardrobe'], ['p2', 'D', 'discovery']]));
+      expect(mergeBuildAroundResults([result], ['A'])).toEqual(result);
+    });
+
+    it('merges the same look from two items slot by slot, owned pieces winning, ranked first', () => {
+      const fromA = ok(
+        look('shared', [['p1', 'A', 'wardrobe'], ['p2', 'D-b', 'discovery'], ['p3', 'C', 'wardrobe']]),
+        look('only-a', [['p1', 'A', 'wardrobe']]),
+      );
+      const fromB = ok(
+        look('only-b', [['p2', 'B', 'wardrobe']]),
+        look('shared', [['p1', 'D-a', 'discovery'], ['p2', 'B', 'wardrobe'], ['p3', 'C', 'wardrobe']]),
+      );
+      const merged = mergeBuildAroundResults([fromA, fromB], ['A', 'B']);
+      expect(merged.state).toBe('success');
+      expect(merged.outfits.map(o => o.inspiration.id)).toEqual(['shared', 'only-a', 'only-b']);
+      const shared = merged.outfits[0];
+      expect(shared.anchor_coverage).toBe(2);
+      expect(shared.is_complete).toBe(true);
+      expect(shared.slots.map(s => [s.inspiration_item_id, s.item.id, s.source])).toEqual([
+        ['shared-p1', 'A', 'wardrobe'],
+        ['shared-p2', 'B', 'wardrobe'],
+        ['shared-p3', 'C', 'wardrobe'],
+      ]);
+      expect(merged.outfits[1].anchor_coverage).toBe(1);
+    });
+
+    it('a near-color version of a shared look makes the merged look a Close match, after exact ones', () => {
+      const fromA = ok(
+        look('x', [['p1', 'A', 'wardrobe'], ['p2', 'B', 'wardrobe']], 'similar'),
+        look('y', [['p1', 'A', 'wardrobe'], ['p2', 'B', 'wardrobe']]),
+      );
+      const fromB = ok(
+        look('x', [['p1', 'A', 'wardrobe'], ['p2', 'B', 'wardrobe']]),
+        look('y', [['p1', 'A', 'wardrobe'], ['p2', 'B', 'wardrobe']]),
+      );
+      const merged = mergeBuildAroundResults([fromA, fromB], ['A', 'B']);
+      expect(merged.outfits.map(o => [o.inspiration.id, o.anchor_match])).toEqual([
+        ['y', 'exact'],
+        ['x', 'similar'],
+      ]);
+    });
+
+    it('never shows a wardrobe item twice in a merged look', () => {
+      const fromA = ok(look('o', [['pa', 'A', 'wardrobe'], ['pb', 'B', 'wardrobe']]));
+      const fromB = ok(look('o', [['pb', 'B', 'wardrobe'], ['pa2', 'A', 'wardrobe']]));
+      const merged = mergeBuildAroundResults([fromA, fromB], ['A', 'B']);
+      expect(merged.outfits[0].slots.map(s => s.item.id)).toEqual(['A', 'B']);
+    });
+
+    it('is no_wardrobe only when every item said so, else no_match; success wins', () => {
+      expect(mergeBuildAroundResults([none('no_wardrobe'), none('no_wardrobe')], ['A', 'B']).state).toBe('no_wardrobe');
+      expect(mergeBuildAroundResults([none('no_wardrobe'), none()], ['A', 'B']).state).toBe('no_match');
+      expect(mergeBuildAroundResults([none(), none()], ['A', 'B']).state).toBe('no_match');
+      const win = mergeBuildAroundResults([none(), ok(look('o', [['p', 'B', 'wardrobe']]))], ['A', 'B']);
+      expect(win.state).toBe('success');
+      expect(win.outfits).toHaveLength(1);
+    });
   });
 
   it('pickRandomTags returns distinct tags, capped, without mutating the input', () => {

@@ -14,6 +14,15 @@ import type { MakeItYoursItem } from './makeItYoursService';
 //
 //   POST /discovery/build-around   { item_id, trend_tag? }
 //
+// Two entry points share this call and MUST produce the same result for the
+// same item: ItemDetail ("Build around this", one anchor) and the Home
+// landing "Build your look" section (up to `BUILD_LOOK_MAX_ITEMS` anchors).
+// A multi-item search is NOT a different request: `runMany` sends the exact
+// single-item request once per chosen item and merges the answers on the
+// client (`mergeBuildAroundResults`), so each look is computed, ranked and
+// rendered exactly as it would be from ItemDetail, and a look that contains
+// several of the chosen items simply ranks first.
+//
 // CONTRACT: auxi-backend#193 (`algorithm_version: 'ba-2'`), `API_DOCUMENTATION.md`
 // §Build Around This → Discovery. Rules the client relies on:
 //   • `state: 'success'` ⇒ `outfits` has ≥ 1 look, best first; each slot has
@@ -38,6 +47,9 @@ import type { MakeItYoursItem } from './makeItYoursService';
 
 /** Chips shown on the sheet besides "Surprise me" — random Discovery tags. */
 export const BUILD_AROUND_TAG_CHIP_COUNT = 5;
+
+/** Home "Build your look": the most wardrobe items a search can anchor on. */
+export const BUILD_LOOK_MAX_ITEMS = 3;
 
 /** Pick up to `count` distinct tags in random order (Fisher–Yates on a copy). */
 export const pickRandomTags = (
@@ -95,6 +107,12 @@ export interface BuildAroundOutfit {
   /** Every piece comes from the user's wardrobe. */
   is_complete: boolean;
   slots: BuildAroundSlot[];
+  /**
+   * How many of the searched anchors this look contains as owned pieces.
+   * Always 1 for a single-item search; `runMany` raises it when the same
+   * Discovery look came back for several of the chosen items.
+   */
+  anchor_coverage: number;
 }
 
 export interface BuildAroundMatchResponse {
@@ -156,6 +174,7 @@ const normalizeOutfit = (outfit: RawOutfit, anchorId: string): BuildAroundOutfit
       outfit_hash: outfit.outfit_hash,
       is_complete: slots.every(slot => slot.source === 'wardrobe'),
       slots,
+      anchor_coverage: 1,
     },
   ];
 };
@@ -181,6 +200,101 @@ const normalizeOutfits = (
     ...looks.filter(look => look.anchor_match === 'exact'),
     ...looks.filter(look => look.anchor_match === 'similar'),
   ];
+};
+
+/**
+ * Fold the per-item answers of a multi-item search into one result that
+ * reads exactly like a single-item one:
+ *
+ *   • one entry per Discovery look (`inspiration.id`), in first-seen order
+ *     (item 1's looks, then item 2's new ones, …);
+ *   • a look that came back for several items is merged slot by slot
+ *     (`inspiration_item_id`): an owned piece always wins over a Discovery
+ *     one, and a wardrobe item never appears twice in a look;
+ *   • `anchor_coverage` = how many of the chosen items the merged look owns;
+ *     `anchor_match` is `exact` only when EVERY item's version was exact
+ *     (one near-color anchor makes the whole look a "Close match");
+ *   • order: most chosen items first, then exact before similar, then the
+ *     first-seen order — so with one item this is the identity.
+ *
+ * State: `success` as soon as one look exists; otherwise `no_wardrobe` only
+ * when every answer said so, else `no_match`.
+ */
+export const mergeBuildAroundResults = (
+  results: readonly BuildAroundMatchResponse[],
+  anchorIds: readonly string[],
+): BuildAroundMatchResponse => {
+  const byLook = new Map<string, BuildAroundOutfit>();
+  results.forEach(result => {
+    result.outfits.forEach(look => {
+      const existing = byLook.get(look.inspiration.id);
+      if (!existing) {
+        byLook.set(look.inspiration.id, { ...look, slots: [...look.slots] });
+        return;
+      }
+      const slots = [...existing.slots];
+      look.slots.forEach(slot => {
+        const at = slots.findIndex(
+          other => other.inspiration_item_id === slot.inspiration_item_id,
+        );
+        if (at >= 0) {
+          if (slots[at].source === 'discovery' && slot.source === 'wardrobe') {
+            slots[at] = slot;
+          }
+          return;
+        }
+        if (
+          slot.source === 'wardrobe' &&
+          slots.some(other => other.source === 'wardrobe' && other.item.id === slot.item.id)
+        ) {
+          return;
+        }
+        slots.push(slot);
+      });
+      byLook.set(look.inspiration.id, {
+        ...existing,
+        anchor_match:
+          existing.anchor_match === 'exact' && look.anchor_match === 'exact'
+            ? 'exact'
+            : 'similar',
+        slots,
+      });
+    });
+  });
+
+  const looks = [...byLook.values()].map(look => {
+    const owned = new Set(
+      look.slots.filter(slot => slot.source === 'wardrobe').map(slot => slot.item.id),
+    );
+    return {
+      ...look,
+      is_complete: look.slots.every(slot => slot.source === 'wardrobe'),
+      anchor_coverage: Math.max(1, anchorIds.filter(id => owned.has(id)).length),
+    };
+  });
+  const tier = (look: BuildAroundOutfit) => (look.anchor_match === 'exact' ? 0 : 1);
+  const outfits = looks
+    .map((look, index) => ({ look, index }))
+    .sort(
+      (a, b) =>
+        b.look.anchor_coverage - a.look.anchor_coverage ||
+        tier(a.look) - tier(b.look) ||
+        a.index - b.index,
+    )
+    .map(({ look }) => look);
+
+  const success = results.find(result => result.state === 'success');
+  const state: BuildAroundMatchState =
+    outfits.length > 0
+      ? 'success'
+      : results.length > 0 && results.every(result => result.state === 'no_wardrobe')
+        ? 'no_wardrobe'
+        : 'no_match';
+  return {
+    state,
+    algorithm_version: (success ?? results[0])?.algorithm_version ?? '',
+    outfits,
+  };
 };
 
 /** Ids to send to `POST /favourites` for a look (Discovery pieces included). */
@@ -216,5 +330,28 @@ export const buildAroundMatchService = {
       algorithm_version: data.algorithm_version ?? '',
       outfits,
     };
+  },
+
+  /**
+   * The Home "Build your look" search: the SAME request as `run`, once per
+   * chosen item, in parallel, folded with `mergeBuildAroundResults`. One
+   * item ⇒ exactly `run`. Rejects like `run` if any request fails or aborts.
+   */
+  runMany: async (
+    itemIds: readonly string[],
+    trendTag: string | null,
+    signal?: AbortSignal,
+  ): Promise<BuildAroundMatchResponse> => {
+    const ids = [...new Set(itemIds)].slice(0, BUILD_LOOK_MAX_ITEMS);
+    if (ids.length === 0) {
+      throw new Error('buildAroundMatchService.runMany: at least one item id is required');
+    }
+    if (ids.length === 1) {
+      return buildAroundMatchService.run(ids[0], trendTag, signal);
+    }
+    const results = await Promise.all(
+      ids.map(id => buildAroundMatchService.run(id, trendTag, signal)),
+    );
+    return mergeBuildAroundResults(results, ids);
   },
 };
