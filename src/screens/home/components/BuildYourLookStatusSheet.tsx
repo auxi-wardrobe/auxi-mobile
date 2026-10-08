@@ -12,28 +12,33 @@ export type BuildYourLookStatus =
   | { kind: 'idle' }
   | { kind: 'loading' }
   | { kind: 'error'; code: MakeItYoursErrorCode | null }
-  /** Search finished but no Discovery look contains the chosen items. */
-  | { kind: 'empty' };
+  /** Search finished but nothing in Discovery can be built around the items. */
+  | { kind: 'empty'; reason: 'no_match' | 'no_wardrobe' };
 
 type Props = {
   status: BuildYourLookStatus;
-  /** Scrim / swipe-down / Android back / Close. Cancels a running search. */
+  /** Scrim / swipe-down / Android back / Close / Back. Cancels a running search. */
   onDismiss: () => void;
   onCancelLoading: () => void;
   onRetry: () => void;
+  /** Empty state's "Use my items" — the wardrobe-only build, as on ItemDetail. */
+  onUseMyItems: () => void;
 };
 
 /**
- * Loading / error / no-match states of the Home "Find the best match" search,
- * in the same sheet bodies ItemDetail's method sheet shows for its Discovery
- * search. There is no method choice here — the Home section IS the Discovery
- * method — so the sheet is only up while a search runs or needs a decision.
+ * Loading / error / empty states of the Home "Find the best match" search —
+ * the SAME bodies, copy and buttons as the ItemDetail method sheet shows for
+ * its Discovery search (`BuildAroundSheet`), so the two entries are
+ * indistinguishable once the search starts. There is no method choice here:
+ * the Home section IS the Discovery method, so the sheet is only up while a
+ * search runs or needs a decision.
  */
 export const BuildYourLookStatusSheet: React.FC<Props> = ({
   status,
   onDismiss,
   onCancelLoading,
   onRetry,
+  onUseMyItems,
 }) => {
   const { t } = useTranslation();
   const prefix = 'home-build-look';
@@ -47,18 +52,23 @@ export const BuildYourLookStatusSheet: React.FC<Props> = ({
       {status.kind === 'loading' ? (
         <BuildAroundLoadingView
           onCancel={onCancelLoading}
-          busyLabel={t('homeLanding.build_look_find')}
+          busyLabel={t('buildAround.build')}
           testIDPrefix={prefix}
         />
       ) : status.kind === 'empty' ? (
         <BuildAroundMessageView
-          testID={`${prefix}-no-match`}
-          title={t('homeLanding.build_look_no_match_title')}
-          body={t('homeLanding.build_look_no_match_body')}
-          primary={{
+          testID={`${prefix}-${status.reason.replace('_', '-')}`}
+          title={t(`buildAround.${status.reason}_title`)}
+          body={t(`buildAround.${status.reason}_body`)}
+          secondary={{
             label: t('buildAround.back'),
             onPress: onDismiss,
             testID: `${prefix}-empty-back`,
+          }}
+          primary={{
+            label: t('buildAround.use_my_items'),
+            onPress: onUseMyItems,
+            testID: `${prefix}-empty-use-wardrobe`,
           }}
         />
       ) : status.kind === 'error' ? (

@@ -1457,18 +1457,13 @@
       "build_look_a11y_remove_tag": "Bỏ tag {{tag}}",
       "build_look_a11y_find": "Tìm cách phối Discovery hợp nhất cho các món của bạn",
       "build_look_a11y_find_disabled": "Thêm một món trước để tìm cách phối",
-      "build_look_tags_title": "Bạn thích phong cách nào",
-      "build_look_tags_hint": "Chọn tối đa {{count}} phong cách, hoặc để trống để được bất ngờ",
       "build_look_tags_empty": "Hiện chưa có phong cách nào để chọn",
-      "build_look_tags_limit": "Bạn chỉ chọn được tối đa {{count}} phong cách",
       "build_look_tags_done": "Xong",
       "build_look_pick_title": "Thêm món",
       "build_look_pick_added": "Đã thêm",
       "build_look_pick_empty": "Tủ đồ của bạn đang trống. Hãy thêm quần áo trước.",
       "build_look_pick_limit": "Bạn chỉ chọn được tối đa {{count}} món",
-      "build_look_pick_confirm": "Thêm vào look",
-      "build_look_no_match_title": "Chưa có look Discovery nào hợp với các món này",
-      "build_look_no_match_body": "Thử món khác hoặc phong cách khác nhé"
+      "build_look_pick_confirm": "Thêm vào look"
     },
     "makeItYours": {
       "cta": "Biến thành của bạn",

@@ -11,10 +11,10 @@ import { track } from '../../../services/analytics';
 jest.mock('../../../services/analytics', () => ({ track: jest.fn() }));
 jest.mock('../../../services/buildAroundMatchService', () => ({
   ...jest.requireActual('../../../services/buildAroundMatchService'),
-  buildAroundMatchService: { run: jest.fn() },
+  buildAroundMatchService: { runMany: jest.fn() },
 }));
 
-const runMock = buildAroundMatchService.run as jest.Mock;
+const runMock = buildAroundMatchService.runMany as jest.Mock;
 const trackMock = track as jest.Mock;
 
 const RESULT = {
@@ -67,15 +67,12 @@ describe('useBuildAroundMatch', () => {
     runMock.mockResolvedValue(RESULT);
     const { get, onDone } = mount();
     act(() => {
-      get().start(['minimal']);
-      get().start(['minimal']);
+      get().start('minimal');
+      get().start('minimal');
     });
     expect(get().status).toBe('loading');
     expect(runMock).toHaveBeenCalledTimes(1);
-    expect(runMock).toHaveBeenCalledWith(
-      { itemIds: ['A'], trendTags: ['minimal'] },
-      expect.any(Object),
-    );
+    expect(runMock).toHaveBeenCalledWith(['A'], 'minimal', expect.any(Object));
     await flush();
     expect(onDone).toHaveBeenCalledWith(RESULT);
     expect(get().status).toBe('idle');
@@ -91,7 +88,7 @@ describe('useBuildAroundMatch', () => {
     );
   });
 
-  it('multi-anchor (Home entry): sends every id, reports item_count + entry, trend_tags only for several tags', async () => {
+  it('multi-anchor (Home entry): sends every id and reports item_count + entry', async () => {
     runMock.mockResolvedValue(RESULT);
     const onDone = jest.fn();
     const ref: { current: Api | null } = { current: null };
@@ -102,11 +99,8 @@ describe('useBuildAroundMatch', () => {
     act(() => {
       TestRenderer.create(React.createElement(Harness));
     });
-    act(() => (ref.current as Api).start(['minimal', 'casual']));
-    expect(runMock).toHaveBeenCalledWith(
-      { itemIds: ['A', 'B', 'C'], trendTags: ['minimal', 'casual'] },
-      expect.any(Object),
-    );
+    act(() => (ref.current as Api).start('minimal'));
+    expect(runMock).toHaveBeenCalledWith(['A', 'B', 'C'], 'minimal', expect.any(Object));
     await flush();
     expect(trackMock).toHaveBeenCalledWith(
       'build_around_discovery_started',
@@ -115,7 +109,6 @@ describe('useBuildAroundMatch', () => {
         item_count: 3,
         entry: 'home_landing',
         trend_tag: 'minimal',
-        trend_tags: ['minimal', 'casual'],
       }),
     );
     expect(onDone).toHaveBeenCalledWith(RESULT);
@@ -124,19 +117,18 @@ describe('useBuildAroundMatch', () => {
   it('omits trend_tag from analytics for Surprise me (never null)', async () => {
     runMock.mockResolvedValue(RESULT);
     const { get } = mount();
-    act(() => get().start([]));
+    act(() => get().start(null));
     await flush();
     for (const [, props] of trackMock.mock.calls) {
       expect(props).not.toHaveProperty('trend_tag');
-      expect(props).not.toHaveProperty('trend_tags');
     }
-    expect(runMock).toHaveBeenCalledWith({ itemIds: ['A'], trendTags: [] }, expect.any(Object));
+    expect(runMock).toHaveBeenCalledWith(['A'], null, expect.any(Object));
   });
 
   it('holds the loading state for MIN_LOADING_MS even if the API is instant', async () => {
     runMock.mockResolvedValue(RESULT);
     const { get, onDone } = mount();
-    act(() => get().start(['casual']));
+    act(() => get().start('casual'));
     await flush(MIN_LOADING_MS - 100);
     expect(onDone).not.toHaveBeenCalled();
     await flush(100);
@@ -145,14 +137,14 @@ describe('useBuildAroundMatch', () => {
 
   it('cancel aborts silently — no error, no onDone', async () => {
     let signal: AbortSignal | undefined;
-    runMock.mockImplementation((_req: unknown, s: AbortSignal) => {
+    runMock.mockImplementation((_ids: string[], _tag: string | null, s: AbortSignal) => {
       signal = s;
       return new Promise((_, reject) =>
         s.addEventListener('abort', () => reject({ code: 'ERR_CANCELED' })),
       );
     });
     const { get, onDone } = mount();
-    act(() => get().start(['casual']));
+    act(() => get().start('casual'));
     act(() => get().cancel());
     await flush();
     expect(signal?.aborted).toBe(true);
@@ -165,31 +157,28 @@ describe('useBuildAroundMatch', () => {
   it('failure → error state; retry re-runs with the same style', async () => {
     runMock.mockRejectedValueOnce({ response: { status: 429 } }).mockResolvedValueOnce(RESULT);
     const { get, onDone } = mount();
-    act(() => get().start(['classic']));
+    act(() => get().start('classic'));
     await flush();
     expect(get().status).toBe('error');
     expect(get().errorCode).toBe('rate_limited');
     act(() => get().retry());
     await flush();
-    expect(runMock).toHaveBeenLastCalledWith(
-      { itemIds: ['A'], trendTags: ['classic'] },
-      expect.any(Object),
-    );
+    expect(runMock).toHaveBeenLastCalledWith(['A'], 'classic', expect.any(Object));
     expect(onDone).toHaveBeenCalledWith(RESULT);
   });
 
   it('does nothing without an item id, and unmount mid-run aborts the request', () => {
     const none = mount([]);
-    act(() => none.get().start(['casual']));
+    act(() => none.get().start('casual'));
     expect(runMock).not.toHaveBeenCalled();
 
     let signal: AbortSignal | undefined;
-    runMock.mockImplementation((_req: unknown, s: AbortSignal) => {
+    runMock.mockImplementation((_ids: string[], _tag: string | null, s: AbortSignal) => {
       signal = s;
       return new Promise(() => undefined);
     });
     const { get, unmount } = mount();
-    act(() => get().start(['casual']));
+    act(() => get().start('casual'));
     unmount();
     expect(signal?.aborted).toBe(true);
   });

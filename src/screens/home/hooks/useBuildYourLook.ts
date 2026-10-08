@@ -8,7 +8,7 @@ import { track } from '../../../services/analytics';
 import {
   BUILD_LOOK_MAX_ITEMS,
   isBuildAroundSuccess,
-  trendTagsProps,
+  trendTagProps,
 } from '../../../services/buildAroundMatchService';
 import { FLAGS } from '../../../services/featureFlags';
 import {
@@ -23,20 +23,26 @@ import type { BuildYourLookStatus } from '../components/BuildYourLookStatusSheet
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'HomeLanding'>;
 type Route = RouteProp<AppStackParamList, 'HomeLanding'>;
 
+type EmptyReason = 'no_match' | 'no_wardrobe';
+
 /**
  * State behind the Home "Build your look" section:
  *
  *   add item ──▶ push BuildYourLookPickItems ──▶ hands ids back via route
  *                params (`buildLookAddItemIds`, consumed + cleared here)
- *   add tags ──▶ tag sheet (draft → Done)
+ *   add tags ──▶ tag sheet (Surprise me | one tag → Done)
  *   find     ──▶ loading ──▶ push BuildAroundMatchResult (success)
  *                   ├──▶ error (retry / close)
- *                   └──▶ empty (no look contains the items)
+ *                   └──▶ empty (no_match / no_wardrobe) ─ "Use my items" ─▶
+ *                        the wardrobe-only build on the recommender, pinned
+ *                        on the first item — what ItemDetail's sheet does
  *
- * The selection lives for as long as HomeLanding stays mounted (it is the
- * stack's root, so effectively the session). Gated by the same
- * `build_around_discovery` flag as the ItemDetail entry — OFF hides the
- * section entirely, since the endpoint it needs is not there.
+ * The search is `useBuildAroundMatch` with the chosen ids: the exact
+ * ItemDetail request per item, merged on the client. The selection lives for
+ * as long as HomeLanding stays mounted (it is the stack's root, so
+ * effectively the session). Gated by the same `build_around_discovery` flag
+ * as the ItemDetail entry — OFF hides the section entirely, since the
+ * endpoint it needs is not there.
  */
 export const useBuildYourLook = () => {
   const navigation = useNavigation<Navigation>();
@@ -45,9 +51,9 @@ export const useBuildYourLook = () => {
   const enabled = useFeatureFlag(FLAGS.BUILD_AROUND_DISCOVERY);
 
   const [items, setItems] = useState<WardrobeItem[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
+  const [tag, setTag] = useState<string | null>(null);
   const [tagSheetOpen, setTagSheetOpen] = useState(false);
-  const [empty, setEmpty] = useState(false);
+  const [empty, setEmpty] = useState<EmptyReason | null>(null);
 
   const itemIds = useMemo(() => items.map(item => item.id), [items]);
 
@@ -62,7 +68,7 @@ export const useBuildYourLook = () => {
         });
         return;
       }
-      setEmpty(true);
+      setEmpty(result.state === 'no_wardrobe' ? 'no_wardrobe' : 'no_match');
     },
     'home_landing',
   );
@@ -112,34 +118,30 @@ export const useBuildYourLook = () => {
   }, []);
 
   const openTags = useCallback(() => {
-    track('home_build_look_add_tags_tapped', { tag_count: tags.length });
+    track('home_build_look_add_tags_tapped', trendTagProps(tag));
     setTagSheetOpen(true);
-  }, [tags.length]);
+  }, [tag]);
 
-  const removeTag = useCallback((tag: string) => {
-    setTags(prev => {
-      const next = prev.filter(other => other !== tag);
-      track('home_build_look_tags_changed', { tag_count: next.length, ...trendTagsProps(next) });
-      return next;
-    });
+  const removeTag = useCallback(() => {
+    setTag(null);
+    track('home_build_look_tag_changed', {});
   }, []);
 
-  const doneTags = useCallback((next: string[]) => {
-    setTags(next);
+  const doneTag = useCallback((next: string | null) => {
+    setTag(next);
     setTagSheetOpen(false);
-    track('home_build_look_tags_changed', { tag_count: next.length, ...trendTagsProps(next) });
+    track('home_build_look_tag_changed', trendTagProps(next));
   }, []);
 
   const find = useCallback(() => {
     if (itemIds.length === 0) return;
     track('home_build_look_find_tapped', {
       item_count: itemIds.length,
-      tag_count: tags.length,
-      ...trendTagsProps(tags),
+      ...trendTagProps(tag),
     });
-    setEmpty(false);
-    run.start(tags);
-  }, [itemIds.length, tags, run]);
+    setEmpty(null);
+    run.start(tag);
+  }, [itemIds.length, tag, run]);
 
   const status: BuildYourLookStatus =
     run.status === 'loading'
@@ -147,19 +149,33 @@ export const useBuildYourLook = () => {
       : run.status === 'error'
         ? { kind: 'error', code: run.errorCode }
         : empty
-          ? { kind: 'empty' }
+          ? { kind: 'empty', reason: empty }
           : { kind: 'idle' };
 
   const dismissStatus = useCallback(() => {
     cancel();
-    setEmpty(false);
+    setEmpty(null);
   }, [cancel]);
+
+  // Same hand-off as ItemDetail's "Use my items": the wardrobe-only build on
+  // the recommender, pinned on the (first) item. The recommender pins one
+  // item, so a multi-item look anchors on the first one chosen.
+  const useMyItems = useCallback(() => {
+    track('build_around_method_chosen', {
+      item_id: itemIds[0],
+      item_count: itemIds.length,
+      entry: 'home_landing',
+      method: 'wardrobe',
+    });
+    setEmpty(null);
+    navigation.navigate('Home', { pinFromDetail: itemIds[0] });
+  }, [navigation, itemIds]);
 
   return {
     enabled,
     sectionProps: {
       items,
-      tags,
+      tag,
       onAddItem: addItem,
       onRemoveItem: removeItem,
       onAddTags: openTags,
@@ -168,15 +184,16 @@ export const useBuildYourLook = () => {
     },
     tagSheetProps: {
       visible: tagSheetOpen,
-      selected: tags,
+      selected: tag,
       onDismiss: () => setTagSheetOpen(false),
-      onDone: doneTags,
+      onDone: doneTag,
     },
     statusSheetProps: {
       status,
       onDismiss: dismissStatus,
       onCancelLoading: cancel,
       onRetry: run.retry,
+      onUseMyItems: useMyItems,
     },
   };
 };

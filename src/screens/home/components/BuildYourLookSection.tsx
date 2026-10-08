@@ -18,29 +18,31 @@ const ICON = 20;
 type Props = {
   /** Items chosen so far, in pick order (≤ `BUILD_LOOK_MAX_ITEMS`). */
   items: WardrobeItem[];
-  /** Discovery trend tags chosen so far (slugs). */
-  tags: string[];
+  /** The Discovery trend tag chosen (slug), or `null` = Surprise me. */
+  tag: string | null;
   /** "Add item" card → opens the wardrobe picker. */
   onAddItem: () => void;
   onRemoveItem: (itemId: string) => void;
   /** "+ add tags" chip → opens the tag sheet. */
   onAddTags: () => void;
-  onRemoveTag: (tag: string) => void;
+  /** × on the tag chip → back to Surprise me. */
+  onRemoveTag: () => void;
   /** "Find the best match" — only called with at least one item. */
   onFind: () => void;
 };
 
 /**
  * "BUILD YOUR LOOK" — the Home landing section under Discovery. The user
- * anchors up to three wardrobe items (+ optional Discovery style tags) and
- * "Find the best match" runs the same Discovery search ItemDetail's
- * "Build around this → Find the best match from Discovery" runs, landing on
- * the same result screen. Pure presentation: HomeLandingScreen owns the
- * selection and the search.
+ * anchors up to three wardrobe items (+ optionally ONE Discovery style tag,
+ * exactly the choice ItemDetail's method sheet offers) and "Find the best
+ * match" runs the same Discovery search ItemDetail's "Build around this →
+ * Find the best match from Discovery" runs, landing on the same result
+ * screen. Pure presentation: HomeLandingScreen owns the selection and the
+ * search.
  */
 export const BuildYourLookSection: React.FC<Props> = ({
   items,
-  tags,
+  tag,
   onAddItem,
   onRemoveItem,
   onAddTags,
@@ -119,12 +121,11 @@ export const BuildYourLookSection: React.FC<Props> = ({
       </View>
 
       <View style={styles.chipRow}>
-        {tags.map(tag => (
+        {tag ? (
           <TouchableOpacity
-            key={tag}
             style={[styles.chip, styles.buildLookChip, styles.buildLookChipOn]}
             activeOpacity={0.82}
-            onPress={() => onRemoveTag(tag)}
+            onPress={onRemoveTag}
             testID={`home-build-look-tag-${tag}`}
             accessibilityRole="button"
             accessibilityLabel={t('homeLanding.build_look_a11y_remove_tag', { tag: tagLabel(tag) })}
@@ -132,7 +133,7 @@ export const BuildYourLookSection: React.FC<Props> = ({
             <Icons.CloseThin width={12} height={12} color={theme.colors.white} />
             <Text style={[styles.chipText, styles.buildLookChipTextOn]}>{tagLabel(tag)}</Text>
           </TouchableOpacity>
-        ))}
+        ) : null}
         <TouchableOpacity
           style={[styles.chip, styles.buildLookChip]}
           activeOpacity={0.82}

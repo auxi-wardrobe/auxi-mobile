@@ -1,29 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { MButton, MChip, toast } from '../../../components/design-system/lib';
+import { MButton, MChip } from '../../../components/design-system/lib';
 import { ContextualBottomSheet } from '../../../components/features/ContextualBottomSheet';
 import { MacgieLoader } from '../../../components/macgie/MacgieLoader';
 import { useDiscoveryTrendTags } from '../../../hooks/useDiscovery';
-import { BUILD_LOOK_MAX_TAGS } from '../../../services/buildAroundMatchService';
 import { tagLabel } from '../../build-around/BuildAroundSheet';
 import { buildAroundSheetStyles as styles } from '../../build-around/buildAroundSheetStyles';
 
 type Props = {
   visible: boolean;
-  /** Tags already on the Home section — the sheet opens with them selected. */
-  selected: string[];
+  /** The tag on the Home section (`null` = Surprise me) — the sheet opens on it. */
+  selected: string | null;
   onDismiss: () => void;
-  /** "Done" — the new full selection (may be empty = Surprise me). */
-  onDone: (tags: string[]) => void;
+  /** "Done" — the new choice (`null` = Surprise me). */
+  onDone: (tag: string | null) => void;
 };
 
 /**
- * "+ add tags" on the Home "Build your look" section: every Discovery trend
- * tag (`GET /discovery/trend-tags`) as a 3-column chip grid, multi-select up
- * to `BUILD_LOOK_MAX_TAGS`. Same chip grid and copy as the ItemDetail method
- * sheet's style row, so a tag reads the same wherever it is picked. The
- * draft lives here and only lands on Done; Cancel / scrim keep the old set.
+ * "+ add tags" on the Home "Build your look" section — the SAME choice the
+ * ItemDetail method sheet offers under "What style do you prefer": "Surprise
+ * me" or ONE Discovery trend tag, in the same 3-column chip grid. The only
+ * difference is that every tag from `GET /discovery/trend-tags` is listed
+ * instead of five random ones, so the search request (`trend_tag` or none)
+ * is exactly ItemDetail's. The draft lands on Done; Cancel / scrim keep the
+ * old choice.
  */
 export const BuildYourLookTagSheet: React.FC<Props> = ({
   visible,
@@ -33,7 +34,7 @@ export const BuildYourLookTagSheet: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const { data: tags, isLoading, isError } = useDiscoveryTrendTags();
-  const [draft, setDraft] = useState<string[]>(selected);
+  const [draft, setDraft] = useState<string | null>(selected);
 
   // A fresh open always starts from what the section currently shows.
   useEffect(() => {
@@ -41,23 +42,6 @@ export const BuildYourLookTagSheet: React.FC<Props> = ({
       setDraft(selected);
     }
   }, [visible, selected]);
-
-  const toggle = (tag: string) => {
-    setDraft(prev => {
-      if (prev.includes(tag)) {
-        return prev.filter(other => other !== tag);
-      }
-      if (prev.length >= BUILD_LOOK_MAX_TAGS) {
-        toast.show({
-          type: 'info',
-          text1: t('homeLanding.build_look_tags_limit', { count: BUILD_LOOK_MAX_TAGS }),
-          position: 'bottom',
-        });
-        return prev;
-      }
-      return [...prev, tag];
-    });
-  };
 
   const body = () => {
     if (isLoading) {
@@ -76,14 +60,24 @@ export const BuildYourLookTagSheet: React.FC<Props> = ({
     }
     return (
       <View style={styles.chips} testID="home-build-look-tags-grid">
+        <View style={styles.chipCell}>
+          <MChip
+            block
+            selected={draft === null}
+            onPress={() => setDraft(null)}
+            testID={`home-build-look-tag-option-surprise-me${draft === null ? '-selected' : ''}`}
+          >
+            {t('buildAround.style_surprise_me')}
+          </MChip>
+        </View>
         {tags.map(tag => {
-          const on = draft.includes(tag);
+          const on = draft === tag;
           return (
             <View key={tag} style={styles.chipCell}>
               <MChip
                 block
                 selected={on}
-                onPress={() => toggle(tag)}
+                onPress={() => setDraft(tag)}
                 testID={`home-build-look-tag-option-${tag}${on ? '-selected' : ''}`}
               >
                 {tagLabel(tag)}
@@ -102,10 +96,7 @@ export const BuildYourLookTagSheet: React.FC<Props> = ({
       testID="home-build-look-tags-sheet"
     >
       <Text style={styles.headerTitle} accessibilityRole="header">
-        {t('homeLanding.build_look_tags_title')}
-      </Text>
-      <Text style={styles.intro}>
-        {t('homeLanding.build_look_tags_hint', { count: BUILD_LOOK_MAX_TAGS })}
+        {t('buildAround.style_title')}
       </Text>
       <View style={styles.styleSection}>{body()}</View>
       <View style={styles.actions}>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { track } from '../../services/analytics';
 import {
   buildAroundMatchService,
-  trendTagsProps,
+  trendTagProps,
   type BuildAroundMatchResponse,
 } from '../../services/buildAroundMatchService';
 import {
@@ -27,19 +27,17 @@ const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 
 /**
  * Drives one "find the best match from Discovery" run for one or more anchor
- * items (ItemDetail passes one; the Home "Build your look" section up to three).
+ * items (ItemDetail passes one; the Home "Build your look" section up to
+ * three — `runMany` sends the single-item request per item and merges, so a
+ * one-item run from either entry is the same request and the same result).
  *
- *   start(tags)   idle|error → loading → onDone(result)  (or → error)
+ *   start(tag)    idle|error → loading → onDone(result)  (or → error)
  *   cancel()      loading → idle, request aborted, NO error surfaced
- *   retry()       error → loading with the same tags
+ *   retry()       error → loading with the same tag
  *
  * Repeated `start()` while loading is a no-op (no duplicate jobs). Mirrors
  * `useMakeItYoursRun` (same minimum loading time so the three steps can be
  * read, same abort-on-unmount guarantee).
- *
- * Analytics keep the single-anchor shape (`item_id` = first anchor,
- * `trend_tag` = first tag) and add `item_count` / `entry`; `trend_tags` only
- * appears when more than one tag was chosen.
  */
 export const useBuildAroundMatch = (
   itemIds: readonly string[],
@@ -50,7 +48,7 @@ export const useBuildAroundMatch = (
   const [errorCode, setErrorCode] = useState<MakeItYoursErrorCode | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const startedAtRef = useRef(0);
-  const tagsRef = useRef<string[]>([]);
+  const tagRef = useRef<string | null>(null);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
   // Read at call time, so a changed selection never restarts a running job.
@@ -64,7 +62,7 @@ export const useBuildAroundMatch = (
       item_id: ids[0],
       item_count: ids.length,
       entry,
-      ...trendTagsProps(tagsRef.current),
+      ...trendTagProps(tagRef.current),
     }),
     [entry],
   );
@@ -74,7 +72,7 @@ export const useBuildAroundMatch = (
     if (ids.length === 0 || controllerRef.current) {
       return;
     }
-    const trendTags = tagsRef.current;
+    const trendTag = tagRef.current;
     const controller = new AbortController();
     controllerRef.current = controller;
     startedAtRef.current = Date.now();
@@ -82,7 +80,7 @@ export const useBuildAroundMatch = (
     setErrorCode(null);
 
     Promise.all([
-      buildAroundMatchService.run({ itemIds: ids, trendTags }, controller.signal),
+      buildAroundMatchService.runMany(ids, trendTag, controller.signal),
       delay(MIN_LOADING_MS),
     ])
       .then(([result]) => {
@@ -109,10 +107,10 @@ export const useBuildAroundMatch = (
   }, [baseProps]);
 
   const start = useCallback(
-    (trendTags: readonly string[]) => {
+    (trendTag: string | null) => {
       const ids = itemIdsRef.current;
       if (ids.length === 0 || controllerRef.current) return;
-      tagsRef.current = [...trendTags];
+      tagRef.current = trendTag;
       track('build_around_discovery_started', baseProps(ids));
       run();
     },

@@ -1478,18 +1478,13 @@
       "build_look_a11y_remove_tag": "Remove the {{tag}} tag",
       "build_look_a11y_find": "Find the best Discovery match for your items",
       "build_look_a11y_find_disabled": "Add an item first to find a match",
-      "build_look_tags_title": "What style do you prefer",
-      "build_look_tags_hint": "Pick up to {{count}} styles, or none to be surprised",
       "build_look_tags_empty": "No styles to pick right now",
-      "build_look_tags_limit": "You can pick up to {{count}} styles",
       "build_look_tags_done": "Done",
       "build_look_pick_title": "Add item",
       "build_look_pick_added": "Added",
       "build_look_pick_empty": "Your wardrobe is empty. Add some clothes first.",
       "build_look_pick_limit": "You can pick up to {{count}} items",
-      "build_look_pick_confirm": "Add to look",
-      "build_look_no_match_title": "No Discovery look fits these items yet",
-      "build_look_no_match_body": "Try other items or styles"
+      "build_look_pick_confirm": "Add to look"
     },
     "makeItYours": {
       "cta": "Make it yours",

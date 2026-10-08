@@ -1,5 +1,5 @@
 // Home "Build your look": up to three chosen items + an Add card while there
-// is room, tag chips with × and a "+ add tags" chip, and a "Find the best
+// is room, one tag chip with × and a "+ add tags" chip, and a "Find the best
 // match" action that is disabled until at least one item is chosen.
 
 import React from 'react';
@@ -22,7 +22,7 @@ const press = (root: ReactTestInstance, id: string) =>
 const render = (overrides: Partial<React.ComponentProps<typeof BuildYourLookSection>> = {}) => {
   const props = {
     items: [],
-    tags: [],
+    tag: null,
     onAddItem: jest.fn(),
     onRemoveItem: jest.fn(),
     onAddTags: jest.fn(),
@@ -66,12 +66,11 @@ describe('BuildYourLookSection', () => {
     expect(byTestID(r.root, 'home-build-look-item-2')).toHaveLength(1);
   });
 
-  it('shows chosen tags as removable chips next to the add-tags chip', () => {
-    const { r, props } = render({ tags: ['minimal', 'quiet-luxury'] });
+  it('shows the chosen tag as a removable chip next to the add-tags chip', () => {
+    const { r, props } = render({ tag: 'minimal' });
     expect(byTestID(r.root, 'home-build-look-tag-minimal')).toHaveLength(1);
-    expect(byTestID(r.root, 'home-build-look-tag-quiet-luxury')).toHaveLength(1);
     press(r.root, 'home-build-look-tag-minimal');
-    expect(props.onRemoveTag).toHaveBeenCalledWith('minimal');
+    expect(props.onRemoveTag).toHaveBeenCalled();
     press(r.root, 'home-build-look-add-tags');
     expect(props.onAddTags).toHaveBeenCalled();
   });

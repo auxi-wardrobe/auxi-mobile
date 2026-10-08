@@ -91,7 +91,7 @@ export const useBuildAroundFlow = (itemId: string) => {
         ...trendTagProps(trendTag),
       });
       setEmpty(null);
-      run.start(trendTag ? [trendTag] : []);
+      run.start(trendTag);
     },
     [itemId, run],
   );
