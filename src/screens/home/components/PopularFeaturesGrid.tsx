@@ -18,7 +18,8 @@ export interface PopularFeature {
  *   add_items   → Wardrobe      (the add-item flow lives on the grid)
  *   schedule    → Schedule
  *   capsule     → CapsuleCreate
- *   find_match  → Home          (the recommender: matches items into outfits)
+ *   find_match  → Build your look → Add item (the wardrobe picker; the
+ *                 recommender while that section's flag is off)
  *   show_wearing→ Favourite     (try-on needs a saved outfit to render onto,
  *                                so it starts from the saved-outfit list)
  *   discover    → Discovery

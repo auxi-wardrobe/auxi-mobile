@@ -185,6 +185,17 @@ export const HomeLandingScreen = () => {
   const handleFeature = (key: string) => {
     track('home_landing_feature_tapped', { feature: key });
     const destination = destinationFor(key);
+    if (destination.kind === 'build_look') {
+      // "Find Matching" = start a Build-your-look search: open its Add-item
+      // step (the wardrobe picker). Without the section (flag off) the
+      // recommender is the closest thing to "find matching".
+      if (buildLook.enabled) {
+        buildLook.sectionProps.onAddItem();
+      } else {
+        openRecommender(`feature_${key}`);
+      }
+      return;
+    }
     if (destination.kind === 'recommender') {
       openRecommender(`feature_${key}`);
       return;

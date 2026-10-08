@@ -7,18 +7,23 @@ import type { AppStackParamList } from '../../types/navigation';
 // 'recommender' is not a route: it means "go to the outfit engine (`Home`)",
 // which the screen reaches via `popToOrNavigate` rather than a plain navigate,
 // because pushing a duplicate `Home` remounts it and discards the live deck.
+// 'build_look' is not a route either: it opens the "Add item" step of the
+// landing's own "Build your look" section (the wardrobe picker), and falls
+// back to the recommender while that section's flag is off.
 
 export type FeatureDestination =
   | { kind: 'route'; route: keyof AppStackParamList }
-  | { kind: 'recommender' };
+  | { kind: 'recommender' }
+  | { kind: 'build_look' };
 
 export const FEATURE_DESTINATIONS: Record<string, FeatureDestination> = {
   // The add-item flow lives on the wardrobe grid.
   add_items: { kind: 'route', route: 'Wardrobe' },
   schedule: { kind: 'route', route: 'Schedule' },
   capsule: { kind: 'route', route: 'CapsuleCreate' },
-  // "Find matching" IS the recommender: it matches wardrobe items into outfits.
-  find_match: { kind: 'recommender' },
+  // "Find matching" starts a "Build your look" search: pick the item(s) to
+  // find the best Discovery match for.
+  find_match: { kind: 'build_look' },
   // Try-on renders an outfit onto the user's body photo, so it needs a saved
   // outfit to start from — the Favourite page is where each one carries its
   // "See on me" action.
