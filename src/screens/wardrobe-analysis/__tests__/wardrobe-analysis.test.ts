@@ -274,6 +274,7 @@ describe('computeItemTypes', () => {
 describe('itemColorFamily', () => {
   it('reads catalog palette codes when there is no AI colour', () => {
     expect(itemColorFamily(item({ color_code: 'NVY' }))).toBe('navy');
+    expect(itemColorFamily(item({ color_code: 'BSH' }))).toBe('blush');
     expect(
       itemColorFamily(item({ physical_attributes: { color_code: 'blk' } })),
     ).toBe('black');
@@ -343,6 +344,9 @@ describe('colorFamilyFor', () => {
     ['golden brown', 'brown'],
     ['charcoal', 'grey'],
     ['multicolor', OTHER_COLOR_ID],
+    ['blush pink', 'blush'],
+    ['dusty rose', 'blush'],
+    ['hot pink', 'pink'],
   ])('%s → %s', (name, expected) => {
     expect(colorFamilyFor(name)).toBe(expected);
   });
@@ -393,6 +397,7 @@ describe('itemColorHex', () => {
     ).toBe('#7BA5D6');
     expect(itemColorHex(item({ color_hex: '#123456' }))).toBe('#123456');
     expect(itemColorHex(item({ color_code: 'LBL' }))).toBe('#a0c2f1');
+    expect(itemColorHex(item({ color_code: 'BSH' }))).toBe('#e8b4ac');
     expect(itemColorHex(item({ dominant_color: 'navy blue' }))).toBe('#193579');
   });
 

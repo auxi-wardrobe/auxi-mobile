@@ -94,8 +94,15 @@ export const COLOR_FAMILIES: ColorFamily[] = [
     hex: '#c62828',
   },
   {
+    // Above pink so "blush pink" / "dusty rose" land here, not in pink.
+    id: 'blush',
+    keywords: ['blush', 'dusty rose', 'dusty pink', 'nude pink', 'pale pink'],
+    codes: ['BSH'],
+    hex: '#e8b4ac',
+  },
+  {
     id: 'pink',
-    keywords: ['pink', 'rose', 'blush', 'fuchsia'],
+    keywords: ['pink', 'rose', 'fuchsia'],
     codes: ['PNK'],
     hex: '#e58fae',
   },
@@ -141,6 +148,7 @@ export const COLOR_CODE_HEX: Record<string, string> = {
   RED: '#c62828',
   BUR: '#6c0111',
   PNK: '#e58fae',
+  BSH: '#e8b4ac',
   YEL: '#f1c232',
   OLV: '#608c3a',
   GRN: '#2f8f5b',
