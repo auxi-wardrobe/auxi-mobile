@@ -3,14 +3,12 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
-import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import { track } from '../../../services/analytics';
 import {
   BUILD_LOOK_MAX_ITEMS,
   isBuildAroundSuccess,
   trendTagProps,
 } from '../../../services/buildAroundMatchService';
-import { FLAGS } from '../../../services/featureFlags';
 import {
   wardrobeKeys,
   wardrobeService,
@@ -40,15 +38,12 @@ type EmptyReason = 'no_match' | 'no_wardrobe';
  * The search is `useBuildAroundMatch` with the chosen ids: the exact
  * ItemDetail request per item, merged on the client. The selection lives for
  * as long as HomeLanding stays mounted (it is the stack's root, so
- * effectively the session). Gated by the same `build_around_discovery` flag
- * as the ItemDetail entry — OFF hides the section entirely, since the
- * endpoint it needs is not there.
+ * effectively the session).
  */
 export const useBuildYourLook = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<Route>();
   const queryClient = useQueryClient();
-  const enabled = useFeatureFlag(FLAGS.BUILD_AROUND_DISCOVERY);
 
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [tag, setTag] = useState<string | null>(null);
@@ -172,7 +167,6 @@ export const useBuildYourLook = () => {
   }, [navigation, itemIds]);
 
   return {
-    enabled,
     sectionProps: {
       items,
       tag,

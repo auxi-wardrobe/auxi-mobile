@@ -187,13 +187,8 @@ export const HomeLandingScreen = () => {
     const destination = destinationFor(key);
     if (destination.kind === 'build_look') {
       // "Find Matching" = start a Build-your-look search: open its Add-item
-      // step (the wardrobe picker). Without the section (flag off) the
-      // recommender is the closest thing to "find matching".
-      if (buildLook.enabled) {
-        buildLook.sectionProps.onAddItem();
-      } else {
-        openRecommender(`feature_${key}`);
-      }
+      // step (the wardrobe picker).
+      buildLook.sectionProps.onAddItem();
       return;
     }
     if (destination.kind === 'recommender') {
@@ -254,19 +249,13 @@ export const HomeLandingScreen = () => {
           onOutfitPress={handleDiscoveryPress}
         />
 
-        {buildLook.enabled ? (
-          <BuildYourLookSection {...buildLook.sectionProps} />
-        ) : null}
+        <BuildYourLookSection {...buildLook.sectionProps} />
 
         <PopularFeaturesGrid onSelect={handleFeature} />
       </ScrollView>
 
-      {buildLook.enabled ? (
-        <>
-          <BuildYourLookTagSheet {...buildLook.tagSheetProps} />
-          <BuildYourLookStatusSheet {...buildLook.statusSheetProps} />
-        </>
-      ) : null}
+      <BuildYourLookTagSheet {...buildLook.tagSheetProps} />
+      <BuildYourLookStatusSheet {...buildLook.statusSheetProps} />
 
       <NotificationSheet
         visible={notificationsOpen}

@@ -1,9 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { track } from '../../services/analytics';
-import { FLAGS } from '../../services/featureFlags';
 import { isBuildAroundSuccess, trendTagProps } from '../../services/buildAroundMatchService';
 import type { AppStackParamList } from '../../types/navigation';
 import type { BuildAroundSheetMode } from './BuildAroundSheet';
@@ -21,15 +19,9 @@ type EmptyReason = 'no_match' | 'no_wardrobe';
  *                                    └─ cancel ─▶ choose
  *
  * Dismissing the sheet at any point cancels a running search.
- *
- * Gated by `build_around_discovery` (keep OFF in prod until auxi-backend#193
- * — the ba-2 multi-look contract — is deployed):
- * flag OFF → `open()` skips the sheet and runs the wardrobe method directly,
- * i.e. exactly the pre-feature behaviour.
  */
 export const useBuildAroundFlow = (itemId: string) => {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList, 'ItemDetail'>>();
-  const discoveryEnabled = useFeatureFlag(FLAGS.BUILD_AROUND_DISCOVERY);
   const [visible, setVisible] = useState(false);
   const [empty, setEmpty] = useState<EmptyReason | null>(null);
 
@@ -73,15 +65,10 @@ export const useBuildAroundFlow = (itemId: string) => {
   }, [navigation, itemId]);
 
   const open = useCallback(() => {
-    if (!discoveryEnabled) {
-      // Flag OFF: original behaviour — no sheet, pin + rebuild on Home.
-      navigation.popTo('Home', { pinFromDetail: itemId });
-      return;
-    }
     track('build_around_sheet_opened', { item_id: itemId });
     setEmpty(null);
     setVisible(true);
-  }, [discoveryEnabled, navigation, itemId]);
+  }, [itemId]);
 
   const buildFromDiscovery = useCallback(
     (trendTag: string | null) => {
