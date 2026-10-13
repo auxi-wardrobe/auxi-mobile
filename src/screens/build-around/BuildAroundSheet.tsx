@@ -184,7 +184,7 @@ export const BuildAroundSheet: React.FC<Props> = ({
                   {canShuffle ? (
                     <MChip
                       iconOnly
-                      icon={<Icons.Shuffle width={20} height={20} color={theme.ds.color.ink} />}
+                      icon={<Icons.Sort width={20} height={20} color={theme.ds.color.ink} />}
                       onPress={shuffle}
                       testID="build-around-style-shuffle"
                     >

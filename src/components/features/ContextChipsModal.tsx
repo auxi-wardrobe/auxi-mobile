@@ -232,7 +232,7 @@ export const ContextChipsModal: React.FC<ContextChipsModalProps> = ({
                 disabled={isSubmitting}
                 onPress={onShuffle}
               >
-                <Icons.Sort width={24} height={24} />
+                <Icons.Sort width={24} height={24} color={theme.ds.color.ink} />
               </TouchableOpacity>
 
               <TouchableOpacity
