@@ -3,9 +3,8 @@
 Lets a user narrow the Discovery feed to outfits that contain a given item —
 e.g. pick **Chân váy chữ A** and see only outfits with an A-line skirt.
 
-The mobile side ships in this repo and is **dormant until the backend ships
-the two changes below**: while `GET /discovery/item-types` 404s (or returns an
-empty list) the "Món đồ" pill is simply not rendered.
+The pill renders only when `GET /discovery/item-types` returns at least one
+type. Against a backend without the endpoint (404) the pill stays hidden.
 
 ## Why a filter, not search
 
@@ -15,92 +14,63 @@ outfit. Item names are English catalog strings, so a Vietnamese free-text query
 translated chip list has no vocabulary gap, shows only what exists, and reuses
 the existing `DiscoveryFilterSheet` pattern (season / tag / color).
 
-## Backend contract (to implement in auxi-backend)
+## Backend contract (auxi-backend)
 
-### 1. `GET /discovery/item-types`
+Source of truth: `utils/discovery_item_types.py` and `API_DOCUMENTATION.md`
+§Discovery in auxi-backend.
+
+### `GET /discovery/item-types`
 
 Item types present in at least one servable outfit **for this viewer** (same
-gender filtering as the feed). Types with zero outfits are omitted.
+gender filtering as the feed), in vocabulary order. Types with zero outfits
+are omitted.
 
 ```json
 {
   "item_types": [
-    { "code": "a_line_skirt", "label": "A-line skirt", "count": 4 },
-    { "code": "loafers", "label": "Loafers", "count": 7 }
+    { "code": "t_shirt", "label": "T-shirt", "count": 9 },
+    { "code": "skirt", "label": "Skirt", "count": 5 },
+    { "code": "a_line_skirt", "label": "A-line skirt", "count": 2 }
   ]
 }
 ```
 
-- `code` — stable snake_case id; what the client sends back.
-- `label` — English fallback, shown only when the app has no
-  `discovery.item_types.<code>` translation.
-- `count` — number of servable outfits containing ≥1 item of the type.
-- Order — the order chips are shown in. Suggested: grouped
-  top → outerwear → bottom → one-piece → shoes → accessory, then by name.
-
-### 2. `GET /discovery/outfits?item_type=a_line_skirt,pleated_skirt`
+### `GET /discovery/outfits?item_type=a_line_skirt,loafers`
 
 - ONE comma-separated string (same as `color`; FastAPI does not read
   `item_type[]=`).
-- OR within the axis: outfit matches if it contains ANY selected type.
-- AND with the other axes (season, trend_tag, color), as today.
-- `total` must be the filtered count, and the `seed` shuffle must apply to the
-  filtered set, so offset paging stays gap-free.
+- OR within the axis, AND with season / trend_tag / color.
+- `total` is the filtered count; the `seed` shuffle applies to the filtered
+  set.
+- Unknown code → 422 `"Invalid item type"`.
 
-### Where the type comes from
+### How an item gets its type
 
-`category_code` alone is too coarse (no skirt code; A-line is a silhouette,
-not a category). Options, best first:
+Derived server-side from structured metadata only (AU-299 — names are never
+parsed):
 
-1. **Curated field** on each discovery outfit item (`item_type`), set in the
-   admin tool when an outfit is authored. Discovery is curated content, so this
-   is cheap and exact.
-2. Derive from Gemini metadata (`subcategory` + `description`, e.g.
-   "A-line midi skirt…") with a keyword map, reviewed by an admin.
+- `category_code` → base type (`SKR` → `skirt`, `LOA` → `loafers`,
+  `TRS`/`CHI`/`LEA` → `trousers`…). Every item in the v0.5 common-item
+  catalog maps to a type (pinned by a backend test).
+- Skirts and trousers get a child type from the style code
+  (`physical_attributes.fit_code` / `raw_style_code`) or the v0.5
+  `silhouette_type` / `construction_type` / `length_type`:
+  `ALN` → `a_line_skirt`, `PEN` → `pencil_skirt`, `PLT` → `pleated_skirt`,
+  `SLK` → `slip_skirt`, `MIN` → `mini_skirt`, `MDI` → `midi_skirt`,
+  `LNG`/`MAX` → `long_skirt`, `WID` → `wide_leg_trousers`. Shape outranks
+  length.
+- An item yields child first, then parent: an A-line skirt is
+  `["a_line_skirt", "skirt"]`. So "Chân váy" finds every skirt look and
+  "Chân váy chữ A" only the A-line ones.
 
-Do not classify on the client: feed cards carry no item list, and the feed is
-paginated, so client-side filtering would produce empty or partial pages.
+The detail endpoint also returns `items[].item_types`.
 
-## Starter vocabulary
+## Vocabulary
 
-Translations for these codes already exist in `src/translations/*.json` under
-`discovery.item_types`. The backend may add codes freely; unknown codes fall
-back to `label`.
-
-| code | en | vi |
-| --- | --- | --- |
-| `t_shirt` | T-shirt | Áo phông |
-| `shirt` | Shirt | Áo sơ mi |
-| `blouse` | Blouse | Áo kiểu |
-| `polo` | Polo | Áo polo |
-| `tank_top` | Tank top | Áo ba lỗ |
-| `knit_sweater` | Sweater | Áo len |
-| `cardigan` | Cardigan | Áo cardigan |
-| `hoodie` | Hoodie | Áo hoodie |
-| `blazer` | Blazer | Áo blazer |
-| `jacket` | Jacket | Áo khoác |
-| `coat` | Coat | Áo măng tô |
-| `jeans` | Jeans | Quần jeans |
-| `trousers` | Trousers | Quần tây |
-| `wide_leg_trousers` | Wide-leg trousers | Quần ống rộng |
-| `shorts` | Shorts | Quần short |
-| `a_line_skirt` | A-line skirt | Chân váy chữ A |
-| `pencil_skirt` | Pencil skirt | Chân váy bút chì |
-| `pleated_skirt` | Pleated skirt | Chân váy xếp ly |
-| `midi_skirt` | Midi skirt | Chân váy midi |
-| `mini_skirt` | Mini skirt | Chân váy ngắn |
-| `dress` | Dress | Váy liền |
-| `jumpsuit` | Jumpsuit | Jumpsuit |
-| `sneakers` | Sneakers | Giày sneaker |
-| `loafers` | Loafers | Giày lười |
-| `boots` | Boots | Bốt |
-| `heels` | Heels | Giày cao gót |
-| `flats` | Flats | Giày bệt |
-| `sandals` | Sandals | Xăng đan |
-| `bag` | Bag | Túi |
-
-An item belongs to exactly one type. Pick the most specific type: an A-line
-midi skirt is `a_line_skirt`, not `midi_skirt`.
+Translations for all 55 codes live in `src/translations/*.json` under
+`discovery.item_types`, in the same order as the backend. A code the app has
+no translation for falls back to the server's English `label`. Adding a type
+means adding it to the backend vocabulary and to all three locale files.
 
 ## Mobile implementation
 

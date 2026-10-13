@@ -27,7 +27,8 @@ import { apiClient } from './apiClient';
 //     not read. The server ORs the codes (outfit has ANY selected color).
 //   • `item_type` follows the same wire shape as `color`: ONE comma-separated
 //     string of item-type codes (`a_line_skirt,pleated_skirt`), ORed server-side
-//     (outfit contains ANY selected type). The vocabulary is server-owned —
+//     (outfit contains ANY selected type; a child type implies its parent, so
+//     `skirt` also matches an A-line skirt). The vocabulary is server-owned —
 //     contract in `docs/discovery-item-filter.md`.
 //   • `/discovery/item-types` is newer than the rest of this contract. A 404
 //     from it means "backend not shipped yet", not a failure: `listItemTypes`
@@ -101,6 +102,9 @@ export interface DiscoveryOutfitItem {
   category_code: string;
   layer_code: string;
   color_code?: string | null;
+  /** Item-type codes, most specific first (`['a_line_skirt', 'skirt']`).
+   *  Optional only because backends before the item filter omit it. */
+  item_types?: string[];
   is_common_item: boolean;
 }
 
