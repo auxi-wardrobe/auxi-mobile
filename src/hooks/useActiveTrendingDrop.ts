@@ -18,8 +18,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { useFeatureFlag } from './useFeatureFlag';
-import { FLAGS } from '../services/featureFlags';
 import { configureCollapseNext, useReducedMotion } from '../theme/motion';
 import { toast } from '../components/design-system/lib';
 import {
@@ -62,16 +60,10 @@ export const useActiveTrendingDrop = (): UseActiveTrendingDrop => {
   const queryClient = useQueryClient();
   const reducedMotion = useReducedMotion();
 
-  // AU-438 rollout gate. Flag OFF short-circuits the fetch (no `/trending-drop/
-  // active` call) and forces `isVisible` false, so the card never renders until
-  // the flag is enabled in Unleash. Cheap: `useFeatureFlag` is a synchronous
-  // read off the flag cache, never throws, defaults OFF.
-  const flagEnabled = useFeatureFlag(FLAGS.TRENDING_ITEM_DROP);
-
   const { data } = useQuery({
     queryKey: [TRENDING_DROP_QUERY_KEY, userId],
     queryFn: trendingDropService.getActiveDrop,
-    enabled: !!userId && flagEnabled,
+    enabled: !!userId,
     staleTime: 5 * 60 * 1000,
   });
   const drop = data ?? null;
@@ -201,7 +193,6 @@ export const useActiveTrendingDrop = (): UseActiveTrendingDrop => {
   }, [dropId, isPending, mutate]);
 
   const isVisible =
-    flagEnabled &&
     !!drop &&
     checkedDropId === dropId &&
     hiddenDropId !== dropId;

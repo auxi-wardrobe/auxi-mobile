@@ -110,13 +110,6 @@ jest.mock('react-i18next', () => {
 });
 
 const mockGetWardrobeItem = jest.fn();
-// The real flag module pulls in the ESM-only Unleash SDK, which jest can't load.
-jest.mock('../../services/featureFlags', () => ({
-  FLAGS: { TRENDING_ITEM_DROP: 'trending_item_drop' },
-}));
-jest.mock('../../hooks/useFeatureFlag', () => ({
-  useFeatureFlag: () => false,
-}));
 jest.mock('../../hooks/useDiscovery', () => ({
   useDiscoveryTrendTags: () => ({ data: ['minimal', 'casual'] }),
 }));
