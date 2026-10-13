@@ -65,6 +65,21 @@ export const pickRandomTags = (
 };
 
 /**
+ * "Shuffle" on the sheet: a fresh random draw that avoids the tags already on
+ * screen where the pool allows, topped up from them only when it doesn't.
+ */
+export const shuffleTags = (
+  tags: readonly string[],
+  shown: readonly string[],
+  count: number,
+): string[] => {
+  const fresh = pickRandomTags(tags.filter(tag => !shown.includes(tag)), count);
+  if (fresh.length >= count) return fresh;
+  const refill = pickRandomTags(shown.filter(tag => tags.includes(tag)), count - fresh.length);
+  return [...fresh, ...refill];
+};
+
+/**
  * Analytics props for the chosen tag. "Surprise me" (`null`) OMITS the key —
  * the tracking rules say never send `null` for an unknown/absent property.
  */

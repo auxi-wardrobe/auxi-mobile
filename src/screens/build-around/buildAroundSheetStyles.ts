@@ -6,8 +6,6 @@ import { theme } from '../../theme/theme';
 // the edge-to-edge panel, scrim and motion come from ContextualBottomSheet.
 
 const ICON_CHIP = 28;
-// Half the gutter between the 3-column style chips (cells pad, row un-pads).
-const CHIP_HALF_GAP = theme.spacing.s / 2;
 
 export const buildAroundSheetStyles = StyleSheet.create({
   header: {
@@ -95,16 +93,12 @@ export const buildAroundSheetStyles = StyleSheet.create({
     color: theme.ds.color.ink,
     textAlign: 'center',
   },
+  // Chips hug their label and wrap to the next line when the row runs out.
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    rowGap: theme.spacing.s,
+    gap: theme.spacing.s,
     marginTop: theme.spacing.m,
-    marginHorizontal: -CHIP_HALF_GAP,
-  },
-  chipCell: {
-    width: '33.333%',
-    paddingHorizontal: CHIP_HALF_GAP,
   },
   actions: {
     flexDirection: 'row',

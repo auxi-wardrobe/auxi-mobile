@@ -25,6 +25,10 @@ export interface MChipProps {
   onRemove?: () => void;
   /** Stretch to the parent's width with a centred label (equal-width chip grids). */
   block?: boolean;
+  /** `body` = Inter Regular 14/20 label (hug-content tag rows); default is the 13.5 semibold. */
+  label?: 'default' | 'body';
+  /** Leading glyph, e.g. an action chip's icon. */
+  icon?: React.ReactNode;
   testID?: string;
   accessibilityLabel?: string;
 }
@@ -36,6 +40,8 @@ export const MChip: React.FC<MChipProps> = ({
   removable,
   onRemove,
   block,
+  label = 'default',
+  icon,
   testID,
   accessibilityLabel,
 }) => {
@@ -112,8 +118,13 @@ export const MChip: React.FC<MChipProps> = ({
           },
         ]}
       >
+        {icon}
         <Text
-          style={[styles.chipText, selected && !removable && styles.chipTextOn]}
+          style={[
+            styles.chipText,
+            label === 'body' && styles.chipTextBody,
+            selected && !removable && styles.chipTextOn,
+          ]}
         >
           {children}
         </Text>
@@ -204,6 +215,7 @@ const styles = StyleSheet.create({
     color: color.p600,
     fontSize: 13.5,
   },
+  chipTextBody: { ...type.bodySm },
   chipTextOn: { color: color.p50 },
   chipX: { fontSize: 15, color: color.p600, opacity: 0.7 },
   tag: {

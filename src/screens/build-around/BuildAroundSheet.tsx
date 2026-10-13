@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Icons } from '../../assets/icons';
@@ -10,6 +10,7 @@ import { useDiscoveryTrendTags } from '../../hooks/useDiscovery';
 import {
   BUILD_AROUND_TAG_CHIP_COUNT,
   pickRandomTags,
+  shuffleTags,
 } from '../../services/buildAroundMatchService';
 import type { MakeItYoursErrorCode } from '../make-it-yours/useMakeItYoursRun';
 import {
@@ -109,12 +110,21 @@ export const BuildAroundSheet: React.FC<Props> = ({
   const [tag, setTag] = useState<string | null>(null);
 
   // Random Discovery tags, drawn once per open (not on every re-render, or the
-  // chips would reshuffle under the user's finger).
+  // chips would reshuffle under the user's finger) and again on "Shuffle".
   const { data: allTags } = useDiscoveryTrendTags();
-  const tagChips = useMemo(
-    () => (visible ? pickRandomTags(allTags ?? [], BUILD_AROUND_TAG_CHIP_COUNT) : []),
-    [visible, allTags],
-  );
+  const [tagChips, setTagChips] = useState<string[]>([]);
+  useEffect(() => {
+    setTagChips(visible ? pickRandomTags(allTags ?? [], BUILD_AROUND_TAG_CHIP_COUNT) : []);
+  }, [visible, allTags]);
+  // Only worth offering when there are tags beyond the ones already shown.
+  const canShuffle = (allTags?.length ?? 0) > BUILD_AROUND_TAG_CHIP_COUNT;
+
+  const shuffle = () => {
+    const next = shuffleTags(allTags ?? [], tagChips, BUILD_AROUND_TAG_CHIP_COUNT);
+    setTagChips(next);
+    // A picked tag that shuffled away falls back to Surprise me.
+    if (tag !== null && !next.includes(tag)) setTag(null);
+  };
 
   // A fresh open always starts from the default (Discovery + Surprise me).
   useEffect(() => {
@@ -152,28 +162,36 @@ export const BuildAroundSheet: React.FC<Props> = ({
               <View testID="build-around-style-section" style={styles.styleSection}>
                 <Text style={styles.styleTitle}>{t('buildAround.style_title')}</Text>
                 <View style={styles.chips}>
-                  <View style={styles.chipCell}>
-                    <MChip
-                      block
-                      selected={tag === null}
-                      onPress={() => setTag(null)}
-                      testID={`build-around-style-surprise-me${tag === null ? '-selected' : ''}`}
-                    >
-                      {t('buildAround.style_surprise_me')}
-                    </MChip>
-                  </View>
+                  <MChip
+                    label="body"
+                    selected={tag === null}
+                    onPress={() => setTag(null)}
+                    testID={`build-around-style-surprise-me${tag === null ? '-selected' : ''}`}
+                  >
+                    {t('buildAround.style_surprise_me')}
+                  </MChip>
                   {tagChips.map(key => (
-                    <View key={key} style={styles.chipCell}>
-                      <MChip
-                        block
-                        selected={tag === key}
-                        onPress={() => setTag(key)}
-                        testID={`build-around-style-${key}${tag === key ? '-selected' : ''}`}
-                      >
-                        {tagLabel(key)}
-                      </MChip>
-                    </View>
+                    <MChip
+                      key={key}
+                      label="body"
+                      selected={tag === key}
+                      onPress={() => setTag(key)}
+                      testID={`build-around-style-${key}${tag === key ? '-selected' : ''}`}
+                    >
+                      {tagLabel(key)}
+                    </MChip>
                   ))}
+                  {canShuffle ? (
+                    <MChip
+                      label="body"
+                      icon={<Icons.Shuffle width={16} height={16} color={theme.ds.color.ink} />}
+                      onPress={shuffle}
+                      accessibilityLabel={t('buildAround.style_shuffle_a11y')}
+                      testID="build-around-style-shuffle"
+                    >
+                      {t('buildAround.style_shuffle')}
+                    </MChip>
+                  ) : null}
                 </View>
               </View>
             </OptionRow>

@@ -6,6 +6,7 @@ import {
   normalizeBuildAroundState,
   mergeBuildAroundResults,
   pickRandomTags,
+  shuffleTags,
   trendTagProps,
 } from '../buildAroundMatchService';
 
@@ -292,6 +293,20 @@ describe('buildAroundMatchService', () => {
     expect(tags).toEqual(copy);
     expect(pickRandomTags([], 5)).toEqual([]);
     expect(pickRandomTags(['x', 'y'], 5).sort()).toEqual(['x', 'y']);
+  });
+
+  it('shuffleTags prefers tags not on screen, topping up from them only when short', () => {
+    const tags = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+    const fresh = shuffleTags(tags, ['a', 'b', 'c', 'd', 'e'], 5);
+    expect(fresh.sort()).toEqual(['f', 'g', 'h', 'i', 'j']);
+
+    const topped = shuffleTags(tags.slice(0, 7), ['a', 'b', 'c', 'd', 'e'], 5);
+    expect(topped).toHaveLength(5);
+    expect(new Set(topped).size).toBe(5);
+    expect(topped).toEqual(expect.arrayContaining(['f', 'g']));
+
+    // Shown tags no longer in the pool never come back.
+    expect(shuffleTags(['x', 'y'], ['gone'], 5).sort()).toEqual(['x', 'y']);
   });
 
   it('trendTagProps omits the key for Surprise me, never sends null', () => {
