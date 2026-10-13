@@ -20,7 +20,7 @@ type Props = {
 /**
  * "+ add tags" on the Home "Build your look" section — the SAME choice the
  * ItemDetail method sheet offers under "What style do you prefer": "Surprise
- * me" or ONE Discovery trend tag, in the same 3-column chip grid. The only
+ * me" or ONE Discovery trend tag, in the same wrapping chip row. The only
  * difference is that every tag from `GET /discovery/trend-tags` is listed
  * instead of five random ones, so the search request (`trend_tag` or none)
  * is exactly ItemDetail's. The draft lands on Done; Cancel / scrim keep the
@@ -60,29 +60,26 @@ export const BuildYourLookTagSheet: React.FC<Props> = ({
     }
     return (
       <View style={styles.chips} testID="home-build-look-tags-grid">
-        <View style={styles.chipCell}>
-          <MChip
-            block
-            selected={draft === null}
-            onPress={() => setDraft(null)}
-            testID={`home-build-look-tag-option-surprise-me${draft === null ? '-selected' : ''}`}
-          >
-            {t('buildAround.style_surprise_me')}
-          </MChip>
-        </View>
+        <MChip
+          label="body"
+          selected={draft === null}
+          onPress={() => setDraft(null)}
+          testID={`home-build-look-tag-option-surprise-me${draft === null ? '-selected' : ''}`}
+        >
+          {t('buildAround.style_surprise_me')}
+        </MChip>
         {tags.map(tag => {
           const on = draft === tag;
           return (
-            <View key={tag} style={styles.chipCell}>
-              <MChip
-                block
-                selected={on}
-                onPress={() => setDraft(tag)}
-                testID={`home-build-look-tag-option-${tag}${on ? '-selected' : ''}`}
-              >
-                {tagLabel(tag)}
-              </MChip>
-            </View>
+            <MChip
+              key={tag}
+              label="body"
+              selected={on}
+              onPress={() => setDraft(tag)}
+              testID={`home-build-look-tag-option-${tag}${on ? '-selected' : ''}`}
+            >
+              {tagLabel(tag)}
+            </MChip>
           );
         })}
       </View>

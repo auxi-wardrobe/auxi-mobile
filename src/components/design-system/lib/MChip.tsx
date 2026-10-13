@@ -25,6 +25,12 @@ export interface MChipProps {
   onRemove?: () => void;
   /** Stretch to the parent's width with a centred label (equal-width chip grids). */
   block?: boolean;
+  /** `body` = Inter Regular 14/20 label (hug-content tag rows); default is the 13.5 semibold. */
+  label?: 'default' | 'body';
+  /** Leading glyph, e.g. an action chip's icon. */
+  icon?: React.ReactNode;
+  /** Round icon-only chip: the label is not drawn, only read out (a11y). */
+  iconOnly?: boolean;
   testID?: string;
   accessibilityLabel?: string;
 }
@@ -36,6 +42,9 @@ export const MChip: React.FC<MChipProps> = ({
   removable,
   onRemove,
   block,
+  label = 'default',
+  icon,
+  iconOnly,
   testID,
   accessibilityLabel,
 }) => {
@@ -105,6 +114,7 @@ export const MChip: React.FC<MChipProps> = ({
           styles.chip,
           removable && styles.chipRemovable,
           block && styles.chipBlock,
+          iconOnly && styles.chipIconOnly,
           {
             backgroundColor: removable ? color.p200 : bg,
             opacity: removable ? collapse : 1,
@@ -112,11 +122,18 @@ export const MChip: React.FC<MChipProps> = ({
           },
         ]}
       >
-        <Text
-          style={[styles.chipText, selected && !removable && styles.chipTextOn]}
-        >
-          {children}
-        </Text>
+        {icon}
+        {iconOnly ? null : (
+          <Text
+            style={[
+              styles.chipText,
+              label === 'body' && styles.chipTextBody,
+              selected && !removable && styles.chipTextOn,
+            ]}
+          >
+            {children}
+          </Text>
+        )}
         {removable && <Text style={styles.chipX}>×</Text>}
       </Animated.View>
     </Pressable>
@@ -198,12 +215,16 @@ const styles = StyleSheet.create({
   },
   chipRemovable: { paddingLeft: 11 },
   chipBlock: { justifyContent: 'center', paddingVertical: 12 },
+  // Square padding around a 20pt glyph = a 38pt circle, the height of a
+  // `label="body"` chip (9 + 20 + 9), so it sits flush in a tag row.
+  chipIconOnly: { paddingHorizontal: 9, justifyContent: 'center' },
   chipText: {
     ...type.bodySm,
     fontFamily: type.h3.fontFamily,
     color: color.p600,
     fontSize: 13.5,
   },
+  chipTextBody: { ...type.bodySm },
   chipTextOn: { color: color.p50 },
   chipX: { fontSize: 15, color: color.p600, opacity: 0.7 },
   tag: {

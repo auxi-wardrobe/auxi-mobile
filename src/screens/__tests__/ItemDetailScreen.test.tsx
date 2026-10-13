@@ -110,8 +110,9 @@ jest.mock('react-i18next', () => {
 });
 
 const mockGetWardrobeItem = jest.fn();
+let mockTrendTags = ['minimal', 'casual'];
 jest.mock('../../hooks/useDiscovery', () => ({
-  useDiscoveryTrendTags: () => ({ data: ['minimal', 'casual'] }),
+  useDiscoveryTrendTags: () => ({ data: mockTrendTags }),
 }));
 const mockBuildAroundRun = jest.fn(() => new Promise(() => undefined));
 jest.mock('../../services/buildAroundMatchService', () => ({
@@ -356,6 +357,42 @@ describe('read mode', () => {
     expect(mockBuildAroundRun).toHaveBeenCalledWith('item-1', 'minimal', expect.anything());
     expect(mockPopTo).not.toHaveBeenCalled();
     expect(byTestID(r.root, 'build-around-loading').length).toBeGreaterThan(0);
+  });
+
+  it('Shuffle is hidden when every Discovery tag is already on screen', async () => {
+    mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+
+    const r = await renderScreen();
+    press(oneByTestID(r.root, 'item-detail-mix-btn'));
+    expect(byTestID(r.root, 'build-around-style-shuffle')).toHaveLength(0);
+  });
+
+  it('Shuffle swaps in other tags; a picked tag that leaves falls back to Surprise me', async () => {
+    const original = mockTrendTags;
+    mockTrendTags = Array.from({ length: 10 }, (_, i) => `tag${i}`);
+    try {
+      mockGetWardrobeItem.mockResolvedValue(USER_ITEM);
+      const shownTags = (root: ReactTestInstance) =>
+        mockTrendTags.filter(
+          tag =>
+            byTestID(root, `build-around-style-${tag}`).length > 0 ||
+            byTestID(root, `build-around-style-${tag}-selected`).length > 0,
+        );
+
+      const r = await renderScreen();
+      press(oneByTestID(r.root, 'item-detail-mix-btn'));
+      const before = shownTags(r.root);
+      expect(before).toHaveLength(5);
+      press(oneByTestID(r.root, `build-around-style-${before[0]}`));
+
+      press(oneByTestID(r.root, 'build-around-style-shuffle'));
+      const after = shownTags(r.root);
+      expect(after).toHaveLength(5);
+      expect(after.some(tag => before.includes(tag))).toBe(false);
+      expect(byTestID(r.root, 'build-around-style-surprise-me-selected').length).toBeGreaterThan(0);
+    } finally {
+      mockTrendTags = original;
+    }
   });
 
   it('sheet → Build with the default (Discovery + Surprise me) searches with no tag', async () => {

@@ -31,7 +31,8 @@ interface DiscoveryFilterSheetProps<T extends string> {
  * wardrobe type filter uses (`WardrobeTypeSheet`), generic over its options so
  * season and trend tag share one implementation.
  *
- * A wrap grid of chips — "All" plus every option — over a Default / Show row.
+ * A wrap row of hug-content Inter 14 chips — "All" plus every option — over a
+ * Default / Show row.
  * Selection is a DRAFT: the feed does not change until "Show" commits it, and
  * "Default" resets the draft back to All. The draft re-seeds from the committed
  * selection every time the sheet opens, so cancelling (backdrop / swipe-down)
@@ -67,6 +68,7 @@ export const DiscoveryFilterSheet = <T extends string>({
       <Text style={styles.title}>{title}</Text>
       <View style={styles.chips}>
         <MChip
+          label="body"
           selected={draft.length === 0}
           onPress={() => setDraft([])}
           testID={`${testIDPrefix}-chip-all`}
@@ -77,6 +79,7 @@ export const DiscoveryFilterSheet = <T extends string>({
         {options.map(option => (
           <MChip
             key={option.value}
+            label="body"
             selected={draft.includes(option.value)}
             onPress={() => setDraft(prev => onToggle(prev, option.value))}
             testID={`${testIDPrefix}-chip-${option.value}`}
