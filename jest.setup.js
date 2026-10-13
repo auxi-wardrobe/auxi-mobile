@@ -200,41 +200,6 @@ jest.mock('react-native-purchases', () => {
   };
 });
 
-// @unleash/unleash-react-native-sdk: ESM-only package whose `exports` map has
-// no `require` condition, so Jest's CommonJS resolver can't even find it
-// (Metro resolves it via the `react-native` field — the app is unaffected).
-// Stub it as the "no key configured" client: every flag OFF, no network. The
-// FlagProvider renders children straight through, matching the real
-// provider's never-gate-boot contract.
-jest.mock(
-  '@unleash/unleash-react-native-sdk',
-  () => {
-    const React = require('react');
-    class UnleashClient {
-      on() {}
-      off() {}
-      isEnabled() {
-        return false;
-      }
-      updateToggles() {
-        return Promise.resolve();
-      }
-      updateContext() {
-        return Promise.resolve();
-      }
-    }
-    return {
-      UnleashClient,
-      FlagProvider: ({ children }) =>
-        React.createElement(React.Fragment, null, children),
-      useUnleashClient: () => new UnleashClient(),
-      useUnleashContext: () => () => Promise.resolve(),
-    };
-    // `virtual`: the module path itself is unresolvable under Jest (see above).
-  },
-  { virtual: true },
-);
-
 // @react-native-camera-roll/camera-roll: TurboModule looked up at import time
 // (getEnforcing throws when the native binary isn't there). Only `saveAsset`
 // is used (hooks/use-save-image.ts).

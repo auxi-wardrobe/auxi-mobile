@@ -352,9 +352,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // restore, post-verify). No-op until RC is configured; never throws.
       logInRevenueCat(distinctId);
       // Sign-in analytics + push registration on the login transition only
-      // (not on cold-start restore). Unleash flag targeting is keyed on this
-      // same user id, but that wiring lives in the FeatureFlagProvider bridge
-      // (services/featureFlags → useUnleashContext) — not here.
+      // (not on cold-start restore).
       if (justLoggedInRef.current) {
         justLoggedInRef.current = false;
         const method = pendingAuthMethodRef.current;

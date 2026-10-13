@@ -600,6 +600,8 @@ Admin-curated inline promo card at the top of Home (spec `plans/260729-1456-au43
 | `trending_drop_added` | "Add to my wardrobe" succeeded — the featured item was cloned into the user's wardrobe | `src/hooks/useActiveTrendingDrop.ts` | `drop_id`, `item_id` |
 | `trending_drop_dismissed` | "Not interested" — drop dismissed without adding | `src/hooks/useActiveTrendingDrop.ts` | `drop_id`, `item_id` |
 
+> Always on — the `trending_item_drop` Unleash flag that used to gate the card was removed along with the Unleash SDK.
+
 > On a successful add the hook ALSO fires the shared `wardrobe_item_added` with `source: 'trending_drop'` + `item_id` (§5.4 taxonomy), so the drop feeds the existing wardrobe-grow reporting alongside the drop-specific funnel.
 >
 > PII: none. `drop_id` / `item_id` are backend UUIDs (consistent with other id-carrying events). No titles, no descriptions, no image URLs.
