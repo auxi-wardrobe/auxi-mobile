@@ -17,6 +17,7 @@ import {
   toggleSeason,
   toggleTrendTag,
   toggleColor,
+  toggleItemType,
 } from '../discovery-filter';
 
 const outfit = (
@@ -224,5 +225,23 @@ describe('toggleColor', () => {
 
   it('keeps a selected code the server no longer offers, at the end', () => {
     expect(toggleColor(['RED'], 'WHT', palette)).toEqual(['WHT', 'RED']);
+  });
+});
+
+describe('toggleItemType', () => {
+  const served = ['a_line_skirt', 'pleated_skirt', 'loafers'];
+
+  it('adds and removes a code, keeping server order regardless of tap order', () => {
+    const one = toggleItemType([], 'loafers', served);
+    const two = toggleItemType(one, 'a_line_skirt', served);
+    expect(two).toEqual(['a_line_skirt', 'loafers']);
+    expect(toggleItemType(two, 'loafers', served)).toEqual(['a_line_skirt']);
+  });
+
+  it('keeps a selected code the server no longer offers, at the end', () => {
+    expect(toggleItemType(['mini_skirt'], 'loafers', served)).toEqual([
+      'loafers',
+      'mini_skirt',
+    ]);
   });
 });

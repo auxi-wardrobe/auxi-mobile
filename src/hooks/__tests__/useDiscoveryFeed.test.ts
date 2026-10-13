@@ -63,6 +63,12 @@ jest.mock('../useDiscovery', () => ({
       { code: 'NVY', label: 'Navy', hex: '#1F2A44', count: 1 },
     ],
   }),
+  useDiscoveryItemTypes: () => ({
+    data: [
+      { code: 'a_line_skirt', label: 'A-line skirt', count: 4 },
+      { code: 'loafers', label: 'Loafers', count: 2 },
+    ],
+  }),
 }));
 
 // Imported after the mocks so the hook picks them up.
@@ -314,6 +320,61 @@ describe('useDiscoveryFeed — color filter', () => {
     const { get, rerender, unmount } = mountHook();
     act(() => get().onColorsChange(['NVY']));
     mockFeedQuery = emptyFeed('M');
+    rerender();
+    rerender();
+
+    expect(emptyEvents()).toHaveLength(0);
+    unmount();
+  });
+});
+
+describe('useDiscoveryFeed — item-type filter', () => {
+  it('starts on "All items" and exposes the served item types', () => {
+    const { get, unmount } = mountHook();
+
+    expect(get().selectedItemTypes).toEqual([]);
+    expect(get().itemTypeOptions.map((o) => o.code)).toEqual([
+      'a_line_skirt',
+      'loafers',
+    ]);
+    expect(mockOutfitParams[0].itemTypes).toEqual([]);
+    unmount();
+  });
+
+  it('sends the selected item types to the server and restarts at offset 0', () => {
+    const { get, rerender, unmount } = mountHook();
+
+    act(() => get().onItemTypesChange(['a_line_skirt']));
+    rerender();
+
+    const last = mockOutfitParams[mockOutfitParams.length - 1];
+    expect(last.itemTypes).toEqual(['a_line_skirt']);
+    expect(last.offset).toBe(0);
+    expect(get().isFilterActive).toBe(true);
+    unmount();
+  });
+
+  it('reports the selection as filter_type "item_type"', () => {
+    const { get, rerender, unmount } = mountHook();
+    mockTrack.mockClear();
+
+    act(() => get().onItemTypesChange(['a_line_skirt', 'loafers']));
+    rerender();
+
+    const applied = mockTrack.mock.calls.filter(
+      (c) => c[0] === 'discovery_filter_applied',
+    );
+    expect(applied[0][1]).toEqual({
+      filter_type: 'item_type',
+      filter_value: 'a_line_skirt,loafers',
+    });
+    unmount();
+  });
+
+  it('does not fire discovery_feed_empty when an item filter empties the feed', () => {
+    const { get, rerender, unmount } = mountHook();
+    act(() => get().onItemTypesChange(['a_line_skirt']));
+    mockFeedQuery = emptyFeed('W');
     rerender();
     rerender();
 

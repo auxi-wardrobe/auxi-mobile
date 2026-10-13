@@ -5,6 +5,7 @@ import { FilterSummaryChip } from '../../components/features/FilterSummaryChip';
 import { theme } from '../../theme/theme';
 import type {
   DiscoveryColorOption,
+  DiscoveryItemTypeOption,
   DiscoverySeason,
 } from '../../services/discoveryService';
 import { HORIZONTAL_PADDING } from './discovery-grid';
@@ -14,9 +15,21 @@ import {
   DISCOVERY_SEASONS,
   summaryLabel,
   toggleColor,
+  toggleItemType,
   toggleSeason,
   toggleTrendTag,
 } from './discovery-filter';
+
+/**
+ * Localised name for an item type: `discovery.item_types.<code>` when the app
+ * has it (e.g. "Chân váy chữ A"), else the English label the backend sent — a
+ * new server-side type must never render as a raw key.
+ */
+export const useItemTypeLabel = () => {
+  const { t } = useTranslation();
+  return (option: Pick<DiscoveryItemTypeOption, 'code' | 'label'>) =>
+    t(`discovery.item_types.${option.code}`, { defaultValue: option.label });
+};
 
 interface DiscoveryFilterRowProps {
   /** Committed season selection. Empty === "All season". */
@@ -32,14 +45,18 @@ interface DiscoveryFilterRowProps {
   onColorsChange: (codes: string[]) => void;
   /** Colors the backend currently serves (`/discovery/colors`). */
   colorOptions: DiscoveryColorOption[];
+  /** Committed item-type codes. Empty === every item type. */
+  selectedItemTypes: string[];
+  onItemTypesChange: (codes: string[]) => void;
+  /** Item types the backend currently serves (`/discovery/item-types`). */
+  itemTypeOptions: DiscoveryItemTypeOption[];
 }
 
 /**
  * Discovery filter bar — the same interaction as the wardrobe grid's
- * (`WardrobeFilterSortBar`): summary pills (season, tag, color), each opening a
- * bottom sheet of MULTI-select chips committed on "Show". Season defaults to
- * "All season", tags to "All tags" and colors to "All colors"; every axis
- * accepts more than one value at a time.
+ * (`WardrobeFilterSortBar`): summary pills (season, item, tag, color), each
+ * opening a bottom sheet of MULTI-select chips committed on "Show". Every axis
+ * defaults to "All …" and accepts more than one value at a time.
  *
  * Replaces the two horizontal chip rows this screen shipped with, which were
  * single-select per axis and off-pattern next to the wardrobe.
@@ -53,10 +70,15 @@ export const DiscoveryFilterRow: React.FC<DiscoveryFilterRowProps> = ({
   selectedColors,
   onColorsChange,
   colorOptions,
+  selectedItemTypes,
+  onItemTypesChange,
+  itemTypeOptions,
 }) => {
   const { t } = useTranslation();
   const colorLabel = useColorLabel();
+  const itemTypeLabel = useItemTypeLabel();
   const [seasonSheetVisible, setSeasonSheetVisible] = useState(false);
+  const [itemSheetVisible, setItemSheetVisible] = useState(false);
   const [tagSheetVisible, setTagSheetVisible] = useState(false);
   const [colorSheetVisible, setColorSheetVisible] = useState(false);
 
@@ -86,6 +108,19 @@ export const DiscoveryFilterRow: React.FC<DiscoveryFilterRowProps> = ({
     allColorsLabel,
   );
 
+  const allItemTypesLabel = t('discovery.filter.all_item_types');
+  const itemTypeCodes = itemTypeOptions.map(option => option.code);
+  // Same fallback as colors: a committed code no longer offered shows raw.
+  const itemTypeLabelFor = (code: string) => {
+    const option = itemTypeOptions.find(o => o.code === code);
+    return option ? itemTypeLabel(option) : code;
+  };
+  const itemTypeSummary = summaryLabel(
+    selectedItemTypes,
+    itemTypeLabelFor,
+    allItemTypesLabel,
+  );
+
   return (
     <View style={styles.row}>
       <FilterSummaryChip
@@ -96,6 +131,18 @@ export const DiscoveryFilterRow: React.FC<DiscoveryFilterRowProps> = ({
           selection: seasonLabel,
         })}
       />
+      {/* No item types served (incl. a backend without the endpoint), no
+          pill — an empty sheet would be a dead end. */}
+      {itemTypeOptions.length > 0 ? (
+        <FilterSummaryChip
+          label={itemTypeSummary}
+          onPress={() => setItemSheetVisible(true)}
+          testID="discovery-item-type-trigger"
+          accessibilityLabel={t('discovery.filter.a11y_open_item_type', {
+            selection: itemTypeSummary,
+          })}
+        />
+      ) : null}
       {/* The tag pill only exists once the backend has served some tags —
           an empty sheet would be a dead end. */}
       {trendTags.length > 0 ? (
@@ -133,6 +180,23 @@ export const DiscoveryFilterRow: React.FC<DiscoveryFilterRowProps> = ({
         onDismiss={() => setSeasonSheetVisible(false)}
         onApply={onSeasonsChange}
         testIDPrefix="discovery-season"
+      />
+
+      <DiscoveryFilterSheet
+        visible={itemSheetVisible}
+        title={t('discovery.filter.item_type_title')}
+        allLabel={allItemTypesLabel}
+        options={itemTypeOptions.map(option => ({
+          value: option.code,
+          label: itemTypeLabel(option),
+        }))}
+        selected={selectedItemTypes}
+        onToggle={(current, code) =>
+          toggleItemType(current, code, itemTypeCodes)
+        }
+        onDismiss={() => setItemSheetVisible(false)}
+        onApply={onItemTypesChange}
+        testIDPrefix="discovery-item-type"
       />
 
       <DiscoveryFilterSheet

@@ -11,6 +11,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   discoveryService,
   type DiscoveryColorOption,
+  type DiscoveryItemTypeOption,
   type DiscoveryListParams,
   type DiscoveryOutfitDetail,
   type DiscoveryOutfitsResponse,
@@ -28,7 +29,8 @@ export const newDiscoveryShuffleSeed = (): string =>
   `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 
 /**
- * Feed query — one cache entry per (season, tag, colors, seed, offset) page.
+ * Feed query — one cache entry per (season, tag, colors, item types, seed,
+ * offset) page.
  *
  * `keepPrevious` holds the last page on screen while a new key loads (the
  * Home strip reshuffling on focus). Off by default: the Discovery feed merges
@@ -50,6 +52,7 @@ export const useDiscoveryOutfits = (
       filters.season ?? null,
       filters.trendTag ?? null,
       filters.colors?.length ? filters.colors.join(',') : null,
+      filters.itemTypes?.length ? filters.itemTypes.join(',') : null,
       // A different seed is a different order: page 2 of one shuffle must
       // never be served from the cache of another.
       filters.seed ?? null,
@@ -89,6 +92,15 @@ export const useDiscoveryColors = () =>
   useQuery<DiscoveryColorOption[]>({
     queryKey: [DISCOVERY_QUERY_KEY, 'colors'],
     queryFn: () => discoveryService.listColors(),
+    staleTime: DISCOVERY_STALE_TIME_MS,
+    refetchOnWindowFocus: false,
+  });
+
+/** Item types present across every servable outfit — powers the item filter. */
+export const useDiscoveryItemTypes = () =>
+  useQuery<DiscoveryItemTypeOption[]>({
+    queryKey: [DISCOVERY_QUERY_KEY, 'item-types'],
+    queryFn: () => discoveryService.listItemTypes(),
     staleTime: DISCOVERY_STALE_TIME_MS,
     refetchOnWindowFocus: false,
   });

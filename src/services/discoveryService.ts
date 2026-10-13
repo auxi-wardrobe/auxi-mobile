@@ -6,6 +6,8 @@ import { apiClient } from './apiClient';
 //   GET /discovery/outfits/{id}       → one outfit's full detail
 //   GET /discovery/trend-tags         → distinct tags across servable outfits
 //   GET /discovery/colors             → colors present across servable outfits
+//   GET /discovery/item-types         → item types (a-line skirt, loafers…)
+//                                       present across servable outfits
 // See `wardrobe-backend/API_DOCUMENTATION.md` §Discovery (AU-457) for the full
 // contract, including the 1..4 item cap (D2) and the deliberately identical
 // 404 envelope for "missing" vs "unpublished" outfits.
@@ -23,6 +25,14 @@ import { apiClient } from './apiClient';
 //   • `color` on the wire is ONE comma-separated string (`NVY,WHT`), not an
 //     array — axios would encode an array as `color[]=`, which FastAPI does
 //     not read. The server ORs the codes (outfit has ANY selected color).
+//   • `item_type` follows the same wire shape as `color`: ONE comma-separated
+//     string of item-type codes (`a_line_skirt,pleated_skirt`), ORed server-side
+//     (outfit contains ANY selected type; a child type implies its parent, so
+//     `skirt` also matches an A-line skirt). The vocabulary is server-owned —
+//     contract in `docs/discovery-item-filter.md`.
+//   • `/discovery/item-types` is newer than the rest of this contract. A 404
+//     from it means "backend not shipped yet", not a failure: `listItemTypes`
+//     resolves `[]` so the filter pill simply stays hidden.
 //   • `composite_image_url` / `season` / `image_png` may be `null`.
 //   • An outfit can carry SEVERAL seasons: read `seasons` (calendar order,
 //     `[]` = all-season) via `outfitSeasons()` (screens/discovery/discovery-filter.ts), never `season` — that is a
@@ -53,6 +63,18 @@ export interface DiscoveryColorOption extends DiscoveryColor {
   count: number;
 }
 
+/**
+ * One option in the item-type filter ("A-line skirt", "Loafers"…). `code` is
+ * the server-owned type code and is what the filter sends; `label` is the
+ * English fallback when no `discovery.item_types.<code>` translation exists;
+ * `count` is how many servable outfits contain at least one item of the type.
+ */
+export interface DiscoveryItemTypeOption {
+  code: string;
+  label: string;
+  count: number;
+}
+
 export interface DiscoveryOutfitCard {
   id: string;
   title: string;
@@ -80,6 +102,9 @@ export interface DiscoveryOutfitItem {
   category_code: string;
   layer_code: string;
   color_code?: string | null;
+  /** Item-type codes, most specific first (`['a_line_skirt', 'skirt']`).
+   *  Optional only because backends before the item filter omit it. */
+  item_types?: string[];
   is_common_item: boolean;
 }
 
@@ -115,6 +140,8 @@ export interface DiscoveryListParams {
   trendTag?: string;
   /** Palette codes; the outfit matches if it has ANY of them. */
   colors?: string[];
+  /** Item-type codes; the outfit matches if it contains ANY of them. */
+  itemTypes?: string[];
   limit?: number;
   offset?: number;
   /**
@@ -140,6 +167,9 @@ export const discoveryService = {
           season: params.season,
           trend_tag: params.trendTag,
           color: params.colors?.length ? params.colors.join(',') : undefined,
+          item_type: params.itemTypes?.length
+            ? params.itemTypes.join(',')
+            : undefined,
           limit: params.limit,
           offset: params.offset,
           seed: params.seed,
@@ -191,6 +221,27 @@ export const discoveryService = {
       );
     } catch (error) {
       console.error('listColors error', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Item types present across the viewer's servable outfits. Resolves `[]` on
+   * a 404 — a backend without the endpoint yet — so the filter pill hides
+   * instead of erroring; every other error rethrows.
+   */
+  listItemTypes: async (): Promise<DiscoveryItemTypeOption[]> => {
+    try {
+      const response = await apiClient.get('/discovery/item-types');
+      return (
+        (response.data?.item_types as DiscoveryItemTypeOption[] | undefined) ??
+        []
+      );
+    } catch (error) {
+      if (getErrorStatus(error) === 404) {
+        return [];
+      }
+      console.error('listItemTypes error', error);
       throw error;
     }
   },
