@@ -183,13 +183,12 @@ export const BuildAroundSheet: React.FC<Props> = ({
                   ))}
                   {canShuffle ? (
                     <MChip
-                      label="body"
-                      icon={<Icons.Shuffle width={16} height={16} color={theme.ds.color.ink} />}
+                      iconOnly
+                      icon={<Icons.Shuffle width={20} height={20} color={theme.ds.color.ink} />}
                       onPress={shuffle}
-                      accessibilityLabel={t('buildAround.style_shuffle_a11y')}
                       testID="build-around-style-shuffle"
                     >
-                      {t('buildAround.style_shuffle')}
+                      {t('buildAround.style_shuffle_a11y')}
                     </MChip>
                   ) : null}
                 </View>
