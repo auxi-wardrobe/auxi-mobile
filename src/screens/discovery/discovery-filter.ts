@@ -16,9 +16,10 @@
 //                   CLIENT-side over the accumulated pages, the same
 //                   "fetch wide, narrow locally" trade the wardrobe grid makes.
 //
-// Color is the exception: `GET /discovery/outfits` takes a comma-separated
-// `color` list and ORs it server-side, so every color selection is sent as-is
-// and never narrowed here.
+// Color and item type are the exception: `GET /discovery/outfits` takes a
+// comma-separated `color` / `item_type` list and ORs it server-side, so every
+// selection on those axes is sent as-is and never narrowed here (feed cards
+// carry no item list to narrow on anyway).
 //
 // Everything below is pure so it can be unit-tested without a renderer.
 
@@ -164,6 +165,17 @@ export const analyticsValue = (selected: string[]): string =>
  * end so the user can still see and clear it.
  */
 export const toggleColor = (
+  selected: string[],
+  code: string,
+  available: string[],
+): string[] => toggleTrendTag(selected, code, available);
+
+/**
+ * Toggle one item-type code. Same ordering rule as colors: `available` (the
+ * `/discovery/item-types` codes, server order) is canonical, and a selected
+ * code no longer offered stays at the end so it can still be cleared.
+ */
+export const toggleItemType = (
   selected: string[],
   code: string,
   available: string[],

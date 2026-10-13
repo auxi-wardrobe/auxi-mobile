@@ -5,12 +5,12 @@
 // `discovery_feed_empty` on a blacked-out cohort) so DiscoveryScreen stays
 // wiring-only (mirrors `useActiveTrendingDrop`).
 //
-// All filter axes are MULTI-select (season, trend tag, color), matching the
-// wardrobe type filter. `GET /discovery/outfits` only accepts one season and
-// one tag, so either of those axes with 2+ selections is dropped from the
-// request and narrowed client-side over the accumulated pages. Colors are a
-// server-side list (any-of), so they are always sent whole and never narrowed
-// here — see `screens/discovery/
+// All filter axes are MULTI-select (season, trend tag, color, item type),
+// matching the wardrobe type filter. `GET /discovery/outfits` only accepts one
+// season and one tag, so either of those axes with 2+ selections is dropped
+// from the request and narrowed client-side over the accumulated pages. Colors
+// and item types are server-side lists (any-of), so they are always sent whole
+// and never narrowed here — see `screens/discovery/
 // discovery-filter.ts` for the split, and the MIN_NARROWED_RESULTS effect
 // below for the pagination consequence.
 //
@@ -33,6 +33,7 @@ import { track } from '../services/analytics';
 import {
   newDiscoveryShuffleSeed,
   useDiscoveryColors,
+  useDiscoveryItemTypes,
   useDiscoveryOutfits,
   useDiscoveryTrendTags,
 } from './useDiscovery';
@@ -45,6 +46,7 @@ import {
 import type {
   DiscoveryColorOption,
   DiscoveryGender,
+  DiscoveryItemTypeOption,
   DiscoveryOutfitCard,
   DiscoverySeason,
 } from '../services/discoveryService';
@@ -65,6 +67,10 @@ export interface UseDiscoveryFeed {
   selectedColors: string[];
   /** Colors the backend offers for this viewer (`/discovery/colors`). */
   colorOptions: DiscoveryColorOption[];
+  /** Committed item-type codes. Empty === every item type. */
+  selectedItemTypes: string[];
+  /** Item types the backend offers (`/discovery/item-types`); `[]` hides the pill. */
+  itemTypeOptions: DiscoveryItemTypeOption[];
   outfits: DiscoveryOutfitCard[];
   isFilterActive: boolean;
   loading: boolean;
@@ -74,6 +80,7 @@ export interface UseDiscoveryFeed {
   onSeasonsChange: (next: DiscoverySeason[]) => void;
   onTrendTagsChange: (next: string[]) => void;
   onColorsChange: (next: string[]) => void;
+  onItemTypesChange: (next: string[]) => void;
   onEndReached: () => void;
   onRetry: () => void;
 }
@@ -83,6 +90,7 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
   const [seasons, setSeasons] = useState<DiscoverySeason[]>([]);
   const [selectedTrendTags, setSelectedTrendTags] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedItemTypes, setSelectedItemTypes] = useState<string[]>([]);
   const [offset, setOffset] = useState(0);
   const [rawOutfits, setRawOutfits] = useState<DiscoveryOutfitCard[]>([]);
   const [total, setTotal] = useState(0);
@@ -97,7 +105,7 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
   // a fresh identity on every "Show" tap even when nothing actually changed.
   const filterKey = `${seasons.join(',')}|${selectedTrendTags.join(
     ',',
-  )}|${selectedColors.join(',')}`;
+  )}|${selectedColors.join(',')}|${selectedItemTypes.join(',')}`;
 
   const serverFilters = toServerFilters(seasons, selectedTrendTags);
   const filters = useMemo(
@@ -105,6 +113,7 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
       season: serverFilters.season,
       trendTag: serverFilters.trendTag,
       colors: selectedColors,
+      itemTypes: selectedItemTypes,
       seed,
       limit: PAGE_SIZE,
       offset,
@@ -113,6 +122,7 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
       serverFilters.season,
       serverFilters.trendTag,
       selectedColors,
+      selectedItemTypes,
       seed,
       offset,
     ],
@@ -121,6 +131,7 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
   const outfitsQuery = useDiscoveryOutfits(filters);
   const trendTagsQuery = useDiscoveryTrendTags();
   const colorsQuery = useDiscoveryColors();
+  const itemTypesQuery = useDiscoveryItemTypes();
 
   // Pages held by offset rather than blind-appended, keyed by the filter they
   // belong to. Blind appending breaks two ways that both show up as duplicated
@@ -216,11 +227,13 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
   const seasonsRef = useRef(seasons);
   const trendTagsRef = useRef(selectedTrendTags);
   const colorsRef = useRef(selectedColors);
+  const itemTypesRef = useRef(selectedItemTypes);
   useEffect(() => {
     seasonsRef.current = seasons;
     trendTagsRef.current = selectedTrendTags;
     colorsRef.current = selectedColors;
-  }, [seasons, selectedTrendTags, selectedColors]);
+    itemTypesRef.current = selectedItemTypes;
+  }, [seasons, selectedTrendTags, selectedColors, selectedItemTypes]);
 
   // What the server said it applied. Held in a ref because the focus event
   // fires BEFORE the first query resolves — on a cold start it is still null
@@ -244,6 +257,9 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
         ...(colorsRef.current.length
           ? { filter_color: analyticsValue(colorsRef.current) }
           : {}),
+        ...(itemTypesRef.current.length
+          ? { filter_item_type: analyticsValue(itemTypesRef.current) }
+          : {}),
         ...(appliedGenderRef.current
           ? { wardrobe_gender: appliedGenderRef.current }
           : {}),
@@ -259,7 +275,8 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
   const isFilterActive =
     seasons.length > 0 ||
     selectedTrendTags.length > 0 ||
-    selectedColors.length > 0;
+    selectedColors.length > 0 ||
+    selectedItemTypes.length > 0;
   const emptyTrackedRef = useRef(false);
   useEffect(() => {
     const settled = !!outfitsQuery.data && !outfitsQuery.isFetching;
@@ -314,6 +331,18 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
     [resetPages],
   );
 
+  const onItemTypesChange = useCallback(
+    (next: string[]) => {
+      setSelectedItemTypes(next);
+      resetPages();
+      track('discovery_filter_applied', {
+        filter_type: 'item_type',
+        filter_value: analyticsValue(next),
+      });
+    },
+    [resetPages],
+  );
+
   const onEndReached = useCallback(() => {
     if (!loading && !loadingMore && !loadError && hasMore) {
       setOffset(prev => prev + PAGE_SIZE);
@@ -331,6 +360,8 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
     trendTags: trendTagsQuery.data ?? [],
     selectedColors,
     colorOptions: colorsQuery.data ?? [],
+    selectedItemTypes,
+    itemTypeOptions: itemTypesQuery.data ?? [],
     outfits,
     isFilterActive,
     loading,
@@ -340,6 +371,7 @@ export const useDiscoveryFeed = (): UseDiscoveryFeed => {
     onSeasonsChange,
     onTrendTagsChange,
     onColorsChange,
+    onItemTypesChange,
     onEndReached,
     onRetry,
   };
